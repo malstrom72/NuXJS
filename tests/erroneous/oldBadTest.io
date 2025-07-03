@@ -6,10 +6,6 @@
 ! !!!! Line: 1
 ! !!!! SyntaxError: Syntax error
 -
-> åäö = 4 // unaccepted identifier
-! !!!! Line: 1
-! !!!! SyntaxError: Syntax error
--
 > 3 = 3 // illegal l-value
 ! !!!! Line: 1
 ! !!!! ReferenceError: Illegal l-value

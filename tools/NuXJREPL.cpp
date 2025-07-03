@@ -432,22 +432,54 @@ Var test1(Runtime& rt, const Var& thisVar, const VarList& args) {
 	return Var(rt, static_cast<double>(args[0]) + args[1]);
 }
 
+static std::wstring utf8ToUtf16(const std::string& utf8) {
+       std::wstring wide;
+       wide.reserve(utf8.size());
+       for (size_t i = 0; i < utf8.size();) {
+               unsigned char c = utf8[i];
+               if (c < 0x80) {
+                       wide.push_back(static_cast<wchar_t>(c));
+                       ++i;
+               } else if ((c & 0xE0) == 0xC0 && i + 1 < utf8.size()) {
+                       wchar_t w = ((c & 0x1F) << 6) | (utf8[i + 1] & 0x3F);
+                       wide.push_back(w);
+                       i += 2;
+               } else if ((c & 0xF0) == 0xE0 && i + 2 < utf8.size()) {
+                       wchar_t w = ((c & 0x0F) << 12) | ((utf8[i + 1] & 0x3F) << 6) | (utf8[i + 2] & 0x3F);
+                       wide.push_back(w);
+                       i += 3;
+               } else if ((c & 0xF8) == 0xF0 && i + 3 < utf8.size()) {
+                       unsigned int cp = ((c & 0x07) << 18) | ((utf8[i + 1] & 0x3F) << 12)
+                                       | ((utf8[i + 2] & 0x3F) << 6) | (utf8[i + 3] & 0x3F);
+                       cp -= 0x10000;
+                       wide.push_back(static_cast<wchar_t>(0xD800 | (cp >> 10)));
+                       wide.push_back(static_cast<wchar_t>(0xDC00 | (cp & 0x3FF)));
+                       i += 4;
+               } else {
+                       wide.push_back(L'?');
+                       ++i;
+               }
+       }
+       return wide;
+}
+
 Var read(Runtime& rt, const Var& thisVar, const VarList& args) {
-	std::wifstream stdlibStream;
-	std::wstring contentsWide;
-	try {
-		const std::wstring filenameWide = args[0];
-		std::wifstream stdlibStream(std::string(filenameWide.begin(), filenameWide.end()).c_str());
-		if (!stdlibStream.good()) {
-			ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, "Could not open input file");
-		}
-		stdlibStream.exceptions(std::ios_base::badbit | std::ios_base::failbit);
-		contentsWide = std::wstring(std::istreambuf_iterator<wchar_t>(stdlibStream), std::istreambuf_iterator<wchar_t>());
-	}
-	catch (const std::ios_base::failure& x) {
-		ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, x.what());
-	}
-	return Var(rt, contentsWide);
+       std::ifstream file;
+       std::wstring contentsWide;
+       try {
+               const std::wstring filenameWide = args[0];
+               file.open(std::string(filenameWide.begin(), filenameWide.end()).c_str(), std::ios::binary);
+               if (!file.good()) {
+                       ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, "Could not open input file");
+               }
+               file.exceptions(std::ios_base::badbit | std::ios_base::failbit);
+               std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+               contentsWide = utf8ToUtf16(contents);
+       }
+       catch (const std::ios_base::failure& x) {
+               ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, x.what());
+       }
+       return Var(rt, contentsWide);
 }
 
 Var load(Runtime& rt, const Var& thisVar, const VarList& args) {
