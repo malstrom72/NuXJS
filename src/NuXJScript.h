@@ -10,6 +10,7 @@
 #include <limits>
 #include <cstring>
 #include <cstddef>
+#include <stdint.h>
 
 /**
 	These global operator overloads makes it possible to allocate *anything* (and not only GCItems) on Heap. Just
