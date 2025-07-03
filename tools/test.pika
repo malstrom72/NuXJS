@@ -1,0 +1,187 @@
+#! /usr/local/bin/PikaCmd
+
+include('debug.pika');
+include('stdlib.pika');
+include('systools.pika');
+
+STANDARD_COLOR = SUCCESS_COLOR = FAILURE_COLOR = INPUT_COLOR = GOT_COLOR = EXPECTED_COLOR = RESET_COLOR = '';
+if (exists(@::PLATFORM) && ::PLATFORM === 'UNIX') {
+	STANDARD_COLOR = "\x1B[1;37m";
+	SUCCESS_COLOR = "\x1B[0;32m";
+	FAILURE_COLOR = "\x1B[1;31m";
+	INPUT_COLOR = "\x1B[1;37m";
+	GOT_COLOR = "\x1B[1;31m";
+	EXPECTED_COLOR = "\x1B[1;32m";
+	RESET_COLOR = "\x1B[0m";
+};
+
+help => {
+	print("test [-e(rrors too)] [-k(eep input files) <in dir>] [-x <exe command>] <test files / dirs>");
+	didHelp = true;
+};
+
+didHelp = false;
+argNumber = 0;
+files.n = 0;
+exe = (if (PLATFORM === 'WINDOWS') 'Debug\\NuXJScript.exe -s' else 'build/Debug/NuXJScript -s');
+errorsToo = false;
+keepInputFiles = false;
+inputFileDir = '';
+for (i = 1; i < $n; ++i) {
+	arg = $[i];
+	if (arg{:1} === '-') {
+		opt = arg{1:1};
+		if (opt === '?' || opt === 'h') {
+			help();
+		} else if (opt === 'e') {
+			errorsToo = true;
+		} else if (opt === 'k') {
+			keepInputFiles = true;
+			inputFileDir = $[++i];
+		} else if (opt === 'x') {
+			exe = $[++i];
+		} else {
+			throw("Unknown command line option. Use -h for help.");
+		}
+	} else {
+		append(@files, arg);
+	}
+};
+
+if (files.n === 0) help();
+
+fails.n = 0;
+
+testFile => {
+	testPath = $0;
+	testFilename = filenameOfPath(testPath);
+
+	print(STANDARD_COLOR # testFilename);
+	print(repeat('=', length(testFilename)));
+
+	ioSource = load(testPath);
+	ioSource = replace(ioSource, "\r\n", "\n");
+
+	sectionInput = '';
+	sectionOutput = '';
+	sections.n = 0;
+	skip = false;
+
+	addSection => {
+		if (!skip) map(@sections[sections.n++], 'input', sectionInput, 'output', sectionOutput);
+		skip = false;
+		sectionInput = '';
+		sectionOutput = '';
+	};
+
+	warnAboutExpectedErrors = false;
+
+	tokenize(ioSource, >{
+		directive = $0{:1};
+		command = $0{2:};
+		if (directive === '>') {
+			if (sectionOutput !== '') addSection();
+			sectionInput #= command # LF;
+		} else if (directive === '<') {
+			sectionOutput #= command # LF;
+		} else if (directive === '!') {
+			if (errorsToo) {
+				sectionOutput #= command # LF;
+			} else {
+				warnAboutExpectedErrors = true;
+				skip = true;
+			}
+		} else if (directive === '-') {
+			addSection();
+		} else if (directive !== '/') {
+			skip = true;
+		}
+	});
+	if (sectionOutput !== '') addSection();
+
+	if (warnAboutExpectedErrors) {
+		print("Warning! Expects one or more tests to fail. Run with -e to test these too.")
+	};
+
+	allInput = '';
+	allOutput = '';
+	for (i = 0; i < sections.n; ++i) {
+		sections[i].header = sectionHeader = '----<<<< ' # i # ' >>>>----';
+		allInput #= 'print("' # sectionHeader # '");' # LF # LF # sections[i].input # LF;
+		allOutput #= sectionHeader # LF # sections[i].output;
+	};
+
+	allOutput = trim(allOutput, '', "\n");
+	if (keepInputFiles) {
+		inFile = inputFileDir # DIR_SLASH # basenameOfPath(testFilename) # '.js';
+	} else {
+		inFile = tempDir # 'test';
+	};
+	save(inFile, allInput);
+	result = pipe(exe # (if (errorsToo) ' <' else ' ') # quotePath(inFile), false, @err, @rc);
+	if (rc === 2) throw("user aborted");
+	result = replace(result, "\r\n", "\n");
+	result = trim(result, '', "\n");
+	if (result === allOutput) {
+		print(SUCCESS_COLOR # "Success!");
+		print('');
+	} else {
+		print(FAILURE_COLOR # "Failure!");
+		print("");
+		exitCode = 1;
+		sectionIndex = 0;
+		section = '';
+		check => {
+			if (sectionIndex >= 0 && section !== sections[sectionIndex].output) {
+				print(INPUT_COLOR # 'INPUT');
+				print(repeat('-', 40));
+				print(sections[sectionIndex].input);
+				print(GOT_COLOR # 'GOT');
+				print(repeat('-', 40));
+				print(section);
+				print(EXPECTED_COLOR # 'EXPECTED');
+				print(repeat('-', 40));
+				print(sections[sectionIndex].output);
+				print('');
+			}
+		};
+		sectionIndex = -1;
+		tokenize(result, >{
+			if (sectionIndex + 1 < sections.n && $0 === sections[sectionIndex + 1].header) {
+				check();
+				section = '';
+				++sectionIndex;
+			} else {
+				section #= $0 # LF;
+			}
+		});
+		check();
+		append(@::fails, testFilename);
+	}
+};
+
+testDir = function {
+	thisDir = dirOfPath($0);
+	print(STANDARD_COLOR # $0 # LF # repeat('#', length($0)) # LF);
+	dir($0, >{
+		fn = $0;
+		(if (appendDirSlash(fn) === fn) testDir else testFile)(thisDir # fn);
+	});
+};
+
+tempDir = makeTempDir();
+if (!didHelp) {
+	x = try(>iterate(@files, >testDir($2)));
+	wipeTempDir(tempDir);
+	if (x !== void) {
+		throw(x);
+	};
+	if (fails.n > 0) {
+		s = FAILURE_COLOR # 'Fails: ';
+		iterate(@fails, >s #= $2 # ', ');
+		s = chop(s, 2);
+		print(s);
+	}
+}; // (!didHelp)
+
+print(RESET_COLOR);

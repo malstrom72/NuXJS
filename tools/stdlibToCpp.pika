@@ -1,0 +1,39 @@
+#! /usr/local/bin/PikaCmd
+
+include('stdlib.pika');
+run('./initPPEG.pika');
+
+vargs(@exe,, @inputFile, @outputFile);
+defaults(@inputFile, 'stdlib.js', @outputFile, 'stdlibJS.cpp');
+
+print(bake('Loading {inputFile}'));
+src = load(inputFile);
+
+print('Compiling parser');
+
+ok = ppeg.compileFunction(load('./stdlibMinifier.ppeg'), @minifier);
+if (!ok) throw("Error compiling the stdlib parser peg");
+
+print('Shrinking code');
+
+ok = minifier(src, @minified, @i);
+if (!ok) throw("Failed parsing at offset " # i);
+
+print(bake('Code shrunk from {length(src)} to {length(minified)}'));
+
+code = '';
+for (offset = 0; offset < length(minified); offset += n) {
+	for (n = min(length(minified) - offset, 118)
+			; { line = '"' # (escape("\n" # minified{offset:n}){3:}); length(line) > 120 }
+			; --n);
+	code #= line # LF;
+};
+
+save(outputFile, bake(
+'namespace NuXJS {
+const char* STDLIB_JS =
+--{code}--;
+}
+', '--{', '}--'));
+
+print(bake('Updated {outputFile}'));

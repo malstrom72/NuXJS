@@ -1,0 +1,1255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Bucket
+   uuid = "A079A6A6-ACEB-424E-B30E-FD837B923147"
+   type = "1"
+   version = "2.0">
+   <Breakpoints>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "511C1ADB-8160-4348-8504-D8CC3EE7CB1A"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.571891"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1135"
+            endingLineNumber = "1135"
+            landmarkName = "testVector(typeName, seed, iterations, maxSizeIncrement, optionalHeap, initialSize)"
+            landmarkType = "9">
+            <Locations>
+               <Location
+                  uuid = "511C1ADB-8160-4348-8504-D8CC3EE7CB1A - 418506426fbdae79"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;double, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578852680.335686"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1006"
+                  endingLineNumber = "1006"
+                  offsetFromSymbolStart = "3764">
+               </Location>
+               <Location
+                  uuid = "511C1ADB-8160-4348-8504-D8CC3EE7CB1A - db277e098e1f7c6a"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;double, 45u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578852680.338997"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1006"
+                  endingLineNumber = "1006"
+                  offsetFromSymbolStart = "3764">
+               </Location>
+               <Location
+                  uuid = "511C1ADB-8160-4348-8504-D8CC3EE7CB1A - 19ef37056720df1e"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;bool, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578852680.341958"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1006"
+                  endingLineNumber = "1006"
+                  offsetFromSymbolStart = "3779">
+               </Location>
+               <Location
+                  uuid = "511C1ADB-8160-4348-8504-D8CC3EE7CB1A - 8994b41791522ef6"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578852680.346891"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1006"
+                  endingLineNumber = "1006"
+                  offsetFromSymbolStart = "4080">
+               </Location>
+               <Location
+                  uuid = "511C1ADB-8160-4348-8504-D8CC3EE7CB1A - 14bd5a0c6e402ece"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 0u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578852680.350691"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1006"
+                  endingLineNumber = "1006"
+                  offsetFromSymbolStart = "4077">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "E68497FA-203E-4262-AAA1-390849F8CA69"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.572341"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "139"
+            endingLineNumber = "139"
+            landmarkName = "TestDataClass::TestDataClass(that)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "E41E178C-664B-4B27-9825-59DCF0DADF26"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.572647"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "135"
+            endingLineNumber = "135"
+            landmarkName = "TestDataClass::TestDataClass()"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "9F5C9573-2DA2-4B6F-9CEF-1686DEDF030B"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.572926"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1113"
+            endingLineNumber = "1113"
+            landmarkName = "matchLength(b, e, prng)"
+            landmarkType = "9">
+            <Locations>
+               <Location
+                  uuid = "9F5C9573-2DA2-4B6F-9CEF-1686DEDF030B - 418506426fbd9583"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;double, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578852857.9625371"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "968"
+                  endingLineNumber = "968"
+                  offsetFromSymbolStart = "984">
+               </Location>
+               <Location
+                  uuid = "9F5C9573-2DA2-4B6F-9CEF-1686DEDF030B - db277e098e1f4790"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;double, 45u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578852857.965933"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "968"
+                  endingLineNumber = "968"
+                  offsetFromSymbolStart = "984">
+               </Location>
+               <Location
+                  uuid = "9F5C9573-2DA2-4B6F-9CEF-1686DEDF030B - 19ef37056720e4e4"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;bool, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578852857.968466"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "968"
+                  endingLineNumber = "968"
+                  offsetFromSymbolStart = "1034">
+               </Location>
+               <Location
+                  uuid = "9F5C9573-2DA2-4B6F-9CEF-1686DEDF030B - 8994b4179152150c"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578852857.9711339"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "968"
+                  endingLineNumber = "968"
+                  offsetFromSymbolStart = "984">
+               </Location>
+               <Location
+                  uuid = "9F5C9573-2DA2-4B6F-9CEF-1686DEDF030B - 14bd5a0c6e401534"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 0u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578852857.97427"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "968"
+                  endingLineNumber = "968"
+                  offsetFromSymbolStart = "981">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "CB87A894-9CA8-486B-85DF-0EE666028154"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.573231"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "136"
+            endingLineNumber = "136"
+            landmarkName = "TestDataClass::TestDataClass()"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "CB87A894-9CA8-486B-85DF-0EE666028154 - 8d6761f96dd4c2c7"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "TestDataClass::TestDataClass()"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578852743.935618"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "131"
+                  endingLineNumber = "131"
+                  offsetFromSymbolStart = "55">
+               </Location>
+               <Location
+                  uuid = "CB87A894-9CA8-486B-85DF-0EE666028154 - 8d6761f96dd4c2c7"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "TestDataClass::TestDataClass()"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578852743.938028"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "131"
+                  endingLineNumber = "131"
+                  offsetFromSymbolStart = "21">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "22036845-F377-4905-A94C-CE5262DD6410"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.5735"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1131"
+            endingLineNumber = "1131"
+            landmarkName = "testVector(typeName, seed, iterations, maxSizeIncrement, optionalHeap, initialSize)"
+            landmarkType = "9">
+            <Locations>
+               <Location
+                  uuid = "22036845-F377-4905-A94C-CE5262DD6410 - 418506426fbdae46"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;double, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578853915.217176"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1005"
+                  endingLineNumber = "1005"
+                  offsetFromSymbolStart = "3052">
+               </Location>
+               <Location
+                  uuid = "22036845-F377-4905-A94C-CE5262DD6410 - db277e098e1f7c55"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;double, 45u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578853915.219853"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1005"
+                  endingLineNumber = "1005"
+                  offsetFromSymbolStart = "3052">
+               </Location>
+               <Location
+                  uuid = "22036845-F377-4905-A94C-CE5262DD6410 - 19ef37056720df21"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;bool, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578853915.222326"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1005"
+                  endingLineNumber = "1005"
+                  offsetFromSymbolStart = "3061">
+               </Location>
+               <Location
+                  uuid = "22036845-F377-4905-A94C-CE5262DD6410 - 8994b41791522ec9"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578853915.22578"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1005"
+                  endingLineNumber = "1005"
+                  offsetFromSymbolStart = "3136">
+               </Location>
+               <Location
+                  uuid = "22036845-F377-4905-A94C-CE5262DD6410 - 14bd5a0c6e402ef1"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 0u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578853915.228864"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1005"
+                  endingLineNumber = "1005"
+                  offsetFromSymbolStart = "3133">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "D4A7039D-84EA-4E75-B985-230EEF704CB0"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.573789"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "138"
+            endingLineNumber = "138"
+            landmarkName = "TestDataClass::TestDataClass(that)"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "D4A7039D-84EA-4E75-B985-230EEF704CB0 - c88414027bd99533"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "TestDataClass::TestDataClass(TestDataClass const&amp;)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578853922.094054"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "132"
+                  endingLineNumber = "132"
+                  offsetFromSymbolStart = "16">
+               </Location>
+               <Location
+                  uuid = "D4A7039D-84EA-4E75-B985-230EEF704CB0 - c88414027bd99533"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "TestDataClass::TestDataClass(TestDataClass const&amp;)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578853922.096509"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "132"
+                  endingLineNumber = "132"
+                  offsetFromSymbolStart = "20">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "4E11C9E6-523A-4892-BD41-2C651CEC8D25"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.574051"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1222"
+            endingLineNumber = "1222"
+            landmarkName = "testVector(typeName, seed, iterations, maxSizeIncrement, optionalHeap, initialSize)"
+            landmarkType = "9">
+            <Locations>
+               <Location
+                  uuid = "4E11C9E6-523A-4892-BD41-2C651CEC8D25 - 418506426fbda496"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;double, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578915455.776716"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1085"
+                  endingLineNumber = "1085"
+                  offsetFromSymbolStart = "13708">
+               </Location>
+               <Location
+                  uuid = "4E11C9E6-523A-4892-BD41-2C651CEC8D25 - db277e098e1f7685"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;double, 45u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578915455.780369"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1085"
+                  endingLineNumber = "1085"
+                  offsetFromSymbolStart = "13720">
+               </Location>
+               <Location
+                  uuid = "4E11C9E6-523A-4892-BD41-2C651CEC8D25 - 19ef37056720d5f1"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;bool, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578915455.785383"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1085"
+                  endingLineNumber = "1085"
+                  offsetFromSymbolStart = "13491">
+               </Location>
+               <Location
+                  uuid = "4E11C9E6-523A-4892-BD41-2C651CEC8D25 - 8994b41791522419"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578915455.789198"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1085"
+                  endingLineNumber = "1085"
+                  offsetFromSymbolStart = "14090">
+               </Location>
+               <Location
+                  uuid = "4E11C9E6-523A-4892-BD41-2C651CEC8D25 - 14bd5a0c6e402421"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 0u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578915455.792594"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1085"
+                  endingLineNumber = "1085"
+                  offsetFromSymbolStart = "14001">
+               </Location>
+               <Location
+                  uuid = "4E11C9E6-523A-4892-BD41-2C651CEC8D25 - 904855a0b9eac41c"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 20u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578915455.796321"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1085"
+                  endingLineNumber = "1085"
+                  offsetFromSymbolStart = "14090">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "FF829698-9DE1-41FB-AFA9-80C91FF3328B"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.574331"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "17"
+            endingLineNumber = "17"
+            landmarkName = "expectationFailed(sourceCode, file, line)"
+            landmarkType = "9">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "09902B7A-DD84-41DB-BAC2-4A59AA88E83D"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../src/NuXJScript.cpp"
+            timestampString = "624111044.574603"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "686"
+            endingLineNumber = "686"
+            landmarkName = "Value::toDouble()"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "0E8AF1AE-300F-490C-9F77-17D0E895A8D7"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../src/NuXJScript.cpp"
+            timestampString = "624111044.574664"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "681"
+            endingLineNumber = "681"
+            landmarkName = "Value::toBool()"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "09DCBB44-6A21-4FC0-BA4C-0755499D1CA2"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../src/NuXJScript.cpp"
+            timestampString = "624111044.574712"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "696"
+            endingLineNumber = "696"
+            landmarkName = "Value::toInt()"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "AD3D59AF-55F2-47FE-A0D2-3DD2A11F5D08"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../src/NuXJScript.cpp"
+            timestampString = "624111044.574759"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "701"
+            endingLineNumber = "701"
+            landmarkName = "Value::toInt()"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "68F25BD2-D512-49BD-8951-B4931889F341"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../src/NuXJScript.cpp"
+            timestampString = "624111044.574805"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "702"
+            endingLineNumber = "702"
+            landmarkName = "Value::toInt()"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "1BC554D7-E066-421C-ADFE-9EE5A5D468C5"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../src/NuXJScript.cpp"
+            timestampString = "624111044.574852"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "708"
+            endingLineNumber = "708"
+            landmarkName = "Value::toArrayIndex(index)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "8CB4E6CE-229B-4A64-931C-8B45988CBAF8"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.5748971"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1253"
+            endingLineNumber = "1253"
+            landmarkName = "testVector(typeName, seed, iterations, maxSizeIncrement, optionalHeap, initialSize)"
+            landmarkType = "9">
+            <Locations>
+               <Location
+                  uuid = "8CB4E6CE-229B-4A64-931C-8B45988CBAF8 - d779382094ce8511"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "testVectors()"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578961549.28506"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1138"
+                  endingLineNumber = "1138"
+                  offsetFromSymbolStart = "554">
+               </Location>
+               <Location
+                  uuid = "8CB4E6CE-229B-4A64-931C-8B45988CBAF8 - d779382094ce8511"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "testVectors()"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "578961549.287241"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1138"
+                  endingLineNumber = "1138"
+                  offsetFromSymbolStart = "559">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "726D0F0D-F37C-47F4-BE09-32870D83C4AF"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.57517"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1254"
+            endingLineNumber = "1254"
+            landmarkName = "testVector(typeName, seed, iterations, maxSizeIncrement, optionalHeap, initialSize)"
+            landmarkType = "9">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "E6AA0AAB-7813-4CDD-AF05-D7DCD517B696"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.5754451"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "179"
+            endingLineNumber = "179"
+            landmarkName = "UnreliableConstructorClass::UnreliableConstructorClass(UnreliableConstructorClass)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "F1100DF0-3674-480D-87BF-A9433D7FF193"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../src/NuXJScript.cpp"
+            timestampString = "624111044.575714"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1213"
+            endingLineNumber = "1213"
+            landmarkName = "Heap::gc()"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "EECD9FA4-7525-49D4-A9B8-C16FA840DA20"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.575768"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1137"
+            endingLineNumber = "1137"
+            landmarkName = "testVector(typeName, seed, iterations, maxSizeIncrement, optionalHeap, initialSize)"
+            landmarkType = "9">
+            <Locations>
+               <Location
+                  uuid = "EECD9FA4-7525-49D4-A9B8-C16FA840DA20 - 418506426fbda77f"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;double, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.61133"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1076"
+                  endingLineNumber = "1076"
+                  offsetFromSymbolStart = "3490">
+               </Location>
+               <Location
+                  uuid = "EECD9FA4-7525-49D4-A9B8-C16FA840DA20 - 418506426fbda77f"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;double, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.614983"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1076"
+                  endingLineNumber = "1076"
+                  offsetFromSymbolStart = "3495">
+               </Location>
+               <Location
+                  uuid = "EECD9FA4-7525-49D4-A9B8-C16FA840DA20 - db277e098e1f756c"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;double, 45u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.618778"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1076"
+                  endingLineNumber = "1076"
+                  offsetFromSymbolStart = "3502">
+               </Location>
+               <Location
+                  uuid = "EECD9FA4-7525-49D4-A9B8-C16FA840DA20 - db277e098e1f756c"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;double, 45u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.6220779"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1076"
+                  endingLineNumber = "1076"
+                  offsetFromSymbolStart = "3507">
+               </Location>
+               <Location
+                  uuid = "EECD9FA4-7525-49D4-A9B8-C16FA840DA20 - 19ef37056720d618"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;bool, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.624764"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1076"
+                  endingLineNumber = "1076"
+                  offsetFromSymbolStart = "3443">
+               </Location>
+               <Location
+                  uuid = "EECD9FA4-7525-49D4-A9B8-C16FA840DA20 - 19ef37056720d618"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;bool, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.627279"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1076"
+                  endingLineNumber = "1076"
+                  offsetFromSymbolStart = "3448">
+               </Location>
+               <Location
+                  uuid = "EECD9FA4-7525-49D4-A9B8-C16FA840DA20 - 8994b417915227f0"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.630861"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1076"
+                  endingLineNumber = "1076"
+                  offsetFromSymbolStart = "3654">
+               </Location>
+               <Location
+                  uuid = "EECD9FA4-7525-49D4-A9B8-C16FA840DA20 - 8994b417915227f0"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.634348"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1076"
+                  endingLineNumber = "1076"
+                  offsetFromSymbolStart = "3659">
+               </Location>
+               <Location
+                  uuid = "EECD9FA4-7525-49D4-A9B8-C16FA840DA20 - 14bd5a0c6e4027c8"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 0u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.637643"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1076"
+                  endingLineNumber = "1076"
+                  offsetFromSymbolStart = "3637">
+               </Location>
+               <Location
+                  uuid = "EECD9FA4-7525-49D4-A9B8-C16FA840DA20 - 14bd5a0c6e4027c8"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 0u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.640725"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1076"
+                  endingLineNumber = "1076"
+                  offsetFromSymbolStart = "3642">
+               </Location>
+               <Location
+                  uuid = "EECD9FA4-7525-49D4-A9B8-C16FA840DA20 - 904855a0b9eac7f5"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 20u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.644966"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1076"
+                  endingLineNumber = "1076"
+                  offsetFromSymbolStart = "3654">
+               </Location>
+               <Location
+                  uuid = "EECD9FA4-7525-49D4-A9B8-C16FA840DA20 - 904855a0b9eac7f5"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 20u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.648657"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1076"
+                  endingLineNumber = "1076"
+                  offsetFromSymbolStart = "3659">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "FEA1423A-25D8-40D9-B93E-ADA97AA58565"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.576054"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1136"
+            endingLineNumber = "1136"
+            landmarkName = "testVector(typeName, seed, iterations, maxSizeIncrement, optionalHeap, initialSize)"
+            landmarkType = "9">
+            <Locations>
+               <Location
+                  uuid = "FEA1423A-25D8-40D9-B93E-ADA97AA58565 - 8994b417915227b2"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.716332"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1074"
+                  endingLineNumber = "1074"
+                  offsetFromSymbolStart = "3205">
+               </Location>
+               <Location
+                  uuid = "FEA1423A-25D8-40D9-B93E-ADA97AA58565 - 14bd5a0c6e40278a"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 0u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.718686"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1074"
+                  endingLineNumber = "1074"
+                  offsetFromSymbolStart = "3188">
+               </Location>
+               <Location
+                  uuid = "FEA1423A-25D8-40D9-B93E-ADA97AA58565 - 904855a0b9eac7b7"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 20u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.721277"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1074"
+                  endingLineNumber = "1074"
+                  offsetFromSymbolStart = "3205">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "00CB9848-7014-484F-A78D-C226A948074D"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.576329"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1134"
+            endingLineNumber = "1134"
+            landmarkName = "testVector(typeName, seed, iterations, maxSizeIncrement, optionalHeap, initialSize)"
+            landmarkType = "9">
+            <Locations>
+               <Location
+                  uuid = "00CB9848-7014-484F-A78D-C226A948074D - 418506426fbda6fb"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;double, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.731523"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1072"
+                  endingLineNumber = "1072"
+                  offsetFromSymbolStart = "2991">
+               </Location>
+               <Location
+                  uuid = "00CB9848-7014-484F-A78D-C226A948074D - db277e098e1f74e8"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;double, 45u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.735188"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1072"
+                  endingLineNumber = "1072"
+                  offsetFromSymbolStart = "2991">
+               </Location>
+               <Location
+                  uuid = "00CB9848-7014-484F-A78D-C226A948074D - 19ef37056720d79c"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;bool, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.738557"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1072"
+                  endingLineNumber = "1072"
+                  offsetFromSymbolStart = "2957">
+               </Location>
+               <Location
+                  uuid = "00CB9848-7014-484F-A78D-C226A948074D - 8994b41791522674"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 8u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.741475"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1072"
+                  endingLineNumber = "1072"
+                  offsetFromSymbolStart = "3067">
+               </Location>
+               <Location
+                  uuid = "00CB9848-7014-484F-A78D-C226A948074D - 14bd5a0c6e40264c"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 0u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.7452821"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1072"
+                  endingLineNumber = "1072"
+                  offsetFromSymbolStart = "3050">
+               </Location>
+               <Location
+                  uuid = "00CB9848-7014-484F-A78D-C226A948074D - 904855a0b9eac671"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "void testVector&lt;TestDataClass, 20u&gt;(char const*, unsigned int, int, unsigned int, NuXJScript::Heap*, unsigned int)"
+                  moduleName = "NuXJSTest"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/magnus/projects/NuXJS/tools/NuXJSTest.cpp"
+                  timestampString = "579181109.7492599"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1072"
+                  endingLineNumber = "1072"
+                  offsetFromSymbolStart = "3067">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "D74880C5-7B8A-4D4A-8DE4-FC1F77A86F73"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.576599"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "614"
+            endingLineNumber = "614"
+            landmarkName = "testArrayVars()"
+            landmarkType = "9">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "93E26360-EE6C-4A3A-B747-30C2AA4749A4"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.576859"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "615"
+            endingLineNumber = "615"
+            landmarkName = "testArrayVars()"
+            landmarkType = "9">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "E92A755A-B36E-48C1-BB11-B1EBDF206C53"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.577116"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "644"
+            endingLineNumber = "644"
+            landmarkName = "testArrayVars()"
+            landmarkType = "9">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "17FFCC73-9355-4D06-8954-4F60ECE0E3CC"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.577378"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "613"
+            endingLineNumber = "613"
+            landmarkName = "testArrayVars()"
+            landmarkType = "9">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "1226C933-83B2-4434-AAA6-FBB0CCEEF31F"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            timestampString = "624111044.577633"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "792"
+            endingLineNumber = "792"
+            landmarkName = "readMeSample2()"
+            landmarkType = "9">
+         </BreakpointContent>
+      </BreakpointProxy>
+   </Breakpoints>
+</Bucket>

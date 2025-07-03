@@ -1,0 +1,3 @@
+> print("oij".toUpperCase())
+< OIJ
+-

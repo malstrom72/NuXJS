@@ -1,0 +1,138 @@
+#! /usr/local/bin/PikaCmd
+
+include('stdlib.pika');
+include('systools.pika');
+
+// benchmark.pika <test(s)> <exe>|<rev-rev>|<rev>|makegold ignoregold
+
+vargs(@me,, @tests, @exe, @ignoregold);
+defaults(@ignoregold, '');
+
+if (!exists(@tests) || tests === '-') tests = '*.js'
+else if (right(tests, 3) != '.js') tests #= '.js';
+
+revs.n = 0;
+makeGold = false;
+doRevRange = false;
+fromRev = toRev = '';
+if (exists(@exe)) {
+	if (exe === 'makegold') {
+		makeGold = true;
+		delete(@exe);
+	} else {
+		doRevRange = wildmatch(exe, '{[0-9]?*}[-:]{[0-9]?*}', @fromRev, @toRev);
+		if (!doRevRange) {
+			if (doRevRange = wildmatch(exe, '{[0-9]?*}', @fromRev)) toRev = fromRev;
+		};
+		if (doRevRange) {
+			print('Listing revisions...');
+			svnlog = pipe(bake("svn log -q -r{fromRev}:{toRev} svn://svn.elysian.se/nuedgesvn/NuXJS/trunk src/NuXJScript.h src/NuXJScript.cpp src/stdlibJS.cpp"));
+			tokenize(svnlog, >{ if (wildmatch($0, 'r{[0-9]?*} *', @r)) append(@revs, r); });
+			s = '';
+			iterate(@revs, >s #= (if (s != '') ',') # $2);
+			print('Revs: ' # s);
+			delete(@exe);
+		};
+	};
+};
+if (revs.n == 0) append(@revs, '');
+
+if (PLATFORM === 'UNIX') {
+	defaults(@exe, './output/NuXJScript -s -t');
+	// TIME_COMMAND_FORMAT = '(time -p {exe} benchmarks/{fn} >{outPath}) 2>{timePath}';
+	TIME_COMMAND_FORMAT = '{exe} -t benchmarks/{fn} >{outPath} 2>{timePath}';
+	BUILD_CPP_COMMAND = './tools/BuildCpp.sh release x64 ./output/NuXJScript tools/NuXJREPL.cpp src/NuXJScript.cpp src/stdlibJS.cpp';
+	parseTimeOutput = function { a = $1; tokenize($0, >append(a, $0)); }
+} else if (PLATFORM == 'WINDOWS') {
+	defaults(@exe, '.\output\NuXJScript -s -t');
+	// TIME_COMMAND_FORMAT = 'timeit -s {exe} benchmarks/{fn} >{outPath} 2>{timePath}';
+	// parseTimeOutput = function { a = $1; count = 0; tokenize($0, >if (count++ >= 3 && $0 != void) append(a, $0{20:})); [a][0] = 'E=' # [a][0]; [a][1] = 'P=' # [a][1];}
+	TIME_COMMAND_FORMAT = '{exe} -t benchmarks/{fn} >{outPath} 2>{timePath}';
+	BUILD_CPP_COMMAND = '.\tools\BuildCpp.cmd release x64 .\output\NuXJScript tools\NuXJREPL.cpp src\NuXJScript.cpp src\stdlibJS.cpp';
+	parseTimeOutput = function { a = $1; tokenize($0, >append(a, $0)); }
+} else {
+	throw("EH!?");
+};
+
+tempDir = makeTempDir();
+outPath = tempDir # 'out';
+timePath = tempDir # 'time';
+
+names.n = 0;
+widths.n = 0;
+dir("benchmarks" # DIR_SLASH # tests, >{
+	fn = $0;
+	name = basenameOfPath(fn);
+	append(@names, name);
+	defaults(@widths[name], length(name));
+});
+
+iterate(@revs, >{
+	rev = $2;
+	err = try(>{
+		if (rev !== void) {
+			print('Checking out ' # rev # '...');
+			pipe('svn update -r' # rev # ' src\NuXJScript.cpp src\NuXJScript.h src\stdlib.js src\stdlibJS.cpp');
+			print('Building...');
+			pipe(BUILD_CPP_COMMAND);
+			print('Done.');
+		};
+		iterate(@names, >{
+			name = $2;
+			fn = name # '.js';
+			print(name);
+			print(repeat('-', length(name)));
+			cmd = bake(TIME_COMMAND_FORMAT);
+			rc = system(cmd);
+			times = load(timePath);
+			output = load(outPath);
+			output = replace(output, "\r\n", "\n");
+			goldenFile = bake('benchmarks{DIR_SLASH}golden{DIR_SLASH}{name}.txt');
+			if (makeGold) {
+				save(goldenFile, output);
+			} else if (ignoregold !== 'ignoregold') {
+				expected = load(goldenFile);
+				if (output != expected) {
+					times = 'FAIL';
+					save('.\failed.txt', output);
+					save('.\expected.txt', expected);
+				}
+			};
+			print(times);
+			a = @timeLines[name][rev];
+			[a].n = 0;
+			if (times == 'FAIL') append(a, 'FAIL')
+			else {
+				parseTimeOutput(times, a);
+				iterate(a, >widths[name] = max(widths[name], length($2)));
+			}
+		});
+	});
+	print(err);
+});
+
+prune(@lines);
+lines[0] = '        ';
+lines[1] = '        ';
+lines.n = 2;
+iterate(@names, >{
+	name = $2;
+	lines[0] #= name # repeat(' ', widths[name] - length(name)) # '  ';
+	lines[1] #= repeat('-', widths[name]) # '  ';
+	lineIndex = 2;
+	iterate(@revs, >{
+		rev = $2;
+		for (l = 0; l < 4; ++l) {
+			if (lineIndex >= lines.n) {
+				lines[lineIndex] = (if (l == 0) (rev # repeat(' ', 8 - length(rev))) else '        ');
+				++lines.n;
+			};
+			s = coalesce(@timeLines[name][rev][l], '');
+			lines[lineIndex] #= s # repeat(' ', widths[name] - length(s)) # '  ';
+			++lineIndex;
+		}
+	});
+});
+iterate(@lines, >print($2));
+
+wipeTempDir(tempDir);

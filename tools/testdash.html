@@ -1,0 +1,272 @@
+<!doctype html>
+<html class="no-js" lang="">
+<head>
+<meta charset="utf-8">
+<style>
+body { background: #1D1E1F; color: #E0C591; font-family:monospace; font-size:12px;margin: 6px;}
+
+#jobControl { position:relative;border-bottom: 1px solid #5F5737;padding-bottom: 6px;margin-bottom: 6px;white-space: nowrap;}
+#jobControl div { display: inline-block; }
+#jobStatus { position:relative; overflow:hidden; text-overflow: ellipsis; top:1px; font-size:0.8em; }
+#jobStatus:before { content:"Running test ... "; }
+#jobControl:not(.running) #jobStatus,
+#jobControl.running #summary { display:none; }
+
+select, button { background: rgba(88, 88, 88, 0.42);color: rgba(255, 255, 255, 0.75);border: 1px solid rgba(123, 123, 123, 0.5); border-radius: 3px; }
+
+#summary { font-size:0.9em;margin-left: 20px;}
+#summary div {margin-right: 25px;}
+#ranCount:before { content:"Ran:" }
+#failedCount:before { content:"Failed:" }
+#passedCount:before { content:"Passed:" }
+#ignoredCount:before { content:"Ignored:" }
+#failedCount {color: #F98740;}
+#passedCount {color: #9ADE45;}
+
+
+.test {position: relative;white-space: nowrap; padding: 4px 55px 4px 4px;}
+.test select {height:20px;margin-right:10px;vertical-align: top;float: left;width: 100px;}
+.test .name {vertical-align: middle;line-height: 20px;white-space: nowrap;overflow: hidden;text-overflow: ellipsis; }
+.test button { height:20px;top:4px;right:4px;position: absolute;width: 50px;}
+
+.output {padding-left: 110px;font-size: 0.8em;color: #BDB199;margin: 0;}.name {}
+#testList >div {margin-bottom:25px;}
+#testList >div:before { font-family:sans-serif; font-size:1.2em; color:black; display:block;text-align: center;opacity: 0.8;font-weight: bold;padding: 2px;}
+#failedList:not(:empty):before { content:"Failed tests"; background: #F98740; }
+#ignoredList:not(:empty):before { content:"Ignored tests";background: #ADBFD0;}
+#passedList:not(:empty):before { content:"Passed tests"; background: #9ADE45; }
+
+#overlay { display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.49); -webkit-transform-style: preserve-3d; -moz-transform-style: preserve-3d; transform-style: preserve-3d; }
+#source { width: 90%; height: 80%; margin: auto auto; position: relative; top: 50%; transform: translateY(-50%); }
+#source pre { background: rgba(249, 242, 228, 0.95); padding:10px; overflow:scroll; height: 80%; }
+
+#source h1 { overflow: hidden; text-overflow: ellipsis; width: 100%; display: block; font-size: 1.4em; background: rgb(117, 101, 59); text-align: center; }
+#kbdhelp { background: black; border: 1px solid #656565; padding: 5px; }
+#kbdhelp >div { display:inline; margin-right:15px; }
+#kbdhelp >div span:after { content:")" }
+
+.selectedTest {background: #27404E;}
+</style>
+</head>
+<body>
+<div id="jobControl" class="running">
+	<button id="runTests">Run Tests</button>
+	<div id="jobStatus"></div>
+	<div id="summary"><div id="ranCount"></div><div id="passedCount"></div><div id="failedCount"></div><div id="ignoredCount"></div></div>
+</div>
+<div id="testList">
+	<div id="failedList"></div>
+	<div id="ignoredList"></div>
+	<div id="passedList"></div>
+</div>
+<div id="overlay">
+	<div id="source">
+		<h1></h1>
+		<pre class="prettyprint lang-js"></pre>
+		<div id="kbdhelp"></div>
+	</div>
+</div>
+</div>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prettify/r298/prettify.min.js"></script>
+<script>
+	const CATEGORIES = [
+		[ "", "" ],
+		[ "bad_test", "BAD TEST" ],
+		[ "by_design", "BY DESIGN" ],
+		[ "not_es3", "ES &gt;3" ],
+		[ "tbd", "TBD" ],
+		[ "todo", "TODO" ],
+	];
+
+	const CATEGORIES_TO_IGNORE = { bad_test: true, by_design: true, not_es3: true, tbd: true };
+
+	var testFlagTemplate = "<select><option>";
+	for (var i = 0; i < CATEGORIES.length; i++) {
+		if (i > 0) testFlagTemplate += '<option value="' + CATEGORIES[i][0] + '">' + i + ' - ' + CATEGORIES[i][1];
+		$("#kbdhelp").append("<div><span>" + i + "</span>" + CATEGORIES[i][1]);
+	}
+	testFlagTemplate += "</select>";
+
+	var ignoreList = $("#ignoredList");
+	var passedList = $("#passedList");
+	var failedList =  $("#failedList");
+	function whichList(test) { return (CATEGORIES_TO_IGNORE[test.category] ? ignoreList : test.passed ? passedList : failedList); };
+	function sortList(list) {
+		$(".test", list[0]).sort(function(a, b) {
+			if ( $(a).data("test").category === $(b).data("test").category )
+				return ( $(b).data("test").name < $(a).data("test").name ? 1 : -1 );
+			else return ( $(b).data("test").category < $(a).data("test").category ? 1 : -1 );
+		}).appendTo(list);
+	};
+
+	function scrollTo(elem) {
+		if(elem.position()){
+		    if(elem.position().top < $(window).scrollTop()){
+		        //scroll up
+		        $('html,body').animate({scrollTop:elem.position().top}, 50);
+		    }
+		    else if(elem.position().top + elem.height() > $(window).scrollTop() + (window.innerHeight || document.documentElement.clientHeight)){
+		        //scroll down
+		        $('html,body').animate({scrollTop:elem.position().top - (window.innerHeight || document.documentElement.clientHeight) + elem.height() + 15}, 50);
+		    }
+		}
+	}
+
+
+	function waitForReport(callback) {
+		$.getJSON("/api/status").done(function(data) {
+			if (data.mode === "report") {
+				$("#jobControl").removeClass("running");
+				ignoreList.empty();
+				passedList.empty();
+				failedList.empty();
+				
+				var ranCount = 0;
+				var passedCount = 0;
+				var failedCount = 0;
+				var ignoredCount = 0;
+
+				for (var n in data.tests) {
+					var test = data.tests[n];
+
+					ranCount++;
+					if (CATEGORIES_TO_IGNORE[test.category]) ignoredCount++;
+					else if (test.passed) passedCount++;
+					else failedCount++;
+
+					test.row = $(
+						'<div class="test" id="' + n + '">' + testFlagTemplate +
+							'<div class="name">' + n + '</div>' + 
+							'<button>source</button>' +
+							'<pre class="output">' + test.output + '</pre>' +
+						'</div>'
+					).data("test", test).appendTo(whichList(test));
+					if (test.category) test.row.find("select").val(test.category);
+				}
+
+				$("#ranCount").html(ranCount + " tests");
+				$("#passedCount").html(passedCount + " tests (" + (passedCount*100.0/ranCount).toFixed(1) + "%)");
+				$("#failedCount").html(failedCount + " tests (" + (failedCount*100.0/ranCount).toFixed(1) + "%)");
+				$("#ignoredCount").html(ignoredCount + " tests (" + (ignoredCount*100.0/ranCount).toFixed(1) + "%)");
+
+				sortList(ignoreList);
+
+				$("#runTests").prop("disabled", false);
+
+				if (callback) callback();
+			} else {
+				if (data.currentTest && data.currentTest.name) $("#jobStatus").html(data.currentTest.name);
+				setTimeout(waitForReport, 500, callback);
+			}			
+		});
+	};
+
+	var selectedTest;
+	function selectTest(test, preview, callback) {
+		if (test) {
+			$(".selectedTest").removeClass("selectedTest");
+			selectedTest = test;
+			selectedTest.row.addClass("selectedTest");
+			scrollTo(selectedTest.row);
+			if (preview) $("#overlay").show();
+			if ($("#overlay").is(":visible")) loadSource(callback);
+			else if (callback) callback();
+		} else if (callback) callback();
+	};
+	function loadSource(callback) {
+		var testName = selectedTest.name;
+		$.get("/source/" + testName).done(function(data) {
+			$("#source h1").html(testName);
+			$("#source pre").text(data).removeClass("prettyprinted");
+			prettyPrint();
+			if (callback) callback(data);
+		});
+	};
+	function setCategory(test, category, callback) {
+		if (test) {
+			var row = test.row;
+			$.getJSON("/api/setCategory", { test:test.name, category:category }).done(function(data) {
+				if (data) {
+					data.row = row;
+					row.data("test", data);
+					row.find("select").val(data.category);
+					var destinationList = whichList(data);
+					if (destinationList[0] !== row.parent()[0]) {
+						row.fadeOut(function() {
+							row.show();
+							row.appendTo(destinationList);
+							sortList(destinationList);
+						});
+					} else {
+						sortList(destinationList);
+					}
+				}
+				if (callback) callback();
+			});
+		} else if (callback) callback();
+	};
+
+	$(function() {
+		waitForReport(function() {
+			console.log("PING!");
+		});
+		$("#runTests").click(function() {
+			$("#jobStatus").empty();
+			$("#jobControl").addClass("running");
+
+			$(this).prop("disabled", true);
+			$.getJSON("/api/runTests").done(waitForReport);
+		});
+		$("#testList").on("change", "select", function(e) {
+			var selector = $(this);
+			selector.prop("disabled", true);
+			setCategory($(this).closest(".test").data("test"), $(this).val(), function() {
+				selector.prop("disabled", false);
+			});
+		});
+		$("#testList").on("click", "button", function(e) {
+			var button = $(this);
+			button.prop("disabled", true);
+			selectTest($(this).closest(".test").data("test"), true, function() {
+				button.prop("disabled", false);
+			});
+		});
+		$("#source").click(function(e) { e.stopPropagation(); });
+		$("#overlay").click(function() { $("#overlay").hide(); });
+
+		$(document).keydown(function(e) {
+			if (e.keyCode == 27) {	// esc
+				$("#overlay").hide();
+			} else if (e.keyCode == 13) { // enter
+				selectTest(selectedTest, true);
+			} else if (e.keyCode == 38) { // up arrow
+				if (!selectedTest) selectTest($(".test:first").data("test"));
+				else selectTest(selectedTest.row.prev().data("test"));
+			} else if (e.keyCode == 40) { // down arrow
+				if (!selectedTest) selectTest($(".test:first").data("test"));
+				else selectTest(selectedTest.row.next().data("test"));
+			} else if (e.keyCode >= 48 && e.keyCode <= 57) {  // 1..0
+				var i = (e.keyCode - 48);
+				if (i < CATEGORIES.length) {
+					var nextTest = selectedTest.row.next().data("test");
+					setCategory(selectedTest, CATEGORIES[i][0]);
+					selectTest(nextTest);
+				}
+			} else return true;
+			e.stopPropagation();
+			e.preventDefault();
+			return false;
+		});
+
+		$("#passedCount").css("cursor","pointer").click(function() { scrollTo(passedList); });
+		$("#failedCount").css("cursor","pointer").click(function() { scrollTo(failedList); });
+		$("#ignoredCount").css("cursor","pointer").click(function() { scrollTo(ignoreList); });
+
+		$("body").removeClass("no-js");
+		$("head").append('<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/prettify/r298/prettify.min.css">')
+	});
+
+</script>
+</body>
+</html>
