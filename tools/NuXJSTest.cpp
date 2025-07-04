@@ -830,6 +830,100 @@ static Var sum(Runtime& rt, const Var& thisVar, const VarList& args) {
     return Var(rt, sum);    // A `Var` owns its `Value` (sum) and is tied to a `Runtime` (rt)
 }
 
+static Var addFunction(Runtime& rt, const Var& thisVar, const VarList& args) {
+    double sum = 0.0;
+    for (UInt32 i = 0; i < args.size(); ++i) {
+        sum += args[i];
+    }
+    return Var(rt, sum);
+}
+
+static Var countArguments(Runtime& rt, const Var&, const VarList& args) {
+    return Var(rt, static_cast<UInt32>(args.size()));
+}
+
+static Value returnFortyTwo(Runtime&, Processor&, UInt32, const Value*, Object*) {
+    return Value(42);
+}
+
+static void testHighLevelAPI() {
+        std::cout << std::endl << "***** High Level API *****" << std::endl << std::endl;
+
+        Heap heap;
+        Runtime rt(heap);
+        rt.setupStandardLibrary();
+
+        Var globals = rt.getGlobalsVar();
+
+        globals["add"] = addFunction;
+        EXPECT_EQUAL(globals["add"](4, 5), 9);
+
+        const Value values[3] = { 1, 2, 3 };
+        EXPECT_EQUAL(globals["add"](VarList(rt, 3, values)), 6);
+
+        Var object(rt.newObjectVar());
+        object["foo"] = 123;
+        object["bar"] = "abc";
+        EXPECT_EQUAL(object["foo"], 123);
+        EXPECT_EQUAL(object["bar"].to<std::wstring>(), L"abc");
+        EXPECT(object.has("foo"));
+        EXPECT(!object.has("baz"));
+
+        Var array(rt.newArrayVar());
+        for (int i = 0; i < 5; ++i) array[i] = i * 2;
+        EXPECT_EQUAL(array.size(), 5);
+        EXPECT_EQUAL(array[2], 4);
+        EXPECT(array.has(4));
+        EXPECT(!array.has(5));
+
+        rt.run("function mul(a,b){ return a*b; }");
+        EXPECT_EQUAL(globals["mul"](6, 7), 42);
+
+        EXPECT(object["foo"].equals(123));
+        EXPECT(object["foo"] == 123);
+        EXPECT(object["foo"] != 124);
+
+        Var booleanVar(rt, true);
+        Var integerVar(rt, 77);
+        Var unsignedIntegerVar(rt, static_cast<UInt32>(99));
+        Var doubleVar(rt, 3.5);
+        Var charStringVar(rt, "hello");
+        Var standardStringVar(rt, std::string("bye"));
+        Var wideStringVar(rt, std::wstring(L"wide"));
+        JSObject* rawObject = rt.newJSObject();
+        Var objectVar(rt, rawObject);
+        Var valueVar(rt, Value(11));
+        Var countArgumentsFunctionVar(rt, countArguments);
+        Var nativeFunctionVar(rt, returnFortyTwo);
+        BindingTestObject bindingTestObject;
+        Var boundMethodVar(rt, &bindingTestObject, &BindingTestObject::method);
+
+        EXPECT(booleanVar.to<bool>());
+        EXPECT_EQUAL(integerVar.to<Int32>(), 77);
+        EXPECT_EQUAL(unsignedIntegerVar.to<UInt32>(), 99U);
+        EXPECT_EQUAL(doubleVar.to<double>(), 3.5);
+        EXPECT_EQUAL(charStringVar.to<std::wstring>(), L"hello");
+        EXPECT(standardStringVar.to<const String&>().isEqualTo(L"bye"));
+        const String* wPtr = wideStringVar.to<const String*>();
+        EXPECT(wPtr->isEqualTo(L"wide"));
+        Var unicodeString(rt, std::wstring(L"Hello \u00A9 \u20AC \u03A9"));
+        EXPECT_EQUAL(unicodeString.to<std::wstring>(), L"Hello \u00A9 \u20AC \u03A9");
+        EXPECT_EQUAL(objectVar.to<Object*>(), rawObject);
+        EXPECT_EQUAL(valueVar.to<Value>().toInt(), 11);
+        EXPECT_NOT_EQUAL(countArgumentsFunctionVar.to<Function*>(), (Function*)0);
+        EXPECT_NOT_EQUAL(nativeFunctionVar.to<Function*>(), (Function*)0);
+        const Value args2[4] = { 1, 2, 3, 4 };
+        EXPECT_EQUAL(countArgumentsFunctionVar(VarList(rt, 4, args2)), 4);
+        EXPECT_EQUAL(nativeFunctionVar(), 42);
+        EXPECT_EQUAL(boundMethodVar().to<double>(), 123.456);
+
+        EXPECT_EQUAL(object["foo"].to<Int32>(), 123);
+        EXPECT_EQUAL(object["foo"].to<UInt32>(), 123U);
+        EXPECT(object["foo"].to<bool>());
+        Value val = charStringVar.to<Value>();
+        EXPECT(val.isString());
+}
+
 static void readMeSample1() {
     std::wstringstream strout;
 
@@ -1713,6 +1807,7 @@ int main(int argc, const char* argv[]) {
                 testJSON();
                 testCompilation();
                 testLimits();
+                testHighLevelAPI();
                 readMeSample1();
 		readMeSample2();
 		if (failureCount == 0) {
