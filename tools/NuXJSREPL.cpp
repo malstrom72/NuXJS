@@ -633,7 +633,6 @@ int testMain(int argc, const char* argv[]) {
 					std::cerr << heap.peakSize / (1024.0 * 1024.0) << "MiB" << std::endl;
 				}
 
-                processor.run(STANDARD_CYCLES_BETWEEN_AUTO_GC); // just testing some weird behaviour
                 source = EMPTY_STRING;
             }
         }
