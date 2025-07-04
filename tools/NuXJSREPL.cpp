@@ -78,10 +78,10 @@ static int recursiveStackCheck(const Code& code, Vector<Int32>& stackDepths
 				}
 				break;
 			}
-			case Processor::RETURN_OP: // fix: check all returns from jsr end with the same stack pointer as entry (keep track with extra parameter that only updates with JSR)
-			case Processor::THROW_OP: {
-				return errors;
-			}
+                       case Processor::RETURN_OP: // fix: check all returns from jsr end with the same stack pointer as entry (keep track with extra parameter that only updates with JSR)
+                       case Processor::THROW_OP: {
+                               return errors;
+                       }
 	
 			default: break;
 		}
@@ -256,12 +256,8 @@ double getCPUSecs() {
 		
 		std::cerr << "\tMax stack depth: " << code.getMaxStackDepth() << std::endl;
 		std::cerr << "\tCode: " << code.getCodeSize() << std::endl;
-	//	std::cerr << "\tConstants: " << code.getConstants().size() << std::endl;
 		std::cerr << "\tVars: " << code.getVarsCount() << std::endl;
 		std::cerr << "\tArguments: " << code.getArgumentsCount() << std::endl;
-	/* FIX :	for (const Value* p = code.constants.begin(); p != code.constants.end(); ++p) {
-			std::wcerr << "\t\t" << p.toString(heap).toWideString() << std::endl;
-		}*/
 
 		assert(errors == 0);
 	}
@@ -388,15 +384,9 @@ struct MyHeap : public Heap {
 		void* p = Heap::acquireMemory(size);
 		if (allocatedSize > peakSize) {
 			peakSize = allocatedSize;
-		//	std::cout << " peak: " << peakSize << std::endl;
 		}
-		// std::cout << " + " << size << std::endl;
 		return p;
 	}
-/*	virtual void releaseMemory(void* ptr, size_t size) {
-		// std::cout << " - " << size << std::endl;
-		return Heap::releaseMemory(ptr, size);
-	}*/
 	size_t peakSize;
 };
 
@@ -445,8 +435,8 @@ int testMain(int argc, const char* argv[]) {
     int gcRate = 256; // FIX : drop or what?
     size_t peakMemory = 0;
     bool autoGCRate = true;
-	bool doSuppressStdErr = false;
-	bool loadStdLib = true;
+    bool doSuppressStdErr = false;
+    bool loadStdLib = true;
     for (int argi = 1; argi < argc; ++argi) {
         if (strcmp(argv[argi], "-t") == 0) doTime = true;
         else if (strcmp(argv[argi], "-s") == 0) doSuppressStdErr = true;
@@ -469,19 +459,9 @@ int testMain(int argc, const char* argv[]) {
 		std::cerr << "Could not open input stream" << std::endl;
 		return 1;
 	}
-	// FIX : this didnt work
-	// inStream->exceptions(std::ios_base::badbit | std::ios_base::failbit);
 
-    /*std::cout << sizeof(Value) << std::endl;
-     std::cout << sizeof(String) << std::endl;
-     std::cout << sizeof(JSObject) << std::endl;
-     std::cout << sizeof(Array) << std::endl;
-     std::cout << sizeof(ScriptFunction) << std::endl;*/
     const String LF_STRING("\n");
     const String PRINT_STRING("print");
-    /*std::cerr << "Value size: " << sizeof (Value) << std::endl;
-     std::cerr << "Bucket size: " << sizeof (Table::Bucket) << std::endl;
-     std::cerr << "Table size: " << sizeof (Table) << std::endl;*/
 
     MyHeap heap;
     Runtime rt(heap);
@@ -501,9 +481,6 @@ int testMain(int argc, const char* argv[]) {
             std::cerr << "Could not open input stream" << std::endl;
             return 1;
         }
-        // FIX : this didnt work
-        // inStream->exceptions(std::ios_base::badbit | std::ios_base::failbit);
-    }
 	Object& globals = *rt.getGlobalObject();
 	Var globs = rt.getGlobalsVar();
 	globs["read"] = read;
@@ -523,10 +500,6 @@ int testMain(int argc, const char* argv[]) {
 
 	if (loadStdLib) {
 		try {
-/* FIX : drop			std::wifstream stdlibStream("stdlib.js");
-			std::wstring sourceWString = std::wstring(std::istreambuf_iterator<wchar_t>(stdlibStream), std::istreambuf_iterator<wchar_t>());
-			String source = String(heap.roots(), sourceWString.c_str());
-			stdlibStream.close();*/
 			rt.setupStandardLibrary();
 		}
 		catch (const std::exception& x) {
@@ -540,11 +513,7 @@ int testMain(int argc, const char* argv[]) {
 	}
 
 
-	Processor processor(rt);
-	processor.run(STANDARD_CYCLES_BETWEEN_AUTO_GC);	// just testing some weird behaviour
-//	const Value TEST_ARGV[1] = { String::alloc(heap, "Hello") };
-//	printFunction.invoke(processor, 1, TEST_ARGV, &globals);
-//	processor.run();	// just testing some weird behaviour
+        Processor processor(rt);
 	
 	inStream->exceptions(std::ios_base::badbit);
     while (inStream->good() && !doQuit) {
@@ -636,13 +605,6 @@ int testMain(int argc, const char* argv[]) {
 // FIX :						std::wcout << std::wstring(std::max<const Char*>(stopPoint - 8, source.begin()), std::min<const Char*>(stopPoint + 8, source.end())) << std::endl;
                     throw;
                 }
-                if (!doSuppressStdErr) {
-/*                	const Constants* const consts = rt.getSharedConstants();
-                    for (const Value* p = consts->begin(); p != consts->end(); ++p) {
-                        std::wcerr << "\t\t" << p->toString(heap)->toWideString() << std::endl;
-                    }*/
-                }
-               	processor.run(STANDARD_CYCLES_BETWEEN_AUTO_GC);	// just testing some weird behaviour
                 processor.enterGlobalCode(&globalCode);
 
                 bool done = false;
@@ -654,8 +616,6 @@ int testMain(int argc, const char* argv[]) {
 					rt.checkTimeOut();
                    	peakMemory = std::max<size_t>(peakMemory, heap.size());
                 } while (!done);
-
-				processor.run(STANDARD_CYCLES_BETWEEN_AUTO_GC);	// just testing some weird behaviour
 				if (!doSuppressStdErr) {
 					Value v = processor.getResult();
 					std::wcerr << L"\t=" << v.toString(heap)->toWideString() << std::endl;
@@ -672,12 +632,6 @@ int testMain(int argc, const char* argv[]) {
             }
         }
         catch (const ScriptException& x) {
-        /*	Error* e = x.asErrorObject();
-        	if (e != 0) {
-        		std::wcout << "type: " << e->getErrorType() << std::endl;
-        		std::wcout << "name: " << e->getErrorName()->toWideString() << std::endl;
-        		std::wcout << "message: " << e->getErrorMessage()->toWideString() << std::endl;
-			}*/
             source = EMPTY_STRING;
             std::wstring ws = x.value.toString(heap)->toWideString();
             ws = L"!!!! " + ws;
@@ -710,12 +664,12 @@ int testMain(int argc, const char* argv[]) {
             pushIOStop();
         }
     }
-    // FIX : non-interactive doesn't set eof, god damn weird iostream library!!
     if (interactive && !inStream->eof()) {
-    	std::cout << "input stream failure" << std::endl;
-    	return 1;
+        std::cout << "input stream failure" << std::endl;
+        return 1;
     }
     return 0;
+}
 }
 
 #ifdef LIBFUZZ
