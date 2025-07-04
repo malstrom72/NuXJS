@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		F715A3F520A7A3B6007941E8 /* stdlibJS.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F715A3F420A7A3B6007941E8 /* stdlibJS.cpp */; };
 		F74E7E1016D1A409003A6AB6 /* NuXJScript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F74E7E0F16D1A409003A6AB6 /* NuXJScript.cpp */; };
-		F7EDE89220AC76F2001E5F45 /* NuXJREPL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F7EDE89120AC76F2001E5F45 /* NuXJREPL.cpp */; };
+		F7EDE89220AC76F2001E5F45 /* NuXJSREPL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F7EDE89120AC76F2001E5F45 /* NuXJSREPL.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -29,7 +29,7 @@
 		F74521D02071198000D96B66 /* NuXJScript */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; name = NuXJScript; path = /Users/magnus/projects/NuXJS/projects/build/Debug/NuXJScript; sourceTree = "<absolute>"; };
 		F74E7E0F16D1A409003A6AB6 /* NuXJScript.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; lineEnding = 0; name = NuXJScript.cpp; path = ../src/NuXJScript.cpp; sourceTree = "<group>"; wrapsLines = 0; };
 		F7CB917916D6263800D3007B /* NuXJScript.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; name = NuXJScript.h; path = ../src/NuXJScript.h; sourceTree = "<group>"; wrapsLines = 0; };
-		F7EDE89120AC76F2001E5F45 /* NuXJREPL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = NuXJREPL.cpp; path = ../tools/NuXJREPL.cpp; sourceTree = "<group>"; };
+		F7EDE89120AC76F2001E5F45 /* NuXJSREPL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = NuXJSREPL.cpp; path = ../tools/NuXJSREPL.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -46,7 +46,7 @@
 		08FB7794FE84155DC02AAC07 /* NuXJScript */ = {
 			isa = PBXGroup;
 			children = (
-				F7EDE89120AC76F2001E5F45 /* NuXJREPL.cpp */,
+				F7EDE89120AC76F2001E5F45 /* NuXJSREPL.cpp */,
 				F715A3F420A7A3B6007941E8 /* stdlibJS.cpp */,
 				F74E7E0F16D1A409003A6AB6 /* NuXJScript.cpp */,
 				F7CB917916D6263800D3007B /* NuXJScript.h */,
@@ -110,7 +110,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F715A3F520A7A3B6007941E8 /* stdlibJS.cpp in Sources */,
-				F7EDE89220AC76F2001E5F45 /* NuXJREPL.cpp in Sources */,
+				F7EDE89220AC76F2001E5F45 /* NuXJSREPL.cpp in Sources */,
 				F74E7E1016D1A409003A6AB6 /* NuXJScript.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

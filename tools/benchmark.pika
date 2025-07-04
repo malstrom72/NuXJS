@@ -41,14 +41,14 @@ if (PLATFORM === 'UNIX') {
 	defaults(@exe, './output/NuXJScript -s -t');
 	// TIME_COMMAND_FORMAT = '(time -p {exe} benchmarks/{fn} >{outPath}) 2>{timePath}';
 	TIME_COMMAND_FORMAT = '{exe} -t benchmarks/{fn} >{outPath} 2>{timePath}';
-	BUILD_CPP_COMMAND = './tools/BuildCpp.sh release x64 ./output/NuXJScript tools/NuXJREPL.cpp src/NuXJScript.cpp src/stdlibJS.cpp';
+	BUILD_CPP_COMMAND = './tools/BuildCpp.sh release x64 ./output/NuXJScript tools/NuXJSREPL.cpp src/NuXJScript.cpp src/stdlibJS.cpp';
 	parseTimeOutput = function { a = $1; tokenize($0, >append(a, $0)); }
 } else if (PLATFORM == 'WINDOWS') {
 	defaults(@exe, '.\output\NuXJScript -s -t');
 	// TIME_COMMAND_FORMAT = 'timeit -s {exe} benchmarks/{fn} >{outPath} 2>{timePath}';
 	// parseTimeOutput = function { a = $1; count = 0; tokenize($0, >if (count++ >= 3 && $0 != void) append(a, $0{20:})); [a][0] = 'E=' # [a][0]; [a][1] = 'P=' # [a][1];}
 	TIME_COMMAND_FORMAT = '{exe} -t benchmarks/{fn} >{outPath} 2>{timePath}';
-	BUILD_CPP_COMMAND = '.\tools\BuildCpp.cmd release x64 .\output\NuXJScript tools\NuXJREPL.cpp src\NuXJScript.cpp src\stdlibJS.cpp';
+	BUILD_CPP_COMMAND = '.\tools\BuildCpp.cmd release x64 .\output\NuXJScript tools\NuXJSREPL.cpp src\NuXJScript.cpp src\stdlibJS.cpp';
 	parseTimeOutput = function { a = $1; tokenize($0, >append(a, $0)); }
 } else {
 	throw("EH!?");
