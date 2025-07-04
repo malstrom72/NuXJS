@@ -2,11 +2,13 @@
 #pragma float_control(precise, on, push)  
 #endif
 
+#include <stdint.h>
 #include "../src/NuXJScript.h"
 #include <fstream>
 #include <memory>
 #include <vector>
 #include <sstream>
+#include <stdexcept>
 #include <ctime>
 
 using namespace NuXJS;
@@ -432,54 +434,88 @@ Var test1(Runtime& rt, const Var& thisVar, const VarList& args) {
 	return Var(rt, static_cast<double>(args[0]) + args[1]);
 }
 
-static std::wstring utf8ToUtf16(const std::string& utf8) {
-       std::wstring wide;
-       wide.reserve(utf8.size());
-       for (size_t i = 0; i < utf8.size();) {
-               unsigned char c = utf8[i];
-               if (c < 0x80) {
-                       wide.push_back(static_cast<wchar_t>(c));
+static UInt32 calcUTF8ToUTF16Size(UInt32 utf8Size, const char* utf8Chars) {
+       UInt32 n = 0;
+       for (UInt32 i = 0; i < utf8Size; ++i) {
+               Byte c = static_cast<Byte>(utf8Chars[i]);
+               if ((c & 0x80) == 0) {
+                       ++n;
+               } else if ((c & 0xE0) == 0xC0) {
+                       assert(i + 1 < utf8Size && (utf8Chars[i + 1] & 0xC0) == 0x80);
+                       ++n;
                        ++i;
-               } else if ((c & 0xE0) == 0xC0 && i + 1 < utf8.size()) {
-                       wchar_t w = ((c & 0x1F) << 6) | (utf8[i + 1] & 0x3F);
-                       wide.push_back(w);
+               } else if ((c & 0xF0) == 0xE0) {
+                       assert(i + 2 < utf8Size && (utf8Chars[i + 1] & 0xC0) == 0x80 && (utf8Chars[i + 2] & 0xC0) == 0x80);
+                       ++n;
                        i += 2;
-               } else if ((c & 0xF0) == 0xE0 && i + 2 < utf8.size()) {
-                       wchar_t w = ((c & 0x0F) << 12) | ((utf8[i + 1] & 0x3F) << 6) | (utf8[i + 2] & 0x3F);
-                       wide.push_back(w);
+               } else if ((c & 0xF8) == 0xF0) {
+                       assert(i + 3 < utf8Size && (utf8Chars[i + 1] & 0xC0) == 0x80 && (utf8Chars[i + 2] & 0xC0) == 0x80 && (utf8Chars[i + 3] & 0xC0) == 0x80);
+                       n += 2;
                        i += 3;
-               } else if ((c & 0xF8) == 0xF0 && i + 3 < utf8.size()) {
-                       unsigned int cp = ((c & 0x07) << 18) | ((utf8[i + 1] & 0x3F) << 12)
-                                       | ((utf8[i + 2] & 0x3F) << 6) | (utf8[i + 3] & 0x3F);
-                       cp -= 0x10000;
-                       wide.push_back(static_cast<wchar_t>(0xD800 | (cp >> 10)));
-                       wide.push_back(static_cast<wchar_t>(0xDC00 | (cp & 0x3FF)));
-                       i += 4;
                } else {
-                       wide.push_back(L'?');
-                       ++i;
+                       assert(false);
                }
        }
-       return wide;
+       return n;
+}
+
+static UInt32 convertUTF8ToUTF16(UInt32 utf8Size, const char* utf8Chars, Char* utf16Chars) {
+       UInt32 outIndex = 0;
+       for (UInt32 i = 0; i < utf8Size;) {
+               Byte c = static_cast<Byte>(utf8Chars[i]);
+               if ((c & 0x80) == 0) {
+                       utf16Chars[outIndex++] = static_cast<Char>(c);
+                       ++i;
+               } else if ((c & 0xE0) == 0xC0) {
+                       assert(i + 1 < utf8Size);
+                       Char cc = static_cast<Char>(((c & 0x1F) << 6) | (static_cast<Byte>(utf8Chars[i + 1]) & 0x3F));
+                       utf16Chars[outIndex++] = cc;
+                       i += 2;
+               } else if ((c & 0xF0) == 0xE0) {
+                       assert(i + 2 < utf8Size);
+                       Char cc = static_cast<Char>(((c & 0x0F) << 12)
+                                       | ((static_cast<Byte>(utf8Chars[i + 1]) & 0x3F) << 6)
+                                       | (static_cast<Byte>(utf8Chars[i + 2]) & 0x3F));
+                       utf16Chars[outIndex++] = cc;
+                       i += 3;
+               } else if ((c & 0xF8) == 0xF0) {
+                       assert(i + 3 < utf8Size);
+                       UInt32 c32 = ((c & 0x07) << 18)
+                                       | ((static_cast<Byte>(utf8Chars[i + 1]) & 0x3F) << 12)
+                                       | ((static_cast<Byte>(utf8Chars[i + 2]) & 0x3F) << 6)
+                                       | (static_cast<Byte>(utf8Chars[i + 3]) & 0x3F);
+                       utf16Chars[outIndex++] = static_cast<Char>(((c32 - 0x10000) >> 10) + 0xD800);
+                       utf16Chars[outIndex++] = static_cast<Char>(((c32 - 0x10000) & 0x3FF) + 0xDC00);
+                       i += 4;
+               } else {
+                       assert(false);
+               }
+       }
+       return outIndex;
 }
 
 Var read(Runtime& rt, const Var& thisVar, const VarList& args) {
        std::ifstream file;
-       std::wstring contentsWide;
+       const String* contentsString = 0;
        try {
-               const std::wstring filenameWide = args[0];
-               file.open(std::string(filenameWide.begin(), filenameWide.end()).c_str(), std::ios::binary);
+       const String* filenameString = args[0];
+       const std::string filename = filenameString->toUTF8String();
+       file.open(filename.c_str(), std::ios::binary);
                if (!file.good()) {
                        ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, "Could not open input file");
                }
                file.exceptions(std::ios_base::badbit | std::ios_base::failbit);
                std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-               contentsWide = utf8ToUtf16(contents);
+               Heap& heap = rt.getHeap();
+               UInt32 utf16Size = calcUTF8ToUTF16Size(static_cast<UInt32>(contents.size()), contents.data());
+               std::vector<Char> buffer(utf16Size);
+               convertUTF8ToUTF16(static_cast<UInt32>(contents.size()), contents.data(), buffer.data());
+               contentsString = new(heap) String(heap.managed(), buffer.data(), buffer.data() + utf16Size);
        }
        catch (const std::ios_base::failure& x) {
                ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, x.what());
        }
-       return Var(rt, contentsWide);
+       return Var(rt, Value(contentsString));
 }
 
 Var load(Runtime& rt, const Var& thisVar, const VarList& args) {
@@ -552,8 +588,8 @@ void randomSeed() {
 int testMain(int argc, const char* argv[]) {
 	// FIX : exception handling on top-level
     String source(EMPTY_STRING);
-    std::auto_ptr<std::wifstream> inputFileStream;
-    std::wistream* inStream = &std::wcin;
+    std::string inputFilePath;
+    std::istream* inStream = &std::cin;
     bool doTime = false;
     int gcRate = 256; // FIX : drop or what?
     size_t peakMemory = 0;
@@ -569,9 +605,8 @@ int testMain(int argc, const char* argv[]) {
         }
         else if (strcmp(argv[argi], "-p") == 0) pauseBeforeQuit = true;
         else if (strcmp(argv[argi], "-n") == 0) loadStdLib = false;
-        else if (inputFileStream.get() == 0) {
-            inputFileStream.reset(new std::wifstream(argv[argi]));
-            inStream = inputFileStream.get();
+        else if (inputFilePath.empty()) {
+            inputFilePath = argv[argi];
             interactive = false;
         } else {
             std::cout << "Too many arguments" << std::endl;
@@ -599,7 +634,26 @@ int testMain(int argc, const char* argv[]) {
 
     MyHeap heap;
     Runtime rt(heap);
-	Object& globals = *rt.getGlobalObject();
+    if (!inputFilePath.empty()) {
+        std::ifstream file(inputFilePath.c_str(), std::ios::binary);
+        if (!file.good()) {
+            std::cerr << "Could not open input stream" << std::endl;
+            return 1;
+        }
+        std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        UInt32 utf16Size = calcUTF8ToUTF16Size(static_cast<UInt32>(contents.size()), contents.data());
+        std::vector<Char> buffer(utf16Size);
+        convertUTF8ToUTF16(static_cast<UInt32>(contents.size()), contents.data(), buffer.data());
+        source = String(heap.roots(), buffer.data(), buffer.data() + utf16Size);
+    } else {
+        if (!inStream->good()) {
+            std::cerr << "Could not open input stream" << std::endl;
+            return 1;
+        }
+        // FIX : this didnt work
+        // inStream->exceptions(std::ios_base::badbit | std::ios_base::failbit);
+    }
+        Object& globals = *rt.getGlobalObject();
 	Var globs = rt.getGlobalsVar();
 	globs["read"] = read;
 	globs["load"] = load;
@@ -719,16 +773,22 @@ globals.setOwnProperty(rt, String::allocate(heap, "callbackTest"), &callbackTest
 //	printFunction.invoke(processor, 1, TEST_ARGV, &globals);
 //	processor.run();	// just testing some weird behaviour
 	
-	inStream->exceptions(std::wifstream::badbit);
+        inStream->exceptions(std::ios_base::badbit);
     while (inStream->good() && !doQuit) {
     	assert(!inStream->fail());
         bool execute = false;
         try {
-            std::wstring s;
             if (interactive) {
-                std::getline(*inStream, s);
+                std::string utf8Line;
+                std::getline(*inStream, utf8Line);
+                if (!inStream->good() && !inStream->eof()) throw std::runtime_error("Input error");
                 // FIX : add #undo that drops just the last one
-                if (s == L"#save" || s.substr(0, 6) == L"#save ") {
+                if (utf8Line == "#save" || utf8Line.compare(0, 6, "#save ") == 0) {
+                    std::wstring s;
+                    UInt32 size16 = calcUTF8ToUTF16Size(static_cast<UInt32>(utf8Line.size()), utf8Line.data());
+                    std::vector<Char> buf(size16);
+                    convertUTF8ToUTF16(static_cast<UInt32>(utf8Line.size()), utf8Line.data(), buf.data());
+                    s.assign(buf.begin(), buf.end());
                     const time_t t = time(0);
                     char fn[257];
                     if (s.size() >= 6) {
@@ -747,11 +807,14 @@ globals.setOwnProperty(rt, String::allocate(heap, "callbackTest"), &callbackTest
                     saveStream.close();
                     ioLines.clear();
                     std::cout << "saved to " << fn << std::endl;
-                } else if (s == L"#purge") {
+                } else if (utf8Line == "#purge") {
                     ioLines.clear();
                     std::cout << "purged" << std::endl;
-                } else if (!s.empty()) {
-                    String line(heap.roots(), s.c_str());
+                } else if (!utf8Line.empty()) {
+                    UInt32 size16 = calcUTF8ToUTF16Size(static_cast<UInt32>(utf8Line.size()), utf8Line.data());
+                    std::vector<Char> buf(size16);
+                    convertUTF8ToUTF16(static_cast<UInt32>(utf8Line.size()), utf8Line.data(), buf.data());
+                    String line(heap.roots(), buf.data(), buf.data() + size16);
                     if (!source.empty()) source = String(heap.roots(), source, LF_STRING);
                     source = String(heap.roots(), source, line);
                 } else {
@@ -764,8 +827,13 @@ globals.setOwnProperty(rt, String::allocate(heap, "callbackTest"), &callbackTest
                     execute = true;
                 }
             } else {
-				std::wstring sourceWString = std::wstring(std::istreambuf_iterator<wchar_t>(*inStream), std::istreambuf_iterator<wchar_t>());
-				source = String(heap.roots(), sourceWString.c_str());
+                if (inputFilePath.empty()) {
+                    std::string contents((std::istreambuf_iterator<char>(*inStream)), std::istreambuf_iterator<char>());
+                    UInt32 size16 = calcUTF8ToUTF16Size(static_cast<UInt32>(contents.size()), contents.data());
+                    std::vector<Char> buf(size16);
+                    convertUTF8ToUTF16(static_cast<UInt32>(contents.size()), contents.data(), buf.data());
+                    source = String(heap.roots(), buf.data(), buf.data() + size16);
+                }
                 execute = true;
                 doQuit = true; // FIX : we shouldn't use the same loop for interactive and non-interactive
             }

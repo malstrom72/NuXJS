@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "../src/NuXJScript.h"
 #include <fstream>
 #include <memory>

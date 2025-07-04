@@ -15,6 +15,7 @@
 #error This code requires IEEE compliant floating point handling. Avoid -Ofast / -ffast-math etc (at least for this source file).
 #endif
 
+#include <stdint.h>
 #include "assert.h"
 #include <cmath>
 #include "NuXJScript.h"
