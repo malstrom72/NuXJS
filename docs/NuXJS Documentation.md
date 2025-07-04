@@ -3,6 +3,8 @@
 ## Introduction
 
 NuXJS is a sandboxed JavaScript engine written in portable C++03.
+It has been tested with GCC and Clang on x86-64 and ARM platforms,
+as well as Microsoft Visual C++ on Windows.
 The core engine consists of two small `.cpp` files and a header file, and
 provides a fast stack-based virtual machine.  It is fully compatible with
 ECMAScript 3 and includes partial support for useful ECMAScript&nbsp;5
@@ -53,6 +55,7 @@ See the README for a more complete example.
 
 ## Memory Management
 
+
  A _Heap_ in _NuXJScript_ is a shallow class that implements a simple "mark and sweep" ("stop-the-world") garbage
 collector. It also maintains "memory pools" for improved performance, but uses the standard C++ heap for allocating
 larger objects and for expanding the pools. An application may spawn and use several JavaScript engines simultaneously
@@ -100,6 +103,10 @@ Strings store UTF‑16 data. When a new string should live on a heap, you may al
 `new(heap) String(heap.managed(), text)` or use the helper `String::allocate(heap, "text")`. Temporary root strings can
 be constructed on the stack using `String(heap.roots(), ...)`. Global constant strings can be created without a heap
 using `String string("text")`.
+
+Note: `wchar_t` strings are converted based on the native size of `wchar_t` — UTF‑16 when it is 16&nbsp;bits
+and UTF‑32 when it is 32&nbsp;bits. Plain `char*` and `std::string` values are treated as ISO‑8859‑1 text for fast
+byte‑for‑byte copying. Use wide strings when full Unicode input is required.
 
 NuXJS provides several convenience routines for constructing managed strings:
 
@@ -179,6 +186,8 @@ ECMAScript&nbsp;5 functionality including JSON and string indexing.
 
 ## Conformance and Known Limitations
 
+### ES3 deviations
+
 * `\0` is interpreted as a null character even if digits follow (octal escapes are not supported).
 * Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The non‑breaking space (`\u00A0`) counts as white space, but the zero-width no‑break space (`\uFEFF`) does not. No other Unicode "space separator" characters are recognised.
 * Custom property getters and setters are not implemented.
@@ -198,16 +207,26 @@ ECMAScript&nbsp;5 functionality including JSON and string indexing.
 * Assigning an object to an array's `length` property is unsupported.
 * Recursive grammar constructs are limited to 64 levels to avoid a C++ stack overflow.
 
-The engine also implements a subset of later specifications:
+### Partial ES5 features
 
-* `Array.isArray`, `Object.prototype.hasOwnProperty`, `Object.prototype.isPrototypeOf`, `Object.getPrototypeOf`, `Object.defineProperty`, `JSON.parse`, and `JSON.stringify` are provided.
-* Characters of a String object can be accessed through array indexing as specified in ES5.
-* `eval()` differentiates between direct and indirect calls as defined in ES5.
-* `String.prototype.match` uses the ES5 behaviour for global regular expressions and always calls the built-in `RegExp.prototype.exec`.
-* `Array.prototype.splice` with a single argument deletes the rest of the array (ES6 rule).
-* Many features of the `Date` object from ES5 have been added.
-* Regular expression flags cannot contain Unicode escapes (ES6 restriction).
-* Unicode format control characters are preserved in source text as specified by ES5.
+| Feature | Support |
+| ------- | ------- |
+| `Array.isArray` | yes |
+| `Object.prototype.hasOwnProperty` | yes |
+| `Object.prototype.isPrototypeOf` | yes |
+| `Object.getPrototypeOf` | yes |
+| `Object.defineProperty` | data properties only |
+| `JSON.parse` / `JSON.stringify` | yes |
+| String indexing | yes |
+| `eval()` direct vs indirect | yes |
+| `String.prototype.match` | ES5 behaviour |
+| `Date` object | most ES5 methods |
+| Unicode format control | preserved |
+
+### ES6-inspired extras
+
+* `Array.prototype.splice` with a single argument deletes the rest of the array.
+* Regular expression flags cannot contain Unicode escapes.
 
 ## Testing and Benchmarking
 
