@@ -22,5 +22,7 @@ mkdir ../output >/dev/null 2>&1 || true
 ../output/NuXJSTest_${target}_${model}
 ./BuildCpp.sh $target $model ../output/NuXJScript_${target}_${model} ../tools/NuXJSREPL.cpp ../src/NuXJScript.cpp ../src/stdlibJS.cpp
 ./PikaCmd/PikaCmd ./test.pika -e -x ../output/NuXJScript_${target}_${model} ../tests/
+# also verify running scripts passed as file arguments rather than via stdin
+./PikaCmd/PikaCmd ./test.pika -x ../output/NuXJScript_${target}_${model} ../tests/
 
 echo Success!
