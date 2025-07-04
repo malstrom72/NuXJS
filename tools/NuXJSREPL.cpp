@@ -520,7 +520,9 @@ int testMain(int argc, const char* argv[]) {
 
     inStream->exceptions(std::ios_base::badbit);
     while ((interactive ? inStream->good() : true) && !doQuit) {
-        if (interactive) assert(!inStream->fail());
+        if (interactive) {
+        	assert(!inStream->fail());
+		}
         bool execute = false;
         try {
             if (interactive) {
@@ -608,7 +610,6 @@ int testMain(int argc, const char* argv[]) {
 // FIX :						std::wcout << std::wstring(std::max<const Char*>(stopPoint - 8, source.begin()), std::min<const Char*>(stopPoint + 8, source.end())) << std::endl;
                     throw;
                 }
-                processor.run(STANDARD_CYCLES_BETWEEN_AUTO_GC); // just testing some weird behaviour
                 processor.enterGlobalCode(&globalCode);
 
                 bool done = false;
