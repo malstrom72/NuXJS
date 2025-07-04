@@ -3,6 +3,8 @@
 ## Introduction
 
 NuXJS is a sandboxed JavaScript engine written in portable C++03.
+It has been tested with GCC and Clang on x86-64 and ARM platforms,
+as well as Microsoft Visual C++ on Windows.
 The core engine consists of two small `.cpp` files and a header file, and
 provides a fast stack-based virtual machine.  It is fully compatible with
 ECMAScript 3 and includes partial support for useful ECMAScript&nbsp;5
@@ -22,8 +24,18 @@ which builds the engine and executes all regression tests.  The sources rely on 
 ## Quick Start
 
 After cloning the repository, simply run `tools/buildAndTest.sh` to build the
-library and execute the self-tests.  A minimal "hello world" program looks
-like this:
+library and execute the self-tests.  After building, you will find the
+interactive REPL program under `output/`. Running `./output/NuXJScript_debug_x64`
+(or the corresponding build name) starts a simple shell for evaluating
+JavaScript.
+
+## Embedding NuXJS
+
+The high-level C++ API allows easy embedding of the interpreter into an existing application.
+Functions exposed to JavaScript typically have the signature `Var func(Runtime& rt, const Var& thisVar, const VarList& args)` and are stored in the global object like any other value.
+Source code may be executed with `Runtime::run()` or evaluated with `Runtime::eval()`.
+
+A minimal "hello world" program looks like this:
 
 ```cpp
 #include <NuXJScript.h>
@@ -37,18 +49,61 @@ int main() {
     std::wcout << msg << std::endl;
 }
 ```
-After building, you will find the interactive REPL program under `output/`. Running `./output/NuXJScript_debug_x64` (or the corresponding build name) starts a simple shell for evaluating JavaScript.
-
-## Embedding NuXJS
-
-The high-level C++ API allows easy embedding of the interpreter into an existing application.
-Functions exposed to JavaScript typically have the signature `Var func(Runtime& rt, const Var& thisVar, const VarList& args)` and are stored in the global object like any other value.
-Source code may be executed with `Runtime::run()` or evaluated with `Runtime::eval()`.
-See the README for a more complete example.
 
 ### The Var Type
 
 `Var` represents a JavaScript value tied to a particular runtime. It derives from AccessorBase, which provides conversions and property access. A `Var` automatically roots its value, so it will not be collected while C++ code holds it. Conversions such as `operator double()` and `operator std::wstring()` return primitives without invoking custom `valueOf` or `toString`. `Var` instances can be called like functions and indexed like objects. The companion `VarList` class stores argument arrays for function calls.
+
+### Extended Example
+
+The following program shows how to expose a native function, enforce memory and
+time limits, and call back and forth between C++ and JavaScript:
+
+```cpp
+#include <NuXJScript.h>
+using namespace NuXJS;
+
+// Native function used from JavaScript.
+static Var sum(Runtime& rt, const Var&, const VarList& args) {
+    double total = 0.0;
+    for (int i = 0; i < args.size(); ++i)
+        total += args[i];
+    return Var(rt, total);
+}
+
+int main() {
+    Heap heap;
+    Runtime rt(heap);
+    rt.setupStandardLibrary();
+    rt.setMemoryCap(1024 * 1024); // 1 MB cap
+    rt.resetTimeOut(10);          // 10‑second time limit
+    Var globals = rt.getGlobalsVar();
+
+    globals["sum"] = sum;
+    rt.run("function demo(a,b,c){return 'a+b+c = ' + sum(a,b,c);}");
+    std::wcout << globals["demo"](7, 15, 20) << std::endl;
+
+    Var silly = rt.eval("(function(){return arguments;})");
+    Var arg0(rt, "131");
+    const Value nums[10] = { arg0, 535, 236, 984, 456.5, 666, 626, 585, 382, 109.5 };
+    Var list = silly(VarList(rt, 10, nums));
+    std::wcout << globals["sum"]["apply"](Value::NUL, list) << std::endl;
+
+    const int y = 2008, m = 7, d = 20;
+    Var date = rt.eval("(function(y,m,d){return new Date(y,m,d)})")(y, m, d);
+    std::wcout << date << std::endl;
+    std::wcout << date["toString"]() << std::endl;
+
+    Var arr = rt.eval("[4,8,15,16,23,42]");
+    for (Var::const_iterator it = arr.begin(); it != arr.end(); ++it)
+        std::wcout << arr[*it] << ' ';
+    std::wcout << std::endl;
+}
+```
+
+This mirrors the JavaScript idioms used in the engine's high‑level API and
+illustrates how `Var` and `VarList` manage lifetime and conversions between the
+two languages.
 
 
 ## Memory Management
@@ -101,6 +156,10 @@ Strings store UTF‑16 data. When a new string should live on a heap, you may al
 be constructed on the stack using `String(heap.roots(), ...)`. Global constant strings can be created without a heap
 using `String string("text")`.
 
+Note: `wchar_t` strings are converted based on the native size of `wchar_t` — UTF‑16 when it is 16&nbsp;bits
+and UTF‑32 when it is 32&nbsp;bits. Plain `char*` and `std::string` values are treated as ISO‑8859‑1 text for fast
+byte‑for‑byte copying. Use wide strings when full Unicode input is required.
+
 NuXJS provides several convenience routines for constructing managed strings:
 
 ```
@@ -151,6 +210,7 @@ if (touchFunction.typeOf() != &FUNCTION_STRING) {
 }
 ```
 
+
 When your native code may throw exceptions of its own, convert them to script
 errors so JavaScript callers can handle them:
 
@@ -179,6 +239,8 @@ ECMAScript&nbsp;5 functionality including JSON and string indexing.
 
 ## Conformance and Known Limitations
 
+### ES3 deviations
+
 * `\0` is interpreted as a null character even if digits follow (octal escapes are not supported).
 * Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The non‑breaking space (`\u00A0`) counts as white space, but the zero-width no‑break space (`\uFEFF`) does not. No other Unicode "space separator" characters are recognised.
 * Custom property getters and setters are not implemented.
@@ -198,16 +260,26 @@ ECMAScript&nbsp;5 functionality including JSON and string indexing.
 * Assigning an object to an array's `length` property is unsupported.
 * Recursive grammar constructs are limited to 64 levels to avoid a C++ stack overflow.
 
-The engine also implements a subset of later specifications:
+### Partial ES5 features
 
-* `Array.isArray`, `Object.prototype.hasOwnProperty`, `Object.prototype.isPrototypeOf`, `Object.getPrototypeOf`, `Object.defineProperty`, `JSON.parse`, and `JSON.stringify` are provided.
-* Characters of a String object can be accessed through array indexing as specified in ES5.
-* `eval()` differentiates between direct and indirect calls as defined in ES5.
-* `String.prototype.match` uses the ES5 behaviour for global regular expressions and always calls the built-in `RegExp.prototype.exec`.
-* `Array.prototype.splice` with a single argument deletes the rest of the array (ES6 rule).
-* Many features of the `Date` object from ES5 have been added.
-* Regular expression flags cannot contain Unicode escapes (ES6 restriction).
-* Unicode format control characters are preserved in source text as specified by ES5.
+| Feature | Support |
+| ------- | ------- |
+| `Array.isArray` | yes |
+| `Object.prototype.hasOwnProperty` | yes |
+| `Object.prototype.isPrototypeOf` | yes |
+| `Object.getPrototypeOf` | yes |
+| `Object.defineProperty` | data properties only |
+| `JSON.parse` / `JSON.stringify` | yes |
+| String indexing | yes |
+| `eval()` direct vs indirect | yes |
+| `String.prototype.match` | ES5 behaviour |
+| `Date` object | most ES5 methods |
+| Unicode format control | preserved |
+
+### ES6-inspired extras
+
+* `Array.prototype.splice` with a single argument deletes the rest of the array.
+* Regular expression flags cannot contain Unicode escapes.
 
 ## Testing and Benchmarking
 
