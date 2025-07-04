@@ -455,10 +455,10 @@ int testMain(int argc, const char* argv[]) {
         }
     }
 
-	if (!inStream->good()) {
-		std::cerr << "Could not open input stream" << std::endl;
-		return 1;
-	}
+    if (inputFilePath.empty() && !inStream->good()) {
+        std::cerr << "Could not open input stream" << std::endl;
+        return 1;
+    }
 
     const String LF_STRING("\n");
     const String PRINT_STRING("print");
@@ -481,11 +481,13 @@ int testMain(int argc, const char* argv[]) {
             std::cerr << "Could not open input stream" << std::endl;
             return 1;
         }
-	Object& globals = *rt.getGlobalObject();
-	Var globs = rt.getGlobalsVar();
-	globs["read"] = read;
-	globs["load"] = load;
-	globs["quit"] = quit;
+    }
+
+    Object& globals = *rt.getGlobalObject();
+    Var globs = rt.getGlobalsVar();
+    globs["read"] = read;
+    globs["load"] = load;
+    globs["quit"] = quit;
 
     PrintFunction printFunction;
     globals.setOwnProperty(rt, &PRINT_STRING, &printFunction, DONT_ENUM_FLAG);
@@ -493,31 +495,34 @@ int testMain(int argc, const char* argv[]) {
     const String GC_STRING("gc");
     globals.setOwnProperty(rt, &GC_STRING, &gcFunction, DONT_ENUM_FLAG);
     globals.setOwnProperty(rt, String::allocate(heap, "dasm"), new(heap) FunctorAdapter<NativeFunction>(heap.managed(), disassemble), DONT_ENUM_FLAG);
-	CallbackTest callbackTest;
-	globals.setOwnProperty(rt, String::allocate(heap, "callbackTest"), &callbackTest, DONT_ENUM_FLAG);
+    CallbackTest callbackTest;
+    globals.setOwnProperty(rt, String::allocate(heap, "callbackTest"), &callbackTest, DONT_ENUM_FLAG);
 
-	randomSeed();
+    randomSeed();
 
-	if (loadStdLib) {
-		try {
-			rt.setupStandardLibrary();
+    if (loadStdLib) {
+        try {
+            rt.setupStandardLibrary();
+        }
+        catch (const std::exception& x) {
+            std::cerr << "exception setting up standard lib: " << x.what() << std::endl;
+            return 1;
+        }
+        catch (...) {
+            std::cerr << "exception setting up standard lib" << std::endl;
+            return 1;
+        }
+    }
+
+
+    Processor processor(rt);
+    processor.run(STANDARD_CYCLES_BETWEEN_AUTO_GC); // just testing some weird behaviour
+
+    inStream->exceptions(std::ios_base::badbit);
+    while ((interactive ? inStream->good() : true) && !doQuit) {
+        if (interactive) {
+        	assert(!inStream->fail());
 		}
-		catch (const std::exception& x) {
-			std::cerr << "exception setting up standard lib: " << x.what() << std::endl;
-			return 1;
-		}
-		catch (...) {
-			std::cerr << "exception setting up standard lib" << std::endl;
-			return 1;
-		}
-	}
-
-
-        Processor processor(rt);
-	
-	inStream->exceptions(std::ios_base::badbit);
-    while (inStream->good() && !doQuit) {
-    	assert(!inStream->fail());
         bool execute = false;
         try {
             if (interactive) {
@@ -628,6 +633,7 @@ int testMain(int argc, const char* argv[]) {
 					std::cerr << heap.peakSize / (1024.0 * 1024.0) << "MiB" << std::endl;
 				}
 
+                processor.run(STANDARD_CYCLES_BETWEEN_AUTO_GC); // just testing some weird behaviour
                 source = EMPTY_STRING;
             }
         }
@@ -669,7 +675,6 @@ int testMain(int argc, const char* argv[]) {
         return 1;
     }
     return 0;
-}
 }
 
 #ifdef LIBFUZZ
