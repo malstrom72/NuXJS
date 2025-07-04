@@ -498,19 +498,19 @@ Var read(Runtime& rt, const Var& thisVar, const VarList& args) {
        std::ifstream file;
        const String* contentsString = 0;
        try {
-       const String* filenameString = args[0];
-       const std::string filename = filenameString->toUTF8String();
-       file.open(filename.c_str(), std::ios::binary);
-               if (!file.good()) {
-                       ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, "Could not open input file");
-               }
-               file.exceptions(std::ios_base::badbit | std::ios_base::failbit);
-               std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-               Heap& heap = rt.getHeap();
-               UInt32 utf16Size = calcUTF8ToUTF16Size(static_cast<UInt32>(contents.size()), contents.data());
-               std::vector<Char> buffer(utf16Size);
-               convertUTF8ToUTF16(static_cast<UInt32>(contents.size()), contents.data(), buffer.data());
-               contentsString = new(heap) String(heap.managed(), buffer.data(), buffer.data() + utf16Size);
+		   const String* filenameString = args[0];
+		   const std::string filename = filenameString->toUTF8String();
+		   file.open(filename.c_str(), std::ios::binary);
+		   if (!file.good()) {
+				   ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, "Could not open input file");
+		   }
+		   file.exceptions(std::ios_base::badbit | std::ios_base::failbit);
+		   std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+		   Heap& heap = rt.getHeap();
+		   UInt32 utf16Size = calcUTF8ToUTF16Size(static_cast<UInt32>(contents.size()), contents.data());
+		   std::vector<Char> buffer(utf16Size);
+		   convertUTF8ToUTF16(static_cast<UInt32>(contents.size()), contents.data(), buffer.data());
+		   contentsString = new(heap) String(heap.managed(), buffer.data(), buffer.data() + utf16Size);
        }
        catch (const std::ios_base::failure& x) {
                ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, x.what());
@@ -550,39 +550,39 @@ struct MyHeap : public Heap {
 };
 
 #if (_MSC_VER)
-        #include <Windows.h>
-        #include <time.h>
+#include <Windows.h>
+#include <time.h>
 #elif defined(__APPLE__)
-        #include <mach/mach_time.h>
-        #include <libkern/OSAtomic.h>
+#include <mach/mach_time.h>
+#include <libkern/OSAtomic.h>
 #else
-        #include <time.h>
-        #include <sys/time.h>
+#include <time.h>
+#include <sys/time.h>
 #endif
 
 void randomSeed() {
 	unsigned int seed;
 #if (_MSC_VER)
-        ::LARGE_INTEGER count;
-        ::BOOL success = ::QueryPerformanceCounter(&count);
-        if (!success) {
-                count.LowPart = 0;
-                count.HighPart = 0;
-        }
-        seed = (static_cast<unsigned int>(time(0)) ^ count.LowPart)
-                        + (static_cast<unsigned int>(::GetTickCount()) ^ count.HighPart);
+	::LARGE_INTEGER count;
+	::BOOL success = ::QueryPerformanceCounter(&count);
+	if (!success) {
+			count.LowPart = 0;
+			count.HighPart = 0;
+	}
+	seed = (static_cast<unsigned int>(time(0)) ^ count.LowPart)
+					+ (static_cast<unsigned int>(::GetTickCount()) ^ count.HighPart);
 #elif defined(__APPLE__)
-        const uint64_t t = ::mach_absolute_time();
-        seed = (static_cast<unsigned int>(time(0)) ^ static_cast<unsigned int>(t & 0xFFFFFFFFU))
-                        + (static_cast<unsigned int>(clock()) ^ static_cast<unsigned int>((t >> 32) & 0xFFFFFFFFU));
+	const uint64_t t = ::mach_absolute_time();
+	seed = (static_cast<unsigned int>(time(0)) ^ static_cast<unsigned int>(t & 0xFFFFFFFFU))
+					+ (static_cast<unsigned int>(clock()) ^ static_cast<unsigned int>((t >> 32) & 0xFFFFFFFFU));
 #else
-        struct timespec ts;
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        const uint64_t t = static_cast<uint64_t>(ts.tv_sec) ^ static_cast<uint64_t>(ts.tv_nsec);
-        seed = (static_cast<unsigned int>(time(0)) ^ static_cast<unsigned int>(t & 0xFFFFFFFFU))
-                        + (static_cast<unsigned int>(clock()) ^ static_cast<unsigned int>((t >> 32) & 0xFFFFFFFFU));
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	const uint64_t t = static_cast<uint64_t>(ts.tv_sec) ^ static_cast<uint64_t>(ts.tv_nsec);
+	seed = (static_cast<unsigned int>(time(0)) ^ static_cast<unsigned int>(t & 0xFFFFFFFFU))
+					+ (static_cast<unsigned int>(clock()) ^ static_cast<unsigned int>((t >> 32) & 0xFFFFFFFFU));
 #endif
-        srand(seed);
+	srand(seed);
 }
 
 int testMain(int argc, const char* argv[]) {
@@ -653,7 +653,7 @@ int testMain(int argc, const char* argv[]) {
         // FIX : this didnt work
         // inStream->exceptions(std::ios_base::badbit | std::ios_base::failbit);
     }
-        Object& globals = *rt.getGlobalObject();
+	Object& globals = *rt.getGlobalObject();
 	Var globs = rt.getGlobalsVar();
 	globs["read"] = read;
 	globs["load"] = load;
@@ -684,7 +684,7 @@ int testMain(int argc, const char* argv[]) {
 	rt.setGlobalObject(&globals);
 	*/
 	
-rt.setupStandardLibrary();
+	rt.setupStandardLibrary();
 	globs["tezt"] = 55;
 	assert(globs.has("tezt"));
 	assert(!globs.has("ttezt"));
@@ -740,9 +740,9 @@ rt.setupStandardLibrary();
     const String GC_STRING("gc");
     globals.setOwnProperty(rt, &GC_STRING, &gcFunction, DONT_ENUM_FLAG);
     globals.setOwnProperty(rt, String::allocate(heap, "dasm"), new(heap) FunctorAdapter<NativeFunction>(heap.managed(), disassemble), DONT_ENUM_FLAG);
-CallbackTest callbackTest;
-globals.setOwnProperty(rt, String::allocate(heap, "callbackTest"), &callbackTest, DONT_ENUM_FLAG);
-//globals.setOwnProperty(rt, String::alloc(heap, "nativeTestObject"), new(heap) NativeTestObject(heap.managed(), 1.4, 2.9));
+	CallbackTest callbackTest;
+	globals.setOwnProperty(rt, String::allocate(heap, "callbackTest"), &callbackTest, DONT_ENUM_FLAG);
+	//globals.setOwnProperty(rt, String::alloc(heap, "nativeTestObject"), new(heap) NativeTestObject(heap.managed(), 1.4, 2.9));
 
 	randomSeed();
 
@@ -773,7 +773,7 @@ globals.setOwnProperty(rt, String::allocate(heap, "callbackTest"), &callbackTest
 //	printFunction.invoke(processor, 1, TEST_ARGV, &globals);
 //	processor.run();	// just testing some weird behaviour
 	
-        inStream->exceptions(std::ios_base::badbit);
+	inStream->exceptions(std::ios_base::badbit);
     while (inStream->good() && !doQuit) {
     	assert(!inStream->fail());
         bool execute = false;
