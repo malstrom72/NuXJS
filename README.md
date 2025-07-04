@@ -47,7 +47,7 @@ A simple hello world.
 
 ```cpp
 #include <NuXJScript.h>
-using namespace NuXJScript;
+using namespace NuXJS;
 
 int main(int argc, const char* argv[]) {
     Heap heap;                                          // We use the standard heap.
@@ -63,7 +63,7 @@ A slightly more complex program showing some security features, sharing of data 
 
 ```cpp
 #include <NuXJScript.h>
-using namespace NuXJScript;
+using namespace NuXJS;
 
 // C++ functions that you want to call from JavaScript should have these arguments.
 static Var sum(Runtime& rt, const Var& thisVar, const VarList& args) {
@@ -80,7 +80,7 @@ int main(int argc, const char* argv[]) {
     rt.setupStandardLibrary();                          // Install the ES3 standard library.
     rt.setMemoryCap(1024 * 1024);                       // Max 1MB of memory please.
     rt.resetTimeOut(10);                                // Time-out JS code after 10 seconds.
-    Var globals = rt.getGlobals();
+    Var globals = rt.getGlobalsVar();
     
     // Set up the native function and a JS demo function that calls it.
     globals["sum"] = sum;
