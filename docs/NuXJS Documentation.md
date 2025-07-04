@@ -24,8 +24,12 @@ which builds the engine and executes all regression tests.  The sources rely on 
 ## Quick Start
 
 After cloning the repository, simply run `tools/buildAndTest.sh` to build the
-library and execute the self-tests.  A minimal "hello world" program looks
-like this:
+library and execute the self-tests.  After building, you will find the
+interactive REPL program under `output/`. Running `./output/NuXJScript_debug_x64`
+(or the corresponding build name) starts a simple shell for evaluating
+JavaScript.
+
+A minimal "hello world" program looks like this:
 
 ```cpp
 #include <NuXJScript.h>
@@ -39,13 +43,16 @@ int main() {
     std::wcout << msg << std::endl;
 }
 ```
-After building, you will find the interactive REPL program under `output/`. Running `./output/NuXJScript_debug_x64` (or the corresponding build name) starts a simple shell for evaluating JavaScript.
 
 ## Embedding NuXJS
 
 The high-level C++ API allows easy embedding of the interpreter into an existing application.
 Functions exposed to JavaScript typically have the signature `Var func(Runtime& rt, const Var& thisVar, const VarList& args)` and are stored in the global object like any other value.
 Source code may be executed with `Runtime::run()` or evaluated with `Runtime::eval()`.
+
+### The Var Type
+
+`Var` represents a JavaScript value tied to a particular runtime. It derives from AccessorBase, which provides conversions and property access. A `Var` automatically roots its value, so it will not be collected while C++ code holds it. Conversions such as `operator double()` and `operator std::wstring()` return primitives without invoking custom `valueOf` or `toString`. `Var` instances can be called like functions and indexed like objects. The companion `VarList` class stores argument arrays for function calls.
 
 ### Extended Example
 
@@ -98,12 +105,16 @@ This mirrors the JavaScript idioms used in the engine's high‑level API and
 illustrates how `Var` and `VarList` manage lifetime and conversions between the
 two languages.
 
-### The Var Type
-
-`Var` represents a JavaScript value tied to a particular runtime. It derives from AccessorBase, which provides conversions and property access. A `Var` automatically roots its value, so it will not be collected while C++ code holds it. Conversions such as `operator double()` and `operator std::wstring()` return primitives without invoking custom `valueOf` or `toString`. `Var` instances can be called like functions and indexed like objects. The companion `VarList` class stores argument arrays for function calls.
-
 
 ## Memory Management
+
+Every `Heap` maintains two lists of objects:
+
+```
+[roots]  <-->  [managed]
+```
+
+Root items stay alive indefinitely. Managed items are collected by `Heap::gc()` when they are no longer reachable from any root. Use `GCList::claim()` to move objects between the lists. A typical pattern is to allocate on the managed list and temporarily claim the object as a root while working with it.
 
 
  A _Heap_ in _NuXJScript_ is a shallow class that implements a simple "mark and sweep" ("stop-the-world") garbage
@@ -205,6 +216,19 @@ JavaScript can catch it normally:
 if (touchFunction.typeOf() != &FUNCTION_STRING) {
     ScriptException::throwError(heap, GENERIC_ERROR,
         "cannot compile JS gui-variable (touch is not a function)");
+}
+```
+
+If several functions need this pattern, wrap it in a small helper:
+
+```cpp
+template <typename F>
+Var throwIfError(Runtime& rt, F&& fn) {
+    try {
+        return fn();
+    } catch (const std::exception& e) {
+        ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, e.what());
+    }
 }
 ```
 
