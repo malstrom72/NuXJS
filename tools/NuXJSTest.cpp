@@ -650,7 +650,69 @@ static void testArrayVars() {
 	for (Var::const_iterator it = arrayVar.begin(); it != e; ++it) {
 		elementsInArray |= (1 << (*it).to<int>());
 	}
-	EXPECT_EQUAL(elementsInArray, 0x3FFFFFFF);
+        EXPECT_EQUAL(elementsInArray, 0x3FFFFFFF);
+}
+
+static void testJSON() {
+        std::cout << std::endl << "***** JSON *****" << std::endl << std::endl;
+
+        Heap heap;
+        Runtime rt(heap);
+        rt.setupStandardLibrary();
+
+        Var obj = rt.eval("({ foo: 17, bar: [1,2,3], baz: 'hi' })");
+        Var stringify = rt.getGlobalsVar()["JSON"]["stringify"];
+        Var parse = rt.getGlobalsVar()["JSON"]["parse"];
+        std::wstring text = stringify(obj);
+        Var parsed = parse(std::wstring(text));
+        EXPECT_EQUAL(parsed["foo"], 17);
+        EXPECT_EQUAL(parsed["bar"][1], 2);
+        EXPECT_EQUAL(parsed["baz"].to<std::wstring>(), L"hi");
+}
+
+static void testCompilation() {
+        std::cout << std::endl << "***** Compilation *****" << std::endl << std::endl;
+
+        Heap heap;
+        Runtime rt(heap);
+        rt.setupStandardLibrary();
+
+        const String* expr = String::allocate(heap, "21+21");
+        Processor p(rt);
+        p.enterEvalCode(rt.compileEvalCode(expr));
+        EXPECT_EQUAL(rt.runUntilReturn(p), 42);
+
+        const String source(heap.managed(), "var x=3; x+4;");
+        Processor p2(rt);
+        p2.enterGlobalCode(rt.compileGlobalCode(source));
+        Var res = rt.runUntilReturn(p2);
+        EXPECT_EQUAL(res.typeOf(), &UNDEFINED_STRING);
+        EXPECT_EQUAL(rt.getGlobalsVar()["x"], 3);
+
+        JSObject* globalsObj = rt.newJSObject();
+        rt.setGlobalObject(globalsObj);
+        Var globals = rt.getGlobalsVar();
+        globals["val"] = 99;
+        EXPECT_EQUAL(rt.getGlobalObject(), globalsObj);
+        EXPECT_EQUAL(globals["val"], 99);
+        JSArray* arr = rt.newJSArray(5);
+        EXPECT_EQUAL(arr->getLength(), 5);
+}
+
+static void testLimits() {
+        std::cout << std::endl << "***** Limits *****" << std::endl << std::endl;
+
+        Heap heap;
+        Runtime rt(heap);
+        rt.setupStandardLibrary();
+
+        rt.setMemoryCap(8192);
+        EXPECT_EXCEPTION(rt.eval("var a=[]; for(var i=0;i<1e6;i++) a[i]=i;"), "Out of memory");
+
+        rt.setMemoryCap(512*1024*1024);
+        rt.resetTimeOut(1);
+        EXPECT_EXCEPTION(rt.run("while(true) {}"), "Time out");
+        rt.noTimeOut();
 }
 
 #if 0
@@ -762,7 +824,7 @@ rt.setupStandardLibrary();
 // C++ functions that you want to call from Javascript should have these arguments.
 static Var sum(Runtime& rt, const Var& thisVar, const VarList& args) {
     double sum = 0.0;
-    for (UInt32 i = 0; i < args.size(); ++i) {
+    for (int i = 0; i < args.size(); ++i) {
         sum += args[i];
     }
     return Var(rt, sum);    // A `Var` owns its `Value` (sum) and is tied to a `Runtime` (rt)
@@ -800,10 +862,10 @@ static void readMeSample2() {
     Var sillyFunction = rt.eval("(function() { return arguments; })");
 	
     // `Var` protects data from being garbage collected.
-    // In this case a `String` is created on the heap for "131".
+    // In this case, a `String` is created on the heap for "131".
     Var oneThreeOne(rt, "131");
 	
-    // If we have more arguments than three we use a `Value` array instead.
+    // If we have more arguments than there, we use a `Value` array instead.
     const Value args[10] = { oneThreeOne, 535, 236, 984, 456.5, 666, 626, 585, 382, 109.5 };
 	
     // Call the silly function. The VarList encapsulates and protects the argument values.
@@ -1647,8 +1709,11 @@ int main(int argc, const char* argv[]) {
 		testStrings();
 		testTables();
 		testVars();
-		testArrayVars();
-		readMeSample1();
+                testArrayVars();
+                testJSON();
+                testCompilation();
+                testLimits();
+                readMeSample1();
 		readMeSample2();
 		if (failureCount == 0) {
 			std::cout << "All " << testCount << " checks passed successfully" << std::endl << std::endl;
