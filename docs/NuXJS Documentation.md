@@ -29,6 +29,12 @@ interactive REPL program under `output/`. Running `./output/NuXJScript_debug_x64
 (or the corresponding build name) starts a simple shell for evaluating
 JavaScript.
 
+## Embedding NuXJS
+
+The high-level C++ API allows easy embedding of the interpreter into an existing application.
+Functions exposed to JavaScript typically have the signature `Var func(Runtime& rt, const Var& thisVar, const VarList& args)` and are stored in the global object like any other value.
+Source code may be executed with `Runtime::run()` or evaluated with `Runtime::eval()`.
+
 A minimal "hello world" program looks like this:
 
 ```cpp
@@ -43,12 +49,6 @@ int main() {
     std::wcout << msg << std::endl;
 }
 ```
-
-## Embedding NuXJS
-
-The high-level C++ API allows easy embedding of the interpreter into an existing application.
-Functions exposed to JavaScript typically have the signature `Var func(Runtime& rt, const Var& thisVar, const VarList& args)` and are stored in the global object like any other value.
-Source code may be executed with `Runtime::run()` or evaluated with `Runtime::eval()`.
 
 ### The Var Type
 
@@ -107,15 +107,6 @@ two languages.
 
 
 ## Memory Management
-
-Every `Heap` maintains two lists of objects:
-
-```
-[roots]  <-->  [managed]
-```
-
-Root items stay alive indefinitely. Managed items are collected by `Heap::gc()` when they are no longer reachable from any root. Use `GCList::claim()` to move objects between the lists. A typical pattern is to allocate on the managed list and temporarily claim the object as a root while working with it.
-
 
  A _Heap_ in _NuXJScript_ is a shallow class that implements a simple "mark and sweep" ("stop-the-world") garbage
 collector. It also maintains "memory pools" for improved performance, but uses the standard C++ heap for allocating
@@ -219,18 +210,6 @@ if (touchFunction.typeOf() != &FUNCTION_STRING) {
 }
 ```
 
-If several functions need this pattern, wrap it in a small helper:
-
-```cpp
-template <typename F>
-Var throwIfError(Runtime& rt, F&& fn) {
-    try {
-        return fn();
-    } catch (const std::exception& e) {
-        ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, e.what());
-    }
-}
-```
 
 When your native code may throw exceptions of its own, convert them to script
 errors so JavaScript callers can handle them:
