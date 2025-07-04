@@ -90,63 +90,27 @@ static int recursiveStackCheck(const Code& code, Vector<Int32>& stackDepths
 	return errors;
 }
 
-static void implicitAllocations(Runtime& rt) {
-	Var a = rt.newArrayVar();
-	Var X(rt, "x");
-	Var Y(rt, "y");
-	rt.getHeap().gc();
-	for (int i = 0; i < 10000000; ++i) {
-		Var o = rt.newObjectVar();
-		a[i % 80000] = o;
-		o[X] = i * 23;
-		o[Y] = i * 57;
-		if ((i % 100) == 0) {
-			rt.autoGC(true);
-		}
-		if ((i % 100000) == 0) {
-			std::cerr << i << std::endl;
-		}
-	}
-	rt.getHeap().gc();
-}
-
-static void operatorTest(Runtime& rt) {
-	std::string t1;
-	std::string t2 = "pokpok"+t1;
-	Var s0(rt, "to");
-	Var s1(rt, "gether");
-	Heap& heap = rt.getHeap();
-	std::wcout << (new(heap) String(heap.managed(), s0, s1))->toWideString() << std::endl;
-	std::wcout << String::concatenate(heap, s0, s1)->toWideString() << std::endl;
-	std::wcout << String(heap.roots(), s0, s1).toWideString() << std::endl;
-/*	std::wcout << (s0 + s1) << std::endl;
-	std::wcout << (s0 + "ijkl") << std::endl;
-	std::wcout << ("ijkl" + s1) << std::endl;*/
-/*	const double d = s0 - s1;
-	std::wcout << d << std::endl;*/
-}
-
 #if (_MSC_VER)
 #include <Windows.h>
 #undef min
 #undef max
 double getCPUSecs() {
-	::FILETIME creationTime;
-	::FILETIME exitTime;
-	::FILETIME kernelTime;
-	::FILETIME userTime;
-	BOOL success = ::GetProcessTimes(::GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime);
-	assert(success);
-	return ((static_cast<__int64>(userTime.dwHighDateTime) << 32) | userTime.dwLowDateTime) / 10000000.0;
+    ::FILETIME creationTime;
+    ::FILETIME exitTime;
+    ::FILETIME kernelTime;
+    ::FILETIME userTime;
+    BOOL success = ::GetProcessTimes(::GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime);
+    assert(success);
+    return ((static_cast<__int64>(userTime.dwHighDateTime) << 32) | userTime.dwLowDateTime) / 10000000.0;
 }
 #else
 #include <sys/time.h>
 #include <sys/resource.h>
 double getCPUSecs() {
-	rusage rus;
-	int res = getrusage(RUSAGE_SELF, &rus);
-	assert(res == 0);
-	return rus.ru_utime.tv_sec + rus.ru_utime.tv_usec / 1000000.0;
+    rusage rus;
+    int res = getrusage(RUSAGE_SELF, &rus);
+    assert(res == 0);
+    return rus.ru_utime.tv_sec + rus.ru_utime.tv_usec / 1000000.0;
 }
 #endif
 
@@ -192,45 +156,6 @@ double getCPUSecs() {
 		}
 	};
 
-	class NativeTestObject : public Object {
-		protected:	struct AddFunction : public Function {
-						typedef Function super;
-						virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
-							Heap& heap = rt.getHeap();
-							if (thisObject->getClassName() != &NativeTestObject::className) {
-								ScriptException::throwError(heap, TYPE_ERROR, "Invalid class");
-							}
-							const NativeTestObject* me = reinterpret_cast<NativeTestObject*>(thisObject);
-							const double addX = (argc >= 1 ? argv[0].toDouble() : 0.0);
-							const double addY = (argc >= 2 ? argv[1].toDouble() : 0.0);
-							return new(heap) NativeTestObject(heap.managed(), addX + me->x, addY + me->y);
-						}
-					};
-
-		public:		typedef Object super;
-					NativeTestObject(GCList& gcList, double x, double y) : super(gcList), x(x), y(y) { }
-					virtual const String* getClassName() const { return &className; };
-					virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
-						if (key.equalsString("x")) { *v = x; return HIDDEN_CONST_FLAGS; };
-						if (key.equalsString("y")) { *v = y; return HIDDEN_CONST_FLAGS; };
-						if (key.equalsString("add")) { *v = &addFunction; return HIDDEN_CONST_FLAGS; };
-						return super::getOwnProperty(rt, key, v);
-					}
-		
-					virtual const String* toString(Heap& heap) const {
-						std::stringstream ss;
-						ss << "x: " << x << ", y: " << y;
-						return String::allocate(heap, ss.str().c_str());
-					}
-
-		
-		protected:	double x;
-					double y;
-					static String className;
-					static AddFunction addFunction;
-	};
-	String NativeTestObject::className("NativeTestObject");
-	NativeTestObject::AddFunction NativeTestObject::addFunction;
 
 	class CallbackTest : public Function {
 		public:		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
@@ -355,84 +280,10 @@ double getCPUSecs() {
 		return Value::UNDEFINED;
 	}
 
-	Value gcTest(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
-		VarList safeKeep(rt, argc, argv);
-		Heap& heap = rt.getHeap();
-		heap.gc();
-		Value v = String::allocate(heap, "");
-		for (UInt32 i = 0; i < argc; ++i) {
-			v = String::concatenate(heap, *v.toString(heap), *argv[i].toString(heap));
-		}
-		return v;
-	}
 
 bool pauseBeforeQuit = false;
 
-String TEST_CLASS_STRING("NativeObject");
-class NativeObject : public JSObject {
-	public:		typedef JSObject super;
-	public:		NativeObject(GCList& gcList, Object* prototype) : super(gcList, prototype), x(0.3) { }
-	public:		NativeObject(GCList& gcList, Object* prototype, const VarList& args)
-						: super(gcList, prototype), x(args[0] != Value::UNDEFINED ? args[0] : 0.0) { if (args[1] != Value::UNDEFINED) { Var me = args[1]; me = this; args[1](); } }
-	public:		virtual const String* getClassName() const { return &TEST_CLASS_STRING; }
-	public:		static Var testMethod1(Runtime& rt, const Var& thisVar, const VarList& args) {
-					Object* thisObject = thisVar;
-					std::wcout << Var(rt, (reinterpret_cast<JSObject*>(thisObject)->JSObject::getClassName())) << std::endl;
-					std::wcout << Var(rt, (reinterpret_cast<NativeObject*>(thisObject)->NativeObject::getClassName())) << std::endl;
-					std::wcout << Var(rt, (reinterpret_cast<NativeObject*>(thisObject)->getClassName())) << std::endl;
-					Var className(rt, thisObject->getClassName());
-					if ((reinterpret_cast<NativeObject*>(thisObject)->NativeObject::getClassName())
-							!= (reinterpret_cast<NativeObject*>(thisObject)->getClassName())) {
-						ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Invalid class");
-					}
-					NativeObject* dis = reinterpret_cast<NativeObject*>(thisObject);
-					return Var(rt, dis->x);
-				}
-	public:		static Var construct(Runtime& rt, const Var& thisVar, const VarList& args) {
-					Heap& heap = rt.getHeap();
-					return Var(rt, new(heap) NativeObject(heap.managed(), static_cast<Object*>(thisVar)->getPrototype(rt), args));
-				}
-	public:		Var nativeMethod(Runtime& rt, const Var& thisVar, const VarList& args) {
-					return Var(rt, x);
-				}
-	protected:	double x;
-};
 
-struct BindingTestObject {
-	BindingTestObject() : x(123.456) { }
-	Var method(Runtime& rt, const Var& thisVar, const VarList& args) {
-		return Var(rt, x);
-	}
-	double x;
-};
-
-struct NativeConstructor : public ExtensibleFunction {
-	typedef ExtensibleFunction super;
-	NativeConstructor(GCList& gcList, const Var& prototype) : super(gcList), prototype(prototype) { }
-	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
-		Heap& heap = rt.getHeap();
-		return new(heap) NativeObject(heap.managed(), prototype, VarList(rt, argc, argv));
-	}
-	Var prototype;
-};
-
-Var test1(Runtime& rt, const Var& thisVar, const VarList& args) {
-	std::wcout << L"argc: " << args.size() << std::endl;
-	std::wcout << L"arg 0: " << args[0] << std::endl;
-	std::wcout << L"arg 1: " << args[1] << std::endl;
-	std::wcout << L"arg 0 type: " << args[0].typeOf() << std::endl;
-	if (args[0].typeOf() == "function") {
-		args[0]("znooorf");
-	}
-	if (args[0] == 21) {
-		std::wcout << L"twenty three" << std::endl;
-	}
-	if (args[0] == Value::NUL) {
-		std::wcout << L"nuuuul" << std::endl;
-	}
-	args[1]["zoom"] = args[0] * 9191;
-	return Var(rt, static_cast<double>(args[0]) + args[1]);
-}
 
 static UInt32 calcUTF8ToUTF16Size(UInt32 utf8Size, const char* utf8Chars) {
        UInt32 n = 0;
@@ -659,81 +510,6 @@ int testMain(int argc, const char* argv[]) {
 	globs["load"] = load;
 	globs["quit"] = quit;
 
-#if 0
-    rt.setMemoryCap(8192*10);
-    Var anObject = rt.eval("({ a: 123.45, b: 'y' })");
-    Var aValue = anObject["a"];
-    std::wstring ws = anObject["a"];
-    anObject["c"] = 99;
-    anObject["z"] = rt.eval("(123)");
-    std::wcout << aValue << std::endl;
-    std::wcout << static_cast<Var>(anObject["z"]) << std::endl;
-    std::wcout << ws << std::endl;
-
-	
-	Var v23(rt);
-    bool b = v23;
-    const Value args[1] = { v23 };
-  //  rt.call(v23, 0, args);
-    std::wcout << rt.eval("s = 0; for (i = 0; i < 100; ++i) s += i; s") << std::endl;
-    double v = rt.eval("s = 0; for (i = 0; i < 100; ++i) s += i; s");
-    std::wcout << v23 << std::endl;
-
-    rt.setMemoryCap(512 * 1024 * 1024);
- /*   JSObject globals(heap.roots(), &rt.objectPrototype);
-	rt.setGlobalObject(&globals);
-	*/
-	
-	rt.setupStandardLibrary();
-	globs["tezt"] = 55;
-	assert(globs.has("tezt"));
-	assert(!globs.has("ttezt"));
-	globs["tezt2"] = globs["tezt"];
-	double ddd = globs["tezt"];
-	globs["f"] = rt.eval("(function(a, b) { return a + b })");
-	globs["arr"] = rt.eval("([1,3,5,2,4,6])");
-	globs["test1"] = test1;
-	Var o = globs["o"] = new(heap) JSObject(heap.managed(), rt.getObjectPrototype());
-	o["gcTest"] = gcTest;
-	o["zub"] = "yo";
-	std::wcout << globs["f"](29, 99) << std::endl;
-	Var a = globs["arr"];
-	std::wcout << o["gcTest"]("hej", 12959) << std::endl;
-	std::wcout << o["gcTest"]("hej", 12959, "zzz") << std::endl;
-	const Value list[4] = { Var(rt, "a"), Var(rt, "bcd"), Var(rt, 1391), Var(rt, "zz9z9") };
-	std::wcout << o["gcTest"](VarList(rt, 4, list)) << std::endl;
-	std::wcout << globs["o"][o["gcTest"]("zub")] << std::endl;
-
-	globs["o2"] = rt.newObject();
-	Var arrr = globs["o2"]["a"] = rt.newArray();
-	for (int i = 0; i < 22; ++i) arrr[i] = i * 3;
-	std::wcout << globs["o2"]["a"]["length"] << std::endl;
-	std::wcout << globs["o2"]["a"]["toString"]() << std::endl;
-	std::wcout << globs["o2"]["a"][15]["toString"](16) << std::endl;
-
-	Var regExp = rt.eval("(/x.*y/)");
-	std::wcout << regExp["test"]("xyzzzy") << std::endl;
-//	a = 55;
-	for (int i = 0; i < a.length(); ++i) {
-		std::wcout << a[i] << std::endl;
-		a[i] = a[i] * 2;
-	}
-	
-	Var nativeObjectPrototype = rt.newObject();
-	nativeObjectPrototype["testMethod1"] = NativeObject::testMethod1;
-//	nativeObjectPrototype["testMethod2"] = new(rt.getHeap()) VarMemberFunctionAdapter<NativeObject>(rt.getHeap().managed(), &NativeObject::testMethod2);
-	nativeObjectPrototype["nativeMethod"] = &NativeObject::nativeMethod;
-	globs["NativeObject"] = NativeObject::construct;
-	globs["NativeObject"]["prototype"] = nativeObjectPrototype;
-	
-	globs["NativeObject2"] = new(heap) NativeConstructor(heap.managed(), nativeObjectPrototype);
-	
-	BindingTestObject bindingTestObject;
-	globs["bound"] = Var(rt, &bindingTestObject, &BindingTestObject::method);
-	
-	Var booool(rt);
-	std::wcout << (booool.to<bool>() ? L"true" : L"false") << std::endl;
-#endif
     PrintFunction printFunction;
     globals.setOwnProperty(rt, &PRINT_STRING, &printFunction, DONT_ENUM_FLAG);
     GCFunction gcFunction;
@@ -742,7 +518,6 @@ int testMain(int argc, const char* argv[]) {
     globals.setOwnProperty(rt, String::allocate(heap, "dasm"), new(heap) FunctorAdapter<NativeFunction>(heap.managed(), disassemble), DONT_ENUM_FLAG);
 	CallbackTest callbackTest;
 	globals.setOwnProperty(rt, String::allocate(heap, "callbackTest"), &callbackTest, DONT_ENUM_FLAG);
-	//globals.setOwnProperty(rt, String::alloc(heap, "nativeTestObject"), new(heap) NativeTestObject(heap.managed(), 1.4, 2.9));
 
 	randomSeed();
 
@@ -764,8 +539,6 @@ int testMain(int argc, const char* argv[]) {
 		}
 	}
 
-// operatorTest(rt);
-// implicitAllocations(rt);
 
 	Processor processor(rt);
 	processor.run(STANDARD_CYCLES_BETWEEN_AUTO_GC);	// just testing some weird behaviour

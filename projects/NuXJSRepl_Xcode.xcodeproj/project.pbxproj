@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		F7D0337D227CD29D00BA0D5A /* stdlibJS.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F7D0337A227CD29D00BA0D5A /* stdlibJS.cpp */; };
 		F7D0337E227CD29D00BA0D5A /* NuXJScript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F7D0337C227CD29D00BA0D5A /* NuXJScript.cpp */; };
-		F7D03380227CD2A700BA0D5A /* NuXJREPL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F7D0337F227CD2A700BA0D5A /* NuXJREPL.cpp */; };
+		F7D03380227CD2A700BA0D5A /* NuXJSREPL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F7D0337F227CD2A700BA0D5A /* NuXJSREPL.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -28,7 +28,7 @@
 		F7D0337A227CD29D00BA0D5A /* stdlibJS.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = stdlibJS.cpp; path = ../src/stdlibJS.cpp; sourceTree = "<group>"; };
 		F7D0337B227CD29D00BA0D5A /* NuXJScript.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NuXJScript.h; path = ../src/NuXJScript.h; sourceTree = "<group>"; };
 		F7D0337C227CD29D00BA0D5A /* NuXJScript.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NuXJScript.cpp; path = ../src/NuXJScript.cpp; sourceTree = "<group>"; };
-		F7D0337F227CD2A700BA0D5A /* NuXJREPL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NuXJREPL.cpp; path = ../tools/NuXJREPL.cpp; sourceTree = "<group>"; };
+		F7D0337F227CD2A700BA0D5A /* NuXJSREPL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NuXJSREPL.cpp; path = ../tools/NuXJSREPL.cpp; sourceTree = "<group>"; };
 		F7D03381227CD2CC00BA0D5A /* NuXJScript */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = NuXJScript; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -46,7 +46,7 @@
 		08FB7794FE84155DC02AAC07 /* NuXJScript */ = {
 			isa = PBXGroup;
 			children = (
-				F7D0337F227CD2A700BA0D5A /* NuXJREPL.cpp */,
+				F7D0337F227CD2A700BA0D5A /* NuXJSREPL.cpp */,
 				F7D0337C227CD29D00BA0D5A /* NuXJScript.cpp */,
 				F7D0337B227CD29D00BA0D5A /* NuXJScript.h */,
 				F7D0337A227CD29D00BA0D5A /* stdlibJS.cpp */,
@@ -84,7 +84,7 @@
 			attributes = {
 				LastUpgradeCheck = 0930;
 			};
-			buildConfigurationList = 1DEB923508733DC60010E9CD /* Build configuration list for PBXProject "NuXJRepl_Xcode" */;
+			buildConfigurationList = 1DEB923508733DC60010E9CD /* Build configuration list for PBXProject "NuXJSRepl_Xcode" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 1;
@@ -111,7 +111,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F7D0337D227CD29D00BA0D5A /* stdlibJS.cpp in Sources */,
-				F7D03380227CD2A700BA0D5A /* NuXJREPL.cpp in Sources */,
+				F7D03380227CD2A700BA0D5A /* NuXJSREPL.cpp in Sources */,
 				F7D0337E227CD29D00BA0D5A /* NuXJScript.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -246,7 +246,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		1DEB923508733DC60010E9CD /* Build configuration list for PBXProject "NuXJRepl_Xcode" */ = {
+		1DEB923508733DC60010E9CD /* Build configuration list for PBXProject "NuXJSRepl_Xcode" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				1DEB923608733DC60010E9CD /* Debug */,
