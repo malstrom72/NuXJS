@@ -498,22 +498,22 @@ Var read(Runtime& rt, const Var& thisVar, const VarList& args) {
        std::ifstream file;
        const String* contentsString = 0;
        try {
-		   const String* filenameString = args[0];
-		   const std::string filename = filenameString->toUTF8String();
-		   file.open(filename.c_str(), std::ios::binary);
-		   if (!file.good()) {
+			const String* filenameString = args[0];
+			const std::string filename = filenameString->toUTF8String();
+			file.open(filename.c_str(), std::ios::binary);
+			if (!file.good()) {
 				   ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, "Could not open input file");
-		   }
-		   file.exceptions(std::ios_base::badbit | std::ios_base::failbit);
-		   std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-		   Heap& heap = rt.getHeap();
-		   UInt32 utf16Size = calcUTF8ToUTF16Size(static_cast<UInt32>(contents.size()), contents.data());
-		   std::vector<Char> buffer(utf16Size);
-		   convertUTF8ToUTF16(static_cast<UInt32>(contents.size()), contents.data(), buffer.data());
-		   contentsString = new(heap) String(heap.managed(), buffer.data(), buffer.data() + utf16Size);
+			}
+			file.exceptions(std::ios_base::badbit | std::ios_base::failbit);
+			std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+			Heap& heap = rt.getHeap();
+			UInt32 utf16Size = calcUTF8ToUTF16Size(static_cast<UInt32>(contents.size()), contents.data());
+			std::vector<Char> buffer(utf16Size);
+			convertUTF8ToUTF16(static_cast<UInt32>(contents.size()), contents.data(), buffer.data());
+			contentsString = new(heap) String(heap.managed(), buffer.data(), buffer.data() + utf16Size);
        }
        catch (const std::ios_base::failure& x) {
-               ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, x.what());
+			ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, x.what());
        }
        return Var(rt, Value(contentsString));
 }
