@@ -424,4 +424,42 @@ Var test1(Runtime& rt, const Var& thisVar, const VarList& args) {
 	return Var(rt, static_cast<double>(args[0]) + args[1]);
 }
 
+// Additional snippets removed from NuXJSREPL.cpp for reference:
+//      std::cerr << "\tConstants: " << code.getConstants().size() << std::endl;
+//      std::cout << " peak: " << peakSize << std::endl;
+//      std::cout << " + " << size << std::endl;
+//      std::cout << " - " << size << std::endl;
+/*      virtual void releaseMemory(void* ptr, size_t size) {
+                // std::cout << " - " << size << std::endl;
+                return Heap::releaseMemory(ptr, size);
+        }*/
+// inStream->exceptions(std::ios_base::badbit | std::ios_base::failbit);
+/*std::cout << sizeof(Value) << std::endl;
+ std::cout << sizeof(String) << std::endl;
+ std::cout << sizeof(JSObject) << std::endl;
+ std::cout << sizeof(Array) << std::endl;
+ std::cout << sizeof(ScriptFunction) << std::endl;*/
+/*std::cerr << "Value size: " << sizeof (Value) << std::endl;
+ std::cerr << "Bucket size: " << sizeof (Table::Bucket) << std::endl;
+ std::cerr << "Table size: " << sizeof (Table) << std::endl;*/
+/*                      const Constants* const consts = rt.getSharedConstants();
+                        for (const Value* p = consts->begin(); p != consts->end(); ++p) {
+                                std::wcerr << "\t\t" << p->toString(heap)->toWideString() << std::endl;
+                        }*/
+/*      Error* e = x.asErrorObject();
+                if (e != 0) {
+                        std::wcout << "type: " << e->getErrorType() << std::endl;
+                        std::wcout << "name: " << e->getErrorName()->toWideString() << std::endl;
+                        std::wcout << "message: " << e->getErrorMessage()->toWideString() << std::endl;
+                        }
+*/
+//      const Value TEST_ARGV[1] = { String::alloc(heap, "Hello") };
+//      printFunction.invoke(processor, 1, TEST_ARGV, &globals);
+//      processor.run();        // just testing some weird behaviour
+//      processor.run(STANDARD_CYCLES_BETWEEN_AUTO_GC); // just testing some weird behaviour
+//      std::wifstream stdlibStream("stdlib.js");
+//      std::wstring sourceWString = std::wstring(std::istreambuf_iterator<wchar_t>(stdlibStream), std::istreambuf_iterator<wchar_t>());
+//      String source = String(heap.roots(), sourceWString.c_str());
+//      stdlibStream.close();
+
 #endif
