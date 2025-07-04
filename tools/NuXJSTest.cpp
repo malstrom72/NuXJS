@@ -650,69 +650,69 @@ static void testArrayVars() {
 	for (Var::const_iterator it = arrayVar.begin(); it != e; ++it) {
 		elementsInArray |= (1 << (*it).to<int>());
 	}
-        EXPECT_EQUAL(elementsInArray, 0x3FFFFFFF);
+	EXPECT_EQUAL(elementsInArray, 0x3FFFFFFF);
 }
 
 static void testJSON() {
-        std::cout << std::endl << "***** JSON *****" << std::endl << std::endl;
+	std::cout << std::endl << "***** JSON *****" << std::endl << std::endl;
 
-        Heap heap;
-        Runtime rt(heap);
-        rt.setupStandardLibrary();
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
 
-        Var obj = rt.eval("({ foo: 17, bar: [1,2,3], baz: 'hi' })");
-        Var stringify = rt.getGlobalsVar()["JSON"]["stringify"];
-        Var parse = rt.getGlobalsVar()["JSON"]["parse"];
-        std::wstring text = stringify(obj);
-        Var parsed = parse(std::wstring(text));
-        EXPECT_EQUAL(parsed["foo"], 17);
-        EXPECT_EQUAL(parsed["bar"][1], 2);
-        EXPECT_EQUAL(parsed["baz"].to<std::wstring>(), L"hi");
+	Var obj = rt.eval("({ foo: 17, bar: [1,2,3], baz: 'hi' })");
+	Var stringify = rt.getGlobalsVar()["JSON"]["stringify"];
+	Var parse = rt.getGlobalsVar()["JSON"]["parse"];
+	const std::wstring text = stringify(obj);
+	Var parsed = parse(std::wstring(text));
+	EXPECT_EQUAL(parsed["foo"], 17);
+	EXPECT_EQUAL(parsed["bar"][1], 2);
+	EXPECT_EQUAL(parsed["baz"].to<std::wstring>(), L"hi");
 }
 
 static void testCompilation() {
-        std::cout << std::endl << "***** Compilation *****" << std::endl << std::endl;
+	std::cout << std::endl << "***** Compilation *****" << std::endl << std::endl;
 
-        Heap heap;
-        Runtime rt(heap);
-        rt.setupStandardLibrary();
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
 
-        const String* expr = String::allocate(heap, "21+21");
-        Processor p(rt);
-        p.enterEvalCode(rt.compileEvalCode(expr));
-        EXPECT_EQUAL(rt.runUntilReturn(p), 42);
+	const String* expr = String::allocate(heap, "21+21");
+	Processor p(rt);
+	p.enterEvalCode(rt.compileEvalCode(expr));
+	EXPECT_EQUAL(rt.runUntilReturn(p), 42);
 
-        const String source(heap.managed(), "var x=3; x+4;");
-        Processor p2(rt);
-        p2.enterGlobalCode(rt.compileGlobalCode(source));
-        Var res = rt.runUntilReturn(p2);
-        EXPECT_EQUAL(res.typeOf(), &UNDEFINED_STRING);
-        EXPECT_EQUAL(rt.getGlobalsVar()["x"], 3);
+	const String source(heap.managed(), "var x=3; x+4;");
+	Processor p2(rt);
+	p2.enterGlobalCode(rt.compileGlobalCode(source));
+	Var res = rt.runUntilReturn(p2);
+	EXPECT_EQUAL(res.typeOf(), &UNDEFINED_STRING);
+	EXPECT_EQUAL(rt.getGlobalsVar()["x"], 3);
 
-        JSObject* globalsObj = rt.newJSObject();
-        rt.setGlobalObject(globalsObj);
-        Var globals = rt.getGlobalsVar();
-        globals["val"] = 99;
-        EXPECT_EQUAL(rt.getGlobalObject(), globalsObj);
-        EXPECT_EQUAL(globals["val"], 99);
-        JSArray* arr = rt.newJSArray(5);
-        EXPECT_EQUAL(arr->getLength(), 5);
+	JSObject* globalsObj = rt.newJSObject();
+	rt.setGlobalObject(globalsObj);
+	Var globals = rt.getGlobalsVar();
+	globals["val"] = 99;
+	EXPECT_EQUAL(rt.getGlobalObject(), globalsObj);
+	EXPECT_EQUAL(globals["val"], 99);
+	JSArray* arr = rt.newJSArray(5);
+	EXPECT_EQUAL(arr->getLength(), 5);
 }
 
 static void testLimits() {
-        std::cout << std::endl << "***** Limits *****" << std::endl << std::endl;
+	std::cout << std::endl << "***** Limits *****" << std::endl << std::endl;
 
-        Heap heap;
-        Runtime rt(heap);
-        rt.setupStandardLibrary();
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
 
-        rt.setMemoryCap(8192);
-        EXPECT_EXCEPTION(rt.eval("var a=[]; for(var i=0;i<1e6;i++) a[i]=i;"), "Out of memory");
+	rt.setMemoryCap(8192);
+	EXPECT_EXCEPTION(rt.eval("var a=[]; for(var i=0;i<1e6;i++) a[i]=i;"), "Out of memory");
 
-        rt.setMemoryCap(512*1024*1024);
-        rt.resetTimeOut(1);
-        EXPECT_EXCEPTION(rt.run("while(true) {}"), "Time out");
-        rt.noTimeOut();
+	rt.setMemoryCap(512*1024*1024);
+	rt.resetTimeOut(1);
+	EXPECT_EXCEPTION(rt.run("while(true) {}"), "Time out");
+	rt.noTimeOut();
 }
 
 #if 0
@@ -769,7 +769,7 @@ static void testLimits() {
 	rt.setGlobalObject(&globals);
 	*/
 	
-rt.setupStandardLibrary();
+	rt.setupStandardLibrary();
 	globals["tezt"] = 55;
 	EXPECT(globals.has("tezt"));
 	EXPECT(!globals.has("ttezt"));
