@@ -38,9 +38,17 @@ references** (via the overloaded `gcMark(heap, ...)` functions). Remember to als
 `gcMarkReferences` in the overriden method. **If `gcMarkReferences` is implemented incorrectly, items that are still in
 use may get garbage collected** (= deadly sin).
 
- Garbage collection is either invoked manually with `Heap::gc()` or automatically via `Runtime::autoGC()`. **Automatic
+Garbage collection is either invoked manually with `Heap::gc()` or automatically via `Runtime::autoGC()`. **Automatic
 garbage collection occurs when the number of bytes on a heap reaches a threshold that is two times the heap's size after
 the last garbage collection.** It is also possible to impose a hard limit on the heap's size.
+
+## Creating Strings
+
+Strings store UTF‑16 data. When a new string should live on a heap, allocate it
+with `new(heap) String(heap.managed(), text)`. Temporary root strings can be
+constructed on the stack using `String(heap.roots(), ...)`. To concatenate two
+existing strings and return a managed string pointer use
+`String::concatenate(heap, left, right)`.
 
 # Source Code Conventions
 
