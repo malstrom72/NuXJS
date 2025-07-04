@@ -46,7 +46,57 @@ After building, you will find the interactive REPL program under `output/`. Runn
 The high-level C++ API allows easy embedding of the interpreter into an existing application.
 Functions exposed to JavaScript typically have the signature `Var func(Runtime& rt, const Var& thisVar, const VarList& args)` and are stored in the global object like any other value.
 Source code may be executed with `Runtime::run()` or evaluated with `Runtime::eval()`.
-See the README for a more complete example.
+
+### Extended Example
+
+The following program shows how to expose a native function, enforce memory and
+time limits, and call back and forth between C++ and JavaScript:
+
+```cpp
+#include <NuXJScript.h>
+using namespace NuXJS;
+
+// Native function used from JavaScript.
+static Var sum(Runtime& rt, const Var&, const VarList& args) {
+    double total = 0.0;
+    for (int i = 0; i < args.size(); ++i)
+        total += args[i];
+    return Var(rt, total);
+}
+
+int main() {
+    Heap heap;
+    Runtime rt(heap);
+    rt.setupStandardLibrary();
+    rt.setMemoryCap(1024 * 1024); // 1 MB cap
+    rt.resetTimeOut(10);          // 10‑second time limit
+    Var globals = rt.getGlobalsVar();
+
+    globals["sum"] = sum;
+    rt.run("function demo(a,b,c){return 'a+b+c = ' + sum(a,b,c);}");
+    std::wcout << globals["demo"](7, 15, 20) << std::endl;
+
+    Var silly = rt.eval("(function(){return arguments;})");
+    Var arg0(rt, "131");
+    const Value nums[10] = { arg0, 535, 236, 984, 456.5, 666, 626, 585, 382, 109.5 };
+    Var list = silly(VarList(rt, 10, nums));
+    std::wcout << globals["sum"]["apply"](Value::NUL, list) << std::endl;
+
+    const int y = 2008, m = 7, d = 20;
+    Var date = rt.eval("(function(y,m,d){return new Date(y,m,d)})")(y, m, d);
+    std::wcout << date << std::endl;
+    std::wcout << date["toString"]() << std::endl;
+
+    Var arr = rt.eval("[4,8,15,16,23,42]");
+    for (Var::const_iterator it = arr.begin(); it != arr.end(); ++it)
+        std::wcout << arr[*it] << ' ';
+    std::wcout << std::endl;
+}
+```
+
+This mirrors the JavaScript idioms used in the engine's high‑level API and
+illustrates how `Var` and `VarList` manage lifetime and conversions between the
+two languages.
 
 ### The Var Type
 
