@@ -18,6 +18,7 @@ running the test-suite.  The main entry point is:
 ```bash
 ./tools/buildAndTest.sh
 ```
+On Windows, use `buildAndTest.cmd` instead.
 
 which builds the engine and executes all regression tests.  The sources rely on IEEE-compliant floating-point math. The main implementation files contain `#error` directives that fire if `__FAST_MATH__` is defined. Ensure your compiler options do not enable `-Ofast`, `-ffast-math`, or similar flags, at least for `src/NuXJScript.cpp`.
 
@@ -25,7 +26,7 @@ which builds the engine and executes all regression tests.  The sources rely on 
 
 After cloning the repository, simply run `tools/buildAndTest.sh` to build the
 library and execute the self-tests.  After building, you will find the
-interactive REPL program under `output/`. Running `./output/NuXJScript_debug_x64`
+interactive REPL program under `output/`. Running `./output/NuXJScript_debug`
 (or the corresponding build name) starts a simple shell for evaluating
 JavaScript.
 
