@@ -1,0 +1,4 @@
+C++ callback received: iteration 0
+C++ callback received: iteration 1
+C++ callback received: iteration 2
+JavaScript returned: 3
