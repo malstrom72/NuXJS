@@ -45,12 +45,12 @@ class GCItem {
 	friend class GCList;
 	friend class Heap;
 
-				/**
-					The overloaded `new` operator enforces allocation of GCItems on Heaps because:
-				 
-					1) The item's memory will be accounted for in the total memory used by the Heap.
-					2) Performance is improved by reusing recently deallocated memory through memory pools.
-				*/
+	/**
+		The overloaded `new` operator enforces allocation of GCItems on Heaps because:
+		
+		1) The item's memory will be accounted for in the total memory used by the Heap.
+		2) Performance is improved by reusing recently deallocated memory through memory pools.
+	*/
 	public:
 		static void* operator new(size_t n, Heap& heap);	///< Will store a secret pointer to Heap in allocated memory.
 		static void operator delete(void* ptr);				///< Will use the secret pointer to delete from correct Heap.
@@ -843,13 +843,13 @@ class Scope : public GCItem {
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		Value* getLocalsPointer() const { return localsPointer; }
 		Scope* getParentScope() const { return parentScope; }
-		void makeClosure();
+                void makeClosure() const;
 		void leave() { if (deleteOnPop) { delete this; } }
 	
 	protected:
 		Scope* const parentScope;
 		Value* localsPointer; // Pointer is offset so that negative indexes addresses local variables and positive indexes addresses arguments.
-		bool deleteOnPop;
+                mutable bool deleteOnPop;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, parentScope);

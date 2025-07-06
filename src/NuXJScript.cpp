@@ -1826,7 +1826,7 @@ class Arguments : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 
-		Arguments(GCList& gcList, FunctionScope* scope, UInt32 argumentsCount);
+        Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
 		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
@@ -1837,8 +1837,8 @@ class Arguments : public LazyJSObject<Object> {
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
-		Value* findProperty(const Value& key) const;
-		FunctionScope* const scope;
+        Value* findProperty(const Value& key) const;
+    	const FunctionScope* const scope;
 		UInt32 const argumentsCount;
 		Vector<Byte> deletedArguments;
 
@@ -1848,9 +1848,8 @@ class Arguments : public LazyJSObject<Object> {
 		}
 };
 
-Arguments::Arguments(GCList& gcList, FunctionScope* scope, UInt32 argumentsCount)
-		: super(gcList), scope(scope), argumentsCount(argumentsCount)
-		, deletedArguments(argumentsCount, &gcList.getHeap()) {
+Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
+		, scope(scope), argumentsCount(argumentsCount), deletedArguments(argumentsCount, &gcList.getHeap()) {
 	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
 }
 
@@ -1922,8 +1921,8 @@ void Scope::declareVar(Runtime& rt, const String* name, const Value& initValue, 
 	return parentScope->declareVar(rt, name, initValue, dontDelete);
 }
 
-void Scope::makeClosure() {
-	for (Scope* s = this; s->deleteOnPop; s = s->parentScope) {
+void Scope::makeClosure() const {
+	for (const Scope* s = this; s->deleteOnPop; s = s->parentScope) {
 		s->deleteOnPop = false;
 		assert(s->parentScope != 0);
 	}
@@ -1945,11 +1944,10 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, 
 
 JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
 	if (dynamicVars == 0) {
-		const_cast<FunctionScope*>(this)->makeClosure(); // FIX : const casts!
+		makeClosure();
 		Heap& heap = rt.getHeap();
 		dynamicVars = new(heap) JSObject(heap.managed(), 0);
-		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING
-				, new(heap) Arguments(heap.managed(), const_cast<FunctionScope*>(this), passedArgumentsCount)
+		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING, new(heap) Arguments(heap.managed(), this, passedArgumentsCount)
 				, DONT_DELETE_FLAG);
 	}
 	return dynamicVars;
