@@ -19,4 +19,5 @@ tick
 tick
 tick
 tick
-result=35
+tick
+result=45
