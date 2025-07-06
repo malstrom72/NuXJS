@@ -5,19 +5,6 @@ tools/initPPEG.pika:47:	swap(@::ppeg.$compileTo, @target);	// FIX : ugly non-ree
 tools/NuXJSREPL.cpp:268:		if (f == 0) { // FIX : sub to make is not a function error or something?
     			ScriptException::throwError(heap, TYPE_ERROR, String::concatenate(heap, *argv[0].toString(heap), String(" is not a function")));
     		}
-
-tools/NuXJSREPL.cpp:430:	// FIX : exception handling on top-level
-        String source(EMPTY_STRING);
-        std::string inputFilePath;
-
-tools/NuXJSREPL.cpp:435:    int gcRate = 256; // FIX : drop or what?
-        size_t peakMemory = 0;
-        bool autoGCRate = true;
-
-tools/NuXJSREPL.cpp:532:                // FIX : add #undo that drops just the last one
-                    if (utf8Line == "#save" || utf8Line.compare(0, 6, "#save ") == 0) {
-                        std::wstring s;
-
 tools/NuXJSREPL.cpp:569:                        source = String(heap.roots(), String(heap.roots(), String("print("), String(heap.roots(), source.begin() + 1, source.end())), String(")")); // FIX : operator +
                         }
                         if (interactive) {

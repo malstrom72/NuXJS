@@ -427,23 +427,17 @@ void randomSeed() {
 }
 
 int testMain(int argc, const char* argv[]) {
-	// FIX : exception handling on top-level
+    try {
     String source(EMPTY_STRING);
     std::string inputFilePath;
     std::istream* inStream = &std::cin;
     bool doTime = false;
-    int gcRate = 256; // FIX : drop or what?
     size_t peakMemory = 0;
-    bool autoGCRate = true;
     bool doSuppressStdErr = false;
     bool loadStdLib = true;
     for (int argi = 1; argi < argc; ++argi) {
         if (strcmp(argv[argi], "-t") == 0) doTime = true;
         else if (strcmp(argv[argi], "-s") == 0) doSuppressStdErr = true;
-        else if (argi + 1 < argc && strcmp(argv[argi], "-gc") == 0) {
-            gcRate = atoi(argv[++argi]);
-            autoGCRate = false;
-        }
         else if (strcmp(argv[argi], "-p") == 0) pauseBeforeQuit = true;
         else if (strcmp(argv[argi], "-n") == 0) loadStdLib = false;
         else if (inputFilePath.empty()) {
@@ -674,6 +668,17 @@ int testMain(int argc, const char* argv[]) {
         return 1;
     }
     return 0;
+    }
+    catch (const Exception& x) {
+        std::cerr << "Uncaught exception: " << x.what() << std::endl;
+    }
+    catch (const std::exception& x) {
+        std::cerr << "Uncaught std::exception: " << x.what() << std::endl;
+    }
+    catch (...) {
+        std::cerr << "Uncaught unknown exception" << std::endl;
+    }
+    return 1;
 }
 
 #ifdef LIBFUZZ
