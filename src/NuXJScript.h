@@ -843,13 +843,13 @@ class Scope : public GCItem {
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		Value* getLocalsPointer() const { return localsPointer; }
 		Scope* getParentScope() const { return parentScope; }
-		void makeClosure();
+                void makeClosure() const;
 		void leave() { if (deleteOnPop) { delete this; } }
 	
 	protected:
 		Scope* const parentScope;
 		Value* localsPointer; // Pointer is offset so that negative indexes addresses local variables and positive indexes addresses arguments.
-		bool deleteOnPop;
+                mutable bool deleteOnPop;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, parentScope);

@@ -250,9 +250,6 @@ src/NuXJScript.cpp:1589:Object* JSArray::getPrototype(Runtime& rt) const { // FI
     	Object* arrayPrototype = rt.getPrototypeObject(Runtime::ARRAY_PROTOTYPE);
     	return (this == arrayPrototype ? rt.getObjectPrototype() : arrayPrototype);
 
-src/NuXJScript.cpp:1948:		const_cast<FunctionScope*>(this)->makeClosure(); // FIX : const casts!
-    		Heap& heap = rt.getHeap();
-    		dynamicVars = new(heap) JSObject(heap.managed(), 0);
 
 src/NuXJScript.cpp:1992:		// FIX : make sub that lookup's the bucket, also use in getProperty
     		if (dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) {
