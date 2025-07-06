@@ -10,11 +10,15 @@ int main() {
 
     // Use two processors running in the same runtime.
     // Each script is stored in a rooted Var so GC won't sweep it while compiling.
-    // Pre-declare a shared result variable
-    rt.getGlobalsVar()["sum"] = 0;
+    // Pre-declare variables where each processor stores its partial sum to avoid
+    // race conditions on a shared variable.
+    rt.getGlobalsVar()["partial1"] = 0;
+    rt.getGlobalsVar()["partial2"] = 0;
 
-    Var source1(rt, "var i=0; while(i<5){ sum+=i; i++; }");
-    Var source2(rt, "var j=5; while(j<10){ sum+=j; j++; }");
+    Var source1(rt,
+        "(function(){var s=0,i=0; while(i<5){ s+=i; i++; } partial1=s; })();");
+    Var source2(rt,
+        "(function(){var s=0,j=5; while(j<10){ s+=j; j++; } partial2=s; })();");
 
     Processor proc1(rt);
     proc1.enterGlobalCode(rt.compileGlobalCode(source1));
@@ -31,8 +35,10 @@ int main() {
         std::cout << "tick" << std::endl;
     }
 
-    Var resultVar = rt.getGlobalsVar()["sum"];
+    Var part1 = rt.getGlobalsVar()["partial1"];
+    Var part2 = rt.getGlobalsVar()["partial2"];
     heap.gc(); // for testing purposes only
-    std::cout << "result=" << resultVar.to<int>() << std::endl;
+    int result = part1.to<int>() + part2.to<int>();
+    std::cout << "result=" << result << std::endl;
     return 0;
 }

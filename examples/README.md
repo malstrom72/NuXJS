@@ -15,7 +15,8 @@ The available examples are:
 - **callback_example.cpp** – JavaScript calling back into C++.
 - **object_creation_example.cpp** – Building objects and arrays from C++.
 - **time_memory_limits_example.cpp** – Enforcing memory and execution time caps.
-- **asynchronous_example.cpp** – Using a `Processor` to run in small time slices.
+- **asynchronous_example.cpp** – Running two processors in parallel while each
+  keeps its own partial sum to avoid race conditions.
 - **property_enumeration_example.cpp** – Iterating properties including the prototype chain.
 - **error_handling_example.cpp** – Translating exceptions between languages.
 - **custom_object_example.cpp** – Defining a native `Counter` object.
