@@ -3716,9 +3716,14 @@ bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
 					}
 					
 					case '/': {
-						while (++p != e && !isLineTerminator(*p) && *p != '/') {
+						bool inClass = false;
+						while (++p != e && !isLineTerminator(*p) && (*p != '/' || inClass)) {
 							if (*p == '\\' && p + 1 != e && !isLineTerminator(p[1])) {
 								++p;
+							} else if (*p == '[') {
+								inClass = true;
+							} else if (*p == ']' && inClass) {
+								inClass = false;
 							}
 						}
 						if (p == e || *p != '/') {
