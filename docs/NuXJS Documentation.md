@@ -22,6 +22,11 @@ On Windows, use `buildAndTest.cmd` instead.
 
 which builds the engine and executes all regression tests.  The sources rely on IEEE-compliant floating-point math. The main implementation files contain `#error` directives that fire if `__FAST_MATH__` is defined. Ensure your compiler options do not enable `-Ofast`, `-ffast-math`, or similar flags, at least for `src/NuXJScript.cpp`.
 
+The standard library is kept in `src/stdlib.js`. During the build it is
+minified with `tools/stdlibMinifier.ppeg` and converted into a C++ source via
+`tools/stdlibToCpp.pika` using `PikaCmd`. The build scripts recreate
+`src/stdlibJS.cpp` automatically whenever `stdlib.js` changes.
+
 ## Quick Start
 
 After cloning the repository, simply run `tools/buildAndTest.sh` to build the
