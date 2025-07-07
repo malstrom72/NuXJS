@@ -1651,18 +1651,57 @@ void testStrings() {
 
 void testTables() {
 	std::cout << std::endl << "***** Table *****" << std::endl << std::endl;
-	
+
 	Heap heap;
 	{
 		Table table(&heap);
 		EXPECT_EQUAL(table.getLoadCount(), 0);
 		EXPECT_EQUAL(table.getFirst(), (Table::Bucket*)(0));
-		Table::Bucket* b = table.insert(String::allocate(heap, "firstKey"));
-		EXPECT_NOT_EQUAL(b, (Table::Bucket*)(0));
-		EXPECT(table.update(b, Value(1972)));
-		b = table.insert(String::allocate(heap, "secondKey"));
-		EXPECT_NOT_EQUAL(b, (Table::Bucket*)(0));
-		EXPECT(table.update(b, Value(4711)));
+
+		const String* firstKey = String::allocate(heap, "firstKey");
+		Table::Bucket* b1 = table.insert(firstKey);
+		EXPECT_NOT_EQUAL(b1, (Table::Bucket*)(0));
+		EXPECT(table.update(b1, Value(1972)));
+		EXPECT_EQUAL(table.getLoadCount(), 1);
+
+		const String* secondKey = String::allocate(heap, "secondKey");
+		Table::Bucket* b2 = table.insert(secondKey);
+		EXPECT_NOT_EQUAL(b2, (Table::Bucket*)(0));
+		EXPECT(table.update(b2, Value(4711), READ_ONLY_FLAG | DONT_DELETE_FLAG));
+		EXPECT_EQUAL(table.getLoadCount(), 2);
+
+		EXPECT_EQUAL(table.lookup(firstKey), b1);
+		EXPECT_EQUAL(table.lookup(secondKey), b2);
+
+		EXPECT_EQUAL(b1->getValue().toInt(), 1972);
+		EXPECT_EQUAL(b2->getValue().toInt(), 4711);
+		EXPECT((b2->getFlags() & READ_ONLY_FLAG) != 0);
+		EXPECT((b2->getFlags() & DONT_DELETE_FLAG) != 0);
+
+		EXPECT(!table.update(b2, Value(99)));
+		EXPECT_EQUAL(b2->getValue().toInt(), 4711);
+		EXPECT(!table.erase(b2));
+		EXPECT(b2->valueExists());
+
+		EXPECT(table.erase(b1));
+		EXPECT(!b1->valueExists());
+
+		table.update(b2, 123);
+		EXPECT(b2->valueExists());
+		EXPECT_EQUAL(b2->getIndexValue(), 123);
+		EXPECT((b2->getFlags() & INDEX_TYPE_FLAG) != 0);
+
+		for (int i = 0; i < 20; ++i) {
+			table.update(table.insert(String::fromInt(heap, i)), i);
+		}
+
+		UInt32 count = 0;
+		for (Table::Bucket* it = table.getFirst(); it != 0; it = table.getNext(it)) {
+			if (it->valueExists()) {
+			        ++count;
+			}
+		}
+		EXPECT_EQUAL(count, 21);
 	}
 }
 
