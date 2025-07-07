@@ -1826,7 +1826,7 @@ class Arguments : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 
-		Arguments(GCList& gcList, FunctionScope* scope, UInt32 argumentsCount);
+        Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
 		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
@@ -1837,8 +1837,8 @@ class Arguments : public LazyJSObject<Object> {
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
-		Value* findProperty(const Value& key) const;
-		FunctionScope* const scope;
+        Value* findProperty(const Value& key) const;
+    	const FunctionScope* const scope;
 		UInt32 const argumentsCount;
 		Vector<Byte> deletedArguments;
 
@@ -1848,9 +1848,8 @@ class Arguments : public LazyJSObject<Object> {
 		}
 };
 
-Arguments::Arguments(GCList& gcList, FunctionScope* scope, UInt32 argumentsCount)
-		: super(gcList), scope(scope), argumentsCount(argumentsCount)
-		, deletedArguments(argumentsCount, &gcList.getHeap()) {
+Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
+		, scope(scope), argumentsCount(argumentsCount), deletedArguments(argumentsCount, &gcList.getHeap()) {
 	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
 }
 
@@ -1922,8 +1921,8 @@ void Scope::declareVar(Runtime& rt, const String* name, const Value& initValue, 
 	return parentScope->declareVar(rt, name, initValue, dontDelete);
 }
 
-void Scope::makeClosure() {
-	for (Scope* s = this; s->deleteOnPop; s = s->parentScope) {
+void Scope::makeClosure() const {
+	for (const Scope* s = this; s->deleteOnPop; s = s->parentScope) {
 		s->deleteOnPop = false;
 		assert(s->parentScope != 0);
 	}
@@ -1944,15 +1943,19 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, 
 }
 
 JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
-	if (dynamicVars == 0) {
-		const_cast<FunctionScope*>(this)->makeClosure(); // FIX : const casts!
-		Heap& heap = rt.getHeap();
-		dynamicVars = new(heap) JSObject(heap.managed(), 0);
-		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING
-				, new(heap) Arguments(heap.managed(), const_cast<FunctionScope*>(this), passedArgumentsCount)
-				, DONT_DELETE_FLAG);
-	}
-	return dynamicVars;
+        if (dynamicVars == 0) {
+                makeClosure();
+                Heap& heap = rt.getHeap();
+                dynamicVars = new(heap) JSObject(heap.managed(), 0);
+                dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING,
+                                new(heap) Arguments(heap.managed(), this, passedArgumentsCount),
+                                DONT_DELETE_FLAG);
+        }
+        return dynamicVars;
+}
+
+Table::Bucket* FunctionScope::lookupDynamicVarBucket(Runtime& rt, const String* name) const {
+        return ((dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) ? getDynamicVars(rt)->lookup(name) : 0);
 }
 
 Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v) const {
@@ -1965,12 +1968,10 @@ Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v) const {
 			*v = localsPointer[index];
 			return DONT_DELETE_FLAG | EXISTS_FLAG;
 		}
-		if (dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) {
-			Flags flags = getDynamicVars(rt)->getOwnProperty(rt, name, v);
-			if (flags != NONEXISTENT) {
-				return flags;
-			}
-		}
+                if (Table::Bucket* bucket = lookupDynamicVarBucket(rt, name)) {
+                        *v = bucket->getValue();
+                        return bucket->getFlags();
+                }
 		if (code->selfName != 0 && name->isEqualTo(*code->selfName)) {
 			*v = function;
 			return DONT_DELETE_FLAG | READ_ONLY_FLAG | EXISTS_FLAG;
@@ -1980,51 +1981,60 @@ Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v) const {
 }
 
 void FunctionScope::writeVar(Runtime& rt, const String* name, const Value& v) {
-	const UInt32 bloomCode = name->createBloomCode();
-	if ((bloomSet & bloomCode) == bloomCode) {
-		Int32 index;
-		const Code* code = function->code;
-		if (code->lookupNameIndex(name, index)) {
-			assert(locals.begin() <= localsPointer + index && localsPointer + index < locals.end());
-			localsPointer[index] = v;
-			return;
-		}
-		// FIX : make sub that lookup's the bucket, also use in getProperty
-		if (dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) {
-			Table& props = *getDynamicVars(rt);
-			Table::Bucket* bucket = props.lookup(name);
-			if (bucket != 0) {
-				props.update(bucket, v);
-				return;
-			}
-		}
-		if (code->selfName != 0 && name->isEqualTo(*code->selfName)) {
-			return;
-		}
-	}
-	parentScope->writeVar(rt, name, v); // FIX : recursion
+        const UInt32 bloomCode = name->createBloomCode();
+        for (Scope* scope = this; scope != 0;) {
+                FunctionScope* fs = dynamic_cast<FunctionScope*>(scope);
+                if (fs != 0) {
+                        if ((fs->bloomSet & bloomCode) == bloomCode) {
+                                Int32 index;
+                                const Code* code = fs->function->code;
+                                if (code->lookupNameIndex(name, index)) {
+                                        assert(fs->locals.begin() <= fs->localsPointer + index && fs->localsPointer + index < fs->locals.end());
+                                        fs->localsPointer[index] = v;
+                                        return;
+                                }
+                                if (Table::Bucket* bucket = fs->lookupDynamicVarBucket(rt, name)) {
+                                        fs->getDynamicVars(rt)->update(bucket, v);
+                                        return;
+                                }
+                                if (code->selfName != 0 && name->isEqualTo(*code->selfName)) {
+                                        return;
+                                }
+                        }
+                        scope = fs->parentScope;
+                        continue;
+                } else {
+                        scope->writeVar(rt, name, v);
+                        return;
+                }
+        }
 }
 
 bool FunctionScope::deleteVar(Runtime& rt, const String* name) {
-	const UInt32 bloomCode = name->createBloomCode();
-	if ((bloomSet & bloomCode) == bloomCode) {
-		Int32 index;
-		const Code* code = function->code;
-		if (code->lookupNameIndex(name, index)) {
-			return false;
-		}
-		if (dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) {
-			Table& props = *getDynamicVars(rt);
-			Table::Bucket* bucket = props.lookup(name);
-			if (bucket != 0) {
-				return props.erase(bucket);
-			}
-		}
-		if (code->selfName != 0 && name->isEqualTo(*code->selfName)) {
-			return false;
-		}
-	}
-	return parentScope->deleteVar(rt, name); // FIX : recursion
+        const UInt32 bloomCode = name->createBloomCode();
+        for (Scope* scope = this; scope != 0;) {
+                FunctionScope* fs = dynamic_cast<FunctionScope*>(scope);
+                if (fs != 0) {
+                        if ((fs->bloomSet & bloomCode) == bloomCode) {
+                                Int32 index;
+                                const Code* code = fs->function->code;
+                                if (code->lookupNameIndex(name, index)) {
+                                        return false;
+                                }
+                                if (Table::Bucket* bucket = fs->lookupDynamicVarBucket(rt, name)) {
+                                        return fs->getDynamicVars(rt)->erase(bucket);
+                                }
+                                if (code->selfName != 0 && name->isEqualTo(*code->selfName)) {
+                                        return false;
+                                }
+                        }
+                        scope = fs->parentScope;
+                        continue;
+                } else {
+                        return scope->deleteVar(rt, name);
+                }
+        }
+        return false;
 }
 
 void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete) {
