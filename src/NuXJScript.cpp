@@ -178,6 +178,9 @@ static const String* PROTOTYPE_NAMES[Runtime::PROTOTYPE_COUNT] = {
 	, &ERROR_NAMES[5], &ERROR_NAMES[6]
 };
 
+static const String PROTOTYPES_STRING("prototypes"), IS_NAN_STRING("isNaN"), IS_FINITE_STRING("isFinite")
+		, MAX_NUMBER_STRING("maxNumber"), MIN_NUMBER_STRING("minNumber");
+
 /* --- Utilities --- */
 
 // Returns pointer to beginning of string. End of string is always buffer + 32 (*not* zero-terminated by this routine).
@@ -5084,19 +5087,18 @@ void Runtime::setupStandardLibrary() {
 	JSObject* supportObject = new(heap) JSObject(heap.managed(), getObjectPrototype());
 	JSObject* prototypesObject = new(heap) JSObject(heap.managed(), getObjectPrototype());
 	const Var protectedSupportObject(*this, supportObject);
-	// FIX : static strings?
-	supportObject->setOwnProperty(*this, String::allocate(heap, "prototypes"), prototypesObject);
+	supportObject->setOwnProperty(*this, &PROTOTYPES_STRING, prototypesObject);
 	for (size_t i = 0; i < sizeof (SUPPORT_FUNCTIONS) / sizeof (*SUPPORT_FUNCTIONS); ++i) {
 		supportObject->setOwnProperty(*this, &SUPPORT_FUNCTIONS[i].name, &SUPPORT_FUNCTIONS[i].func);
 	}
-	supportObject->setOwnProperty(*this, String::allocate(heap, "isNaN"), &IS_NAN_FUNCTION);
-	supportObject->setOwnProperty(*this, String::allocate(heap, "isFinite"), &IS_FINITE_FUNCTION);
+	supportObject->setOwnProperty(*this, &IS_NAN_STRING, &IS_NAN_FUNCTION);
+	supportObject->setOwnProperty(*this, &IS_FINITE_STRING, &IS_FINITE_FUNCTION);
 	supportObject->setOwnProperty(*this, &EVAL_STRING, &EVAL_FUNCTION);
 	supportObject->setOwnProperty(*this, &UNDEFINED_STRING, UNDEFINED_VALUE);
 	supportObject->setOwnProperty(*this, &NAN_STRING, NAN_VALUE);
 	supportObject->setOwnProperty(*this, &INFINITY_STRING, INFINITY_VALUE);
-	supportObject->setOwnProperty(*this, String::allocate(heap, "maxNumber"), std::numeric_limits<double>::max());
-	supportObject->setOwnProperty(*this, String::allocate(heap, "minNumber"), std::numeric_limits<double>::denorm_min());
+	supportObject->setOwnProperty(*this, &MAX_NUMBER_STRING, std::numeric_limits<double>::max());
+	supportObject->setOwnProperty(*this, &MIN_NUMBER_STRING, std::numeric_limits<double>::denorm_min());
 
 	for (size_t i = 0; i < sizeof (NATIVE_MATH_FUNCTIONS) / sizeof (*NATIVE_MATH_FUNCTIONS); ++i) {
 		supportObject->setOwnProperty(*this, &NATIVE_MATH_FUNCTIONS[i].name, &NATIVE_MATH_FUNCTIONS[i].func);
