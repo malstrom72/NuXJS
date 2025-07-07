@@ -912,10 +912,19 @@ static void testHighLevelAPI() {
         EXPECT_EQUAL(valueVar.to<Value>().toInt(), 11);
         EXPECT_NOT_EQUAL(countArgumentsFunctionVar.to<Function*>(), (Function*)0);
         EXPECT_NOT_EQUAL(nativeFunctionVar.to<Function*>(), (Function*)0);
-        const Value args2[4] = { 1, 2, 3, 4 };
-        EXPECT_EQUAL(countArgumentsFunctionVar(VarList(rt, 4, args2)), 4);
-        EXPECT_EQUAL(nativeFunctionVar(), 42);
-        EXPECT_EQUAL(boundMethodVar().to<double>(), 123.456);
+	const Value args2[4] = { 1, 2, 3, 4 };
+	EXPECT_EQUAL(countArgumentsFunctionVar(VarList(rt, 4, args2)), 4);
+	EXPECT_EQUAL(countArgumentsFunctionVar(VarList(rt, true)), 1);
+	Var tempString(rt, std::wstring(L"hi"));
+	EXPECT_EQUAL(countArgumentsFunctionVar(VarList(rt, true, tempString.to<Value>())), 2);
+	Var tempFuncVar(rt, nativeFunctionVar.to<Function*>());
+	EXPECT_EQUAL(countArgumentsFunctionVar(VarList(rt, true, tempString.to<Value>(), tempFuncVar.to<Value>())), 3);
+	EXPECT_EQUAL(countArgumentsFunctionVar.apply(0), 0);
+	EXPECT_EQUAL(countArgumentsFunctionVar.apply(0, 1), 1);
+	EXPECT_EQUAL(countArgumentsFunctionVar.apply(0, 1, 2), 2);
+	EXPECT_EQUAL(countArgumentsFunctionVar.apply(0, 1, 2, 3), 3);
+	EXPECT_EQUAL(nativeFunctionVar(), 42);
+	EXPECT_EQUAL(boundMethodVar().to<double>(), 123.456);
 
         EXPECT_EQUAL(object["foo"].to<Int32>(), 123);
         EXPECT_EQUAL(object["foo"].to<UInt32>(), 123U);

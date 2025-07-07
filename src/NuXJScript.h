@@ -1130,6 +1130,9 @@ class AccessorBase {
 		Var operator()(const VarList& args) const;
 		Var apply(Object* thisObject) const;
 		Var apply(Object* thisObject, const VarList& args) const;
+		template<typename T0> Var apply(Object* thisObject, const T0& arg0) const;
+		template<typename T0, typename T1> Var apply(Object* thisObject, const T0& arg0, const T1& arg1) const;
+		template<typename T0, typename T1, typename T2> Var apply(Object* thisObject, const T0& arg0, const T1& arg1, const T2& arg2) const;
 		template<typename T> const Property operator[](const T& key) const;
 		template<typename T> bool operator==(const T& t) const { return get().isStrictlyEqualTo(makeValue(t)); }
 		template<typename T> bool operator!=(const T& t) const { return !get().isStrictlyEqualTo(makeValue(t)); }
@@ -1210,20 +1213,20 @@ class VarList : public GCItem, public Vector<Value> {
 	public:
 		typedef GCItem super;
 		VarList(Runtime& rt, UInt32 initialCount = 0)
-				: super(rt.getHeap().roots()), rt(rt), Vector<Value>(initialCount, &rt.getHeap()) { }
+			: super(rt.getHeap().roots()), rt(rt), Vector<Value>(initialCount, &rt.getHeap()) { }
+		VarList(Runtime& rt, const Value& a0)
+			: super(rt.getHeap().roots()), rt(rt), Vector<Value>(1, &rt.getHeap()) { begin()[0] = a0; }
+		VarList(Runtime& rt, const Value& a0, const Value& a1)
+			: super(rt.getHeap().roots()), rt(rt), Vector<Value>(2, &rt.getHeap()) { const Value v[] = { a0, a1 }; std::copy(v, v + 2, begin()); }
+		VarList(Runtime& rt, const Value& a0, const Value& a1, const Value& a2)
+			: super(rt.getHeap().roots()), rt(rt), Vector<Value>(3, &rt.getHeap()) { const Value v[] = { a0, a1, a2 }; std::copy(v, v + 3, begin()); }
 		template<typename T> VarList(Runtime& rt, UInt32 count, const T* values)
-				: super(rt.getHeap().roots()), rt(rt), Vector<Value>(count, &rt.getHeap()) {
-			std::copy(values + 0, values + count, begin());
-		}
-		template<typename T> explicit VarList(Runtime& rt, const std::vector<T>& container) : super(rt.getHeap().roots()), rt(rt)
-				, Vector<Value>(container.data(), container.data() + container.size(), &rt.getHeap()) { }				// Use with std::vector or C++11 std::array
-		Value& operator[](ptrdiff_t index) {
-			return Vector<Value>::operator[](index);
-		}
-		Var operator[](ptrdiff_t index) const {
-			return Var(rt, (static_cast<size_t>(index) < size() ? *(begin() + index) : UNDEFINED_VALUE));
-		}
-	
+			: super(rt.getHeap().roots()), rt(rt), Vector<Value>(count, &rt.getHeap()) { std::copy(values, values + count, begin()); }
+		template<typename T> explicit VarList(Runtime& rt, const std::vector<T>& container)
+			: super(rt.getHeap().roots()), rt(rt), Vector<Value>(container.data(), container.data() + container.size(), &rt.getHeap()) { } // Use with std::vector or C++11 std::array
+		Value& operator[](ptrdiff_t index) { return Vector<Value>::operator[](index); }
+		Var operator[](ptrdiff_t index) const { return Var(rt, (static_cast<size_t>(index) < size() ? *(begin() + index) : UNDEFINED_VALUE)); }
+
 	protected:
 		Runtime& rt;
 		virtual void gcMarkReferences(Heap& heap) const {
@@ -1269,6 +1272,18 @@ inline Var AccessorBase::operator()() const { return call(0, 0); }
 inline Var AccessorBase::operator()(const VarList& args) const { return call(args.size(), args.begin()); }
 inline Var AccessorBase::apply(Object* thisObject) const { return rt.call(*this, 0, 0, thisObject); }
 inline Var AccessorBase::apply(Object* thisObject, const VarList& args) const { return rt.call(*this, args.size(), args.begin(), thisObject); }
+template<typename T0> inline Var AccessorBase::apply(Object* thisObject, const T0& arg0) const {
+	const Value argv[1] = { makeValue(arg0) };
+	return rt.call(*this, 1, argv, thisObject);
+}
+template<typename T0, typename T1> inline Var AccessorBase::apply(Object* thisObject, const T0& arg0, const T1& arg1) const {
+	const Value argv[2] = { makeValue(arg0), makeValue(arg1) };
+	return rt.call(*this, 2, argv, thisObject);
+}
+template<typename T0, typename T1, typename T2> inline Var AccessorBase::apply(Object* thisObject, const T0& arg0, const T1& arg1, const T2& arg2) const {
+        const Value argv[3] = { makeValue(arg0), makeValue(arg1), makeValue(arg2) };
+        return rt.call(*this, 3, argv, thisObject);
+}
 inline AccessorBase::const_iterator AccessorBase::end() const { return const_iterator(rt, 0); }
 inline Value AccessorBase::makeValue(const AccessorBase& v) const { return v.operator Value(); }
 inline std::wostream& operator<<(std::wostream& out, const AccessorBase& v) { out << std::wstring(v); return out; }
