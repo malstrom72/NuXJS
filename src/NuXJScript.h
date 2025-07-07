@@ -925,9 +925,10 @@ class FunctionScope : public Scope {
 		FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, const Value* argv);
 		virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
-		virtual bool deleteVar(Runtime& rt, const String* name);
-		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
-		JSObject* getDynamicVars(Runtime& rt) const;
+                virtual bool deleteVar(Runtime& rt, const String* name);
+                virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
+                JSObject* getDynamicVars(Runtime& rt) const;
+                Table::Bucket* lookupDynamicVarBucket(Runtime& rt, const String* name) const;
 
 	protected:
 		JSFunction* const function;
