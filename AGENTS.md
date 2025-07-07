@@ -8,6 +8,10 @@ timeout 120 ./tools/buildAndTest.sh
 
 Always execute this command before committing changes to verify that the build and regression tests succeed.
 
+### PikaCmd directory
+The `tools/PikaCmd` folder is a separate project copied into this repository.
+Ignore it when applying formatting or running tests.
+
 Please use tabs (not spaces) for indentation throughout.
 
 ### Formatting rules
