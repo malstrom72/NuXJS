@@ -274,8 +274,8 @@ Value gcTest(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, 
 static void testVars() {
 	std::cout << std::endl << "***** Var *****" << std::endl << std::endl;
 
-    Heap heap;
-    Runtime rt(heap);
+	Heap heap;
+	Runtime rt(heap);
 	Var globals = rt.getGlobalsVar();
 
 	const Var undefinedVar(rt);
@@ -602,8 +602,8 @@ static void testVars() {
 static void testArrayVars() {
 	std::cout << std::endl << "***** Array Vars *****" << std::endl << std::endl;
 
-    Heap heap;
-    Runtime rt(heap);
+	Heap heap;
+	Runtime rt(heap);
 	Var globals = rt.getGlobalsVar();
 	
 	Var arrayVar = rt.newArrayVar();
@@ -743,29 +743,29 @@ static void testLimits() {
 				friend Var operator+(const AccessorBase& l, const AccessorBase& r);
 				template<typename T> friend Var operator+(const AccessorBase& l, const T& r);
 				UInt32 length();
-    rt.setMemoryCap(8192*10);
-    const Var anObject = rt.eval("({ a: 123.45, b: 'y' })");
-    const Var aValue = anObject["a"];
-    const std::wstring ws = anObject["a"];
-    anObject["c"] = 99;
-    anObject["z"] = rt.eval("(123)");
-    EXPECT_EQUAL(aValue.to<double>(), 123.45);
-    EXPECT_EQUAL(aValue, 123.45);
-    EXPECT_EQUAL(aValue.to<std::wstring>(), L"123.45");
-    EXPECT_EQUAL(ws, L"123.45");
+	rt.setMemoryCap(8192*10);
+	const Var anObject = rt.eval("({ a: 123.45, b: 'y' })");
+	const Var aValue = anObject["a"];
+	const std::wstring ws = anObject["a"];
+	anObject["c"] = 99;
+	anObject["z"] = rt.eval("(123)");
+	EXPECT_EQUAL(aValue.to<double>(), 123.45);
+	EXPECT_EQUAL(aValue, 123.45);
+	EXPECT_EQUAL(aValue.to<std::wstring>(), L"123.45");
+	EXPECT_EQUAL(ws, L"123.45");
 	EXPECT_EQUAL(static_cast<Var>(anObject["z"]), 123);
 	
 	Var v23(rt);
-    EXPECT_EQUAL(v23, Value::UNDEFINED);
-    EXPECT_EQUAL(v23.typeOf(), "undefined");
-    EXPECT_EQUAL(v23.to<std::wstring>(), L"undefined");
-    EXPECT_EQUAL(v23.to<bool>(), false);
+	EXPECT_EQUAL(v23, Value::UNDEFINED);
+	EXPECT_EQUAL(v23.typeOf(), "undefined");
+	EXPECT_EQUAL(v23.to<std::wstring>(), L"undefined");
+	EXPECT_EQUAL(v23.to<bool>(), false);
 
-    std::wcout << rt.eval("s = 0; for (i = 0; i < 100; ++i) s += i; s") << std::endl;
-    double v = rt.eval("s = 0; for (i = 0; i < 100; ++i) s += i; s");
+	std::wcout << rt.eval("s = 0; for (i = 0; i < 100; ++i) s += i; s") << std::endl;
+	double v = rt.eval("s = 0; for (i = 0; i < 100; ++i) s += i; s");
 
-    rt.setMemoryCap(512 * 1024 * 1024);
- /*   JSObject globals(heap.roots(), &rt.objectPrototype);
+	rt.setMemoryCap(512 * 1024 * 1024);
+	/*   JSObject globals(heap.roots(), &rt.objectPrototype);
 	rt.setGlobalObject(&globals);
 	*/
 	
@@ -823,95 +823,95 @@ static void testLimits() {
 
 // C++ functions that you want to call from Javascript should have these arguments.
 static Var sum(Runtime& rt, const Var& thisVar, const VarList& args) {
-    double sum = 0.0;
-    for (int i = 0; i < args.size(); ++i) {
-        sum += args[i];
-    }
-    return Var(rt, sum);    // A `Var` owns its `Value` (sum) and is tied to a `Runtime` (rt)
+	double sum = 0.0;
+	for (int i = 0; i < args.size(); ++i) {
+		sum += args[i];
+	}
+	return Var(rt, sum);    // A `Var` owns its `Value` (sum) and is tied to a `Runtime` (rt)
 }
 
 static Var addFunction(Runtime& rt, const Var& thisVar, const VarList& args) {
-    double sum = 0.0;
-    for (UInt32 i = 0; i < args.size(); ++i) {
-        sum += args[i];
-    }
-    return Var(rt, sum);
+	double sum = 0.0;
+	for (UInt32 i = 0; i < args.size(); ++i) {
+		sum += args[i];
+	}
+	return Var(rt, sum);
 }
 
 static Var countArguments(Runtime& rt, const Var&, const VarList& args) {
-    return Var(rt, static_cast<UInt32>(args.size()));
+	return Var(rt, static_cast<UInt32>(args.size()));
 }
 
 static Value returnFortyTwo(Runtime&, Processor&, UInt32, const Value*, Object*) {
-    return Value(42);
+	return Value(42);
 }
 
 static void testHighLevelAPI() {
-        std::cout << std::endl << "***** High Level API *****" << std::endl << std::endl;
+		std::cout << std::endl << "***** High Level API *****" << std::endl << std::endl;
 
-        Heap heap;
-        Runtime rt(heap);
-        rt.setupStandardLibrary();
+		Heap heap;
+		Runtime rt(heap);
+		rt.setupStandardLibrary();
 
-        Var globals = rt.getGlobalsVar();
+		Var globals = rt.getGlobalsVar();
 
-        globals["add"] = addFunction;
-        EXPECT_EQUAL(globals["add"](4, 5), 9);
+		globals["add"] = addFunction;
+		EXPECT_EQUAL(globals["add"](4, 5), 9);
 
-        const Value values[3] = { 1, 2, 3 };
-        EXPECT_EQUAL(globals["add"](VarList(rt, 3, values)), 6);
+		const Value values[3] = { 1, 2, 3 };
+		EXPECT_EQUAL(globals["add"](VarList(rt, 3, values)), 6);
 
-        Var object(rt.newObjectVar());
-        object["foo"] = 123;
-        object["bar"] = "abc";
-        EXPECT_EQUAL(object["foo"], 123);
-        EXPECT_EQUAL(object["bar"].to<std::wstring>(), L"abc");
-        EXPECT(object.has("foo"));
-        EXPECT(!object.has("baz"));
+		Var object(rt.newObjectVar());
+		object["foo"] = 123;
+		object["bar"] = "abc";
+		EXPECT_EQUAL(object["foo"], 123);
+		EXPECT_EQUAL(object["bar"].to<std::wstring>(), L"abc");
+		EXPECT(object.has("foo"));
+		EXPECT(!object.has("baz"));
 
-        Var array(rt.newArrayVar());
-        for (int i = 0; i < 5; ++i) array[i] = i * 2;
-        EXPECT_EQUAL(array.size(), 5);
-        EXPECT_EQUAL(array[2], 4);
-        EXPECT(array.has(4));
-        EXPECT(!array.has(5));
+		Var array(rt.newArrayVar());
+		for (int i = 0; i < 5; ++i) array[i] = i * 2;
+		EXPECT_EQUAL(array.size(), 5);
+		EXPECT_EQUAL(array[2], 4);
+		EXPECT(array.has(4));
+		EXPECT(!array.has(5));
 
-        rt.run("function mul(a,b){ return a*b; }");
-        EXPECT_EQUAL(globals["mul"](6, 7), 42);
+		rt.run("function mul(a,b){ return a*b; }");
+		EXPECT_EQUAL(globals["mul"](6, 7), 42);
 
-        EXPECT(object["foo"].equals(123));
-        EXPECT(object["foo"] == 123);
-        EXPECT(object["foo"] != 124);
+		EXPECT(object["foo"].equals(123));
+		EXPECT(object["foo"] == 123);
+		EXPECT(object["foo"] != 124);
 
-        Var booleanVar(rt, true);
-        Var integerVar(rt, 77);
-        Var unsignedIntegerVar(rt, static_cast<UInt32>(99));
-        Var doubleVar(rt, 3.5);
-        Var charStringVar(rt, "hello");
-        Var standardStringVar(rt, std::string("bye"));
-        Var wideStringVar(rt, std::wstring(L"wide"));
-        JSObject* rawObject = rt.newJSObject();
-        Var objectVar(rt, rawObject);
-        Var valueVar(rt, Value(11));
-        Var countArgumentsFunctionVar(rt, countArguments);
-        Var nativeFunctionVar(rt, returnFortyTwo);
-        BindingTestObject bindingTestObject;
-        Var boundMethodVar(rt, &bindingTestObject, &BindingTestObject::method);
+		Var booleanVar(rt, true);
+		Var integerVar(rt, 77);
+		Var unsignedIntegerVar(rt, static_cast<UInt32>(99));
+		Var doubleVar(rt, 3.5);
+		Var charStringVar(rt, "hello");
+		Var standardStringVar(rt, std::string("bye"));
+		Var wideStringVar(rt, std::wstring(L"wide"));
+		JSObject* rawObject = rt.newJSObject();
+		Var objectVar(rt, rawObject);
+		Var valueVar(rt, Value(11));
+		Var countArgumentsFunctionVar(rt, countArguments);
+		Var nativeFunctionVar(rt, returnFortyTwo);
+		BindingTestObject bindingTestObject;
+		Var boundMethodVar(rt, &bindingTestObject, &BindingTestObject::method);
 
-        EXPECT(booleanVar.to<bool>());
-        EXPECT_EQUAL(integerVar.to<Int32>(), 77);
-        EXPECT_EQUAL(unsignedIntegerVar.to<UInt32>(), 99U);
-        EXPECT_EQUAL(doubleVar.to<double>(), 3.5);
-        EXPECT_EQUAL(charStringVar.to<std::wstring>(), L"hello");
-        EXPECT(standardStringVar.to<const String&>().isEqualTo(L"bye"));
-        const String* wPtr = wideStringVar.to<const String*>();
-        EXPECT(wPtr->isEqualTo(L"wide"));
-        Var unicodeString(rt, std::wstring(L"Hello \u00A9 \u20AC \u03A9"));
-        EXPECT_EQUAL(unicodeString.to<std::wstring>(), L"Hello \u00A9 \u20AC \u03A9");
-        EXPECT_EQUAL(objectVar.to<Object*>(), rawObject);
-        EXPECT_EQUAL(valueVar.to<Value>().toInt(), 11);
-        EXPECT_NOT_EQUAL(countArgumentsFunctionVar.to<Function*>(), (Function*)0);
-        EXPECT_NOT_EQUAL(nativeFunctionVar.to<Function*>(), (Function*)0);
+		EXPECT(booleanVar.to<bool>());
+		EXPECT_EQUAL(integerVar.to<Int32>(), 77);
+		EXPECT_EQUAL(unsignedIntegerVar.to<UInt32>(), 99U);
+		EXPECT_EQUAL(doubleVar.to<double>(), 3.5);
+		EXPECT_EQUAL(charStringVar.to<std::wstring>(), L"hello");
+		EXPECT(standardStringVar.to<const String&>().isEqualTo(L"bye"));
+		const String* wPtr = wideStringVar.to<const String*>();
+		EXPECT(wPtr->isEqualTo(L"wide"));
+		Var unicodeString(rt, std::wstring(L"Hello \u00A9 \u20AC \u03A9"));
+		EXPECT_EQUAL(unicodeString.to<std::wstring>(), L"Hello \u00A9 \u20AC \u03A9");
+		EXPECT_EQUAL(objectVar.to<Object*>(), rawObject);
+		EXPECT_EQUAL(valueVar.to<Value>().toInt(), 11);
+		EXPECT_NOT_EQUAL(countArgumentsFunctionVar.to<Function*>(), (Function*)0);
+		EXPECT_NOT_EQUAL(nativeFunctionVar.to<Function*>(), (Function*)0);
 	const Value args2[4] = { 1, 2, 3, 4 };
 	EXPECT_EQUAL(countArgumentsFunctionVar(VarList(rt, 4, args2)), 4);
 	EXPECT_EQUAL(countArgumentsFunctionVar(VarList(rt, true)), 1);
@@ -926,56 +926,56 @@ static void testHighLevelAPI() {
 	EXPECT_EQUAL(nativeFunctionVar(), 42);
 	EXPECT_EQUAL(boundMethodVar().to<double>(), 123.456);
 
-        EXPECT_EQUAL(object["foo"].to<Int32>(), 123);
-        EXPECT_EQUAL(object["foo"].to<UInt32>(), 123U);
-        EXPECT(object["foo"].to<bool>());
-        Value val = charStringVar.to<Value>();
-        EXPECT(val.isString());
+		EXPECT_EQUAL(object["foo"].to<Int32>(), 123);
+		EXPECT_EQUAL(object["foo"].to<UInt32>(), 123U);
+		EXPECT(object["foo"].to<bool>());
+		Value val = charStringVar.to<Value>();
+		EXPECT(val.isString());
 }
 
 static void readMeSample1() {
-    std::wstringstream strout;
+	std::wstringstream strout;
 
-    Heap heap;                                          // We use the standard heap.
-    Runtime rt(heap);                                   // Construct an empty engine.
-    rt.setupStandardLibrary();                          // Install the ES3 standard library.
-    Var helloWorld = rt.eval("'hello ' + 'world'");     // Evaluate a JS expression.
-    strout << helloWorld << std::endl;
+	Heap heap;                                          // We use the standard heap.
+	Runtime rt(heap);                                   // Construct an empty engine.
+	rt.setupStandardLibrary();                          // Install the ES3 standard library.
+	Var helloWorld = rt.eval("'hello ' + 'world'");     // Evaluate a JS expression.
+	strout << helloWorld << std::endl;
 
 	const std::wstring result = strout.str();
-    EXPECT_EQUAL(result, L"hello world\n");
+	EXPECT_EQUAL(result, L"hello world\n");
 }
 
 static void readMeSample2() {
-    std::wstringstream strout;
+	std::wstringstream strout;
 
-    Heap heap;                                          // We use the standard heap.
-    Runtime rt(heap);                                   // Construct an empty engine.
-    rt.setupStandardLibrary();                          // Install the ES3 standard library.
-    rt.setMemoryCap(1024 * 1024);                       // Max 1MB of memory please.
-    rt.resetTimeOut(10);                                // Time-out JS code after 10 seconds.
-    Var globals = rt.getGlobalsVar();
+	Heap heap;                                          // We use the standard heap.
+	Runtime rt(heap);                                   // Construct an empty engine.
+	rt.setupStandardLibrary();                          // Install the ES3 standard library.
+	rt.setMemoryCap(1024 * 1024);                       // Max 1MB of memory please.
+	rt.resetTimeOut(10);                                // Time-out JS code after 10 seconds.
+	Var globals = rt.getGlobalsVar();
 	
-    // Set up the native function and a JS demo function that calls it.
-    globals["sum"] = sum;
-    rt.run("function demo(a,b,c) { return 'a+b+c = ' + sum(a,b,c); }");
-    strout << globals["demo"](7, 15, 20) << std::endl;
+	// Set up the native function and a JS demo function that calls it.
+	globals["sum"] = sum;
+	rt.run("function demo(a,b,c) { return 'a+b+c = ' + sum(a,b,c); }");
+	strout << globals["demo"](7, 15, 20) << std::endl;
 	
-    // Lets go silly. Create an anonymous function with eval that simply returns its arguments.
-    Var sillyFunction = rt.eval("(function() { return arguments; })");
+	// Lets go silly. Create an anonymous function with eval that simply returns its arguments.
+	Var sillyFunction = rt.eval("(function() { return arguments; })");
 	
-    // `Var` protects data from being garbage collected.
-    // In this case, a `String` is created on the heap for "131".
-    Var oneThreeOne(rt, "131");
+	// `Var` protects data from being garbage collected.
+	// In this case, a `String` is created on the heap for "131".
+	Var oneThreeOne(rt, "131");
 	
-    // If we have more arguments than there, we use a `Value` array instead.
-    const Value args[10] = { oneThreeOne, 535, 236, 984, 456.5, 666, 626, 585, 382, 109.5 };
+	// If we have more arguments than there, we use a `Value` array instead.
+	const Value args[10] = { oneThreeOne, 535, 236, 984, 456.5, 666, 626, 585, 382, 109.5 };
 	
-    // Call the silly function. The VarList encapsulates and protects the argument values.
-    Var list = sillyFunction(VarList(rt, 10, args));
+	// Call the silly function. The VarList encapsulates and protects the argument values.
+	Var list = sillyFunction(VarList(rt, 10, args));
 	
-    // Now call the equivalent of the Javascript code: `sum.apply(null, list)` from C++.
-    strout << globals["sum"]["apply"](Value::NUL, list) << std::endl;
+	// Now call the equivalent of the Javascript code: `sum.apply(null, list)` from C++.
+	strout << globals["sum"]["apply"](Value::NUL, list) << std::endl;
 	
 	// C++ == operator checks for strict equality like JS ===
 	strout << "1 == true: " << (Var(rt, 1) == true ? "true" : "false") << std::endl;
@@ -1004,7 +1004,7 @@ static void readMeSample2() {
 	strout << std::endl;
 
 	const std::wstring result = strout.str();
-    EXPECT_EQUAL(result, L"a+b+c = 42\n4711\n1 == true: false\n1.equals(true): true\n[object Date]\n2008-08-20 00:00:00\n4 8 15 16 23 42 \n");
+	EXPECT_EQUAL(result, L"a+b+c = 42\n4711\n1 == true: false\n1.equals(true): true\n[object Date]\n2008-08-20 00:00:00\n4 8 15 16 23 42 \n");
 }
 
 // --- Testing the test framework ---
@@ -1812,14 +1812,14 @@ int main(int argc, const char* argv[]) {
 		testStrings();
 		testTables();
 		testVars();
-                testArrayVars();
-                testJSON();
-                testCompilation();
-                testLimits();
-                testHighLevelAPI();
-                readMeSample1();
-		readMeSample2();
-		if (failureCount == 0) {
+	testArrayVars();
+	testJSON();
+	testCompilation();
+	testLimits();
+	testHighLevelAPI();
+	readMeSample1();
+	readMeSample2();
+	if (failureCount == 0) {
 			std::cout << "All " << testCount << " checks passed successfully" << std::endl << std::endl;
 			return 0;
 		} else {

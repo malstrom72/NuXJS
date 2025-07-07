@@ -559,10 +559,10 @@ class JoiningEnumerator : public Enumerator {
 	Note that although the ECMAScript specification clearly separates string values from String objects, this
 	implementation regards both as Objects for efficiency (e.g. for quickly retrieving properties like the character
 	elements and "length").
- 
+
 	String is immutable and it will never contain any references to other objects. Therefore it is ok to not place them
 	in a heap. (See GCItem for more info.)
- 
+
 	The ECMAScript String object on the other hand is represented by an extensible StringWrapper.
 **/
 class String : public Object {
@@ -666,10 +666,10 @@ class JSObject : public Object, public Table {
 		are most often not treated as objects by the user.
 	
 	2) 	Memory: until the user accesses or adds properties, LazyJSObjects can be super tiny (vtable pointer + pointer to
-	    complete object + whatever internal fields are needed).
+		complete object + whatever internal fields are needed).
 	
 	3) 	Doesn't require a Runtime or even a Heap to be constructed. Although they are required to be placed on the heap
-	    since they contain a reference.
+		since they contain a reference.
 	
 	This class is a template so this concept can be used with different super classes.
 **/
@@ -843,13 +843,13 @@ class Scope : public GCItem {
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		Value* getLocalsPointer() const { return localsPointer; }
 		Scope* getParentScope() const { return parentScope; }
-                void makeClosure() const;
+				void makeClosure() const;
 		void leave() { if (deleteOnPop) { delete this; } }
 	
 	protected:
 		Scope* const parentScope;
 		Value* localsPointer; // Pointer is offset so that negative indexes addresses local variables and positive indexes addresses arguments.
-                mutable bool deleteOnPop;
+				mutable bool deleteOnPop;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, parentScope);
@@ -1281,8 +1281,8 @@ template<typename T0, typename T1> inline Var AccessorBase::apply(Object* thisOb
 	return rt.call(*this, 2, argv, thisObject);
 }
 template<typename T0, typename T1, typename T2> inline Var AccessorBase::apply(Object* thisObject, const T0& arg0, const T1& arg1, const T2& arg2) const {
-        const Value argv[3] = { makeValue(arg0), makeValue(arg1), makeValue(arg2) };
-        return rt.call(*this, 3, argv, thisObject);
+		const Value argv[3] = { makeValue(arg0), makeValue(arg1), makeValue(arg2) };
+		return rt.call(*this, 3, argv, thisObject);
 }
 inline AccessorBase::const_iterator AccessorBase::end() const { return const_iterator(rt, 0); }
 inline Value AccessorBase::makeValue(const AccessorBase& v) const { return v.operator Value(); }
