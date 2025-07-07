@@ -1188,14 +1188,14 @@ void* Heap::allocate(size_t size) {
 	return p + 1;
 }
 
-void Heap::free(void *ptr) {
+void Heap::free(void* ptr) {
 	assert(ptr != 0);
 	assert(sizeof (size_t) >= sizeof (void*));	// we presume we can fit a pointer in the same memory as a size_t
 	size_t* p = reinterpret_cast<size_t*>(ptr) - 1;
 	size_t size = *p;
 	const int poolIndex = calcPoolIndex(size);
 	if (poolIndex >= 0) {
-		*(void **)(p) = pools[poolIndex];
+		*(void**)(p) = pools[poolIndex];
 		assert(0 <= poolIndex && poolIndex < MAX_POOLED_SIZE / POOL_SIZE_GRANULARITY);
 		pools[poolIndex] = p;
 		pooledSize += size;
@@ -1225,7 +1225,7 @@ void Heap::drain() {
 	for (int poolIndex = 0; poolIndex < MAX_POOLED_SIZE / POOL_SIZE_GRANULARITY; ++poolIndex) {
 		void* p = pools[poolIndex];
 		while (p != 0) {
-			void* n = *(void **)(p);
+			void* n = *(void**)(p);
 			releaseMemory(p, (poolIndex * POOL_SIZE_GRANULARITY + sizeof (size_t)));
 			p = n;
 		}
