@@ -715,112 +715,6 @@ static void testLimits() {
 	rt.noTimeOut();
 }
 
-#if 0
-	EXPECT_EQUAL(globals.to<Object*>(), rt.getGlobalObject());
-
-	public:		operator Value() const { return get(); }
-				operator double() const { return get().toDouble(); }
-				operator Object*() const { return get().toObject(rt, true); }
-				operator Function*() const { return get().toFunction(rt.getHeap()); }
-				operator std::wstring() const { return get().toWideString(rt.getHeap()); }
-				operator const String&() const { return *get().toString(rt.getHeap()); }
-				template<typename T> T to() const { return static_cast<T>(*this); }
-				Var operator()() const;
-				template<typename T0> Var operator()(const T0& arg0) const;
-				template<typename T0, typename T1> Var operator()(const T0& arg0, const T1& arg1) const;
-				template<typename T0, typename T1, typename T2> Var operator()(const T0& arg0, const T1& arg1, const T2& arg2) const;
-				Var operator()(const VarList& args) const;
-				template<typename T> const Property operator[](const T& key) const;
-				template<typename T> bool operator==(const T& t) const { return get().isStrictlyEqualTo(makeValue(t)); }
-				template<typename T> bool operator!=(const T& t) const { return !get().isStrictlyEqualTo(makeValue(t)); }
-				template<typename T> bool operator<(const T& t) const { return get().isLessThan(makeValue(t)); }
-				template<typename T> bool operator<=(const T& t) const { return get().isLessThanOrEqualTo(makeValue(t)); }
-				template<typename T> bool operator>(const T& t) const { return t < (*this); }
-				template<typename T> bool operator>=(const T& t) const { return t <= (*this); }
-				Var typeOf() const;
-				template<typename T> bool has(const T& key) const { return get().toObject(rt, false)->hasProperty(rt, makeValue(key)); }
-				template<typename T> bool equals(const T& t) const { return get().isEqualTo(makeValue(t)); }
-				friend Var operator+(const AccessorBase& l, const AccessorBase& r);
-				template<typename T> friend Var operator+(const AccessorBase& l, const T& r);
-				UInt32 length();
-	rt.setMemoryCap(8192*10);
-	const Var anObject = rt.eval("({ a: 123.45, b: 'y' })");
-	const Var aValue = anObject["a"];
-	const std::wstring ws = anObject["a"];
-	anObject["c"] = 99;
-	anObject["z"] = rt.eval("(123)");
-	EXPECT_EQUAL(aValue.to<double>(), 123.45);
-	EXPECT_EQUAL(aValue, 123.45);
-	EXPECT_EQUAL(aValue.to<std::wstring>(), L"123.45");
-	EXPECT_EQUAL(ws, L"123.45");
-	EXPECT_EQUAL(static_cast<Var>(anObject["z"]), 123);
-	
-	Var v23(rt);
-	EXPECT_EQUAL(v23, Value::UNDEFINED);
-	EXPECT_EQUAL(v23.typeOf(), "undefined");
-	EXPECT_EQUAL(v23.to<std::wstring>(), L"undefined");
-	EXPECT_EQUAL(v23.to<bool>(), false);
-
-	std::wcout << rt.eval("s = 0; for (i = 0; i < 100; ++i) s += i; s") << std::endl;
-	double v = rt.eval("s = 0; for (i = 0; i < 100; ++i) s += i; s");
-
-	rt.setMemoryCap(512 * 1024 * 1024);
-	/*   JSObject globals(heap.roots(), &rt.objectPrototype);
-	rt.setGlobalObject(&globals);
-	*/
-	
-	rt.setupStandardLibrary();
-	globals["tezt"] = 55;
-	EXPECT(globals.has("tezt"));
-	EXPECT(!globals.has("ttezt"));
-	globals["tezt2"] = globals["tezt"];
-	double ddd = globals["tezt"];
-	globals["f"] = rt.eval("(function(a, b) { return a + b })");
-	globals["arr"] = rt.eval("([1,3,5,2,4,6])");
-	globals["test1"] = test1;
-	Var o = globals["o"] = new(heap) JSObject(heap.managed(), rt.getObjectPrototype());
-	o["gcTest"] = gcTest;
-	o["zub"] = "yo";
-	std::wcout << globals["f"](29, 99) << std::endl;
-	Var a = globals["arr"];
-	std::wcout << o["gcTest"]("hej", 12959) << std::endl;
-	std::wcout << o["gcTest"]("hej", 12959, "zzz") << std::endl;
-	const Value list[4] = { Var(rt, "a"), Var(rt, "bcd"), Var(rt, 1391), Var(rt, "zz9z9") };
-	std::wcout << o["gcTest"](VarList(rt, 4, list)) << std::endl;
-	std::wcout << globals["o"][o["gcTest"]("zub")] << std::endl;
-
-	globals["o2"] = rt.newObject();
-	Var arrr = globals["o2"]["a"] = rt.newArray();
-	for (int i = 0; i < 22; ++i) arrr[i] = i * 3;
-	std::wcout << globals["o2"]["a"]["length"] << std::endl;
-	std::wcout << globals["o2"]["a"]["toString"]() << std::endl;
-	std::wcout << globals["o2"]["a"][15]["toString"](16) << std::endl;
-
-	Var regExp = rt.eval("(/x.*y/)");
-	std::wcout << regExp["test"]("xyzzzy") << std::endl;
-//	a = 55;
-	for (int i = 0; i < a.length(); ++i) {
-		std::wcout << a[i] << std::endl;
-		a[i] = a[i] * 2;
-	}
-	
-	Var nativeObjectPrototype = rt.newObject();
-	nativeObjectPrototype["testMethod1"] = NativeObject::testMethod1;
-//	nativeObjectPrototype["testMethod2"] = new(rt.getHeap()) VarMemberFunctionAdapter<NativeObject>(rt.getHeap().managed(), &NativeObject::testMethod2);
-	nativeObjectPrototype["nativeMethod"] = &NativeObject::nativeMethod;
-	globals["NativeObject"] = NativeObject::construct;
-	globals["NativeObject"]["prototype"] = nativeObjectPrototype;
-	
-	globals["NativeObject2"] = new(heap) NativeConstructor(heap.managed(), nativeObjectPrototype);
-	
-	BindingTestObject bindingTestObject;
-	globals["bound"] = Var(rt, &bindingTestObject, &BindingTestObject::method);
-	
-	Var booool(rt);
-	std::wcout << (booool.to<bool>() ? L"true" : L"false") << std::endl;
-}
-#endif
-
 // C++ functions that you want to call from Javascript should have these arguments.
 static Var sum(Runtime& rt, const Var& thisVar, const VarList& args) {
 	double sum = 0.0;
@@ -847,71 +741,71 @@ static Value returnFortyTwo(Runtime&, Processor&, UInt32, const Value*, Object*)
 }
 
 static void testHighLevelAPI() {
-		std::cout << std::endl << "***** High Level API *****" << std::endl << std::endl;
+	std::cout << std::endl << "***** High Level API *****" << std::endl << std::endl;
 
-		Heap heap;
-		Runtime rt(heap);
-		rt.setupStandardLibrary();
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
 
-		Var globals = rt.getGlobalsVar();
+	Var globals = rt.getGlobalsVar();
 
-		globals["add"] = addFunction;
-		EXPECT_EQUAL(globals["add"](4, 5), 9);
+	globals["add"] = addFunction;
+	EXPECT_EQUAL(globals["add"](4, 5), 9);
 
-		const Value values[3] = { 1, 2, 3 };
-		EXPECT_EQUAL(globals["add"](VarList(rt, 3, values)), 6);
+	const Value values[3] = { 1, 2, 3 };
+	EXPECT_EQUAL(globals["add"](VarList(rt, 3, values)), 6);
 
-		Var object(rt.newObjectVar());
-		object["foo"] = 123;
-		object["bar"] = "abc";
-		EXPECT_EQUAL(object["foo"], 123);
-		EXPECT_EQUAL(object["bar"].to<std::wstring>(), L"abc");
-		EXPECT(object.has("foo"));
-		EXPECT(!object.has("baz"));
+	Var object(rt.newObjectVar());
+	object["foo"] = 123;
+	object["bar"] = "abc";
+	EXPECT_EQUAL(object["foo"], 123);
+	EXPECT_EQUAL(object["bar"].to<std::wstring>(), L"abc");
+	EXPECT(object.has("foo"));
+	EXPECT(!object.has("baz"));
 
-		Var array(rt.newArrayVar());
-		for (int i = 0; i < 5; ++i) array[i] = i * 2;
-		EXPECT_EQUAL(array.size(), 5);
-		EXPECT_EQUAL(array[2], 4);
-		EXPECT(array.has(4));
-		EXPECT(!array.has(5));
+	Var array(rt.newArrayVar());
+	for (int i = 0; i < 5; ++i) array[i] = i * 2;
+	EXPECT_EQUAL(array.size(), 5);
+	EXPECT_EQUAL(array[2], 4);
+	EXPECT(array.has(4));
+	EXPECT(!array.has(5));
 
-		rt.run("function mul(a,b){ return a*b; }");
-		EXPECT_EQUAL(globals["mul"](6, 7), 42);
+	rt.run("function mul(a,b){ return a*b; }");
+	EXPECT_EQUAL(globals["mul"](6, 7), 42);
 
-		EXPECT(object["foo"].equals(123));
-		EXPECT(object["foo"] == 123);
-		EXPECT(object["foo"] != 124);
+	EXPECT(object["foo"].equals(123));
+	EXPECT(object["foo"] == 123);
+	EXPECT(object["foo"] != 124);
 
-		Var booleanVar(rt, true);
-		Var integerVar(rt, 77);
-		Var unsignedIntegerVar(rt, static_cast<UInt32>(99));
-		Var doubleVar(rt, 3.5);
-		Var charStringVar(rt, "hello");
-		Var standardStringVar(rt, std::string("bye"));
-		Var wideStringVar(rt, std::wstring(L"wide"));
-		JSObject* rawObject = rt.newJSObject();
-		Var objectVar(rt, rawObject);
-		Var valueVar(rt, Value(11));
-		Var countArgumentsFunctionVar(rt, countArguments);
-		Var nativeFunctionVar(rt, returnFortyTwo);
-		BindingTestObject bindingTestObject;
-		Var boundMethodVar(rt, &bindingTestObject, &BindingTestObject::method);
+	Var booleanVar(rt, true);
+	Var integerVar(rt, 77);
+	Var unsignedIntegerVar(rt, static_cast<UInt32>(99));
+	Var doubleVar(rt, 3.5);
+	Var charStringVar(rt, "hello");
+	Var standardStringVar(rt, std::string("bye"));
+	Var wideStringVar(rt, std::wstring(L"wide"));
+	JSObject* rawObject = rt.newJSObject();
+	Var objectVar(rt, rawObject);
+	Var valueVar(rt, Value(11));
+	Var countArgumentsFunctionVar(rt, countArguments);
+	Var nativeFunctionVar(rt, returnFortyTwo);
+	BindingTestObject bindingTestObject;
+	Var boundMethodVar(rt, &bindingTestObject, &BindingTestObject::method);
 
-		EXPECT(booleanVar.to<bool>());
-		EXPECT_EQUAL(integerVar.to<Int32>(), 77);
-		EXPECT_EQUAL(unsignedIntegerVar.to<UInt32>(), 99U);
-		EXPECT_EQUAL(doubleVar.to<double>(), 3.5);
-		EXPECT_EQUAL(charStringVar.to<std::wstring>(), L"hello");
-		EXPECT(standardStringVar.to<const String&>().isEqualTo(L"bye"));
-		const String* wPtr = wideStringVar.to<const String*>();
-		EXPECT(wPtr->isEqualTo(L"wide"));
-		Var unicodeString(rt, std::wstring(L"Hello \u00A9 \u20AC \u03A9"));
-		EXPECT_EQUAL(unicodeString.to<std::wstring>(), L"Hello \u00A9 \u20AC \u03A9");
-		EXPECT_EQUAL(objectVar.to<Object*>(), rawObject);
-		EXPECT_EQUAL(valueVar.to<Value>().toInt(), 11);
-		EXPECT_NOT_EQUAL(countArgumentsFunctionVar.to<Function*>(), (Function*)0);
-		EXPECT_NOT_EQUAL(nativeFunctionVar.to<Function*>(), (Function*)0);
+	EXPECT(booleanVar.to<bool>());
+	EXPECT_EQUAL(integerVar.to<Int32>(), 77);
+	EXPECT_EQUAL(unsignedIntegerVar.to<UInt32>(), 99U);
+	EXPECT_EQUAL(doubleVar.to<double>(), 3.5);
+	EXPECT_EQUAL(charStringVar.to<std::wstring>(), L"hello");
+	EXPECT(standardStringVar.to<const String&>().isEqualTo(L"bye"));
+	const String* wPtr = wideStringVar.to<const String*>();
+	EXPECT(wPtr->isEqualTo(L"wide"));
+	Var unicodeString(rt, std::wstring(L"Hello \u00A9 \u20AC \u03A9"));
+	EXPECT_EQUAL(unicodeString.to<std::wstring>(), L"Hello \u00A9 \u20AC \u03A9");
+	EXPECT_EQUAL(objectVar.to<Object*>(), rawObject);
+	EXPECT_EQUAL(valueVar.to<Value>().toInt(), 11);
+	EXPECT_NOT_EQUAL(countArgumentsFunctionVar.to<Function*>(), (Function*)0);
+	EXPECT_NOT_EQUAL(nativeFunctionVar.to<Function*>(), (Function*)0);
 	const Value args2[4] = { 1, 2, 3, 4 };
 	EXPECT_EQUAL(countArgumentsFunctionVar(VarList(rt, 4, args2)), 4);
 	EXPECT_EQUAL(countArgumentsFunctionVar(VarList(rt, true)), 1);
@@ -925,12 +819,11 @@ static void testHighLevelAPI() {
 	EXPECT_EQUAL(countArgumentsFunctionVar.apply(0, 1, 2, 3), 3);
 	EXPECT_EQUAL(nativeFunctionVar(), 42);
 	EXPECT_EQUAL(boundMethodVar().to<double>(), 123.456);
-
-		EXPECT_EQUAL(object["foo"].to<Int32>(), 123);
-		EXPECT_EQUAL(object["foo"].to<UInt32>(), 123U);
-		EXPECT(object["foo"].to<bool>());
-		Value val = charStringVar.to<Value>();
-		EXPECT(val.isString());
+	EXPECT_EQUAL(object["foo"].to<Int32>(), 123);
+	EXPECT_EQUAL(object["foo"].to<UInt32>(), 123U);
+	EXPECT(object["foo"].to<bool>());
+	Value val = charStringVar.to<Value>();
+	EXPECT(val.isString());
 }
 
 static void readMeSample1() {
@@ -1771,33 +1664,6 @@ void testTables() {
 		EXPECT_NOT_EQUAL(b, (Table::Bucket*)(0));
 		EXPECT(table.update(b, Value(4711)));
 	}
-	#if 0
-								Value getValue() const {
-									assert(valueExists() && (flags & INDEX_TYPE_FLAG) == 0);
-									return Value(static_cast<Value::Type>(type), var);
-								}
-								Int32 getIndexValue() const {
-									assert(valueExists() && (flags & INDEX_TYPE_FLAG) != 0);
-									return index;
-								}
-								Flags getFlags() const { return flags; }
-								const String* getKey() const { assert(keyExists()); return key; }
-								bool doEnumerate() const { return ((flags & DONT_ENUM_FLAG) == 0); }
-								bool hasStandardFlags() const { return flags == EXISTS_FLAG; }
-								bool valueExists() const { return (key != 0 && ((flags & EXISTS_FLAG) != 0)); }
-
-				Bucket* getFirst() const;											///< Returns first bucket with an existing value or 0.
-				Bucket* getNext(Bucket* bucket) const;								///< Returns next bucket with an existing value or 0.
-				const Bucket* lookup(const String* key) const;						///< Return bucket pointer for key or 0.
-				Bucket* lookup(const String* key);									///< Return bucket pointer for key or 0.
-				Bucket* insert(const String* key);									///< Insert key (if necessary) and return bucket pointer.
-				bool update(Bucket* bucket, const Value& value, Flags flags = 0);	///< Update value. Returns false if bucket is marked as read-only.
-				bool erase(Bucket* bucket);											///< Deletes bucket. Returns false if bucket is marked as dont-delete.
-				UInt32 getLoadCount() const;										///< Returns number of used hash table entries (not necessarily the same as the number of existing buckets!).
-				void update(Bucket* bucket, const Int32 index);						///< Update value as an index. Only used by name to index tables as an optimization.
-				void gcMarkReferences(Heap& heap) const;
-#endif
-
 }
 
 // --- main ---
@@ -1812,14 +1678,14 @@ int main(int argc, const char* argv[]) {
 		testStrings();
 		testTables();
 		testVars();
-	testArrayVars();
-	testJSON();
-	testCompilation();
-	testLimits();
-	testHighLevelAPI();
-	readMeSample1();
-	readMeSample2();
-	if (failureCount == 0) {
+		testArrayVars();
+		testJSON();
+		testCompilation();
+		testLimits();
+		testHighLevelAPI();
+		readMeSample1();
+		readMeSample2();
+		if (failureCount == 0) {
 			std::cout << "All " << testCount << " checks passed successfully" << std::endl << std::endl;
 			return 0;
 		} else {
