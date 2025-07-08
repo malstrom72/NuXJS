@@ -41,6 +41,11 @@ bool isFinite(double d);
 class GCList;
 class Heap;
 
+/**
+	GCItem is the base class for anything tracked by the garbage
+	collector. Instances are allocated from a Heap and linked into a
+	GCList for mark and sweep.
+**/
 class GCItem {
 	friend class GCList;
 	friend class Heap;
@@ -80,7 +85,11 @@ class GCItem {
 		static void operator delete[](void*); // N/A
 };
 
-/// These are double-linked circular lists with a dummy node first to minimize code complexity.
+/**
+	GCList is a simple intrusive list used by the garbage collector.
+	Lists are double linked and contain a dummy node to keep the
+	implementation small.
+**/
 class GCList : public GCItem {
 	friend class GCItem;
 	friend class Heap;
@@ -104,6 +113,11 @@ inline GCItem::~GCItem() { if (_gcList != 0) { _gcList->relinquish(this); } }
 const int MAX_POOLED_SIZE = 1024;
 const int POOL_SIZE_GRANULARITY = 16;
 const UInt32 MAX_SINGLE_ALLOCATION_SIZE = 2147483648U;
+/**
+	Heap manages memory allocation for all GCItems. It keeps track of
+	allocated blocks and owns the GC lists used during garbage
+	collection.
+	**/
 class Heap {
 	public:
 		Heap();
@@ -318,8 +332,13 @@ template<typename T, UInt32 INTERNAL_COUNT = DEFAULT_INTERNAL_COUNT> class Vecto
 class String;
 class Object;
 class Function;
-class JSArray;
 class Error;
+class JSArray;
+/**
+	Value represents a generic JavaScript value. It can hold
+	primitive types as well as object references and provides
+	conversion and comparison helpers.
+**/
 class Value {
 	friend class Table;
 	
@@ -411,8 +430,12 @@ const Flags STANDARD_FLAGS = EXISTS_FLAG;	///< use with setOwnProperty()
 const Flags HIDDEN_CONST_FLAGS = READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG | EXISTS_FLAG;
 const Flags NONEXISTENT = 0;		///< use with getOwnProperty() to check for existence, e.g. getOwnProperty(o, k, v) != NONEXISTENT
 const UInt32 TABLE_BUILT_IN_N = 3; ///< 1 << 3 == 8
-class Table {
-	public:
+/**
+	Table implements a hash table for storing object properties.
+	It provides fast lookup and is used internally by JS objects.
+	**/
+	class Table {
+		public:
 		/**
 			The main reason why Bucket doesn't contain the Value class, but rather holds it's own Byte type and Variant
 			union, is memory. This solution makes it possible to squeeze in key flags and a truncated 16-bit hash (for
@@ -474,8 +497,12 @@ class Table {
 class Enumerator;
 class Processor;
 class Runtime;
-
-class Object : public GCItem {
+/**
+	Object is the root for all scriptable objects. It provides the
+	default implementations for property access and prototype handling.
+**/
+	
+	class Object : public GCItem {
 	public:
 		typedef GCItem super;
 	
@@ -521,6 +548,10 @@ class Enumerator : public Object {
 	protected:
 		Enumerator() { }
 		Enumerator(GCList& gcList) : super(gcList) { }
+/**
+	RangeEnumerator iterates over a numeric range and returns each
+		index as a string when requested.
+	**/
 };
 
 class RangeEnumerator : public Enumerator {
@@ -535,6 +566,10 @@ class RangeEnumerator : public Enumerator {
 		Int32 index;
 };
 
+/**
+	JoiningEnumerator chains two enumerators, yielding all properties
+	from one followed by another.
+**/
 class JoiningEnumerator : public Enumerator {
 	public:
 		typedef Enumerator super;
@@ -618,6 +653,10 @@ class String : public Object {
 
 inline bool Value::equalsString(const String& s) const { return (type == STRING_TYPE && s.isEqualTo(*var.string)); }
 inline std::wstring Value::toWideString(Heap& heap) const { return toString(heap)->toWideString(); }
+/**
+	StringListEnumerator enumerates over a list of strings provided
+	at construction time.
+**/
 
 class StringListEnumerator : public Enumerator {
 	public:
@@ -635,7 +674,11 @@ class StringListEnumerator : public Enumerator {
 			super::gcMarkReferences(heap);
 		}
 };
-
+		/**
+			JSObject represents a standard extensible JavaScript object with
+			its own property table and prototype pointer.
+		**/
+	
 class JSObject : public Object, public Table {
 	public:
 		typedef Object super;
@@ -693,6 +736,10 @@ template<class SUPER> class LazyJSObject : public SUPER {
 		}
 };
 
+/**
+		JSArray implements the built in JavaScript array with support for a
+		dense element vector and lazy object creation.
+**/
 class JSArray : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
@@ -727,7 +774,11 @@ class JSArray : public LazyJSObject<Object> {
 		}
 };
 
-// Separate from Code so that multiple functions can share the same constants (purely an optimization).
+/**
+	Constants hold literal values shared between Code objects. This
+	separation allows different functions to reuse the same constant
+	pool as an optimization.
+**/
 class Constants : public GCItem, public Vector<Value> {
 	public:
 		typedef GCItem super;
@@ -740,8 +791,11 @@ class Constants : public GCItem, public Vector<Value> {
 		}
 };
 
-// This is an Object so that we can store it as a constant and also in Table
-// FIX : maybe split into seperate FunctionCode for function's (most fields only apply to functions)
+/**
+	Code represents compiled bytecode and associated metadata. It is an
+	Object so that it can be stored as a constant and referenced by
+	multiple functions.
+	**/
 class Code : public Object {
 	friend class FunctionScope;
 	friend class Compiler; // FIX : maybe not one day?
@@ -823,9 +877,13 @@ template<class F> struct FunctorAdapter : public Function {
 	F f;
 };
 
-class ExtensibleFunction : public LazyJSObject<Function> {
-	public:
-		typedef LazyJSObject<Function> super;
+/**
+	ExtensibleFunction forms the basis for user defined functions that
+	behave like normal objects when accessed lazily.
+	**/
+		class ExtensibleFunction : public LazyJSObject<Function> {
+		public:
+			typedef LazyJSObject<Function> super;
 		ExtensibleFunction(GCList& gcList) : super(gcList) { }
 
 	protected:
@@ -833,6 +891,10 @@ class ExtensibleFunction : public LazyJSObject<Function> {
 		void createPrototypeObject(Runtime& rt, Object* forObject, bool dontEnumPrototype) const;
 };
 
+/**
+	Scope represents a lexical environment chain used during execution.
+		It stores local variables and links to a parent scope.
+	**/
 class Scope : public GCItem {
 	public:
 		typedef GCItem super;
@@ -857,6 +919,10 @@ class Scope : public GCItem {
 		}
 };
 
+/**
+	JSFunction encapsulates a piece of executable script with its
+		associated scope closure.
+	**/
 class JSFunction : public ExtensibleFunction {
 	friend class FunctionScope;
 	friend class Processor;
@@ -887,6 +953,10 @@ enum ErrorType {
 	GENERIC_ERROR, EVAL_ERROR, RANGE_ERROR, REFERENCE_ERROR, SYNTAX_ERROR, TYPE_ERROR, URI_ERROR, ERROR_TYPE_COUNT
 };
 
+/**
+	Error represents the standard JavaScript Error objects and stores
+		the error type together with optional name and message.
+	**/
 class Error : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
@@ -916,6 +986,10 @@ class Error : public LazyJSObject<Object> {
 		}
 };
 
+/**
+	FunctionScope manages local variables for an executing function and
+		provides fast access during interpretation.
+	**/
 class FunctionScope : public Scope {
 	friend class Arguments;
 	
@@ -956,6 +1030,10 @@ const size_t STRING_CONSTANTS_CACHE_SIZE = (1 << STRING_CONSTANTS_CACHE_SIZE_N);
 const size_t STRING_CONSTANTS_CACHE_MAX_LENGTH = 64;	///< Max length of a string to cache.
 const size_t MAX_MEMORY_CAP = std::numeric_limits<std::size_t>::max();
 
+/**
+		Runtime bundles together the heap, global objects and execution
+		state required to run JavaScript code.
+**/
 class Runtime : public GCItem {
 	friend class Processor;
 	friend struct Support;
@@ -1105,7 +1183,10 @@ class Property;
 class Iterator;
 typedef Var (*VarFunction)(Runtime& rt, const Var& thisObject, const VarList& args);
 
-/// AccessorBase is an internal-only base class for Var and Property.
+/**
+	AccessorBase is an internal-only base class for Var and Property.
+	It exposes the common read/call interface used by both helpers.
+**/
 class AccessorBase {
 	friend class Var;
 	friend class Property;
@@ -1172,6 +1253,10 @@ template<> inline Int32 AccessorBase::to<Int32>() const { return get().toInt(); 
 template<> inline UInt32 AccessorBase::to<UInt32>() const { return static_cast<UInt32>(get().toInt()); }	// Adding an operator unsigned int() would cause ambiguity with implicit casts, but to<UInt32> is still a good idea.
 template<> inline Value AccessorBase::to<Value>() const { return get(); } 			// to<Value> ends up ambigious without this.
 
+/**
+		Var is a garbage collected wrapper that exposes convenient C++
+		access to JavaScript values.
+**/
 class Var : public GCItem, public AccessorBase {
 	public:
 		typedef GCItem super;
@@ -1193,6 +1278,10 @@ class Var : public GCItem, public AccessorBase {
 		}
 };
 
+/**
+	Property is a helper that provides array-like syntax to access or
+		update object properties through Var.
+	**/
 class Property : public AccessorBase {
 	friend class AccessorBase;
 	
@@ -1209,6 +1298,10 @@ class Property : public AccessorBase {
 		const Var key;
 };
 
+/**
+	VarList is a convenience container for passing multiple arguments
+		between C++ and JavaScript.
+	**/
 class VarList : public GCItem, public Vector<Value> {
 	public:
 		typedef GCItem super;
@@ -1235,6 +1328,10 @@ class VarList : public GCItem, public Vector<Value> {
 		}
 };
 
+/**
+	const_iterator allows range-based iteration over properties returned
+		by an Enumerator.
+	**/
 class AccessorBase::const_iterator : public GCItem {
 	friend class AccessorBase;
 	public:
@@ -1362,6 +1459,10 @@ template<class C> Var::Var(Runtime& rt, C* cppObject, Var (C::*const& cppMethod)
 		: super(rt.getHeap().roots()), AccessorBase(rt)
 		, v(new(rt.getHeap()) BoundVarMemberFunctionAdapter<C>(rt.getHeap().managed(), cppObject, cppMethod)) { }
 
+/**
+	Processor is the virtual machine executing compiled bytecode for a
+		specific Runtime.
+	**/
 class Processor : public GCItem {
 	friend class JSFunction;
 	
@@ -1532,6 +1633,10 @@ class Processor : public GCItem {
 const Int32 INVALID_CODE_OFFSET = -0x7FFFFFFF;
 const Int32 DEAD_CODE_STACK_DEPTH = -0x7FFFFFFF;
 struct OperatorInfo;
+/**
+		Compiler translates JavaScript source code into bytecode stored in
+		a Code object.
+**/
 class Compiler : public GCItem {
 	public:
 		typedef GCItem super;
