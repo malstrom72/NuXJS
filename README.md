@@ -131,4 +131,7 @@ int main(int argc, const char* argv[]) {
 }
 ```
 
+## AI-Assisted Content
+
+This project occasionally uses AI (such as OpenAI Codex) to help with writing documentation, generating code comments, producing test code, and automating repetitive edits. All of the underlying source code has been hand-written and refined over many years.
 
