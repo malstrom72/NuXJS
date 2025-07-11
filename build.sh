@@ -2,11 +2,12 @@
 set -e -o pipefail
 cd "$(dirname "$0")"
 
-target=${1:-release}
-model=${2:-native}
+model=${1:-native}
 
-./tools/buildAndTest.sh "$target" "$model"
+for target in beta release; do
+	./tools/buildAndTest.sh "$target" "$model"
+done
 
-if [ -f "output/NuXJScript_${target}_${model}" ]; then
-	mv -f "output/NuXJScript_${target}_${model}" "output/NuXJScript"
+if [ -f "output/NuXJScript_release_${model}" ]; then
+	mv -f "output/NuXJScript_release_${model}" "output/NuXJScript"
 fi
