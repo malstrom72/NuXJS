@@ -24,3 +24,16 @@ Key style points:
 
 See `docs/NuXJS Documentation.md` for details on how `src/stdlib.js` is
 minified and converted to `src/stdlibJS.cpp` during the build.
+
+### Script portability
+All user-facing `.sh` and `.bat` files must work when launched from any directory.  
+They should start by changing to their own folder (or the repository root) so that
+relative paths resolve correctly.
+
+```bash
+# example for a shell script
+cd "$(dirname "$0")"/..
+
+REM example for a batch script
+CD /D "%~dp0\.."
+```
