@@ -21,8 +21,10 @@ running the test-suite.  The recommended entry point is:
 On Windows, use `build.cmd` instead.
 
 This wrapper builds and tests both the `beta` and `release` builds by calling
-`tools/buildAndTest.sh`. The native release REPL is renamed to
-`output/NuXJScript`. The build scripts then execute all regression tests.  The sources rely on IEEE-compliant floating-point math. The main implementation files contain `#error` directives that fire if `__FAST_MATH__` is defined. Ensure your compiler options do not enable `-Ofast`, `-ffast-math`, or similar flags, at least for `src/NuXJScript.cpp`.
+`tools/buildAndTest.sh`. Each build runs its tests as part of that script. Once
+both builds finish, the native release REPL is renamed to `output/NuXJScript`.
+The sources rely on IEEE-compliant floating-point math. The main implementation
+files contain `#error` directives that fire if `__FAST_MATH__` is defined. Ensure your compiler options do not enable `-Ofast`, `-ffast-math`, or similar flags, at least for `src/NuXJScript.cpp`.
 
 The standard library is kept in `src/stdlib.js`. During the build it is
 minified with `tools/stdlibMinifier.ppeg` and converted into a C++ source via
@@ -32,10 +34,10 @@ minified with `tools/stdlibMinifier.ppeg` and converted into a C++ source via
 ## Quick Start
 
 After cloning the repository, simply run `./build.sh` to build and test both
-release and beta builds. The script renames the native release REPL to
-`output/NuXJScript`. After building, you will find the interactive REPL
-program under `output/`. Running `./output/NuXJScript` starts a simple shell for
-evaluating JavaScript.
+release and beta builds. The script runs each build's tests and then renames the
+native release REPL to `output/NuXJScript`. After building, you will find the
+interactive REPL program under `output/`. Running `./output/NuXJScript` starts a
+simple shell for evaluating JavaScript.
 
 ## Embedding NuXJS
 
