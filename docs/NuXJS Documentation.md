@@ -13,14 +13,18 @@ features such as JSON and indexed string access.
 ## Building NuXJS
 
 The project supplies helper scripts under `tools/` for compiling and
-running the test-suite.  The main entry point is:
+running the test-suite.  The recommended entry point is:
 
 ```bash
-./tools/buildAndTest.sh
+./build.sh
 ```
-On Windows, use `buildAndTest.cmd` instead.
+On Windows, use `build.cmd` instead.
 
-which builds the engine and executes all regression tests.  The sources rely on IEEE-compliant floating-point math. The main implementation files contain `#error` directives that fire if `__FAST_MATH__` is defined. Ensure your compiler options do not enable `-Ofast`, `-ffast-math`, or similar flags, at least for `src/NuXJScript.cpp`.
+This wrapper builds and tests both the `beta` and `release` builds by calling
+`tools/buildAndTest.sh`. Each build runs its tests as part of that script. Once
+both builds finish, the native release REPL is renamed to `output/NuXJScript`.
+The sources rely on IEEE-compliant floating-point math. The main implementation
+files contain `#error` directives that fire if `__FAST_MATH__` is defined. Ensure your compiler options do not enable `-Ofast`, `-ffast-math`, or similar flags, at least for `src/NuXJScript.cpp`.
 
 The standard library is kept in `src/stdlib.js`. During the build it is
 minified with `tools/stdlibMinifier.ppeg` and converted into a C++ source via
@@ -29,11 +33,11 @@ minified with `tools/stdlibMinifier.ppeg` and converted into a C++ source via
 
 ## Quick Start
 
-After cloning the repository, simply run `tools/buildAndTest.sh` to build the
-library and execute the self-tests.  After building, you will find the
-interactive REPL program under `output/`. Running `./output/NuXJScript_debug`
-(or the corresponding build name) starts a simple shell for evaluating
-JavaScript.
+After cloning the repository, simply run `./build.sh` to build and test both
+release and beta builds. The script runs each build's tests and then renames the
+native release REPL to `output/NuXJScript`. After building, you will find the
+interactive REPL program under `output/`. Running `./output/NuXJScript` starts a
+simple shell for evaluating JavaScript.
 
 ## Embedding NuXJS
 
@@ -290,7 +294,7 @@ ECMAScript&nbsp;5 functionality including JSON and string indexing.
 ## Testing and Benchmarking
 
 The test suite resides in the `tests/` directory and is exercised by running
-the helper script `tools/buildAndTest.sh`.  Additional benchmark programs are
+the helper script `build.sh` (which invokes `tools/buildAndTest.sh`).  Additional benchmark programs are
 found under `benchmarks/`.
 
 ## Performance and Optimization Tips
@@ -300,7 +304,7 @@ usage and execution time of JavaScript code.
 
 ## Contributing
 
-Patches should be validated by running `./tools/buildAndTest.sh` before submission. Follow the existing C++03 style (avoid STL containers) and adhere to the naming conventions listed above.
+Patches should be validated by running `./build.sh` before submission. Follow the existing C++03 style (avoid STL containers) and adhere to the naming conventions listed above.
 
 ## License
 
