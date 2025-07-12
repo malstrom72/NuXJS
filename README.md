@@ -1,54 +1,53 @@
 # NuXJS
-A sandboxed, single C++ source, JavaScript engine with fine-grained control over execution.
+A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with fine-grained execution control.
 
 ## Features
 
-- **Fully EcmaScript 3 compliant** with partial EcmaScript 5 support where it is most essential.
-- The entire source is **two small .cpp files and one .h file**. (Total line count is around 7000.)
-- Written in standard architecture-agnostic vanilla C++03. Virtually **no platform-specific code**.
-- Fully asynchronous **non-blocking virtual machine**. You can run as many processor cycles as you want at a time.
-- Simple but reasonably **fast stack machine**. (Should perform well compared to other interpreting JS engines.)
-- **Sandboxed and secure**. JavaScript code should never be able to crash the host application.
-- Instantiate **any number of engines** in as many or as few threads that you wish.
-- Reentrant and **thread-safe by design**. (No global variables, no data is implicitly shared between engines.)
-- **Fast single-pass JavaScript compiler**. (Handwritten recursive descent/operator precedence parser.)
-- Mark-and-sweep (stop-the-world) **GC with adaptive rate of invocation** and memory usage cap.
-- Uses standard C++ heap (allocations are done with new, etc) with **pools for quick allocation** of small objects.
-- **Few library dependencies** (does not even use the standard C++ containers).
-- Built-in **standard library written in JavaScript** for non-blocking and secure execution.
-- **Regular expressions compiler** also written in Javascript. (Compiles to JavaScript functions.)
-- Optional **easy-to-use** high-level C++ API.
-- **Zero tolerance for bugs**. Plenty of tests.
+- **Fully ECMAScript 3 compliant** with focused ECMAScript 5 additions (string indexing, JSON).  
+- Entire engine fits in **one .cpp file, one .h file, and a `stdlib.js`** (~7 000 LOC of C++).  
+- Written in standard, architecture-agnostic **C++03** – *no* platform-specific code or STL containers.  
+- Fully asynchronous, **non-blocking VM**; run as many cycles as you like between host calls.  
+- Simple but **fast stack machine**; competitive with other interpreted JS engines.  
+- **Sandboxed and secure** – guest JS cannot crash the host process.  
+- Instantiate **any number of engines** across as many threads as you wish.  
+- Re-entrant and **thread-safe by design** (no hidden globals, nothing implicitly shared).  
+- **Fast single-pass compiler** (hand-written recursive-descent / precedence parser).  
+- Mark-and-sweep, stop-the-world **GC** with adaptive trigger rate and memory cap.  
+- Uses the standard C++ heap with **object pools** for quick allocation of small blocks.  
+- **Zero external dependencies** (even STL containers are avoided).  
+- **Standard library and regexp compiler written in JavaScript** for safety and clarity.  
+- **Easy-to-use high-level C++ API** for integrating and embedding the engine.  
+- **Extensive automated tests** – zero-tolerance for bugs.
 
 ## Why ECMAScript 3?
 
-ECMAScript 3 was the first widely adopted standardized version of JavaScript. It is a version that many programmers are
-familiar with, and imho it has got everything you need from a *scripting* language. Naturally, more recent versions of
-ECMAScript offers improvements, but at the cost of larger standard libraries and more complex compilers/interpreters.
-There is also something positive to be said about a standard that remained unchanged for ten years. No denying it,
-ECMAScript 3 was a hugely successful version of JavaScript and a good starting point for this implementation.
+ECMAScript 3 was the first broadly adopted JS standard; it provides everything needed in a *scripting* language without
+a large runtime or a complex compiler. Staying with ES3 keeps the engine tiny and predictable. Selective ES5 features are
+“back-ported” where they add clear value:
 
-With that said, there are a few features from ECMAScript 5 that I felt necessary to "retrofit" into this engine. Most
-notably:
-
-- Array indexed properties [ ] for reading individual characters from String objects.
-- JSON support.
+- Character indexing on `String` via `str[i]`
+- `JSON` support
 
 ## Why C++03?
 
-This project originally began a few years before the release of C++11. When I picked it up again, many years later, I
-decided to stick to the original C++03 style. Since the code is written in such a simple style (just a few basic
-templates and then plain vanilla C++ classes) and has so few dependencies on the C++ standard library, it feels almost
-irrelevant to update to a later C++ version.
+This project began a few years before C++11. When I resumed work on it, I chose to keep the original C++03 style for consistency. The code is simple — just basic templates and plain C++ classes — and has minimal dependencies, so updating to a newer C++ standard didn’t feel necessary. Some C++11 features would be useful, especially in the high-level API, but I have prioritized consistency.
 
-## Quick Start
-Run `./build.sh` (or `build.cmd` on Windows) to build and test.  \
-This calls `tools/buildAndTest.sh`, which compiles both beta and release versions.
-See `docs/NuXJS Documentation.md` for detailed instructions.
+## Prerequisites
 
-## High-level API Examples
+You will need a standard C++ compiler with C++03 support.
 
-A simple hello world.
+- On **macOS** or **Linux**, use `g++` or `clang++`.
+- On **Windows**, the build requires Microsoft Visual C++. Any version from Visual Studio 2008 (VC9.0) onward should work. The build script automatically locates the latest version using `vswhere.exe`, falling back to older versions if needed.
+
+## Build & Test
+
+Run `./build.sh` (or `build.cmd` on Windows) from the root. This calls `tools/buildAndTest.sh`, which builds both the **beta** and **release** configurations and runs all tests.
+
+Both the **beta** and **release** targets are compiled with optimizations enabled. The **beta** build retains runtime assertions for debugging purposes, while the **release** build disables assertions for maximum performance.
+
+## Example
+
+Here’s a minimal example of embedding NuXJS using the high-level API:
 
 ```cpp
 #include <NuXJScript.h>
@@ -64,82 +63,20 @@ int main(int argc, const char* argv[]) {
 }
 ```
 
-A slightly more complex program showing some security features, sharing of data and functions, and more.
+## Helper Scripts
 
-```cpp
-#include <NuXJScript.h>
-using namespace NuXJS;
+- `tools/buildGAZLCmd.sh / .bat` – builds the GAZL virtual machine
+- `tools/BuildImpala.sh / .bat` – builds the Impala compiler and packages the output
 
-// C++ functions that you want to call from JavaScript should have these arguments.
-static Var sum(Runtime& rt, const Var& thisVar, const VarList& args) {
-    double sum = 0.0;
-    for (int i = 0; i < args.size(); ++i) {
-        sum += args[i];
-    }
-    return Var(rt, sum);    // A `Var` owns its `Value` (sum) and is tied to a `Runtime` (rt)
-}
+## Documentation
 
-int main(int argc, const char* argv[]) {
-    Heap heap;                                          // We use the standard heap.
-    Runtime rt(heap);                                   // Construct an empty engine.
-    rt.setupStandardLibrary();                          // Install the ES3 standard library.
-    rt.setMemoryCap(1024 * 1024);                       // Max 1MB of memory please.
-    rt.resetTimeOut(10);                                // Time-out JS code after 10 seconds.
-    Var globals = rt.getGlobalsVar();
-    
-    // Set up the native function and a JS demo function that calls it.
-    globals["sum"] = sum;
-    rt.run("function demo(a,b,c) { return 'a+b+c = ' + sum(a,b,c); }");
-    std::wcout << globals["demo"](7, 15, 20) << std::endl;
-    
-    //Let's go silly. Create an anonymous function with eval that simply returns its arguments.
-    Var sillyFunction = rt.eval("(function() { return arguments; })");
-    
-    // `Var` protects data from being garbage collected.
-    // In this case, a `String` is created on the heap for "131".
-    Var oneThreeOne(rt, "131");
-    
-    // If we have more arguments than there, we use a `Value` array instead.
-    const Value args[10] = { oneThreeOne, 535, 236, 984, 456.5, 666, 626, 585, 382, 109.5 };
+- `docs/NuXJS Documentation.md`
 
-    // Call the silly function. The VarList encapsulates and protects the argument values.
-    Var list = sillyFunction(VarList(rt, 10, args));
-    
-    // Now call the equivalent of the JavaScript code: `sum.apply(null, list)` from C++.
-    std::wcout << globals["sum"]["apply"](Value::NUL, list) << std::endl;
-    
-	// C++ == operator checks for strict equality like JS ===
-	std::wcout << "1 == true: " << (Var(rt, 1) == true ? "true" : "false") << std::endl;
-	
-	// Use equals() to check for equality like JS ==
-	std::wcout << "1.equals(true): " << (Var(rt, 1).equals(true) ? "true" : "false") << std::endl;
+## AI Usage
 
-	// There is no support for calling a Javascript constructor directly from C++ so we have to make a little stub.
-	const int year = 2008, month = 7, day = 20;
-	Var dateVar = rt.eval("(function(y, m, d) { return new Date(y, m, d) })")(year, month, day);
-
-	// Converting a Var to string never calls JavaScript's toString() method. This will output '[object Date]'.
-	std::wcout << dateVar << std::endl;
-
-	// But naturally, you can call toString() manually. This will output 2008-08-20 00:00:00.
-	Var dateString = dateVar["toString"]();
-	std::wcout << dateString << std::endl;
-
-	// Var::const_iterator will enumerate all properties, similar to the JavaScript "for in" statement.
-	Var anArray = rt.eval("[ 4, 8, 15, 16, 23, 42]");
-	for (Var::const_iterator it = anArray.begin(); it != anArray.end(); ++it) {
-		std::wcout << anArray[*it] << ' ';
-	}
-	std::wcout << std::endl;
-
-    return 0;
-}
-```
-
-## AI-Assisted Content
-
-This project occasionally uses AI (such as OpenAI Codex) to help with writing documentation, generating code comments, producing test code, and automating repetitive edits. All of the underlying source code has been hand-written and refined over many years.
+AI tools (such as OpenAI Codex) have occasionally been used to assist with documentation, code comments, test generation, and repetitive edits. All core source code has been written and refined by hand over many years.
 
 ## License
-This project is distributed under the terms of the [BSD 2-Clause License](LICENSE).
+
+This project is released under the [BSD 2-Clause License](LICENSE).
 
