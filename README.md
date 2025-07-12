@@ -65,12 +65,17 @@ int main(int argc, const char* argv[]) {
 
 ## Helper Scripts
 
-- `tools/buildGAZLCmd.sh / .bat` – builds the GAZL virtual machine
-- `tools/BuildImpala.sh / .bat` – builds the Impala compiler and packages the output
+- `build.sh` / `build.cmd` – build both the **beta** and **release** targets and run all tests
+- `tools/buildAndTest.sh` / `.cmd` – build and test a single configuration
+- `tools/runExamples.sh` / `.cmd` – compile and run all example programs
+- `tools/testAllConfigs.sh` / `.cmd` – exercise every debug and release build for each CPU model
+- `tools/BuildCpp.sh` / `.cmd` – low-level wrapper around the C++ compiler
 
-## Documentation
+ ## Documentation
 
-- `docs/NuXJS Documentation.md`
+ - [NuXJS Documentation](docs/NuXJS%20Documentation.md)
+ - [Changes for ES5](docs/ChangesForES5.txt)
+ - [Native Call Thoughts](docs/NativeCallThoughts.txt)
 
 ## AI Usage
 

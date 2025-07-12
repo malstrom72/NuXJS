@@ -20,6 +20,7 @@ CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJSTest_%target%_%model%.exe .\
 ..\output\NuXJSTest_%target%_%model% || GOTO error
 CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJScript_%target%_%model%.exe .\NuXJSREPL.cpp ..\src\NuXJScript.cpp ..\src\stdlibJS.cpp || GOTO error
 .\PikaCmd\PikaCmd.exe .\test.pika -e -x ..\output\NuXJScript_%target%_%model% ..\tests\ || GOTO error
+CALL runExamples.cmd || GOTO error
 ECHO Success!
 POPD
 EXIT /b 0
