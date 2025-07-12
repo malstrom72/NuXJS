@@ -36,14 +36,14 @@ notably:
 
 ## Why C++03?
 
-This project originally began a few years before the release of C++11. When I picked it up again, many years late,r I
+This project originally began a few years before the release of C++11. When I picked it up again, many years later, I
 decided to stick to the original C++03 style. Since the code is written in such a simple style (just a few basic
 templates and then plain vanilla C++ classes) and has so few dependencies on the C++ standard library, it feels almost
 irrelevant to update to a later C++ version.
 
 ## Quick Start
 Run `./build.sh` (or `build.cmd` on Windows) to build and test.  \
-This calls `tools/buildAndTest.sh` which compiles both beta and release versions.
+This calls `tools/buildAndTest.sh`, which compiles both beta and release versions.
 See `docs/NuXJS Documentation.md` for detailed instructions.
 
 ## High-level API Examples
@@ -92,7 +92,7 @@ int main(int argc, const char* argv[]) {
     rt.run("function demo(a,b,c) { return 'a+b+c = ' + sum(a,b,c); }");
     std::wcout << globals["demo"](7, 15, 20) << std::endl;
     
-    // Lets go silly. Create an anonymous function with eval that simply returns its arguments.
+    //Let's go silly. Create an anonymous function with eval that simply returns its arguments.
     Var sillyFunction = rt.eval("(function() { return arguments; })");
     
     // `Var` protects data from being garbage collected.
