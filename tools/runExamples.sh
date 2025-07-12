@@ -3,12 +3,13 @@ set -e -u -o pipefail
 cd "${0%/*}/.."
 
 mkdir -p output
+target=${1:-debug}
 fail=0
 for src in examples/*.cpp; do
     name=$(basename "$src" .cpp)
     exe="./output/$name"
     echo "Building $name"
-    ./tools/BuildCpp.sh debug "$exe" "$src" src/NuXJScript.cpp src/stdlibJS.cpp || fail=1
+    ./tools/BuildCpp.sh "$target" "$exe" "$src" src/NuXJScript.cpp src/stdlibJS.cpp || fail=1
     if [ $fail -eq 0 ]; then
         echo "Running $name"
         if "$exe" > "output/${name}.log" 2>&1; then
