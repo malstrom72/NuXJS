@@ -41,6 +41,11 @@ decided to stick to the original C++03 style. Since the code is written in such 
 templates and then plain vanilla C++ classes) and has so few dependencies on the C++ standard library, it feels almost
 irrelevant to update to a later C++ version.
 
+## Quick Start
+Run `./build.sh` (or `build.cmd` on Windows) to build and test.  \
+This calls `tools/buildAndTest.sh` which compiles both beta and release versions.
+See `docs/NuXJS Documentation.md` for detailed instructions.
+
 ## High-level API Examples
 
 A simple hello world.
@@ -134,4 +139,7 @@ int main(int argc, const char* argv[]) {
 ## AI-Assisted Content
 
 This project occasionally uses AI (such as OpenAI Codex) to help with writing documentation, generating code comments, producing test code, and automating repetitive edits. All of the underlying source code has been hand-written and refined over many years.
+
+## License
+This project is distributed under the terms of the [BSD 2-Clause License](LICENSE).
 
