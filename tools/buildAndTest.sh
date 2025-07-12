@@ -22,6 +22,6 @@ mkdir ../output >/dev/null 2>&1 || true
 ../output/NuXJSTest_${target}_${model}
 ./BuildCpp.sh $target $model ../output/NuXJScript_${target}_${model} ../tools/NuXJSREPL.cpp ../src/NuXJScript.cpp ../src/stdlibJS.cpp
 ./PikaCmd/PikaCmd ./test.pika -e -x ../output/NuXJScript_${target}_${model} ../tests/
-./runExamples.sh
+./runExamples.sh "$target"
 
 echo Success!
