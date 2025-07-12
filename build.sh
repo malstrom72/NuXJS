@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e -o pipefail
+set -e -o pipefail -u
 cd "$(dirname "$0")"
 
 model=${1:-native}
