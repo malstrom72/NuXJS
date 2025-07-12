@@ -2,7 +2,7 @@
 SETLOCAL ENABLEEXTENSIONS ENABLEDELAYEDEXPANSION
 
 SET model=%1
-IF "%model%"=="" SET model=native
+IF "%model%"=="" SET model=x64
 
 CALL tools\buildAndTest.cmd beta %model% || GOTO error
 CALL tools\buildAndTest.cmd release %model% || GOTO error

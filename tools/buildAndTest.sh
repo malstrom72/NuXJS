@@ -12,9 +12,8 @@ cd ..
 if [ "../src/stdlib.js" -nt "../src/stdlibJS.cpp" ]; then
 	./PikaCmd/PikaCmd ./stdlibToCpp.pika ../src/stdlib.js ../src/stdlibJS.cpp
 fi
-export CPP_OPTIONS="-std=c++03 -fno-threadsafe-statics -fstrict-aliasing ${CPP_OPTIONS-}"
 if [ "$target" == "release" ]; then
-	export CPP_OPTIONS="-fno-rtti $CPP_OPTIONS"
+	export CPP_OPTIONS="-fno-rtti ${CPP_OPTIONS-}"
 fi
 mkdir ../output >/dev/null 2>&1 || true
 ./BuildCpp.sh $target $model ../output/NuXJSTest_${target}_${model} ../tools/NuXJSTest.cpp ../src/NuXJScript.cpp ../src/stdlibJS.cpp
