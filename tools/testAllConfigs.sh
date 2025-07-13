@@ -7,13 +7,13 @@ tmp=$(mktemp /tmp/test.cppXXXX)
 echo 'int main() { return 0; }' >"$tmp"
 
 test_model() {
-if ./BuildCpp.sh debug "$1" ../output/tmp_"$1" "$tmp" >/dev/null 2>&1; then
-rm -f ../output/tmp_"$1"
-./buildAndTest.sh debug "$1"
-./buildAndTest.sh release "$1"
-else
-echo "Skipping $1 - compiler not available"
-fi
+    if ./BuildCpp.sh debug "$1" ../output/tmp_"$1" "$tmp" >/dev/null 2>&1; then
+        rm -f ../output/tmp_"$1"
+        ./buildAndTest.sh debug "$1"
+        ./buildAndTest.sh release "$1"
+    else
+        echo "Skipping $1 - compiler not available"
+    fi
 }
 
 test_model x86
