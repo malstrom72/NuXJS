@@ -384,9 +384,9 @@ src/NuXJScript.cpp:5089:	// FIX : static strings?
 
 docs/todo.txt:1:TODO
 
-docs/ECMAViolations.txt:7:	or CR. Also <NBSP> (\u00A0) and <ZWNBSP> ZERO WIDTH NO-BREAK SPACE (\uFEFF) are not considered white space. FIX :
+docs/ECMAViolations.md:7:	or CR. Also <NBSP> (\u00A0) and <ZWNBSP> ZERO WIDTH NO-BREAK SPACE (\uFEFF) are not considered white space. FIX :
 
-docs/ECMAViolations.txt:13:	FIX : why not?
+docs/ECMAViolations.md:13:	FIX : why not?
 
 docs/done.txt:125:	* FIX : The SourceCharacter immediately following a NumericLiteral must not be an IdentifierStart or DecimalDigit.    For example:     3in     is an error and not the two input elements 3 and in.
 
