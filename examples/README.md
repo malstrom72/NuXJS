@@ -5,7 +5,7 @@ This folder contains small programs showing how to embed the NuXJS engine. They 
 All examples can be compiled manually with:
 
 ```bash
-./tools/BuildCpp.sh debug ./output/<example> examples/<example>.cpp src/NuXJScript.cpp src/stdlibJS.cpp
+./tools/BuildCpp.sh debug ./output/examples/<example> examples/<example>.cpp src/NuXJScript.cpp src/stdlibJS.cpp
 ```
 
 Instead of compiling them one by one, run `tools/runExamples.sh` (or `runExamples.cmd` on Windows) to build and execute every sample automatically. The script prints each program's output and reports failures.
