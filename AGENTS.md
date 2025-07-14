@@ -23,9 +23,11 @@ The project uses a consistent folder structure. Build output is written to `outp
 
 Root-level `build.sh` and `build.cmd` (mirrored implementations) should build and test both the beta and release targets.
 
-## PikaCmd directory
-The `externals/PikaCmd` folder is a separate project copied into this repository.
-Ignore it when applying formatting or running tests.
+### PikaCmd directory
+The `externals/PikaCmd` folder is a separate project copied into this repository. Ignore it when applying formatting or running tests.
+
+### BuildCpp
+BuildCpp.sh and BuildCpp.cmd are copied from another repository. Only make changes to them if there is no other solution.
 
 ## Formatting rules
 Key style points:
@@ -50,29 +52,33 @@ See `docs/NuXJS Documentation.md` for details on how `src/stdlib.js` is
 minified and converted to `src/stdlibJS.cpp` during the build.
 
 ## Script portability
-All user-facing `.sh` and `.cmd` files must work when launched from any directory.
-They should start by changing to their own folder (or the repository root) so that
-relative paths resolve correctly.
+All user-facing `.sh` and `.cmd` files must work when launched from any directory. They should start by changing
+to their own folder (or the repository root) so that relative paths resolve correctly.
 
-Every `.sh` script must have a corresponding `.cmd` implementation with identical behavior. Use `.cmd` files rather than `.bat`.
+`.sh` scripts must be runnable without requiring `chmod +x`; always invoke them with `bash path/to/script.sh` (do
+**not** rely on the system-default `sh`).  Each script must start with a portable she-bang:
 
-```bash
-# example for a shell script
-cd "$(dirname "$0")"/..
-
-REM example for a .cmd script
-CD /D "%~dp0\.."
 ```
-
-For robust error handling, `.sh` scripts should begin with:
-
-```bash
+#!/usr/bin/env bash
 set -e -o pipefail -u
 ```
 
-And `.cmd` scripts normally use a simple error check:
+Every `.sh` script must have a corresponding `.cmd` implementation with identical behavior. Use `.cmd` files rather than `.bat`.
 
-```batch
+```
+# example for a shell script
+cd "$(dirname "$0")"/..
+```
+
+REM example for a .cmd script  
+```
+CD /D "%~dp0\.."
+```
+
+For robust error handling, `.sh` scripts should begin as shown above, and `.cmd`
+scripts normally use a simple error check:
+
+```
 CALL buildAndTest.cmd %target% || GOTO error
 EXIT /b 0
 :error
