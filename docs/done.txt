@@ -269,7 +269,7 @@ DONE
 		- yeah, no biggie
 
 	* setting array length needs to do a to_number, how to do this asynchronously?
-		- we don't, and it is documented in ECMAViolations.txt
+		- we don't, and it is documented in ECMAViolations.md
 
 	* we ought to have a min and max-roof, min before gc'ing at all, over max = error
 		- gc is all under control now
