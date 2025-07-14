@@ -14,9 +14,9 @@ A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with fine
 - **Fast single-pass compiler** (hand-written recursive-descent / precedence parser).  
 - Mark-and-sweep, stop-the-world **GC** with adaptive trigger rate and memory cap.  
 - Uses the standard C++ heap with **object pools** for quick allocation of small blocks.  
-- **Zero external dependencies** (even STL containers are avoided).  
-- **Standard library and regexp compiler written in JavaScript** for safety and clarity.  
-- **Easy-to-use high-level C++ API** for integrating and embedding the engine.  
+- **Zero external dependencies** (even STL containers are avoided).
+- **Standard library and regexp compiler written in JavaScript** for safety and clarity.
+- **Easy-to-use high-level C++ API** for integrating and embedding the engine.
 - **Extensive automated tests** – zero-tolerance for bugs.
 
 ## Why ECMAScript 3?
@@ -44,6 +44,8 @@ You will need a standard C++ compiler with C++03 support.
 Run `./build.sh` (or `build.cmd` on Windows) from the root. This calls `tools/buildAndTest.sh`, which builds both the **beta** and **release** configurations and runs all tests.
 
 Both the **beta** and **release** targets are compiled with optimizations enabled. The **beta** build retains runtime assertions for debugging purposes, while the **release** build disables assertions for maximum performance.
+
+During this process, `src/stdlib.js` is minified and converted into `src/stdlibJS.cpp`. See `docs/NuXJS Documentation.md` for details.
 
 ## Example
 
