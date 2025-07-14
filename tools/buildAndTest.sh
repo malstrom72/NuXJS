@@ -7,12 +7,12 @@ model=${2-x64}
 
 cd ../externals/PikaCmd
 if [ ! -e ./PikaCmd ]; then
-    bash ./BuildCpp.sh ./PikaCmd -DPLATFORM_STRING=UNIX PikaCmdAmalgam.cpp
+	bash ./BuildCpp.sh ./PikaCmd -DPLATFORM_STRING=UNIX PikaCmdAmalgam.cpp
 fi
 bash ./BuildPikaCmd.sh
 cd ../../tools
 if [ "../src/stdlib.js" -nt "../src/stdlibJS.cpp" ]; then
-    ../externals/PikaCmd/PikaCmd ./stdlibToCpp.pika ../src/stdlib.js ../src/stdlibJS.cpp
+	../externals/PikaCmd/PikaCmd ./stdlibToCpp.pika ../src/stdlib.js ../src/stdlibJS.cpp
 fi
 if [ "$target" == "release" ]; then
 	export CPP_OPTIONS="-fno-rtti ${CPP_OPTIONS-}"

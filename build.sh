@@ -9,5 +9,5 @@ for target in beta release; do
 done
 
 if [ -f "output/NuXJScript_release_${model}" ]; then
-	mv -f "output/NuXJScript_release_${model}" "output/NuXJScript"
+        mv -f "output/NuXJScript_release_${model}" "output/NuXJScript"
 fi
