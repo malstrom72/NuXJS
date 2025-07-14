@@ -4,12 +4,6 @@ TODO
 Run-time
 ========
 
-	* exceptions over C++ callbacks (js->c++->js, should be able to throw from js, catch in c++, rethrow and capture in js)
-		- ought to work if you create a new process instance each time
-
-	* make variable lookup non-recursive loop outside the objects, abuse to use get/setOwnProperty for this
-		- actually CPU hit got higher from that, so doing tail-recursion instead (all compilers eliminate tail recursion right?)
-
 	* Make gc async/incremental in the sense that you actively and repeatdly call it until it is done (doesn't block native cpu, even if it "blocks" vm cpu).
 
 	* is the logic correct when changing array length containing a few undeletable elements?
@@ -23,8 +17,6 @@ Run-time
 Compiler
 ========
 
-	* support -0.0 (use std::signbit? or whatever...) add to operation matrix test
-		- but we do support it right? implicitly via IEEE floating point?
 	
 	* strip LEFT-TO-RIGHT MARK or RIGHT-TO-LEFT MARK from source-code according to 7.1 in ES3 spec.
 
@@ -67,8 +59,6 @@ Other
 
 	* included in tests should be to config the gc to sweep after every instruction
 
-	* tedious to have to create string globals for constants strings (e.g. for setting properties), is the only alternative to new them?
-		- perhaps this point: * have a string cache in runtime for constant c strings -> js strings
 
 	* optional version without exceptions?!
 		- would work except for the compiler, how to abort compiler? longjump? I know it is ugly, but this woul be for embedded systems etc that disable exceptions. Would be nice to support them.
@@ -95,9 +85,6 @@ Run-time
 	* Don't lookup names in frame when not necessary. (And use hash table!)
 		- we do don't we? (use hash table), not sure what I meant with this bullet at all
 
-	* big array literals goes nuts with ADD_PROPERTY constants, should have an PUSH_ELEMENT or something instead
-		- or PUSH_ELEMENTS and PUSH_CONST_ELEMENTS and have a counter for both. PUSH_ELEMENTS allows us to push in batches of say max 32 elements on stack.
-		- we now have PUSH_ELEMENTS_OP, although I am not super-fond of the solution with non-dense array constants ... would be so much better to have a type for that or something (but how?!)
 
 	* not a big fan of the POST_SHUFFLE_OP solution, feels ugly, but can't for the world come up with any simpler solutions!?
 
@@ -130,7 +117,6 @@ Run-time
 	* building strings is still slow, could they be built with an internal temporary type similar to $StringBuilder? Or a "PolyString" which consists of a meta-concatentation of two existing strings (or polystrings), possibly even substrings of those?
 		- gc is now so much better that this has improved a lot, test to see if it is still a problem if you have a heavily populated heap
 
-	* have a string cache in runtime for constant c strings -> js strings
 
 	* have an int index Element AccessorBase for quick array accesses
 
