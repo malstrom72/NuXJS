@@ -1,5 +1,4 @@
-#!/usr/bin/env bash
-set -e -o pipefail -u
+#!/bin/bash
 
 CPP_COMPILER="${CPP_COMPILER:-g++}"
 CPP_OPTIONS="${CPP_OPTIONS:-}"

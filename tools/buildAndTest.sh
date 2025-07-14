@@ -6,6 +6,9 @@ target=${1-debug}
 model=${2-x64}
 
 cd ../externals/PikaCmd
+if [ ! -e ./PikaCmd ]; then
+    bash ./BuildCpp.sh ./PikaCmd -DPLATFORM_STRING=UNIX PikaCmdAmalgam.cpp
+fi
 bash ./BuildPikaCmd.sh
 cd ../../tools
 if [ "../src/stdlib.js" -nt "../src/stdlibJS.cpp" ]; then
