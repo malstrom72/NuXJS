@@ -176,6 +176,8 @@ Var loadFile(Runtime& rt, const Var&, const VarList& args) {
 
 The engine ships with a standard library implemented in JavaScript, providing the objects described in ECMAScript&nbsp;3. It also offers selected ECMAScript&nbsp;5 functionality including JSON and string indexing.
 
+During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.cpp` with `PikaCmd`.  Simply compiling this generated file alongside `NuXJScript.cpp` brings in the standard library.  Keeping the bulk of the library in JavaScript makes the core C++ code smaller and allows the VM to run the library asynchronously, which is a primary design goal.
+
 ## Conformance and Known Limitations
 
 ### ES3 deviations
