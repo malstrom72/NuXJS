@@ -2,48 +2,28 @@
 
 ## Introduction
 
-NuXJS is a sandboxed JavaScript engine written in portable C++03.
-It has been tested with GCC and Clang on x86-64 and ARM platforms,
-as well as Microsoft Visual C++ on Windows.
-The core engine consists of two small `.cpp` files and a header file, and
-provides a fast stack-based virtual machine.  It is fully compatible with
-ECMAScript 3 and includes partial support for useful ECMAScript&nbsp;5
-features such as JSON and indexed string access.
+NuXJS is a sandboxed JavaScript engine written in portable C++03. It has been tested with GCC and Clang on x86-64 and ARM platforms, as well as Microsoft Visual C++ on Windows. The core engine consists of two small `.cpp` files and a header file, and provides a fast stack-based virtual machine.  It is fully compatible with ECMAScript 3 and includes partial support for useful ECMAScript&nbsp;5 features such as JSON and indexed string access.
 
 ## Building NuXJS
 
-The project supplies helper scripts under `tools/` for compiling and
-running the test-suite.  The recommended entry point is:
+The project supplies helper scripts under `tools/` for compiling and running the test-suite.  The recommended entry point is:
 
 ```bash
 ./build.sh
 ```
 On Windows, use `build.cmd` instead.
 
-This wrapper builds and tests both the `beta` and `release` builds by calling
-`tools/buildAndTest.sh`. Each build runs its tests as part of that script. Once
-both builds finish, the native release REPL is renamed to `output/NuXJScript`.
-The sources rely on IEEE-compliant floating-point math. The main implementation
-files contain `#error` directives that fire if `__FAST_MATH__` is defined. Ensure your compiler options do not enable `-Ofast`, `-ffast-math`, or similar flags, at least for `src/NuXJScript.cpp`.
+This wrapper builds and tests both the `beta` and `release` builds by calling `tools/buildAndTest.sh`. Each build runs its tests as part of that script. Once both builds finish, the native release REPL is renamed to `output/NuXJScript`. The sources rely on IEEE-compliant floating-point math. The main implementation files contain `#error` directives that fire if `__FAST_MATH__` is defined. Ensure your compiler options do not enable `-Ofast`, `-ffast-math`, or similar flags, at least for `src/NuXJScript.cpp`.
 
-The standard library is kept in `src/stdlib.js`. During the build it is
-minified with `tools/stdlibMinifier.ppeg` and converted into a C++ source via
-`tools/stdlibToCpp.pika` using `PikaCmd`. The build scripts recreate
-`src/stdlibJS.cpp` automatically whenever `stdlib.js` changes.
+The standard library is kept in `src/stdlib.js`. During the build it is minified with `tools/stdlibMinifier.ppeg` and converted into a C++ source via `tools/stdlibToCpp.pika` using `PikaCmd`. The build scripts recreate `src/stdlibJS.cpp` automatically whenever `stdlib.js` changes.
 
 ## Quick Start
 
-After cloning the repository, simply run `./build.sh` to build and test both
-release and beta builds. The script runs each build's tests and then renames the
-native release REPL to `output/NuXJScript`. After building, you will find the
-interactive REPL program under `output/`. Running `./output/NuXJScript` starts a
-simple shell for evaluating JavaScript.
+After cloning the repository, simply run `./build.sh` to build and test both release and beta builds. The script runs each build's tests and then renames the native release REPL to `output/NuXJScript`. After building, you will find the interactive REPL program under `output/`. Running `./output/NuXJScript` starts a simple shell for evaluating JavaScript.
 
 ## Embedding NuXJS
 
-The high-level C++ API allows easy embedding of the interpreter into an existing application.
-Functions exposed to JavaScript typically have the signature `Var func(Runtime& rt, const Var& thisVar, const VarList& args)` and are stored in the global object like any other value.
-Source code may be executed with `Runtime::run()` or evaluated with `Runtime::eval()`.
+The high-level C++ API allows easy embedding of the interpreter into an existing application. Functions exposed to JavaScript typically have the signature `Var func(Runtime& rt, const Var& thisVar, const VarList& args)` and are stored in the global object like any other value. Source code may be executed with `Runtime::run()` or evaluated with `Runtime::eval()`.
 
 A minimal "hello world" program looks like this:
 
@@ -66,8 +46,7 @@ int main() {
 
 ### Extended Example
 
-The following program shows how to expose a native function, enforce memory and
-time limits, and call back and forth between C++ and JavaScript:
+The following program shows how to expose a native function, enforce memory and time limits, and call back and forth between C++ and JavaScript:
 
 ```cpp
 #include <NuXJScript.h>
@@ -111,64 +90,35 @@ int main() {
 }
 ```
 
-This mirrors the JavaScript idioms used in the engine's high‑level API and
-illustrates how `Var` and `VarList` manage lifetime and conversions between the
-two languages.
+This mirrors the JavaScript idioms used in the engine's high‑level API and illustrates how `Var` and `VarList` manage lifetime and conversions between the two languages.
 
 
 ## Memory Management
 
- A _Heap_ in _NuXJScript_ is a shallow class that implements a simple "mark and sweep" ("stop-the-world") garbage
-collector. It also maintains "memory pools" for improved performance, but uses the standard C++ heap for allocating
-larger objects and for expanding the pools. An application may spawn and use several JavaScript engines simultaneously
-and **normally, each engine (or _Runtime_) has its own _Heap_**. _Heap_ can be subclassed for custom allocation methods.
+ A _Heap_ in _NuXJScript_ is a shallow class that implements a simple "mark and sweep" ("stop-the-world") garbage collector. It also maintains "memory pools" for improved performance, but uses the standard C++ heap for allocating larger objects and for expanding the pools. An application may spawn and use several JavaScript engines simultaneously and **normally, each engine (or _Runtime_) has its own _Heap_**. _Heap_ can be subclassed for custom allocation methods.
 
- Virtually every object that is dynamically allocated in _NuXJScript_ inherits from _GCItem_. A _GCItem_ normally 
-belongs to one of two lists inside a _Heap_: **the list of root items or the list of managed items**. You place them
-there by passing the list to the _GCItem_ constructor (e.g. `GCItem(myHeap.managed())`) or by calling
-`GCList::claim(...)`. (You obtain the list of root items with `Heap::roots()` and the list of managed items with
-`Heap::managed()`.)
+ Virtually every object that is dynamically allocated in _NuXJScript_ inherits from _GCItem_. A _GCItem_ normally  belongs to one of two lists inside a _Heap_: **the list of root items or the list of managed items**. You place them there by passing the list to the _GCItem_ constructor (e.g. `GCItem(myHeap.managed())`) or by calling `GCList::claim(...)`. (You obtain the list of root items with `Heap::roots()` and the list of managed items with `Heap::managed()`.)
 
- Managed items are subject to garbage collection (via the `Heap::gc()` routine). When a managed item is not reachable
-directly or indirectly from any of the root items, it will be deleted from the heap. Thus, **managed items must be
-dynamically allocated**. You need to allocate such items on a _Heap_ using the overloaded `new` operator like this:
-`new(myHeap) MyItem(myHeap.managed())`.
+ Managed items are subject to garbage collection (via the `Heap::gc()` routine). When a managed item is not reachable directly or indirectly from any of the root items, it will be deleted from the heap. Thus, **managed items must be dynamically allocated**. You need to allocate such items on a _Heap_ using the overloaded `new` operator like this: `new(myHeap) MyItem(myHeap.managed())`.
 
  **Root items do not need to be allocated on a _Heap_.** They can be constructed and destructed in any way you wish.
-For example, it is okay to have root items on the C++ stack. It is important to ensure that other items do not reference
-root items when they go out of scope / are deallocated. You can move an item from one list to the other by calling
-`GCList::claim(...)`. E.g., to turn a root item that was allocated with `new(heap)` into a managed item, write:
-`myHeap.managed().claim(myFormerRootItem)`.
+For example, it is okay to have root items on the C++ stack. It is important to ensure that other items do not reference root items when they go out of scope / are deallocated. You can move an item from one list to the other by calling `GCList::claim(...)`. E.g., to turn a root item that was allocated with `new(heap)` into a managed item, write: `myHeap.managed().claim(myFormerRootItem)`.
 
  **In rare circumstances, it is ok not to place a _GCItem_ on a heap at all**. The item will, in this case, never be a
-candidate for garbage collection, but it will also never mark any of its references. In other words, this item must be a
-terminal leaf that has no further unique references. (One use case of this is for global constant Strings, e.g., `const
-String MAGNUS_STRING("Magnus")`.)
+candidate for garbage collection, but it will also never mark any of its references. In other words, this item must be a terminal leaf that has no further unique references. (One use case of this is for global constant Strings, e.g., `const String MAGNUS_STRING("Magnus")`.)
 
- When a _GCItem_ is destructed (regardless of whether it is from automatic garbage collection or not), it is removed from the
-list it belongs to. This enables heaps to contain a mixture of automatically garbage-collected and manually memory-managed items. It also means that **it is always ok to manually delete an item** (including managed items) once you are
-done with it **provided that you can guarantee that it can no longer be reached**, of course. This might ease the burden
-on the garbage collector and speed up allocation.
+ When a _GCItem_ is destructed (regardless of whether it is from automatic garbage collection or not), it is removed from the list it belongs to. This enables heaps to contain a mixture of automatically garbage-collected and manually memory-managed items. It also means that **it is always ok to manually delete an item** (including managed items) once you are done with it **provided that you can guarantee that it can no longer be reached**, of course. This might ease the burden on the garbage collector and speed up allocation.
 
  **Every sub-class of _GCItem_ is responsible for overriding `gcMarkReferences(Heap& heap)` to mark all _GCItems_ it
-references** (via the overloaded `gcMark(heap, ...)` functions). Remember also to call the super-class's
-`gcMarkReferences` in the overridden method. **If `gcMarkReferences` is implemented incorrectly, items that are still in
-use may get garbage collected** (= deadly sin).
+references** (via the overloaded `gcMark(heap, ...)` functions). Remember also to call the super-class's `gcMarkReferences` in the overridden method. **If `gcMarkReferences` is implemented incorrectly, items that are still in use may get garbage collected** (= deadly sin).
 
-Garbage collection is either invoked manually with `Heap::gc()` or automatically via `Runtime::autoGC()`. **Automatic
-garbage collection occurs when the number of bytes on a heap reaches a threshold that is two times the heap's size after
-the last garbage collection.** It is also possible to impose a hard limit on the heap's size.
+Garbage collection is either invoked manually with `Heap::gc()` or automatically via `Runtime::autoGC()`. **Automatic garbage collection occurs when the number of bytes on a heap reaches a threshold that is two times the heap's size after the last garbage collection.** It is also possible to impose a hard limit on the heap's size.
 
 ## Creating Strings
 
-Strings store UTF‑16 data. When a new string should live on a heap, you may allocate it directly with
-`new(heap) String(heap.managed(), text)` or use the helper `String::allocate(heap, "text")`. Temporary root strings can
-be constructed on the stack using `String(heap.roots(), ...)`. Global constant strings can be created without a heap
-using `String string("text")`.
+Strings store UTF‑16 data. When a new string should live on a heap, you may allocate it directly with `new(heap) String(heap.managed(), text)` or use the helper `String::allocate(heap, "text")`. Temporary root strings can be constructed on the stack using `String(heap.roots(), ...)`. Global constant strings can be created without a heap using `String string("text")`.
 
-Note: `wchar_t` strings are converted based on the native size of `wchar_t` — UTF‑16 when it is 16&nbsp;bits
-and UTF‑32 when it is 32&nbsp;bits. Plain `char*` and `std::string` values are treated as ISO‑8859‑1 text for fast
-byte‑for‑byte copying. Use wide strings when full Unicode input is required.
+Note: `wchar_t` strings are converted based on the native size of `wchar_t` — UTF‑16 when it is 16&nbsp;bits and UTF‑32 when it is 32&nbsp;bits. Plain `char*` and `std::string` values are treated as ISO‑8859‑1 text for fast byte‑for‑byte copying. Use wide strings when full Unicode input is required.
 
 NuXJS provides several convenience routines for constructing managed strings:
 
@@ -179,9 +129,7 @@ String::fromInt(heap, 42)                // formatted integer (cached for -1000.
 String::fromDouble(heap, 3.14)           // formatted double with special handling for NaN/Inf
 ```
 
-`String::fromInt` and `String::fromDouble` return pointers to static constant
-strings for small integers and special floating point values. For other values, a
-fresh heap string is created every call.
+`String::fromInt` and `String::fromDouble` return pointers to static constant strings for small integers and special floating point values. For other values, a fresh heap string is created every call.
 
 # Source Code Conventions
 
@@ -208,10 +156,7 @@ try {
 }
 ```
 
-Native functions can raise script errors using
-`ScriptException::throwError(heap, type, message)`. This helper creates a
-JavaScript `Error` instance and throws it as a `ScriptException` so that
-JavaScript can catch it normally:
+Native functions can raise script errors using `ScriptException::throwError(heap, type, message)`. This helper creates a JavaScript `Error` instance and throws it as a `ScriptException` so that JavaScript can catch it normally:
 
 ```cpp
 if (touchFunction.typeOf() != &FUNCTION_STRING) {
@@ -221,8 +166,7 @@ if (touchFunction.typeOf() != &FUNCTION_STRING) {
 ```
 
 
-When your native code may throw exceptions of its own, convert them to script
-errors so JavaScript callers can handle them:
+When your native code may throw exceptions of its own, convert them to script errors so JavaScript callers can handle them:
 
 ```cpp
 Var loadFile(Runtime& rt, const Var&, const VarList& args) {
@@ -243,9 +187,7 @@ Var loadFile(Runtime& rt, const Var&, const VarList& args) {
 
 ## Standard Library and JavaScript Features
 
-The engine ships with a standard library implemented in JavaScript, providing
-the objects described in ECMAScript&nbsp;3.  It also offers selected
-ECMAScript&nbsp;5 functionality including JSON and string indexing.
+The engine ships with a standard library implemented in JavaScript, providing the objects described in ECMAScript&nbsp;3.  It also offers selected ECMAScript&nbsp;5 functionality including JSON and string indexing.
 
 ## Conformance and Known Limitations
 
@@ -293,14 +235,11 @@ ECMAScript&nbsp;5 functionality including JSON and string indexing.
 
 ## Testing and Benchmarking
 
-The test suite resides in the `tests/` directory and is exercised by running
-the helper script `build.sh` (which invokes `tools/buildAndTest.sh`).  Additional benchmark programs are
-found under `benchmarks/`.
+The test suite resides in the `tests/` directory and is exercised by running the helper script `build.sh` (which invokes `tools/buildAndTest.sh`).  Additional benchmark programs are found under `benchmarks/`.
 
 ## Performance and Optimization Tips
 
-Use `Runtime::setMemoryCap()` and `Runtime::resetTimeOut()` to limit memory
-usage and execution time of JavaScript code.
+Use `Runtime::setMemoryCap()` and `Runtime::resetTimeOut()` to limit memory usage and execution time of JavaScript code.
 
 ## Contributing
 
@@ -308,5 +247,4 @@ Patches should be validated by running `./build.sh` before submission. Follow th
 
 ## License
 
-NuXJS is released under the terms of the BSD&nbsp;2‑Clause license.  See the
-`LICENSE` file for details.
+NuXJS is released under the terms of the BSD&nbsp;2‑Clause license.  See the `LICENSE` file for details.
