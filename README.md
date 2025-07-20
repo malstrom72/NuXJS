@@ -21,9 +21,7 @@ A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with fine
 
 ## Why ECMAScript 3?
 
-ECMAScript 3 was the first broadly adopted JS standard; it provides everything needed in a *scripting* language without
-a large runtime or a complex compiler. Staying with ES3 keeps the engine tiny and predictable. Selective ES5 features are
-“back-ported” where they add clear value:
+ECMAScript 3 was the first broadly adopted JS standard; it provides everything needed in a *scripting* language without a large runtime or a complex compiler. Staying with ES3 keeps the engine tiny and predictable. Selective ES5 features are “back-ported” where they add clear value:
 
 - Character indexing on `String` via `str[i]`
 - `JSON` support

@@ -37,23 +37,21 @@ Key style points:
 - Line continuations should start with the operator and be indented two tabs from the original line.
 - `#if`/`#endif` blocks should appear one tab *left* of the current indentation level.
 - Class comment – put a plain C-style block comment immediately above each class, *not* Doxygen.  
-	```
-	/**
-		One-sentence summary of what the class does.
-		Extra details if truly needed.
-	**/
-	```
+       ```
+       /**
+               One-sentence summary of what the class does.
+               Extra details if truly needed.
+       **/
+       ```
 	* The two asterisks open/close the block; everything inside is indented with one tab.  
 - Small method comment – use a single end-of-line comment:  
 	void blahblah(int blah);	/// brief description of `blahblah`
 - Inside comment text, wrap any variable, parameter, class or function names in back-ticks, e.g. `blah` is the temporary buffer.
 
-See `docs/NuXJS Documentation.md` for details on how `src/stdlib.js` is
-minified and converted to `src/stdlibJS.cpp` during the build.
+See `docs/NuXJS Documentation.md` for details on how `src/stdlib.js` is minified and converted to `src/stdlibJS.cpp` during the build.
 
 ## Script portability
-All user-facing `.sh` and `.cmd` files must work when launched from any directory. They should start by changing
-to their own folder (or the repository root) so that relative paths resolve correctly.
+All user-facing `.sh` and `.cmd` files must work when launched from any directory. They should start by changing to their own folder (or the repository root) so that relative paths resolve correctly.
 
 `.sh` scripts must be runnable without requiring `chmod +x`; always invoke them with `bash path/to/script.sh` (do
 **not** rely on the system-default `sh`).  Each script must start with a portable she-bang:
@@ -75,8 +73,7 @@ REM example for a .cmd script
 CD /D "%~dp0\.."
 ```
 
-For robust error handling, `.sh` scripts should begin as shown above, and `.cmd`
-scripts normally use a simple error check:
+For robust error handling, `.sh` scripts should begin as shown above, and `.cmd` scripts normally use a simple error check:
 
 ```
 CALL buildAndTest.cmd %target% || GOTO error
