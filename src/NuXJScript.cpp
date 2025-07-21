@@ -2088,7 +2088,7 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
 }
 
 void FunctionScope::leave() {
-       if (deleteOnPop && dynamicVars != 0) {
+       if (dynamicVars != 0) {
                Table::Bucket* bucket = dynamicVars->lookup(&ARGUMENTS_STRING);
                if (bucket != 0 && bucket->valueExists()) {
                        Arguments* args = static_cast<Arguments*>(bucket->getValue().asObject());
