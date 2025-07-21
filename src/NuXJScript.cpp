@@ -1860,22 +1860,31 @@ class Arguments : public LazyJSObject<Object> {
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
+		void detach();
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
         Value* findProperty(const Value& key) const;
-    	const FunctionScope* const scope;
+        const FunctionScope* scope;
+		JSFunction* const function;
 		UInt32 const argumentsCount;
 		Vector<Byte> deletedArguments;
+		Vector<Value> values;
 
 		virtual void gcMarkReferences(Heap& heap) const {
-			gcMark(heap, scope);
+			if (scope != 0) {
+				gcMark(heap, scope);
+			} else {
+				gcMark(heap, values.begin(), values.end());
+			}
+			gcMark(heap, function);
 			super::gcMarkReferences(heap);
 		}
 };
 
 Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
-		, scope(scope), argumentsCount(argumentsCount), deletedArguments(argumentsCount, &gcList.getHeap()) {
+	   , scope(scope), function(scope->function), argumentsCount(argumentsCount)
+	   , deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()) {
 	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
 }
 
@@ -1888,9 +1897,20 @@ const String* Arguments::toString(Heap& heap) const {
 
 Object* Arguments::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
 
+void Arguments::detach() {
+   if (scope != 0) {
+	   values.resize(argumentsCount);
+	   std::copy(scope->getLocalsPointer(), scope->getLocalsPointer() + argumentsCount, values.begin());
+	   scope = 0;
+   }
+}
+
 Value* Arguments::findProperty(const Value& key) const {
 	UInt32 i;
-	return (key.toArrayIndex(i) && i < argumentsCount && !deletedArguments[i] ? scope->getLocalsPointer() + i : 0);
+	if (key.toArrayIndex(i) && i < argumentsCount && !deletedArguments[i]) {
+		return (scope != 0 ? scope->getLocalsPointer() + i : const_cast<Value*>(&values[i]));
+	}
+	return 0;
 }
 
 Flags Arguments::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
@@ -1901,7 +1921,8 @@ Flags Arguments::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	Value* p = findProperty(key);
 	if (p != 0 && (flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) != 0) {
-		deletedArguments[p - scope->getLocalsPointer()] = true;
+		const UInt32 index = static_cast<UInt32>(p - (scope != 0 ? scope->getLocalsPointer() : values.begin()));
+		deletedArguments[index] = true;
 		p = 0;
 	}
 	return (p == 0 ? super::setOwnProperty(rt, key, v, flags) : ((void)(*p = v), true));
@@ -1909,7 +1930,8 @@ bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Fl
 
 bool Arguments::deleteOwnProperty(Runtime& rt, const Value& key) {
 	const Value* p = findProperty(key);
-    return (p == 0 ? super::deleteOwnProperty(rt, key) : (deletedArguments[p - scope->getLocalsPointer()] = true));
+    return (p == 0 ? super::deleteOwnProperty(rt, key)
+    		: (deletedArguments[p - (scope != 0 ? scope->getLocalsPointer() : values.begin())] = true));
 }
 
 Enumerator* Arguments::getOwnPropertyEnumerator(Runtime& rt) const {
@@ -1918,7 +1940,7 @@ Enumerator* Arguments::getOwnPropertyEnumerator(Runtime& rt) const {
 
 void Arguments::constructCompleteObject(Runtime& rt) const {
 	completeObject->setOwnProperty(rt, &LENGTH_STRING, argumentsCount, DONT_ENUM_FLAG);
-	completeObject->setOwnProperty(rt, &CALLEE_STRING, scope->function, DONT_ENUM_FLAG);
+	completeObject->setOwnProperty(rt, &CALLEE_STRING, function, DONT_ENUM_FLAG);
 }
 
 /* --- Scope --- */
@@ -1970,11 +1992,10 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, 
 
 JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
 	if (dynamicVars == 0) {
-		makeClosure();
 		Heap& heap = rt.getHeap();
 		dynamicVars = new(heap) JSObject(heap.managed(), 0);
-		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING, new(heap) Arguments(heap.managed(), this, passedArgumentsCount)
-				, DONT_DELETE_FLAG);
+		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING
+				, new(heap) Arguments(heap.managed(), this, passedArgumentsCount), DONT_DELETE_FLAG);
 	}
 	return dynamicVars;
 }
@@ -1990,7 +2011,7 @@ Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v) const {
 			return DONT_DELETE_FLAG | EXISTS_FLAG;
 		}
 		if (dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) {
-			Flags flags = getDynamicVars(rt)->getOwnProperty(rt, name, v);
+			const Flags flags = getDynamicVars(rt)->getOwnProperty(rt, name, v);
 			if (flags != NONEXISTENT) {
 				return flags;
 			}
@@ -2066,8 +2087,21 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
 	}
 }
 
+void FunctionScope::leave() {
+	if (dynamicVars != 0 && deleteOnPop) {
+		Table::Bucket* bucket = dynamicVars->lookup(&ARGUMENTS_STRING);
+		if (bucket != 0 && bucket->valueExists()) {
+			Object* obj = bucket->getValue().asObject();
+			if (obj != 0 && obj->getClassName() == &A_RGUMENTS_STRING) {
+				static_cast<Arguments*>(obj)->detach();
+			}
+		}
+	}
+	super::leave();
+}
+	
 /* --- ScriptException --- */
-
+	
 void ScriptException::throwError(Heap& heap, ErrorType type, const String* message) {
 	throw ScriptException(heap, new(heap) Error(heap.managed(), type, message));
 }
