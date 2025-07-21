@@ -45,6 +45,11 @@ Both the **beta** and **release** targets are compiled with optimizations enable
 
 During this process, `src/stdlib.js` is minified and converted into `src/stdlibJS.cpp`. See `docs/NuXJS Documentation.md` for details.
 
+The build outputs a console REPL named `NuXJScript`. Type `help()` inside the REPL to
+see available helper functions and commands. Use `#save` to capture the current session
+as a `.io` file. When no name is given, the REPL creates a timestamped file in
+`tests/` so it can immediately be used as a regression case.
+
 ## Example
 
 Here’s a minimal example of embedding NuXJS using the high-level API:

@@ -20,6 +20,16 @@ The implementation depends on IEEE-compliant floating-point math. `src/NuXJScrip
 
 The standard library lives in `src/stdlib.js`. During the build, it is minified and converted to C++ via `tools/stdlibToCpp.pika` using `PikaCmd`. The build scripts automatically regenerate `src/stdlibJS.cpp` when `stdlib.js` changes.
 
+## Using the REPL
+
+Building NuXJS produces a command line REPL named `NuXJScript`. Inside the REPL,
+`help()` lists the available helper functions and meta commands. Custom helpers
+include `read(file)`, `load(file)`, `quit()`, `gc()` and `dasm(fn)`. Meta
+commands start with `#` and currently support `#save [name]` to write the session
+log and `#purge` to clear it. `#save` without a name uses a timestamp for the
+file name and saves the `.io` file directly into `tests/` so it can be added as
+a regression case. Prefixing a line with `?` runs `print()` on that expression.
+
 ## Embedding NuXJS
 
 The high-level C++ API allows easy embedding of the interpreter into an existing application. Functions exposed to JavaScript typically have the signature `Var func(Runtime& rt, const Var& thisVar, const VarList& args)` and are stored in the global object like any other value. Source code may be executed with `Runtime::run()` or evaluated with `Runtime::eval()`.
