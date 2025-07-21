@@ -1024,8 +1024,8 @@ class FunctionScope : public Scope {
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
-                JSObject* getDynamicVars(Runtime& rt) const;
-               virtual void leave();
+		JSObject* getDynamicVars(Runtime& rt) const;
+	   	virtual void leave();
 
 	protected:
 		JSFunction* const function;
