@@ -1990,9 +1990,8 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, 
 }
 
 JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
-	if (dynamicVars == 0) {
-		makeClosure();
-		Heap& heap = rt.getHeap();
+        if (dynamicVars == 0) {
+                Heap& heap = rt.getHeap();
 		dynamicVars = new(heap) JSObject(heap.managed(), 0);
 		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING, new(heap) Arguments(heap.managed(), this, passedArgumentsCount)
 				, DONT_DELETE_FLAG);
@@ -2093,21 +2092,22 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
 	}
 }
 
+
 void FunctionScope::leave() {
-if (dynamicVars != 0 && deleteOnPop) {
-Table::Bucket* bucket = dynamicVars->lookup(&ARGUMENTS_STRING);
-if (bucket != 0 && bucket->valueExists()) {
-Object* obj = bucket->getValue().asObject();
-if (obj != 0 && obj->getClassName() == &A_RGUMENTS_STRING) {
-static_cast<Arguments*>(obj)->detach();
-}
-}
-}
-super::leave();
-}
-
-/* --- ScriptException --- */
-
+	if (dynamicVars != 0 && deleteOnPop) {
+		Table::Bucket* bucket = dynamicVars->lookup(&ARGUMENTS_STRING);
+		if (bucket != 0 && bucket->valueExists()) {
+			Object* obj = bucket->getValue().asObject();
+			if (obj != 0 && obj->getClassName() == &A_RGUMENTS_STRING) {
+				static_cast<Arguments*>(obj)->detach();
+			}
+		}
+	}
+	super::leave();
+	}
+	
+	/* --- ScriptException --- */
+	
 void ScriptException::throwError(Heap& heap, ErrorType type, const String* message) {
 	throw ScriptException(heap, new(heap) Error(heap.managed(), type, message));
 }
