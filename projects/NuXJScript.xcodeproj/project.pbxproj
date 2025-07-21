@@ -26,10 +26,10 @@
 
 /* Begin PBXFileReference section */
 		F715A3F420A7A3B6007941E8 /* stdlibJS.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = stdlibJS.cpp; path = ../src/stdlibJS.cpp; sourceTree = "<group>"; };
-		F74521D02071198000D96B66 /* NuXJScript */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; name = NuXJScript; path = /Users/magnus/projects/NuXJS/projects/build/Debug/NuXJScript; sourceTree = "<absolute>"; };
 		F74E7E0F16D1A409003A6AB6 /* NuXJScript.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; lineEnding = 0; name = NuXJScript.cpp; path = ../src/NuXJScript.cpp; sourceTree = "<group>"; wrapsLines = 0; };
 		F7CB917916D6263800D3007B /* NuXJScript.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; name = NuXJScript.h; path = ../src/NuXJScript.h; sourceTree = "<group>"; wrapsLines = 0; };
 		F7EDE89120AC76F2001E5F45 /* NuXJSREPL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = NuXJSREPL.cpp; path = ../tools/NuXJSREPL.cpp; sourceTree = "<group>"; };
+		F7F6F01B2E2E817B006AF9D3 /* NuXJScript */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = NuXJScript; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -50,6 +50,7 @@
 				F715A3F420A7A3B6007941E8 /* stdlibJS.cpp */,
 				F74E7E0F16D1A409003A6AB6 /* NuXJScript.cpp */,
 				F7CB917916D6263800D3007B /* NuXJScript.h */,
+				F7F6F01B2E2E817B006AF9D3 /* NuXJScript */,
 			);
 			name = NuXJScript;
 			sourceTree = "<group>";
@@ -72,7 +73,7 @@
 			name = NuXJScript;
 			productInstallPath = "$(HOME)/bin";
 			productName = NuXJScript;
-			productReference = F74521D02071198000D96B66 /* NuXJScript */;
+			productReference = F7F6F01B2E2E817B006AF9D3 /* NuXJScript */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -81,18 +82,18 @@
 		08FB7793FE84155DC02AAC07 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0930;
+				LastUpgradeCheck = 1320;
 			};
 			buildConfigurationList = 1DEB923508733DC60010E9CD /* Build configuration list for PBXProject "NuXJScript" */;
 			compatibilityVersion = "Xcode 3.2";
-			developmentRegion = English;
+			developmentRegion = en;
 			hasScannedForEncodings = 1;
 			knownRegions = (
-				English,
-				Japanese,
-				French,
-				German,
 				en,
+				de,
+				fr,
+				ja,
+				Base,
 			);
 			mainGroup = 08FB7794FE84155DC02AAC07 /* NuXJScript */;
 			productRefGroup = 08FB7794FE84155DC02AAC07 /* NuXJScript */;
@@ -124,7 +125,7 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_CXX0X_EXTENSIONS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				CODE_SIGN_IDENTITY = "-";
 				PRODUCT_NAME = NuXJScript;
 			};
 			name = Debug;
@@ -135,7 +136,7 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_CXX0X_EXTENSIONS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				CODE_SIGN_IDENTITY = "-";
 				PRODUCT_NAME = NuXJScript;
 			};
 			name = Release;
@@ -157,6 +158,7 @@
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
@@ -175,7 +177,7 @@
 				GCC_WARN_UNUSED_LABEL = YES;
 				GCC_WARN_UNUSED_PARAMETER = NO;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.6;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 				SYMROOT = "$(PROJECT_DIR)/build/";
@@ -199,6 +201,7 @@
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
@@ -226,7 +229,7 @@
 				GCC_WARN_UNUSED_PARAMETER = NO;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LLVM_LTO = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.6;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				PRESERVE_DEAD_CODE_INITS_AND_TERMS = YES;
 				SDKROOT = macosx;
 				SYMROOT = "$(PROJECT_DIR)/build/";

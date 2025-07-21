@@ -1,3 +1,4 @@
 .DS_Store
 /output
 externals/PikaCmd/PikaCmd
+/projects/build

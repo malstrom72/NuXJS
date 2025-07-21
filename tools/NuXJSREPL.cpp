@@ -132,6 +132,7 @@ double getCPUSecs() {
 double getCPUSecs() {
 	rusage rus;
 	int res = getrusage(RUSAGE_SELF, &rus);
+	(void)res;
 	assert(res == 0);
 	return rus.ru_utime.tv_sec + rus.ru_utime.tv_usec / 1000000.0;
 }
@@ -267,6 +268,7 @@ static void disassemble(Heap& heap, const Code& code) {
 	std::cerr << "\tVars: " << code.getVarsCount() << std::endl;
 	std::cerr << "\tArguments: " << code.getArgumentsCount() << std::endl;
 
+	(void)errors;
 	assert(errors == 0);
 }
 

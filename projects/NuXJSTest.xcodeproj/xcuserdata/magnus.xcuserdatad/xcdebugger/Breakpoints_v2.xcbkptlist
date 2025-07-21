@@ -15,8 +15,8 @@
             timestampString = "624111044.571891"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1135"
-            endingLineNumber = "1135"
+            startingLineNumber = "1148"
+            endingLineNumber = "1148"
             landmarkName = "testHeap()"
             landmarkType = "9">
             <Locations>
@@ -116,8 +116,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "139"
             endingLineNumber = "139"
-            landmarkName = "TestDataClass::TestDataClass(that)"
-            landmarkType = "7">
+            landmarkName = "unknown"
+            landmarkType = "0">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -133,8 +133,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "135"
             endingLineNumber = "135"
-            landmarkName = "TestDataClass::TestDataClass()"
-            landmarkType = "7">
+            landmarkName = "XorshiftRandom2x32"
+            landmarkType = "3">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -148,8 +148,8 @@
             timestampString = "624111044.572926"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1113"
-            endingLineNumber = "1113"
+            startingLineNumber = "1126"
+            endingLineNumber = "1126"
             landmarkName = "testHeap()"
             landmarkType = "9">
             <Locations>
@@ -249,8 +249,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "136"
             endingLineNumber = "136"
-            landmarkName = "TestDataClass::TestDataClass()"
-            landmarkType = "7">
+            landmarkName = "XorshiftRandom2x32"
+            landmarkType = "3">
             <Locations>
                <Location
                   uuid = "CB87A894-9CA8-486B-85DF-0EE666028154 - 8d6761f96dd4c2c7"
@@ -298,8 +298,8 @@
             timestampString = "624111044.5735"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1131"
-            endingLineNumber = "1131"
+            startingLineNumber = "1144"
+            endingLineNumber = "1144"
             landmarkName = "testHeap()"
             landmarkType = "9">
             <Locations>
@@ -448,8 +448,8 @@
             timestampString = "624111044.574051"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1222"
-            endingLineNumber = "1222"
+            startingLineNumber = "1235"
+            endingLineNumber = "1235"
             landmarkName = "testVector(typeName, seed, iterations, maxSizeIncrement, optionalHeap, initialSize)"
             landmarkType = "9">
             <Locations>
@@ -565,8 +565,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "17"
             endingLineNumber = "17"
-            landmarkName = "expectationFailed(sourceCode, file, line)"
-            landmarkType = "9">
+            landmarkName = "unknown"
+            landmarkType = "0">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -582,7 +582,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "686"
             endingLineNumber = "686"
-            landmarkName = "Value::toDouble()"
+            landmarkName = "Value::toFunction(heap)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -599,8 +599,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "681"
             endingLineNumber = "681"
-            landmarkName = "Value::toBool()"
-            landmarkType = "7">
+            landmarkName = "unknown"
+            landmarkType = "0">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -616,7 +616,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "696"
             endingLineNumber = "696"
-            landmarkName = "Value::toInt()"
+            landmarkName = "Value::typeOfString()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -633,7 +633,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "701"
             endingLineNumber = "701"
-            landmarkName = "Value::toInt()"
+            landmarkName = "Value::toBool()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -650,7 +650,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "702"
             endingLineNumber = "702"
-            landmarkName = "Value::toInt()"
+            landmarkName = "Value::toBool()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -667,7 +667,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "708"
             endingLineNumber = "708"
-            landmarkName = "Value::toArrayIndex(index)"
+            landmarkName = "Value::toBool()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -682,8 +682,8 @@
             timestampString = "624111044.5748971"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1253"
-            endingLineNumber = "1253"
+            startingLineNumber = "1266"
+            endingLineNumber = "1266"
             landmarkName = "testVector(typeName, seed, iterations, maxSizeIncrement, optionalHeap, initialSize)"
             landmarkType = "9">
             <Locations>
@@ -733,8 +733,8 @@
             timestampString = "624111044.57517"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1254"
-            endingLineNumber = "1254"
+            startingLineNumber = "1267"
+            endingLineNumber = "1267"
             landmarkName = "testVector(typeName, seed, iterations, maxSizeIncrement, optionalHeap, initialSize)"
             landmarkType = "9">
          </BreakpointContent>
@@ -752,7 +752,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "179"
             endingLineNumber = "179"
-            landmarkName = "UnreliableConstructorClass::UnreliableConstructorClass(UnreliableConstructorClass)"
+            landmarkName = "TestDataClass::~TestDataClass()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -769,8 +769,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "1213"
             endingLineNumber = "1213"
-            landmarkName = "Heap::gc()"
-            landmarkType = "7">
+            landmarkName = "unknown"
+            landmarkType = "0">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -784,8 +784,8 @@
             timestampString = "624111044.575768"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1137"
-            endingLineNumber = "1137"
+            startingLineNumber = "1150"
+            endingLineNumber = "1150"
             landmarkName = "testHeap()"
             landmarkType = "9">
             <Locations>
@@ -995,8 +995,8 @@
             timestampString = "624111044.576054"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1136"
-            endingLineNumber = "1136"
+            startingLineNumber = "1149"
+            endingLineNumber = "1149"
             landmarkName = "testHeap()"
             landmarkType = "9">
             <Locations>
@@ -1062,8 +1062,8 @@
             timestampString = "624111044.576329"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1134"
-            endingLineNumber = "1134"
+            startingLineNumber = "1147"
+            endingLineNumber = "1147"
             landmarkName = "testHeap()"
             landmarkType = "9">
             <Locations>
@@ -1177,9 +1177,9 @@
             timestampString = "624111044.576599"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "614"
-            endingLineNumber = "614"
-            landmarkName = "testArrayVars()"
+            startingLineNumber = "624"
+            endingLineNumber = "624"
+            landmarkName = "testVars()"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
@@ -1194,9 +1194,9 @@
             timestampString = "624111044.576859"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "615"
-            endingLineNumber = "615"
-            landmarkName = "testArrayVars()"
+            startingLineNumber = "625"
+            endingLineNumber = "625"
+            landmarkName = "testVars()"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
@@ -1211,8 +1211,8 @@
             timestampString = "624111044.577116"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "644"
-            endingLineNumber = "644"
+            startingLineNumber = "654"
+            endingLineNumber = "654"
             landmarkName = "testArrayVars()"
             landmarkType = "9">
          </BreakpointContent>
@@ -1228,9 +1228,9 @@
             timestampString = "624111044.577378"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "613"
-            endingLineNumber = "613"
-            landmarkName = "testArrayVars()"
+            startingLineNumber = "623"
+            endingLineNumber = "623"
+            landmarkName = "testVars()"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
@@ -1245,10 +1245,10 @@
             timestampString = "624111044.577633"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "792"
-            endingLineNumber = "792"
-            landmarkName = "unknown"
-            landmarkType = "0">
+            startingLineNumber = "804"
+            endingLineNumber = "804"
+            landmarkName = "testHighLevelAPI()"
+            landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

@@ -223,6 +223,7 @@ class NativeObject : public JSObject {
 						: super(gcList, prototype), x(args[0] != Value::UNDEFINED ? args[0] : 0.0) { if (args[1] != Value::UNDEFINED) { Var me = args[1]; me = this; args[1](); } }
 	public:		virtual const String* getClassName() const { return &TEST_CLASS_STRING; }
 	public:		static Var testMethod1(Runtime& rt, const Var& thisVar, const VarList& args) {
+					(void)args;
 					Object* thisObject = thisVar;
 					std::wcout << Var(rt, (reinterpret_cast<JSObject*>(thisObject)->JSObject::getClassName())) << std::endl;
 					std::wcout << Var(rt, (reinterpret_cast<NativeObject*>(thisObject)->NativeObject::getClassName())) << std::endl;
@@ -240,6 +241,8 @@ class NativeObject : public JSObject {
 					return Var(rt, new(heap) NativeObject(heap.managed(), static_cast<Object*>(thisVar)->getPrototype(rt), args));
 				}
 	public:		Var nativeMethod(Runtime& rt, const Var& thisVar, const VarList& args) {
+					(void)thisVar;
+					(void)args;
 					return Var(rt, x);
 				}
 	protected:	double x;
@@ -248,6 +251,8 @@ class NativeObject : public JSObject {
 struct BindingTestObject {
 	BindingTestObject() : x(123.456) { }
 	Var method(Runtime& rt, const Var& thisVar, const VarList& args) {
+		(void)thisVar;
+		(void)args;
 		return Var(rt, x);
 	}
 	double x;
@@ -257,6 +262,8 @@ struct NativeConstructor : public ExtensibleFunction {
 	typedef ExtensibleFunction super;
 	NativeConstructor(GCList& gcList, const Var& prototype) : super(gcList), prototype(prototype) { }
 	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+		(void)processor;
+		(void)thisObject;
 		Heap& heap = rt.getHeap();
 		return new(heap) NativeObject(heap.managed(), prototype, VarList(rt, argc, argv));
 	}
@@ -264,6 +271,7 @@ struct NativeConstructor : public ExtensibleFunction {
 };
 
 Var test1(Runtime& rt, const Var& thisVar, const VarList& args) {
+	(void)thisVar;
 	std::wcout << L"argc: " << args.size() << std::endl;
 	std::wcout << L"arg 0: " << args[0] << std::endl;
 	std::wcout << L"arg 1: " << args[1] << std::endl;
@@ -282,6 +290,8 @@ Var test1(Runtime& rt, const Var& thisVar, const VarList& args) {
 }
 
 Value gcTest(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+	(void)processor;
+	(void)thisObject;
 	VarList safeKeep(rt, argc, argv);
 	Heap& heap = rt.getHeap();
 	heap.gc();
@@ -740,6 +750,7 @@ static void testLimits() {
 
 // C++ functions that you want to call from Javascript should have these arguments.
 static Var sum(Runtime& rt, const Var& thisVar, const VarList& args) {
+	(void)thisVar;
 	double sum = 0.0;
 	for (int i = 0; i < args.size(); ++i) {
 		sum += args[i];
@@ -748,6 +759,7 @@ static Var sum(Runtime& rt, const Var& thisVar, const VarList& args) {
 }
 
 static Var addFunction(Runtime& rt, const Var& thisVar, const VarList& args) {
+	(void)thisVar;
 	double sum = 0.0;
 	for (UInt32 i = 0; i < args.size(); ++i) {
 		sum += args[i];
@@ -939,6 +951,7 @@ struct SomeException : public std::exception {
 };
 
 static int throwSomeOtherException(Heap& heap) {
+	(void)heap;
 	throw SomeException();
 	return 123;
 }

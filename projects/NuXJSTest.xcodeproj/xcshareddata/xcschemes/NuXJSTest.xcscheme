@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "8DD76F620486A84900D96B5E"
-               BuildableName = "NuXJScript"
-               BlueprintName = "NuXJScript"
-               ReferencedContainer = "container:NuXJScript.xcodeproj">
+               BuildableName = "NuXJSTest"
+               BlueprintName = "NuXJSTest"
+               ReferencedContainer = "container:NuXJSTest.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -27,15 +27,6 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
-      <MacroExpansion>
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "8DD76F620486A84900D96B5E"
-            BuildableName = "NuXJScript"
-            BlueprintName = "NuXJScript"
-            ReferencedContainer = "container:NuXJScript.xcodeproj">
-         </BuildableReference>
-      </MacroExpansion>
       <Testables>
       </Testables>
    </TestAction>
@@ -43,43 +34,37 @@
       buildConfiguration = "Release"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      enableASanStackUseAfterReturn = "YES"
-      disableMainThreadChecker = "YES"
       launchStyle = "0"
-      useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/magnus/projects/NuXJS"
+      useCustomWorkingDirectory = "NO"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
-      migratedStopOnEveryIssue = "YES"
       debugServiceExtension = "internal"
-      enableGPUValidationMode = "1"
       allowLocationSimulation = "YES">
       <BuildableProductRunnable
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "8DD76F620486A84900D96B5E"
-            BuildableName = "NuXJScript"
-            BlueprintName = "NuXJScript"
-            ReferencedContainer = "container:NuXJScript.xcodeproj">
+            BuildableName = "NuXJSTest"
+            BlueprintName = "NuXJSTest"
+            ReferencedContainer = "container:NuXJSTest.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
    <ProfileAction
-      buildConfiguration = "Debug"
+      buildConfiguration = "Release"
       shouldUseLaunchSchemeArgsEnv = "YES"
       savedToolIdentifier = ""
-      useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/magnus/projects/lab/ScriptLab/NuXJScript"
+      useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
       <BuildableProductRunnable
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "8DD76F620486A84900D96B5E"
-            BuildableName = "NuXJScript"
-            BlueprintName = "NuXJScript"
-            ReferencedContainer = "container:NuXJScript.xcodeproj">
+            BuildableName = "NuXJSTest"
+            BlueprintName = "NuXJSTest"
+            ReferencedContainer = "container:NuXJSTest.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
