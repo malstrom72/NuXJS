@@ -2036,12 +2036,18 @@ void FunctionScope::writeVar(Runtime& rt, const String* name, const Value& v) {
 		}
 		// FIX : make sub that lookup's the bucket, also use in getProperty
 		if (dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) {
-			Table& props = *getDynamicVars(rt);
-			Table::Bucket* bucket = props.lookup(name);
-			if (bucket != 0) {
-				props.update(bucket, v);
-				return;
-			}
+Table& props = *getDynamicVars(rt);
+Table::Bucket* bucket = props.lookup(name);
+if (bucket != 0) {
+if (name->isEqualTo(ARGUMENTS_STRING)) {
+Object* obj = bucket->getValue().asObject();
+if (obj != 0 && obj->getClassName() == &A_RGUMENTS_STRING) {
+static_cast<Arguments*>(obj)->detach();
+}
+}
+props.update(bucket, v);
+return;
+}
 		}
 		if (code->selfName != 0 && name->isEqualTo(*code->selfName)) {
 			return;
@@ -2088,16 +2094,16 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
 }
 
 void FunctionScope::leave() {
-       if (dynamicVars != 0) {
-               Table::Bucket* bucket = dynamicVars->lookup(&ARGUMENTS_STRING);
-               if (bucket != 0 && bucket->valueExists()) {
-                       Arguments* args = static_cast<Arguments*>(bucket->getValue().asObject());
-                       if (args != 0) {
-                               args->detach();
-                       }
-               }
-       }
-       super::leave();
+if (dynamicVars != 0 && deleteOnPop) {
+Table::Bucket* bucket = dynamicVars->lookup(&ARGUMENTS_STRING);
+if (bucket != 0 && bucket->valueExists()) {
+Object* obj = bucket->getValue().asObject();
+if (obj != 0 && obj->getClassName() == &A_RGUMENTS_STRING) {
+static_cast<Arguments*>(obj)->detach();
+}
+}
+}
+super::leave();
 }
 
 /* --- ScriptException --- */
