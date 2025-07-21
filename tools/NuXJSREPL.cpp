@@ -381,8 +381,25 @@ Var load(Runtime& rt, const Var& thisVar, const VarList& args) {
 bool doQuit = false;
 
 Var quit(Runtime& rt, const Var& thisVar, const VarList& args) {
-	doQuit = true;
-	return Var(rt);
+        doQuit = true;
+        return Var(rt);
+}
+
+Var help(Runtime& rt, const Var& thisVar, const VarList& args) {
+        (void)thisVar;
+        (void)args;
+        std::wcout << L"Available REPL helpers:" << std::endl
+                        << L"  read(file)   - return UTF-8 file as string" << std::endl
+                        << L"  load(file)   - execute a UTF-8 JavaScript file" << std::endl
+                        << L"  quit()       - exit the REPL" << std::endl
+                        << L"  gc()         - run garbage collection" << std::endl
+                        << L"  dasm(func)   - disassemble a compiled function" << std::endl
+                        << L"Special commands:" << std::endl
+                        << L"  #save [name] - save the current session" << std::endl
+                        << L"                 (no name uses a timestamp in tests/)" << std::endl
+                        << L"  #purge       - clear the session log" << std::endl
+                        << L"  ?expr        - shortcut for print(expr)" << std::endl;
+        return Var(rt);
 }
 
 struct MyHeap : public Heap {
@@ -486,9 +503,10 @@ int testMain(int argc, const char* argv[]) {
 
 		Object& globals = *rt.getGlobalObject();
 		Var globs = rt.getGlobalsVar();
-		globs["read"] = read;
-		globs["load"] = load;
-		globs["quit"] = quit;
+                globs["read"] = read;
+                globs["load"] = load;
+                globs["quit"] = quit;
+                globs["help"] = help;
 
 		PrintFunction printFunction;
 		globals.setOwnProperty(rt, &PRINT_STRING, &printFunction, DONT_ENUM_FLAG);
@@ -668,7 +686,7 @@ int testMain(int argc, const char* argv[]) {
 				pushIOStop();
 			}
 		}
-		if (interactive && !inStream->eof()) {
+		if (interactive && !doQuit && !inStream->eof()) {
 			std::cout << "input stream failure" << std::endl;
 			return 1;
 		}
