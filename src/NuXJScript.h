@@ -929,7 +929,7 @@ class Scope : public GCItem {
 		Value* getLocalsPointer() const { return localsPointer; }
 		Scope* getParentScope() const { return parentScope; }
 				void makeClosure() const;
-		void leave() { if (deleteOnPop) { delete this; } }
+virtual void leave() { if (deleteOnPop) { delete this; } }
 	
 	protected:
 		Scope* const parentScope;
@@ -1024,7 +1024,8 @@ class FunctionScope : public Scope {
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
-		JSObject* getDynamicVars(Runtime& rt) const;
+                JSObject* getDynamicVars(Runtime& rt) const;
+               virtual void leave();
 
 	protected:
 		JSFunction* const function;

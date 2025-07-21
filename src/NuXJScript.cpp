@@ -1849,8 +1849,8 @@ void Error::constructCompleteObject(Runtime& rt) const {
 /* --- Arguments --- */
 
 class Arguments : public LazyJSObject<Object> {
-	public:
-		typedef LazyJSObject<Object> super;
+        public:
+                typedef LazyJSObject<Object> super;
 
         Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
 		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
@@ -1859,24 +1859,33 @@ class Arguments : public LazyJSObject<Object> {
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
-		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
+                virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
+void detach();
 
-	protected:
-		virtual void constructCompleteObject(Runtime& rt) const;
+        protected:
+                virtual void constructCompleteObject(Runtime& rt) const;
         Value* findProperty(const Value& key) const;
-    	const FunctionScope* const scope;
-		UInt32 const argumentsCount;
-		Vector<Byte> deletedArguments;
+        const FunctionScope* scope;
+JSFunction* const function;
+                UInt32 const argumentsCount;
+                Vector<Byte> deletedArguments;
+                Vector<Value> values;
 
-		virtual void gcMarkReferences(Heap& heap) const {
-			gcMark(heap, scope);
-			super::gcMarkReferences(heap);
-		}
+                virtual void gcMarkReferences(Heap& heap) const {
+                        if (scope != 0) {
+                                gcMark(heap, scope);
+                        } else {
+                                gcMark(heap, values.begin(), values.end());
+                        }
+                        gcMark(heap, function);
+                        super::gcMarkReferences(heap);
+                }
 };
 
 Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
-		, scope(scope), argumentsCount(argumentsCount), deletedArguments(argumentsCount, &gcList.getHeap()) {
-	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
+               , scope(scope), function(scope->function), argumentsCount(argumentsCount)
+               , deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()) {
+        std::fill(deletedArguments.begin(), deletedArguments.end(), false);
 }
 
 const String* Arguments::getClassName() const { return &A_RGUMENTS_STRING; }
@@ -1888,9 +1897,20 @@ const String* Arguments::toString(Heap& heap) const {
 
 Object* Arguments::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
 
+void Arguments::detach() {
+       if (scope != 0) {
+               values.resize(argumentsCount);
+               std::copy(scope->getLocalsPointer(), scope->getLocalsPointer() + argumentsCount, values.begin());
+               scope = 0;
+       }
+}
+
 Value* Arguments::findProperty(const Value& key) const {
-	UInt32 i;
-	return (key.toArrayIndex(i) && i < argumentsCount && !deletedArguments[i] ? scope->getLocalsPointer() + i : 0);
+        UInt32 i;
+        if (key.toArrayIndex(i) && i < argumentsCount && !deletedArguments[i]) {
+               return (scope != 0 ? scope->getLocalsPointer() + i : const_cast<Value*>(&values[i]));
+       }
+       return 0;
 }
 
 Flags Arguments::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
@@ -1899,17 +1919,18 @@ Flags Arguments::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 }
 
 bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
-	Value* p = findProperty(key);
-	if (p != 0 && (flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) != 0) {
-		deletedArguments[p - scope->getLocalsPointer()] = true;
-		p = 0;
-	}
-	return (p == 0 ? super::setOwnProperty(rt, key, v, flags) : ((void)(*p = v), true));
+        Value* p = findProperty(key);
+        if (p != 0 && (flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) != 0) {
+                const UInt32 index = static_cast<UInt32>(p - (scope != 0 ? scope->getLocalsPointer() : values.begin()));
+                deletedArguments[index] = true;
+                p = 0;
+        }
+        return (p == 0 ? super::setOwnProperty(rt, key, v, flags) : ((void)(*p = v), true));
 }
 
 bool Arguments::deleteOwnProperty(Runtime& rt, const Value& key) {
-	const Value* p = findProperty(key);
-    return (p == 0 ? super::deleteOwnProperty(rt, key) : (deletedArguments[p - scope->getLocalsPointer()] = true));
+        const Value* p = findProperty(key);
+    return (p == 0 ? super::deleteOwnProperty(rt, key) : (deletedArguments[p - (scope != 0 ? scope->getLocalsPointer() : values.begin())] = true));
 }
 
 Enumerator* Arguments::getOwnPropertyEnumerator(Runtime& rt) const {
@@ -1917,8 +1938,8 @@ Enumerator* Arguments::getOwnPropertyEnumerator(Runtime& rt) const {
 }
 
 void Arguments::constructCompleteObject(Runtime& rt) const {
-	completeObject->setOwnProperty(rt, &LENGTH_STRING, argumentsCount, DONT_ENUM_FLAG);
-	completeObject->setOwnProperty(rt, &CALLEE_STRING, scope->function, DONT_ENUM_FLAG);
+        completeObject->setOwnProperty(rt, &LENGTH_STRING, argumentsCount, DONT_ENUM_FLAG);
+        completeObject->setOwnProperty(rt, &CALLEE_STRING, function, DONT_ENUM_FLAG);
 }
 
 /* --- Scope --- */
@@ -2064,6 +2085,19 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
 	if (!initValue.isUndefined()) {
 		writeVar(rt, name, initValue);
 	}
+}
+
+void FunctionScope::leave() {
+       if (deleteOnPop && dynamicVars != 0) {
+               Table::Bucket* bucket = dynamicVars->lookup(&ARGUMENTS_STRING);
+               if (bucket != 0 && bucket->valueExists()) {
+                       Arguments* args = static_cast<Arguments*>(bucket->getValue().asObject());
+                       if (args != 0) {
+                               args->detach();
+                       }
+               }
+       }
+       super::leave();
 }
 
 /* --- ScriptException --- */
