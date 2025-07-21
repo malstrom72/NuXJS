@@ -1883,9 +1883,9 @@ class Arguments : public LazyJSObject<Object> {
 };
 
 Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
-               , scope(scope), function(scope->function), argumentsCount(argumentsCount)
-               , deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()) {
-        std::fill(deletedArguments.begin(), deletedArguments.end(), false);
+	   , scope(scope), function(scope->function), argumentsCount(argumentsCount)
+	   , deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()) {
+	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
 }
 
 const String* Arguments::getClassName() const { return &A_RGUMENTS_STRING; }
@@ -1991,11 +1991,11 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, 
 }
 
 JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
-        if (dynamicVars == 0) {
-                Heap& heap = rt.getHeap();
+	if (dynamicVars == 0) {
+		Heap& heap = rt.getHeap();
 		dynamicVars = new(heap) JSObject(heap.managed(), 0);
-		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING, new(heap) Arguments(heap.managed(), this, passedArgumentsCount)
-				, DONT_DELETE_FLAG);
+		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING
+				, new(heap) Arguments(heap.managed(), this, passedArgumentsCount), DONT_DELETE_FLAG);
 	}
 	return dynamicVars;
 }
@@ -2011,7 +2011,7 @@ Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v) const {
 			return DONT_DELETE_FLAG | EXISTS_FLAG;
 		}
 		if (dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) {
-			Flags flags = getDynamicVars(rt)->getOwnProperty(rt, name, v);
+			const Flags flags = getDynamicVars(rt)->getOwnProperty(rt, name, v);
 			if (flags != NONEXISTENT) {
 				return flags;
 			}

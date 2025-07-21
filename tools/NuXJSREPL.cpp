@@ -161,35 +161,35 @@ void pushIOStop() {
 	ioLines.push_back("-");
 }
 
-class PrintFunction : public Function {
-	public:		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
-					const String* s = (argc >= 1 ? argv[0].toString(rt.getHeap()) : &EMPTY_STRING);
-					std::wcout << s->toWideString().c_str() << std::endl;
-					if (interactive) {
-						pushIOLines('<', *s);
-					}
-					return Value::UNDEFINED;
-				}
+struct PrintFunction : public Function {
+	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+		const String* s = (argc >= 1 ? argv[0].toString(rt.getHeap()) : &EMPTY_STRING);
+		std::wcout << s->toWideString().c_str() << std::endl;
+		if (interactive) {
+			pushIOLines('<', *s);
+		}
+		return Value::UNDEFINED;
+	}
 };
 
 struct GCFunction : public Function {
-        virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
-               Heap& heap = rt.getHeap();
-               const UInt32 preCount = heap.count();
-               const size_t preSize = heap.size();
-               heap.gc();
-               const UInt32 postCount = heap.count();
-               const size_t postSize = heap.size();
-               const size_t pooled = heap.pooled();
-               heap.drain();
-               JSObject* o = new(heap) JSObject(heap.managed(), rt.getObjectPrototype());
-               o->setOwnProperty(rt, String::allocate(heap, "preCount"), preCount);
-               o->setOwnProperty(rt, String::allocate(heap, "preSize"), static_cast<double>(preSize));
-               o->setOwnProperty(rt, String::allocate(heap, "postCount"), postCount);
-               o->setOwnProperty(rt, String::allocate(heap, "postSize"), static_cast<double>(postSize));
-               o->setOwnProperty(rt, String::allocate(heap, "pooled"), static_cast<double>(pooled));
-               return o;
-        }
+	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+	   Heap& heap = rt.getHeap();
+	   const UInt32 preCount = heap.count();
+	   const size_t preSize = heap.size();
+	   heap.gc();
+	   const UInt32 postCount = heap.count();
+	   const size_t postSize = heap.size();
+	   const size_t pooled = heap.pooled();
+	   heap.drain();
+	   JSObject* o = new(heap) JSObject(heap.managed(), rt.getObjectPrototype());
+	   o->setOwnProperty(rt, String::allocate(heap, "preCount"), preCount);
+	   o->setOwnProperty(rt, String::allocate(heap, "preSize"), static_cast<double>(preSize));
+	   o->setOwnProperty(rt, String::allocate(heap, "postCount"), postCount);
+	   o->setOwnProperty(rt, String::allocate(heap, "postSize"), static_cast<double>(postSize));
+	   o->setOwnProperty(rt, String::allocate(heap, "pooled"), static_cast<double>(pooled));
+	   return o;
+	}
 };
 
 static void disassemble(Heap& heap, const Code& code) {
