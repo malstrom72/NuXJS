@@ -41,12 +41,8 @@ Run-time
 	* perhaps it would have been better to split Frame into different pointers (more similar to ES-spec): one for running code (not changed by catch and with), one for variable object (not changed by catch, with or eval) and "current scope object" (changed by them all). This way we wouldn't have to declare so many dummy virtuals that just passes stuff upwards the Frame chain.
 
 	* array object (length property support, optimized for numerical indexes?)
-		- take value as key for getproperty etc and we could optimize array and string accesses by not having to go via strings
-		- only downside to that would be read and write named, which assumes the constant is a string pointer
-		- also, how to efficiently convert between continuous array and sparse array / associative array... have QuickArray *and* Table in the object?
 		- ok, one thought: normally an array only contains a continuous array (with start and end)... when too many items are (or are to become) undefined, or when non-integer elements are added, convert to a normal ScriptObject (accessed as through a proxy now)
 		- more thoughts: use different compressed variations (templates) when type is homogenous over all the array, e.g. number array, object array, string array. One could even consider an int array.
-		- update: we do everything except last point right here ^^^^
 
 	* unprintable strings, strings with lf etc does not look so nice in exceptions, e.g. when trying to convert to a function, e.g. ("")(): TypeError:  is not a function
 		- also extremely long strings create absurd exceptions this way
@@ -82,8 +78,6 @@ Run-time
 		- after a lot of experiments with this I think we better expand this in the future to a general opcode pattern reducer instead (see rev 19228)
 		- instead added _pop variations on write opcodes
 
-	* Don't lookup names in frame when not necessary. (And use hash table!)
-		- we do don't we? (use hash table), not sure what I meant with this bullet at all
 
 
 	* not a big fan of the POST_SHUFFLE_OP solution, feels ugly, but can't for the world come up with any simpler solutions!?
@@ -106,11 +100,6 @@ Run-time
 
 		- Also, as the compiler works now, a simple late declaration of a var is enough to break things. E.g. `var x = 5; (function() { print(x); var x; })()` should print "undefined" and not "5". This could of course be solved as soon as you encounter "var x". But what about: `var x = 5; (function() { (function() { print(x); })(); var x })();`. The recompile when finding eval approach alone doesn't cut it (svn revision 19277). What we need is a second compilation pass to bind all variables. To bad. Chess benchmark is twice as fast without global variable lookup by name.
 
-		- bloom filter helped quite a bit!
-
-	* internal int type
-		- One complication is we can't always use .type directly then, e.g. for strict comparison.
-		- I went with a special "index" type in Table instead, solved the most pressing need for now.
 
 	* have a tiny-string type which fits inside value directly (4 16-bit words or 8 8-bit bytes?), for faster/more economic character handling
 
