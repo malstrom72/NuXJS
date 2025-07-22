@@ -382,12 +382,12 @@ src/NuXJS.cpp:5089:	// FIX : static strings?
     	supportObject->setOwnProperty(*this, String::allocate(heap, "prototypes"), prototypesObject);
     	for (size_t i = 0; i < sizeof (SUPPORT_FUNCTIONS) / sizeof (*SUPPORT_FUNCTIONS); ++i) {
 
-docs/todo.txt:1:TODO
+docs/notes/Todo.md:1:TODO
 
-docs/ECMAViolations.md:7:	or CR. Also <NBSP> (\u00A0) and <ZWNBSP> ZERO WIDTH NO-BREAK SPACE (\uFEFF) are not considered white space. FIX :
+docs/ECMA Violations.md:7:	or CR. Also <NBSP> (\u00A0) and <ZWNBSP> ZERO WIDTH NO-BREAK SPACE (\uFEFF) are not considered white space. FIX :
 
-docs/ECMAViolations.md:13:	FIX : why not?
+docs/ECMA Violations.md:13:	FIX : why not?
 
-docs/done.txt:125:	* FIX : The SourceCharacter immediately following a NumericLiteral must not be an IdentifierStart or DecimalDigit.    For example:     3in     is an error and not the two input elements 3 and in.
+docs/notes/Done.md:125:	* FIX : The SourceCharacter immediately following a NumericLiteral must not be an IdentifierStart or DecimalDigit.    For example:     3in     is an error and not the two input elements 3 and in.
 
-docs/ChangesForES5.txt:4:		if ((o = convertToObject(vsp[0], false)) == 0) { // FIX : so common!
+docs/notes/Changes For ES5.md:4:		if ((o = convertToObject(vsp[0], false)) == 0) { // FIX : so common!
