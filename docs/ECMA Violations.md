@@ -44,3 +44,27 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 - Many `Date` object features from ES5 are implemented.
 - Regular expression flags cannot contain Unicode escape sequences.
 - Unicode format control characters are preserved in source text.
+
+### ECMAScript oddities
+
+NuXJS also handles several subtle parts of the standard that are easy to miss:
+
+- **Hidden `ToObject` on every property access.** The spec converts primitive
+  bases to objects before retrieving a property. Strings would therefore need a
+  wrapper object for every indexed read. The engine uses *shallow* string
+  wrappers so indexing does not allocate, while method calls still turn `this`
+  into a full `String` object as required.
+
+- **`catch (x)` really is its own scope.** A catch clause introduces a new
+  declarative environment that shadows outer bindings and must be visible to
+  `eval`. NuXJS creates a transient `CatchScope` at run time so dynamic code
+  inside the block sees the correct variable.
+
+- **Built-ins can distinguish call vs construct.** Native functions may have
+  separate `[[Call]]` and `[[Construct]]` paths. User-defined functions cannot
+  emulate this because they share one body. Built-ins in `stdlib.js` use
+  `support.distinctConstructor` to implement behaviours like `String` where the
+  result differs when invoked with `new`.
+
+These quirks are implemented so programs observe the same semantics as they
+would in compliant engines.
