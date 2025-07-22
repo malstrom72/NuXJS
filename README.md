@@ -1,11 +1,11 @@
 # NuXJS
-A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with fine-grained execution control.
+A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with precise execution control.
 
 ## Features
 
 - **Fully ECMAScript 3 compliant** with focused ECMAScript 5 additions (string indexing, JSON).  
 - Entire engine fits in **one .cpp file, one .h file, and a `stdlib.js`** (~7 000 LOC of C++).  
-- Written in standard, architecture-agnostic **C++03** – *no* platform-specific code or STL containers.  
+- Written in standard, architecture-agnostic **C++03** – *no* platform-specific code.  
 - Fully asynchronous, **non-blocking VM**; run as many cycles as you like between host calls.  
 - Simple but **fast stack machine**; competitive with other interpreted JS engines.  
 - **Sandboxed and secure** – guest JS cannot crash the host process.  
@@ -15,13 +15,13 @@ A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with fine
 - Mark-and-sweep, stop-the-world **GC** with adaptive trigger rate and memory cap.  
 - Uses the standard C++ heap with **object pools** for quick allocation of small blocks.  
 - **Zero external dependencies** (even STL containers are avoided).
-- **Standard library and regexp compiler written in JavaScript** for safety and clarity.
+- **Standard library and regexp compiler written in JavaScript** for safety and smaller footprint.
 - **Easy-to-use high-level C++ API** for integrating and embedding the engine.
 - **Extensive automated tests** – zero-tolerance for bugs.
 
 ## Why ECMAScript 3?
 
-ECMAScript 3 was the first broadly adopted JS standard; it provides everything needed in a *scripting* language without a large runtime or a complex compiler. Staying with ES3 keeps the engine tiny and predictable. Selective ES5 features are “back-ported” where they add clear value:
+ECMAScript 3 was the first broadly adopted JS standard; it provides everything needed in a *scripting* language without a large runtime or a complex compiler. Staying with ES3 keeps the engine tiny and predictable. Selective ES5 features are “back-ported” where they add essential value, e.g.:
 
 - Character indexing on `String` via `str[i]`
 - `JSON` support
@@ -45,10 +45,7 @@ Both the **beta** and **release** targets are compiled with optimizations enable
 
 During this process, `src/stdlib.js` is minified and converted into `src/stdlibJS.cpp`. See `docs/NuXJS Documentation.md` for details.
 
-The build outputs a console REPL named `NuXJS`. Type `help()` inside the REPL to
-see available helper functions and commands. Use `#save` to capture the current session
-as a `.io` file. When no name is given, the REPL creates a timestamped file in
-`tests/` so it can immediately be used as a regression case.
+The build outputs a console REPL named `NuXJS`. Type `help()` inside the REPL to see available helper functions and commands.
 
 ## Example
 
@@ -73,14 +70,12 @@ int main(int argc, const char* argv[]) {
 - `build.sh` / `build.cmd` – build both the **beta** and **release** targets and run all tests
 - `tools/buildAndTest.sh` / `.cmd` – build and test a single configuration
 - `tools/runExamples.sh` / `.cmd` – compile and run all example programs
-- `tools/testAllConfigs.sh` / `.cmd` – exercise every debug and release build for each CPU model
 - `tools/BuildCpp.sh` / `.cmd` – low-level wrapper around the C++ compiler
 
  ## Documentation
 
 - [NuXJS Documentation](docs/NuXJS%20Documentation.md)
-- [Changes for ES5](docs/notes/Changes%20For%20ES5.md)
-- [Native Call Thoughts](docs/notes/Native%20Call%20Thoughts.md)
+- [ECMAScript Compatibility Notes.md](docs/notes/ECMAScript%20Compatibility%20Notes.md)
 - [TypeScript Compatibility](docs/TypeScript%20Compatibility.md)
 
 ## AI Usage
@@ -90,4 +85,3 @@ AI tools (such as OpenAI Codex) have occasionally been used to assist with docum
 ## License
 
 This project is released under the [BSD 2-Clause License](LICENSE).
-
