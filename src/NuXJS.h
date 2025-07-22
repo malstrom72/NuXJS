@@ -21,8 +21,8 @@
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **/
 
-#ifndef NuXJScript_h
-#define NuXJScript_h
+#ifndef NuXJS_h
+#define NuXJS_h
 
 #include "assert.h"
 #include <algorithm>

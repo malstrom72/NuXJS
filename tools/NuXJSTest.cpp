@@ -22,7 +22,7 @@
 **/
 
 #include <stdint.h>
-#include "../src/NuXJScript.h"
+#include "../src/NuXJS.h"
 #include <fstream>
 #include <memory>
 #include <vector>

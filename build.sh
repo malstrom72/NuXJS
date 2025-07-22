@@ -8,6 +8,6 @@ for target in beta release; do
         bash ./tools/buildAndTest.sh "$target" "$model"
 done
 
-if [ -f "output/NuXJScript_release_${model}" ]; then
-        mv -f "output/NuXJScript_release_${model}" "output/NuXJScript"
+if [ -f "output/NuXJS_release_${model}" ]; then
+        mv -f "output/NuXJS_release_${model}" "output/NuXJS"
 fi

@@ -20,11 +20,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tools\NuXJSREPL.cpp" />
-    <ClCompile Include="..\src\NuXJScript.cpp" />
+    <ClCompile Include="..\src\NuXJS.cpp" />
     <ClCompile Include="..\src\stdlibJS.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\NuXJScript.h" />
+    <ClInclude Include="..\src\NuXJS.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <Keyword>Win32Proj</Keyword>

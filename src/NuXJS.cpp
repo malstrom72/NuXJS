@@ -41,7 +41,7 @@
 #include <stdint.h>
 #include "assert.h"
 #include <cmath>
-#include "NuXJScript.h"
+#include "NuXJS.h"
 #ifdef _MSC_VER
 #include <float.h>
 #endif

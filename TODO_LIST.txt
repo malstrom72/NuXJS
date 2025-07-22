@@ -81,71 +81,71 @@ tests/migrated/goodOldTests_moreNumbers.io:19:> // print(x == 0.003e3) // FIX : 
     > print(!(x == 2.9))
     > print(!(x != 3))
 
-src/NuXJScript.h:404:typedef Byte Flags; // FIX : turn into enum
+src/NuXJS.h:404:typedef Byte Flags; // FIX : turn into enum
     const Flags EXISTS_FLAG = 1; // FIX : turn these into enum, that's ok
     const Flags READ_ONLY_FLAG = 2;
 
-src/NuXJScript.h:405:const Flags EXISTS_FLAG = 1; // FIX : turn these into enum, that's ok
+src/NuXJS.h:405:const Flags EXISTS_FLAG = 1; // FIX : turn these into enum, that's ok
     const Flags READ_ONLY_FLAG = 2;
     const Flags DONT_ENUM_FLAG = 4;
 
-src/NuXJScript.h:706:		// FIX : toString too?
+src/NuXJS.h:706:		// FIX : toString too?
     		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
     		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 
-src/NuXJScript.h:724:			const_cast<JSArray*>(this)->denseVector.shrink(); // FIX : split into two different gc-things? it really *is* different to just mark stuff and actively shrink / compress stuff
+src/NuXJS.h:724:			const_cast<JSArray*>(this)->denseVector.shrink(); // FIX : split into two different gc-things? it really *is* different to just mark stuff and actively shrink / compress stuff
     			gcMark(heap, denseVector.begin(), denseVector.end());
     			super::gcMarkReferences(heap);
 
-src/NuXJScript.h:744:// FIX : maybe split into seperate FunctionCode for function's (most fields only apply to functions)
+src/NuXJS.h:744:// FIX : maybe split into seperate FunctionCode for function's (most fields only apply to functions)
     class Code : public Object {
     	friend class FunctionScope;
 
-src/NuXJScript.h:747:	friend class Compiler; // FIX : maybe not one day?
+src/NuXJS.h:747:	friend class Compiler; // FIX : maybe not one day?
     
     	public:
 
-src/NuXJScript.h:815:// FIX : overkill?
+src/NuXJS.h:815:// FIX : overkill?
     template<class F> struct FunctorAdapter : public Function {
     	typedef Function super;
 
-src/NuXJScript.h:1257:// FIX : why template?
+src/NuXJS.h:1257:// FIX : why template?
     template<class F> struct AccessorBase::VarFunctorAdapter : public ExtensibleFunction {
     	typedef ExtensibleFunction super;
 
-src/NuXJScript.h:1283:// FIX : vvv I think there should be a getLength() in Object*
+src/NuXJS.h:1283:// FIX : vvv I think there should be a getLength() in Object*
     inline UInt32 AccessorBase::size() const {
     	const JSArray* a = get().asArray();
 
-src/NuXJScript.h:1356:		enum Opcode {	// FIX : sort
+src/NuXJS.h:1356:		enum Opcode {	// FIX : sort
     			INVALID_OP = -1 // FIX : why?!
     			, CONST_OP										// operand: const_index, stack: -> constant
 
-src/NuXJScript.h:1357:			INVALID_OP = -1 // FIX : why?!
+src/NuXJS.h:1357:			INVALID_OP = -1 // FIX : why?!
     			, CONST_OP										// operand: const_index, stack: -> constant
     			, READ_LOCAL_OP									// operand: local_index, stack: -> value
 
-src/NuXJScript.h:1385:			// FIX : push back is a really bad name, it's really pop back and then push sort of
+src/NuXJS.h:1385:			// FIX : push back is a really bad name, it's really pop back and then push sort of
     			, PUSH_BACK_OP									// operand: count, stack: ..., back -> back
     			, REPUSH_OP										// operand: offset, stack: ..., value, ... -> ..., value, ..., value
 
-src/NuXJScript.h:1399:			// FIX : should we have an optional pop argument (push back) to RETURN_OP?
+src/NuXJS.h:1399:			// FIX : should we have an optional pop argument (push back) to RETURN_OP?
     			, RETURN_OP
     			// FIX : maybe we should also have a RETURN_VOID_OP?
 
-src/NuXJScript.h:1401:			// FIX : maybe we should also have a RETURN_VOID_OP?
+src/NuXJS.h:1401:			// FIX : maybe we should also have a RETURN_VOID_OP?
     			, THIS_OP, VOID_OP								// stack: -> value
     			, DELETE_OP										// stack: object, name -> boolean
 
-src/NuXJScript.h:1491:		void invokeFunction(Function* f, Int32 popCount, Int32 argc, Object* thisObject = 0); // FIX : rename, unnecessary with the same name as the public method
+src/NuXJS.h:1491:		void invokeFunction(Function* f, Int32 popCount, Int32 argc, Object* thisObject = 0); // FIX : rename, unnecessary with the same name as the public method
     		void newOperation(const Int32 argc);
     		void reset();
 
-src/NuXJScript.h:1535:		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName = 0); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
+src/NuXJS.h:1535:		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName = 0); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
     		void compile(const String& source);
     		void getStopPosition(size_t& offset, int& lineNumber, int& columnNumber) const;
 
-src/NuXJScript.h:1644:		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
+src/NuXJS.h:1644:		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
     		int nestCounter;
     
 
@@ -221,164 +221,164 @@ src/stdlib.js:1650:// TODO : use StringBuilder?
     defineProperties(JSON, { dontEnum: true }, {
     	stringify: unconstructable(function stringify(val, replacer, space) {
 
-src/NuXJScript.cpp:88:// FIX : if c++11 use std::isnan and std::isfinite
+src/NuXJS.cpp:88:// FIX : if c++11 use std::isnan and std::isfinite
     bool isNaN(double d) { return d != d; }
     bool isFinite(double d) { return !isNaN(d) && fabs(d) != std::numeric_limits<double>::infinity(); }
 
-src/NuXJScript.cpp:202:// FIX : shouldn't need this, used in quick-hash-finders and they should be optimized somehow i think
+src/NuXJS.cpp:202:// FIX : shouldn't need this, used in quick-hash-finders and they should be optimized somehow i think
     static int strncmp(const Char* a, const char* b, size_t n) {
     	size_t i = 0;
 
-src/NuXJScript.cpp:336:			integers[i + QUICK_CONSTANTS_INTEGERS_RANGE] = String(intToString(buffer, i), buffer + 32); // FIX : newHashedString
+src/NuXJS.cpp:336:			integers[i + QUICK_CONSTANTS_INTEGERS_RANGE] = String(intToString(buffer, i), buffer + 32); // FIX : newHashedString
     			integers[i + QUICK_CONSTANTS_INTEGERS_RANGE].createBloomCode();
     		}
 
-src/NuXJScript.cpp:1589:Object* JSArray::getPrototype(Runtime& rt) const { // FIX : have a sep. ArrayPrototype object like we have for Function?
+src/NuXJS.cpp:1589:Object* JSArray::getPrototype(Runtime& rt) const { // FIX : have a sep. ArrayPrototype object like we have for Function?
     	Object* arrayPrototype = rt.getPrototypeObject(Runtime::ARRAY_PROTOTYPE);
     	return (this == arrayPrototype ? rt.getObjectPrototype() : arrayPrototype);
 
 
-src/NuXJScript.cpp:1992:		// FIX : make sub that lookup's the bucket, also use in getProperty
+src/NuXJS.cpp:1992:		// FIX : make sub that lookup's the bucket, also use in getProperty
     		if (dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) {
     			Table& props = *getDynamicVars(rt);
 
-src/NuXJScript.cpp:2005:	parentScope->writeVar(rt, name, v); // FIX : recursion
+src/NuXJS.cpp:2005:	parentScope->writeVar(rt, name, v); // FIX : recursion
     }
     
 
-src/NuXJScript.cpp:2027:	return parentScope->deleteVar(rt, name); // FIX : recursion
+src/NuXJS.cpp:2027:	return parentScope->deleteVar(rt, name); // FIX : recursion
     }
     
 
-src/NuXJScript.cpp:2343:	if (firstCatcher == 0) { // FIX: what exception to throw here?
+src/NuXJS.cpp:2343:	if (firstCatcher == 0) { // FIX: what exception to throw here?
     		reset();
     		throw ScriptException(heap, exception);
 
-src/NuXJScript.cpp:2367:// FIX : should we continue this non-throwing approach or simply use toFunction everywhere? If keeping, we should share error creation with toFunction()
+src/NuXJS.cpp:2367:// FIX : should we continue this non-throwing approach or simply use toFunction everywhere? If keeping, we should share error creation with toFunction()
     Function* Processor::asFunction(const Value& v) {
     	Function* const f = v.asFunction();
 
-src/NuXJScript.cpp:2383:	if (f != 0) { // FIX : sub
+src/NuXJS.cpp:2383:	if (f != 0) { // FIX : sub
     		Value v(UNDEFINED_VALUE);
     		f->getProperty(rt, &PROTOTYPE_STRING, &v);
 
-src/NuXJScript.cpp:2478:				// FIX : doesn't feel totally efficient this...
+src/NuXJS.cpp:2478:				// FIX : doesn't feel totally efficient this...
     				if (sp[-1].isObject() != sp[0].isObject()) {
     					if (sp[-1].isObject()) {
 
-src/NuXJScript.cpp:2519:				scope->makeClosure(); // FIX : only to prevent popping it since it is shared by two frames, feels wrong
+src/NuXJS.cpp:2519:				scope->makeClosure(); // FIX : only to prevent popping it since it is shared by two frames, feels wrong
     				pushFrame(code, scope, thisObject);
     				ip += im;
 
-src/NuXJScript.cpp:2942:// FIX : share code somehow
+src/NuXJS.cpp:2942:// FIX : share code somehow
     	const Processor::OpcodeInfo& opcodeInfo = Processor::getOpcodeInfo(opcode);
     	const Int32 operand = 0;
 
-src/NuXJScript.cpp:2999:static const Char LINE_TERMINATORS[] = { '\n', 0x2028, 0x2029, '\r' }; // FIX : '\r' must be last for line count to work, but I think we should change line counting algo in the future, a single '\r' without '\n' should count too really
+src/NuXJS.cpp:2999:static const Char LINE_TERMINATORS[] = { '\n', 0x2028, 0x2029, '\r' }; // FIX : '\r' must be last for line count to work, but I think we should change line counting algo in the future, a single '\r' without '\n' should count too really
     
     static bool isLineTerminator(Char c) {
 
-src/NuXJScript.cpp:3205:		default: error(REFERENCE_ERROR, "Illegal l-value"); // FIX : ECMA like the word "reference"
+src/NuXJS.cpp:3205:		default: error(REFERENCE_ERROR, "Illegal l-value"); // FIX : ECMA like the word "reference"
     		case ExpressionResult::LOCAL: emit(Processor::WRITE_LOCAL_OP, xr.v.toInt()); break;
     		case ExpressionResult::NAMED: emitWithConstant(Processor::WRITE_NAMED_OP, xr.v); break;
 
-src/NuXJScript.cpp:3297:Compiler::ExpressionResult Compiler::arrayInitialiser() { // FIX : share stuff with functionCall and arrayInitialiser
+src/NuXJS.cpp:3297:Compiler::ExpressionResult Compiler::arrayInitialiser() { // FIX : share stuff with functionCall and arrayInitialiser
     	emit(Processor::NEW_ARRAY_OP);
     
 
-src/NuXJScript.cpp:3340:Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff with functionCall and arrayInitialiser
+src/NuXJS.cpp:3340:Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff with functionCall and arrayInitialiser
     	emit(Processor::NEW_OBJECT_OP);
     
 
-src/NuXJScript.cpp:3422:			emit(Processor::NEW_RESULT_OP); // FIX : make a chain for script constructors and require returning object for native constructors instead?
+src/NuXJS.cpp:3422:			emit(Processor::NEW_RESULT_OP); // FIX : make a chain for script constructors and require returning object for native constructors instead?
                 assert(!op.primitiveOutput);
                 xr = ExpressionResult::PUSHED;
 
-src/NuXJScript.cpp:3647:	catch (const Exception&) { // FIX : a bit Q & D ish
+src/NuXJS.cpp:3647:	catch (const Exception&) { // FIX : a bit Q & D ish
     		p = funcCompiler.p;
     		throw;
 
-src/NuXJScript.cpp:3790:// FIX : ok, this is serious mess
+src/NuXJS.cpp:3790:// FIX : ok, this is serious mess
     Compiler::ExpressionResult Compiler::declareIdentifier(const String* name, bool func) {
     	ExpressionResult lxr(ExpressionResult::NAMED, name);
 
-src/NuXJScript.cpp:3929:// FIX : sort all statement funcs
+src/NuXJS.cpp:3929:// FIX : sort all statement funcs
     
     void Compiler::varStatement() {
 
-src/NuXJScript.cpp:4180:/* FIX : I thought we could drop if we keep the reserve-one-element-for-return-on-stack-solution, but rethrower needs a place to safe-keep its throw value and this is here*/
+src/NuXJS.cpp:4180:/* FIX : I thought we could drop if we keep the reserve-one-element-for-return-on-stack-solution, but rethrower needs a place to safe-keep its throw value and this is here*/
     	if (compilingFor != FOR_EVAL) { // space holder for return value so that we can break out of finallys (with the same stack pop count) regardless if try scope returns a value or not
     		emit(Processor::VOID_OP, 0);
 
-src/NuXJScript.cpp:4214:		bool didExist = false; // FIX : can use NON_EXISTENT type if we choose to keep it
+src/NuXJS.cpp:4214:		bool didExist = false; // FIX : can use NON_EXISTENT type if we choose to keep it
     		Table::Bucket* indexBucket = nameIndexes.lookup(exceptionVarName);
     		if (indexBucket != 0) {
 
-src/NuXJScript.cpp:4273:/* FIX : I thought we could drop if we keep the reserve-one-element-for-return-on-stack-solution */
+src/NuXJS.cpp:4273:/* FIX : I thought we could drop if we keep the reserve-one-element-for-return-on-stack-solution */
     	if (compilingFor != FOR_EVAL) { // pop return space holder
     		emit(Processor::POP_OP, 1);
 
-src/NuXJScript.cpp:4435:	// FIX : not 100% necessary now because we should always start with undefined on top of stack
+src/NuXJS.cpp:4435:	// FIX : not 100% necessary now because we should always start with undefined on top of stack
     	if (compilingFor == FOR_EVAL) {
     		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
 
-src/NuXJScript.cpp:4437:		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
+src/NuXJS.cpp:4437:		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
     		emit(Processor::VOID_OP);
     	}
 
-src/NuXJScript.cpp:4442: 	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
+src/NuXJS.cpp:4442: 	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
     	if (compilingFor != FOR_EVAL) {
     		// FIX : if RETURN_OP took a push back count we could just do void_op here, or even have another RETURN_VOID_OP
 
-src/NuXJScript.cpp:4444:		// FIX : if RETURN_OP took a push back count we could just do void_op here, or even have another RETURN_VOID_OP
+src/NuXJS.cpp:4444:		// FIX : if RETURN_OP took a push back count we could just do void_op here, or even have another RETURN_VOID_OP
     		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
     		emit(Processor::VOID_OP);
 
-src/NuXJScript.cpp:4445:		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
+src/NuXJS.cpp:4445:		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
     		emit(Processor::VOID_OP);
     	}
 
-src/NuXJScript.cpp:4461:	assert(compilingFor == FOR_FUNCTION);  // FIX : messy, why do we have compilerFor if we separate this anyhow? Maybe subclass Compiler instead?
+src/NuXJS.cpp:4461:	assert(compilingFor == FOR_FUNCTION);  // FIX : messy, why do we have compilerFor if we separate this anyhow? Maybe subclass Compiler instead?
     	assert(functionName != 0);
     	p = b;
 
-src/NuXJScript.cpp:4486:	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
+src/NuXJS.cpp:4486:	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
     	expectToken("}", false);
     	code->name = functionName;
 
-src/NuXJScript.cpp:4499:		error(SYNTAX_ERROR, "Syntax error"); // FIX : better error?
+src/NuXJS.cpp:4499:		error(SYNTAX_ERROR, "Syntax error"); // FIX : better error?
     	}
     }
 
-src/NuXJScript.cpp:4548:	// FIX : deep or not?!
+src/NuXJS.cpp:4548:	// FIX : deep or not?!
     	const Flags flags = rt.getGlobalObject()->getOwnProperty(rt, name, &v);
     	if (flags == NONEXISTENT || !initValue.isUndefined()) {
 
-src/NuXJScript.cpp:4619:	if (flags != NONEXISTENT) { // FIX : getName?
+src/NuXJS.cpp:4619:	if (flags != NONEXISTENT) { // FIX : getName?
     		completeObject->setOwnProperty(rt, &NAME_STRING, v, flags);
     	}
 
-src/NuXJScript.cpp:4623:	if (flags != NONEXISTENT) { // FIX : in the future I think we should have a getLength
+src/NuXJS.cpp:4623:	if (flags != NONEXISTENT) { // FIX : in the future I think we should have a getLength
     		completeObject->setOwnProperty(rt, &LENGTH_STRING, v, flags);
     	}
 
-src/NuXJScript.cpp:4742:				if (arrayObject->getProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) { // FIX : in the future I think we should have a virtual getLength
+src/NuXJS.cpp:4742:				if (arrayObject->getProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) { // FIX : in the future I think we should have a virtual getLength
     					Int32 offset = (argc > 3 ? argv[3].toInt() : 0);
     					UInt32 length = static_cast<UInt32>(std::max(v.toInt() - offset, 0));
 
-src/NuXJScript.cpp:4752:			// FIX : we copy all arguments once to argv, and then chain will copy them again to a scope object, couldn't we short-cut that somehow?
+src/NuXJS.cpp:4752:			// FIX : we copy all arguments once to argv, and then chain will copy them again to a scope object, couldn't we short-cut that somehow?
     			// FIX : since only arrays and arguments are really valid here, perhaps even have a new virtual in object for implementing efficient apply with these?
     			return callFunction->invoke(rt, processor, args.size(), args.begin(), newThis);
 
-src/NuXJScript.cpp:4753:			// FIX : since only arrays and arguments are really valid here, perhaps even have a new virtual in object for implementing efficient apply with these?
+src/NuXJS.cpp:4753:			// FIX : since only arrays and arguments are really valid here, perhaps even have a new virtual in object for implementing efficient apply with these?
     			return callFunction->invoke(rt, processor, args.size(), args.begin(), newThis);
     		}
 
-src/NuXJScript.cpp:5005:		ScriptException::throwError(heap, RANGE_ERROR, &STACK_OVERFLOW_STRING); // FIX : other string?
+src/NuXJS.cpp:5005:		ScriptException::throwError(heap, RANGE_ERROR, &STACK_OVERFLOW_STRING); // FIX : other string?
     	}
     	struct NestCounter {
 
-src/NuXJScript.cpp:5089:	// FIX : static strings?
+src/NuXJS.cpp:5089:	// FIX : static strings?
     	supportObject->setOwnProperty(*this, String::allocate(heap, "prototypes"), prototypesObject);
     	for (size_t i = 0; i < sizeof (SUPPORT_FUNCTIONS) / sizeof (*SUPPORT_FUNCTIONS); ++i) {
 

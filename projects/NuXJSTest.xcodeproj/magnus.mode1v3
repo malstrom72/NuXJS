@@ -313,7 +313,7 @@
 								<key>PBXProjectModuleGUID</key>
 								<string>1CE0B20306471E060097A5F4</string>
 								<key>PBXProjectModuleLabel</key>
-								<string>NuXJScript.cpp</string>
+								<string>NuXJS.cpp</string>
 								<key>PBXSplitModuleInNavigatorKey</key>
 								<dict>
 									<key>Split0</key>
@@ -321,7 +321,7 @@
 										<key>PBXProjectModuleGUID</key>
 										<string>1CE0B20406471E060097A5F4</string>
 										<key>PBXProjectModuleLabel</key>
-										<string>NuXJScript.cpp</string>
+										<string>NuXJS.cpp</string>
 										<key>_historyCapacity</key>
 										<integer>0</integer>
 										<key>bookmark</key>
@@ -527,7 +527,7 @@
 	<key>WindowOrderList</key>
 	<array>
 		<string>F74E7E0316D1A3E7003A6AB6</string>
-		<string>/Users/magnus/projects/lab/ScriptLab/NuXJScript/NuXJScript.xcodeproj</string>
+		<string>/Users/magnus/projects/lab/ScriptLab/NuXJS/NuXJS.xcodeproj</string>
 	</array>
 	<key>WindowString</key>
 	<string>4 56 1436 822 0 0 1440 878 </string>
@@ -769,7 +769,7 @@
 										<key>PBXProjectModuleGUID</key>
 										<string>1CDD528C0622207200134675</string>
 										<key>PBXProjectModuleLabel</key>
-										<string>NuXJScript.cpp</string>
+										<string>NuXJS.cpp</string>
 										<key>StatusBarVisibility</key>
 										<true/>
 									</dict>

@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		F7BF6709227CD34200CC30DB /* stdlibJS.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F7BF6706227CD34200CC30DB /* stdlibJS.cpp */; };
-		F7BF670A227CD34200CC30DB /* NuXJScript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F7BF6708227CD34200CC30DB /* NuXJScript.cpp */; };
+		F7BF670A227CD34200CC30DB /* NuXJS.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F7BF6708227CD34200CC30DB /* NuXJS.cpp */; };
 		F7BF670C227CD35100CC30DB /* NuXJSTest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F7BF670B227CD35100CC30DB /* NuXJSTest.cpp */; };
 /* End PBXBuildFile section */
 
@@ -27,8 +27,8 @@
 /* Begin PBXFileReference section */
 		F74521D02071198000D96B66 /* NuXJSTest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = NuXJSTest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7BF6706227CD34200CC30DB /* stdlibJS.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = stdlibJS.cpp; path = ../src/stdlibJS.cpp; sourceTree = "<group>"; };
-		F7BF6707227CD34200CC30DB /* NuXJScript.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NuXJScript.h; path = ../src/NuXJScript.h; sourceTree = "<group>"; };
-		F7BF6708227CD34200CC30DB /* NuXJScript.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NuXJScript.cpp; path = ../src/NuXJScript.cpp; sourceTree = "<group>"; };
+		F7BF6707227CD34200CC30DB /* NuXJS.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NuXJS.h; path = ../src/NuXJS.h; sourceTree = "<group>"; };
+		F7BF6708227CD34200CC30DB /* NuXJS.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NuXJS.cpp; path = ../src/NuXJS.cpp; sourceTree = "<group>"; };
 		F7BF670B227CD35100CC30DB /* NuXJSTest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NuXJSTest.cpp; path = ../tools/NuXJSTest.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -43,16 +43,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		08FB7794FE84155DC02AAC07 /* NuXJScript */ = {
+		08FB7794FE84155DC02AAC07 /* NuXJS */ = {
 			isa = PBXGroup;
 			children = (
 				F7BF670B227CD35100CC30DB /* NuXJSTest.cpp */,
-				F7BF6708227CD34200CC30DB /* NuXJScript.cpp */,
-				F7BF6707227CD34200CC30DB /* NuXJScript.h */,
+				F7BF6708227CD34200CC30DB /* NuXJS.cpp */,
+				F7BF6707227CD34200CC30DB /* NuXJS.h */,
 				F7BF6706227CD34200CC30DB /* stdlibJS.cpp */,
 				F74521D02071198000D96B66 /* NuXJSTest */,
 			);
-			name = NuXJScript;
+			name = NuXJS;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -72,7 +72,7 @@
 			);
 			name = NuXJSTest;
 			productInstallPath = "$(HOME)/bin";
-			productName = NuXJScript;
+			productName = NuXJS;
 			productReference = F74521D02071198000D96B66 /* NuXJSTest */;
 			productType = "com.apple.product-type.tool";
 		};
@@ -95,8 +95,8 @@
 				Base,
 				fr,
 			);
-			mainGroup = 08FB7794FE84155DC02AAC07 /* NuXJScript */;
-			productRefGroup = 08FB7794FE84155DC02AAC07 /* NuXJScript */;
+			mainGroup = 08FB7794FE84155DC02AAC07 /* NuXJS */;
+			productRefGroup = 08FB7794FE84155DC02AAC07 /* NuXJS */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -112,7 +112,7 @@
 			files = (
 				F7BF670C227CD35100CC30DB /* NuXJSTest.cpp in Sources */,
 				F7BF6709227CD34200CC30DB /* stdlibJS.cpp in Sources */,
-				F7BF670A227CD34200CC30DB /* NuXJScript.cpp in Sources */,
+				F7BF670A227CD34200CC30DB /* NuXJS.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

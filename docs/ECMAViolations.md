@@ -1,6 +1,6 @@
 # ECMAScript Deviations and Extensions
 
-This document lists differences between NuXJScript and the ECMAScript 3 standard along with a summary of later features that the engine supports.
+This document lists differences between NuXJS and the ECMAScript 3 standard along with a summary of later features that the engine supports.
 
 ## ES3 Deviations
 

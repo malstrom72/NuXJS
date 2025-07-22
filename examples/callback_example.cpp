@@ -22,7 +22,7 @@
 **/
 
 #include <iostream>
-#include "../src/NuXJScript.h"
+#include "../src/NuXJS.h"
 
 using namespace NuXJS;
 

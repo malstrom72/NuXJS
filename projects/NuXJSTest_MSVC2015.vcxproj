@@ -19,12 +19,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\NuXJScript.cpp" />
+    <ClCompile Include="..\src\NuXJS.cpp" />
     <ClCompile Include="..\src\stdlibJS.cpp" />
     <ClCompile Include="..\tools\NuXJSTest.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\NuXJScript.h" />
+    <ClInclude Include="..\src\NuXJS.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <Keyword>Win32Proj</Keyword>

@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "8DD76F620486A84900D96B5E"
-               BuildableName = "NuXJScript"
-               BlueprintName = "NuXJScript"
-               ReferencedContainer = "container:NuXJScript.xcodeproj">
+               BuildableName = "NuXJS"
+               BlueprintName = "NuXJS"
+               ReferencedContainer = "container:NuXJS.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -31,9 +31,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "8DD76F620486A84900D96B5E"
-            BuildableName = "NuXJScript"
-            BlueprintName = "NuXJScript"
-            ReferencedContainer = "container:NuXJScript.xcodeproj">
+            BuildableName = "NuXJS"
+            BlueprintName = "NuXJS"
+            ReferencedContainer = "container:NuXJS.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
@@ -59,9 +59,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "8DD76F620486A84900D96B5E"
-            BuildableName = "NuXJScript"
-            BlueprintName = "NuXJScript"
-            ReferencedContainer = "container:NuXJScript.xcodeproj">
+            BuildableName = "NuXJS"
+            BlueprintName = "NuXJS"
+            ReferencedContainer = "container:NuXJS.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -70,16 +70,16 @@
       shouldUseLaunchSchemeArgsEnv = "YES"
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/magnus/projects/lab/ScriptLab/NuXJScript"
+      customWorkingDirectory = "/Users/magnus/projects/lab/ScriptLab/NuXJS"
       debugDocumentVersioning = "YES">
       <BuildableProductRunnable
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "8DD76F620486A84900D96B5E"
-            BuildableName = "NuXJScript"
-            BlueprintName = "NuXJScript"
-            ReferencedContainer = "container:NuXJScript.xcodeproj">
+            BuildableName = "NuXJS"
+            BlueprintName = "NuXJS"
+            ReferencedContainer = "container:NuXJS.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

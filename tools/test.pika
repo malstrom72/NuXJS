@@ -23,7 +23,7 @@ help => {
 didHelp = false;
 argNumber = 0;
 files.n = 0;
-exe = (if (PLATFORM === 'WINDOWS') 'Debug\\NuXJScript.exe -s' else 'build/Debug/NuXJScript -s');
+exe = (if (PLATFORM === 'WINDOWS') 'Debug\\NuXJS.exe -s' else 'build/Debug/NuXJS -s');
 errorsToo = false;
 keepInputFiles = false;
 inputFileDir = '';

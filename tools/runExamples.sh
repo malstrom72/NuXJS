@@ -9,7 +9,7 @@ for src in examples/*.cpp; do
 	name=$(basename "$src" .cpp)
 	exe="./output/examples/$name"
 	echo "Building $name"
-	bash ./tools/BuildCpp.sh "$target" "$exe" "$src" src/NuXJScript.cpp src/stdlibJS.cpp || fail=1
+	bash ./tools/BuildCpp.sh "$target" "$exe" "$src" src/NuXJS.cpp src/stdlibJS.cpp || fail=1
 	if [ $fail -eq 0 ]; then
 		echo "Running $name"
 		if "$exe" > "output/examples/${name}.log" 2>&1; then
