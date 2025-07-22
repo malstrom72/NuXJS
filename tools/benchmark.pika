@@ -26,7 +26,7 @@ if (exists(@exe)) {
 		};
 		if (doRevRange) {
 			print('Listing revisions...');
-			svnlog = pipe(bake("svn log -q -r{fromRev}:{toRev} svn://svn.elysian.se/nuedgesvn/NuXJS/trunk src/NuXJScript.h src/NuXJScript.cpp src/stdlibJS.cpp"));
+			svnlog = pipe(bake("svn log -q -r{fromRev}:{toRev} svn://svn.elysian.se/nuedgesvn/NuXJS/trunk src/NuXJS.h src/NuXJS.cpp src/stdlibJS.cpp"));
 			tokenize(svnlog, >{ if (wildmatch($0, 'r{[0-9]?*} *', @r)) append(@revs, r); });
 			s = '';
 			iterate(@revs, >s #= (if (s != '') ',') # $2);
@@ -38,17 +38,17 @@ if (exists(@exe)) {
 if (revs.n == 0) append(@revs, '');
 
 if (PLATFORM === 'UNIX') {
-	defaults(@exe, './output/NuXJScript -s -t');
+	defaults(@exe, './output/NuXJS -s -t');
 	// TIME_COMMAND_FORMAT = '(time -p {exe} benchmarks/{fn} >{outPath}) 2>{timePath}';
 	TIME_COMMAND_FORMAT = '{exe} -t benchmarks/{fn} >{outPath} 2>{timePath}';
-	BUILD_CPP_COMMAND = './tools/BuildCpp.sh release x64 ./output/NuXJScript tools/NuXJSREPL.cpp src/NuXJScript.cpp src/stdlibJS.cpp';
+	BUILD_CPP_COMMAND = './tools/BuildCpp.sh release x64 ./output/NuXJS tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp';
 	parseTimeOutput = function { a = $1; tokenize($0, >append(a, $0)); }
 } else if (PLATFORM == 'WINDOWS') {
-	defaults(@exe, '.\output\NuXJScript -s -t');
+	defaults(@exe, '.\output\NuXJS -s -t');
 	// TIME_COMMAND_FORMAT = 'timeit -s {exe} benchmarks/{fn} >{outPath} 2>{timePath}';
 	// parseTimeOutput = function { a = $1; count = 0; tokenize($0, >if (count++ >= 3 && $0 != void) append(a, $0{20:})); [a][0] = 'E=' # [a][0]; [a][1] = 'P=' # [a][1];}
 	TIME_COMMAND_FORMAT = '{exe} -t benchmarks/{fn} >{outPath} 2>{timePath}';
-	BUILD_CPP_COMMAND = '.\tools\BuildCpp.cmd release x64 .\output\NuXJScript tools\NuXJSREPL.cpp src\NuXJScript.cpp src\stdlibJS.cpp';
+	BUILD_CPP_COMMAND = '.\tools\BuildCpp.cmd release x64 .\output\NuXJS tools\NuXJSREPL.cpp src\NuXJS.cpp src\stdlibJS.cpp';
 	parseTimeOutput = function { a = $1; tokenize($0, >append(a, $0)); }
 } else {
 	throw("EH!?");
@@ -72,7 +72,7 @@ iterate(@revs, >{
 	err = try(>{
 		if (rev !== void) {
 			print('Checking out ' # rev # '...');
-			pipe('svn update -r' # rev # ' src\NuXJScript.cpp src\NuXJScript.h src\stdlib.js src\stdlibJS.cpp');
+			pipe('svn update -r' # rev # ' src\NuXJS.cpp src\NuXJS.h src\stdlib.js src\stdlibJS.cpp');
 			print('Building...');
 			pipe(BUILD_CPP_COMMAND);
 			print('Done.');

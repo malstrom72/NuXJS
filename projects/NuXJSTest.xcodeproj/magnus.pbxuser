@@ -3,16 +3,16 @@
 	08FB7793FE84155DC02AAC07 /* Project object */ = {
 		activeArchitecturePreference = x86_64;
 		activeBuildConfigurationName = Debug;
-		activeExecutable = F74E7E1316D1A409003A6AB6 /* NuXJScript */;
-		activeTarget = 8DD76F620486A84900D96B5E /* NuXJScript */;
+		activeExecutable = F74E7E1316D1A409003A6AB6 /* NuXJS */;
+		activeTarget = 8DD76F620486A84900D96B5E /* NuXJS */;
 		addToTargets = (
-			8DD76F620486A84900D96B5E /* NuXJScript */,
+			8DD76F620486A84900D96B5E /* NuXJS */,
 		);
 		breakpoints = (
 		);
 		codeSenseManager = F74E7E0616D1A3E7003A6AB6 /* Code sense */;
 		executables = (
-			F74E7E1316D1A409003A6AB6 /* NuXJScript */,
+			F74E7E1316D1A409003A6AB6 /* NuXJS */,
 		);
 		expressions = (
 			"cstackPointer->vstackPointer + 1",
@@ -140,16 +140,16 @@
 		userBuildSettings = {
 		};
 	};
-	8DD76F620486A84900D96B5E /* NuXJScript */ = {
+	8DD76F620486A84900D96B5E /* NuXJS */ = {
 		activeExec = 0;
 		executables = (
-			F74E7E1316D1A409003A6AB6 /* NuXJScript */,
+			F74E7E1316D1A409003A6AB6 /* NuXJS */,
 		);
 	};
 	F70D0B9F2099B13B000D00AA /* PBXTextBookmark */ = {
 		isa = PBXTextBookmark;
-		fRef = F74E7E0F16D1A409003A6AB6 /* NuXJScript.cpp */;
-		name = "NuXJScript.cpp: 4685";
+		fRef = F74E7E0F16D1A409003A6AB6 /* NuXJS.cpp */;
+		name = "NuXJS.cpp: 4685";
 		rLen = 0;
 		rLoc = 171231;
 		rType = 0;
@@ -158,8 +158,8 @@
 	};
 	F74E7636209CD2A500DFF067 /* PBXTextBookmark */ = {
 		isa = PBXTextBookmark;
-		fRef = F74E7E0F16D1A409003A6AB6 /* NuXJScript.cpp */;
-		name = "NuXJScript.cpp: 4694";
+		fRef = F74E7E0F16D1A409003A6AB6 /* NuXJS.cpp */;
+		name = "NuXJS.cpp: 4694";
 		rLen = 0;
 		rLoc = 171652;
 		rType = 0;
@@ -180,7 +180,7 @@
 		isa = PBXCodeSenseManager;
 		indexTemplatePath = "";
 	};
-	F74E7E0F16D1A409003A6AB6 /* NuXJScript.cpp */ = {
+	F74E7E0F16D1A409003A6AB6 /* NuXJS.cpp */ = {
 		uiCtxt = {
 			sepNavIntBoundsRect = "{{0, 0}, {1179, 65234}}";
 			sepNavSelRange = "{171652, 0}";
@@ -188,7 +188,7 @@
 			sepNavWindowFrame = "{{50, 0}, {1390, 878}}";
 		};
 	};
-	F74E7E1316D1A409003A6AB6 /* NuXJScript */ = {
+	F74E7E1316D1A409003A6AB6 /* NuXJS */ = {
 		isa = PBXExecutable;
 		activeArgIndices = (
 			NO,
@@ -245,7 +245,7 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = NuXJScript;
+		name = NuXJS;
 		savedGlobals = {
 		};
 		showTypeColumn = 0;
@@ -256,7 +256,7 @@
 			"0-short unsigned int-Value::toString" = 1;
 		};
 	};
-	F7CB917916D6263800D3007B /* NuXJScript.h */ = {
+	F7CB917916D6263800D3007B /* NuXJS.h */ = {
 		uiCtxt = {
 			sepNavIntBoundsRect = "{{0, 0}, {1391, 13091}}";
 			sepNavSelRange = "{49042, 0}";

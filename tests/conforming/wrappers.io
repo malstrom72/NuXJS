@@ -66,7 +66,7 @@
 >         means that, in theory, any subscript access ('[]') on a string requires the creation of a temporary full-blown
 >         String object (which is then just thrown away).
 >     
->         Workaround in NuXJScript: strings are "shallow" objects meaning that they can't be extended but they have
+>         Workaround in NuXJS: strings are "shallow" objects meaning that they can't be extended but they have
 >         properties that can be accessed without any object conversion / creation. Only member calls (on a member in
 >         String.prototype) will actually convert "this" to a full-blown "deep" String object. Any such member call
 >         *might* indirectly use "this" for extending the String so this is necessary to obtain 100% EcmaScript

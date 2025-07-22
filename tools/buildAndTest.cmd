@@ -15,11 +15,11 @@ CD ..\..\tools
 ..\externals\PikaCmd\PikaCmd.exe .\stdlibToCpp.pika ..\src\stdlib.js ..\src\stdlibJS.cpp || GOTO error
 IF "%target%"=="release" SET CPP_OPTIONS=/GR- %CPP_OPTIONS%
 MKDIR ..\output >NUL 2>&1
-CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJSTest_%target%_%model%.exe .\NuXJSTest.cpp ..\src\NuXJScript.cpp ..\src\stdlibJS.cpp || GOTO error
+CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJSTest_%target%_%model%.exe .\NuXJSTest.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
 ..\output\NuXJSTest_%target%_%model% -s >NUL 2>&1 || GOTO error
 ..\output\NuXJSTest_%target%_%model% || GOTO error
-CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJScript_%target%_%model%.exe .\NuXJSREPL.cpp ..\src\NuXJScript.cpp ..\src\stdlibJS.cpp || GOTO error
-..\externals\PikaCmd\PikaCmd.exe .\test.pika -e -x ..\output\NuXJScript_%target%_%model% ..\tests\ || GOTO error
+CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJS_%target%_%model%.exe .\NuXJSREPL.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
+..\externals\PikaCmd\PikaCmd.exe .\test.pika -e -x ..\output\NuXJS_%target%_%model% ..\tests\ || GOTO error
 CALL runExamples.cmd %target% || GOTO error
 ECHO Success!
 POPD

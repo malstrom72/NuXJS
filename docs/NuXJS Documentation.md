@@ -14,15 +14,15 @@ Helper scripts are available under `tools/` for building and running the test su
 
 On Windows, use `build.cmd` instead.
 
-This wrapper builds and tests both the `beta` and `release` configurations by invoking `tools/buildAndTest.sh`. Each build runs its own tests. When both complete, the native release REPL is saved as `output/NuXJScript`.
+This wrapper builds and tests both the `beta` and `release` configurations by invoking `tools/buildAndTest.sh`. Each build runs its own tests. When both complete, the native release REPL is saved as `output/NuXJS`.
 
-The implementation depends on IEEE-compliant floating-point math. `src/NuXJScript.cpp` includes `#error` directives that trigger if `__FAST_MATH__` is defined. Avoid compiler flags like `-Ofast`, `-ffast-math`, or similar, at least for `src/NuXJScript.cpp`.
+The implementation depends on IEEE-compliant floating-point math. `src/NuXJS.cpp` includes `#error` directives that trigger if `__FAST_MATH__` is defined. Avoid compiler flags like `-Ofast`, `-ffast-math`, or similar, at least for `src/NuXJS.cpp`.
 
 The standard library lives in `src/stdlib.js`. During the build, it is minified and converted to C++ via `tools/stdlibToCpp.pika` using `PikaCmd`. The build scripts automatically regenerate `src/stdlibJS.cpp` when `stdlib.js` changes.
 
 ## Using the REPL
 
-Building NuXJS produces a command line REPL named `NuXJScript`. Inside the REPL,
+Building NuXJS produces a command line REPL named `NuXJS`. Inside the REPL,
 `help()` lists the available helper functions and meta commands. Custom helpers
 include `read(file)`, `load(file)`, `quit()`, `gc()` and `dasm(fn)`. Meta
 commands start with `#` and currently support `#save [name]` to write the session
@@ -37,7 +37,7 @@ The high-level C++ API allows easy embedding of the interpreter into an existing
 A minimal "hello world" program looks like this:
 
 ```cpp
-#include <NuXJScript.h>
+#include <NuXJS.h>
 using namespace NuXJS;
 
 int main() {
@@ -58,7 +58,7 @@ int main() {
 The following program shows how to expose a native function, enforce memory and time limits, and call back and forth between C++ and JavaScript:
 
 ```cpp
-#include <NuXJScript.h>
+#include <NuXJS.h>
 using namespace NuXJS;
 
 // Native function used from JavaScript.
@@ -186,7 +186,7 @@ Var loadFile(Runtime& rt, const Var&, const VarList& args) {
 
 The engine ships with a standard library implemented in JavaScript, providing the objects described in ECMAScript&nbsp;3. It also offers selected ECMAScript&nbsp;5 functionality including JSON and string indexing.
 
-During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.cpp` with `PikaCmd`.  Simply compiling this generated file alongside `NuXJScript.cpp` brings in the standard library.  Keeping the bulk of the library in JavaScript makes the core C++ code smaller and allows the VM to run the library asynchronously, which is a primary design goal.
+During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.cpp` with `PikaCmd`.  Simply compiling this generated file alongside `NuXJS.cpp` brings in the standard library.  Keeping the bulk of the library in JavaScript makes the core C++ code smaller and allows the VM to run the library asynchronously, which is a primary design goal.
 
 ## Conformance and Known Limitations
 

@@ -8,7 +8,7 @@ SET fail=0
 FOR %%F IN (examples\*.cpp) DO (
 	SET name=%%~nF
 	ECHO Building %%F
-	CALL tools\BuildCpp.cmd %target% output\examples\!name! %%F src\NuXJScript.cpp src\stdlibJS.cpp || SET fail=1
+	CALL tools\BuildCpp.cmd %target% output\examples\!name! %%F src\NuXJS.cpp src\stdlibJS.cpp || SET fail=1
 	IF !fail! EQU 0 (
 		ECHO Running !name!
 		output\examples\!name!.exe > output\examples\!name!.log 2>&1
