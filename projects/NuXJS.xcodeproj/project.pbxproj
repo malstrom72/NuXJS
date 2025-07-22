@@ -29,7 +29,7 @@
 		F74E7E0F16D1A409003A6AB6 /* NuXJS.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; lineEnding = 0; name = NuXJS.cpp; path = ../src/NuXJS.cpp; sourceTree = "<group>"; wrapsLines = 0; };
 		F7CB917916D6263800D3007B /* NuXJS.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; name = NuXJS.h; path = ../src/NuXJS.h; sourceTree = "<group>"; wrapsLines = 0; };
 		F7EDE89120AC76F2001E5F45 /* NuXJSREPL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = NuXJSREPL.cpp; path = ../tools/NuXJSREPL.cpp; sourceTree = "<group>"; };
-		F7F6F01B2E2E817B006AF9D3 /* NuXJS */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = NuXJS; sourceTree = BUILT_PRODUCTS_DIR; };
+		F7F6F01B2E2E817B006AF9D3 /* NuXJS */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; name = NuXJS; path = /Users/magnus/git/NuXJS/projects/build/Debug/NuXJS; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -50,7 +50,6 @@
 				F715A3F420A7A3B6007941E8 /* stdlibJS.cpp */,
 				F74E7E0F16D1A409003A6AB6 /* NuXJS.cpp */,
 				F7CB917916D6263800D3007B /* NuXJS.h */,
-				F7F6F01B2E2E817B006AF9D3 /* NuXJS */,
 			);
 			name = NuXJS;
 			sourceTree = "<group>";
