@@ -79,8 +79,8 @@ int main(int argc, const char* argv[]) {
  ## Documentation
 
 - [NuXJS Documentation](docs/NuXJS%20Documentation.md)
-- [Changes for ES5](docs/ChangesForES5.txt)
-- [Native Call Thoughts](docs/NativeCallThoughts.txt)
+- [Changes for ES5](docs/notes/Changes%20For%20ES5.md)
+- [Native Call Thoughts](docs/notes/Native%20Call%20Thoughts.md)
 - [TypeScript Compatibility](docs/TypeScript%20Compatibility.md)
 
 ## AI Usage
