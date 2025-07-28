@@ -443,21 +443,21 @@ void randomSeed() {
 	::LARGE_INTEGER count;
 	::BOOL success = ::QueryPerformanceCounter(&count);
 	if (!success) {
-			count.LowPart = 0;
-			count.HighPart = 0;
+		count.LowPart = 0;
+		count.HighPart = 0;
 	}
 	seed = (static_cast<unsigned int>(time(0)) ^ count.LowPart)
-					+ (static_cast<unsigned int>(::GetTickCount()) ^ count.HighPart);
+			+ (static_cast<unsigned int>(::GetTickCount()) ^ count.HighPart);
 #elif defined(__APPLE__)
 	const uint64_t t = ::mach_absolute_time();
 	seed = (static_cast<unsigned int>(time(0)) ^ static_cast<unsigned int>(t & 0xFFFFFFFFU))
-					+ (static_cast<unsigned int>(clock()) ^ static_cast<unsigned int>((t >> 32) & 0xFFFFFFFFU));
+			+ (static_cast<unsigned int>(clock()) ^ static_cast<unsigned int>((t >> 32) & 0xFFFFFFFFU));
 #else
 	struct timespec ts;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	const uint64_t t = static_cast<uint64_t>(ts.tv_sec) ^ static_cast<uint64_t>(ts.tv_nsec);
 	seed = (static_cast<unsigned int>(time(0)) ^ static_cast<unsigned int>(t & 0xFFFFFFFFU))
-					+ (static_cast<unsigned int>(clock()) ^ static_cast<unsigned int>((t >> 32) & 0xFFFFFFFFU));
+			+ (static_cast<unsigned int>(clock()) ^ static_cast<unsigned int>((t >> 32) & 0xFFFFFFFFU));
 #endif
 	srand(seed);
 }
