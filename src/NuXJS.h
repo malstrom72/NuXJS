@@ -63,6 +63,7 @@ bool isFinite(double d);
 
 class GCList;
 class Heap;
+class Arguments;
 
 /**
 	GCItem is the base class for anything tracked by the garbage
@@ -1019,17 +1020,19 @@ class FunctionScope : public Scope {
 	public:
 		typedef Scope super;
 
-		FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, const Value* argv);
-		virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
+FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, const Value* argv);
+virtual ~FunctionScope();
+virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		JSObject* getDynamicVars(Runtime& rt) const;
 	   	virtual void leave();
 
-	protected:
-		JSFunction* const function;
-		const UInt32 passedArgumentsCount;
+protected:
+JSFunction* const function;
+mutable Arguments* arguments;
+const UInt32 passedArgumentsCount;
 		Vector<Value> locals; // Includes variables and arguments.
 		mutable JSObject* dynamicVars;
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
