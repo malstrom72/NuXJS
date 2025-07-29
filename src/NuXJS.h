@@ -9,16 +9,16 @@
 	1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following
 	disclaimer.
 
-	2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
-	disclaimer in the documentation and/or other materials provided with the distribution.
+	2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the
+	following disclaimer in the documentation and/or other materials provided with the distribution.
 
 	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
-	INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-	DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-	SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-	SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-	WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+	INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+	ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+	INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+	SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+	THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+	IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **/
 
 #ifndef NuXJS_h
@@ -37,8 +37,8 @@
 
 /**
 	These global operator overloads makes it possible to allocate *anything* (and not only GCItems) on Heap. Just
-	remember that (as opposed to GCItems) you need to call the overloaded delete operator explicitly, e.g. `::operator
-	delete(pointer, associatedHeap).`
+	remember that (as opposed to GCItems) you need to call the overloaded delete operator explicitly, e.g.
+	`::operator delete(pointer, associatedHeap).`
 
 	Apparently these overloads must be declared before everything else or they will not be used (at least not by clang).
 */
@@ -65,9 +65,8 @@ class GCList;
 class Heap;
 
 /**
-	GCItem is the base class for anything tracked by the garbage
-	collector. Instances are allocated from a Heap and linked into a
-	GCList for mark and sweep.
+	GCItem is the base class for anything tracked by the garbage collector. Instances are allocated from a Heap and
+	linked into a GCList for mark and sweep.
 **/
 class GCItem {
 	friend class GCList;
@@ -109,9 +108,8 @@ class GCItem {
 };
 
 /**
-	GCList is a simple intrusive list used by the garbage collector.
-	Lists are double linked and contain a dummy node to keep the
-	implementation small.
+	GCList is a simple intrusive list used by the garbage collector. Lists are double linked and contain a dummy node to
+	keep the implementation small.
 **/
 class GCList : public GCItem {
 	friend class GCItem;
@@ -136,11 +134,11 @@ inline GCItem::~GCItem() { if (_gcList != 0) { _gcList->relinquish(this); } }
 const int MAX_POOLED_SIZE = 1024;
 const int POOL_SIZE_GRANULARITY = 16;
 const UInt32 MAX_SINGLE_ALLOCATION_SIZE = 2147483648U;
+
 /**
-	Heap manages memory allocation for all GCItems. It keeps track of
-	allocated blocks and owns the GC lists used during garbage
-	collection.
-	**/
+	Heap manages memory allocation for all GCItems. It keeps track of allocated blocks and owns the GC lists used during
+	garbage collection.
+**/
 class Heap {
 	public:
 		Heap();
@@ -198,8 +196,8 @@ inline void GCItem::operator delete(void* ptr) {
 
 /**
 	A simple STL-like vector template. Has internal buffer for small arrays (= fewer allocations on the heap). Grows
-	automatically (like std::vector) with a factor of 1.5. You may designate a Heap to use for allocations (to properly
-	account for the amount of memory in use).
+	automatically (like std::vector) with a factor of 1.5. You may designate a Heap to use for allocations
+	(to properly account for the amount of memory in use).
 */
 const UInt32 DEFAULT_INTERNAL_COUNT = 8;
 template<typename T, UInt32 INTERNAL_COUNT = DEFAULT_INTERNAL_COUNT> class Vector {
@@ -357,9 +355,9 @@ class Object;
 class Function;
 class Error;
 class JSArray;
+
 /**
-	Value represents a generic JavaScript value. It can hold
-	primitive types as well as object references and provides
+	Value represents a generic JavaScript value. It can hold primitive types as well as object references and provides
 	conversion and comparison helpers.
 **/
 class Value {
@@ -453,16 +451,17 @@ const Flags STANDARD_FLAGS = EXISTS_FLAG;	///< use with setOwnProperty()
 const Flags HIDDEN_CONST_FLAGS = READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG | EXISTS_FLAG;
 const Flags NONEXISTENT = 0;		///< use with getOwnProperty() to check for existence, e.g. getOwnProperty(o, k, v) != NONEXISTENT
 const UInt32 TABLE_BUILT_IN_N = 3; ///< 1 << 3 == 8
+
 /**
-	Table implements a hash table for storing object properties.
-	It provides fast lookup and is used internally by JS objects.
-	**/
-	class Table {
-		public:
+	Table implements a hash table for storing object properties. It provides fast lookup and is used internally by JS
+	objects.
+**/
+class Table {
+	public:
 		/**
 			The main reason why Bucket doesn't contain the Value class, but rather holds it's own Byte type and Variant
-			union, is memory. This solution makes it possible to squeeze in key flags and a truncated 16-bit hash (for
-			even quicker value lookup) in the same space as a Value.
+			union, is memory. This solution makes it possible to squeeze in key flags and a truncated 16-bit hash
+			(for even quicker value lookup) in the same space as a Value.
 		**/
 		class Bucket {
 			friend class Table;
@@ -520,12 +519,12 @@ const UInt32 TABLE_BUILT_IN_N = 3; ///< 1 << 3 == 8
 class Enumerator;
 class Processor;
 class Runtime;
+
 /**
-	Object is the root for all scriptable objects. It provides the
-	default implementations for property access and prototype handling.
+	Object is the root for all scriptable objects. It provides the default implementations for property access and
+	prototype handling.
 **/
-	
-	class Object : public GCItem {
+class Object : public GCItem {
 	public:
 		typedef GCItem super;
 	
@@ -571,12 +570,12 @@ class Enumerator : public Object {
 	protected:
 		Enumerator() { }
 		Enumerator(GCList& gcList) : super(gcList) { }
-/**
-	RangeEnumerator iterates over a numeric range and returns each
-		index as a string when requested.
-	**/
 };
 
+/**
+	RangeEnumerator iterates over a numeric range and returns each index as a string when requested. Used by
+	`getOwnPropertyEnumerator()` of `String` and `JSArray`.
+**/
 class RangeEnumerator : public Enumerator {
 	public:
 		typedef Enumerator super;
@@ -590,8 +589,8 @@ class RangeEnumerator : public Enumerator {
 };
 
 /**
-	JoiningEnumerator chains two enumerators, yielding all properties
-	from one followed by another.
+	JoiningEnumerator chains two enumerators, yielding all properties from one followed by another. Used to join
+	property names in prototype chains and more.
 **/
 class JoiningEnumerator : public Enumerator {
 	public:
@@ -615,7 +614,7 @@ class JoiningEnumerator : public Enumerator {
 
 /**
 	Note that although the ECMAScript specification clearly separates string values from String objects, this
-	implementation regards both as Objects for efficiency (e.g. for quickly retrieving properties like the character
+	implementation regards both as Objects for efficiency(e.g. for quickly retrieving properties like the character
 	elements and "length").
 
 	String is immutable and it will never contain any references to other objects. Therefore it is ok to not place them
@@ -676,11 +675,11 @@ class String : public Object {
 
 inline bool Value::equalsString(const String& s) const { return (type == STRING_TYPE && s.isEqualTo(*var.string)); }
 inline std::wstring Value::toWideString(Heap& heap) const { return toString(heap)->toWideString(); }
-/**
-	StringListEnumerator enumerates over a list of strings provided
-	at construction time.
-**/
 
+/**
+	StringListEnumerator enumerates over a list of strings provided at construction time. Used by
+	`JSObject::getOwnPropertyEnumerator()`.
+**/
 class StringListEnumerator : public Enumerator {
 	public:
 		typedef Enumerator super;
@@ -697,11 +696,10 @@ class StringListEnumerator : public Enumerator {
 			super::gcMarkReferences(heap);
 		}
 };
-		/**
-			JSObject represents a standard extensible JavaScript object with
-			its own property table and prototype pointer.
-		**/
-	
+
+/**
+	JSObject represents a standard extensible JavaScript object with its own property table and prototype pointer.
+**/
 class JSObject : public Object, public Table {
 	public:
 		typedef Object super;
@@ -727,15 +725,15 @@ class JSObject : public Object, public Table {
 	LazyJSObjects become complete extensible "script objects" first when their properties are accessed. There are a
 	number of reasons why this is desirable:
 	
-	1)	Performance: not having to setup a fully customizable object directly is benficial when it is rare that the user
-		accesses properties or extends the object (but you still need an object reference). Example are Functions which
-		are most often not treated as objects by the user.
+	1)	Performance: not having to setup a fully customizable object directly is benficial when it is rare that the
+		user accesses properties or extends the object(but you still need an object reference). Example are Functions
+		which are most often not treated as objects by the user.
 	
-	2) 	Memory: until the user accesses or adds properties, LazyJSObjects can be super tiny (vtable pointer + pointer to
-		complete object + whatever internal fields are needed).
+	2) 	Memory: until the user accesses or adds properties, LazyJSObjects can be super tiny (vtable pointer + pointer
+		to complete object + whatever internal fields are needed).
 	
-	3) 	Doesn't require a Runtime or even a Heap to be constructed. Although they are required to be placed on the heap
-		since they contain a reference.
+	3) 	Doesn't require a Runtime or even a Heap to be constructed. Although they are required to be placed on the
+		heap since they contain a reference.
 	
 	This class is a template so this concept can be used with different super classes.
 **/
@@ -760,8 +758,8 @@ template<class SUPER> class LazyJSObject : public SUPER {
 };
 
 /**
-		JSArray implements the built in JavaScript array with support for a
-		dense element vector and lazy object creation.
+	JSArray implements the built in JavaScript array with support for a dense element vector and lazy object creation
+	(for sparse arrays etc).
 **/
 class JSArray : public LazyJSObject<Object> {
 	public:
@@ -798,9 +796,8 @@ class JSArray : public LazyJSObject<Object> {
 };
 
 /**
-	Constants hold literal values shared between Code objects. This
-	separation allows different functions to reuse the same constant
-	pool as an optimization.
+	Constants hold literal values shared between Code objects. This separation allows different functions to reuse the
+	same constant pool as an optimization.
 **/
 class Constants : public GCItem, public Vector<Value> {
 	public:
@@ -815,10 +812,9 @@ class Constants : public GCItem, public Vector<Value> {
 };
 
 /**
-	Code represents compiled bytecode and associated metadata. It is an
-	Object so that it can be stored as a constant and referenced by
-	multiple functions.
-	**/
+	Code represents compiled bytecode and associated metadata. It is an Object so that it can be stored as a constant
+	and referenced by multiple functions.
+**/
 class Code : public Object {
 	friend class FunctionScope;
 	friend class Compiler; // FIX : maybe not one day?
@@ -901,12 +897,11 @@ template<class F> struct FunctorAdapter : public Function {
 };
 
 /**
-	ExtensibleFunction forms the basis for user defined functions that
-	behave like normal objects when accessed lazily.
-	**/
-		class ExtensibleFunction : public LazyJSObject<Function> {
-		public:
-			typedef LazyJSObject<Function> super;
+	ExtensibleFunction forms the basis for user defined functions that behave like normal objects when accessed lazily.
+**/
+class ExtensibleFunction : public LazyJSObject<Function> {
+	public:
+		typedef LazyJSObject<Function> super;
 		ExtensibleFunction(GCList& gcList) : super(gcList) { }
 
 	protected:
@@ -915,9 +910,9 @@ template<class F> struct FunctorAdapter : public Function {
 };
 
 /**
-	Scope represents a lexical environment chain used during execution.
-		It stores local variables and links to a parent scope.
-	**/
+	Scope represents a lexical environment chain used during execution. It stores local variables and links to a parent
+	scope.
+**/
 class Scope : public GCItem {
 	public:
 		typedef GCItem super;
@@ -928,14 +923,14 @@ class Scope : public GCItem {
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		Value* getLocalsPointer() const { return localsPointer; }
 		Scope* getParentScope() const { return parentScope; }
-				void makeClosure() const;
-virtual void leave() { if (deleteOnPop) { delete this; } }
-	
+		void makeClosure() const;
+		void leave() { if (deleteOnPop) { delete this; } }
+		
 	protected:
 		Scope* const parentScope;
 		Value* localsPointer; // Pointer is offset so that negative indexes addresses local variables and positive indexes addresses arguments.
-				mutable bool deleteOnPop;
-
+		mutable bool deleteOnPop;
+		
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, parentScope);
 			super::gcMarkReferences(heap);
@@ -943,9 +938,8 @@ virtual void leave() { if (deleteOnPop) { delete this; } }
 };
 
 /**
-	JSFunction encapsulates a piece of executable script with its
-		associated scope closure.
-	**/
+	JSFunction encapsulates a piece of executable script with its associated scope closure.
+**/
 class JSFunction : public ExtensibleFunction {
 	friend class FunctionScope;
 	friend class Processor;
@@ -977,9 +971,9 @@ enum ErrorType {
 };
 
 /**
-	Error represents the standard JavaScript Error objects and stores
-		the error type together with optional name and message.
-	**/
+	Error represents the standard JavaScript Error objects and stores the error type together with optional name and
+	message.
+**/
 class Error : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
@@ -1009,10 +1003,44 @@ class Error : public LazyJSObject<Object> {
 		}
 };
 
+class FunctionScope;
+class Arguments : public LazyJSObject<Object> {
+	public:
+		typedef LazyJSObject<Object> super;
+
+        Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
+		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
+		virtual const String* toString(Heap& heap) const;
+		virtual Object* getPrototype(Runtime& rt) const;
+		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
+		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
+		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
+		void detach();	// Arguments can get "detached" from FunctionScopes to prevent holding on to closures unnecessarily.
+
+	protected:
+		virtual void constructCompleteObject(Runtime& rt) const;
+        Value* findProperty(const Value& key) const;
+        const FunctionScope* scope;
+		JSFunction* const function;
+		UInt32 const argumentsCount;
+		Vector<Byte> deletedArguments;
+		Vector<Value> values;
+
+		/**
+			Notice that we do not mark the scope reference, thus creating a "weak" reference that is handled by
+			FunctionScope's destructor
+		**/
+		virtual void gcMarkReferences(Heap& heap) const {
+			gcMark(heap, values.begin(), values.end());
+			gcMark(heap, function);
+			super::gcMarkReferences(heap);
+		}
+};
+
 /**
-	FunctionScope manages local variables for an executing function and
-		provides fast access during interpretation.
-	**/
+	FunctionScope manages local variables for an executing function and provides fast access during interpretation.
+**/
 class FunctionScope : public Scope {
 	friend class Arguments;
 	
@@ -1025,18 +1053,20 @@ class FunctionScope : public Scope {
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		JSObject* getDynamicVars(Runtime& rt) const;
-	   	virtual void leave();
+	   	virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
 
 	protected:
 		JSFunction* const function;
 		const UInt32 passedArgumentsCount;
 		Vector<Value> locals; // Includes variables and arguments.
 		mutable JSObject* dynamicVars;
+		mutable Arguments* arguments;
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, function);
 			gcMark(heap, locals.begin(), locals.end());
 			gcMark(heap, dynamicVars);
+			gcMark(heap, arguments);
 			super::gcMarkReferences(heap);
 		}
 };
@@ -1055,8 +1085,7 @@ const size_t STRING_CONSTANTS_CACHE_MAX_LENGTH = 64;	///< Max length of a string
 const size_t MAX_MEMORY_CAP = std::numeric_limits<std::size_t>::max();
 
 /**
-		Runtime bundles together the heap, global objects and execution
-		state required to run JavaScript code.
+	Runtime bundles together the heap, global objects and execution state required to run JavaScript code.
 **/
 class Runtime : public GCItem {
 	friend class Processor;
@@ -1208,8 +1237,8 @@ class Iterator;
 typedef Var (*VarFunction)(Runtime& rt, const Var& thisObject, const VarList& args);
 
 /**
-	AccessorBase is an internal-only base class for Var and Property.
-	It exposes the common read/call interface used by both helpers.
+	AccessorBase is an internal-only base class for Var and Property. It exposes the common read/call interface used by
+	both helpers.
 **/
 class AccessorBase {
 	friend class Var;
@@ -1278,8 +1307,7 @@ template<> inline UInt32 AccessorBase::to<UInt32>() const { return static_cast<U
 template<> inline Value AccessorBase::to<Value>() const { return get(); } 			// to<Value> ends up ambigious without this.
 
 /**
-		Var is a garbage collected wrapper that exposes convenient C++
-		access to JavaScript values.
+	Var is a garbage collected wrapper that exposes convenient C++ access to JavaScript values.
 **/
 class Var : public GCItem, public AccessorBase {
 	public:
@@ -1303,9 +1331,8 @@ class Var : public GCItem, public AccessorBase {
 };
 
 /**
-	Property is a helper that provides array-like syntax to access or
-		update object properties through Var.
-	**/
+	Property is a helper that provides array-like syntax to access or update object properties through Var.
+**/
 class Property : public AccessorBase {
 	friend class AccessorBase;
 	
@@ -1323,9 +1350,8 @@ class Property : public AccessorBase {
 };
 
 /**
-	VarList is a convenience container for passing multiple arguments
-		between C++ and JavaScript.
-	**/
+	VarList is a convenience container for passing multiple arguments between C++ and JavaScript.
+**/
 class VarList : public GCItem, public Vector<Value> {
 	public:
 		typedef GCItem super;
@@ -1353,9 +1379,8 @@ class VarList : public GCItem, public Vector<Value> {
 };
 
 /**
-	const_iterator allows range-based iteration over properties returned
-		by an Enumerator.
-	**/
+	const_iterator allows range-based iteration over properties returned by an Enumerator.
+**/
 class AccessorBase::const_iterator : public GCItem {
 	friend class AccessorBase;
 	public:
@@ -1484,9 +1509,8 @@ template<class C> Var::Var(Runtime& rt, C* cppObject, Var (C::*const& cppMethod)
 		, v(new(rt.getHeap()) BoundVarMemberFunctionAdapter<C>(rt.getHeap().managed(), cppObject, cppMethod)) { }
 
 /**
-	Processor is the virtual machine executing compiled bytecode for a
-		specific Runtime.
-	**/
+	Processor is the virtual machine executing compiled bytecode for a specific Runtime.
+**/
 class Processor : public GCItem {
 	friend class JSFunction;
 	
@@ -1657,9 +1681,9 @@ class Processor : public GCItem {
 const Int32 INVALID_CODE_OFFSET = -0x7FFFFFFF;
 const Int32 DEAD_CODE_STACK_DEPTH = -0x7FFFFFFF;
 struct OperatorInfo;
+
 /**
-		Compiler translates JavaScript source code into bytecode stored in
-		a Code object.
+	Compiler translates JavaScript source code into bytecode stored in a Code object.
 **/
 class Compiler : public GCItem {
 	public:

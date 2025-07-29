@@ -1213,9 +1213,9 @@
             filePath = "../src/NuXJS.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "2092"
-            endingLineNumber = "2092"
-            landmarkName = "FunctionScope::leave()"
+            startingLineNumber = "2026"
+            endingLineNumber = "2026"
+            landmarkName = "FunctionScope::deleteVar(rt, name)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -1229,9 +1229,9 @@
             filePath = "../src/NuXJS.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "2091"
-            endingLineNumber = "2091"
-            landmarkName = "FunctionScope::leave()"
+            startingLineNumber = "2025"
+            endingLineNumber = "2025"
+            landmarkName = "FunctionScope::deleteVar(rt, name)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -1239,23 +1239,23 @@
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
             uuid = "548A598A-F4EC-4700-83AA-E877EA9A73BC"
-            shouldBeEnabled = "Yes"
+            shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../src/NuXJS.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1974"
-            endingLineNumber = "1974"
-            landmarkName = "Scope::makeClosure()"
-            landmarkType = "7">
+            startingLineNumber = "1906"
+            endingLineNumber = "1906"
+            landmarkName = "unknown"
+            landmarkType = "0">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
             uuid = "04E61307-B635-4A5B-9177-63D69BDF2C60"
-            shouldBeEnabled = "Yes"
+            shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../tools/NuXJSREPL.cpp"

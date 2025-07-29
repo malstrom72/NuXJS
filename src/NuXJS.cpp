@@ -9,16 +9,16 @@
 	1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following
 	disclaimer.
 
-	2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
-	disclaimer in the documentation and/or other materials provided with the distribution.
+	2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the
+	following disclaimer in the documentation and/or other materials provided with the distribution.
 
 	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
-	INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-	DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-	SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-	SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-	WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+	INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+	ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+	INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+	SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+	THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+	IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **/
 
 #ifdef __GNUC__
@@ -1848,40 +1848,6 @@ void Error::constructCompleteObject(Runtime& rt) const {
 
 /* --- Arguments --- */
 
-class Arguments : public LazyJSObject<Object> {
-	public:
-		typedef LazyJSObject<Object> super;
-
-        Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
-		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
-		virtual const String* toString(Heap& heap) const;
-		virtual Object* getPrototype(Runtime& rt) const;
-		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
-		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
-		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
-		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
-		void detach();
-
-	protected:
-		virtual void constructCompleteObject(Runtime& rt) const;
-        Value* findProperty(const Value& key) const;
-        const FunctionScope* scope;
-		JSFunction* const function;
-		UInt32 const argumentsCount;
-		Vector<Byte> deletedArguments;
-		Vector<Value> values;
-
-		virtual void gcMarkReferences(Heap& heap) const {
-			if (scope != 0) {
-				gcMark(heap, scope);
-			} else {
-				gcMark(heap, values.begin(), values.end());
-			}
-			gcMark(heap, function);
-			super::gcMarkReferences(heap);
-		}
-};
-
 Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
 	   , scope(scope), function(scope->function), argumentsCount(argumentsCount)
 	   , deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()) {
@@ -1980,7 +1946,8 @@ void Scope::makeClosure() const {
 
 FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, const Value* argv)
 		: super(gcList, function->closure), function(function), passedArgumentsCount(argc)
-		, locals(function->code->calcLocalsSize(argc), &gcList.getHeap()), dynamicVars(0), bloomSet(function->code->bloomSet) {
+		, locals(function->code->calcLocalsSize(argc), &gcList.getHeap()), dynamicVars(0)
+		, arguments(0), bloomSet(function->code->bloomSet) {
 	const Code* code = function->code;
 	localsPointer = locals.begin() + code->getVarsCount();
 	std::fill(locals.begin(), localsPointer, UNDEFINED_VALUE);
@@ -1994,8 +1961,8 @@ JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
 	if (dynamicVars == 0) {
 		Heap& heap = rt.getHeap();
 		dynamicVars = new(heap) JSObject(heap.managed(), 0);
-		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING
-				, new(heap) Arguments(heap.managed(), this, passedArgumentsCount), DONT_DELETE_FLAG);
+		arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
+		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING, arguments, DONT_DELETE_FLAG);
 	}
 	return dynamicVars;
 }
@@ -2087,19 +2054,13 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
 	}
 }
 
-void FunctionScope::leave() {
-	if (dynamicVars != 0 && deleteOnPop) {
-		Table::Bucket* bucket = dynamicVars->lookup(&ARGUMENTS_STRING);
-		if (bucket != 0 && bucket->valueExists()) {
-			Object* obj = bucket->getValue().asObject();
-			if (obj != 0 && obj->getClassName() == &A_RGUMENTS_STRING) {
-				static_cast<Arguments*>(obj)->detach();
-			}
-		}
+FunctionScope::~FunctionScope() {
+	if (arguments != 0) {
+		arguments->detach();
+		arguments = 0;
 	}
-	super::leave();
 }
-	
+
 /* --- ScriptException --- */
 	
 void ScriptException::throwError(Heap& heap, ErrorType type, const String* message) {
