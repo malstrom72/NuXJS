@@ -1909,6 +1909,12 @@ void Arguments::constructCompleteObject(Runtime& rt) const {
 	completeObject->setOwnProperty(rt, &CALLEE_STRING, function, DONT_ENUM_FLAG);
 }
 
+Arguments::~Arguments() {
+	if (scope != 0) {
+		scope->arguments = 0;
+	}
+}
+
 /* --- Scope --- */
 
 Scope::Scope(GCList& gcList, Scope* parentScope)

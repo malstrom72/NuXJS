@@ -1017,6 +1017,7 @@ class Arguments : public LazyJSObject<Object> {
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 		void detach();	// Arguments can get "detached" from FunctionScopes to prevent holding on to closures unnecessarily.
+		virtual ~Arguments();	// At heap cleanup for example, Arguments might be destructed before the FunctionScope that "owns" it.
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
@@ -1025,7 +1026,7 @@ class Arguments : public LazyJSObject<Object> {
 		JSFunction* const function;
 		UInt32 const argumentsCount;
 		Vector<Byte> deletedArguments;
-		Vector<Value> values;
+		Vector<Value> values;	// Contains copied values after the Argument has been detached from its closure.
 
 		/**
 			Notice that we do not mark the scope reference, thus creating a "weak" reference that is handled by

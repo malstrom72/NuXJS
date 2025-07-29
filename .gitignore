@@ -2,3 +2,6 @@
 /output
 externals/PikaCmd/PikaCmd
 /projects/build
+/projects/.vs/NuXJSRepl_MSVC2019/CopilotIndices
+/projects/.vs
+/temp
