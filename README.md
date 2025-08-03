@@ -91,6 +91,14 @@ On macOS the default clang from Xcode does not ship the libFuzzer runtime. Insta
 CPP_COMPILER=$(brew --prefix llvm)/bin/clang++ bash tools/build_repl_fuzz.sh
 ```
 
+To seed the fuzzer with inputs derived from the existing test suite, generate a corpus from the `.io` files:
+
+```bash
+PikaCmd tools/makeCorpus.pika corpus
+```
+
+Each section of every test file is written as a separate entry in the specified directory.
+
 
 ## Documentation
 
