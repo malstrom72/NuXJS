@@ -17,28 +17,26 @@ processFile = function {
 	stem = basenameOfPath(flattened);
 	ioSource = load(testPath);
 	ioSource = replace(ioSource, "\r\n", "\n");
-        sectionInput = '';
-        sectionIndex = 0;
-        tokenize(ioSource, >{
-                directive = $0{:1};
-                command = $0{2:};
-                if (directive === '>') {
-                        if (sectionInput !== '') {
-                                save(outDir # DIR_SLASH # stem # '_' # sectionIndex # '.js', sectionInput);
-                                ++sectionIndex;
-                                sectionInput = '';
-                        };
-                        sectionInput #= command # LF;
-                } else if (directive !== '/' && sectionInput !== '') {
-                        save(outDir # DIR_SLASH # stem # '_' # sectionIndex # '.js', sectionInput);
-                        ++sectionIndex;
-                        sectionInput = '';
-                };
-        });
-        if (sectionInput !== '') {
-                save(outDir # DIR_SLASH # stem # '_' # sectionIndex # '.js', sectionInput);
-                ++sectionIndex;
-        };
+	sectionInput = '';
+	sectionIndex = 0;
+	tokenize(ioSource, >{
+		line = $0;
+		directive = line{:1};
+		command = line{2:};
+		if (directive === '>') {
+			sectionInput #= command # LF;
+		} else if (directive === '-') {
+			if (sectionInput !== '') {
+				save(outDir # DIR_SLASH # stem # '_' # sectionIndex # '.js', sectionInput);
+				++sectionIndex;
+				sectionInput = '';
+			};
+		};
+	});
+	if (sectionInput !== '') {
+		save(outDir # DIR_SLASH # stem # '_' # sectionIndex # '.js', sectionInput);
+		++sectionIndex;
+	};
 };
 
 processDir = function {
