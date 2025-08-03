@@ -3,7 +3,7 @@
 include('stdlib.pika');
 include('systools.pika');
 
-vargs(@outDir);
+vargs(@me,, @outDir);
 defaults(@outDir, 'corpus');
 
 makeDir(outDir, false);
@@ -17,26 +17,28 @@ processFile = function {
 	stem = basenameOfPath(flattened);
 	ioSource = load(testPath);
 	ioSource = replace(ioSource, "\r\n", "\n");
-	sectionInput = '';
-	sectionIndex = 0;
-	saveSection = function {
-		if (sectionInput !== '') {
-			save(outDir # DIR_SLASH # stem # '_' # sectionIndex # '.js', sectionInput);
-			++sectionIndex;
-			sectionInput = '';
-		};
-	};
-	tokenize(ioSource, >{
-		directive = $0{:1};
-		command = $0{2:};
-		if (directive === '>') {
-			if (sectionInput !== '') saveSection();
-			sectionInput #= command # LF;
-		} else if (directive !== '/' && sectionInput !== '') {
-			saveSection();
-		};
-	});
-	saveSection();
+        sectionInput = '';
+        sectionIndex = 0;
+        tokenize(ioSource, >{
+                directive = $0{:1};
+                command = $0{2:};
+                if (directive === '>') {
+                        if (sectionInput !== '') {
+                                save(outDir # DIR_SLASH # stem # '_' # sectionIndex # '.js', sectionInput);
+                                ++sectionIndex;
+                                sectionInput = '';
+                        };
+                        sectionInput #= command # LF;
+                } else if (directive !== '/' && sectionInput !== '') {
+                        save(outDir # DIR_SLASH # stem # '_' # sectionIndex # '.js', sectionInput);
+                        ++sectionIndex;
+                        sectionInput = '';
+                };
+        });
+        if (sectionInput !== '') {
+                save(outDir # DIR_SLASH # stem # '_' # sectionIndex # '.js', sectionInput);
+                ++sectionIndex;
+        };
 };
 
 processDir = function {
