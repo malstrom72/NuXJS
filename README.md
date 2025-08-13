@@ -73,10 +73,10 @@ int main(int argc, const char* argv[]) {
 - `tools/BuildCpp.sh` / `.cmd` – low-level wrapper around the C++ compiler
  
 ## Building the fuzz target
-The `tools/build_repl_fuzz.sh` script compiles `tools/NuXJSREPL.cpp` using clang and libFuzzer:
+The `tools/buildReplFuzz.sh` script compiles `tools/NuXJSREPL.cpp` using clang and libFuzzer:
 
 ```bash
-bash tools/build_repl_fuzz.sh
+bash tools/buildReplFuzz.sh
 ```
 
 The resulting binary is placed in `output/NuXJSFuzz` and can be run with a directory containing seed inputs:
@@ -88,7 +88,7 @@ The resulting binary is placed in `output/NuXJSFuzz` and can be run with a direc
 On macOS the default clang from Xcode does not ship the libFuzzer runtime. Install the `llvm` package via Homebrew and invoke the script with that compiler:
 
 ```bash
-CPP_COMPILER=$(brew --prefix llvm)/bin/clang++ bash tools/build_repl_fuzz.sh
+CPP_COMPILER=$(brew --prefix llvm)/bin/clang++ bash tools/buildReplFuzz.sh
 ```
 
 To seed the fuzzer with inputs derived from the existing test suite, generate a corpus from the `.io` files:
