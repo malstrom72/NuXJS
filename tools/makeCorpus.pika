@@ -1,0 +1,56 @@
+#! /usr/local/bin/PikaCmd
+
+include('stdlib.pika');
+include('systools.pika');
+
+vargs(@me,, @outDir);
+defaults(@outDir, 'corpus');
+
+makeDir(outDir, false);
+
+testsDir = appendDirSlash('tests');
+
+processFile = function {
+	testPath = $0;
+	rel = testPath{length(testsDir):};
+	flattened = replace(rel, DIR_SLASHES, '_');
+	stem = basenameOfPath(flattened);
+	ioSource = load(testPath);
+	ioSource = replace(ioSource, "\r\n", "\n");
+	sectionInput = '';
+	sectionIndex = 0;
+	tokenize(ioSource, >{
+		line = $0;
+		directive = line{:1};
+		command = line{2:};
+		if (directive === '>') {
+			sectionInput #= command # LF;
+		} else if (directive === '-') {
+			if (sectionInput !== '') {
+				save(outDir # DIR_SLASH # stem # '_' # sectionIndex # '.js', sectionInput);
+				++sectionIndex;
+				sectionInput = '';
+			};
+		};
+	});
+	if (sectionInput !== '') {
+		save(outDir # DIR_SLASH # stem # '_' # sectionIndex # '.js', sectionInput);
+		++sectionIndex;
+	};
+};
+
+processDir = function {
+	dirPath = $0;
+	baseDir = dirOfPath(dirPath);
+	dir(dirPath, >{
+		fn = $0;
+		full = baseDir # fn;
+		if (appendDirSlash(fn) === fn) {
+			processDir(full);
+		} else if (right(fn, 3) === '.io') {
+			processFile(full);
+		};
+	});
+};
+
+processDir(testsDir);

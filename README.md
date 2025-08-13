@@ -71,8 +71,36 @@ int main(int argc, const char* argv[]) {
 - `tools/buildAndTest.sh` / `.cmd` – build and test a single configuration
 - `tools/runExamples.sh` / `.cmd` – compile and run all example programs
 - `tools/BuildCpp.sh` / `.cmd` – low-level wrapper around the C++ compiler
+ 
+## Building the fuzz target
+The `tools/build_repl_fuzz.sh` script compiles `tools/NuXJSREPL.cpp` using clang and libFuzzer:
 
- ## Documentation
+```bash
+bash tools/build_repl_fuzz.sh
+```
+
+The resulting binary is placed in `output/NuXJSFuzz` and can be run with a directory containing seed inputs:
+
+```bash
+./output/NuXJSFuzz corpus/
+```
+
+On macOS the default clang from Xcode does not ship the libFuzzer runtime. Install the `llvm` package via Homebrew and invoke the script with that compiler:
+
+```bash
+CPP_COMPILER=$(brew --prefix llvm)/bin/clang++ bash tools/build_repl_fuzz.sh
+```
+
+To seed the fuzzer with inputs derived from the existing test suite, generate a corpus from the `.io` files:
+
+```bash
+PikaCmd tools/makeCorpus.pika corpus
+```
+
+Each section of every test file is written as a separate entry in the specified directory.
+
+
+## Documentation
 
 - [NuXJS Documentation](docs/NuXJS%20Documentation.md)
 - [ECMAScript Compatibility Notes.md](docs/notes/ECMAScript%20Compatibility%20Notes.md)
