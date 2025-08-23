@@ -103,8 +103,8 @@ Each section of every test file is written as a separate entry in the specified 
 ## Documentation
 
 - [NuXJS Documentation](docs/NuXJS%20Documentation.md)
-- [ECMAScript Compatibility Notes.md](docs/notes/ECMAScript%20Compatibility%20Notes.md)
-- [TypeScript Compatibility](docs/TypeScript%20Compatibility.md)
+- [ECMAScript Compatibility Notes](docs/notes/ECMAScript%20Compatibility%20Notes.md)
+- [TypeScript Compatibility](docs/notes/TypeScript%20Compatibility.md)
 
 ## AI Usage
 
