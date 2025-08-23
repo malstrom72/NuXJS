@@ -18,8 +18,9 @@ if [ ! -x "$WORKDIR/duktape/duk" ]; then
 	curl -L https://github.com/svaarala/duktape/releases/download/v2.7.0/duktape-2.7.0.tar.xz \
 	| tar -C "$WORKDIR" -xJ
 	mv "$WORKDIR/duktape-2.7.0" "$WORKDIR/duktape"
-	gcc -std=c99 -O2 -I"$WORKDIR/duktape/src" -o "$WORKDIR/duktape/duk" \
+	gcc -std=c99 -O2 -DDUK_CMDLINE_PRINTALERT_SUPPORT -I"$WORKDIR/duktape/src" -I"$WORKDIR/duktape/extras/print-alert" -o "$WORKDIR/duktape/duk" \
 	"$WORKDIR/duktape/examples/cmdline/duk_cmdline.c" \
+	"$WORKDIR/duktape/extras/print-alert/duk_print_alert.c" \
 	"$WORKDIR/duktape/src/duktape.c" -lm >/dev/null
 fi
 DUK="$WORKDIR/duktape/duk"
