@@ -13,6 +13,18 @@ else
 	CPUS=1
 fi
 
+# Select Python interpreter for timestamping
+if command -v python3 >/dev/null 2>&1; then
+	PYTHON=python3
+else
+	PYTHON=python
+fi
+
+now_ms() {
+	"$PYTHON" - <<'PY'
+import time, sys; sys.stdout.write(str(int(time.time()*1000)))
+PY
+}
 
 # Build NuXJS if needed
 if [ ! -x "output/NuXJS" ]; then
@@ -70,10 +82,10 @@ for pair in "${engines[@]}"; do
 		files=benchmarks/*.js
 	fi
 	for bm in $files; do
-		start=$(date +%s%N)
+		start=$(now_ms)
 		if out="$("$exe" "$bm" 2>&1)"; then
-			end=$(date +%s%N)
-			result=$(( (end - start) / 1000000 ))
+			end=$(now_ms)
+			result=$(( end - start ))
 			base=$(basename "$bm" .js)
 			golden="benchmarks/golden/$base.txt"
 			out_norm=$(printf '%s' "$out" | tr -d '\r')
@@ -91,7 +103,7 @@ for pair in "${engines[@]}"; do
 			fi
 		else
 			status=$?
-			end=$(date +%s%N)
+			end=$(now_ms)
 			printf "%-25s ERR(%d)\n" "$(basename "$bm")" "$status"
 			echo "$out" | sed 's/^/    /' | head -n 20
 		fi
