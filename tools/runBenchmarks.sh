@@ -4,6 +4,15 @@ cd "$(dirname "$0")"/..
 
 WORKDIR="output/benchmarks_engines"
 mkdir -p "$WORKDIR"
+# Determine number of CPU cores for parallel builds
+if command -v nproc >/dev/null 2>&1; then
+	CPUS=$(nproc)
+elif command -v sysctl >/dev/null 2>&1; then
+	CPUS=$(sysctl -n hw.ncpu)
+else
+	CPUS=1
+fi
+
 
 # Build NuXJS if needed
 if [ ! -x "output/NuXJS" ]; then
@@ -29,21 +38,28 @@ DUK="$WORKDIR/duktape/duk"
 if [ ! -x "$WORKDIR/quickjs/qjs" ]; then
 	echo "Installing QuickJS..."
 	git clone --depth 1 https://github.com/bellard/quickjs.git "$WORKDIR/quickjs"
-	make -C "$WORKDIR/quickjs" -j"$(nproc)" >/dev/null
+	make -C "$WORKDIR/quickjs" -j"$CPUS" >/dev/null
 fi
 QJS="$WORKDIR/quickjs/qjs"
 
 # JerryScript
 if [ ! -x "$WORKDIR/jerryscript/build/bin/jerry" ]; then
 	echo "Installing JerryScript..."
-	git clone --depth 1 https://github.com/jerryscript-project/jerryscript.git "$WORKDIR/jerryscript"
-	pushd "$WORKDIR/jerryscript" >/dev/null
-	python tools/build.py --clean --install=local >/dev/null
-	popd >/dev/null
+	if command -v cmake >/dev/null 2>&1; then
+		git clone --depth 1 https://github.com/jerryscript-project/jerryscript.git "$WORKDIR/jerryscript"
+		pushd "$WORKDIR/jerryscript" >/dev/null
+		python tools/build.py --clean --install=local >/dev/null
+		popd >/dev/null
+	else
+		echo "cmake not found; skipping JerryScript build" >&2
+	fi
 fi
-JERRY="$WORKDIR/jerryscript/build/bin/jerry"
 
-engines=("NuXJS:./output/NuXJS" "Duktape:$DUK" "QuickJS:$QJS" "JerryScript:$JERRY")
+
+engines=("NuXJS:./output/NuXJS" "Duktape:$DUK" "QuickJS:$QJS")
+if [ -x "$WORKDIR/jerryscript/build/bin/jerry" ]; then
+	engines+=("JerryScript:$WORKDIR/jerryscript/build/bin/jerry")
+fi
 
 for pair in "${engines[@]}"; do
 	IFS=':' read -r name exe <<< "$pair"
