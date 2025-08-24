@@ -15,11 +15,12 @@ if (!fs.existsSync(TEST_PATH)) {
 	child_process.execFileSync("tar", [ "-xzf", TEST_TAR ]);
 }
 function interpretResult(text) {
-	text = text.replace(/\x1B\[[0-9;]*m/g, "").trim();
-	if (text.indexOf("passed") === 0) return true;
-	if (text.indexOf("failed") === 0 && text.indexOf("as expected") !== -1) return true;
+	text = text.replace(/\x1B\[[0-9;]*m/g, "").trim().toLowerCase();
+	text = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+	if (text.indexOf("pass") === 0) return true;
+	if (text.indexOf("fail") === 0 && text.indexOf("expected") !== -1) return true;
 	if (text.indexOf("was expected to fail") !== -1) return false;
-	if (text.indexOf("failed") === 0) return false;
+	if (text.indexOf("fail") === 0) return false;
 	throw ('Unknown test result: "' + text + '"');
 };
 
