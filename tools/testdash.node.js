@@ -5,13 +5,14 @@ const http = require("http");
 const url = require("url");
 const child_process = require("child_process");
 const readline = require("readline");
+const CLI_MODE = process.argv.indexOf("--cli") !== -1;
 
 const TEST_PATH = "./test262-master/";
 const TEST_COMMAND = '/usr/bin/python ./test262-master/tools/packaging/test262.py --non_strict_only --tests="' + TEST_PATH + '" --command="./output/NuXJS -s" language/';
 const PASS_RESULTS = {
 	"passed in non-strict mode":true,
 	"failed in non-strict mode":false,
-	"failed in non-strict mode as expected":true,
+			"failed in non-strict mode as expected":true,
 	"was expected to fail in non-strict mode, but didn't":false,
 };
 
@@ -54,19 +55,23 @@ function runTests(callback) {
 		}
 		// console.log("> ", line);
 
-	}).on("close", () => {
-		console.log("Completed");
-		runningTest = false;
-		// console.log(tests);
-	});
+        }).on("close", () => {
+                console.log("Completed");
+                runningTest = false;
+                // console.log(tests);
+                if (callback) callback();
+        });
 };
 
-
-var server = http.createServer( function(req, res) {
-	try {
-		var u = url.parse(req.url, true);
-		if (u.pathname === "/") u.pathname = "/tools/testdash.html";
-		if (u.pathname.substr(0,8) === "/source/") u.pathname = "/" + TEST_PATH + "test/" + u.pathname.substr(8) + ".js";
+		
+loadConfig();
+		
+if (!CLI_MODE) {
+	var server = http.createServer( function(req, res) {
+        try {
+                var u = url.parse(req.url, true);
+                if (u.pathname === "/") u.pathname = "/tools/testdash.html";
+                if (u.pathname.substr(0,8) === "/source/") u.pathname = "/" + TEST_PATH + "test/" + u.pathname.substr(8) + ".js";
 
 		if (u.pathname.substr(0,5) === "/api/") {
 			var method = u.pathname.substr(5);
@@ -109,10 +114,11 @@ var server = http.createServer( function(req, res) {
 		console.error("HTTP server error: " + e);
 	}
 }).listen(12345, () => {
-	var address = server.address();
-	console.log("opened HTTP server on http://" + address.address + ":" + address.port);
-	child_process.spawn("open", [ "http://localhost:" + address.port ]);
+        var address = server.address();
+        console.log("opened HTTP server on http://" + address.address + ":" + address.port);
+        child_process.spawn("open", [ "http://localhost:" + address.port ]);
 });
-
-loadConfig();
-runTests();
+	runTests();
+} else {
+	runTests(() => process.exit(0));
+}
