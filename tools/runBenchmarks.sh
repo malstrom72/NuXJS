@@ -30,6 +30,10 @@ strip_cr() {
 	LC_ALL=C tr -d '\r'
 }
 
+safe_sed() {
+	LC_ALL=C sed "$@"
+}
+
 # Build NuXJS if needed
 if [ ! -x "output/NuXJS" ]; then
 	echo "Building NuXJS..."
@@ -104,7 +108,7 @@ for pair in "${engines[@]}"; do
                        result=$(( end - start ))
                        base=$(basename "$bm" .js)
                        golden="benchmarks/golden/$base.txt"
-                       out_norm=$(printf '%s' "$out" | strip_cr | sed '/^[[:space:]]*=undefined$/d')
+                       out_norm=$(printf '%s' "$out" | strip_cr | safe_sed '/^[[:space:]]*=undefined$/d')
                        if [ "$name" = "NuXJS" ]; then
                                mkdir -p benchmarks/golden
                                printf '%s' "$out_norm" > "$golden"
@@ -127,7 +131,7 @@ for pair in "${engines[@]}"; do
                        status=$?
                        end=$(now_ms)
                        printf "%-25s ERR(%d)\n" "$(basename "$bm")" "$status"
-                       echo "$out" | sed 's/^/    /' | head -n 20
+                       echo "$out" | safe_sed 's/^/    /' | head -n 20
                fi
        done
        echo
