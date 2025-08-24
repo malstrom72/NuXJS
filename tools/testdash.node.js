@@ -29,11 +29,12 @@ function extend(target, obj) { for (var p in obj) if (obj.hasOwnProperty(p)) tar
 
 var runningTest = false;
 var currentTest = undefined;
-function runTests(callback) {
+function runTests(callback, limit) {
 	runningTest = true;
 	currentTest = undefined;
 	console.log("Running tests");
 	var captureMode = false;
+	var count = 0;
 
 	var child = child_process.spawn("sh", [ "-c", TEST_COMMAND ]);
 	var rl = readline.createInterface({
@@ -55,6 +56,8 @@ function runTests(callback) {
 				tests[testName] = extend( { name:testName, passed:PASS_RESULTS[testResult], output: "" }, config[testName] );
 				currentTest = tests[testName];
 				captureMode = m[4] === " ===";
+			count++;
+			if (limit && count >= limit) child.kill("SIGKILL");
 
 			} else if (line) console.warn("Unknown output: " + line);
 		}
@@ -82,7 +85,7 @@ var server = http.createServer( function(req, res) {
 				if (runningTest) output = { mode:"running", currentTest:currentTest };
 				else output = { mode:"report", tests:tests };
 			} else if (method === "runTests") {
-				if (!runningTest) runTests();
+				if (!runningTest) runTests(undefined, maxTests);
 				output = { ok:true };
 			} else if (method === "setCategory") {
 				var testName = u.query.test;
@@ -119,6 +122,8 @@ var server = http.createServer( function(req, res) {
 loadConfig();
 
 var cliMode = process.argv.indexOf("--cli") !== -1;
+var limitIndex = process.argv.indexOf("--limit");
+var maxTests = (limitIndex !== -1) ? parseInt(process.argv[limitIndex + 1]) : undefined;
 
 if (cliMode) {
 	runTests(() => {
@@ -134,12 +139,12 @@ if (cliMode) {
 		}
 		console.log("Total: " + total + ", Passed: " + passed + ", Failed: " + (total - passed));
 		process.exit(total - passed);
-	});
+	}, maxTests);
 } else {
 	server.listen(12345, () => {
 		var address = server.address();
 		console.log("opened HTTP server on http://" + address.address + ":" + address.port);
 		child_process.spawn("open", [ "http://localhost:" + address.port ]);
 	});
-	runTests();
+	runTests(undefined, maxTests);
 }
