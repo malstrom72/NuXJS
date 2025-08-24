@@ -62,8 +62,10 @@ function runTests(callback, limit) {
         child.stdout.on("data", (chunk) => { output += chunk; });
         child.stdout.on("end", () => {
                 try {
-                        var results = JSON.parse(output);
-                        results.forEach((m) => {
+                        output.split(/\r?\n/).forEach((line) => {
+                                line = line.trim();
+                                if (!line || line === "[" || line === "]") return;
+                                var m = JSON.parse(line);
                                 var testName = m.file;
                                 var passed = m.result.pass === true;
                                 tests[testName] = extend({ name:testName, passed:passed, output:"" }, config[testName]);
