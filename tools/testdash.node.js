@@ -37,6 +37,7 @@ const CATEGORY_LABELS = {
 	todo: "TODO"
 };
 const CATEGORIES_TO_IGNORE = { bad_test:true, by_design:true, not_es3:true, tbd:true };
+const NON_ES3_DIRS = new Set(["annexB", "intl402"]);
 
 var tests = {};
 var config = {};
@@ -60,20 +61,21 @@ function runTests(callback, limit) {
 
 	if (limit) {
 	       var list = [];
-	       (function gather(dir) {
-		       var entries = fs.readdirSync(dir).sort();
-		       for (var i = 0; i < entries.length && list.length < limit; i++) {
-			       var entry = entries[i];
-			       var full = path.join(dir, entry);
-			       var stat = fs.statSync(full);
-			       if (stat.isDirectory()) gather(full);
-			       else if (entry.endsWith(".js")) list.push(path.relative(TEST_PATH, full));
-		       }
-	       })(path.join(TEST_PATH, "test"));
-	       args = args.concat(list);
-	} else {
-	       args.push("test/language/**/*.js");
-	}
+               (function gather(dir) {
+                       var entries = fs.readdirSync(dir).sort();
+                       for (var i = 0; i < entries.length && list.length < limit; i++) {
+                               var entry = entries[i];
+                               if (NON_ES3_DIRS.has(entry)) continue;
+                               var full = path.join(dir, entry);
+                               var stat = fs.statSync(full);
+                               if (stat.isDirectory()) gather(full);
+                               else if (entry.endsWith(".js")) list.push(path.relative(TEST_PATH, full));
+                       }
+               })(path.join(TEST_PATH, "test"));
+               args = args.concat(list);
+       } else {
+               args.push("test/language/**/*.js");
+       }
 
 	var child = child_process.spawn("node", [harness].concat(args), { cwd: TEST_PATH });
 	var output = "";
@@ -91,7 +93,11 @@ function runTests(callback, limit) {
                                var configKey = testName.startsWith("test/") ? testName.slice(5) : testName;
                                configKey = configKey.replace(/\.js$/, "");
                                var passed = m.result.pass === true;
-                               tests[testName] = extend({ name:testName, passed:passed, output:"" }, config[configKey]);
+                               var defaultCategory;
+                               for (var dir of NON_ES3_DIRS) {
+                                       if (testName.startsWith("test/" + dir + "/")) { defaultCategory = "not_es3"; break; }
+                               }
+                               tests[testName] = extend({ name:testName, passed:passed, output:"", category:defaultCategory }, config[configKey]);
                                currentTest = tests[testName];
                        });
 		} catch (e) {
