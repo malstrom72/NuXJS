@@ -89,6 +89,7 @@ function runTests(callback, limit) {
 			       var m = JSON.parse(line);
                                var testName = m.file;
                                var configKey = testName.startsWith("test/") ? testName.slice(5) : testName;
+                               configKey = configKey.replace(/\.js$/, "");
                                var passed = m.result.pass === true;
                                tests[testName] = extend({ name:testName, passed:passed, output:"" }, config[configKey]);
                                currentTest = tests[testName];
@@ -125,7 +126,8 @@ var server = http.createServer( function(req, res) {
 			} else if (method === "setCategory") {
 				var testName = u.query.test;
 				var category = u.query.category;
-                                var configKey = testName && testName.startsWith("test/") ? testName.slice(5) : testName;
+                               var configKey = testName && testName.startsWith("test/") ? testName.slice(5) : testName;
+                               configKey = configKey && configKey.replace(/\.js$/, "");
                                 if (tests[testName]) {
                                         config[configKey] = config[configKey] || {};
                                         config[configKey].category = category;
