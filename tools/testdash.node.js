@@ -8,7 +8,10 @@ const readline = require("readline");
 
 const TEST_PATH = "./test262-master/";
 const TEST_TAR = "./externals/test262-master.tar.gz";
-const TEST_COMMAND = 'python2 ./test262-master/tools/packaging/test262.py --non_strict_only --tests="' + TEST_PATH + '" --command="./output/NuXJS -s" language/';
+const ENGINE = fs.existsSync("./output/NuXJS_beta_native") ? "./output/NuXJS_beta_native" :
+fs.existsSync("./output/NuXJS_release_native") ? "./output/NuXJS_release_native" :
+"./output/NuXJS";
+const TEST_ARGS_BASE = ["-u", "./test262-master/tools/packaging/test262.py", "--non_strict_only", "--tests=" + TEST_PATH, "--command=" + ENGINE + " -s" ];
 
 if (!fs.existsSync(TEST_PATH)) {
 	console.log("Extracting Test262 suite...");
@@ -36,10 +39,11 @@ function runTests(callback, limit) {
 	runningTest = true;
 	currentTest = undefined;
 	console.log("Running tests");
-	var captureMode = false;
-	var count = 0;
-
-	var child = child_process.spawn("sh", [ "-c", TEST_COMMAND ]);
+        var captureMode = false;
+        var count = 0;
+        var dir = limit ? "language/arguments" : "language";
+        var args = TEST_ARGS_BASE.concat([dir]);
+        var child = child_process.spawn("python2", args);
 	var rl = readline.createInterface({
 		input: child.stdout
 	}).on("line", (line) => {
