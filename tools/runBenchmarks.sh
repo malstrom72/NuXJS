@@ -21,9 +21,13 @@ else
 fi
 
 now_ms() {
-	"$PYTHON" - <<'PY'
+        "$PYTHON" - <<'PY'
 import time, sys; sys.stdout.write(str(int(time.time()*1000)))
 PY
+}
+
+strip_cr() {
+	LC_ALL=C tr -d '\r'
 }
 
 # Build NuXJS if needed
@@ -88,14 +92,14 @@ for pair in "${engines[@]}"; do
                        result=$(( end - start ))
                        base=$(basename "$bm" .js)
                        golden="benchmarks/golden/$base.txt"
-                       out_norm=$(printf '%s' "$out" | tr -d '\r')
+                       out_norm=$(printf '%s' "$out" | strip_cr)
                        if [ "$name" = "NuXJS" ]; then
                                mkdir -p benchmarks/golden
                                printf '%s' "$out_norm" > "$golden"
                                printf "%-25s %s\n" "$(basename "$bm")" "$result"
                        else
                                if [ -f "$golden" ]; then
-                                       golden_norm=$(tr -d '\r' < "$golden")
+                                       golden_norm=$(strip_cr < "$golden")
                                        if [ "$out_norm" = "$golden_norm" ]; then
                                                printf "%-25s %s\n" "$(basename "$bm")" "$result"
                                        else
