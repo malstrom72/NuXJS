@@ -57,10 +57,10 @@ function runTests(callback) {
 	}).on("close", () => {
 		console.log("Completed");
 		runningTest = false;
+		if (callback) callback();
 		// console.log(tests);
 	});
 };
-
 
 var server = http.createServer( function(req, res) {
 	try {
@@ -104,15 +104,35 @@ var server = http.createServer( function(req, res) {
 				res.write("404 Not Found");
 				res.end();
 			}
-		} else res.end();
+	} else res.end();
 	} catch (e) {
 		console.error("HTTP server error: " + e);
 	}
-}).listen(12345, () => {
-	var address = server.address();
-	console.log("opened HTTP server on http://" + address.address + ":" + address.port);
-	child_process.spawn("open", [ "http://localhost:" + address.port ]);
 });
 
 loadConfig();
-runTests();
+
+var cliMode = process.argv.indexOf("--cli") !== -1;
+
+if (cliMode) {
+	runTests(() => {
+		var total = 0;
+		var passed = 0;
+		for (var testName in tests) {
+			if (tests.hasOwnProperty(testName)) {
+				var t = tests[testName];
+				console.log((t.passed ? "PASS" : "FAIL") + " " + testName);
+				if (t.passed) passed++;
+				total++;
+			}
+		}
+		console.log("Total: " + total + ", Passed: " + passed + ", Failed: " + (total - passed));
+	});
+} else {
+	server.listen(12345, () => {
+		var address = server.address();
+		console.log("opened HTTP server on http://" + address.address + ":" + address.port);
+		child_process.spawn("open", [ "http://localhost:" + address.port ]);
+	});
+	runTests();
+}
