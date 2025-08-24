@@ -5,27 +5,19 @@ const http = require("http");
 const url = require("url");
 const child_process = require("child_process");
 const readline = require("readline");
+const path = require("path");
 
 const TEST_PATH = "./test262-master/";
 const TEST_TAR = "./externals/test262-master.tar.gz";
-const ENGINE = fs.existsSync("./output/NuXJS_beta_native") ? "./output/NuXJS_beta_native" :
-fs.existsSync("./output/NuXJS_release_native") ? "./output/NuXJS_release_native" :
-"./output/NuXJS";
-const TEST_ARGS_BASE = ["-u", "./test262-master/tools/packaging/test262.py", "--non_strict_only", "--tests=" + TEST_PATH, "--command=" + ENGINE + " -s" ];
+const ENGINE = fs.existsSync("./output/NuXJS_beta_native") ? path.resolve("./output/NuXJS_beta_native") :
+fs.existsSync("./output/NuXJS_release_native") ? path.resolve("./output/NuXJS_release_native") :
+fs.existsSync("./output/NuXJS") ? path.resolve("./output/NuXJS") :
+"node";
 
 if (!fs.existsSync(TEST_PATH)) {
 	console.log("Extracting Test262 suite...");
 	child_process.execFileSync("tar", [ "-xzf", TEST_TAR ]);
 }
-function interpretResult(text) {
-	text = text.replace(/\x1B\[[0-9;]*m/g, "").trim().toLowerCase();
-	text = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-	if (text.indexOf("pass") === 0) return true;
-	if (text.indexOf("fail") === 0 && text.indexOf("expected") !== -1) return true;
-	if (text.indexOf("was expected to fail") !== -1) return false;
-	if (text.indexOf("fail") === 0) return false;
-	throw ('Unknown test result: "' + text + '"');
-};
 
 const CATEGORY_LABELS = {
         bad_test: "BAD TEST",
@@ -45,44 +37,39 @@ function extend(target, obj) { for (var p in obj) if (obj.hasOwnProperty(p)) tar
 var runningTest = false;
 var currentTest = undefined;
 function runTests(callback, limit) {
-	runningTest = true;
-	currentTest = undefined;
-	console.log("Running tests");
-        var captureMode = false;
-        var count = 0;
-        var dir = limit ? "language/arguments" : "language";
-        var args = TEST_ARGS_BASE.concat([dir]);
-        var child = child_process.spawn("python2", args);
-	var rl = readline.createInterface({
-		input: child.stdout
-	}).on("line", (line) => {
-		if (captureMode) {
-			if (line.substr(-3) === "===") {
-				line = line.slice(0, -3);
-				captureMode = false;
-			}
-			currentTest.output += line + "\n";
-		} else {
-			var m = line.match(/(=== )?(\S+) (.+?)( ===)?$/);
-			if (m) {
-				var testName = m[2];
-				var passed = interpretResult(m[3]);
-				tests[testName] = extend( { name:testName, passed:passed, output: "" }, config[testName] );
-				currentTest = tests[testName];
-				captureMode = m[4] === " ===";
-			count++;
-			if (limit && count >= limit) child.kill("SIGKILL");
-
-			} else if (line) console.warn("Unknown output: " + line);
-		}
-// console.log("> ", line);
-
-	}).on("close", () => {
-		console.log("Completed");
-		runningTest = false;
-		if (callback) callback();
-		// console.log(tests);
-	});
+        runningTest = true;
+        currentTest = undefined;
+        console.log("Running tests");
+        var testTarget = limit ? "test/language/arguments-object/10.5-1-s.js" : "test/language";
+        if (!fs.existsSync(TEST_PATH + "node_modules")) {
+                child_process.execFileSync("npm", ["--prefix", TEST_PATH, "install"], { stdio:"inherit" });
+        }
+        var harness = "node_modules/test262-harness/bin/run.js";
+        var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=node", "--hostPath=" + ENGINE, testTarget];
+        var child = child_process.spawn("node", [harness].concat(args), { cwd: TEST_PATH });
+        var output = "";
+        child.stdout.setEncoding("utf8");
+        child.stdout.on("data", (chunk) => { output += chunk; });
+        child.stdout.on("end", () => {
+                try {
+                        var results = JSON.parse(output);
+                        results.forEach((m) => {
+                                var testName = m.file;
+                                var passed = m.result.pass === true;
+                                tests[testName] = extend({ name:testName, passed:passed, output:"" }, config[testName]);
+                                currentTest = tests[testName];
+                        });
+                } catch (e) {
+                        console.error("Parse error: " + e);
+                }
+        });
+        child.stderr.setEncoding("utf8");
+        child.stderr.on("data", (chunk) => { console.error(chunk); });
+        child.on("close", () => {
+                console.log("Completed");
+                runningTest = false;
+                if (callback) callback();
+        });
 };
 
 var server = http.createServer( function(req, res) {
