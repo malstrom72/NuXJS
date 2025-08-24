@@ -111,11 +111,14 @@ for pair in "${engines[@]}"; do
                        out_norm=$(printf '%s' "$out" | strip_cr | safe_sed '/^[[:space:]]*=undefined$/d')
                        if [ "$name" = "NuXJS" ]; then
                                mkdir -p benchmarks/golden
-                               printf '%s' "$out_norm" > "$golden"
+                               case $out_norm in
+                                       *$'\n') printf '%s' "$out_norm" > "$golden" ;;
+                                       *)      printf '%s\n' "$out_norm" > "$golden" ;;
+                               esac
                                printf "%-25s %s\n" "$(basename "$bm")" "$result"
                        else
                                if [ -f "$golden" ]; then
-                                       golden_norm=$(strip_cr < "$golden")
+                                       golden_norm=$(strip_cr < "$golden" | safe_sed '/^[[:space:]]*=undefined$/d')
                                        if [ "$out_norm" = "$golden_norm" ]; then
                                                printf "%-25s %s\n" "$(basename "$bm")" "$result"
                                        else
