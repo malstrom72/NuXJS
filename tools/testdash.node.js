@@ -7,13 +7,34 @@ const child_process = require("child_process");
 const readline = require("readline");
 
 const TEST_PATH = "./test262-master/";
-const TEST_COMMAND = 'python ./test262-master/tools/packaging/test262.py --non_strict_only --tests="' + TEST_PATH + '" --command="./output/NuXJS -s" language/';
-const PASS_RESULTS = {
-	"passed in non-strict mode":true,
-	"failed in non-strict mode":false,
-	"failed in non-strict mode as expected":true,
-	"was expected to fail in non-strict mode, but didn't":false,
+const TEST_TAR = "./externals/test262-master.tar.gz";
+const ENGINE = fs.existsSync("./output/NuXJS_beta_native") ? "./output/NuXJS_beta_native" :
+fs.existsSync("./output/NuXJS_release_native") ? "./output/NuXJS_release_native" :
+"./output/NuXJS";
+const TEST_ARGS_BASE = ["-u", "./test262-master/tools/packaging/test262.py", "--non_strict_only", "--tests=" + TEST_PATH, "--command=" + ENGINE + " -s" ];
+
+if (!fs.existsSync(TEST_PATH)) {
+	console.log("Extracting Test262 suite...");
+	child_process.execFileSync("tar", [ "-xzf", TEST_TAR ]);
+}
+function interpretResult(text) {
+	text = text.replace(/\x1B\[[0-9;]*m/g, "").trim().toLowerCase();
+	text = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+	if (text.indexOf("pass") === 0) return true;
+	if (text.indexOf("fail") === 0 && text.indexOf("expected") !== -1) return true;
+	if (text.indexOf("was expected to fail") !== -1) return false;
+	if (text.indexOf("fail") === 0) return false;
+	throw ('Unknown test result: "' + text + '"');
 };
+
+const CATEGORY_LABELS = {
+        bad_test: "BAD TEST",
+        by_design: "BY DESIGN",
+        not_es3: "ES >3",
+        tbd: "TBD",
+        todo: "TODO"
+};
+const CATEGORIES_TO_IGNORE = { bad_test:true, by_design:true, not_es3:true, tbd:true };
 
 var tests = {};
 var config = {};
@@ -23,13 +44,15 @@ function extend(target, obj) { for (var p in obj) if (obj.hasOwnProperty(p)) tar
 
 var runningTest = false;
 var currentTest = undefined;
-function runTests(callback) {
+function runTests(callback, limit) {
 	runningTest = true;
 	currentTest = undefined;
 	console.log("Running tests");
-	var captureMode = false;
-
-	var child = child_process.spawn("sh", [ "-c", TEST_COMMAND ]);
+        var captureMode = false;
+        var count = 0;
+        var dir = limit ? "language/arguments" : "language";
+        var args = TEST_ARGS_BASE.concat([dir]);
+        var child = child_process.spawn("python2", args);
 	var rl = readline.createInterface({
 		input: child.stdout
 	}).on("line", (line) => {
@@ -43,24 +66,24 @@ function runTests(callback) {
 			var m = line.match(/(=== )?(\S+) (.+?)( ===)?$/);
 			if (m) {
 				var testName = m[2];
-				var testResult = m[3];
-				if (PASS_RESULTS[testResult] === undefined) throw ('Unknown test result: "' + testResult + '"');
-
-				tests[testName] = extend( { name:testName, passed:PASS_RESULTS[testResult], output: "" }, config[testName] );
+				var passed = interpretResult(m[3]);
+				tests[testName] = extend( { name:testName, passed:passed, output: "" }, config[testName] );
 				currentTest = tests[testName];
 				captureMode = m[4] === " ===";
+			count++;
+			if (limit && count >= limit) child.kill("SIGKILL");
 
 			} else if (line) console.warn("Unknown output: " + line);
 		}
-		// console.log("> ", line);
+// console.log("> ", line);
 
 	}).on("close", () => {
 		console.log("Completed");
 		runningTest = false;
+		if (callback) callback();
 		// console.log(tests);
 	});
 };
-
 
 var server = http.createServer( function(req, res) {
 	try {
@@ -76,7 +99,7 @@ var server = http.createServer( function(req, res) {
 				if (runningTest) output = { mode:"running", currentTest:currentTest };
 				else output = { mode:"report", tests:tests };
 			} else if (method === "runTests") {
-				if (!runningTest) runTests();
+				if (!runningTest) runTests(undefined, maxTests);
 				output = { ok:true };
 			} else if (method === "setCategory") {
 				var testName = u.query.test;
@@ -104,15 +127,51 @@ var server = http.createServer( function(req, res) {
 				res.write("404 Not Found");
 				res.end();
 			}
-		} else res.end();
+	} else res.end();
 	} catch (e) {
 		console.error("HTTP server error: " + e);
 	}
-}).listen(12345, () => {
-	var address = server.address();
-	console.log("opened HTTP server on http://" + address.address + ":" + address.port);
-	child_process.spawn("open", [ "http://localhost:" + address.port ]);
-});
+	});
 
 loadConfig();
-runTests();
+
+var cliMode = process.argv.indexOf("--cli") !== -1;
+var limitIndex = process.argv.indexOf("--limit");
+var maxTests = (limitIndex !== -1) ? parseInt(process.argv[limitIndex + 1]) : undefined;
+
+if (cliMode) {
+       runTests(() => {
+               var totals = { total:0, passed:0, failed:0, ignored:0 };
+               var ignored = {};
+               for (var testName in tests) {
+                       if (tests.hasOwnProperty(testName)) {
+                               var t = tests[testName];
+                               totals.total++;
+                               if (CATEGORIES_TO_IGNORE[t.category]) {
+                                       totals.ignored++;
+                                       ignored[t.category] = (ignored[t.category] || 0) + 1;
+                               } else if (t.passed) {
+                                       totals.passed++;
+                               } else {
+                                       totals.failed++;
+                                       console.log("FAIL " + testName);
+                               }
+                       }
+               }
+               console.log("Total: " + totals.total);
+               console.log("  Passed: " + totals.passed);
+               console.log("  Failed: " + totals.failed);
+               console.log("  Ignored: " + totals.ignored);
+               for (var c in ignored) {
+                       console.log("    " + (CATEGORY_LABELS[c] || c) + ": " + ignored[c]);
+               }
+               process.exit(totals.failed);
+       }, maxTests);
+} else {
+	server.listen(12345, () => {
+		var address = server.address();
+		console.log("opened HTTP server on http://" + address.address + ":" + address.port);
+		child_process.spawn("open", [ "http://localhost:" + address.port ]);
+	});
+	runTests(undefined, maxTests);
+}
