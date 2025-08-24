@@ -58,13 +58,13 @@ QJS="$WORKDIR/quickjs/qjs"
 if [ ! -x "$WORKDIR/jerryscript/build/bin/jerry" ]; then
 	echo "Installing JerryScript..."
 	if command -v cmake >/dev/null 2>&1; then
-		git clone --depth 1 https://github.com/jerryscript-project/jerryscript.git "$WORKDIR/jerryscript"
-		pushd "$WORKDIR/jerryscript" >/dev/null
-		python tools/build.py --clean --install=local >/dev/null
-		popd >/dev/null
-	else
-		echo "cmake not found; skipping JerryScript build" >&2
-	fi
+               git clone --depth 1 https://github.com/jerryscript-project/jerryscript.git "$WORKDIR/jerryscript"
+               pushd "$WORKDIR/jerryscript" >/dev/null
+               "$PYTHON" tools/build.py --clean --install=local >/dev/null
+               popd >/dev/null
+        else
+                echo "cmake not found; skipping JerryScript build" >&2
+        fi
 fi
 
 
@@ -82,31 +82,37 @@ for pair in "${engines[@]}"; do
 		files=benchmarks/*.js
 	fi
 	for bm in $files; do
-		start=$(now_ms)
-		if out="$("$exe" "$bm" 2>&1)"; then
-			end=$(now_ms)
-			result=$(( end - start ))
-			base=$(basename "$bm" .js)
-			golden="benchmarks/golden/$base.txt"
-			out_norm=$(printf '%s' "$out" | tr -d '\r')
-			if [ -f "$golden" ]; then
-				golden_norm=$(tr -d '\r' < "$golden")
-				if [ "$out_norm" = "$golden_norm" ]; then
-					printf "%-25s %s\n" "$(basename "$bm")" "$result"
-				else
-					printf "%-25s WRONG\n" "$(basename "$bm")"
-					diff -u <(printf '%s' "$golden_norm") <(printf '%s' "$out_norm") | head -n 20 || true
-				fi
-			else
-				printf "%-25s %s\n" "$(basename "$bm")" "$result"
-				echo "    (no golden file)"
-			fi
-		else
-			status=$?
-			end=$(now_ms)
-			printf "%-25s ERR(%d)\n" "$(basename "$bm")" "$status"
-			echo "$out" | sed 's/^/    /' | head -n 20
-		fi
-	done
-	echo
+               start=$(now_ms)
+               if out="$("$exe" "$bm" 2>&1)"; then
+                       end=$(now_ms)
+                       result=$(( end - start ))
+                       base=$(basename "$bm" .js)
+                       golden="benchmarks/golden/$base.txt"
+                       out_norm=$(printf '%s' "$out" | tr -d '\r')
+                       if [ "$name" = "NuXJS" ]; then
+                               mkdir -p benchmarks/golden
+                               printf '%s' "$out_norm" > "$golden"
+                               printf "%-25s %s\n" "$(basename "$bm")" "$result"
+                       else
+                               if [ -f "$golden" ]; then
+                                       golden_norm=$(tr -d '\r' < "$golden")
+                                       if [ "$out_norm" = "$golden_norm" ]; then
+                                               printf "%-25s %s\n" "$(basename "$bm")" "$result"
+                                       else
+                                               printf "%-25s WRONG\n" "$(basename "$bm")"
+                                               diff -u <(printf '%s' "$golden_norm") <(printf '%s' "$out_norm") | head -n 20 || true
+                                       fi
+                               else
+                                       printf "%-25s %s\n" "$(basename "$bm")" "$result"
+                                       echo "    (no golden file)"
+                               fi
+                       fi
+               else
+                       status=$?
+                       end=$(now_ms)
+                       printf "%-25s ERR(%d)\n" "$(basename "$bm")" "$status"
+                       echo "$out" | sed 's/^/    /' | head -n 20
+               fi
+       done
+       echo
 done
