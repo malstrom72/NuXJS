@@ -14,11 +14,13 @@ if (!fs.existsSync(TEST_PATH)) {
 	console.log("Extracting Test262 suite...");
 	child_process.execFileSync("tar", [ "-xzf", TEST_TAR ]);
 }
-const PASS_RESULTS = {
-	"passed in non-strict mode":true,
-	"failed in non-strict mode":false,
-	"failed in non-strict mode as expected":true,
-	"was expected to fail in non-strict mode, but didn't":false,
+function interpretResult(text) {
+	text = text.replace(/\x1B\[[0-9;]*m/g, "").trim();
+	if (text.indexOf("passed") === 0) return true;
+	if (text.indexOf("failed") === 0 && text.indexOf("as expected") !== -1) return true;
+	if (text.indexOf("was expected to fail") !== -1) return false;
+	if (text.indexOf("failed") === 0) return false;
+	throw ('Unknown test result: "' + text + '"');
 };
 
 var tests = {};
@@ -50,10 +52,8 @@ function runTests(callback, limit) {
 			var m = line.match(/(=== )?(\S+) (.+?)( ===)?$/);
 			if (m) {
 				var testName = m[2];
-				var testResult = m[3];
-				if (PASS_RESULTS[testResult] === undefined) throw ('Unknown test result: "' + testResult + '"');
-
-				tests[testName] = extend( { name:testName, passed:PASS_RESULTS[testResult], output: "" }, config[testName] );
+				var passed = interpretResult(m[3]);
+				tests[testName] = extend( { name:testName, passed:passed, output: "" }, config[testName] );
 				currentTest = tests[testName];
 				captureMode = m[4] === " ===";
 			count++;
@@ -61,7 +61,7 @@ function runTests(callback, limit) {
 
 			} else if (line) console.warn("Unknown output: " + line);
 		}
-		// console.log("> ", line);
+// console.log("> ", line);
 
 	}).on("close", () => {
 		console.log("Completed");
