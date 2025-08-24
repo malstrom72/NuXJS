@@ -7,7 +7,14 @@ const child_process = require("child_process");
 const readline = require("readline");
 
 const TEST_PATH = "./test262-master/";
-const TEST_COMMAND = '/usr/bin/python ./test262-master/tools/packaging/test262.py --non_strict_only --tests="' + TEST_PATH + '" --command="./output/NuXJS -s" language/';
+const PYTHON = process.env.PYTHON || "python3";
+const TEST_COMMAND = [
+	PYTHON,
+	"./test262-master/tools/packaging/test262.py",
+	"--non_strict_only",
+	'--tests="' + TEST_PATH + '"',
+	'--command="./output/NuXJS -s" language/',
+].join(" ");
 const PASS_RESULTS = {
 	"passed in non-strict mode":true,
 	"failed in non-strict mode":false,
