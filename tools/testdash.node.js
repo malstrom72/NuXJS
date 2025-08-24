@@ -54,8 +54,9 @@ function runTests(callback, limit) {
 	if (!fs.existsSync(TEST_PATH + "node_modules")) {
 	       child_process.execFileSync("npm", ["--prefix", TEST_PATH, "install"], { stdio:"inherit" });
 	}
-	var harness = "node_modules/test262-harness/bin/run.js";
-	var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=node", "--hostPath=" + ENGINE];
+        var harness = "node_modules/test262-harness/bin/run.js";
+        var hostType = ENGINE === "node" ? "node" : "jsshell";
+        var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=" + hostType, "--hostPath=" + ENGINE];
 
 	if (limit) {
 	       var list = [];
@@ -86,11 +87,12 @@ function runTests(callback, limit) {
 			       if (line[0] === ",") line = line.slice(1);
 			       if (line.endsWith(",")) line = line.slice(0, -1);
 			       var m = JSON.parse(line);
-			       var testName = m.file;
-			       var passed = m.result.pass === true;
-			       tests[testName] = extend({ name:testName, passed:passed, output:"" }, config[testName]);
-			       currentTest = tests[testName];
-		       });
+                               var testName = m.file;
+                               var configKey = testName.startsWith("test/") ? testName.slice(5) : testName;
+                               var passed = m.result.pass === true;
+                               tests[testName] = extend({ name:testName, passed:passed, output:"" }, config[configKey]);
+                               currentTest = tests[testName];
+                       });
 		} catch (e) {
 			console.error("Parse error: " + e);
 		}
@@ -123,14 +125,15 @@ var server = http.createServer( function(req, res) {
 			} else if (method === "setCategory") {
 				var testName = u.query.test;
 				var category = u.query.category;
-				if (tests[testName]) {
-					config[testName] = config[testName] || {};
-					config[testName].category = category;
-					tests[testName].category = category;
-					saveConfig();
-				}
-				output = tests[testName];
-			}
+                                var configKey = testName && testName.startsWith("test/") ? testName.slice(5) : testName;
+                                if (tests[testName]) {
+                                        config[configKey] = config[configKey] || {};
+                                        config[configKey].category = category;
+                                        tests[testName].category = category;
+                                        saveConfig();
+                                }
+                                output = tests[testName];
+                        }
 
 			if (output !== undefined) res.write( JSON.stringify(output) );
 			else res.writeHead(400, "Bad Request");
