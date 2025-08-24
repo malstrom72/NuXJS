@@ -14,10 +14,20 @@ fs.existsSync("./output/NuXJS_release_native") ? path.resolve("./output/NuXJS_re
 fs.existsSync("./output/NuXJS") ? path.resolve("./output/NuXJS") :
 "node";
 
-if (!fs.existsSync(TEST_PATH)) {
-	console.log("Extracting Test262 suite...");
-	child_process.execFileSync("tar", [ "-xzf", TEST_TAR ]);
+function ensureTest262() {
+	if (!fs.existsSync(TEST_PATH) || !fs.existsSync(path.join(TEST_PATH, "package.json"))) {
+		if (!fs.existsSync(TEST_TAR)) {
+			const fetchScript = process.platform === "win32" ? "tools\\fetchTest262.cmd" : "tools/fetchTest262.sh";
+			const runner = process.platform === "win32" ? "cmd" : "bash";
+			console.log("Downloading Test262 suite...");
+			child_process.execFileSync(runner, [fetchScript], { stdio: "inherit" });
+		}
+		console.log("Extracting Test262 suite...");
+		child_process.execFileSync("tar", ["-xzf", TEST_TAR]);
+	}
 }
+
+ensureTest262();
 
 const CATEGORY_LABELS = {
         bad_test: "BAD TEST",
