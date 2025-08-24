@@ -27,6 +27,15 @@ function interpretResult(text) {
 	throw ('Unknown test result: "' + text + '"');
 };
 
+const CATEGORY_LABELS = {
+        bad_test: "BAD TEST",
+        by_design: "BY DESIGN",
+        not_es3: "ES >3",
+        tbd: "TBD",
+        todo: "TODO"
+};
+const CATEGORIES_TO_IGNORE = { bad_test:true, by_design:true, not_es3:true, tbd:true };
+
 var tests = {};
 var config = {};
 function saveConfig() { fs.writeFileSync("./tools/testdash.json", JSON.stringify(config, null, '\t')); };
@@ -131,20 +140,33 @@ var limitIndex = process.argv.indexOf("--limit");
 var maxTests = (limitIndex !== -1) ? parseInt(process.argv[limitIndex + 1]) : undefined;
 
 if (cliMode) {
-	runTests(() => {
-		var total = 0;
-		var passed = 0;
-		for (var testName in tests) {
-			if (tests.hasOwnProperty(testName)) {
-				var t = tests[testName];
-				console.log((t.passed ? "PASS" : "FAIL") + " " + testName);
-				if (t.passed) passed++;
-				total++;
-			}
-		}
-		console.log("Total: " + total + ", Passed: " + passed + ", Failed: " + (total - passed));
-		process.exit(total - passed);
-	}, maxTests);
+       runTests(() => {
+               var totals = { total:0, passed:0, failed:0, ignored:0 };
+               var ignored = {};
+               for (var testName in tests) {
+                       if (tests.hasOwnProperty(testName)) {
+                               var t = tests[testName];
+                               totals.total++;
+                               if (CATEGORIES_TO_IGNORE[t.category]) {
+                                       totals.ignored++;
+                                       ignored[t.category] = (ignored[t.category] || 0) + 1;
+                               } else if (t.passed) {
+                                       totals.passed++;
+                               } else {
+                                       totals.failed++;
+                                       console.log("FAIL " + testName);
+                               }
+                       }
+               }
+               console.log("Total: " + totals.total);
+               console.log("  Passed: " + totals.passed);
+               console.log("  Failed: " + totals.failed);
+               console.log("  Ignored: " + totals.ignored);
+               for (var c in ignored) {
+                       console.log("    " + (CATEGORY_LABELS[c] || c) + ": " + ignored[c]);
+               }
+               process.exit(totals.failed);
+       }, maxTests);
 } else {
 	server.listen(12345, () => {
 		var address = server.address();
