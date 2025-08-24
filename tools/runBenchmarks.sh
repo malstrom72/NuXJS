@@ -79,7 +79,7 @@ if [ ! -x "$WORKDIR/jerryscript/build/bin/jerry" ]; then
 	                        mv "$file.tmp" "$file"
 	                fi
 	        done < <(find tools -name '*.py' -print0)
-               "$PYTHON" tools/build.py --clean --install=local --cmake-param=-DJERRY_GLOBAL_HEAP_SIZE=32768 >/dev/null
+"$PYTHON" tools/build.py --clean --install=local --lto=OFF --cmake-param=-DJERRY_GLOBAL_HEAP_SIZE=131072 >/dev/null
 	        popd >/dev/null
 	else
 	        echo "cmake not found; skipping JerryScript build" >&2
