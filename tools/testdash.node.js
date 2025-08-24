@@ -7,7 +7,13 @@ const child_process = require("child_process");
 const readline = require("readline");
 
 const TEST_PATH = "./test262-master/";
+const TEST_TAR = "./externals/test262-master.tar.gz";
 const TEST_COMMAND = 'python2 ./test262-master/tools/packaging/test262.py --non_strict_only --tests="' + TEST_PATH + '" --command="./output/NuXJS -s" language/';
+
+if (!fs.existsSync(TEST_PATH)) {
+	console.log("Extracting Test262 suite...");
+	child_process.execFileSync("tar", [ "-xzf", TEST_TAR ]);
+}
 const PASS_RESULTS = {
 	"passed in non-strict mode":true,
 	"failed in non-strict mode":false,
@@ -108,7 +114,7 @@ var server = http.createServer( function(req, res) {
 	} catch (e) {
 		console.error("HTTP server error: " + e);
 	}
-});
+	});
 
 loadConfig();
 
@@ -127,6 +133,7 @@ if (cliMode) {
 			}
 		}
 		console.log("Total: " + total + ", Passed: " + passed + ", Failed: " + (total - passed));
+		process.exit(total - passed);
 	});
 } else {
 	server.listen(12345, () => {
