@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -e -o pipefail -u
+# Compare NuXJS benchmark performance against other JS engines.
 cd "$(dirname "$0")"/..
 
 WORKDIR="output/benchmarks_engines"
