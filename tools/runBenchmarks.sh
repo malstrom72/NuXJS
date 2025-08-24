@@ -62,35 +62,8 @@ if [ ! -x "$WORKDIR/quickjs/qjs" ]; then
 fi
 QJS="$WORKDIR/quickjs/qjs"
 
-# JerryScript
-if [ ! -x "$WORKDIR/jerryscript/build/bin/jerry" ]; then
-	echo "Installing JerryScript..."
-	if command -v cmake >/dev/null 2>&1; then
-	        git clone --depth 1 https://github.com/jerryscript-project/jerryscript.git "$WORKDIR/jerryscript"
-	        pushd "$WORKDIR/jerryscript" >/dev/null
-	        # Ensure bundled tools use Python 3 even when `python` is Python 2
-	        while IFS= read -r -d '' file; do
-	                read -r first < "$file"
-	                if [ "$first" = "#!/usr/bin/env python" ]; then
-	                        {
-	                                echo "#!/usr/bin/env python3"
-	                                tail -n +2 "$file"
-	                        } > "$file.tmp"
-	                        mv "$file.tmp" "$file"
-	                fi
-	        done < <(find tools -name '*.py' -print0)
-"$PYTHON" tools/build.py --clean --install=local --lto=OFF --profile=es.next --cmake-param=-DJERRY_GLOBAL_HEAP_SIZE=262144 >/dev/null
-	        popd >/dev/null
-	else
-	        echo "cmake not found; skipping JerryScript build" >&2
-	fi
-fi
-
 
 engines=("NuXJS:./output/NuXJS" "Duktape:$DUK" "QuickJS:$QJS")
-if [ -x "$WORKDIR/jerryscript/build/bin/jerry" ]; then
-	engines+=("JerryScript:$WORKDIR/jerryscript/build/bin/jerry")
-fi
 
 for pair in "${engines[@]}"; do
 	IFS=':' read -r name exe <<< "$pair"
