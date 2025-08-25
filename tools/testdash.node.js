@@ -28,7 +28,7 @@ const ENGINE = (() => {
 	console.log("No NuXJS binary found; falling back to Node");
 	return "node";
 })();
-console.log("Selected engine:", ENGINE);
+		console.log("Selected engine:", ENGINE);
 
 function ensureTest262() {
 	if (!fs.existsSync(TEST_PATH) || !fs.existsSync(path.join(TEST_PATH, "package.json"))) {
@@ -74,10 +74,13 @@ function runTests(callback, limit) {
 		const args = process.platform === "win32" ? ["/c", "npm", "install"] : ["install"];
 		child_process.execFileSync(runner, args, { cwd:TEST_PATH, stdio:"inherit" });
 	}
-	 var harness = "node_modules/test262-harness/bin/run.js";
-	 var hostType = ENGINE === "node" ? "node" : "jsshell";
-	 var args = ["--reporter=json", "--reporter-keys=file,result,stdout,stderr", "--hostType=" + hostType, "--hostPath=" + ENGINE];
-	 console.log("Harness command:", "node", harness, args.join(" "));
+		var harness = "node_modules/test262-harness/bin/run.js";
+		// Use Chakra host adapter for NuXJS to avoid extra jsshell flags like "-f"
+		// which NuXJS does not understand. Chakra adapter forwards only the test
+		// file path, matching NuXJS's CLI expectations.
+		var hostType = ENGINE === "node" ? "node" : "ch";
+		var args = ["--reporter=json", "--reporter-keys=file,result,stdout,stderr", "--hostType=" + hostType, "--hostPath=" + ENGINE];
+		console.log("Harness command:", "node", harness, args.join(" "));
 
 	if (limit) {
 	       var list = [];
