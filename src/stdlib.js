@@ -250,16 +250,23 @@ var Function = function Function(body) {
 };
 defineProperties(Function, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Function });
 defineProperties(Function.prototype, { dontEnum: true }, {
-        constructor: Function,
-        apply: unconstructable(support.functionApply),
-        call: unconstructable(support.functionCall),
-        toString: unconstructable(function toString() { // FIX : <- generic, make a factory function
-                checkClass(this, "Function", "toString");
-                return $getInternalProperty(this, "value");
-        })
+       constructor: Function,
+       apply: unconstructable(function apply(thisArg, argArray) {
+               var theClass;
+               if (argArray == null) argArray = [ ];
+               else if ((theClass = $getInternalProperty(argArray, "class")) !== "Array" && theClass !== "Arguments") {
+                       throw typeError("Argument list has wrong type");
+               };
+               return $callWithArgs(this, thisArg, argArray);
+       }),
+       call: unconstructable(function call(thisArg) {
+               return $callWithArgs(this, thisArg, arguments, 1);
+       }),
+       toString: unconstructable(function toString() { // FIX : <- generic, make a factory function
+               checkClass(this, "Function", "toString");
+               return $getInternalProperty(this, "value");
+       })
 });
-support.defineProperty(Function.prototype.apply, "length", 2, true, true, true);
-support.defineProperty(Function.prototype.call, "length", 1, true, true, true);
 
 /* --- Boolean --- */
 
