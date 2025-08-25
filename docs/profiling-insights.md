@@ -18,7 +18,9 @@ Across benchmarks, interpreter dispatch, memory allocation/garbage collection, a
 
 ## Low-Hanging Optimization Ideas
 
-- Streamline garbage-collector cleanup by reducing time spent in `GCList::deleteAll`.
-- Cut dispatch overhead in `Processor::innerRun`, potentially via direct threading or other interpreter-loop optimizations.
-- Improve hash-table lookups and string hashing to shrink time in `Table::find` and `String::calcHash`.
-- Minimize stack manipulation in tight loops or recursion to lessen work in `Processor::push` and `Processor::pop2push1`.
+- Direct `str` conversion: `str` currently coerces objects via `' '+o`, invoking the object-to-number path. A dedicated opcode could bypass the extra conversion and cut dispatch overhead【F:src/stdlib.js†L130-L131】
+- Native `apply`/`call`: `Function.prototype.apply` and `call` are JavaScript wrappers that copy argument arrays before delegating to C++ `callWithArgs`. Implementing them natively would avoid the wrappers and redundant copying【F:src/stdlib.js†L254-L264】【F:src/NuXJS.cpp†L4760-L4784】
+- Regular-expression cache: `support.createRegExp` compiles patterns and caches only the generated function, with TODOs about wider caching and eviction. Caching full `RegExp` objects with a size cap would reduce compilation cost and memory churn【F:src/stdlib.js†L1495-L1515】
+- String constant lookup: `Runtime::newStringConstantWithHash` compares characters one by one before allocating. A length check followed by a faster byte comparison could shrink time in this routine【F:src/NuXJS.cpp†L5008-L5029】
+
+Reducing time in `GCList::deleteAll`, trimming interpreter dispatch (`Processor::innerRun`), and minimizing stack operations (`Processor::push`, `Processor::pop2push1`) remain broader opportunities for future work.
