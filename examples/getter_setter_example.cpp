@@ -32,16 +32,14 @@ int main() {
 	rt.setupStandardLibrary();
 
 	Var globals = rt.getGlobalsVar();
-	rt.run(
-		"var obj = { _v: 1 };\n" \
-"Object.defineProperty(obj, 'value', {\n" \
-"\tget: function() { return this._v; },\n" \
-"\tset: function(v) { this._v = v; }\n" \
-"});\n" \
-"Object.defineProperty(obj, 'double', {\n" \
-"\tget: function() { return this._v * 2; },\n" \
-"\tset: function(v) { this._v = v / 2; }\n" \
-"});\n" \
+rt.run(
+"var obj = {\n" \
+"\t_v: 1,\n" \
+"\tget value() { return this._v; },\n" \
+"\tset value(v) { this._v = v; },\n" \
+"\tget double() { return this._v * 2; },\n" \
+"\tset double(v) { this._v = v / 2; }\n" \
+"};\n" \
 "var start = obj.value;\n" \
 "var startDouble = obj.double;\n" \
 "obj.double = 50;\n" \

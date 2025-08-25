@@ -1575,6 +1575,8 @@ class Processor : public GCItem {
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
 			, SET_PROPERTY_POP_OP							// stack: object, name, value ->
 			, ADD_PROPERTY_OP								// operand: const_index (name), stack: object, value -> object
+							, ADD_GETTER_OP						// operand: const_index(name), stack: object, function -> object
+							, ADD_SETTER_OP						// operand: const_index(name), stack: object, function -> object
 			, PUSH_ELEMENTS_OP								// operand: count, stack: object, count * elements ... -> object
 			, OBJ_TO_PRIMITIVE_OP							// stack: value -> primitive_value (no preference)	// these three must be in this exact order
 			, OBJ_TO_NUMBER_OP								// stack: value -> primitive_value (number preferred)
