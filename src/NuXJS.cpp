@@ -1147,13 +1147,11 @@ void GCList::claim(GCItem* item) throw() {
 }
 
 void GCList::deleteAll() throw() {
-       GCItem* i = _gcNext;
-       while (i != this) {
-               GCItem* next = i->_gcNext;
-               delete i;
-               i = next;
-       }
-       assert(_gcPrev == _gcNext && _gcPrev == this);
+	for (const GCItem* i = _gcNext->_gcNext; i != _gcNext; i = i->_gcNext) {
+		assert(i->_gcPrev->_gcList == this);
+		delete i->_gcPrev;
+	}
+	assert(_gcPrev == _gcNext && _gcPrev == this);
 }
 
 /* --- Heap --- */
