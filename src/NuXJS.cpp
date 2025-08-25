@@ -2502,16 +2502,19 @@ void Processor::innerRun() {
 				}
 				Value current;
 				Flags flags = o->getProperty(rt, sp[-1], &current);
-				if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
-					Accessor* acc = static_cast<Accessor*>(current.asObject());
-					Function* setter = (acc != 0 ? acc->setter : 0);
-					if (setter != 0) {
-						invokeFunction(setter, 3, 1, o);
-						return;
-					}
-					pop(3);
-					return;
-				}
+                                if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+                                        Accessor* acc = static_cast<Accessor*>(current.asObject());
+                                        Function* setter = (acc != 0 ? acc->setter : 0);
+                                        if (setter != 0) {
+                                                Value v = sp[0];
+                                                invokeFunction(setter, 1, &sp[0], o);
+                                                sp[-2] = v;
+                                                pop(2);
+                                                return;
+                                        }
+                                        pop(3);
+                                        return;
+                                }
 				o->setProperty(rt, sp[-1], sp[0]);
 				sp[-2] = sp[0];
 				pop(2);
@@ -2526,19 +2529,20 @@ void Processor::innerRun() {
 				}
 				Value current;
 				Flags flags = o->getProperty(rt, sp[-1], &current);
-				if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
-					Accessor* acc = static_cast<Accessor*>(current.asObject());
-					Function* setter = (acc != 0 ? acc->setter : 0);
-					if (setter != 0) {
-						invokeFunction(setter, 3, 1, o);
-						return;
-					}
-					pop(3);
-					return;
-				}
-				o->setProperty(rt, sp[-1], sp[0]);
-				pop(3);
-				break;
+                                if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+                                        Accessor* acc = static_cast<Accessor*>(current.asObject());
+                                        Function* setter = (acc != 0 ? acc->setter : 0);
+                                        if (setter != 0) {
+                                                invokeFunction(setter, 1, &sp[0], o);
+                                                pop(3);
+                                                return;
+                                        }
+                                        pop(3);
+                                        return;
+                                }
+                                o->setProperty(rt, sp[-1], sp[0]);
+                                pop(3);
+                                break;
 			}
 
 
