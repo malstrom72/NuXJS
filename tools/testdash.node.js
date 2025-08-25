@@ -114,10 +114,12 @@ function runTests(callback, limit) {
                        for (var dir of NON_ES3_DIRS) {
                                if (testName.startsWith("test/" + dir + "/")) { defaultCategory = "not_es3"; break; }
                        }
-                       var stdout = (m.result.stdout || "").trim();
-                       var stderr = (m.result.stderr || "").trim();
-                       tests[testName] = extend({ name:testName, passed:passed, stdout:stdout, stderr:stderr, category:defaultCategory }, config[configKey]);
-                       currentTest = tests[testName];
+			var stdout = (m.result.stdout || "").trim();
+			var stderr = (m.result.stderr || "").trim();
+			var error = m.result.error || {};
+			var exitCode = m.result.exitCode;
+			tests[testName] = extend({ name:testName, passed:passed, stdout:stdout, stderr:stderr, error:error, exitCode:exitCode, raw:m.result, category:defaultCategory }, config[configKey]);
+			currentTest = tests[testName];
                } catch (e) {
                        console.error("Parse error: " + e + " in line: " + line);
                }
@@ -210,10 +212,17 @@ if (cliMode) {
 			       } else if (t.passed) {
 				       totals.passed++;
 			       } else {
-				       totals.failed++;
-				       console.log("FAIL " + testName);
-				       if (t.stdout) console.log("  stdout: " + t.stdout);
-				       if (t.stderr) console.log("  stderr: " + t.stderr);
+					totals.failed++;
+					console.log("FAIL " + testName);
+					if (t.error && (t.error.name || t.error.message)) {
+						console.log("  error: " + (t.error.name || "") + (t.error.message ? ": " + t.error.message : ""));
+}
+					if (typeof t.exitCode === "number") {
+						console.log("  exit code: " + t.exitCode);
+}
+					if (t.stdout) console.log("  stdout: " + t.stdout);
+					if (t.stderr) console.log("  stderr: " + t.stderr);
+					if (t.raw) console.log("  raw result: " + JSON.stringify(t.raw));
 			       }
 		       }
 	       }
