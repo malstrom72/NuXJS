@@ -59,19 +59,30 @@ function runTests(callback, limit) {
         var hostType = ENGINE === "node" ? "node" : "jsshell";
         var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=" + hostType, "--hostPath=" + ENGINE];
 
-	if (limit) {
-	       var list = [];
+       if (limit) {
+               var list = [];
                (function gather(dir) {
-                       var entries = fs.readdirSync(dir).sort();
-                       for (var i = 0; i < entries.length && list.length < limit; i++) {
-                               var entry = entries[i];
-                               if (NON_ES3_DIRS.has(entry)) continue;
-                               var full = path.join(dir, entry);
-                               var stat = fs.statSync(full);
-                               if (stat.isDirectory()) gather(full);
-                               else if (entry.endsWith(".js")) list.push(path.relative(TEST_PATH, full));
+                       var entries = fs.readdirSync(dir, { withFileTypes:true });
+                       for (var entry of entries) {
+                               if (NON_ES3_DIRS.has(entry.name)) continue;
+                               var full = path.join(dir, entry.name);
+                               if (entry.isDirectory()) gather(full);
+                               else if (entry.name.endsWith(".js")) {
+                                       var text = fs.readFileSync(full, "utf8");
+                                       if (/\bfeatures\b/.test(text) || /\bflags\b/.test(text)) continue;
+                                       list.push(path.relative(TEST_PATH, full));
+                               }
                        }
                })(path.join(TEST_PATH, "test"));
+               if (list.length > limit) {
+                       for (var i = list.length - 1; i > 0; i--) {
+                               var j = Math.floor(Math.random() * (i + 1));
+                               var t = list[i];
+                               list[i] = list[j];
+                               list[j] = t;
+                       }
+                       list = list.slice(0, limit);
+               }
                args = args.concat(list);
        } else {
                args.push("test/language/**/*.js");
