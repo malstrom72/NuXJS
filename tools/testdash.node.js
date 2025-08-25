@@ -124,8 +124,9 @@ var server = http.createServer( function(req, res) {
 		if (u.pathname.substr(0,8) === "/source/") {
 			var src = u.pathname.substr(8);
 			if (!src.endsWith(".js")) src += ".js";
+			if (!src.startsWith("test/")) src = "test/" + src;
 			console.log("Source request: " + src);
-			u.pathname = "/" + TEST_PATH + "test/" + src;
+			u.pathname = "/" + TEST_PATH + src;
 			isSource = true;
 		}
 
