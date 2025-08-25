@@ -27,6 +27,8 @@ function findEngine() {
 }
 
 const ENGINE = findEngine();
+console.log("Using engine: " + ENGINE);
+console.log("Node: " + process.version + " on " + process.platform);
 
 function ensureTest262() {
 	if (!fs.existsSync(TEST_PATH) || !fs.existsSync(path.join(TEST_PATH, "package.json"))) {
@@ -69,9 +71,9 @@ function runTests(callback, limit) {
 	if (!fs.existsSync(TEST_PATH + "node_modules")) {
 	       child_process.execFileSync("npm", ["--prefix", TEST_PATH, "install"], { stdio:"inherit" });
 	}
-        var harness = "node_modules/test262-harness/bin/run.js";
-        var hostType = "jsshell";
-        var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=" + hostType, "--hostPath=" + ENGINE];
+       var harness = "node_modules/test262-harness/bin/run.js";
+       var hostType = "jsshell";
+       var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=" + hostType, "--hostPath=" + ENGINE];
 
 if (limit) {
 var list = [];
@@ -89,12 +91,15 @@ list.push(path.relative(TEST_PATH, full));
 })(path.join(TEST_PATH, "test", "language"));
 list.sort();
 if (list.length > limit) list = list.slice(0, limit);
+	console.log("Selected " + list.length + " tests");
 args = args.concat(list);
 } else {
 args.push("test/language/**/*.js");
 }
 
-	var child = child_process.spawn("node", [harness].concat(args), { cwd: TEST_PATH });
+	console.log("Harness: node " + harness + " " + args.join(" "));
+
+       var child = child_process.spawn("node", [harness].concat(args), { cwd: TEST_PATH });
 	var output = "";
 	child.stdout.setEncoding("utf8");
 	child.stdout.on("data", (chunk) => { output += chunk; });
@@ -114,7 +119,13 @@ args.push("test/language/**/*.js");
                                for (var dir of NON_ES3_DIRS) {
                                        if (testName.startsWith("test/" + dir + "/")) { defaultCategory = "not_es3"; break; }
                                }
-                               tests[testName] = extend({ name:testName, passed:passed, output:"", category:defaultCategory }, config[configKey]);
+                               var message = "";
+                               if (!passed) {
+                                       if (m.result.stderr) message = m.result.stderr.trim();
+                                       else if (m.result.error) message = (m.result.error.message || String(m.result.error)).trim();
+                                       else if (m.result.message) message = m.result.message.trim();
+                               }
+                               tests[testName] = extend({ name:testName, passed:passed, output:message, category:defaultCategory }, config[configKey]);
                                currentTest = tests[testName];
                        });
 		} catch (e) {
@@ -200,8 +211,8 @@ if (cliMode) {
 			       } else if (t.passed) {
 				       totals.passed++;
 	} else {
-				       totals.failed++;
-				       console.log("FAIL " + testName);
+                                       totals.failed++;
+                                       console.log("FAIL " + testName + (t.output ? " - " + t.output : ""));
 			       }
 		       }
 	       }
