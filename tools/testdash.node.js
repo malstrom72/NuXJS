@@ -80,7 +80,7 @@ function runTests(callback, limit) {
 		args.push("test/language/**/*.js");
 	}
 
-       var child = child_process.spawn("node", [harness].concat(args), { cwd: TEST_PATH });
+	var child = child_process.spawn(process.execPath, [harness].concat(args), { cwd: TEST_PATH });
        child.stdout.setEncoding("utf8");
        readline.createInterface({ input: child.stdout }).on("line", (line) => {
                line = line.trim();
