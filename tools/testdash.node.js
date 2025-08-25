@@ -74,19 +74,12 @@ function runTests(callback, limit) {
                                }
                        }
                })(path.join(TEST_PATH, "test"));
-               if (list.length > limit) {
-                       for (var i = list.length - 1; i > 0; i--) {
-                               var j = Math.floor(Math.random() * (i + 1));
-                               var t = list[i];
-                               list[i] = list[j];
-                               list[j] = t;
-                       }
-                       list = list.slice(0, limit);
-               }
-               args = args.concat(list);
-       } else {
-               args.push("test/language/**/*.js");
-       }
+		list.sort();
+		if (list.length > limit) list = list.slice(0, limit);
+		args = args.concat(list);
+	} else {
+		args.push("test/language/**/*.js");
+	}
 
 	var child = child_process.spawn("node", [harness].concat(args), { cwd: TEST_PATH });
 	var output = "";
@@ -163,7 +156,7 @@ var server = http.createServer( function(req, res) {
 			if (fs.existsSync("." + p)) {
 				res.writeHead(200, "OK", { "Content-Type":"text/html" });
 				fs.createReadStream("." + p, { flags:"r", autoClose:true }).pipe(res);
-			} else {
+	} else {
 				res.writeHead(404, "Not Found", { "Content-Type":"text/plain" });
 				res.write("404 Not Found");
 				res.end();
@@ -193,7 +186,7 @@ if (cliMode) {
 				       ignored[t.category] = (ignored[t.category] || 0) + 1;
 			       } else if (t.passed) {
 				       totals.passed++;
-			       } else {
+	} else {
 				       totals.failed++;
 				       console.log("FAIL " + testName);
 			       }
@@ -208,7 +201,7 @@ if (cliMode) {
 	       }
 	       process.exit(totals.failed);
 	}, maxTests);
-} else {
+	} else {
 	server.listen(12345, () => {
 		var address = server.address();
 		console.log("opened HTTP server on http://" + address.address + ":" + address.port);
