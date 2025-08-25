@@ -9,10 +9,19 @@ const path = require("path");
 
 const TEST_PATH = "./test262-master/";
 const TEST_TAR = "./externals/test262-master.tar.gz";
-const ENGINE = fs.existsSync("./output/NuXJS_beta_native") ? path.resolve("./output/NuXJS_beta_native") :
-fs.existsSync("./output/NuXJS_release_native") ? path.resolve("./output/NuXJS_release_native") :
-fs.existsSync("./output/NuXJS") ? path.resolve("./output/NuXJS") :
-null;
+function findEngine() {
+const suffix = process.platform === "win32" ? ".exe" : "";
+const candidates = [
+`./output/NuXJS_beta_native${suffix}`,
+`./output/NuXJS_release_native${suffix}`,
+`./output/NuXJS${suffix}`
+];
+for (const c of candidates) {
+if (fs.existsSync(c)) return path.resolve(c);
+}
+return null;
+}
+const ENGINE = findEngine();
 if (!ENGINE) {
 throw new Error("NuXJS engine not found; build NuXJS before running TestDash");
 }
@@ -62,7 +71,7 @@ function runTests(callback, limit) {
 		child_process.execFileSync(runner, args, { cwd:TEST_PATH, stdio:"inherit" });
 	}
        var harness = "node_modules/test262-harness/bin/run.js";
-       var hostType = "jsshell";
+       var hostType = "node";
        var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=" + hostType, "--hostPath=" + ENGINE];
 
 	if (limit) {
