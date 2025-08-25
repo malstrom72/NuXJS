@@ -58,27 +58,27 @@ function runTests(callback, limit) {
 		const args = process.platform === "win32" ? ["/c", "npm", "install"] : ["install"];
 		child_process.execFileSync(runner, args, { cwd:TEST_PATH, stdio:"inherit" });
 	}
-        var harness = "node_modules/test262-harness/bin/run.js";
-        var hostType = ENGINE === "node" ? "node" : "jsshell";
-        var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=" + hostType, "--hostPath=" + ENGINE];
+	 var harness = "node_modules/test262-harness/bin/run.js";
+	 var hostType = ENGINE === "node" ? "node" : "jsshell";
+	 var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=" + hostType, "--hostPath=" + ENGINE];
 
 	if (limit) {
 	       var list = [];
-               (function gather(dir) {
-                       var entries = fs.readdirSync(dir).sort();
-                       for (var i = 0; i < entries.length && list.length < limit; i++) {
-                               var entry = entries[i];
-                               if (NON_ES3_DIRS.has(entry)) continue;
-                               var full = path.join(dir, entry);
-                               var stat = fs.statSync(full);
-                               if (stat.isDirectory()) gather(full);
-                               else if (entry.endsWith(".js")) list.push(path.relative(TEST_PATH, full));
-                       }
-               })(path.join(TEST_PATH, "test"));
-               args = args.concat(list);
-       } else {
-               args.push("test/language/**/*.js");
-       }
+		(function gather(dir) {
+			var entries = fs.readdirSync(dir).sort();
+			for (var i = 0; i < entries.length && list.length < limit; i++) {
+			        var entry = entries[i];
+			        if (NON_ES3_DIRS.has(entry)) continue;
+			        var full = path.join(dir, entry);
+			        var stat = fs.statSync(full);
+			        if (stat.isDirectory()) gather(full);
+			        else if (entry.endsWith(".js")) list.push(path.relative(TEST_PATH, full));
+			}
+		})(path.join(TEST_PATH, "test"));
+		args = args.concat(list);
+	} else {
+		args.push("test/language/**/*.js");
+	}
 
 	var child = child_process.spawn("node", [harness].concat(args), { cwd: TEST_PATH });
 	var output = "";
@@ -92,17 +92,17 @@ function runTests(callback, limit) {
 			       if (line[0] === ",") line = line.slice(1);
 			       if (line.endsWith(",")) line = line.slice(0, -1);
 			       var m = JSON.parse(line);
-                               var testName = m.file;
-                               var configKey = testName.startsWith("test/") ? testName.slice(5) : testName;
-                               configKey = configKey.replace(/\.js$/, "");
-                               var passed = m.result.pass === true;
-                               var defaultCategory;
-                               for (var dir of NON_ES3_DIRS) {
-                                       if (testName.startsWith("test/" + dir + "/")) { defaultCategory = "not_es3"; break; }
-                               }
-                               tests[testName] = extend({ name:testName, passed:passed, output:"", category:defaultCategory }, config[configKey]);
-                               currentTest = tests[testName];
-                       });
+			        var testName = m.file;
+			        var configKey = testName.startsWith("test/") ? testName.slice(5) : testName;
+			        configKey = configKey.replace(/\.js$/, "");
+			        var passed = m.result.pass === true;
+			        var defaultCategory;
+			        for (var dir of NON_ES3_DIRS) {
+			                if (testName.startsWith("test/" + dir + "/")) { defaultCategory = "not_es3"; break; }
+			        }
+			        tests[testName] = extend({ name:testName, passed:passed, output:"", category:defaultCategory }, config[configKey]);
+			        currentTest = tests[testName];
+			});
 		} catch (e) {
 			console.error("Parse error: " + e);
 		}
@@ -135,16 +135,16 @@ var server = http.createServer( function(req, res) {
 			} else if (method === "setCategory") {
 				var testName = u.query.test;
 				var category = u.query.category;
-                               var configKey = testName && testName.startsWith("test/") ? testName.slice(5) : testName;
-                               configKey = configKey && configKey.replace(/\.js$/, "");
-                                if (tests[testName]) {
-                                        config[configKey] = config[configKey] || {};
-                                        config[configKey].category = category;
-                                        tests[testName].category = category;
-                                        saveConfig();
-                                }
-                                output = tests[testName];
-                        }
+			        var configKey = testName && testName.startsWith("test/") ? testName.slice(5) : testName;
+			        configKey = configKey && configKey.replace(/\.js$/, "");
+			         if (tests[testName]) {
+			                 config[configKey] = config[configKey] || {};
+			                 config[configKey].category = category;
+			                 tests[testName].category = category;
+			                 saveConfig();
+			         }
+			         output = tests[testName];
+			 }
 
 			if (output !== undefined) res.write( JSON.stringify(output) );
 			else res.writeHead(400, "Bad Request");
@@ -203,8 +203,22 @@ if (cliMode) {
 } else {
 	server.listen(12345, () => {
 		var address = server.address();
+		var url = "http://localhost:" + address.port;
 		console.log("opened HTTP server on http://" + address.address + ":" + address.port);
-		child_process.spawn("open", [ "http://localhost:" + address.port ]);
+
+		var cmd;
+		var args;
+		if (process.platform === "win32") {
+			cmd = "cmd";
+			args = ["/c", "start", "", url];
+		} else if (process.platform === "darwin") {
+			cmd = "open";
+			args = [url];
+		} else {
+			cmd = "xdg-open";
+			args = [url];
+		}
+		child_process.spawn(cmd, args);
 	});
 	runTests(undefined, maxTests);
 }
