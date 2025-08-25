@@ -19,8 +19,9 @@ function ensureTest262() {
 		if (!fs.existsSync(TEST_TAR)) {
 			const fetchScript = process.platform === "win32" ? "tools\\fetchTest262.cmd" : "tools/fetchTest262.sh";
 			const runner = process.platform === "win32" ? "cmd" : "bash";
+			const args = process.platform === "win32" ? ["/c", fetchScript] : [fetchScript];
 			console.log("Downloading Test262 suite...");
-			child_process.execFileSync(runner, [fetchScript], { stdio: "inherit" });
+			child_process.execFileSync(runner, args, { stdio: "inherit" });
 		}
 		console.log("Extracting Test262 suite...");
 		child_process.execFileSync("tar", ["-xzf", TEST_TAR]);
