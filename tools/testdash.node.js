@@ -120,10 +120,12 @@ var server = http.createServer( function(req, res) {
 	try {
 		var u = url.parse(req.url, true);
 		if (u.pathname === "/") u.pathname = "/tools/testdash.html";
+		var isSource = false;
 		if (u.pathname.substr(0,8) === "/source/") {
 			var src = u.pathname.substr(8);
 			if (!src.endsWith(".js")) src += ".js";
 			u.pathname = "/" + TEST_PATH + "test/" + src;
+			isSource = true;
 		}
 
 
@@ -158,7 +160,7 @@ var server = http.createServer( function(req, res) {
 		} else if (u.pathname != "/") {
 			var p = u.pathname.replace(/\.\./g, "");	// remove .. from path for security
 			if (fs.existsSync("." + p)) {
-				res.writeHead(200, "OK", { "Content-Type":"text/html" });
+				res.writeHead(200, "OK", { "Content-Type": (isSource ? "text/plain" : "text/html") });
 				fs.createReadStream("." + p, { flags:"r", autoClose:true }).pipe(res);
 			} else {
 				res.writeHead(404, "Not Found", { "Content-Type":"text/plain" });
