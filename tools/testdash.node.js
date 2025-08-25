@@ -59,27 +59,26 @@ function runTests(callback, limit) {
         var hostType = ENGINE === "node" ? "node" : "jsshell";
         var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=" + hostType, "--hostPath=" + ENGINE];
 
-       if (limit) {
-               var list = [];
-               (function gather(dir) {
-                       var entries = fs.readdirSync(dir, { withFileTypes:true });
-                       for (var entry of entries) {
-                               if (NON_ES3_DIRS.has(entry.name)) continue;
-                               var full = path.join(dir, entry.name);
-                               if (entry.isDirectory()) gather(full);
-                               else if (entry.name.endsWith(".js")) {
-                                       var text = fs.readFileSync(full, "utf8");
-                                       if (/\bfeatures\b/.test(text) || /\bflags\b/.test(text)) continue;
-                                       list.push(path.relative(TEST_PATH, full));
-                               }
-                       }
-               })(path.join(TEST_PATH, "test"));
-		list.sort();
-		if (list.length > limit) list = list.slice(0, limit);
-		args = args.concat(list);
-	} else {
-		args.push("test/language/**/*.js");
-	}
+if (limit) {
+var list = [];
+(function gather(dir) {
+var entries = fs.readdirSync(dir, { withFileTypes:true });
+for (var entry of entries) {
+var full = path.join(dir, entry.name);
+if (entry.isDirectory()) gather(full);
+else if (entry.name.endsWith(".js")) {
+var text = fs.readFileSync(full, "utf8");
+if (/\bfeatures\b/.test(text) || /\bflags\b/.test(text)) continue;
+list.push(path.relative(TEST_PATH, full));
+}
+}
+})(path.join(TEST_PATH, "test", "language"));
+list.sort();
+if (list.length > limit) list = list.slice(0, limit);
+args = args.concat(list);
+} else {
+args.push("test/language/**/*.js");
+}
 
 	var child = child_process.spawn("node", [harness].concat(args), { cwd: TEST_PATH });
 	var output = "";
