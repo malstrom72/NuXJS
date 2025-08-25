@@ -30,14 +30,13 @@ function ensureTest262() {
 ensureTest262();
 
 const CATEGORY_LABELS = {
-	bad_test: "BAD TEST",
-	by_design: "BY DESIGN",
-	not_es3: "ES >3",
-	tbd: "TBD",
-	todo: "TODO"
+        bad_test: "BAD TEST",
+        by_design: "BY DESIGN",
+        not_es3: "ES >3",
+        tbd: "TBD",
+        todo: "TODO"
 };
 const CATEGORIES_TO_IGNORE = { bad_test:true, by_design:true, not_es3:true, tbd:true };
-const NON_ES3_DIRS = new Set(["annexB", "intl402"]);
 
 var tests = {};
 var config = {};
@@ -48,69 +47,41 @@ function extend(target, obj) { for (var p in obj) if (obj.hasOwnProperty(p)) tar
 var runningTest = false;
 var currentTest = undefined;
 function runTests(callback, limit) {
-	runningTest = true;
-	currentTest = undefined;
-	tests = {};
-	console.log("Running tests");
-	if (!fs.existsSync(TEST_PATH + "node_modules")) {
-	       child_process.execFileSync("npm", ["--prefix", TEST_PATH, "install"], { stdio:"inherit" });
-	}
+        runningTest = true;
+        currentTest = undefined;
+        console.log("Running tests");
+        var testTarget = limit ? "test/language/arguments-object/10.5-1-s.js" : "test/language";
+        if (!fs.existsSync(TEST_PATH + "node_modules")) {
+                child_process.execFileSync("npm", ["--prefix", TEST_PATH, "install"], { stdio:"inherit" });
+        }
         var harness = "node_modules/test262-harness/bin/run.js";
-        var hostType = ENGINE === "node" ? "node" : "jsshell";
-        var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=" + hostType, "--hostPath=" + ENGINE];
-
-	if (limit) {
-	       var list = [];
-               (function gather(dir) {
-                       var entries = fs.readdirSync(dir).sort();
-                       for (var i = 0; i < entries.length && list.length < limit; i++) {
-                               var entry = entries[i];
-                               if (NON_ES3_DIRS.has(entry)) continue;
-                               var full = path.join(dir, entry);
-                               var stat = fs.statSync(full);
-                               if (stat.isDirectory()) gather(full);
-                               else if (entry.endsWith(".js")) list.push(path.relative(TEST_PATH, full));
-                       }
-               })(path.join(TEST_PATH, "test"));
-               args = args.concat(list);
-       } else {
-               args.push("test/language/**/*.js");
-       }
-
-	var child = child_process.spawn("node", [harness].concat(args), { cwd: TEST_PATH });
-	var output = "";
-	child.stdout.setEncoding("utf8");
-	child.stdout.on("data", (chunk) => { output += chunk; });
-	child.stdout.on("end", () => {
-		try {
-		       output.split(/\r?\n/).forEach((line) => {
-			       line = line.trim();
-			       if (!line || line === "[" || line === "]") return;
-			       if (line[0] === ",") line = line.slice(1);
-			       if (line.endsWith(",")) line = line.slice(0, -1);
-			       var m = JSON.parse(line);
-                               var testName = m.file;
-                               var configKey = testName.startsWith("test/") ? testName.slice(5) : testName;
-                               configKey = configKey.replace(/\.js$/, "");
-                               var passed = m.result.pass === true;
-                               var defaultCategory;
-                               for (var dir of NON_ES3_DIRS) {
-                                       if (testName.startsWith("test/" + dir + "/")) { defaultCategory = "not_es3"; break; }
-                               }
-                               tests[testName] = extend({ name:testName, passed:passed, output:"", category:defaultCategory }, config[configKey]);
-                               currentTest = tests[testName];
-                       });
-		} catch (e) {
-			console.error("Parse error: " + e);
-		}
-	});
-	child.stderr.setEncoding("utf8");
-	child.stderr.on("data", (chunk) => { console.error(chunk); });
-	child.on("close", () => {
-		console.log("Completed");
-		runningTest = false;
-		if (callback) callback();
-	});
+        var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=node", "--hostPath=" + ENGINE, testTarget];
+        var child = child_process.spawn("node", [harness].concat(args), { cwd: TEST_PATH });
+        var output = "";
+        child.stdout.setEncoding("utf8");
+        child.stdout.on("data", (chunk) => { output += chunk; });
+        child.stdout.on("end", () => {
+                try {
+                        output.split(/\r?\n/).forEach((line) => {
+                                line = line.trim();
+                                if (!line || line === "[" || line === "]") return;
+                                var m = JSON.parse(line);
+                                var testName = m.file;
+                                var passed = m.result.pass === true;
+                                tests[testName] = extend({ name:testName, passed:passed, output:"" }, config[testName]);
+                                currentTest = tests[testName];
+                        });
+                } catch (e) {
+                        console.error("Parse error: " + e);
+                }
+        });
+        child.stderr.setEncoding("utf8");
+        child.stderr.on("data", (chunk) => { console.error(chunk); });
+        child.on("close", () => {
+                console.log("Completed");
+                runningTest = false;
+                if (callback) callback();
+        });
 };
 
 var server = http.createServer( function(req, res) {
@@ -132,16 +103,14 @@ var server = http.createServer( function(req, res) {
 			} else if (method === "setCategory") {
 				var testName = u.query.test;
 				var category = u.query.category;
-                               var configKey = testName && testName.startsWith("test/") ? testName.slice(5) : testName;
-                               configKey = configKey && configKey.replace(/\.js$/, "");
-                                if (tests[testName]) {
-                                        config[configKey] = config[configKey] || {};
-                                        config[configKey].category = category;
-                                        tests[testName].category = category;
-                                        saveConfig();
-                                }
-                                output = tests[testName];
-                        }
+				if (tests[testName]) {
+					config[testName] = config[testName] || {};
+					config[testName].category = category;
+					tests[testName].category = category;
+					saveConfig();
+				}
+				output = tests[testName];
+			}
 
 			if (output !== undefined) res.write( JSON.stringify(output) );
 			else res.writeHead(400, "Bad Request");
@@ -170,33 +139,33 @@ var limitIndex = process.argv.indexOf("--limit");
 var maxTests = (limitIndex !== -1) ? parseInt(process.argv[limitIndex + 1]) : undefined;
 
 if (cliMode) {
-	runTests(() => {
-	       var totals = { total:0, passed:0, failed:0, ignored:0 };
-	       var ignored = {};
-	       for (var testName in tests) {
-		       if (tests.hasOwnProperty(testName)) {
-			       var t = tests[testName];
-			       totals.total++;
-			       if (CATEGORIES_TO_IGNORE[t.category]) {
-				       totals.ignored++;
-				       ignored[t.category] = (ignored[t.category] || 0) + 1;
-			       } else if (t.passed) {
-				       totals.passed++;
-			       } else {
-				       totals.failed++;
-				       console.log("FAIL " + testName);
-			       }
-		       }
-	       }
-	       console.log("Total: " + totals.total);
-	       console.log("  Passed: " + totals.passed);
-	       console.log("  Failed: " + totals.failed);
-	       console.log("  Ignored: " + totals.ignored);
-	       for (var c in ignored) {
-		       console.log("    " + (CATEGORY_LABELS[c] || c) + ": " + ignored[c]);
-	       }
-	       process.exit(totals.failed);
-	}, maxTests);
+       runTests(() => {
+               var totals = { total:0, passed:0, failed:0, ignored:0 };
+               var ignored = {};
+               for (var testName in tests) {
+                       if (tests.hasOwnProperty(testName)) {
+                               var t = tests[testName];
+                               totals.total++;
+                               if (CATEGORIES_TO_IGNORE[t.category]) {
+                                       totals.ignored++;
+                                       ignored[t.category] = (ignored[t.category] || 0) + 1;
+                               } else if (t.passed) {
+                                       totals.passed++;
+                               } else {
+                                       totals.failed++;
+                                       console.log("FAIL " + testName);
+                               }
+                       }
+               }
+               console.log("Total: " + totals.total);
+               console.log("  Passed: " + totals.passed);
+               console.log("  Failed: " + totals.failed);
+               console.log("  Ignored: " + totals.ignored);
+               for (var c in ignored) {
+                       console.log("    " + (CATEGORY_LABELS[c] || c) + ": " + ignored[c]);
+               }
+               process.exit(totals.failed);
+       }, maxTests);
 } else {
 	server.listen(12345, () => {
 		var address = server.address();
