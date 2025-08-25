@@ -80,40 +80,36 @@ function runTests(callback, limit) {
 		args.push("test/language/**/*.js");
 	}
 
-	var child = child_process.spawn("node", [harness].concat(args), { cwd: TEST_PATH });
-	var output = "";
-	child.stdout.setEncoding("utf8");
-	child.stdout.on("data", (chunk) => { output += chunk; });
-	child.stdout.on("end", () => {
-		try {
-		       output.split(/\r?\n/).forEach((line) => {
-			       line = line.trim();
-			       if (!line || line === "[" || line === "]") return;
-			       if (line[0] === ",") line = line.slice(1);
-			       if (line.endsWith(",")) line = line.slice(0, -1);
-			       var m = JSON.parse(line);
-			        var testName = m.file;
-			        var configKey = testName.startsWith("test/") ? testName.slice(5) : testName;
-			        configKey = configKey.replace(/\.js$/, "");
-			        var passed = m.result.pass === true;
-			        var defaultCategory;
-			        for (var dir of NON_ES3_DIRS) {
-			                if (testName.startsWith("test/" + dir + "/")) { defaultCategory = "not_es3"; break; }
-			        }
-			        tests[testName] = extend({ name:testName, passed:passed, output:"", category:defaultCategory }, config[configKey]);
-			        currentTest = tests[testName];
-			});
-		} catch (e) {
-			console.error("Parse error: " + e);
-		}
-	});
-	child.stderr.setEncoding("utf8");
-	child.stderr.on("data", (chunk) => { console.error(chunk); });
-	child.on("close", () => {
-		console.log("Completed");
-		runningTest = false;
-		if (callback) callback();
-	});
+       var child = child_process.spawn("node", [harness].concat(args), { cwd: TEST_PATH });
+       child.stdout.setEncoding("utf8");
+       readline.createInterface({ input: child.stdout }).on("line", (line) => {
+               line = line.trim();
+               if (!line || line === "[" || line === "]") return;
+               if (line[0] === ",") line = line.slice(1);
+               if (line.endsWith(",")) line = line.slice(0, -1);
+               try {
+                       var m = JSON.parse(line);
+                       var testName = m.file;
+                       var configKey = testName.startsWith("test/") ? testName.slice(5) : testName;
+                       configKey = configKey.replace(/\.js$/, "");
+                       var passed = m.result.pass === true;
+                       var defaultCategory;
+                       for (var dir of NON_ES3_DIRS) {
+                               if (testName.startsWith("test/" + dir + "/")) { defaultCategory = "not_es3"; break; }
+                       }
+                       tests[testName] = extend({ name:testName, passed:passed, output:"", category:defaultCategory }, config[configKey]);
+                       currentTest = tests[testName];
+               } catch (e) {
+                       console.error("Parse error: " + e + " in line: " + line);
+               }
+       });
+       child.stderr.setEncoding("utf8");
+       child.stderr.on("data", (chunk) => { console.error(chunk); });
+       child.on("close", () => {
+               console.log("Completed");
+               runningTest = false;
+               if (callback) callback();
+       });
 };
 
 var server = http.createServer( function(req, res) {
