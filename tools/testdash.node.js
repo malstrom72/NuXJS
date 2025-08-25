@@ -9,10 +9,26 @@ const path = require("path");
 
 const TEST_PATH = "./test262-master/";
 const TEST_TAR = "./externals/test262-master.tar.gz";
-const ENGINE = fs.existsSync("./output/NuXJS_beta_native") ? path.resolve("./output/NuXJS_beta_native") :
-fs.existsSync("./output/NuXJS_release_native") ? path.resolve("./output/NuXJS_release_native") :
-fs.existsSync("./output/NuXJS") ? path.resolve("./output/NuXJS") :
-"node";
+const ENGINE = (() => {
+	const candidates = [
+		"./output/NuXJS_beta_native",
+		"./output/NuXJS_release_native",
+		"./output/NuXJS",
+		"./output/NuXJS.exe",
+	];
+	console.log("Engine path candidates:", candidates.join(", "));
+	for (const c of candidates) {
+		if (fs.existsSync(c)) {
+			console.log("Found engine at", c);
+			return path.resolve(c);
+		} else {
+			console.log("Engine not found:", c);
+		}
+	}
+	console.log("No NuXJS binary found; falling back to Node");
+	return "node";
+})();
+console.log("Selected engine:", ENGINE);
 
 function ensureTest262() {
 	if (!fs.existsSync(TEST_PATH) || !fs.existsSync(path.join(TEST_PATH, "package.json"))) {
@@ -52,7 +68,7 @@ function runTests(callback, limit) {
 	runningTest = true;
 	currentTest = undefined;
 	tests = {};
-	console.log("Running tests");
+	console.log("Running tests using", ENGINE);
 	if (!fs.existsSync(TEST_PATH + "node_modules")) {
 		const runner = process.platform === "win32" ? "cmd" : "npm";
 		const args = process.platform === "win32" ? ["/c", "npm", "install"] : ["install"];
@@ -60,7 +76,8 @@ function runTests(callback, limit) {
 	}
 	 var harness = "node_modules/test262-harness/bin/run.js";
 	 var hostType = ENGINE === "node" ? "node" : "jsshell";
-	 var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=" + hostType, "--hostPath=" + ENGINE];
+	 var args = ["--reporter=json", "--reporter-keys=file,result,stdout,stderr", "--hostType=" + hostType, "--hostPath=" + ENGINE];
+	 console.log("Harness command:", "node", harness, args.join(" "));
 
 	if (limit) {
 	       var list = [];
@@ -97,7 +114,9 @@ function runTests(callback, limit) {
                        for (var dir of NON_ES3_DIRS) {
                                if (testName.startsWith("test/" + dir + "/")) { defaultCategory = "not_es3"; break; }
                        }
-                       tests[testName] = extend({ name:testName, passed:passed, output:"", category:defaultCategory }, config[configKey]);
+                       var stdout = (m.result.stdout || "").trim();
+                       var stderr = (m.result.stderr || "").trim();
+                       tests[testName] = extend({ name:testName, passed:passed, stdout:stdout, stderr:stderr, category:defaultCategory }, config[configKey]);
                        currentTest = tests[testName];
                } catch (e) {
                        console.error("Parse error: " + e + " in line: " + line);
@@ -105,8 +124,8 @@ function runTests(callback, limit) {
        });
        child.stderr.setEncoding("utf8");
        child.stderr.on("data", (chunk) => { console.error(chunk); });
-       child.on("close", () => {
-               console.log("Completed");
+       child.on("close", (code, signal) => {
+               console.log("Completed with code", code, "signal", signal);
                runningTest = false;
                if (callback) callback();
        });
@@ -193,6 +212,8 @@ if (cliMode) {
 			       } else {
 				       totals.failed++;
 				       console.log("FAIL " + testName);
+				       if (t.stdout) console.log("  stdout: " + t.stdout);
+				       if (t.stderr) console.log("  stderr: " + t.stderr);
 			       }
 		       }
 	       }
