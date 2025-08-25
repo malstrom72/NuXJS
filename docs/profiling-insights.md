@@ -146,6 +146,117 @@ NuXJS was built with `-pg` and profiled with gprof across several benchmarks.
 |4.17|NuXJS::Processor::run(int)|
 |2.08|NuXJS::Processor::push(NuXJS::Value const&)|
 
+### bigArray.js
+| % time | Function |
+|------:|--------------------------------|
+|20.27|NuXJS::Processor::innerRun()|
+|16.89|NuXJS::StringListEnumerator::nextPropertyName()|
+|4.73|NuXJS::GCList::deleteAll()|
+|4.05|NuXJS::Processor::push(NuXJS::Value const&)|
+|3.38|NuXJS::intToString(unsigned short*, int)|
+|3.04|NuXJS::Value::toDouble() const|
+|2.70|NuXJS::Heap::calcPoolIndex(unsigned long)|
+|2.70|NuXJS::Table::find(NuXJS::String const*, unsigned int)|
+|2.70|NuXJS::Heap::drain()|
+|2.03|NuXJS::Value::toString(NuXJS::Heap&) const|
+
+### function_bm_1.js
+| % time | Function |
+|------:|--------------------------------|
+|16.67|NuXJS::StringListEnumerator::nextPropertyName()|
+|6.25|NuXJS::Heap::allocate(unsigned long)|
+|5.21|NuXJS::Processor::innerRun()|
+|5.21|NuXJS::FunctionScope::~FunctionScope()|
+|5.21|NuXJS::GCList::deleteAll()|
+|4.17|NuXJS::Table::find(NuXJS::String const*, unsigned int)|
+|3.12|NuXJS::String::calcHash() const|
+|2.60|NuXJS::Vector<NuXJS::Value, 8u>::Vector(unsigned int, NuXJS::Heap*)|
+|2.08|NuXJS::Table::Bucket::valueExists() const|
+|2.08|NuXJS::Value::toDouble() const|
+
+### string_bm_1.js
+| % time | Function |
+|------:|--------------------------------|
+|15.79|NuXJS::Processor::innerRun()|
+|7.42|NuXJS::Object::getProperty(NuXJS::Runtime&, NuXJS::Value const&, NuXJS::Value*) const|
+|6.70|NuXJS::Vector<NuXJS::Table::Bucket, 8u>::operator[](long)|
+|6.46|NuXJS::Table::Bucket::valueExists() const|
+|5.50|NuXJS::String::calcHash() const|
+|5.50|NuXJS::Table::find(NuXJS::String const*, unsigned int)|
+|5.26|NuXJS::JSObject::getOwnProperty(NuXJS::Runtime&, NuXJS::Value const&, NuXJS::Value*) const|
+|4.55|NuXJS::Table::lookup(NuXJS::String const*)|
+|3.83|NuXJS::String::getOwnProperty(NuXJS::Runtime&, NuXJS::Value const&, NuXJS::Value*) const|
+|3.59|NuXJS::Runtime::GlobalScope::readVar(NuXJS::Runtime&, NuXJS::String const*, NuXJS::Value*) const|
+
+### navierStokes_bm.js
+| % time | Function |
+|------:|--------------------------------|
+|22.58|NuXJS::Processor::innerRun()|
+|12.90|NuXJS::Processor::push(NuXJS::Value const&)|
+|9.68|NuXJS::Value::toDouble() const|
+|6.45|NuXJS::JSArray::getOwnProperty(NuXJS::Runtime&, NuXJS::Value const&, NuXJS::Value*) const|
+|6.45|NuXJS::JSArray::setOwnProperty(NuXJS::Runtime&, NuXJS::Value const&, NuXJS::Value const&, unsigned char)|
+|4.84|NuXJS::Value::compareStrictly(NuXJS::Value const&) const|
+|4.84|NuXJS::FunctionScope::readVar(NuXJS::Runtime&, NuXJS::String const*, NuXJS::Value*) const|
+|3.23|NuXJS::Vector<NuXJS::Value, 8u>::operator[](long)|
+|3.23|NuXJS::Value::toArrayIndex(unsigned int&) const|
+|3.23|NuXJS::Value::add(NuXJS::Heap&, NuXJS::Value const&) const|
+
+### noEval.js
+| % time | Function |
+|------:|--------------------------------|
+|55.07|NuXJS::Processor::innerRun()|
+|16.67|NuXJS::Processor::push(NuXJS::Value const&)|
+|12.32|NuXJS::Value::toDouble() const|
+|4.35|NuXJS::Processor::pop(int)|
+|3.62|NuXJS::Value::toBool() const|
+|2.90|NuXJS::Value::isLessThan(NuXJS::Value const&) const|
+|2.17|NuXJS::Processor::pop2push1(NuXJS::Value const&)|
+|1.45|NuXJS::Value::add(NuXJS::Heap&, NuXJS::Value const&) const|
+|1.45|NuXJS::Value::compareStrictly(NuXJS::Value const&) const|
+
+### evalCalced.js
+| % time | Function |
+|------:|--------------------------------|
+|37.37|NuXJS::Processor::innerRun()|
+|6.57|NuXJS::Processor::pop(int)|
+|5.56|NuXJS::Processor::pop2push1(NuXJS::Value const&)|
+|5.05|NuXJS::Value::toDouble() const|
+|4.04|NuXJS::Table::Bucket::valueExists() const|
+|4.04|NuXJS::Object::getProperty(NuXJS::Runtime&, NuXJS::Value const&, NuXJS::Value*) const|
+|3.03|NuXJS::Vector<NuXJS::Table::Bucket, 8u>::operator[](long)|
+|3.03|NuXJS::Value::toString(NuXJS::Heap&) const|
+|3.03|NuXJS::FunctionScope::readVar(NuXJS::Runtime&, NuXJS::String const*, NuXJS::Value*) const|
+|3.03|NuXJS::Vector<NuXJS::Value, 8u>::operator[](long)|
+
+### minimum.js
+| % time | Function |
+|------:|--------------------------------|
+|14.60|NuXJS::Processor::innerRun()|
+|9.49|NuXJS::Table::find(NuXJS::String const*, unsigned int)|
+|7.30|NuXJS::Vector<NuXJS::Table::Bucket, 8u>::operator[](long)|
+|7.30|NuXJS::JSArray::getOwnProperty(NuXJS::Runtime&, NuXJS::Value const&, NuXJS::Value*) const|
+|5.47|NuXJS::Table::Bucket::valueExists() const|
+|4.38|NuXJS::Value::toDouble() const|
+|3.65|NuXJS::StringListEnumerator::nextPropertyName()|
+|3.65|NuXJS::Processor::pop(int)|
+|3.28|NuXJS::Processor::push(NuXJS::Value const&)|
+|2.92|NuXJS::Table::lookup(NuXJS::String const*)|
+
+### math_bm_2.js
+| % time | Function |
+|------:|--------------------------------|
+|33.77|NuXJS::Processor::innerRun()|
+|11.04|NuXJS::Value::toDouble() const|
+|10.39|NuXJS::Processor::push(NuXJS::Value const&)|
+|6.49|NuXJS::StringListEnumerator::nextPropertyName()|
+|5.19|NuXJS::Processor::pop2push1(NuXJS::Value const&)|
+|3.90|NuXJS::Value::add(NuXJS::Heap&, NuXJS::Value const&) const|
+|3.25|NuXJS::Value::toBool() const|
+|2.60|NuXJS::Processor::pop(int)|
+|2.60|NuXJS::String::calcHash() const|
+|2.60|NuXJS::Value::toString(NuXJS::Heap&) const|
+
 ## Engine Comparison
 
 Benchmark results (lower is better) from an external comparison suite:
@@ -162,6 +273,12 @@ Benchmark results (lower is better) from an external comparison suite:
 | ... | ... | ... | ... |
 
 These numbers show NuXJS generally lags behind QuickJS and often Duktape on string handling (`buildStringNaive.js`, `regexp.js`) and object-heavy workloads (`bigObject.js`).
+## Optimization Opportunities
+
+- **Property enumeration** – `StringListEnumerator::nextPropertyName` dominates several benchmarks (`bigArray.js`, `function_bm_1.js`, `minimum.js`, `math_bm_2.js`). Caching property lists or tightening the enumerator could trim this overhead.
+- **Stack operations** – `Processor::push`, `pop`, and `pop2push1` consume large fractions of loop-heavy workloads such as `noEval.js` and `math_bm_2.js`. Fusing operations or using a more efficient stack representation may help.
+- **Numeric conversions** – `Value::toDouble` repeatedly shows up in numeric tests (`noEval.js`, `navierStokes_bm.js`, `math_bm_2.js`), suggesting specialized numeric paths or cached conversions could reduce cost.
+
 
 ## Notes
 
