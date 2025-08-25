@@ -4,7 +4,6 @@ const fs = require("fs");
 const http = require("http");
 const url = require("url");
 const child_process = require("child_process");
-const readline = require("readline");
 const path = require("path");
 
 const TEST_PATH = "./test262-master/";
@@ -31,16 +30,17 @@ console.log("Using engine: " + ENGINE);
 console.log("Node: " + process.version + " on " + process.platform);
 
 function ensureTest262() {
-        if (!fs.existsSync(TEST_PATH) || !fs.existsSync(path.join(TEST_PATH, "package.json"))) {
-                if (!fs.existsSync(TEST_TAR)) {
-                        const fetchScript = process.platform === "win32" ? "tools\\fetchTest262.cmd" : "tools/fetchTest262.sh";
-                        const runner = process.platform === "win32" ? "cmd" : "bash";
-                        console.log("Downloading Test262 suite...");
-                        child_process.execFileSync(runner, [fetchScript], { stdio: "inherit" });
-                }
-                console.log("Extracting Test262 suite...");
-                child_process.execFileSync("tar", ["-xzf", TEST_TAR]);
-        }
+if (!fs.existsSync(TEST_PATH) || !fs.existsSync(path.join(TEST_PATH, "package.json"))) {
+if (!fs.existsSync(TEST_TAR)) {
+const fetchScript = process.platform === "win32" ? "tools\\fetchTest262.cmd" : "tools/fetchTest262.sh";
+const runner = process.platform === "win32" ? "cmd" : "bash";
+console.log("Downloading Test262 suite...");
+child_process.execFileSync(runner, [fetchScript], { stdio: "inherit" });
+}
+console.log("Extracting Test262 suite...");
+child_process.execFileSync("tar", ["-xzf", TEST_TAR]);
+}
+fs.copyFileSync(path.join("tools", "assert.es3.js"), path.join(TEST_PATH, "harness", "assert.js"));
 }
 
 ensureTest262();
@@ -88,9 +88,11 @@ function runTests(callback, limit) {
        if (limit && list.length > limit) list = list.slice(0, limit);
        console.log("Selected " + list.length + " tests");
 
-       console.log("Harness: python3 ../tools/run_test262.py " + ENGINE + " " + list.join(" "));
+var harness = path.join("node_modules", "test262-harness", "bin", "run.js");
+var args = [harness, "--reporter=json", "--reporter-keys=file,result", "--hostType=jsshell", "--hostPath=" + ENGINE].concat(list);
+console.log("Harness: node " + args.join(" "));
 
-       var child = child_process.spawn("python3", ["../tools/run_test262.py", ENGINE].concat(list), { cwd: TEST_PATH });
+var child = child_process.spawn("node", args, { cwd: TEST_PATH });
 	var output = "";
 	child.stdout.setEncoding("utf8");
 	child.stdout.on("data", (chunk) => { output += chunk; });
