@@ -9,10 +9,23 @@ const path = require("path");
 
 const TEST_PATH = "./test262-master/";
 const TEST_TAR = "./externals/test262-master.tar.gz";
-const ENGINE = fs.existsSync("./output/NuXJS_beta_native") ? path.resolve("./output/NuXJS_beta_native") :
-fs.existsSync("./output/NuXJS_release_native") ? path.resolve("./output/NuXJS_release_native") :
-fs.existsSync("./output/NuXJS") ? path.resolve("./output/NuXJS") :
-"node";
+
+function findEngine() {
+	const candidates = [
+		"./output/NuXJS_beta_native",
+		"./output/NuXJS_release_native",
+		"./output/NuXJS"
+	];
+	for (const p of candidates) {
+		try {
+			fs.accessSync(p, fs.constants.X_OK);
+			return path.resolve(p);
+		} catch (_) {}
+	}
+	return "node";
+}
+
+const ENGINE = findEngine();
 
 function ensureTest262() {
 	if (!fs.existsSync(TEST_PATH) || !fs.existsSync(path.join(TEST_PATH, "package.json"))) {
