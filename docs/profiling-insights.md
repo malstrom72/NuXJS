@@ -13,14 +13,25 @@ NuXJS was built with `-pg` and profiled with gprof across several benchmarks.
 - `recursion_bm_1.js`: Call overhead is prominent with dispatch (17%) and stack operations (`Processor::push`, `Processor::pop2push1`).
 - `for_loop_bm_1.js`: `Processor::innerRun` accounts for ~64% of runtime, with notable overhead from number conversions (`Value::toDouble`) and stack manipulation (`Processor::push`).
 - `math_bm_1.js`: Dispatch remains heavy (~44%), followed by `Value::toDouble`, `Processor::pop2push1`, and allocation/GC routines.
+- `bigObject.js`: Heap management (`Heap::gc`, `GCList::deleteAll`) and property enumeration (`StringListEnumerator::nextPropertyName`) dominate runtime.
+- `buildStringNaive.js`: Naive concatenation spends over 60% of time in `StringListEnumerator::nextPropertyName` and significant time marking table entries.
+- `buildStringBuffered.js`: Even with buffering, property enumeration and frequent heap calculations (`Heap::calcPoolIndex`, `Processor::innerRun`) remain hot.
 
 Across benchmarks, interpreter dispatch, memory allocation/garbage collection, and string or hash-table operations are recurring bottlenecks.
 
-## Low-Hanging Optimization Ideas
+## Engine Comparison
 
-- Direct `str` conversion: `str` currently coerces objects via `' '+o`, invoking the object-to-number path. A dedicated opcode could bypass the extra conversion and cut dispatch overhead【F:src/stdlib.js†L130-L131】
-- Native `apply`/`call`: `Function.prototype.apply` and `call` are JavaScript wrappers that copy argument arrays before delegating to C++ `callWithArgs`. Implementing them natively would avoid the wrappers and redundant copying【F:src/stdlib.js†L254-L264】【F:src/NuXJS.cpp†L4760-L4784】
-- Regular-expression cache: `support.createRegExp` compiles patterns and caches only the generated function, with TODOs about wider caching and eviction. Caching full `RegExp` objects with a size cap would reduce compilation cost and memory churn【F:src/stdlib.js†L1495-L1515】
-- String constant lookup: `Runtime::newStringConstantWithHash` compares characters one by one before allocating. A length check followed by a faster byte comparison could shrink time in this routine【F:src/NuXJS.cpp†L5008-L5029】
+Benchmark results (lower is better) from an external comparison suite:
 
-Reducing time in `GCList::deleteAll`, trimming interpreter dispatch (`Processor::innerRun`), and minimizing stack operations (`Processor::push`, `Processor::pop2push1`) remain broader opportunities for future work.
+| Benchmark | NuXJS | Duktape | QuickJS |
+|-----------|------:|-------:|--------:|
+| bigArray.js | 961 | 1400 | 981 |
+| bigObject.js | 2378 | 1840 | 1003 |
+| buildStringBuffered.js | 294 | 383 | 252 |
+| buildStringNaive.js | 319 | 109 | 44 |
+| chess_bm.js | 4458 | 5649 | 1661 |
+| regexp.js | 3380 | 386 | 219 |
+| string_bm_2.js | 761 | 753 | 223 |
+| ... | ... | ... | ... |
+
+These numbers show NuXJS generally lags behind QuickJS and often Duktape on string handling (`buildStringNaive.js`, `regexp.js`) and object-heavy workloads (`bigObject.js`).
