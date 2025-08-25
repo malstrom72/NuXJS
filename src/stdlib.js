@@ -128,7 +128,7 @@ function int32(v) { return int(v) | 0; }
 function uint32(v) { return int(v) >>> 0; }
 
 // TODO : what a waste of cycles, could be a simple OBJ_TO_STRING, problem with ''+s is that it uses OBJ_TO_NUMBER which only affects the priority of toString vs valueOf... so subtle!
-function str(o) { return '' + (isPrimitive(o) ? o : support.toPrimitiveString(o)) }
+function str(o) { return (isPrimitive(o) ? '' + o : support.toPrimitiveString(o)) }
 
 function defineProperties(object, attribs, props) {
 	var ro = attribs.readOnly, de = attribs.dontEnum, dd = attribs.dontDelete;
