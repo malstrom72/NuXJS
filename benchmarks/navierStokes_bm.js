@@ -375,8 +375,8 @@ function FluidField(canvas) {
     this.setResolution(64, 64);
 }
 
-setupNavierStokes()
-;
-runNavierStokes();
+setupNavierStokes();
+for (var i = 0; i < 15; ++i) runNavierStokes();
 tearDownNavierStokes();
+print(result);
 

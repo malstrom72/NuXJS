@@ -7,3 +7,5 @@ for (var i = 0; i < 10000; ++i) {
 		a[i][j] = new o;
 	}
 }
+var ok = (a[0][0] instanceof o) && (a[9999][99] instanceof o);
+print(ok ? 1 : 0);
