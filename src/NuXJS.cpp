@@ -1316,6 +1316,7 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v) const {
 	return NONEXISTENT;
 }
 
+
 bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 	if (updateOwnProperty(rt, key, v)) {
 		return true;
@@ -1347,7 +1348,7 @@ UInt32 Table::calcMaxLoad(UInt32 bucketCount) { return (bucketCount - (bucketCou
 Table::Table(Heap* heap) : buckets(1U << TABLE_BUILT_IN_N, heap), loadCount(0) { }
 UInt32 Table::getLoadCount() const { return loadCount; }
 Table::Bucket* Table::getFirst() const { return getNext(buckets.begin() - 1); }
-const Table::Bucket* Table::lookup(const String* key) const { return const_cast<Table*>(this)->lookup(key); }	// OK because lookup does not modify, only exposes non-const pointer
+	const Table::Bucket* Table::lookup(const String* key) const { return const_cast<Table*>(this)->lookup(key); }	// OK because lookup does not modify, only exposes non-const pointer
 
 Table::Bucket* Table::getNext(Bucket* bucket) const {
 	assert(bucket != 0);
@@ -1422,8 +1423,8 @@ void Table::gcMarkReferences(Heap& heap) const {
 					default: break;
 				}
 				++rebuildLoadCount;
-			}
-		}
+                       }
+               }
 	}
 	assert(rebuildLoadCount <= loadCount);
 	if (rebuildLoadCount != loadCount) {
@@ -1495,7 +1496,6 @@ Flags JSObject::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 	}
 	return NONEXISTENT;
 }
-
 bool JSObject::deleteOwnProperty(Runtime& rt, const Value& key) {
 	Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
 	return (bucket == 0 || erase(bucket));
@@ -2459,16 +2459,41 @@ void Processor::innerRun() {
 				if (o == 0) {
 					return;
 				}
-				if (o->getProperty(rt, sp[0], sp - 1) == NONEXISTENT) {
+				Flags flags = o->getProperty(rt, sp[0], sp - 1);
+				if (flags == NONEXISTENT) {
 					sp[-1] = UNDEFINED_VALUE;
+					pop(1);
+				} else if ((flags & ACCESSOR_FLAG) != 0) {
+					Accessor* acc = static_cast<Accessor*>(sp[-1].asObject());
+					Function* getter = (acc != 0 ? acc->getter : 0);
+					if (getter != 0) {
+						invokeFunction(getter, 1, 0, const_cast<Object*>(o));
+						return;
+					}
+					sp[-1] = UNDEFINED_VALUE;
+					pop(1);
+				} else {
+					pop(1);
 				}
-				pop(1);
 				break;
 			}
+
 			
 			case SET_PROPERTY_OP: {
 				Object* o = convertToObject(sp[-2], false);
 				if (o == 0) {
+					return;
+				}
+				Value current;
+				Flags flags = o->getProperty(rt, sp[-1], &current);
+				if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+					Accessor* acc = static_cast<Accessor*>(current.asObject());
+					Function* setter = (acc != 0 ? acc->setter : 0);
+					if (setter != 0) {
+						invokeFunction(setter, 3, 1, o);
+						return;
+					}
+					pop(3);
 					return;
 				}
 				o->setProperty(rt, sp[-1], sp[0]);
@@ -2476,16 +2501,30 @@ void Processor::innerRun() {
 				pop(2);
 				break;
 			}
+
 			
 			case SET_PROPERTY_POP_OP: {
 				Object* o = convertToObject(sp[-2], false);
 				if (o == 0) {
 					return;
 				}
+				Value current;
+				Flags flags = o->getProperty(rt, sp[-1], &current);
+				if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+					Accessor* acc = static_cast<Accessor*>(current.asObject());
+					Function* setter = (acc != 0 ? acc->setter : 0);
+					if (setter != 0) {
+						invokeFunction(setter, 3, 1, o);
+						return;
+					}
+					pop(3);
+					return;
+				}
 				o->setProperty(rt, sp[-1], sp[0]);
 				pop(3);
 				break;
 			}
+
 
 			case OBJ_TO_PRIMITIVE_OP:
 			case OBJ_TO_NUMBER_OP:
@@ -4729,16 +4768,22 @@ struct Support {
 		return UNDEFINED_VALUE;
 	}
 
-	static Value defineProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	static Value defineProperty(Runtime &rt, Processor &, UInt32 argc, const Value *argv, Object *) {
 		bool success = false;
 		if (argc >= 2) {
-			Object* o = argv[0].asObject();
+			Object *o = argv[0].asObject();
 			if (o != 0) {
-				success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE)
-						, (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0)
-						| (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0)
-						| (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0)
-						| EXISTS_FLAG);
+				Flags flags = (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0) |
+				              (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0) |
+				              (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0) | EXISTS_FLAG;
+				if (argc >= 7) {
+					Heap &heap = rt.getHeap();
+					Accessor *acc = new (heap)
+					    Accessor(heap.managed(), argv[6].asFunction(), (argc >= 8 ? argv[7].asFunction() : 0));
+					success = o->setOwnProperty(rt, argv[1], acc, flags | ACCESSOR_FLAG);
+				} else {
+					success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
+				}
 			}
 		}
 		return success;

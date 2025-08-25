@@ -447,11 +447,13 @@ const Flags READ_ONLY_FLAG = 2;
 const Flags DONT_ENUM_FLAG = 4;
 const Flags DONT_DELETE_FLAG = 8;
 const Flags INDEX_TYPE_FLAG = 16;	///< internal index type, only used as an optimization for faster name -> local index lookup
+const Flags ACCESSOR_FLAG = 32;       ///< property stores accessor pair
 const Flags STANDARD_FLAGS = EXISTS_FLAG;	///< use with setOwnProperty()
 const Flags HIDDEN_CONST_FLAGS = READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG | EXISTS_FLAG;
 const Flags NONEXISTENT = 0;		///< use with getOwnProperty() to check for existence, e.g. getOwnProperty(o, k, v) != NONEXISTENT
 const UInt32 TABLE_BUILT_IN_N = 3; ///< 1 << 3 == 8
 
+class Accessor;
 /**
 	Table implements a hash table for storing object properties. It provides fast lookup and is used internally by JS
 	objects.
@@ -881,6 +883,20 @@ class Function : public Object {
 	protected:
 		Function() { }
 		Function(GCList& gcList) : super(gcList) { }
+};
+
+class Accessor : public Object {
+	public:
+		Accessor(GCList& gcList, Function* g, Function* s)
+			: Object(gcList), getter(g), setter(s) { }
+		Function* getter;
+		Function* setter;
+	protected:
+		virtual void gcMarkReferences(Heap& heap) const {
+			gcMark(heap, getter);
+			gcMark(heap, setter);
+			super::gcMarkReferences(heap);
+		}
 };
 
 typedef Value (*NativeFunction)(Runtime&, Processor&, UInt32, const Value*, Object*);
@@ -1336,18 +1352,46 @@ class Var : public GCItem, public AccessorBase {
 **/
 class Property : public AccessorBase {
 	friend class AccessorBase;
-	
-	public:
-		template<typename T> const Property& operator=(const T& v) const { object->setProperty(rt, key, Var(rt, v)); return *this; }
-		template<typename T> const Property& operator+=(const T& r) const { object->setProperty(rt, key, get().add(rt.getHeap(), makeValue(r))); return *this; }
 
-	protected:
-		typedef AccessorBase super;
-		Property(Runtime& rt, Object* object, const Var& key) : super(rt), object(object), key(key) { }
-		virtual Value get() const { Value v(UNDEFINED_VALUE); object->getProperty(rt, key, &v); return v; }
-		virtual Var call(int argc, const Value* argv) const { return rt.call(*this, argc, argv, object); }
-		Object* const object;
-		const Var key;
+  public:
+	template <typename T> const Property &operator=(const T &v) const {
+		Value current;
+		Flags flags = object->getProperty(rt, key, &current);
+		if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+			Accessor *acc = static_cast<Accessor *>(current.asObject());
+			Function *setter = (acc != 0 ? acc->setter : 0);
+			if (setter != 0) {
+				Value arg = Var(rt, v);
+				rt.call(setter, 1, &arg, object);
+				return *this;
+			}
+		}
+		object->setProperty(rt, key, Var(rt, v));
+		return *this;
+	}
+	template <typename T> const Property &operator+=(const T &r) const {
+		object->setProperty(rt, key, get().add(rt.getHeap(), makeValue(r)));
+		return *this;
+	}
+
+  protected:
+	typedef AccessorBase super;
+	Property(Runtime &rt, Object *object, const Var &key) : super(rt), object(object), key(key) {}
+	virtual Value get() const {
+		Value v(UNDEFINED_VALUE);
+		Flags flags = object->getProperty(rt, key, &v);
+		if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+			Accessor *acc = static_cast<Accessor *>(v.asObject());
+			Function *getter = (acc != 0 ? acc->getter : 0);
+			return (getter != 0 ? rt.call(getter, 0, 0, object) : UNDEFINED_VALUE);
+		}
+		return v;
+	}
+	virtual Var call(int argc, const Value *argv) const {
+		return rt.call(*this, argc, argv, object);
+	}
+	Object *const object;
+	const Var key;
 };
 
 /**
