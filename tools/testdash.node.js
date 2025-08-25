@@ -120,7 +120,12 @@ var server = http.createServer( function(req, res) {
 	try {
 		var u = url.parse(req.url, true);
 		if (u.pathname === "/") u.pathname = "/tools/testdash.html";
-		if (u.pathname.substr(0,8) === "/source/") u.pathname = "/" + TEST_PATH + "test/" + u.pathname.substr(8) + ".js";
+		if (u.pathname.substr(0,8) === "/source/") {
+			var src = u.pathname.substr(8);
+			if (!src.endsWith(".js")) src += ".js";
+			u.pathname = "/" + TEST_PATH + "test/" + src;
+		}
+
 
 		if (u.pathname.substr(0,5) === "/api/") {
 			var method = u.pathname.substr(5);
