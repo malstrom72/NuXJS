@@ -11,18 +11,19 @@ const TEST_PATH = "./test262-master/";
 const TEST_TAR = "./externals/test262-master.tar.gz";
 
 function findEngine() {
-	const candidates = [
-		"./output/NuXJS_beta_native",
-		"./output/NuXJS_release_native",
-		"./output/NuXJS"
-	];
-	for (const p of candidates) {
-		try {
-			fs.accessSync(p, fs.constants.X_OK);
-			return path.resolve(p);
-		} catch (_) {}
-	}
-	return "node";
+        const candidates = [
+                "./output/NuXJS_beta_native",
+                "./output/NuXJS_release_native",
+                "./output/NuXJS"
+        ];
+        for (const p of candidates) {
+                try {
+                        fs.accessSync(p, fs.constants.X_OK);
+                        return path.resolve(p);
+                } catch (_) {}
+        }
+        console.error("NuXJS binary not found. Build the project before running tests.");
+        process.exit(1);
 }
 
 const ENGINE = findEngine();
@@ -69,7 +70,7 @@ function runTests(callback, limit) {
 	       child_process.execFileSync("npm", ["--prefix", TEST_PATH, "install"], { stdio:"inherit" });
 	}
         var harness = "node_modules/test262-harness/bin/run.js";
-        var hostType = ENGINE === "node" ? "node" : "jsshell";
+        var hostType = "jsshell";
         var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=" + hostType, "--hostPath=" + ENGINE];
 
 if (limit) {
