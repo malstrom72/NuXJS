@@ -12,7 +12,7 @@ const TEST_TAR = "./externals/test262-master.tar.gz";
 const ENGINE = fs.existsSync("./output/NuXJS_beta_native") ? path.resolve("./output/NuXJS_beta_native") :
 fs.existsSync("./output/NuXJS_release_native") ? path.resolve("./output/NuXJS_release_native") :
 fs.existsSync("./output/NuXJS") ? path.resolve("./output/NuXJS") :
-"node";
+process.execPath;
 
 function ensureTest262() {
 	if (!fs.existsSync(TEST_PATH) || !fs.existsSync(path.join(TEST_PATH, "package.json"))) {
@@ -59,7 +59,7 @@ function runTests(callback, limit) {
 		child_process.execFileSync(runner, args, { cwd:TEST_PATH, stdio:"inherit" });
 	}
 	 var harness = "node_modules/test262-harness/bin/run.js";
-	 var hostType = ENGINE === "node" ? "node" : "jsshell";
+         var hostType = ENGINE === process.execPath ? "node" : "jsshell";
 	 var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=" + hostType, "--hostPath=" + ENGINE];
 
 	if (limit) {
@@ -80,7 +80,7 @@ function runTests(callback, limit) {
 		args.push("test/language/**/*.js");
 	}
 
-       var child = child_process.spawn("node", [harness].concat(args), { cwd: TEST_PATH });
+       var child = child_process.spawn(process.execPath, [harness].concat(args), { cwd: TEST_PATH });
        child.stdout.setEncoding("utf8");
        readline.createInterface({ input: child.stdout }).on("line", (line) => {
                line = line.trim();
