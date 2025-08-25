@@ -1,7 +1,7 @@
 /*
 	@preserve: Array,Boolean,Date,E,Error,Function,Infinity,LN10,LN2,LOG10E,LOG2E,MAX_VALUE,MIN_VALUE,Math
 	@preserve: NEGATIVE_INFINITY,NaN,Number,Object,PI,POSITIVE_INFINITY,RangeError,RegExp,SQRT1_2,SQRT2,String
-	@preserve: SyntaxError,TypeError,UTC,abs,acos,apply,arguments,asin,atan,atan2,break,call,callWithArgs,case,ceil
+@preserve: SyntaxError,TypeError,UTC,abs,acos,apply,arguments,asin,atan,atan2,break,call,callWithArgs,functionApply,functionCall,case,ceil
 	@preserve: charAt,charCodeAt,configurable,concat,cos,default,defineProperty,delete,do,dontDelete,dontEnum
 	@preserve: else,enumerable,eval,exec,exp,false,finally,floor,for,fromCharCode,function,getCurrentTime
 	@preserve: getDate,getDay,getFullYear,getHours,getInternalProperty,getMilliseconds,getMinutes,getMonth
@@ -250,23 +250,16 @@ var Function = function Function(body) {
 };
 defineProperties(Function, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Function });
 defineProperties(Function.prototype, { dontEnum: true }, {
-	constructor: Function,
-	apply: unconstructable(function apply(thisArg, argArray) { // FIX : <- 100% native version in the future I think
-		var theClass;
-		if (argArray == null) argArray = [ ];
-		else if ((theClass = $getInternalProperty(argArray, "class")) !== "Array" && theClass !== "Arguments") {
-			throw typeError("Argument list has wrong type");
-		};
-		return $callWithArgs(this, thisArg, argArray);
-	}),
-	call: unconstructable(function call(thisArg) { // FIX : <- 100% native version in the future I think
-		return $callWithArgs(this, thisArg, arguments, 1);
-	}),
-	toString: unconstructable(function toString() { // FIX : <- generic, make a factory function
-		checkClass(this, "Function", "toString");
-		return $getInternalProperty(this, "value");
-	})
+        constructor: Function,
+        apply: unconstructable(support.functionApply),
+        call: unconstructable(support.functionCall),
+        toString: unconstructable(function toString() { // FIX : <- generic, make a factory function
+                checkClass(this, "Function", "toString");
+                return $getInternalProperty(this, "value");
+        })
 });
+support.defineProperty(Function.prototype.apply, "length", 2, true, true, true);
+support.defineProperty(Function.prototype.call, "length", 1, true, true, true);
 
 /* --- Boolean --- */
 
