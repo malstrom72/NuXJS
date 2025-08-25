@@ -55,8 +55,8 @@ function runTests(callback, limit) {
 	console.log("Running tests");
 	if (!fs.existsSync(TEST_PATH + "node_modules")) {
 		const runner = process.platform === "win32" ? "cmd" : "npm";
-		const args = process.platform === "win32" ? ["/c", "npm", "--prefix", TEST_PATH, "install"] : ["--prefix", TEST_PATH, "install"];
-		child_process.execFileSync(runner, args, { stdio:"inherit" });
+		const args = process.platform === "win32" ? ["/c", "npm", "install"] : ["install"];
+		child_process.execFileSync(runner, args, { cwd:TEST_PATH, stdio:"inherit" });
 	}
         var harness = "node_modules/test262-harness/bin/run.js";
         var hostType = ENGINE === "node" ? "node" : "jsshell";
