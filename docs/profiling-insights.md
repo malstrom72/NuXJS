@@ -2,7 +2,7 @@
 
 ## Profiling Overview
 
-NuXJS was built with `-pg` and profiled with gprof across several benchmarks. Attempts to use the `perf` tool failed because the required `linux-tools-6.12.13` package is unavailable in the environment.
+NuXJS was built with `-pg` and profiled with gprof across several benchmarks.
 
 ## Benchmark Hotspots
 
@@ -15,11 +15,6 @@ NuXJS was built with `-pg` and profiled with gprof across several benchmarks. At
 - `math_bm_1.js`: Dispatch remains heavy (~44%), followed by `Value::toDouble`, `Processor::pop2push1`, and allocation/GC routines.
 
 Across benchmarks, interpreter dispatch, memory allocation/garbage collection, and string or hash-table operations are recurring bottlenecks.
-
-## gprof vs. perf
-
-- **gprof** provides function-level timings but requires instrumentation, offers limited visibility into system libraries, and lacks hardware event data.
-- **perf** samples at the hardware level without recompilation and captures kernel/library time and metrics like cache misses, but it isn't available in the current environment.
 
 ## Low-Hanging Optimization Ideas
 
