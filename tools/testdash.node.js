@@ -31,16 +31,16 @@ console.log("Using engine: " + ENGINE);
 console.log("Node: " + process.version + " on " + process.platform);
 
 function ensureTest262() {
-	if (!fs.existsSync(TEST_PATH) || !fs.existsSync(path.join(TEST_PATH, "package.json"))) {
-		if (!fs.existsSync(TEST_TAR)) {
-			const fetchScript = process.platform === "win32" ? "tools\\fetchTest262.cmd" : "tools/fetchTest262.sh";
-			const runner = process.platform === "win32" ? "cmd" : "bash";
-			console.log("Downloading Test262 suite...");
-			child_process.execFileSync(runner, [fetchScript], { stdio: "inherit" });
-		}
-		console.log("Extracting Test262 suite...");
-		child_process.execFileSync("tar", ["-xzf", TEST_TAR]);
-	}
+        if (!fs.existsSync(TEST_PATH) || !fs.existsSync(path.join(TEST_PATH, "package.json"))) {
+                if (!fs.existsSync(TEST_TAR)) {
+                        const fetchScript = process.platform === "win32" ? "tools\\fetchTest262.cmd" : "tools/fetchTest262.sh";
+                        const runner = process.platform === "win32" ? "cmd" : "bash";
+                        console.log("Downloading Test262 suite...");
+                        child_process.execFileSync(runner, [fetchScript], { stdio: "inherit" });
+                }
+                console.log("Extracting Test262 suite...");
+                child_process.execFileSync("tar", ["-xzf", TEST_TAR]);
+        }
 }
 
 ensureTest262();
@@ -71,35 +71,26 @@ function runTests(callback, limit) {
 	if (!fs.existsSync(TEST_PATH + "node_modules")) {
 	       child_process.execFileSync("npm", ["--prefix", TEST_PATH, "install"], { stdio:"inherit" });
 	}
-       var harness = "node_modules/test262-harness/bin/run.js";
-       var hostType = "jsshell";
-       var args = ["--reporter=json", "--reporter-keys=file,result", "--hostType=" + hostType, "--hostPath=" + ENGINE];
+       var list = [];
+       (function gather(dir) {
+               var entries = fs.readdirSync(dir, { withFileTypes:true });
+               for (var entry of entries) {
+                       var full = path.join(dir, entry.name);
+                       if (entry.isDirectory()) gather(full);
+                       else if (entry.name.endsWith(".js")) {
+                               var text = fs.readFileSync(full, "utf8");
+                               if (/\bfeatures\b/.test(text) || /\bflags\b/.test(text)) continue;
+                               list.push(path.relative(TEST_PATH, full));
+                       }
+               }
+       })(path.join(TEST_PATH, "test", "language"));
+       list.sort();
+       if (limit && list.length > limit) list = list.slice(0, limit);
+       console.log("Selected " + list.length + " tests");
 
-if (limit) {
-var list = [];
-(function gather(dir) {
-var entries = fs.readdirSync(dir, { withFileTypes:true });
-for (var entry of entries) {
-var full = path.join(dir, entry.name);
-if (entry.isDirectory()) gather(full);
-else if (entry.name.endsWith(".js")) {
-var text = fs.readFileSync(full, "utf8");
-if (/\bfeatures\b/.test(text) || /\bflags\b/.test(text)) continue;
-list.push(path.relative(TEST_PATH, full));
-}
-}
-})(path.join(TEST_PATH, "test", "language"));
-list.sort();
-if (list.length > limit) list = list.slice(0, limit);
-	console.log("Selected " + list.length + " tests");
-args = args.concat(list);
-} else {
-args.push("test/language/**/*.js");
-}
+       console.log("Harness: python3 ../tools/run_test262.py " + ENGINE + " " + list.join(" "));
 
-	console.log("Harness: node " + harness + " " + args.join(" "));
-
-       var child = child_process.spawn("node", [harness].concat(args), { cwd: TEST_PATH });
+       var child = child_process.spawn("python3", ["../tools/run_test262.py", ENGINE].concat(list), { cwd: TEST_PATH });
 	var output = "";
 	child.stdout.setEncoding("utf8");
 	child.stdout.on("data", (chunk) => { output += chunk; });
