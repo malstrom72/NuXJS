@@ -1523,19 +1523,23 @@ JSObject::JSObject(GCList& gcList, Object* prototype)
 Object* JSObject::getPrototype(Runtime&) const { return prototype; }
 
 bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
-	Table::Bucket* bucket = insert(key.toString(rt.getHeap()));
-	if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
-	Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
-	Accessor* nv = static_cast<Accessor*>(v.getObject());
-	if (nv->getter != 0) {
-	acc->getter = nv->getter;
-	}
-	if (nv->setter != 0) {
-	acc->setter = nv->setter;
-	}
-	return true;
-	}
-	return update(bucket, v, flags);
+       const String* name = key.toString(rt.getHeap());
+       if ((flags & ACCESSOR_FLAG) == 0) {
+               return update(insert(name), v, flags);
+       }
+       Table::Bucket* bucket = insert(name);
+       if (bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
+               Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
+               Accessor* nv = static_cast<Accessor*>(v.getObject());
+               if (nv->getter != 0) {
+                       acc->getter = nv->getter;
+               }
+               if (nv->setter != 0) {
+                       acc->setter = nv->setter;
+               }
+               return true;
+       }
+       return update(bucket, v, flags);
 }
 
 bool JSObject::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
