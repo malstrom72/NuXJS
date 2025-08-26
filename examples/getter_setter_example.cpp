@@ -33,15 +33,27 @@ int main() {
 
 	Var globals = rt.getGlobalsVar();
 	rt.run(
-	        "var obj = { _v: 0 };\n" \
-	        "Object.defineProperty(obj, 'value', {\n" \
-	        "    get: function() { return this._v; },\n" \
-	        "    set: function(v) { this._v = v; }\n" \
-	        "});\n" \
-	        "obj.value = 7;"
-	);
+		"var obj = { _v: 1 };\n" \
+"Object.defineProperty(obj, 'value', {\n" \
+"\tget: function() { return this._v; },\n" \
+"\tset: function(v) { this._v = v; }\n" \
+"});\n" \
+"Object.defineProperty(obj, 'double', {\n" \
+"\tget: function() { return this._v * 2; },\n" \
+"\tset: function(v) { this._v = v / 2; }\n" \
+"});\n" \
+"var start = obj.value;\n" \
+"var startDouble = obj.double;\n" \
+"obj.double = 50;\n" \
+"var afterSetDouble = obj.value;\n" \
+"obj.value = 15;\n" \
+"var finalDouble = obj.double;"
+);
 	Var obj = globals["obj"];
-	std::wcout << L"obj.value = " << obj["value"].to<std::wstring>() << std::endl;
+	std::wcout << L"start = " << globals["start"].to<int>() << std::endl;
+	std::wcout << L"startDouble = " << globals["startDouble"].to<int>() << std::endl;
+	std::wcout << L"afterSetDouble = " << globals["afterSetDouble"].to<int>() << std::endl;
+	std::wcout << L"finalDouble = " << globals["finalDouble"].to<int>() << std::endl;
 	std::wcout << L"obj._v = " << obj["_v"].to<int>() << std::endl;
 	return 0;
 }
