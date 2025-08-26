@@ -177,8 +177,10 @@ const String BOOLEAN_STRING("boolean"), FUNCTION_STRING("function"), NUMBER_STRI
 const String EMPTY_STRING, LENGTH_STRING("length"), NULL_STRING("null"), UNDEFINED_STRING("undefined");
 
 const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_STRING("Boolean"), D_ATE_STRING("Date")
-		, E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
-		, S_TRING_STRING("String");
+                , E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
+                , S_TRING_STRING("String");
+
+const String GET_STRING("get"), SET_STRING("set");
 
 static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
@@ -1480,7 +1482,19 @@ JSObject::JSObject(GCList& gcList, Object* prototype)
 Object* JSObject::getPrototype(Runtime&) const { return prototype; }
 
 bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
-	return update(insert(key.toString(rt.getHeap())), v, flags);
+	Table::Bucket* bucket = insert(key.toString(rt.getHeap()));
+	if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
+	Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
+	Accessor* nv = static_cast<Accessor*>(v.getObject());
+	if (nv->getter != 0) {
+	acc->getter = nv->getter;
+	}
+	if (nv->setter != 0) {
+	acc->setter = nv->setter;
+	}
+	return true;
+	}
+	return update(bucket, v, flags);
 }
 
 bool JSObject::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
@@ -2119,6 +2133,8 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ SET_PROPERTY_OP            , "SET_PROPERTY"            , -2     , 0 },
 	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -3     , 0 },
 	{ ADD_PROPERTY_OP            , "ADD_PROPERTY"            , -1     , 0 },
+	{ ADD_GETTER_OP            , "ADD_GETTER"             , -1     , 0 },
+	{ ADD_SETTER_OP            , "ADD_SETTER"             , -1     , 0 },
 	{ PUSH_ELEMENTS_OP           , "PUSH_ELEMENTS_OP"        , 0      , OpcodeInfo::POP_OPERAND },
 	{ OBJ_TO_PRIMITIVE_OP        , "OBJ_TO_PRIMITIVE"        , 0      , 0 },
 	{ OBJ_TO_NUMBER_OP           , "OBJ_TO_NUMBER"           , 0      , 0 },
@@ -2654,7 +2670,21 @@ void Processor::innerRun() {
 				pop(1);
 				break;
 			}
-			
+			case ADD_GETTER_OP: {
+				Object* o = sp[-1].getObject();
+				Accessor* acc = new(heap) Accessor(heap.managed(), sp[0].asFunction(), 0);
+				o->setOwnProperty(rt, constants[im], acc, ACCESSOR_FLAG);
+				pop(1);
+				break;
+			}
+			case ADD_SETTER_OP: {
+				Object* o = sp[-1].getObject();
+				Accessor* acc = new(heap) Accessor(heap.managed(), 0, sp[0].asFunction());
+				o->setOwnProperty(rt, constants[im], acc, ACCESSOR_FLAG);
+				pop(1);
+				break;
+			}
+
 			case PUSH_ELEMENTS_OP: {
 				Object* o = sp[-im].getObject();
 				assert(dynamic_cast<JSArray*>(o) != 0);
@@ -3406,24 +3436,43 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff 
 	
 	white();
 	while (!token("}", false)) {
+		bool handled = false;
 		const Char* b = p;
 		Value key = stringOrNumberConstant();
 		if (p == b) {
-			key = identifier(false, true);
-			if (key.equalsString(EMPTY_STRING)) {
-				error(SYNTAX_ERROR, "Expected property name");
+			const String* id = identifier(false, true);
+			if (id->isEqualTo(EMPTY_STRING)) {
+			error(SYNTAX_ERROR, "Expected property name");
 			}
+			white();
+				if ((id->isEqualTo(GET_STRING) || id->isEqualTo(SET_STRING)) && *p != ':') {
+				bool isGetter = id->isEqualTo(GET_STRING);
+				const Char* b2 = p;
+				Value accKey = stringOrNumberConstant();
+				if (p == b2) {
+				accKey = identifier(true, true);
+				}
+				white();
+				const String* funcName = accKey.toString(heap);
+				functionDefinition(funcName, funcName);
+				emitWithConstant(isGetter ? Processor::ADD_GETTER_OP : Processor::ADD_SETTER_OP, accKey);
+				handled = true;
+			} else {
+			key = id;
+			}
+			}
+		if (!handled) {
+				expectToken(":", true);
+				rvalueExpression(COMMA_PREC);
+				emitWithConstant(Processor::ADD_PROPERTY_OP, key);
 		}
-		expectToken(":", true);
-		rvalueExpression(COMMA_PREC);
-		emitWithConstant(Processor::ADD_PROPERTY_OP, key);
-		if (token("}", true)) {
-			break;
-		}
-		if (!token(",", true)) {
-			error(SYNTAX_ERROR, "Expected ',' or '}'");
-		}
-		white();
+			if (token("}", true)) {
+				break;
+			}
+			if (!token(",", true)) {
+				error(SYNTAX_ERROR, "Expected ',' or '}'");
+			}
+			white();
 	}
 	return ExpressionResult(ExpressionResult::PUSHED);
 }
