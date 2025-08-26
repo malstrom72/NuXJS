@@ -4,6 +4,7 @@
 NuXJS today is a portable C++03 engine that fully implements ECMAScript 3 with a few ES5 conveniences such as JSON support and indexed string access. Custom property getters and setters are not yet available and `Object.defineProperty` only handles data properties. Built‑in library objects are written directly in JavaScript and omit modern helpers like `Object.assign` or `Array.prototype.map`. The repository already contains a broad test suite, including `tests/from262` for conformance.
 
 All ES5.1 work should be driven by regression tests. Whenever a roadmap item lands, reference its verifying `.io` file in this document.
+ES5‑specific regression tests live in `tests/es5`.
 
 ## Roadmap to ES5.1
 
@@ -25,25 +26,25 @@ All ES5.1 work should be driven by regression tests. Whenever a roadmap item lan
 
 ### Strict mode
 - Detect strict directives and propagate mode.
-    - Add a `bool strict` member to `Code` in `src/NuXJS.h`. *(Implemented; `tests/regression/strictThisBinding.io`)*
-    - In `Compiler::compile` and `compileFunction` (`src/NuXJS.cpp`), scan the directive prologue for "use strict" and set `code->strict`. *(Implemented; `tests/regression/strictThisBinding.io`)*
+    - Add a `bool strict` member to `Code` in `src/NuXJS.h`. *(Implemented; `tests/es5/strictThisBinding.io`)*
+    - In `Compiler::compile` and `compileFunction` (`src/NuXJS.cpp`), scan the directive prologue for "use strict" and set `code->strict`. *(Implemented; `tests/es5/strictThisBinding.io`)*
 - Enforce identifier restrictions and parameter checks.
-   - Update `Compiler::identifier` so `eval` and `arguments` trigger a syntax error when the current scope is strict. *(Implemented; `tests/regression/strictEvalArgsBinding.io`)*
-   - During parameter list parsing, reject duplicate names in strict functions. *(Implemented; `tests/regression/strictDuplicateParam.io`)*
+   - Update `Compiler::identifier` so `eval` and `arguments` trigger a syntax error when the current scope is strict. *(Implemented; `tests/es5/strictEvalArgsBinding.io`)*
+   - During parameter list parsing, reject duplicate names in strict functions. *(Implemented; `tests/es5/strictDuplicateParam.io`)*
 - Preserve `undefined` for unbound `this` values.
-    - Modify `Processor::enter` to skip substituting the global object when `code->strict` is set. *(Implemented; `tests/regression/strictThisBinding.io`)*
+    - Modify `Processor::enter` to skip substituting the global object when `code->strict` is set. *(Implemented; `tests/es5/strictThisBinding.io`)*
 - Reject `with` statements in strict code.
-    - Have `Compiler::withStatement` test the active scope’s `strict` flag and emit a syntax error if encountered. *(Implemented; `tests/regression/strictWithStatement.io`)*
-- Propagate strict mode through `eval` and isolate its environment. *(Implemented; `tests/regression/strictEvalScope.io`)*
-    - Pass the caller’s strict flag to `CALL_EVAL_OP` and down to `Runtime::compileEvalCode` and `Processor::enterEvalCode`. *(Implemented; `tests/regression/strictEvalScope.io`)*
-    - When strict, compile eval code with a fresh variable environment. *(Implemented; `tests/regression/strictEvalScope.io`)*
+    - Have `Compiler::withStatement` test the active scope’s `strict` flag and emit a syntax error if encountered. *(Implemented; `tests/es5/strictWithStatement.io`)*
+- Propagate strict mode through `eval` and isolate its environment. *(Implemented; `tests/es5/strictEvalScope.io`)*
+    - Pass the caller’s strict flag to `CALL_EVAL_OP` and down to `Runtime::compileEvalCode` and `Processor::enterEvalCode`. *(Implemented; `tests/es5/strictEvalScope.io`)*
+    - When strict, compile eval code with a fresh variable environment. *(Implemented; `tests/es5/strictEvalScope.io`)*
 - Tighten `delete` semantics.
-    - If `delete` targets a simple identifier in strict mode, emit a syntax error instead of `DELETE_NAMED_OP`. *(Implemented; `tests/regression/strictDeleteIdentifier.io`)*
+    - If `delete` targets a simple identifier in strict mode, emit a syntax error instead of `DELETE_NAMED_OP`. *(Implemented; `tests/es5/strictDeleteIdentifier.io`)*
 - Disallow implicit global variable creation.
-   - When strict code assigns to an undeclared identifier, raise a `ReferenceError` rather than defining a global property. *(Implemented; `tests/regression/strictImplicitGlobal.io`)*
-- Implement strict arguments-object behavior. *(Implemented; `tests/regression/strictArgumentsObject.io`)*
-    - Introduce a non-mapped `ArgumentsObject` variant and construct it in `FunctionScope` when `code->strict`. *(Implemented; `tests/regression/strictArgumentsObject.io`)*
-    - Ensure `arguments` does not alias parameters. *(Implemented; `tests/regression/strictArgumentsObject.io`)*
+   - When strict code assigns to an undeclared identifier, raise a `ReferenceError` rather than defining a global property. *(Implemented; `tests/es5/strictImplicitGlobal.io`)*
+- Implement strict arguments-object behavior. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
+    - Introduce a non-mapped `ArgumentsObject` variant and construct it in `FunctionScope` when `code->strict`. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
+    - Ensure `arguments` does not alias parameters. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
 
 ### Arguments object & function semantics
 - Implement ES5.1 arguments-object behavior (decoupled mapping, `Object.getOwnPropertyDescriptor` support).
@@ -56,11 +57,11 @@ All ES5.1 work should be driven by regression tests. Whenever a roadmap item lan
 ### Array & string methods
 - Add ES5.1 array iteration utilities: `forEach`, `map`, `filter`, `some`, `every`, `reduce`, `reduceRight`, `indexOf`, `lastIndexOf`.
 - These are pure library additions to `src/stdlib.js`; each helper must follow the spec's callback invocation pattern and handle sparse arrays via `Object` property checks rather than simple loops.
-- `Array.prototype.indexOf` and `Array.prototype.lastIndexOf` implemented (`tests/regression/arrayIndexOf.io`).
+ - `Array.prototype.indexOf` and `Array.prototype.lastIndexOf` implemented (`tests/es5/arrayIndexOf.io`).
 - Implement string utilities like `trim`, `trimLeft`, `trimRight`, and JSON-related `toJSON` helpers.
 - Extend the string section in `src/stdlib.js` with whitespace tables identical to the spec and expose `String.prototype.trim*` methods.
-- `String.prototype.trim` implemented (`tests/regression/stringTrim.io`).
-- `String.prototype.trimLeft` and `trimRight` implemented (`tests/regression/stringTrimLeftRight.io`).
+ - `String.prototype.trim` implemented (`tests/es5/stringTrim.io`).
+ - `String.prototype.trimLeft` and `trimRight` implemented (`tests/es5/stringTrimLeftRight.io`).
 - Add `Date.prototype.toJSON` and `Number.prototype.toJSON` wrappers that call the internal `toISOString`/conversion paths.
 
 ### Object immutability controls
@@ -70,7 +71,7 @@ All ES5.1 work should be driven by regression tests. Whenever a roadmap item lan
 
 ### Date and Number extras
 - Finish remaining ES5.1 Date features such as `toISOString`, `toJSON`, and `now`.
-- `Date.now` implemented using `support.getCurrentTime` (`tests/regression/dateNow.io`).
+ - `Date.now` implemented using `support.getCurrentTime` (`tests/es5/dateNow.io`).
 - Add a spec‑compliant `toISOString` implementation in JavaScript.
 - Add Number and Math helpers (`isNaN`, `isFinite` refinements, `parseInt`/`parseFloat` alignment).
 	- Refine `support.isNaN`/`isFinite` semantics and expose `Number.isNaN` and `Number.isFinite` shims.
@@ -86,7 +87,7 @@ All ES5.1 work should be driven by regression tests. Whenever a roadmap item lan
 - Expand the existing `tests/from262` set with ES5.1 cases from Test262.
 - Import the ES5.1 section of Test262 and hook them into the `tests/from262` runner so failures can be tracked.
 - Introduce regression tests for each new feature and run the full suite (`timeout 180 ./build.sh`) during development.
-- Add coverage in `tests/regression` for accessor edge cases, strict‑mode violations, and bound function behavior before shipping any change.
+ - Add coverage in `tests/es5` for accessor edge cases, strict‑mode violations, and bound function behavior before shipping any change.
 
 ### Documentation & tooling
 - Revise compatibility notes and TypeScript guidance to reflect ES5.1 support.
