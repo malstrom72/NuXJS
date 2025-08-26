@@ -162,3 +162,8 @@ Benchmark results (lower is better) from an external comparison suite:
 | ... | ... | ... | ... |
 
 These numbers show NuXJS generally lags behind QuickJS and often Duktape on string handling (`buildStringNaive.js`, `regexp.js`) and object-heavy workloads (`bigObject.js`).
+
+## Notes
+
+- An experiment replaced `GCList::deleteAll` with a cached-next pointer loop to cut pointer chasing.
+- Benchmarks showed no consistent speedup, so the collector now uses the original implementation again.
