@@ -27,7 +27,7 @@ ES5‑specific regression tests live in `tests/es5`.
 ### Strict mode
 - Detect strict directives and propagate mode.
     - Add a `bool strict` member to `Code` in `src/NuXJS.h`. *(Implemented; `tests/es5/strictThisBinding.io`)*
-    - In `Compiler::compile` and `compileFunction` (`src/NuXJS.cpp`), scan the directive prologue for "use strict" and set `code->strict`. *(Implemented; `tests/es5/strictThisBinding.io`)*
+   - In `Compiler::compile` and `compileFunction` (`src/NuXJS.cpp`), scan the directive prologue by walking the leading string literals before any other token. A literal whose contents are exactly `use strict` (10 characters, case‑sensitive) toggles `code->strict`. *(Implemented; `tests/es5/strictThisBinding.io`)*
 - Enforce identifier restrictions and parameter checks.
    - Update `Compiler::identifier` so `eval` and `arguments` trigger a syntax error when the current scope is strict. *(Implemented; `tests/es5/strictEvalArgsBinding.io`)*
    - During parameter list parsing, reject duplicate names in strict functions. *(Implemented; `tests/es5/strictDuplicateParam.io`)*
@@ -61,6 +61,7 @@ ES5‑specific regression tests live in `tests/es5`.
 - `Array.prototype.forEach` implemented (`tests/es5/arrayForEach.io`).
 - `Array.prototype.map` and `Array.prototype.filter` implemented (`tests/es5/arrayMapFilter.io`).
 - `Array.prototype.some` and `Array.prototype.every` implemented (`tests/es5/arraySomeEvery.io`).
+- `Array.prototype.reduce` and `Array.prototype.reduceRight` implemented (`tests/es5/arrayReduce.io`).
 - Implement string utilities like `trim`, `trimLeft`, `trimRight`, and JSON-related `toJSON` helpers.
 - Extend the string section in `src/stdlib.js` with whitespace tables identical to the spec and expose `String.prototype.trim*` methods.
  - `String.prototype.trim` implemented (`tests/es5/stringTrim.io`).

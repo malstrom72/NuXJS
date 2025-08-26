@@ -19,7 +19,7 @@
 	@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,$match
 @preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
 @preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
-@preserve: every,some,filter,map
+@preserve: every,some,filter,map,reduce,reduceRight
 support: {
 	prototypes: {	// built-in prototype objects
 	object, function, string, boolean, number, date, array
@@ -784,12 +784,34 @@ return (this.length = len + n);
 	for (; i < len; ++i) if (i in this && this[i] === searchElement) return i;
 	return -1;
 	}),
-	lastIndexOf: unconstructable(function lastIndexOf(searchElement) {
-	var len = uint32(this.length), i = arguments[1];
-	if (len === 0) return -1;
-	if (i === void 0) i = len - 1; else { i = int(i); if (i < 0) i += len; if (i >= len) i = len - 1; }
-	for (; i >= 0; --i) if (i in this && this[i] === searchElement) return i;
-	return -1;
+lastIndexOf: unconstructable(function lastIndexOf(searchElement) {
+var len = uint32(this.length), i = arguments[1];
+if (len === 0) return -1;
+if (i === void 0) i = len - 1; else { i = int(i); if (i < 0) i += len; if (i >= len) i = len - 1; }
+for (; i >= 0; --i) if (i in this && this[i] === searchElement) return i;
+return -1;
+}),
+	reduce: unconstructable(function reduce(callbackfn) { // .length should be 1
+	var o = Object(this), len = uint32(o.length), k = 0, acc;
+	if (typeof callbackfn !== "function") throw TypeError();
+	if (arguments.length > 1) acc = arguments[1]; else {
+	while (k < len && !(k in o)) ++k;
+	if (k >= len) throw TypeError();
+	acc = o[k++];
+	}
+	for (; k < len; ++k) if (k in o) acc = callbackfn.call(void 0, acc, o[k], k, o);
+	return acc;
+	}),
+	reduceRight: unconstructable(function reduceRight(callbackfn) { // .length should be 1
+	var o = Object(this), len = uint32(o.length), k = len - 1, acc;
+	if (typeof callbackfn !== "function") throw TypeError();
+	if (arguments.length > 1) acc = arguments[1]; else {
+	while (k >= 0 && !(k in o)) --k;
+	if (k < 0) throw TypeError();
+	acc = o[k--];
+	}
+	for (; k >= 0; --k) if (k in o) acc = callbackfn.call(void 0, acc, o[k], k, o);
+	return acc;
 	}),
 	every: unconstructable(function every(callbackfn) { // .length should be 1
 	var o = Object(this), len = uint32(o.length), t = arguments[1];
