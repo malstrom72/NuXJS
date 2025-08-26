@@ -5,8 +5,10 @@ include('systools.pika');
 
 // benchmark.pika <test(s)> <exe>|<rev-rev>|<rev>|makegold ignoregold
 
-vargs(@me,, @tests, @exe, @ignoregold);
+vargs(@me,, @tests, @exe, @ignoregold, @runs);
 defaults(@ignoregold, '');
+defaults(@runs, '5');
+runs += 0;
 
 if (!exists(@tests) || tests === '-') tests = '*.js'
 else if (right(tests, 3) != '.js') tests #= '.js';
@@ -80,58 +82,81 @@ iterate(@revs, >{
 		iterate(@names, >{
 			name = $2;
 			fn = name # '.js';
-			print(name);
-			print(repeat('-', length(name)));
-			cmd = bake(TIME_COMMAND_FORMAT);
-			rc = system(cmd);
-			times = load(timePath);
-			output = load(outPath);
-			output = replace(output, "\r\n", "\n");
-			goldenFile = bake('benchmarks{DIR_SLASH}golden{DIR_SLASH}{name}.txt');
-			if (makeGold) {
-				save(goldenFile, output);
-			} else if (ignoregold !== 'ignoregold') {
-				expected = load(goldenFile);
-				if (output != expected) {
-					times = 'FAIL';
-					save('.\failed.txt', output);
-					save('.\expected.txt', expected);
-				}
-			};
-			print(times);
-			a = @timeLines[name][rev];
-			[a].n = 0;
-			if (times == 'FAIL') append(a, 'FAIL')
-			else {
-				parseTimeOutput(times, a);
-				iterate(a, >widths[name] = max(widths[name], length($2)));
-			}
-		});
-	});
-	print(err);
+				print(name);
+				print(repeat('-', length(name)));
+				cmd = bake(TIME_COMMAND_FORMAT);
+				runLines.n = 0;
+				timeSamples.n = 0;
+for (i = 0; i < runs; ++i) {
+					rc = system(cmd);
+					times = load(timePath);
+					if (times == 'FAIL') break;
+					runLines.n = 0;
+					parseTimeOutput(times, @runLines);
+					append(@timeSamples, evaluate(runLines[0]{0:length(runLines[0]) - 1}));
+					if (i == 0) {
+						output = load(outPath);
+						output = replace(output, "\r\n", "\n");
+						goldenFile = bake('benchmarks{DIR_SLASH}golden{DIR_SLASH}{name}.txt');
+						if (makeGold) {
+							save(goldenFile, output);
+						} else if (ignoregold !== 'ignoregold') {
+							expected = load(goldenFile);
+							if (output != expected) {
+								times = 'FAIL';
+								save('.\\failed.txt', output);
+								save('.\\expected.txt', expected);
+							}
+						};
+						mem1 = runLines[1];
+						mem2 = runLines[2];
+						mem3 = runLines[3];
+					}
+};
+a = @timeLines[name][rev];
+				[a].n = 0;
+				if (times == 'FAIL') {
+					print('FAIL');
+					append(a, 'FAIL');
+				} else {
+					sort(@timeSamples);
+					m = floor(timeSamples.n / 2);
+					if ((timeSamples.n % 2) != 0) medianTime = timeSamples[m]
+					else medianTime = (timeSamples[m - 1] + timeSamples[m]) / 2;
+					medianStr = medianTime # 's';
+					append(a, medianStr);
+					append(a, mem1);
+					append(a, mem2);
+					append(a, mem3);
+					iterate(a, >widths[name] = max(widths[name], length($2)));
+                                       print('median: ' # medianStr);
+                                }
+                });
+        });
+        print(err);
 });
 
 prune(@lines);
 lines[0] = '        ';
 lines[1] = '        ';
-lines.n = 2;
+labels.n = 0;
+append(@labels, 'median');
+append(@labels, 'mem1');
+append(@labels, 'mem2');
+append(@labels, 'mem3');
+for (l = 0; l < labels.n; ++l) lines[l + 2] = labels[l] # repeat(' ', 8 - length(labels[l]));
+lines.n = 2 + labels.n;
 iterate(@names, >{
-	name = $2;
-	lines[0] #= name # repeat(' ', widths[name] - length(name)) # '  ';
-	lines[1] #= repeat('-', widths[name]) # '  ';
-	lineIndex = 2;
-	iterate(@revs, >{
-		rev = $2;
-		for (l = 0; l < 4; ++l) {
-			if (lineIndex >= lines.n) {
-				lines[lineIndex] = (if (l == 0) (rev # repeat(' ', 8 - length(rev))) else '        ');
-				++lines.n;
-			};
-			s = coalesce(@timeLines[name][rev][l], '');
-			lines[lineIndex] #= s # repeat(' ', widths[name] - length(s)) # '  ';
-			++lineIndex;
-		}
-	});
+       name = $2;
+       lines[0] #= name # repeat(' ', widths[name] - length(name)) # '  ';
+       lines[1] #= repeat('-', widths[name]) # '  ';
+       iterate(@revs, >{
+               rev = $2;
+               for (l = 0; l < 4; ++l) {
+                       s = coalesce(@timeLines[name][rev][l], '');
+                       lines[l + 2] #= s # repeat(' ', widths[name] - length(s)) # '  ';
+               }
+       });
 });
 iterate(@lines, >print($2));
 
