@@ -19,11 +19,24 @@ NuXJS today is a portable C++03 engine that fully implements ECMAScript 3 with
 	- Bootstrapping of built‑ins in `src/stdlib.js` can then define getters on prototypes, e.g. for `Function.prototype.name`.
 
 ### Strict mode
-- Recognize `"use strict"` directives and enforce ES5.1 restrictions: no `with`, restricted identifiers (`eval`, `arguments`), strict `this` binding, and stricter `delete` semantics.
-	- The parser must scan directive prologues and record a strict flag on each function or script node.
-	- `Processor` instructions that create functions or run `eval` need to consult this flag to reject illegal syntax and to set `this` to `undefined` on plain calls.
-- Ensure strict-mode evaluation for `eval` and function bodies with separate variable environments.
-	- `Runtime::eval` and function invocation should instantiate distinct environment records when strict, preventing arguments/parameters aliasing and updating `delete` behavior.
+- Detect strict directives and propagate mode.
+    - Add a `bool strict` member to `Code` in `src/NuXJS.h`.
+    - In `Compiler::compile` and `compileFunction` (`src/NuXJS.cpp`), scan the directive prologue for "use strict" and set `code->strict`.
+- Enforce identifier restrictions and parameter checks.
+    - Update `Compiler::identifier` so `eval` and `arguments` trigger a syntax error when the current scope is strict.
+    - During parameter list parsing, reject duplicate names in strict functions.
+- Preserve `undefined` for unbound `this` values.
+    - Modify `Processor::enter` to skip substituting the global object when `code->strict` is set.
+- Reject `with` statements in strict code.
+    - Have `Compiler::withStatement` test the active scope’s `strict` flag and emit a syntax error if encountered.
+- Propagate strict mode through `eval` and isolate its environment.
+    - Pass the caller’s strict flag to `CALL_EVAL_OP` and down to `Runtime::compileEvalCode` and `Processor::enterEvalCode`.
+    - When strict, compile eval code with a fresh variable environment.
+- Tighten `delete` semantics.
+    - If `delete` targets a simple identifier in strict mode, emit a dedicated opcode that raises a syntax error instead of `DELETE_NAMED_OP`.
+- Implement strict arguments-object behavior.
+    - Introduce a non-mapped `ArgumentsObject` variant and construct it in `FunctionScope` when `code->strict`.
+    - Ensure `arguments` does not alias parameters and forbid binding of `eval` or `arguments` identifiers.
 
 ### Arguments object & function semantics
 - Implement ES5.1 arguments-object behavior (decoupled mapping, `Object.getOwnPropertyDescriptor` support).
