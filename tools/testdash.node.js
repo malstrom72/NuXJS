@@ -84,8 +84,9 @@ function runTests(callback, limit) {
 		// Use Chakra host adapter for NuXJS to avoid extra jsshell flags like "-f"
 		// which NuXJS does not understand. Chakra adapter forwards only the test
 		// file path, matching NuXJS's CLI expectations.
-	var hostType = "ch";
-	var args = ["--reporter=json", "--reporter-keys=file,result,stdout,stderr", "--saveOnlyFailed", "--hostType=" + hostType, "--hostPath=" + ENGINE];
+       var hostType = "ch";
+       var transformer = "../tools/es5-transformer.js";
+       var args = ["--reporter=json", "--reporter-keys=file,result,stdout,stderr", "--saveOnlyFailed", "--hostType=" + hostType, "--hostPath=" + ENGINE, "--transformer=" + transformer];
 		console.log("Harness command:", "node", harness, args.join(" "));
 
 	if (limit) {
