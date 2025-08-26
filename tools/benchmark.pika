@@ -59,6 +59,7 @@ if (PLATFORM === 'UNIX') {
 tempDir = makeTempDir();
 outPath = tempDir # 'out';
 timePath = tempDir # 'time';
+overallMedians.n = 0;
 
 names.n = 0;
 widths.n = 0;
@@ -158,6 +159,20 @@ iterate(@names, >{
                }
        });
 });
+overallMedians.n = 0;
+rev = '';
+iterate(@names, >{
+medianStr = @timeLines[$2][rev][0];
+if (medianStr != void && medianStr != 'FAIL') append(@overallMedians, evaluate(medianStr{0:length(medianStr) - 1}));
+});
 iterate(@lines, >print($2));
+
+if (overallMedians.n != 0) {
+sort(@overallMedians);
+m = floor(overallMedians.n / 2);
+if ((overallMedians.n % 2) != 0) allMedian = overallMedians[m]
+else allMedian = (overallMedians[m - 1] + overallMedians[m]) / 2;
+print('median of all tests: ' # allMedian # 's');
+}
 
 wipeTempDir(tempDir);

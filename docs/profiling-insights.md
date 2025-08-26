@@ -12,15 +12,15 @@ Before committing any performance change, run the entire benchmark suite and com
 # build the runtime
 timeout 180 ./build.sh
 # capture baseline numbers
-tools/benchmark.pika benchmarks output/NuXJS_beta_native > before.txt
+tools/benchmark.pika benchmarks output/NuXJS > before.txt
 # after making changes, rebuild and rerun
 timeout 180 ./build.sh
-tools/benchmark.pika benchmarks output/NuXJS_beta_native > after.txt
+tools/benchmark.pika benchmarks output/NuXJS > after.txt
 # compare results (lower is better)
 diff -u before.txt after.txt
 ```
 
-Each entry shows the median of several runs; **every median must drop** after an optimization. If the new build fails to outperform the baseline, revert the change.
+Each entry shows the median of several runs; the script also prints a **median of all tests** at the end.  **Every per-test median and the overall median must drop** after an optimization. If the new build fails to outperform the baseline, revert the change.
 
 
 ## Benchmark Profiles
