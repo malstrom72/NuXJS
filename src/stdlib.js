@@ -2,7 +2,7 @@
 	@preserve: Array,Boolean,Date,E,Error,Function,Infinity,LN10,LN2,LOG10E,LOG2E,MAX_VALUE,MIN_VALUE,Math
 	@preserve: NEGATIVE_INFINITY,NaN,Number,Object,PI,POSITIVE_INFINITY,RangeError,RegExp,SQRT1_2,SQRT2,String
 	@preserve: SyntaxError,TypeError,UTC,abs,acos,apply,arguments,asin,atan,atan2,break,call,callWithArgs,case,ceil
-	@preserve: charAt,charCodeAt,configurable,concat,cos,default,defineProperty,delete,do,dontDelete,dontEnum
+        @preserve: charAt,charCodeAt,configurable,concat,cos,default,defineProperty,delete,do,dontDelete,dontEnum,get,set
 	@preserve: else,enumerable,eval,exec,exp,false,finally,floor,for,fromCharCode,function,getCurrentTime
 	@preserve: getDate,getDay,getFullYear,getHours,getInternalProperty,getMilliseconds,getMinutes,getMonth
 	@preserve: getPrototypeOf,getSeconds,getTime,getTimezoneOffset,getUTCDate,getUTCDay,getUTCFullYear,getUTCHours
