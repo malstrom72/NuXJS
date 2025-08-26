@@ -1308,9 +1308,18 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v) const {
 	const Object* o = this;
 	do {
 		Flags flags = o->getOwnProperty(rt, key, v);
-		if (flags != NONEXISTENT) {
-			return flags;
-		}
+               if (flags != NONEXISTENT) {
+                       if ((flags & ACCESSOR_FLAG) != 0) {
+                               Accessor* acc = static_cast<Accessor*>(v->asObject());
+                               if (acc != 0 && acc->getter != 0) {
+                                       Var result = rt.call(acc->getter, 0, 0, const_cast<Object*>(o));
+                                       *v = static_cast<Value>(result);
+                               } else {
+                                       *v = UNDEFINED_VALUE;
+                               }
+                       }
+                       return flags;
+               }
 		o = o->getPrototype(rt);
 	} while (o != 0);
 	return NONEXISTENT;
@@ -1416,14 +1425,22 @@ void Table::gcMarkReferences(Heap& heap) const {
 		if (bucket.keyExists()) {
 			gcMark(heap, bucket.key);
 			if (bucket.valueExists()) {
-				switch (((bucket.flags & INDEX_TYPE_FLAG) != 0) ? Value::NUMBER_TYPE : bucket.type) {
-					case Value::STRING_TYPE: gcMark(heap, bucket.var.string); break;
-					case Value::OBJECT_TYPE: gcMark(heap, bucket.var.object); break;
-					default: break;
-				}
-				++rebuildLoadCount;
-			}
-		}
+                               if ((bucket.flags & ACCESSOR_FLAG) != 0) {
+                                       if (bucket.accessor != 0) {
+                                               gcMark(heap, bucket.accessor);
+                                               gcMark(heap, bucket.accessor->getter);
+                                               gcMark(heap, bucket.accessor->setter);
+                                       }
+                               } else {
+                                       switch (((bucket.flags & INDEX_TYPE_FLAG) != 0) ? Value::NUMBER_TYPE : bucket.type) {
+                                               case Value::STRING_TYPE: gcMark(heap, bucket.var.string); break;
+                                               case Value::OBJECT_TYPE: gcMark(heap, bucket.var.object); break;
+                                               default: break;
+                                       }
+                               }
+                               ++rebuildLoadCount;
+                       }
+               }
 	}
 	assert(rebuildLoadCount <= loadCount);
 	if (rebuildLoadCount != loadCount) {
@@ -1488,12 +1505,17 @@ bool JSObject::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) 
 }
 
 Flags JSObject::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
-	const Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
-	if (bucket != 0) {
-		*v = bucket->getValue();
-		return bucket->getFlags();
-	}
-	return NONEXISTENT;
+        const Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
+       if (bucket != 0) {
+               Flags flags = bucket->getFlags();
+               if ((flags & ACCESSOR_FLAG) != 0) {
+                       *v = Value(static_cast<Object*>(bucket->getAccessor()));
+               } else {
+                       *v = bucket->getValue();
+               }
+               return flags;
+       }
+       return NONEXISTENT;
 }
 
 bool JSObject::deleteOwnProperty(Runtime& rt, const Value& key) {
