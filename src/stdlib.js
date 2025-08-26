@@ -3,7 +3,7 @@
 	@preserve: NEGATIVE_INFINITY,NaN,Number,Object,PI,POSITIVE_INFINITY,RangeError,RegExp,SQRT1_2,SQRT2,String
 	@preserve: SyntaxError,TypeError,UTC,abs,acos,apply,arguments,asin,atan,atan2,break,call,callWithArgs,case,ceil
 	@preserve: charAt,charCodeAt,configurable,concat,cos,default,defineProperty,delete,do,dontDelete,dontEnum,get,set
-	@preserve: else,enumerable,eval,exec,exp,false,finally,floor,for,fromCharCode,function,getCurrentTime
+	@preserve: else,enumerable,eval,exec,exp,false,finally,floor,for,forEach,fromCharCode,function,getCurrentTime
 	@preserve: getDate,getDay,getFullYear,getHours,getInternalProperty,getMilliseconds,getMinutes,getMonth
 	@preserve: getPrototypeOf,getSeconds,getTime,getTimezoneOffset,getUTCDate,getUTCDay,getUTCFullYear,getUTCHours
 	@preserve: getUTCMilliseconds,getUTCMinutes,getUTCMonth,getUTCSeconds,hasOwnProperty,if,ignoreCase,in,index,indexOf
@@ -757,8 +757,13 @@ else delete this[i + n];
 }
 for (var i = 0; i < n; ++i) this[i] = argv[i];
 return (this.length = len + n);
-}),
-indexOf: unconstructable(function indexOf(searchElement) {
+	}),
+       forEach: unconstructable(function forEach(callbackfn) { // .length should be 1
+       var o = Object(this), len = uint32(o.length), t = arguments[1];
+       if (typeof callbackfn !== "function") throw TypeError();
+       for (var k = 0; k < len; ++k) if (k in o) callbackfn.call(t, o[k], k, o);
+       }),
+       indexOf: unconstructable(function indexOf(searchElement) {
 var len = uint32(this.length), i = arguments[1];
 if (len === 0) return -1;
 if ((i = int(i)) < 0) { i += len; if (i < 0) i = 0; }
