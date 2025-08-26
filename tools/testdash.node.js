@@ -25,10 +25,9 @@ const ENGINE = (() => {
 			console.log("Engine not found:", c);
 		}
 	}
-	console.log("No NuXJS binary found; falling back to Node");
-	return "node";
+throw new Error("NuXJS binary not found. Build the project before running tests.");
 })();
-		console.log("Selected engine:", ENGINE);
+console.log("Selected engine:", ENGINE);
 
 function ensureTest262() {
 	if (!fs.existsSync(TEST_PATH) || !fs.existsSync(path.join(TEST_PATH, "package.json"))) {
@@ -78,8 +77,8 @@ function runTests(callback, limit) {
 		// Use Chakra host adapter for NuXJS to avoid extra jsshell flags like "-f"
 		// which NuXJS does not understand. Chakra adapter forwards only the test
 		// file path, matching NuXJS's CLI expectations.
-		var hostType = ENGINE === "node" ? "node" : "ch";
-		var args = ["--reporter=json", "--reporter-keys=file,result,stdout,stderr", "--hostType=" + hostType, "--hostPath=" + ENGINE];
+var hostType = "ch";
+var args = ["--reporter=json", "--reporter-keys=file,result,stdout,stderr", "--hostType=" + hostType, "--hostPath=" + ENGINE];
 		console.log("Harness command:", "node", harness, args.join(" "));
 
 	if (limit) {
