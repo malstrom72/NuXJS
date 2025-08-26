@@ -14,7 +14,7 @@
 	@preserve: setUTCFullYear,setUTCHours,setUTCMilliseconds,setUTCMinutes,setUTCMonth,setUTCSeconds,shift,sin,slice
 	@preserve: sort,distinctConstructor,sqrt,submatch,substr,substring,switch,tan,this,throw,time,toExponential
 	@preserve: toFixed,toISOString,toLocaleDateString,toLocaleLowerCase,toLocaleString,toLocaleTimeString
-	@preserve: toLocaleUpperCase,toLowerCase,toPrecision,toString,toTimeString,toUTCString,toUpperCase,trim,true,try,typeof
+	@preserve: toLocaleUpperCase,toLowerCase,toPrecision,toString,toTimeString,toUTCString,toUpperCase,trim,trimLeft,trimRight,true,try,typeof
 	@preserve: undefined,upperToLower,value,valueOf,var,void,while,writable,pop,parse,toDateString,instanceof,test
 	@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,$match
 	@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
@@ -556,6 +556,22 @@
 	toLocaleUpperCase: unconstructable(function toLocaleUpperCase() { return toUpper(this) }),
 	toLowerCase: unconstructable(function toLowerCase() { return toLower(this) }),
 	toLocaleLowerCase: unconstructable(function toLocaleLowerCase() { return toLower(this) }),
+	trimLeft: unconstructable(function trimLeft() {
+	var s = str(this), i = 0, j = s.length, c;
+	for (; i < j; ++i) {
+	c = s.charCodeAt(i);
+	if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
+	}
+	return $sub(s, i, j);
+	}),
+	trimRight: unconstructable(function trimRight() {
+	var s = str(this), j = s.length, c;
+	for (; j > 0; --j) {
+	c = s.charCodeAt(j - 1);
+	if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
+	}
+	return $sub(s, 0, j);
+	}),
 	trim: unconstructable(function trim() {
 	var s = str(this), i = 0, j = s.length, c;
 	for (; i < j; ++i) {

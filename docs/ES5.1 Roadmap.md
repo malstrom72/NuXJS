@@ -59,6 +59,7 @@ All ES5.1 work should be driven by regression tests. Whenever a roadmap item lan
 - Implement string utilities like `trim`, `trimLeft`, `trimRight`, and JSON-related `toJSON` helpers.
 	- Extend the string section in `src/stdlib.js` with whitespace tables identical to the spec and expose `String.prototype.trim*` methods.
 	- `String.prototype.trim` implemented (`tests/regression/stringTrim.io`).
+	- `String.prototype.trimLeft` and `trimRight` implemented (`tests/regression/stringTrimLeftRight.io`).
 	- Add `Date.prototype.toJSON` and `Number.prototype.toJSON` wrappers that call the internal `toISOString`/conversion paths.
 
 ### Object immutability controls
