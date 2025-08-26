@@ -4,6 +4,25 @@
 
 NuXJS was built with `-pg` and profiled with gprof across several benchmarks.
 
+## Benchmarking workflow
+
+Before committing any performance change, run the entire benchmark suite and compare results against a baseline.
+
+```bash
+# build the runtime
+timeout 180 ./build.sh
+# capture baseline numbers
+tools/benchmark.pika benchmarks output/NuXJS_beta_native > before.txt
+# after making changes, rebuild and rerun
+timeout 180 ./build.sh
+tools/benchmark.pika benchmarks output/NuXJS_beta_native > after.txt
+# compare results (lower is better)
+diff -u before.txt after.txt
+```
+
+If the new build fails to outperform the baseline, revert the change.
+
+
 ## Benchmark Profiles
 
 ### gc_bm_1.js
@@ -278,10 +297,11 @@ These numbers show NuXJS generally lags behind QuickJS and often Duktape on stri
 - **Property enumeration** – `StringListEnumerator::nextPropertyName` dominates several benchmarks (`bigArray.js`, `function_bm_1.js`, `minimum.js`, `math_bm_2.js`). Caching property lists or tightening the enumerator could trim this overhead.
 - **Stack operations** – `Processor::push`, `pop`, and `pop2push1` consume large fractions of loop-heavy workloads such as `noEval.js` and `math_bm_2.js`. Fusing operations or using a more efficient stack representation may help.
 - **Numeric conversions** – `Value::toDouble` repeatedly shows up in numeric tests (`noEval.js`, `navierStokes_bm.js`, `math_bm_2.js`), suggesting specialized numeric paths or cached conversions could reduce cost.
-- **String constant lookup** – `Runtime::newStringConstantWithHash` now uses `memcmp` to match cached entries, avoiding character-by-character scans on every lookup.
 
 
 ## Notes
 
 - An experiment replaced `GCList::deleteAll` with a cached-next pointer loop to cut pointer chasing.
 - Benchmarks showed no consistent speedup, so the collector now uses the original implementation again.
+- Replacing `Runtime::newStringConstantWithHash` comparisons with `memcmp` showed no benchmark improvement and was reverted.
+- Always run the benchmark suite before and after changes to confirm any claimed speedups.

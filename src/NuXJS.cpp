@@ -5052,10 +5052,21 @@ Var Runtime::newArrayVar(UInt32 initialLength) { return Var(*this, newJSArray(in
 
 const String* Runtime::newStringConstantWithHash(UInt32 hash, const char* s) {
 	const String* cached = stringConstantsCache[hash];
-	const size_t length = std::strlen(s);
-	if (cached != 0 && cached->size() == length
-	&& std::memcmp(cached->begin(), s, length) == 0) {
+	size_t length;
+	if (cached != 0) {
+	const char* p0 = s;
+	const Char* p1 = cached->begin();
+	const Char* e = cached->end();
+	while (*p0 != 0 && p1 != e && *p0 == *p1) {
+	++p0;
+	++p1;
+	}
+	if (*p0 == 0 && p1 == e) {
 	return cached;
+	}
+	length = p0 - s + strlen(p0);
+	} else {
+	length = strlen(s);
 	}
 	const String* string = new(heap) String(heap.managed(), s, s + length);
 	if (length < STRING_CONSTANTS_CACHE_MAX_LENGTH) {
