@@ -18,8 +18,8 @@ ES5‑specific regression tests live in `tests/es5`.
 - Replace the legacy `support.defineProperty(o, name, value, readOnly, dontEnum, dontDelete)` with a `PropertyDescriptor` structure that can carry `value`, `get`, `set`, and attribute flags.
 - The runtime helper in `src/NuXJS.cpp` should validate descriptor combinations and install either a data or accessor property in the object's hash table.
 - Expose enumeration helpers like `Object.keys` and `Object.getOwnPropertyNames`.
-- `src/stdlib.js` lacks these utilities today; adding them requires a runtime hook that can iterate over `Table::Bucket` entries regardless of enumerability.
-- Implement an iterator in `src/NuXJS.cpp` that surfaces property names and attribute flags so the JavaScript shims can filter appropriately.
+	- `Object.keys` implemented in `src/stdlib.js` (`tests/es5/objectKeys.io`).
+	- `Object.getOwnPropertyNames` pending; requires a runtime iterator that can expose non-enumerable properties.
 	- Add support for accessor syntax (`get`/`set` in object literals) and function prototype attributes.
 - Extend the parser to recognize `get name(){}` and `set name(v){}` tokens and emit descriptor objects for property creation.
 - Bootstrapping of built‑ins in `src/stdlib.js` can then define getters on prototypes, e.g. for `Function.prototype.name`.

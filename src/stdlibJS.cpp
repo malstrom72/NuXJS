@@ -512,7 +512,9 @@ const char* STDLIB_JS =
 ".enumerable,W=!cf.configurable;if(\"get\"in cf||\"set\"in cf){if(\"value\"in cf||\"writable\"in cf)throw TypeError();v"
 "ar eL=cf.get;var B=cf.set;if(eL!==undefined&&typeof eL!==\"function\")throw TypeError();if(B!==undefined&&typeof B!=="
 "\"function\")throw TypeError();a.defineProperty(J,bB,undefined,U,V,W,eL,B)}else{a.defineProperty(J,bB,cf.value,U,V,W)}"
-"}),getPrototypeOf:c(function getPrototypeOf(J){return i(J,\"prototype\")})});if(g.toString()!==\"NaN\")throw Error(\"I"
-"nternal self test failed. Check C++ compiler options concerning IEEE 754 compliance.\")})"
+"}),getPrototypeOf:c(function getPrototypeOf(J){return i(J,\"prototype\")}),keys:c(function keys(J){if(J===undefined||J"
+"===null)throw TypeError();var eM=Object(J);var eN=[];var bB;for(bB in eM){if(Object.prototype.hasOwnProperty.call(eM,b"
+"B))eN[eN.length]=bB}return eN})});if(g.toString()!==\"NaN\")throw Error(\"Internal self test failed. Check C++ compile"
+"r options concerning IEEE 754 compliance.\")})"
 ;
 }

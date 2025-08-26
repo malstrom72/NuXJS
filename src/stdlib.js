@@ -7,7 +7,7 @@
 	@preserve: getDate,getDay,getFullYear,getHours,getInternalProperty,getMilliseconds,getMinutes,getMonth
 	@preserve: getPrototypeOf,getSeconds,getTime,getTimezoneOffset,getUTCDate,getUTCDay,getUTCFullYear,getUTCHours
 	@preserve: getUTCMilliseconds,getUTCMinutes,getUTCMonth,getUTCSeconds,hasOwnProperty,if,ignoreCase,in,index,indexOf
-	@preserve: input,isArray,isFinite,isNaN,isPropertyEnumerable,join,lastIndex,lastIndexOf,length,localeCompare,log
+        @preserve: input,isArray,isFinite,isNaN,isPropertyEnumerable,join,lastIndex,lastIndexOf,length,localeCompare,log,keys
 	@preserve: match,max,maxNumber,message,min,minNumber,multiline,name,new,now,null,parseFloat,parseInt,pow
 	@preserve: propertyIsEnumerable,prototype,push,readOnly,regExpCanonicalize,return,reverse,round,setDate
 	@preserve: setFullYear,setHours,setMilliseconds,setMinutes,setMonth,setSeconds,setTime,setUTCDate
@@ -1843,6 +1843,16 @@ return -1;
 	}),
 	getPrototypeOf : unconstructable(function getPrototypeOf(o) {
 	return $getInternalProperty(o, "prototype");
+	}),
+	keys : unconstructable(function keys(o) {
+	if (o === undefined || o === null) throw TypeError();
+	var obj = Object(o);
+	var res = [];
+	var k;
+	for (k in obj) {
+		if (Object.prototype.hasOwnProperty.call(obj, k)) res[res.length] = k;
+	}
+	return res;
 	})
 	});
 	if ($NaN.toString() !== "NaN") throw Error("Internal self test failed. Check C++ compiler options concerning IEEE 754 compliance.");
