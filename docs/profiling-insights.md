@@ -20,10 +20,14 @@ tools/benchmark.pika benchmarks output/NuXJS_beta_native > after.txt
 diff -u before.txt after.txt
 ```
 
-If the new build fails to outperform the baseline, revert the change.
+Each entry shows the median of several runs; **every median must drop** after an optimization. If the new build fails to outperform the baseline, revert the change.
 
 
 ## Benchmark Profiles
+
+### GC sweep optimization results
+
+Running the full benchmark suite with three iterations per test showed the garbage‑collector sweep improvement reduces `gc_bm_1.js` median time from **1.58002 s** to **1.48854 s** while leaving other benchmarks within noise.
 
 ### gc_bm_1.js
 | % time | Function |
