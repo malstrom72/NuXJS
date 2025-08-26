@@ -4757,33 +4757,77 @@ struct Support {
 		return UNDEFINED_VALUE;
 	}
 
+	static Value functionApply(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+		Heap& heap = rt.getHeap();
+		Function* callFunction = (thisObject != 0 ? thisObject->asFunction() : 0);
+		if (callFunction == 0) {
+			ScriptException::throwError(heap, TYPE_ERROR, "apply / call used on non-function");
+			return Value();
+		}
+		Object* newThis = (argc > 0 ? argv[0].toObjectOrNull(heap, true) : 0);
+		Vector<Value> args(0, &heap);
+		if (argc > 1 && !argv[1].isNull() && !argv[1].isUndefined()) {
+			Object* arrayObject = argv[1].toObjectOrNull(heap, false);
+			if (arrayObject != 0) {
+				const String* cls = arrayObject->getClassName();
+				if (!cls->isEqualTo(A_RRAY_STRING) && !cls->isEqualTo(A_RGUMENTS_STRING)) {
+					ScriptException::throwError(heap, TYPE_ERROR, "Argument list has wrong type");
+					return Value();
+				}
+				Value v;
+				if (arrayObject->getProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) {
+					UInt32 length = static_cast<UInt32>(std::max(v.toInt(), 0));
+					args = Vector<Value>(length, &heap);
+					for (UInt32 i = 0; i < length; ++i) {
+						args[i] = UNDEFINED_VALUE;
+						arrayObject->getProperty(rt, i, &args[i]);
+					}
+				}
+			}
+		}
+		return callFunction->invoke(rt, processor, args.size(), args.begin(), newThis);
+	}
+
+	static Value functionCall(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+		Heap& heap = rt.getHeap();
+		Function* callFunction = (thisObject != 0 ? thisObject->asFunction() : 0);
+		if (callFunction == 0) {
+		ScriptException::throwError(heap, TYPE_ERROR, "apply / call used on non-function");
+		return Value();
+		}
+		Object* newThis = (argc > 0 ? argv[0].toObjectOrNull(heap, true) : 0);
+		UInt32 argCount = (argc > 1 ? argc - 1 : 0);
+		const Value* args = (argc > 1 ? argv + 1 : 0);
+		return callFunction->invoke(rt, processor, argCount, args, newThis);
+	}
+
 	static Value callWithArgs(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object*) {
 		Heap& heap = rt.getHeap();
 		Function* callFunction = (argc > 0 ? argv[0].asFunction() : 0);
 		if (callFunction == 0) {
-			ScriptException::throwError(heap, TYPE_ERROR, "apply / call used on non-function");
-			return Value();
+		ScriptException::throwError(heap, TYPE_ERROR, "apply / call used on non-function");
+		return Value();
 		} else {
-			Object* newThis = (argc > 1 ? argv[1].toObjectOrNull(heap, true) : 0);
-			Vector<Value> args(0, &heap);
-			Object* arrayObject = (argc > 2 ? argv[2].toObjectOrNull(heap, false) : 0);
-			if (arrayObject != 0) {
-				Value v;
-				if (arrayObject->getProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) { // FIX : in the future I think we should have a virtual getLength
-					Int32 offset = (argc > 3 ? argv[3].toInt() : 0);
-					UInt32 length = static_cast<UInt32>(std::max(v.toInt() - offset, 0));
-					args = Vector<Value>(length, &heap);
-					for (UInt32 i = 0; i < length; ++i) {
-						args[i] = UNDEFINED_VALUE;
-						arrayObject->getProperty(rt, i + offset, &args[i]);
-					}
-				}
-			}
-			// FIX : we copy all arguments once to argv, and then chain will copy them again to a scope object, couldn't we short-cut that somehow?
-			// FIX : since only arrays and arguments are really valid here, perhaps even have a new virtual in object for implementing efficient apply with these?
-			return callFunction->invoke(rt, processor, args.size(), args.begin(), newThis);
+		Object* newThis = (argc > 1 ? argv[1].toObjectOrNull(heap, true) : 0);
+		Vector<Value> args(0, &heap);
+		Object* arrayObject = (argc > 2 ? argv[2].toObjectOrNull(heap, false) : 0);
+		if (arrayObject != 0) {
+		Value v;
+		if (arrayObject->getProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) { // FIX : in the future I think we should have a virtual getLength
+		Int32 offset = (argc > 3 ? argv[3].toInt() : 0);
+		UInt32 length = static_cast<UInt32>(std::max(v.toInt() - offset, 0));
+		args = Vector<Value>(length, &heap);
+		for (UInt32 i = 0; i < length; ++i) {
+		args[i] = UNDEFINED_VALUE;
+		arrayObject->getProperty(rt, i + offset, &args[i]);
 		}
-	}
+		}
+		}
+		// FIX : we copy all arguments once to argv, and then chain will copy them again to a scope object, couldn't we short-cut that somehow?
+		// FIX : since only arrays and arguments are really valid here, perhaps even have a new virtual in object for implementing efficient apply with these?
+		return callFunction->invoke(rt, processor, args.size(), args.begin(), newThis);
+		}
+		}
 	
 	static Value hasOwnProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		Object* object = (argc >= 2 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
@@ -4908,9 +4952,10 @@ static struct {
 	FunctorAdapter<NativeFunction> func;
 } SUPPORT_FUNCTIONS[] = {
 	{ "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
-	{ "defineProperty", Support::defineProperty }, { "compileFunction", Support::compileFunction },
-	{ "distinctConstructor", Support::distinctConstructor }, { "callWithArgs", Support::callWithArgs },
-	{ "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
+       { "defineProperty", Support::defineProperty }, { "compileFunction", Support::compileFunction },
+       { "distinctConstructor", Support::distinctConstructor }, { "functionApply", Support::functionApply },
+       { "functionCall", Support::functionCall }, { "callWithArgs", Support::callWithArgs },
+       { "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
 	{ "isPropertyEnumerable", Support::isPropertyEnumerable }, { "atan2", Support::atan2 },
 	{ "pow", Support::pow }, { "parseFloat", Support::parseFloat }, { "charCodeAt", Support::charCodeAt },
 	{ "substring", Support::substring }, { "submatch", Support::submatch },
