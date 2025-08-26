@@ -10,35 +10,30 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 
 function runBuild() {
-        const script = process.platform === "win32" ? "build.cmd" : "build.sh";
-        const runner = process.platform === "win32" ? "cmd" : "bash";
-        const args = process.platform === "win32" ? ["/c", script] : [script];
-        console.log("Running build script...");
-        child_process.execFileSync(runner, args, { cwd: ROOT, stdio: "inherit" });
+	const script = process.platform === "win32" ? "build.cmd" : "build.sh";
+	const runner = process.platform === "win32" ? "cmd" : "bash";
+	const args = process.platform === "win32" ? ["/c", script] : [script];
+	console.log("Running build script...");
+	child_process.execFileSync(runner, args, { cwd: ROOT, stdio: "inherit" });
 }
 
-runBuild();
+
+function ensureEngine() {
+	const engineRel = process.platform === "win32" ? "./output/NuXJS.exe" : "./output/NuXJS";
+	console.log("Looking for NuXJS binary at", engineRel);
+	if (!fs.existsSync(engineRel)) {
+		console.log("NuXJS binary missing; building...");
+		runBuild();
+}
+	if (!fs.existsSync(engineRel)) {
+	throw new Error("NuXJS binary not found. Build the project before running tests.");
+}
+	return path.resolve(engineRel);
+}
 
 const TEST_PATH = "./test262-master/";
 const TEST_TAR = "./externals/test262-master.tar.gz";
-const ENGINE = (() => {
-	const candidates = [
-		"./output/NuXJS_beta_native",
-		"./output/NuXJS_release_native",
-		"./output/NuXJS",
-		"./output/NuXJS.exe",
-	];
-	console.log("Engine path candidates:", candidates.join(", "));
-	for (const c of candidates) {
-		if (fs.existsSync(c)) {
-			console.log("Found engine at", c);
-			return path.resolve(c);
-		} else {
-			console.log("Engine not found:", c);
-		}
-	}
-throw new Error("NuXJS binary not found. Build the project before running tests.");
-})();
+const ENGINE = ensureEngine();
 console.log("Selected engine:", ENGINE);
 
 function ensureTest262() {
