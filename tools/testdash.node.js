@@ -7,6 +7,18 @@ const child_process = require("child_process");
 const readline = require("readline");
 const path = require("path");
 
+const ROOT = path.resolve(__dirname, "..");
+
+function runBuild() {
+        const script = process.platform === "win32" ? "build.cmd" : "build.sh";
+        const runner = process.platform === "win32" ? "cmd" : "bash";
+        const args = process.platform === "win32" ? ["/c", script] : [script];
+        console.log("Running build script...");
+        child_process.execFileSync(runner, args, { cwd: ROOT, stdio: "inherit" });
+}
+
+runBuild();
+
 const TEST_PATH = "./test262-master/";
 const TEST_TAR = "./externals/test262-master.tar.gz";
 const ENGINE = (() => {
@@ -30,17 +42,17 @@ throw new Error("NuXJS binary not found. Build the project before running tests.
 console.log("Selected engine:", ENGINE);
 
 function ensureTest262() {
-	if (!fs.existsSync(TEST_PATH) || !fs.existsSync(path.join(TEST_PATH, "package.json"))) {
-		if (!fs.existsSync(TEST_TAR)) {
-			const fetchScript = process.platform === "win32" ? "tools\\fetchTest262.cmd" : "tools/fetchTest262.sh";
-			const runner = process.platform === "win32" ? "cmd" : "bash";
-			const args = process.platform === "win32" ? ["/c", fetchScript] : [fetchScript];
-			console.log("Downloading Test262 suite...");
-			child_process.execFileSync(runner, args, { stdio: "inherit" });
-		}
-		console.log("Extracting Test262 suite...");
-		child_process.execFileSync("tar", ["-xzf", TEST_TAR]);
-	}
+        if (!fs.existsSync(TEST_PATH) || !fs.existsSync(path.join(TEST_PATH, "package.json"))) {
+                if (!fs.existsSync(TEST_TAR)) {
+                        const fetchScript = process.platform === "win32" ? "tools\\fetchTest262.cmd" : "tools/fetchTest262.sh";
+                        const runner = process.platform === "win32" ? "cmd" : "bash";
+                        const args = process.platform === "win32" ? ["/c", fetchScript] : [fetchScript];
+                        console.log("Downloading Test262 suite...");
+                        child_process.execFileSync(runner, args, { cwd: ROOT, stdio: "inherit" });
+                }
+                console.log("Extracting Test262 suite...");
+                child_process.execFileSync("tar", ["-xzf", TEST_TAR], { cwd: ROOT });
+        }
 }
 
 ensureTest262();
