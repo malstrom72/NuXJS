@@ -546,7 +546,9 @@ class Object : public GCItem {
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;											///< Default returns an empty enumerator.
 
 		Flags getProperty(Runtime& rt, const Value& key, Value* v) const; 	///< Searches prototype chain.
+		Flags getProperty(Runtime& rt, Processor& processor, const Value& key, Value* v) const;
 		bool setProperty(Runtime& rt, const Value& key, const Value& v); 	///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
+		bool setProperty(Runtime& rt, Processor& processor, const Value& key, const Value& v);
 		bool isOwnPropertyEnumerable(Runtime& rt, const Value& key) const;
 		bool hasOwnProperty(Runtime& rt, const Value& key) const; 			///< Checks via getOwnProperty().
 		bool hasProperty(Runtime& rt, const Value& key) const;				///< Checks via getProperty().
