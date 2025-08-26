@@ -9,3 +9,5 @@ However, accessor properties remain non-functional: the example in `examples/get
 Current limitations:
 - Descriptor validation is minimal and object literal `get`/`set` syntax is still unparsed.
 - Redefinition semantics and strict mode error handling remain incomplete.
+- Runtime `support.defineProperty` receives `undefined` for the `get` and `set` slots, indicating argument propagation from the
+  JavaScript wrapper is still broken.
