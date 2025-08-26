@@ -1279,6 +1279,7 @@ const String* Object::getClassName() const { return &O_BJECT_STRING; }
 Object* Object::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
 Value Object::getInternalValue(Heap&) const { return UNDEFINED_VALUE; }
 Flags Object::getOwnProperty(Runtime&, const Value&, Value*) const { return NONEXISTENT; }
+bool Object::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) { return setOwnProperty(rt, Value(key), v, flags); }
 bool Object::setOwnProperty(Runtime&, const Value&, const Value&, Flags) { return false; }
 bool Object::deleteOwnProperty(Runtime&, const Value&) { return false; }
 Enumerator* Object::getOwnPropertyEnumerator(Runtime&) const { return &EMPTY_ENUMERATOR; }
@@ -1523,7 +1524,11 @@ JSObject::JSObject(GCList& gcList, Object* prototype)
 Object* JSObject::getPrototype(Runtime&) const { return prototype; }
 
 bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
-	Table::Bucket* bucket = insert(key.toString(rt.getHeap()));
+	return setOwnProperty(rt, key.toString(rt.getHeap()), v, flags);
+}
+
+bool JSObject::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
+	Table::Bucket* bucket = insert(key);
 	if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
 	Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
 	Accessor* nv = static_cast<Accessor*>(v.getObject());
@@ -1537,6 +1542,7 @@ bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Fla
 	}
 	return update(bucket, v, flags);
 }
+
 
 bool JSObject::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
 	Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
@@ -1752,6 +1758,10 @@ bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 	return super::setOwnProperty(rt, index, v, STANDARD_FLAGS);
 }
 
+bool JSArray::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
+	return setOwnProperty(rt, Value(key), v, flags);
+}
+
 bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	UInt32 index;
 	if (key.toArrayIndex(index) && index != 0xFFFFFFFFU) {
@@ -1806,6 +1816,10 @@ template<class SUPER> Flags LazyJSObject<SUPER>::getOwnProperty(Runtime& rt, con
 }
 
 template<class SUPER> bool LazyJSObject<SUPER>::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
+	return getCompleteObject(rt)->setOwnProperty(rt, key, v, flags);
+}
+
+template<class SUPER> bool LazyJSObject<SUPER>::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
 	return getCompleteObject(rt)->setOwnProperty(rt, key, v, flags);
 }
 
@@ -1883,6 +1897,12 @@ void Error::updateReflection(Runtime& rt) {
 	message = (getProperty(rt, &MESSAGE_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
 }
 
+bool Error::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
+	const bool result = super::setOwnProperty(rt, key, v, flags);
+	updateReflection(rt);
+	return result;
+}
+
 bool Error::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	const bool result = super::setOwnProperty(rt, key, v, flags);
 	updateReflection(rt);
@@ -1937,6 +1957,10 @@ Value* Arguments::findProperty(const Value& key) const {
 Flags Arguments::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 	const Value* p = findProperty(key);
 	return (p == 0 ? super::getOwnProperty(rt, key, v) : ((void)(*v = *p), (DONT_ENUM_FLAG | EXISTS_FLAG)));
+}
+
+bool Arguments::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
+	return setOwnProperty(rt, Value(key), v, flags);
 }
 
 bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
