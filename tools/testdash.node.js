@@ -77,8 +77,8 @@ function runTests(callback, limit) {
 		// Use Chakra host adapter for NuXJS to avoid extra jsshell flags like "-f"
 		// which NuXJS does not understand. Chakra adapter forwards only the test
 		// file path, matching NuXJS's CLI expectations.
-var hostType = "ch";
-var args = ["--reporter=json", "--reporter-keys=file,result,stdout,stderr", "--hostType=" + hostType, "--hostPath=" + ENGINE];
+	var hostType = "ch";
+	var args = ["--reporter=json", "--reporter-keys=file,result,stdout,stderr", "--saveOnlyFailed", "--hostType=" + hostType, "--hostPath=" + ENGINE];
 		console.log("Harness command:", "node", harness, args.join(" "));
 
 	if (limit) {
@@ -116,12 +116,14 @@ var args = ["--reporter=json", "--reporter-keys=file,result,stdout,stderr", "--h
                        for (var dir of NON_ES3_DIRS) {
                                if (testName.startsWith("test/" + dir + "/")) { defaultCategory = "not_es3"; break; }
                        }
-			var stdout = (m.result.stdout || "").trim();
-			var stderr = (m.result.stderr || "").trim();
-			var error = m.result.error || {};
-			var exitCode = m.result.exitCode;
-			tests[testName] = extend({ name:testName, passed:passed, stdout:stdout, stderr:stderr, error:error, exitCode:exitCode, raw:m.result, category:defaultCategory }, config[configKey]);
-			currentTest = tests[testName];
+				var stdout = (m.result.stdout || "").trim();
+				var stderr = (m.result.stderr || "").trim();
+				var error = m.result.error || {};
+				var exitCode = m.result.exitCode;
+				var compiled = path.join(TEST_PATH, testName + "." + hostType + ".default." + (passed ? "pass" : "fail"));
+				if (!fs.existsSync(compiled)) compiled = undefined;
+				tests[testName] = extend({ name:testName, passed:passed, stdout:stdout, stderr:stderr, error:error, exitCode:exitCode, raw:m.result, category:defaultCategory, compiled:compiled }, config[configKey]);
+				currentTest = tests[testName];
                } catch (e) {
                        console.error("Parse error: " + e + " in line: " + line);
                }
@@ -222,9 +224,10 @@ if (cliMode) {
 					if (typeof t.exitCode === "number") {
 						console.log("  exit code: " + t.exitCode);
 }
-					if (t.stdout) console.log("  stdout: " + t.stdout);
-					if (t.stderr) console.log("  stderr: " + t.stderr);
-					if (t.raw) console.log("  raw result: " + JSON.stringify(t.raw));
+                                        if (t.stdout) console.log("  stdout: " + t.stdout);
+                                        if (t.stderr) console.log("  stderr: " + t.stderr);
+                                        if (t.compiled) console.log("  compiled: " + t.compiled);
+                                        if (t.raw) console.log("  raw result: " + JSON.stringify(t.raw));
 			       }
 		       }
 	       }
