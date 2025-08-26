@@ -2,23 +2,24 @@
 
 ## Profiling Overview
 
-NuXJS was built with `-pg` and profiled with gprof across several benchmarks.
+NuXJS was built with `-pg` and profiled with gprof across several benchmarks. Optimizing `GCList::deleteAll` to iterate with a cached
+next pointer cut sweep time on `gc_bm_1.js` from roughly 18 % to below 1 % of runtime.
 
 ## Benchmark Profiles
 
 ### gc_bm_1.js
 | % time | Function |
-|------:|----------------|
-|17.59|NuXJS::GCList::deleteAll()|
-|11.11|NuXJS::gcMark(NuXJS::Heap&, NuXJS::GCItem const*)|
-|8.33|NuXJS::GCList::relinquish(NuXJS::GCItem*)|
-|8.33|NuXJS::Table::gcMarkReferences(NuXJS::Heap&) const|
-|7.41|NuXJS::StringListEnumerator::nextPropertyName()|
-|4.63|NuXJS::Heap::allocate(unsigned long)|
-|3.70|NuXJS::Processor::innerRun()|
-|3.70|NuXJS::Heap::drain()|
-|2.78|NuXJS::JSObject::gcMarkReferences(NuXJS::Heap&) const|
-|2.78|NuXJS::Processor::popFrame()|
+|------:|--------------------------------|
+|10.58|NuXJS::GCList::relinquish(NuXJS::GCItem*)|
+|10.58|NuXJS::Table::gcMarkReferences(NuXJS::Heap&) const|
+|10.05|NuXJS::StringListEnumerator::nextPropertyName()|
+|5.82|NuXJS::gcMark(NuXJS::Heap&, NuXJS::GCItem const*)|
+|5.82|NuXJS::Heap::gc()|
+|5.29|NuXJS::Heap::allocate(unsigned long)|
+|4.23|NuXJS::Processor::innerRun()|
+|4.23|NuXJS::Vector<NuXJS::Table::Bucket, 8u>::~Vector()|
+|3.17|NuXJS::Table::Bucket::valueExists() const|
+|3.17|NuXJS::Table::find(NuXJS::String const*, unsigned int)|
 
 ### regexp.js
 | % time | Function |
