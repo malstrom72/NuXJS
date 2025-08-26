@@ -1,10 +1,11 @@
-# Getter/Setter Implementation Attempt
+# Getter/Setter Work
 
-This experiment added a new `Accessor` type, an `ACCESSOR_FLAG`, and runtime hooks so that `Object::getProperty` can invoke a getter when an accessor bucket is encountered.
+Initial infrastructure for ES5.1 accessor properties is in place. A new `Accessor` object stores getter and setter pairs in property buckets flagged with `ACCESSOR_FLAG`.
 
-The build succeeds, but accessor properties are still not usable because:
-- `Object.defineProperty` only creates data properties; descriptor objects with `get` or `set` are ignored.
-- No code path populates buckets with `ACCESSOR_FLAG` or links setter functions.
-- Setter invocation and attribute bits are unimplemented.
+`Object.defineProperty` now accepts descriptor objects containing `get` or `set` and forwards the functions to the runtime without invoking the blocking `Runtime::call` path.
 
-Further work would need parser and library updates to create accessor descriptors and an implementation of `setProperty` that triggers setter functions.
+However, accessor properties remain non-functional: the example in `examples/getter_setter_example.cpp` still prints `obj.value = undefined` and leaves `obj._v` unchanged. Further work is needed to wire descriptor plumbing to property lookup and write paths.
+
+Current limitations:
+- Descriptor validation is minimal and object literal `get`/`set` syntax is still unparsed.
+- Redefinition semantics and strict mode error handling remain incomplete.

@@ -484,8 +484,11 @@ const char* STDLIB_JS =
 "(et,ef){var cL,G,J;if(typeof(J=et[ef])===\"object\"&&J){for(cL in J){if(a.hasOwnProperty(J,cL)){if((G=eH(J,cL))!==void"
 " 0)J[cL]=G;else delete J[cL]}}}return j(ey,et,[ef,J])}ae=eH({\"\":ae},\"\")}return ae}throw l(\"Error parsing JSON\")}"
 ")});Q(Array,{dontEnum:true},{isArray:c(function isArray(J){return i(J,\"class\")===\"Array\"})});Q(Object,{dontEnum:tr"
-"ue},{defineProperty:c(function defineProperty(J,X,cb){a.defineProperty(J,P(X),cb.value,!cb.writable,!cb.enumerable,!cb"
-".configurable)}),getPrototypeOf:c(function getPrototypeOf(J){return i(J,\"prototype\")})});if(g.toString()!==\"NaN\")t"
-"hrow Error(\"Internal self test failed. Check C++ compiler options concerning IEEE 754 compliance.\")})"
+"ue},{defineProperty:c(function defineProperty(J,X,cb){var cL=P(X);var U=!cb.writable,V=!cb.enumerable,W=!cb.configurab"
+"le;if(\"get\"in cb||\"set\"in cb){if(\"value\"in cb||\"writable\"in cb)throw TypeError();var eI=cb.eJ;var B=cb.eK;if(e"
+"I!==undefined&&typeof eI!==\"function\")throw TypeError();if(B!==undefined&&typeof B!==\"function\")throw TypeError();"
+"a.defineProperty(J,cL,undefined,U,V,W,eI,B)}else{a.defineProperty(J,cL,cb.value,U,V,W)}}),getPrototypeOf:c(function ge"
+"tPrototypeOf(J){return i(J,\"prototype\")})});if(g.toString()!==\"NaN\")throw Error(\"Internal self test failed. Check"
+" C++ compiler options concerning IEEE 754 compliance.\")})"
 ;
 }

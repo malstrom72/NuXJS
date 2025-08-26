@@ -1836,11 +1836,27 @@ defineProperties(Array, { dontEnum: true }, {
 	isArray: unconstructable(function isArray(o) { return $getInternalProperty(o, "class") === "Array"; })
 });
 
-defineProperties(Object, { dontEnum: true }, {
-	defineProperty: unconstructable(function defineProperty(o, p, d) {
-		support.defineProperty(o, str(p), d.value, !d.writable, !d.enumerable, !d.configurable);
+defineProperties(Object, {dontEnum : true}, {
+	defineProperty : unconstructable(function defineProperty(o, p, d) {
+	    var k = str(p);
+	    var ro = !d.writable, de = !d.enumerable, dd = !d.configurable;
+	    if ("get" in d || "set" in d) {
+		    if ("value" in d || "writable" in d)
+			    throw TypeError();
+		    var g = d.get;
+		    var s = d.set;
+		    if (g !== undefined && typeof g !== "function")
+			    throw TypeError();
+		    if (s !== undefined && typeof s !== "function")
+			    throw TypeError();
+		    support.defineProperty(o, k, undefined, ro, de, dd, g, s);
+	    } else {
+		    support.defineProperty(o, k, d.value, ro, de, dd);
+	    }
 	}),
-	getPrototypeOf: unconstructable(function getPrototypeOf(o) { return $getInternalProperty(o, "prototype"); })
+	getPrototypeOf : unconstructable(function getPrototypeOf(o) {
+	    return $getInternalProperty(o, "prototype");
+	})
 });
 
 if ($NaN.toString() !== "NaN") throw Error("Internal self test failed. Check C++ compiler options concerning IEEE 754 compliance.");

@@ -1352,18 +1352,46 @@ class Var : public GCItem, public AccessorBase {
 **/
 class Property : public AccessorBase {
 	friend class AccessorBase;
-	
-	public:
-		template<typename T> const Property& operator=(const T& v) const { object->setProperty(rt, key, Var(rt, v)); return *this; }
-		template<typename T> const Property& operator+=(const T& r) const { object->setProperty(rt, key, get().add(rt.getHeap(), makeValue(r))); return *this; }
 
-	protected:
-		typedef AccessorBase super;
-		Property(Runtime& rt, Object* object, const Var& key) : super(rt), object(object), key(key) { }
-		virtual Value get() const { Value v(UNDEFINED_VALUE); object->getProperty(rt, key, &v); return v; }
-		virtual Var call(int argc, const Value* argv) const { return rt.call(*this, argc, argv, object); }
-		Object* const object;
-		const Var key;
+  public:
+	template <typename T> const Property &operator=(const T &v) const {
+		Value current;
+		Flags flags = object->getProperty(rt, key, &current);
+		if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+			Accessor *acc = static_cast<Accessor *>(current.asObject());
+			Function *setter = (acc != 0 ? acc->setter : 0);
+			if (setter != 0) {
+				Value arg = Var(rt, v);
+				rt.call(setter, 1, &arg, object);
+				return *this;
+			}
+		}
+		object->setProperty(rt, key, Var(rt, v));
+		return *this;
+	}
+	template <typename T> const Property &operator+=(const T &r) const {
+		object->setProperty(rt, key, get().add(rt.getHeap(), makeValue(r)));
+		return *this;
+	}
+
+  protected:
+	typedef AccessorBase super;
+	Property(Runtime &rt, Object *object, const Var &key) : super(rt), object(object), key(key) {}
+	virtual Value get() const {
+		Value v(UNDEFINED_VALUE);
+		Flags flags = object->getProperty(rt, key, &v);
+		if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+			Accessor *acc = static_cast<Accessor *>(v.asObject());
+			Function *getter = (acc != 0 ? acc->getter : 0);
+			return (getter != 0 ? rt.call(getter, 0, 0, object) : UNDEFINED_VALUE);
+		}
+		return v;
+	}
+	virtual Var call(int argc, const Value *argv) const {
+		return rt.call(*this, argc, argv, object);
+	}
+	Object *const object;
+	const Var key;
 };
 
 /**

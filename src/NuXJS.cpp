@@ -4768,16 +4768,22 @@ struct Support {
 		return UNDEFINED_VALUE;
 	}
 
-	static Value defineProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	static Value defineProperty(Runtime &rt, Processor &, UInt32 argc, const Value *argv, Object *) {
 		bool success = false;
 		if (argc >= 2) {
-			Object* o = argv[0].asObject();
+			Object *o = argv[0].asObject();
 			if (o != 0) {
-				success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE)
-						, (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0)
-						| (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0)
-						| (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0)
-						| EXISTS_FLAG);
+				Flags flags = (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0) |
+				              (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0) |
+				              (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0) | EXISTS_FLAG;
+				if (argc >= 7) {
+					Heap &heap = rt.getHeap();
+					Accessor *acc = new (heap)
+					    Accessor(heap.managed(), argv[6].asFunction(), (argc >= 8 ? argv[7].asFunction() : 0));
+					success = o->setOwnProperty(rt, argv[1], acc, flags | ACCESSOR_FLAG);
+				} else {
+					success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
+				}
 			}
 		}
 		return success;
