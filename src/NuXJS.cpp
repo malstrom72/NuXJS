@@ -5051,17 +5051,17 @@ Var Runtime::newObjectVar() { return Var(*this, newJSObject()); }
 Var Runtime::newArrayVar(UInt32 initialLength) { return Var(*this, newJSArray(initialLength)); }
 
 const String* Runtime::newStringConstantWithHash(UInt32 hash, const char* s) {
-       const String* cached = stringConstantsCache[hash];
-       const size_t length = std::strlen(s);
-       if (cached != 0 && cached->size() == length
-                       && std::equal(cached->begin(), cached->end(), s)) {
-               return cached;
-       }
-       const String* string = new(heap) String(heap.managed(), s, s + length);
-       if (length < STRING_CONSTANTS_CACHE_MAX_LENGTH) {
-               stringConstantsCache[hash] = string;
-       }
-       return string;
+	const String* cached = stringConstantsCache[hash];
+	const size_t length = std::strlen(s);
+	if (cached != 0 && cached->size() == length
+	&& std::memcmp(cached->begin(), s, length) == 0) {
+	return cached;
+	}
+	const String* string = new(heap) String(heap.managed(), s, s + length);
+	if (length < STRING_CONSTANTS_CACHE_MAX_LENGTH) {
+	stringConstantsCache[hash] = string;
+	}
+	return string;
 }
 
 Var Runtime::call(Function* function, UInt32 argc, const Value* argv, Object* thisObject) {

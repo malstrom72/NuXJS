@@ -278,6 +278,7 @@ These numbers show NuXJS generally lags behind QuickJS and often Duktape on stri
 - **Property enumeration** – `StringListEnumerator::nextPropertyName` dominates several benchmarks (`bigArray.js`, `function_bm_1.js`, `minimum.js`, `math_bm_2.js`). Caching property lists or tightening the enumerator could trim this overhead.
 - **Stack operations** – `Processor::push`, `pop`, and `pop2push1` consume large fractions of loop-heavy workloads such as `noEval.js` and `math_bm_2.js`. Fusing operations or using a more efficient stack representation may help.
 - **Numeric conversions** – `Value::toDouble` repeatedly shows up in numeric tests (`noEval.js`, `navierStokes_bm.js`, `math_bm_2.js`), suggesting specialized numeric paths or cached conversions could reduce cost.
+- **String constant lookup** – `Runtime::newStringConstantWithHash` now uses `memcmp` to match cached entries, avoiding character-by-character scans on every lookup.
 
 
 ## Notes
