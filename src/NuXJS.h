@@ -455,8 +455,8 @@ const UInt32 TABLE_BUILT_IN_N = 3; ///< 1 << 3 == 8
 
 class Accessor;
 /**
-        Table implements a hash table for storing object properties. It provides fast lookup and is used internally by JS
-        objects.
+	Table implements a hash table for storing object properties. It provides fast lookup and is used internally by JS
+	objects.
 **/
 class Table {
 	public:
@@ -474,11 +474,11 @@ class Table {
 					assert(valueExists() && (flags & INDEX_TYPE_FLAG) == 0);
 					return Value(static_cast<Value::Type>(type), var);
 				}
-                               Int32 getIndexValue() const {
-                                       assert(valueExists() && (flags & INDEX_TYPE_FLAG) != 0);
-                                       return index;
-                               }
-                               Flags getFlags() const { return flags; }
+				Int32 getIndexValue() const {
+					assert(valueExists() && (flags & INDEX_TYPE_FLAG) != 0);
+					return index;
+				}
+				Flags getFlags() const { return flags; }
 				const String* getKey() const { assert(keyExists()); return key; }
 				bool doEnumerate() const { return ((flags & DONT_ENUM_FLAG) == 0); }
 				bool hasStandardFlags() const { return flags == EXISTS_FLAG; }
@@ -489,12 +489,12 @@ class Table {
 				Byte flags;
 				Byte type;
 				UInt16 hash16;
-                               union {
-                                       Value::Variant var;
-                                       Int32 index;
-                               };
-                               bool keyExists() const { return key != 0; }
-               };
+				union {
+					Value::Variant var;
+					Int32 index;
+				};
+				bool keyExists() const { return key != 0; }
+		};
 
 		Table(Heap* heap);
 		Bucket* getFirst() const;											///< Returns first bucket with an existing value or 0.
@@ -553,8 +553,8 @@ class Object : public GCItem {
 		Enumerator* getPropertyEnumerator(Runtime& rt) const;				///< Unlike getOwnPropertyEnumerator() this one also enumerates all prototype properties.
 
 	protected:
-                Object() { }
-                Object(GCList& gcList) : super(gcList) { }
+		Object() { }
+		Object(GCList& gcList) : super(gcList) { }
 };
 
 inline Function* Value::asFunction() const { return (type == OBJECT_TYPE ? var.object->asFunction() : 0); }
@@ -881,22 +881,22 @@ class Function : public Object {
 		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject = 0) = 0;
 
 	protected:
-               Function() { }
-               Function(GCList& gcList) : super(gcList) { }
+		Function() { }
+		Function(GCList& gcList) : super(gcList) { }
 };
 
 class Accessor : public Object {
-       public:
-               Accessor(GCList& gcList, Function* g, Function* s)
-                       : Object(gcList), getter(g), setter(s) { }
-               Function* getter;
-               Function* setter;
-       protected:
-               virtual void gcMarkReferences(Heap& heap) const {
-                       gcMark(heap, getter);
-                       gcMark(heap, setter);
-                       super::gcMarkReferences(heap);
-               }
+	public:
+		Accessor(GCList& gcList, Function* g, Function* s)
+			: Object(gcList), getter(g), setter(s) { }
+		Function* getter;
+		Function* setter;
+	protected:
+		virtual void gcMarkReferences(Heap& heap) const {
+			gcMark(heap, getter);
+			gcMark(heap, setter);
+			super::gcMarkReferences(heap);
+		}
 };
 
 typedef Value (*NativeFunction)(Runtime&, Processor&, UInt32, const Value*, Object*);
