@@ -116,10 +116,10 @@ function runTests(callback, limit) {
                        for (var dir of NON_ES3_DIRS) {
                                if (testName.startsWith("test/" + dir + "/")) { defaultCategory = "not_es3"; break; }
                        }
-				var stdout = (m.result.stdout || "").trim();
-				var stderr = (m.result.stderr || "").trim();
-				var error = m.result.error || {};
-				var exitCode = m.result.exitCode;
+var stdout = (m.stdout || m.result.stdout || "").trim();
+var stderr = (m.stderr || m.result.stderr || "").trim();
+var error = m.result.error || (m.result.message ? { message: m.result.message } : {});
+var exitCode = m.exitCode !== undefined ? m.exitCode : m.result.exitCode;
 				var compiled = path.join(TEST_PATH, testName + "." + hostType + ".default." + (passed ? "pass" : "fail"));
 				if (!fs.existsSync(compiled)) compiled = undefined;
 				tests[testName] = extend({ name:testName, passed:passed, stdout:stdout, stderr:stderr, error:error, exitCode:exitCode, raw:m.result, category:defaultCategory, compiled:compiled }, config[configKey]);
