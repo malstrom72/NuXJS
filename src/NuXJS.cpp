@@ -2040,13 +2040,24 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, 
 	if (code->getArgumentsCount() > argc) {
 		std::fill(e, locals.end(), UNDEFINED_VALUE);
 	}
+	if (code->strict) {
+		Heap& heap = gcList.getHeap();
+		arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
+		arguments->detach();
+	}
+
 }
 
 JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
 	if (dynamicVars == 0) {
 		Heap& heap = rt.getHeap();
 		dynamicVars = new(heap) JSObject(heap.managed(), 0);
-		arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
+		if (arguments == 0) {
+			arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
+			if (function->code->strict) {
+				arguments->detach();
+			}
+		}
 		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING, arguments, DONT_DELETE_FLAG);
 	}
 	return dynamicVars;
@@ -3278,8 +3289,7 @@ const String* Compiler::identifier(bool required, bool allowKeywords) {
                 error(SYNTAX_ERROR, "Illegal use of keyword");
         }
         const String* name = newHashedString(heap, parsed.begin(), parsed.end());
-        if (code->isStrict()
-                        && (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING))) {
+        if (code->isStrict() && name->isEqualTo(EVAL_STRING)) {
                 error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
         }
         return name;
@@ -4009,6 +4019,9 @@ void Compiler::rvalueGroup() {
 
 // FIX : ok, this is serious mess
 Compiler::ExpressionResult Compiler::declareIdentifier(const String* name, bool func) {
+	if (code->isStrict() && (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING))) {
+		error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
+	}
 	ExpressionResult lxr(ExpressionResult::NAMED, name);
 	if (compilingFor != FOR_FUNCTION) {
 		CodeSection* previousSection = changeSection(&setupSection);
@@ -4723,6 +4736,9 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 			white();
 		}
 		const String* name = identifier(true, false);
+		if (code->isStrict() && (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING))) {
+			error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
+		}
 		for (size_t i = 0; i < argumentNames.size(); ++i) {
 			if (argumentNames[i]->isEqualTo(*name)) {
 				hasDuplicateParameters = true;

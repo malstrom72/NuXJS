@@ -39,9 +39,9 @@ All ES5.1 work should be driven by regression tests. Whenever a roadmap item lan
     - When strict, compile eval code with a fresh variable environment. *(Implemented; `tests/regression/strictEvalScope.io`)*
 - Tighten `delete` semantics.
     - If `delete` targets a simple identifier in strict mode, emit a syntax error instead of `DELETE_NAMED_OP`. *(Implemented; `tests/regression/strictDeleteIdentifier.io`)*
-- Implement strict arguments-object behavior.
-    - Introduce a non-mapped `ArgumentsObject` variant and construct it in `FunctionScope` when `code->strict`.
-    - Ensure `arguments` does not alias parameters and forbid binding of `eval` or `arguments` identifiers.
+- Implement strict arguments-object behavior. *(Implemented; `tests/regression/strictArgumentsObject.io`)*
+    - Introduce a non-mapped `ArgumentsObject` variant and construct it in `FunctionScope` when `code->strict`. *(Implemented; `tests/regression/strictArgumentsObject.io`)*
+    - Ensure `arguments` does not alias parameters. *(Implemented; `tests/regression/strictArgumentsObject.io`)*
 
 ### Arguments object & function semantics
 - Implement ES5.1 arguments-object behavior (decoupled mapping, `Object.getOwnPropertyDescriptor` support).
