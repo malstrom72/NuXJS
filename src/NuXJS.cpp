@@ -2586,9 +2586,31 @@ void Processor::innerRun() {
 				}
 			}
 			break;
-			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
-			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
-
+			case WRITE_NAMED_OP: {
+				const String* name = constants[im].getString();
+				if (code->isStrict()) {
+					Value dummy;
+					if (scope->readVar(rt, name, &dummy) == NONEXISTENT) {
+						error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+						return;
+					}
+				}
+				scope->writeVar(rt, name, sp[0]);
+			}
+			break;
+			case WRITE_NAMED_POP_OP: {
+				const String* name = constants[im].getString();
+				if (code->isStrict()) {
+					Value dummy;
+					if (scope->readVar(rt, name, &dummy) == NONEXISTENT) {
+						error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+						return;
+					}
+				}
+				scope->writeVar(rt, name, sp[0]);
+				pop(1);
+			}
+			break;
 case GET_PROPERTY_OP: {
 const Object* o = convertToObject(sp[-1], false);
 if (o == 0) {
