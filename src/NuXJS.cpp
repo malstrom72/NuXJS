@@ -1319,24 +1319,27 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v) const {
 }
 
 Flags Object::getProperty(Runtime& rt, Processor& processor, const Value& key, Value* v) const {
-	const Object* o = this;
-	do {
-		Flags flags = o->getOwnProperty(rt, key, v);
-		if (flags != NONEXISTENT) {
-			if ((flags & ACCESSOR_FLAG) != 0) {
-				Accessor* acc = static_cast<Accessor*>(v->asObject());
-				Function* getter = (acc != 0 ? acc->getter : 0);
+const Object* o = this;
+do {
+Value current;
+Flags flags = o->getOwnProperty(rt, key, &current);
+if (flags != NONEXISTENT) {
+if ((flags & ACCESSOR_FLAG) != 0) {
+Accessor* acc = static_cast<Accessor*>(current.asObject());
+Function* getter = (acc != 0 ? acc->getter : 0);
 if (getter != 0) {
-*v = getter->invoke(rt, processor, 0, 0, const_cast<Object*>(this));
+processor.invokeFunction(getter, 0, static_cast<const Value*>(0), const_cast<Object*>(this));
 } else {
-					*v = UNDEFINED_VALUE;
-				}
-			}
-			return flags;
-		}
-		o = o->getPrototype(rt);
-	} while (o != 0);
-	return NONEXISTENT;
+*v = UNDEFINED_VALUE;
+}
+} else {
+*v = current;
+}
+return flags;
+}
+o = o->getPrototype(rt);
+} while (o != 0);
+return NONEXISTENT;
 }
 
 
@@ -1355,18 +1358,20 @@ bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 }
 
 bool Object::setProperty(Runtime& rt, Processor& processor, const Value& key, const Value& v) {
-	Value current;
-	Flags flags = getProperty(rt, key, &current);
-	if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
-		Accessor* acc = static_cast<Accessor*>(current.asObject());
-		Function* setter = (acc != 0 ? acc->setter : 0);
-		if (setter != 0) {
-			Value arg(v);
-			processor.invokeFunction(setter, 1, &arg, const_cast<Object*>(this));
-		}
-		return true;
-	}
-	return setProperty(rt, key, v);
+Value current;
+Flags flags = getProperty(rt, key, &current);
+if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+Accessor* acc = static_cast<Accessor*>(current.asObject());
+Function* setter = (acc != 0 ? acc->setter : 0);
+if (setter != 0) {
+Value arg(v);
+processor.invokeFunction(setter, 1, &arg, const_cast<Object*>(this));
+return true;
+}
+return true;
+}
+setProperty(rt, key, v);
+return false;
 }
 
 Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
@@ -2506,41 +2511,53 @@ void Processor::innerRun() {
 			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
 			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
 
-                       case GET_PROPERTY_OP: {
-                               const Object* o = convertToObject(sp[-1], false);
-                               if (o == 0) {
-                                       return;
-                               }
-                               if (o->getProperty(rt, *this, sp[0], sp - 1) == NONEXISTENT) {
-                                       sp[-1] = UNDEFINED_VALUE;
-                               }
-                               pop(1);
-                               break;
-                       }
+case GET_PROPERTY_OP: {
+const Object* o = convertToObject(sp[-1], false);
+if (o == 0) {
+return;
+}
+Flags f = o->getProperty(rt, *this, sp[0], sp - 1);
+if (f == NONEXISTENT) {
+sp[-1] = UNDEFINED_VALUE;
+pop(1);
+break;
+}
+pop(1);
+if ((f & ACCESSOR_FLAG) != 0) {
+return;
+}
+break;
+}
 
 			
-                       case SET_PROPERTY_OP: {
-                               Object* o = convertToObject(sp[-2], false);
-                               if (o == 0) {
-                                       return;
-                               }
-                               Value v = sp[0];
-                               o->setProperty(rt, *this, sp[-1], sp[0]);
-                               sp[-2] = v;
-                               pop(2);
-                               break;
-                       }
+case SET_PROPERTY_OP: {
+Object* o = convertToObject(sp[-2], false);
+if (o == 0) {
+return;
+}
+Value v = sp[0];
+bool acc = o->setProperty(rt, *this, sp[-1], sp[0]);
+sp[-2] = v;
+pop(2);
+if (acc) {
+return;
+}
+break;
+}
 
 			
-                       case SET_PROPERTY_POP_OP: {
-                               Object* o = convertToObject(sp[-2], false);
-                               if (o == 0) {
-                                       return;
-                               }
-                               o->setProperty(rt, *this, sp[-1], sp[0]);
-                               pop(3);
-                               break;
-                       }
+case SET_PROPERTY_POP_OP: {
+Object* o = convertToObject(sp[-2], false);
+if (o == 0) {
+return;
+}
+bool acc = o->setProperty(rt, *this, sp[-1], sp[0]);
+pop(3);
+if (acc) {
+return;
+}
+break;
+}
 
 
 			case OBJ_TO_PRIMITIVE_OP:
