@@ -19,3 +19,8 @@
 > print(obj._v);
 < 15
 -
+> only = { _v: 0, get value() { return this._v; } };
+> only.value = 5;
+> print(only.value);
+< 0
+-

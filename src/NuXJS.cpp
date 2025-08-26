@@ -1369,7 +1369,7 @@ Value arg(v);
 processor.invokeFunction(setter, 1, &arg, const_cast<Object*>(this));
 return true;
 }
-return true;
+return false;
 }
 setProperty(rt, key, v);
 return false;
