@@ -55,12 +55,13 @@ All ES5.1 work should be driven by regression tests. Whenever a roadmap item lan
 
 ### Array & string methods
 - Add ES5.1 array iteration utilities: `forEach`, `map`, `filter`, `some`, `every`, `reduce`, `reduceRight`, `indexOf`, `lastIndexOf`.
-	- These are pure library additions to `src/stdlib.js`; each helper must follow the spec's callback invocation pattern and handle sparse arrays via `Object` property checks rather than simple loops.
+- These are pure library additions to `src/stdlib.js`; each helper must follow the spec's callback invocation pattern and handle sparse arrays via `Object` property checks rather than simple loops.
+- `Array.prototype.indexOf` and `Array.prototype.lastIndexOf` implemented (`tests/regression/arrayIndexOf.io`).
 - Implement string utilities like `trim`, `trimLeft`, `trimRight`, and JSON-related `toJSON` helpers.
-	- Extend the string section in `src/stdlib.js` with whitespace tables identical to the spec and expose `String.prototype.trim*` methods.
-	- `String.prototype.trim` implemented (`tests/regression/stringTrim.io`).
-	- `String.prototype.trimLeft` and `trimRight` implemented (`tests/regression/stringTrimLeftRight.io`).
-	- Add `Date.prototype.toJSON` and `Number.prototype.toJSON` wrappers that call the internal `toISOString`/conversion paths.
+- Extend the string section in `src/stdlib.js` with whitespace tables identical to the spec and expose `String.prototype.trim*` methods.
+- `String.prototype.trim` implemented (`tests/regression/stringTrim.io`).
+- `String.prototype.trimLeft` and `trimRight` implemented (`tests/regression/stringTrimLeftRight.io`).
+- Add `Date.prototype.toJSON` and `Number.prototype.toJSON` wrappers that call the internal `toISOString`/conversion paths.
 
 ### Object immutability controls
 - Support `Object.preventExtensions`, `Object.seal`, `Object.freeze`, and related predicates (`isExtensible`, `isSealed`, `isFrozen`).

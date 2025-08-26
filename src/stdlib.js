@@ -747,18 +747,32 @@
 	checkClass(this, "Array", "toString");
 	return this.join();
 	}),
-	unshift: unconstructable(function unshift(item1) {
-	var len, argv, n = (argv = arguments).length;
-	if (len = uint32(this.length)) {
-	for (var i = len; --i >= 0; ) {
-	if (i in this) this[i + n] = this[i];
-	else delete this[i + n];
-	}
-	}
-	for (var i = 0; i < n; ++i) this[i] = argv[i];
-	return (this.length = len + n);
-	})
-	});
+unshift: unconstructable(function unshift(item1) {
+var len, argv, n = (argv = arguments).length;
+if (len = uint32(this.length)) {
+for (var i = len; --i >= 0; ) {
+if (i in this) this[i + n] = this[i];
+else delete this[i + n];
+}
+}
+for (var i = 0; i < n; ++i) this[i] = argv[i];
+return (this.length = len + n);
+}),
+indexOf: unconstructable(function indexOf(searchElement) {
+var len = uint32(this.length), i = arguments[1];
+if (len === 0) return -1;
+if ((i = int(i)) < 0) { i += len; if (i < 0) i = 0; }
+for (; i < len; ++i) if (i in this && this[i] === searchElement) return i;
+return -1;
+}),
+lastIndexOf: unconstructable(function lastIndexOf(searchElement) {
+var len = uint32(this.length), i = arguments[1];
+if (len === 0) return -1;
+if (i === void 0) i = len - 1; else { i = int(i); if (i < 0) i += len; if (i >= len) i = len - 1; }
+for (; i >= 0; --i) if (i in this && this[i] === searchElement) return i;
+return -1;
+})
+});
 	/* --- Date --- */
 	function localMaxDiff() { // local max is during DST
 	var startOfYearDiff = support.localTimeDifference(14516064e5); // 2016-01-01T00:00:00.000Z
