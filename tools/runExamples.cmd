@@ -1,33 +1,34 @@
 @ECHO OFF
 SETLOCAL ENABLEEXTENSIONS ENABLEDELAYEDEXPANSION
 PUSHD %~dp0\..
+
 IF NOT EXIST output\examples mkdir output\examples
 SET target=%~1
 IF "%target%"=="" SET target=debug
 SET fail=0
-FOR %%F IN (examples\*.cpp) DO (
-	SET name=%%~nF
-	ECHO Building %%F
-	CALL tools\BuildCpp.cmd %target% output\examples\!name! %%F src\NuXJS.cpp src\stdlibJS.cpp || SET fail=1
-	IF !fail! EQU 0 (
-		ECHO Running !name!
-		output\examples\!name!.exe > output\examples\!name!.log 2>&1
-		IF ERRORLEVEL 1 (
-			ECHO !name! failed
-			TYPE output\examples\!name!.log
-			SET fail=1
-		) ELSE (
-			IF EXIST examples\expected_!name!.txt (
-				FC examples\expected_!name!.txt output\examples\!name!.log >NUL
-				IF ERRORLEVEL 1 (
-					ECHO !name! output mismatch
-					SET fail=1
-				) ELSE (
-					ECHO !name! ok
-				)
+SET exe=output\examples\examples.exe
+
+ECHO Building examples
+CALL tools\BuildCpp.cmd %target% %exe% examples\examples.cpp src\NuXJS.cpp src\stdlibJS.cpp || SET fail=1
+
+IF %fail% EQU 0 (
+	ECHO Running examples
+	%exe% > output\examples\all.log 2>&1
+	IF ERRORLEVEL 1 (
+		ECHO examples failed
+		TYPE output\examples\all.log
+		SET fail=1
+	) ELSE (
+		IF EXIST examples\expected_examples.txt (
+			FC examples\expected_examples.txt output\examples\all.log >NUL
+			IF ERRORLEVEL 1 (
+				ECHO examples output mismatch
+				SET fail=1
 			) ELSE (
-				ECHO !name! ok (no expected output)
+				ECHO examples ok
 			)
+		) ELSE (
+			ECHO examples ok (no expected output)
 		)
 	)
 )
