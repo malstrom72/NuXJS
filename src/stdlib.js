@@ -17,9 +17,10 @@
 	@preserve: toLocaleUpperCase,toLowerCase,toPrecision,toString,toTimeString,toUTCString,toUpperCase,trim,trimLeft,trimRight,true,try,typeof
 	@preserve: undefined,upperToLower,value,valueOf,var,void,while,writable,pop,parse,toDateString,instanceof,test
 	@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,$match
-	@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
-	@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
-	support: {
+@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
+@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
+@preserve: every,some
+support: {
 	prototypes: {	// built-in prototype objects
 	object, function, string, boolean, number, date, array
 	},
@@ -776,6 +777,18 @@ if (len === 0) return -1;
 if (i === void 0) i = len - 1; else { i = int(i); if (i < 0) i += len; if (i >= len) i = len - 1; }
 for (; i >= 0; --i) if (i in this && this[i] === searchElement) return i;
 return -1;
+}),
+every: unconstructable(function every(callbackfn) { // .length should be 1
+var o = Object(this), len = uint32(o.length), t = arguments[1];
+if (typeof callbackfn !== "function") throw TypeError();
+for (var k = 0; k < len; ++k) if (k in o && !callbackfn.call(t, o[k], k, o)) return false;
+return true;
+}),
+some: unconstructable(function some(callbackfn) { // .length should be 1
+var o = Object(this), len = uint32(o.length), t = arguments[1];
+if (typeof callbackfn !== "function") throw TypeError();
+for (var k = 0; k < len; ++k) if (k in o && callbackfn.call(t, o[k], k, o)) return true;
+return false;
 })
 });
 	/* --- Date --- */

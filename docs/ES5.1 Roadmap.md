@@ -59,6 +59,7 @@ ES5‑specific regression tests live in `tests/es5`.
 - These are pure library additions to `src/stdlib.js`; each helper must follow the spec's callback invocation pattern and handle sparse arrays via `Object` property checks rather than simple loops.
 - `Array.prototype.indexOf` and `Array.prototype.lastIndexOf` implemented (`tests/es5/arrayIndexOf.io`).
 - `Array.prototype.forEach` implemented (`tests/es5/arrayForEach.io`).
+- `Array.prototype.some` and `Array.prototype.every` implemented (`tests/es5/arraySomeEvery.io`).
 - Implement string utilities like `trim`, `trimLeft`, `trimRight`, and JSON-related `toJSON` helpers.
 - Extend the string section in `src/stdlib.js` with whitespace tables identical to the spec and expose `String.prototype.trim*` methods.
  - `String.prototype.trim` implemented (`tests/es5/stringTrim.io`).
