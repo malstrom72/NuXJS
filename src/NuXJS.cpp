@@ -1308,22 +1308,14 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v) const {
 	const Object* o = this;
 	do {
 		Flags flags = o->getOwnProperty(rt, key, v);
-               if (flags != NONEXISTENT) {
-                       if ((flags & ACCESSOR_FLAG) != 0) {
-                               Accessor* acc = static_cast<Accessor*>(v->asObject());
-                               if (acc != 0 && acc->getter != 0) {
-                                       Var result = rt.call(acc->getter, 0, 0, const_cast<Object*>(o));
-                                       *v = static_cast<Value>(result);
-                               } else {
-                                       *v = UNDEFINED_VALUE;
-                               }
-                       }
-                       return flags;
-               }
+		if (flags != NONEXISTENT) {
+			return flags;
+		}
 		o = o->getPrototype(rt);
 	} while (o != 0);
 	return NONEXISTENT;
 }
+
 
 bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 	if (updateOwnProperty(rt, key, v)) {
@@ -1356,7 +1348,7 @@ UInt32 Table::calcMaxLoad(UInt32 bucketCount) { return (bucketCount - (bucketCou
 Table::Table(Heap* heap) : buckets(1U << TABLE_BUILT_IN_N, heap), loadCount(0) { }
 UInt32 Table::getLoadCount() const { return loadCount; }
 Table::Bucket* Table::getFirst() const { return getNext(buckets.begin() - 1); }
-const Table::Bucket* Table::lookup(const String* key) const { return const_cast<Table*>(this)->lookup(key); }	// OK because lookup does not modify, only exposes non-const pointer
+	const Table::Bucket* Table::lookup(const String* key) const { return const_cast<Table*>(this)->lookup(key); }	// OK because lookup does not modify, only exposes non-const pointer
 
 Table::Bucket* Table::getNext(Bucket* bucket) const {
 	assert(bucket != 0);
@@ -1425,20 +1417,12 @@ void Table::gcMarkReferences(Heap& heap) const {
 		if (bucket.keyExists()) {
 			gcMark(heap, bucket.key);
 			if (bucket.valueExists()) {
-                               if ((bucket.flags & ACCESSOR_FLAG) != 0) {
-                                       if (bucket.accessor != 0) {
-                                               gcMark(heap, bucket.accessor);
-                                               gcMark(heap, bucket.accessor->getter);
-                                               gcMark(heap, bucket.accessor->setter);
-                                       }
-                               } else {
-                                       switch (((bucket.flags & INDEX_TYPE_FLAG) != 0) ? Value::NUMBER_TYPE : bucket.type) {
-                                               case Value::STRING_TYPE: gcMark(heap, bucket.var.string); break;
-                                               case Value::OBJECT_TYPE: gcMark(heap, bucket.var.object); break;
-                                               default: break;
-                                       }
-                               }
-                               ++rebuildLoadCount;
+				switch (((bucket.flags & INDEX_TYPE_FLAG) != 0) ? Value::NUMBER_TYPE : bucket.type) {
+					case Value::STRING_TYPE: gcMark(heap, bucket.var.string); break;
+					case Value::OBJECT_TYPE: gcMark(heap, bucket.var.object); break;
+					default: break;
+				}
+				++rebuildLoadCount;
                        }
                }
 	}
@@ -1505,19 +1489,13 @@ bool JSObject::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) 
 }
 
 Flags JSObject::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
-        const Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
-       if (bucket != 0) {
-               Flags flags = bucket->getFlags();
-               if ((flags & ACCESSOR_FLAG) != 0) {
-                       *v = Value(static_cast<Object*>(bucket->getAccessor()));
-               } else {
-                       *v = bucket->getValue();
-               }
-               return flags;
-       }
-       return NONEXISTENT;
+	const Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
+	if (bucket != 0) {
+		*v = bucket->getValue();
+		return bucket->getFlags();
+	}
+	return NONEXISTENT;
 }
-
 bool JSObject::deleteOwnProperty(Runtime& rt, const Value& key) {
 	Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
 	return (bucket == 0 || erase(bucket));
@@ -2481,16 +2459,41 @@ void Processor::innerRun() {
 				if (o == 0) {
 					return;
 				}
-				if (o->getProperty(rt, sp[0], sp - 1) == NONEXISTENT) {
+				Flags flags = o->getProperty(rt, sp[0], sp - 1);
+				if (flags == NONEXISTENT) {
 					sp[-1] = UNDEFINED_VALUE;
+					pop(1);
+				} else if ((flags & ACCESSOR_FLAG) != 0) {
+					Accessor* acc = static_cast<Accessor*>(sp[-1].asObject());
+					Function* getter = (acc != 0 ? acc->getter : 0);
+					if (getter != 0) {
+						invokeFunction(getter, 1, 0, const_cast<Object*>(o));
+						return;
+					}
+					sp[-1] = UNDEFINED_VALUE;
+					pop(1);
+				} else {
+					pop(1);
 				}
-				pop(1);
 				break;
 			}
+
 			
 			case SET_PROPERTY_OP: {
 				Object* o = convertToObject(sp[-2], false);
 				if (o == 0) {
+					return;
+				}
+				Value current;
+				Flags flags = o->getProperty(rt, sp[-1], &current);
+				if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+					Accessor* acc = static_cast<Accessor*>(current.asObject());
+					Function* setter = (acc != 0 ? acc->setter : 0);
+					if (setter != 0) {
+						invokeFunction(setter, 3, 1, o);
+						return;
+					}
+					pop(3);
 					return;
 				}
 				o->setProperty(rt, sp[-1], sp[0]);
@@ -2498,16 +2501,30 @@ void Processor::innerRun() {
 				pop(2);
 				break;
 			}
+
 			
 			case SET_PROPERTY_POP_OP: {
 				Object* o = convertToObject(sp[-2], false);
 				if (o == 0) {
 					return;
 				}
+				Value current;
+				Flags flags = o->getProperty(rt, sp[-1], &current);
+				if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+					Accessor* acc = static_cast<Accessor*>(current.asObject());
+					Function* setter = (acc != 0 ? acc->setter : 0);
+					if (setter != 0) {
+						invokeFunction(setter, 3, 1, o);
+						return;
+					}
+					pop(3);
+					return;
+				}
 				o->setProperty(rt, sp[-1], sp[0]);
 				pop(3);
 				break;
 			}
+
 
 			case OBJ_TO_PRIMITIVE_OP:
 			case OBJ_TO_NUMBER_OP:

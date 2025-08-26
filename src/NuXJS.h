@@ -478,10 +478,6 @@ class Table {
                                        assert(valueExists() && (flags & INDEX_TYPE_FLAG) != 0);
                                        return index;
                                }
-                               Accessor* getAccessor() const {
-                                       assert(valueExists() && (flags & ACCESSOR_FLAG) != 0);
-                                       return accessor;
-                               }
                                Flags getFlags() const { return flags; }
 				const String* getKey() const { assert(keyExists()); return key; }
 				bool doEnumerate() const { return ((flags & DONT_ENUM_FLAG) == 0); }
@@ -496,7 +492,6 @@ class Table {
                                union {
                                        Value::Variant var;
                                        Int32 index;
-                                       Accessor* accessor;
                                };
                                bool keyExists() const { return key != 0; }
                };
