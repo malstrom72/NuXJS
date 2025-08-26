@@ -69,7 +69,8 @@ All ES5.1 work should be driven by regression tests. Whenever a roadmap item lan
 
 ### Date and Number extras
 - Finish remaining ES5.1 Date features such as `toISOString`, `toJSON`, and `now`.
-	- `src/stdlib.js` already exposes many Date methods; add a native-backed `Date.now()` that calls `support.getCurrentTime` and a spec‑compliant `toISOString` implementation in JavaScript.
+- `Date.now` implemented using `support.getCurrentTime` (`tests/regression/dateNow.io`).
+- Add a spec‑compliant `toISOString` implementation in JavaScript.
 - Add Number and Math helpers (`isNaN`, `isFinite` refinements, `parseInt`/`parseFloat` alignment).
 	- Refine `support.isNaN`/`isFinite` semantics and expose `Number.isNaN` and `Number.isFinite` shims.
 	- Ensure `parseInt` and `parseFloat` follow ES5.1 whitespace trimming rules and radix handling; update the `Math` object with any missing constants.

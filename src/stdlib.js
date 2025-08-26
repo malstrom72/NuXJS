@@ -8,7 +8,7 @@
 	@preserve: getPrototypeOf,getSeconds,getTime,getTimezoneOffset,getUTCDate,getUTCDay,getUTCFullYear,getUTCHours
 	@preserve: getUTCMilliseconds,getUTCMinutes,getUTCMonth,getUTCSeconds,hasOwnProperty,if,ignoreCase,in,index,indexOf
 	@preserve: input,isArray,isFinite,isNaN,isPropertyEnumerable,join,lastIndex,lastIndexOf,length,localeCompare,log
-	@preserve: match,max,maxNumber,message,min,minNumber,multiline,name,new,null,parseFloat,parseInt,pow
+	@preserve: match,max,maxNumber,message,min,minNumber,multiline,name,new,now,null,parseFloat,parseInt,pow
 	@preserve: propertyIsEnumerable,prototype,push,readOnly,regExpCanonicalize,return,reverse,round,setDate
 	@preserve: setFullYear,setHours,setMilliseconds,setMinutes,setMonth,setSeconds,setTime,setUTCDate
 	@preserve: setUTCFullYear,setUTCHours,setUTCMilliseconds,setUTCMinutes,setUTCMonth,setUTCSeconds,shift,sin,slice
@@ -878,8 +878,11 @@
 	}
 	return (tz === void 0 ? fromLocalTime(z) : z - tz)
 	}),
-	UTC: unconstructable(function UTC(year, month, date, hours, minutes, seconds, ms) { 
-	return timeClip(makeDateTime(year, month, date, hours, minutes, seconds, ms))
+	UTC: unconstructable(function UTC(year, month, date, hours, minutes, seconds, ms) {
+		return timeClip(makeDateTime(year, month, date, hours, minutes, seconds, ms))
+	}),
+	now: unconstructable(function now() {
+		return support.getCurrentTime();
 	})
 	});
 	defineProperties(Date.prototype, { dontEnum: true }, {
