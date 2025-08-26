@@ -1631,7 +1631,12 @@ class Processor : public GCItem {
 		};
 	
 		struct OpcodeInfo {
-			enum { TERMINAL = 1, POP_OPERAND = 2, POP_ON_BRANCH = 4, NO_POP_ON_BRANCH = 8 };
+			enum {
+				TERMINAL = 1,			/// instruction ends current basic block
+				POP_OPERAND = 2,	/// pop `operand` values after execution
+				POP_ON_BRANCH = 4,	/// branch path pops the top of stack
+				NO_POP_ON_BRANCH = 8	/// branch path keeps the top of stack
+			};
 			Opcode opcode;
 			const char* mnemonic;
 			Int32 stackUse;
