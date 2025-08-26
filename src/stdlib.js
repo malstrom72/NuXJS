@@ -19,7 +19,7 @@
 	@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,$match
 @preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
 @preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
-@preserve: every,some
+@preserve: every,some,filter,map
 support: {
 	prototypes: {	// built-in prototype objects
 	object, function, string, boolean, number, date, array
@@ -759,37 +759,50 @@ else delete this[i + n];
 for (var i = 0; i < n; ++i) this[i] = argv[i];
 return (this.length = len + n);
 	}),
-       forEach: unconstructable(function forEach(callbackfn) { // .length should be 1
-       var o = Object(this), len = uint32(o.length), t = arguments[1];
-       if (typeof callbackfn !== "function") throw TypeError();
-       for (var k = 0; k < len; ++k) if (k in o) callbackfn.call(t, o[k], k, o);
-       }),
-       indexOf: unconstructable(function indexOf(searchElement) {
-var len = uint32(this.length), i = arguments[1];
-if (len === 0) return -1;
-if ((i = int(i)) < 0) { i += len; if (i < 0) i = 0; }
-for (; i < len; ++i) if (i in this && this[i] === searchElement) return i;
-return -1;
-}),
-lastIndexOf: unconstructable(function lastIndexOf(searchElement) {
-var len = uint32(this.length), i = arguments[1];
-if (len === 0) return -1;
-if (i === void 0) i = len - 1; else { i = int(i); if (i < 0) i += len; if (i >= len) i = len - 1; }
-for (; i >= 0; --i) if (i in this && this[i] === searchElement) return i;
-return -1;
-}),
-every: unconstructable(function every(callbackfn) { // .length should be 1
-var o = Object(this), len = uint32(o.length), t = arguments[1];
-if (typeof callbackfn !== "function") throw TypeError();
-for (var k = 0; k < len; ++k) if (k in o && !callbackfn.call(t, o[k], k, o)) return false;
-return true;
-}),
-some: unconstructable(function some(callbackfn) { // .length should be 1
-var o = Object(this), len = uint32(o.length), t = arguments[1];
-if (typeof callbackfn !== "function") throw TypeError();
-for (var k = 0; k < len; ++k) if (k in o && callbackfn.call(t, o[k], k, o)) return true;
-return false;
-})
+	forEach: unconstructable(function forEach(callbackfn) { // .length should be 1
+	var o = Object(this), len = uint32(o.length), t = arguments[1];
+	if (typeof callbackfn !== "function") throw TypeError();
+	for (var k = 0; k < len; ++k) if (k in o) callbackfn.call(t, o[k], k, o);
+	}),
+	map: unconstructable(function map(callbackfn) { // .length should be 1
+	var o = Object(this), len = uint32(o.length), t = arguments[1], a = new Array(len);
+	if (typeof callbackfn !== "function") throw TypeError();
+	for (var k = 0; k < len; ++k) if (k in o) a[k] = callbackfn.call(t, o[k], k, o);
+	return a;
+	}),
+	filter: unconstructable(function filter(callbackfn) { // .length should be 1
+	var o = Object(this), len = uint32(o.length), t = arguments[1], a = [], to = 0;
+	if (typeof callbackfn !== "function") throw TypeError();
+	for (var k = 0; k < len; ++k) if (k in o) { var v = o[k]; if (callbackfn.call(t, v, k, o)) a[to++] = v; }
+	a.length = to;
+	return a;
+	}),
+	indexOf: unconstructable(function indexOf(searchElement) {
+	var len = uint32(this.length), i = arguments[1];
+	if (len === 0) return -1;
+	if ((i = int(i)) < 0) { i += len; if (i < 0) i = 0; }
+	for (; i < len; ++i) if (i in this && this[i] === searchElement) return i;
+	return -1;
+	}),
+	lastIndexOf: unconstructable(function lastIndexOf(searchElement) {
+	var len = uint32(this.length), i = arguments[1];
+	if (len === 0) return -1;
+	if (i === void 0) i = len - 1; else { i = int(i); if (i < 0) i += len; if (i >= len) i = len - 1; }
+	for (; i >= 0; --i) if (i in this && this[i] === searchElement) return i;
+	return -1;
+	}),
+	every: unconstructable(function every(callbackfn) { // .length should be 1
+	var o = Object(this), len = uint32(o.length), t = arguments[1];
+	if (typeof callbackfn !== "function") throw TypeError();
+	for (var k = 0; k < len; ++k) if (k in o && !callbackfn.call(t, o[k], k, o)) return false;
+	return true;
+	}),
+	some: unconstructable(function some(callbackfn) { // .length should be 1
+	var o = Object(this), len = uint32(o.length), t = arguments[1];
+	if (typeof callbackfn !== "function") throw TypeError();
+	for (var k = 0; k < len; ++k) if (k in o && callbackfn.call(t, o[k], k, o)) return true;
+	return false;
+	})
 });
 	/* --- Date --- */
 	function localMaxDiff() { // local max is during DST
