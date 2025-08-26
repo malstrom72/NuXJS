@@ -49,7 +49,7 @@
 // Since these can be called during static initialization we allow heap == 0 to use standard new/delete.
 void* operator new(size_t size, NuXJS::Heap* heap) {
 	return (heap != 0 ? heap->allocate(size) : ::operator new(size));
-}
+	}
 
 void* operator new[](size_t size, NuXJS::Heap* heap) {
 	return (heap != 0 ? heap->allocate(size) : ::operator new[](size));
@@ -167,7 +167,7 @@ const UInt16 IDENTIFIER_PART_OFFSETS[256] = {
 
 static inline bool testUnicodeChar(Char c, const UInt16* offsets) {
 	return (UNICODE_MASKS[offsets[c >> 8] + ((c & 255) >> 5)] & (1 << (c & 31))) != 0;
-}
+	}
 
 /* --- String constants --- */
 
@@ -1666,7 +1666,7 @@ JSArray::JSArray(GCList& gcList) : super(gcList), length(0), denseVector(&gcList
 JSArray::JSArray(GCList& gcList, UInt32 initialLength)
 		: super(gcList), length(initialLength), denseVector(initialLength, &gcList.getHeap()) {
 	std::fill(denseVector.begin(), denseVector.end(), UNDEFINED_VALUE);
-}
+	}
 JSArray::JSArray(GCList& gcList, UInt32 initialLength, const Value* initialElements) : super(gcList)
 		, length(initialLength), denseVector(initialElements, initialElements + initialLength, &gcList.getHeap()) { }
 
@@ -1924,8 +1924,8 @@ void Error::constructCompleteObject(Runtime& rt) const {
 /* --- Arguments --- */
 
 Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
-	   , scope(scope), function(scope->function), argumentsCount(argumentsCount)
-	   , deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()) {
+	, scope(scope), function(scope->function), argumentsCount(argumentsCount)
+	, deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()), owner(const_cast<FunctionScope*>(scope)) {
 	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
 }
 
@@ -1989,8 +1989,8 @@ void Arguments::constructCompleteObject(Runtime& rt) const {
 }
 
 Arguments::~Arguments() {
-	if (scope != 0) {
-		scope->arguments = 0;
+	if (owner != 0) {
+		owner->arguments = 0;
 	}
 }
 
@@ -2151,10 +2151,11 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
 }
 
 FunctionScope::~FunctionScope() {
-	if (arguments != 0) {
-		arguments->detach();
-		arguments = 0;
-	}
+        if (arguments != 0) {
+                arguments->owner = 0;
+                arguments->detach();
+                arguments = 0;
+        }
 }
 
 /* --- ScriptException --- */

@@ -1033,6 +1033,7 @@ class FunctionScope;
 class Arguments : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
+		friend class FunctionScope;
 
         Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
 		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
@@ -1054,6 +1055,7 @@ class Arguments : public LazyJSObject<Object> {
 		UInt32 const argumentsCount;
 		Vector<Byte> deletedArguments;
 		Vector<Value> values;	// Contains copied values after the Argument has been detached from its closure.
+		FunctionScope* owner;	// Weak reference to owning FunctionScope for cleanup.
 
 		/**
 			Notice that we do not mark the scope reference, thus creating a "weak" reference that is handled by
