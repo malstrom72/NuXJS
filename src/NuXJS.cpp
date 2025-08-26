@@ -177,8 +177,10 @@ const String BOOLEAN_STRING("boolean"), FUNCTION_STRING("function"), NUMBER_STRI
 const String EMPTY_STRING, LENGTH_STRING("length"), NULL_STRING("null"), UNDEFINED_STRING("undefined");
 
 const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_STRING("Boolean"), D_ATE_STRING("Date")
-		, E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
-		, S_TRING_STRING("String");
+                , E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
+                , S_TRING_STRING("String");
+
+const String GET_STRING("get"), SET_STRING("set");
 
 static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
@@ -1277,6 +1279,7 @@ const String* Object::getClassName() const { return &O_BJECT_STRING; }
 Object* Object::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
 Value Object::getInternalValue(Heap&) const { return UNDEFINED_VALUE; }
 Flags Object::getOwnProperty(Runtime&, const Value&, Value*) const { return NONEXISTENT; }
+bool Object::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) { return setOwnProperty(rt, Value(key), v, flags); }
 bool Object::setOwnProperty(Runtime&, const Value&, const Value&, Flags) { return false; }
 bool Object::deleteOwnProperty(Runtime&, const Value&) { return false; }
 Enumerator* Object::getOwnPropertyEnumerator(Runtime&) const { return &EMPTY_ENUMERATOR; }
@@ -1316,6 +1319,31 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v) const {
 	return NONEXISTENT;
 }
 
+Flags Object::getProperty(Runtime& rt, Processor& processor, const Value& key, Value* v) const {
+const Object* o = this;
+do {
+Value current;
+Flags flags = o->getOwnProperty(rt, key, &current);
+if (flags != NONEXISTENT) {
+if ((flags & ACCESSOR_FLAG) != 0) {
+Accessor* acc = static_cast<Accessor*>(current.asObject());
+Function* getter = (acc != 0 ? acc->getter : 0);
+if (getter != 0) {
+processor.invokeFunction(getter, 0, static_cast<const Value*>(0), const_cast<Object*>(this));
+} else {
+*v = UNDEFINED_VALUE;
+}
+} else {
+*v = current;
+}
+return flags;
+}
+o = o->getPrototype(rt);
+} while (o != 0);
+return NONEXISTENT;
+}
+
+
 bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 	if (updateOwnProperty(rt, key, v)) {
 		return true;
@@ -1328,6 +1356,23 @@ bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 		}
 	}
 	return setOwnProperty(rt, key, v);
+}
+
+bool Object::setProperty(Runtime& rt, Processor& processor, const Value& key, const Value& v) {
+Value current;
+Flags flags = getProperty(rt, key, &current);
+if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+Accessor* acc = static_cast<Accessor*>(current.asObject());
+Function* setter = (acc != 0 ? acc->setter : 0);
+if (setter != 0) {
+Value arg(v);
+processor.invokeFunction(setter, 1, &arg, const_cast<Object*>(this));
+return true;
+}
+return true;
+}
+setProperty(rt, key, v);
+return false;
 }
 
 Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
@@ -1347,7 +1392,7 @@ UInt32 Table::calcMaxLoad(UInt32 bucketCount) { return (bucketCount - (bucketCou
 Table::Table(Heap* heap) : buckets(1U << TABLE_BUILT_IN_N, heap), loadCount(0) { }
 UInt32 Table::getLoadCount() const { return loadCount; }
 Table::Bucket* Table::getFirst() const { return getNext(buckets.begin() - 1); }
-const Table::Bucket* Table::lookup(const String* key) const { return const_cast<Table*>(this)->lookup(key); }	// OK because lookup does not modify, only exposes non-const pointer
+	const Table::Bucket* Table::lookup(const String* key) const { return const_cast<Table*>(this)->lookup(key); }	// OK because lookup does not modify, only exposes non-const pointer
 
 Table::Bucket* Table::getNext(Bucket* bucket) const {
 	assert(bucket != 0);
@@ -1422,8 +1467,8 @@ void Table::gcMarkReferences(Heap& heap) const {
 					default: break;
 				}
 				++rebuildLoadCount;
-			}
-		}
+                       }
+               }
 	}
 	assert(rebuildLoadCount <= loadCount);
 	if (rebuildLoadCount != loadCount) {
@@ -1479,8 +1524,25 @@ JSObject::JSObject(GCList& gcList, Object* prototype)
 Object* JSObject::getPrototype(Runtime&) const { return prototype; }
 
 bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
-	return update(insert(key.toString(rt.getHeap())), v, flags);
+	return setOwnProperty(rt, key.toString(rt.getHeap()), v, flags);
 }
+
+bool JSObject::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
+	Table::Bucket* bucket = insert(key);
+	if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
+	Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
+	Accessor* nv = static_cast<Accessor*>(v.getObject());
+	if (nv->getter != 0) {
+	acc->getter = nv->getter;
+	}
+	if (nv->setter != 0) {
+	acc->setter = nv->setter;
+	}
+	return true;
+	}
+	return update(bucket, v, flags);
+}
+
 
 bool JSObject::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
 	Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
@@ -1495,7 +1557,6 @@ Flags JSObject::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 	}
 	return NONEXISTENT;
 }
-
 bool JSObject::deleteOwnProperty(Runtime& rt, const Value& key) {
 	Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
 	return (bucket == 0 || erase(bucket));
@@ -1553,7 +1614,7 @@ Code::Code(GCList& gcList, Constants* sharedConstants)
 	: super(gcList), codeWords(0, &gcList.getHeap())
 	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
 	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
-	, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
+, selfName(0), source(0), bloomSet(0), maxStackDepth(0), strict(false)
 {
 	assert(constants != 0);
 }
@@ -1697,6 +1758,10 @@ bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 	return super::setOwnProperty(rt, index, v, STANDARD_FLAGS);
 }
 
+bool JSArray::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
+	return setOwnProperty(rt, Value(key), v, flags);
+}
+
 bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	UInt32 index;
 	if (key.toArrayIndex(index) && index != 0xFFFFFFFFU) {
@@ -1751,6 +1816,10 @@ template<class SUPER> Flags LazyJSObject<SUPER>::getOwnProperty(Runtime& rt, con
 }
 
 template<class SUPER> bool LazyJSObject<SUPER>::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
+	return getCompleteObject(rt)->setOwnProperty(rt, key, v, flags);
+}
+
+template<class SUPER> bool LazyJSObject<SUPER>::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
 	return getCompleteObject(rt)->setOwnProperty(rt, key, v, flags);
 }
 
@@ -1828,6 +1897,12 @@ void Error::updateReflection(Runtime& rt) {
 	message = (getProperty(rt, &MESSAGE_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
 }
 
+bool Error::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
+	const bool result = super::setOwnProperty(rt, key, v, flags);
+	updateReflection(rt);
+	return result;
+}
+
 bool Error::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	const bool result = super::setOwnProperty(rt, key, v, flags);
 	updateReflection(rt);
@@ -1882,6 +1957,10 @@ Value* Arguments::findProperty(const Value& key) const {
 Flags Arguments::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 	const Value* p = findProperty(key);
 	return (p == 0 ? super::getOwnProperty(rt, key, v) : ((void)(*v = *p), (DONT_ENUM_FLAG | EXISTS_FLAG)));
+}
+
+bool Arguments::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
+	return setOwnProperty(rt, Value(key), v, flags);
 }
 
 bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
@@ -2095,7 +2174,8 @@ static struct EvalFunction : public Function {
 
 		Heap& heap = rt.getHeap();
 		const String* expression = argv[0].toString(heap);
-		processor.enterEvalCode(rt.compileEvalCode(expression), direct);
+		bool strict = direct && processor.isCurrentStrict();
+		processor.enterEvalCode(rt.compileEvalCode(expression, strict), direct);
 		return UNDEFINED_VALUE;
 	}
 	bool direct;
@@ -2119,6 +2199,8 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ SET_PROPERTY_OP            , "SET_PROPERTY"            , -2     , 0 },
 	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -3     , 0 },
 	{ ADD_PROPERTY_OP            , "ADD_PROPERTY"            , -1     , 0 },
+	{ ADD_GETTER_OP            , "ADD_GETTER"             , -1     , 0 },
+	{ ADD_SETTER_OP            , "ADD_SETTER"             , -1     , 0 },
 	{ PUSH_ELEMENTS_OP           , "PUSH_ELEMENTS_OP"        , 0      , OpcodeInfo::POP_OPERAND },
 	{ OBJ_TO_PRIMITIVE_OP        , "OBJ_TO_PRIMITIVE"        , 0      , 0 },
 	{ OBJ_TO_NUMBER_OP           , "OBJ_TO_NUMBER"           , 0      , 0 },
@@ -2201,11 +2283,50 @@ const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
 	code pointer (for constants etc) and it declares deletable vars.
 */
 struct Processor::EvalScope : public Scope {
-	typedef Scope super;
-	EvalScope(GCList& gcList, Scope* parentScope) : super(gcList, parentScope) { }
-	virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool) {
-		parentScope->declareVar(rt, name, initValue, false);
-	}
+		typedef Scope super;
+		EvalScope(GCList& gcList, Scope* parentScope, bool isolated) : super(gcList, parentScope), vars(0), isolated(isolated) { }
+		virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
+			if (isolated && vars != 0) {
+				const Flags flags = vars->getOwnProperty(rt, name, v);
+				if (flags != NONEXISTENT) {
+					return flags;
+				}
+			}
+			return parentScope->readVar(rt, name, v);
+		}
+		virtual void writeVar(Runtime& rt, const String* name, const Value& value) {
+			if (isolated && vars != 0) {
+				Value tmp;
+				if (vars->getOwnProperty(rt, name, &tmp) != NONEXISTENT) {
+					vars->setOwnProperty(rt, name, value);
+					return;
+				}
+			}
+			parentScope->writeVar(rt, name, value);
+		}
+		virtual bool deleteVar(Runtime& rt, const String* name) {
+			if (isolated && vars != 0 && vars->deleteOwnProperty(rt, name)) {
+				return true;
+			}
+			return parentScope->deleteVar(rt, name);
+		}
+		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete) {
+			if (isolated) {
+				if (vars == 0) {
+					Heap& heap = rt.getHeap();
+					vars = new(heap) JSObject(heap.managed(), 0);
+				}
+				vars->setOwnProperty(rt, name, initValue.isUndefined() ? UNDEFINED_VALUE : initValue, dontDelete ? DONT_DELETE_FLAG : 0);
+			} else {
+				parentScope->declareVar(rt, name, initValue, false);
+			}
+		}
+		JSObject* vars;
+		bool isolated;
+		virtual void gcMarkReferences(Heap& heap) const {
+			gcMark(heap, vars);
+			super::gcMarkReferences(heap);
+		}
 };
 	
 /*
@@ -2313,7 +2434,8 @@ void Processor::enter(const Code* code, Scope* scope, Object* thisObject) {
 	if (sp + code->getMaxStackDepth() > stack.end()) {
 		ScriptException::throwError(heap, RANGE_ERROR, &STACK_OVERFLOW_STRING); // Notice: we can't use virtual throw here, cause we need to abort any sp changes etc that could happen if we continued execution beyond this point.
 	} else {
-		pushFrame(code, scope, (thisObject == 0 ? rt.getGlobalObject() : thisObject));
+Object* obj = (thisObject == 0 && !code->isStrict() ? rt.getGlobalObject() : thisObject);
+pushFrame(code, scope, obj);
 		ip = code->getCodeWords();
 	}
 }
@@ -2326,13 +2448,15 @@ void Processor::enterGlobalCode(const Code* code) {
 	enter(code, rt.getGlobalScope(), rt.getGlobalObject());
 }
 
-void Processor::enterEvalCode(const Code* code, bool local) {
-	if (local && currentFrame != 0) {
-		enter(code, new(heap) Processor::EvalScope(heap.managed(), currentFrame->scope), currentFrame->thisObject);
+void Processor::enterEvalCode(const Code* code, bool direct) {
+	bool isolate = direct && code->isStrict();
+	if (direct && currentFrame != 0) {
+		enter(code, new(heap) Processor::EvalScope(heap.managed(), currentFrame->scope, isolate), currentFrame->thisObject);
 	} else {
-		enter(code, new(heap) Processor::EvalScope(heap.managed(), rt.getGlobalScope()), rt.getGlobalObject());
+		enter(code, new(heap) Processor::EvalScope(heap.managed(), rt.getGlobalScope(), isolate), rt.getGlobalObject());
 	}
 }
+
 
 void Processor::enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject) {
 	enter(func->code, new(heap) FunctionScope(heap.managed(), func, argc, argv), thisObject);
@@ -2454,38 +2578,54 @@ void Processor::innerRun() {
 			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
 			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
 
-			case GET_PROPERTY_OP: {
-				const Object* o = convertToObject(sp[-1], false);
-				if (o == 0) {
-					return;
-				}
-				if (o->getProperty(rt, sp[0], sp - 1) == NONEXISTENT) {
-					sp[-1] = UNDEFINED_VALUE;
-				}
-				pop(1);
-				break;
-			}
+case GET_PROPERTY_OP: {
+const Object* o = convertToObject(sp[-1], false);
+if (o == 0) {
+return;
+}
+Flags f = o->getProperty(rt, *this, sp[0], sp - 1);
+if (f == NONEXISTENT) {
+sp[-1] = UNDEFINED_VALUE;
+pop(1);
+break;
+}
+pop(1);
+if ((f & ACCESSOR_FLAG) != 0) {
+return;
+}
+break;
+}
+
 			
-			case SET_PROPERTY_OP: {
-				Object* o = convertToObject(sp[-2], false);
-				if (o == 0) {
-					return;
-				}
-				o->setProperty(rt, sp[-1], sp[0]);
-				sp[-2] = sp[0];
-				pop(2);
-				break;
-			}
+case SET_PROPERTY_OP: {
+Object* o = convertToObject(sp[-2], false);
+if (o == 0) {
+return;
+}
+Value v = sp[0];
+bool acc = o->setProperty(rt, *this, sp[-1], sp[0]);
+sp[-2] = v;
+pop(2);
+if (acc) {
+return;
+}
+break;
+}
+
 			
-			case SET_PROPERTY_POP_OP: {
-				Object* o = convertToObject(sp[-2], false);
-				if (o == 0) {
-					return;
-				}
-				o->setProperty(rt, sp[-1], sp[0]);
-				pop(3);
-				break;
-			}
+case SET_PROPERTY_POP_OP: {
+Object* o = convertToObject(sp[-2], false);
+if (o == 0) {
+return;
+}
+bool acc = o->setProperty(rt, *this, sp[-1], sp[0]);
+pop(3);
+if (acc) {
+return;
+}
+break;
+}
+
 
 			case OBJ_TO_PRIMITIVE_OP:
 			case OBJ_TO_NUMBER_OP:
@@ -2596,7 +2736,7 @@ void Processor::innerRun() {
 			case NEW_ARRAY_OP: push(new(heap) JSArray(heap.managed())); break;
 			case NEW_REG_EXP_OP: invokeFunction(rt.createRegExpFunction, 1, 2); return;
 			case RETURN_OP:	ip = currentFrame->returnIP; popFrame(); return;
-			case THIS_OP: push(thisObject); break;
+case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break;
 			case VOID_OP: push(UNDEFINED_VALUE); break;
 			
 			case GEN_FUNC_OP: {
@@ -2615,7 +2755,21 @@ void Processor::innerRun() {
 				pop(1);
 				break;
 			}
-			
+			case ADD_GETTER_OP: {
+				Object* o = sp[-1].getObject();
+				Accessor* acc = new(heap) Accessor(heap.managed(), sp[0].asFunction(), 0);
+				o->setOwnProperty(rt, constants[im], acc, ACCESSOR_FLAG);
+				pop(1);
+				break;
+			}
+			case ADD_SETTER_OP: {
+				Object* o = sp[-1].getObject();
+				Accessor* acc = new(heap) Accessor(heap.managed(), 0, sp[0].asFunction());
+				o->setOwnProperty(rt, constants[im], acc, ACCESSOR_FLAG);
+				pop(1);
+				break;
+			}
+
 			case PUSH_ELEMENTS_OP: {
 				Object* o = sp[-im].getObject();
 				assert(dynamic_cast<JSArray*>(o) != 0);
@@ -3120,10 +3274,15 @@ const String* Compiler::identifier(bool required, bool allowKeywords) {
 	if (parsed.size() == 0 && required) {
 		error(SYNTAX_ERROR, "Expected identifier");
 	}
-	if (!allowKeywords && findReservedKeyword(parsed.size(), parsed.begin()) >= 0) {
-		error(SYNTAX_ERROR, "Illegal use of keyword");
-	}
-	return newHashedString(heap, parsed.begin(), parsed.end());
+        if (!allowKeywords && findReservedKeyword(parsed.size(), parsed.begin()) >= 0) {
+                error(SYNTAX_ERROR, "Illegal use of keyword");
+        }
+        const String* name = newHashedString(heap, parsed.begin(), parsed.end());
+        if (code->isStrict()
+                        && (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING))) {
+                error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
+        }
+        return name;
 }
 
 static UInt32 unescapedMaxLength(const Char* p, const Char* e) {
@@ -3367,24 +3526,43 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff 
 	
 	white();
 	while (!token("}", false)) {
+		bool handled = false;
 		const Char* b = p;
 		Value key = stringOrNumberConstant();
 		if (p == b) {
-			key = identifier(false, true);
-			if (key.equalsString(EMPTY_STRING)) {
-				error(SYNTAX_ERROR, "Expected property name");
+			const String* id = identifier(false, true);
+			if (id->isEqualTo(EMPTY_STRING)) {
+			error(SYNTAX_ERROR, "Expected property name");
 			}
+			white();
+				if ((id->isEqualTo(GET_STRING) || id->isEqualTo(SET_STRING)) && *p != ':') {
+				bool isGetter = id->isEqualTo(GET_STRING);
+				const Char* b2 = p;
+				Value accKey = stringOrNumberConstant();
+				if (p == b2) {
+				accKey = identifier(true, true);
+				}
+				white();
+				const String* funcName = accKey.toString(heap);
+				functionDefinition(funcName, funcName);
+				emitWithConstant(isGetter ? Processor::ADD_GETTER_OP : Processor::ADD_SETTER_OP, accKey);
+				handled = true;
+			} else {
+			key = id;
+			}
+			}
+		if (!handled) {
+				expectToken(":", true);
+				rvalueExpression(COMMA_PREC);
+				emitWithConstant(Processor::ADD_PROPERTY_OP, key);
 		}
-		expectToken(":", true);
-		rvalueExpression(COMMA_PREC);
-		emitWithConstant(Processor::ADD_PROPERTY_OP, key);
-		if (token("}", true)) {
-			break;
-		}
-		if (!token(",", true)) {
-			error(SYNTAX_ERROR, "Expected ',' or '}'");
-		}
-		white();
+			if (token("}", true)) {
+				break;
+			}
+			if (!token(",", true)) {
+				error(SYNTAX_ERROR, "Expected ',' or '}'");
+			}
+			white();
 	}
 	return ExpressionResult(ExpressionResult::PUSHED);
 }
@@ -3459,8 +3637,19 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 				case ExpressionResult::PUSHED_PRIMITIVE: emit(Processor::POP_OP, 1); /* fall through */
 				case ExpressionResult::NONE:
 				case ExpressionResult::CONSTANT: xr = ExpressionResult(ExpressionResult::CONSTANT, true); break;
-				case ExpressionResult::LOCAL: xr = ExpressionResult(ExpressionResult::CONSTANT, false); break;
-				case ExpressionResult::NAMED: emitWithConstant(Processor::DELETE_NAMED_OP, xr.v); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
+				case ExpressionResult::LOCAL:
+					if (code->isStrict()) {
+						error(SYNTAX_ERROR, "Deleting identifier in strict code");
+					}
+					xr = ExpressionResult(ExpressionResult::CONSTANT, false);
+					break;
+				case ExpressionResult::NAMED:
+					if (code->isStrict()) {
+						error(SYNTAX_ERROR, "Deleting identifier in strict code");
+					}
+					emitWithConstant(Processor::DELETE_NAMED_OP, xr.v);
+					xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
+					break;
 				case ExpressionResult::PROPERTY: emit(Processor::DELETE_OP); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
 				default: assert(0);
 			}
@@ -3665,6 +3854,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
 	Code* func = new(heap) Code(heap.managed(), code->constants);
+	func->strict = code->strict;
 	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
@@ -3974,6 +4164,9 @@ void Compiler::functionStatement() {
 }
 
 void Compiler::withStatement(SemanticScope* currentScope) {
+	if (code->isStrict()) {
+		error(SYNTAX_ERROR, "\"with\" is not allowed in strict code");
+	}
 	rvalueGroup();
 	emit(Processor::WITH_SCOPE_OP);
 	{
@@ -4461,6 +4654,28 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	p = b;
 	this->e = e;
 	acceptInOperator = true;
+	const Char* directiveStart = p;
+	white();
+	bool foundStrict = false;
+	while (p < e && (*p == '"' || *p == '\'')) {
+		Char q = *p++;
+		const Char* litStart = p;
+		while (p < e && *p != q) { ++p; }
+		if (p >= e) { break; }
+		if (!foundStrict && p - litStart == 10 && strncmp(litStart, "use strict", 10) == 0) {
+			foundStrict = true;
+		}
+		++p;
+		white();
+		if (p < e && *p == ';') {
+			++p;
+			white();
+			continue;
+		}
+		break;
+	}
+	if (foundStrict) { code->setStrict(true); }
+	p = directiveStart;
 	
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
 	if (compilingFor == FOR_EVAL) {
@@ -4496,6 +4711,7 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 	white();
 	Table& nameIndexes = code->nameIndexes;
 	Vector<const String*>& argumentNames = code->argumentNames;
+	bool hasDuplicateParameters = false;
 	while (!token(")", false)) {
 		if (eof()) {
 			error(SYNTAX_ERROR, argumentNames.size() == 0 ? "Expected ')'" : "Expected ',' or ')'");
@@ -4507,6 +4723,12 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 			white();
 		}
 		const String* name = identifier(true, false);
+		for (size_t i = 0; i < argumentNames.size(); ++i) {
+			if (argumentNames[i]->isEqualTo(*name)) {
+				hasDuplicateParameters = true;
+				break;
+			}
+		}
 		nameIndexes.update(nameIndexes.insert(name), static_cast<Int32>(argumentNames.size()));
 		argumentNames.push(name);
 		code->bloomSet |= name->createBloomCode();
@@ -4515,6 +4737,9 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 	expectToken("{", true);
 	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
 	expectToken("}", false);
+	if (code->strict && hasDuplicateParameters) {
+		error(SYNTAX_ERROR, "Duplicate parameter name not allowed in strict code");
+	}
 	code->name = functionName;
 	code->selfName = selfName;
 	code->source = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
@@ -4729,16 +4954,22 @@ struct Support {
 		return UNDEFINED_VALUE;
 	}
 
-	static Value defineProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	static Value defineProperty(Runtime &rt, Processor &, UInt32 argc, const Value *argv, Object *) {
 		bool success = false;
 		if (argc >= 2) {
-			Object* o = argv[0].asObject();
+			Object *o = argv[0].asObject();
 			if (o != 0) {
-				success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE)
-						, (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0)
-						| (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0)
-						| (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0)
-						| EXISTS_FLAG);
+				Flags flags = (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0) |
+				              (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0) |
+				              (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0) | EXISTS_FLAG;
+				if (argc >= 7) {
+					Heap &heap = rt.getHeap();
+					Accessor *acc = new (heap)
+					    Accessor(heap.managed(), argv[6].asFunction(), (argc >= 8 ? argv[7].asFunction() : 0));
+					success = o->setOwnProperty(rt, argv[1], acc, flags | ACCESSOR_FLAG);
+				} else {
+					success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
+				}
 			}
 		}
 		return success;
@@ -5058,20 +5289,22 @@ Var Runtime::eval(const String& expression) {
 	return runUntilReturn(processor);
 }
 
-Code* Runtime::compileEvalCode(const String* expression) {
-	const Table::Bucket* bucket = evalCodeCache.lookup(expression);
+Code* Runtime::compileEvalCode(const String* expression, bool strict) {
+	const Table::Bucket* bucket = (strict ? 0 : evalCodeCache.lookup(expression));
 	if (bucket != 0) {
 		Object* o = bucket->getValue().getObject();
 		assert(dynamic_cast<Code*>(o) != 0);
 		return reinterpret_cast<Code*>(o);
 	} else {
 		Code* code = new(heap) Code(heap.managed());
+		if (strict) { code->setStrict(true); }
 		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
 		compiler.compile(*expression);
-		evalCodeCache.update(evalCodeCache.insert(expression), code);
+		if (!strict) { evalCodeCache.update(evalCodeCache.insert(expression), code); }
 		return code;
 	}
 }
+
 
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
 	Code* code = new(heap) Code(heap.managed());
