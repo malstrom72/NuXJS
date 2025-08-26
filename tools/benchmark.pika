@@ -60,20 +60,24 @@ tempDir = makeTempDir();
 outPath = tempDir # 'out';
 timePath = tempDir # 'time';
 overallMedians.n = 0;
+timeLines.n = 0;
 
 names.n = 0;
 widths.n = 0;
 dir("benchmarks" # DIR_SLASH # tests, >{
-	fn = $0;
-	name = basenameOfPath(fn);
-	append(@names, name);
-	defaults(@widths[name], length(name));
+fn = $0;
+name = basenameOfPath(fn);
+append(@names, name);
+defaults(@widths[name], length(name));
+timeLines[name].n = 0;
 });
 
 iterate(@revs, >{
-	rev = $2;
-	err = try(>{
-		if (rev !== void) {
+rev = $2;
+revKey = rev;
+if (revKey == '') revKey = 'current';
+err = try(>{
+if (rev != '' && rev !== void) {
 			print('Checking out ' # rev # '...');
 			pipe('svn update -r' # rev # ' src\NuXJS.cpp src\NuXJS.h src\stdlib.js src\stdlibJS.cpp');
 			print('Building...');
@@ -114,7 +118,7 @@ for (i = 0; i < runs; ++i) {
 						mem3 = runLines[3];
 					}
 };
-a = @timeLines[name][rev];
+a = @timeLines[name][revKey];
 				[a].n = 0;
 				if (times == 'FAIL') {
 					print('FAIL');
@@ -153,16 +157,18 @@ iterate(@names, >{
        lines[1] #= repeat('-', widths[name]) # '  ';
        iterate(@revs, >{
                rev = $2;
+               revKey = rev;
+               if (revKey == '') revKey = 'current';
                for (l = 0; l < 4; ++l) {
-                       s = coalesce(@timeLines[name][rev][l], '');
+                       s = coalesce(@timeLines[name][revKey][l], '');
                        lines[l + 2] #= s # repeat(' ', widths[name] - length(s)) # '  ';
                }
        });
 });
 overallMedians.n = 0;
-rev = '';
+revKey = 'current';
 iterate(@names, >{
-medianStr = @timeLines[$2][rev][0];
+medianStr = @timeLines[$2][revKey][0];
 if (medianStr != void && medianStr != 'FAIL') append(@overallMedians, evaluate(medianStr{0:length(medianStr) - 1}));
 });
 iterate(@lines, >print($2));
