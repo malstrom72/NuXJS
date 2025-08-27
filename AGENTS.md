@@ -8,6 +8,8 @@ timeout 180 ./build.sh
 
 Always execute this command before committing changes to verify that the build and regression tests succeed.
 
+For performance changes, read `docs/profiling-insights.md` and follow its benchmarking instructions (run the full `tools/benchmark.pika` suite and profile with gprof) before committing.
+
 ## Repository layout
 The project uses a consistent folder structure. Build output is written to `output/` and no source files live there. Useful locations:
 
