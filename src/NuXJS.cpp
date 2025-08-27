@@ -180,7 +180,9 @@ const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_ST
                 , E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
                 , S_TRING_STRING("String");
 
+#if NUXJS_ES5
 const String GET_STRING("get"), SET_STRING("set");
+#endif
 
 static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
@@ -2211,8 +2213,10 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ SET_PROPERTY_OP            , "SET_PROPERTY"            , -2     , 0 },
 	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -3     , 0 },
 	{ ADD_PROPERTY_OP            , "ADD_PROPERTY"            , -1     , 0 },
+#if NUXJS_ES5
 	{ ADD_GETTER_OP            , "ADD_GETTER"             , -1     , 0 },
 	{ ADD_SETTER_OP            , "ADD_SETTER"             , -1     , 0 },
+#endif
 	{ PUSH_ELEMENTS_OP           , "PUSH_ELEMENTS_OP"        , 0      , OpcodeInfo::POP_OPERAND },
 	{ OBJ_TO_PRIMITIVE_OP        , "OBJ_TO_PRIMITIVE"        , 0      , 0 },
 	{ OBJ_TO_NUMBER_OP           , "OBJ_TO_NUMBER"           , 0      , 0 },
@@ -2791,20 +2795,22 @@ case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break
 				pop(1);
 				break;
 			}
-			case ADD_GETTER_OP: {
-				Object* o = sp[-1].getObject();
-				Accessor* acc = new(heap) Accessor(heap.managed(), sp[0].asFunction(), 0);
-				o->setOwnProperty(rt, constants[im], acc, ACCESSOR_FLAG);
-				pop(1);
-				break;
-			}
-			case ADD_SETTER_OP: {
-				Object* o = sp[-1].getObject();
-				Accessor* acc = new(heap) Accessor(heap.managed(), 0, sp[0].asFunction());
-				o->setOwnProperty(rt, constants[im], acc, ACCESSOR_FLAG);
-				pop(1);
-				break;
-			}
+#if NUXJS_ES5
+case ADD_GETTER_OP: {
+Object* o = sp[-1].getObject();
+Accessor* acc = new(heap) Accessor(heap.managed(), sp[0].asFunction(), 0);
+o->setOwnProperty(rt, constants[im], acc, ACCESSOR_FLAG);
+pop(1);
+break;
+}
+case ADD_SETTER_OP: {
+Object* o = sp[-1].getObject();
+Accessor* acc = new(heap) Accessor(heap.managed(), 0, sp[0].asFunction());
+o->setOwnProperty(rt, constants[im], acc, ACCESSOR_FLAG);
+pop(1);
+break;
+}
+#endif
 
 			case PUSH_ELEMENTS_OP: {
 				Object* o = sp[-im].getObject();
@@ -3570,21 +3576,24 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff 
 			error(SYNTAX_ERROR, "Expected property name");
 			}
 			white();
-				if ((id->isEqualTo(GET_STRING) || id->isEqualTo(SET_STRING)) && *p != ':') {
-				bool isGetter = id->isEqualTo(GET_STRING);
-				const Char* b2 = p;
-				Value accKey = stringOrNumberConstant();
-				if (p == b2) {
-				accKey = identifier(true, true);
-				}
-				white();
-				const String* funcName = accKey.toString(heap);
-				functionDefinition(funcName, funcName);
-				emitWithConstant(isGetter ? Processor::ADD_GETTER_OP : Processor::ADD_SETTER_OP, accKey);
-				handled = true;
-			} else {
-			key = id;
-			}
+#if NUXJS_ES5
+if ((id->isEqualTo(GET_STRING) || id->isEqualTo(SET_STRING)) && *p != ':') {
+bool isGetter = id->isEqualTo(GET_STRING);
+const Char* b2 = p;
+Value accKey = stringOrNumberConstant();
+if (p == b2) {
+accKey = identifier(true, true);
+}
+white();
+const String* funcName = accKey.toString(heap);
+functionDefinition(funcName, funcName);
+emitWithConstant(isGetter ? Processor::ADD_GETTER_OP : Processor::ADD_SETTER_OP, accKey);
+handled = true;
+} else
+#endif
+{
+key = id;
+}
 			}
 		if (!handled) {
 				expectToken(":", true);
