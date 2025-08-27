@@ -3,21 +3,11 @@
 include('stdlib.pika');
 run('./initPPEG.pika');
 
-vargs(@exe,, @inputFile, @es5File, @outputFile);
-if (!exists(@outputFile)) {
-outputFile = es5File;
-es5File = '../src/stdlibES5.js';
-};
-defaults(@inputFile, '../src/stdlib.js', @es5File, '../src/stdlibES5.js', @outputFile, '../src/stdlibJS.cpp');
+vargs(@exe,, @inputFile, @outputFile);
+defaults(@inputFile, 'stdlib.js', @outputFile, 'stdlibJS.cpp');
 
-print(bake('Loading {inputFile} and {es5File}'));
-base = load(inputFile);
-overlay = load(es5File);
-
-// Inject ES5 overlay inside stdlib.js' IIFE before the final `})` so helper
-// functions remain in scope.
-if (base{length(base) - 4:4} != "\t})\n") throw("Unexpected stdlib.js footer");
-src = base{0:length(base) - 4} # overlay # "\t})\n";
+print(bake('Loading {inputFile}'));
+src = load(inputFile);
 
 print('Compiling parser');
 

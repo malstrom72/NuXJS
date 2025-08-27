@@ -777,6 +777,20 @@ return (this.length = len + n);
 	a.length = to;
 	return a;
 	}),
+	indexOf: unconstructable(function indexOf(searchElement) {
+	var len = uint32(this.length), i = arguments[1];
+	if (len === 0) return -1;
+	if ((i = int(i)) < 0) { i += len; if (i < 0) i = 0; }
+	for (; i < len; ++i) if (i in this && this[i] === searchElement) return i;
+	return -1;
+	}),
+lastIndexOf: unconstructable(function lastIndexOf(searchElement) {
+var len = uint32(this.length), i = arguments[1];
+if (len === 0) return -1;
+if (i === void 0) i = len - 1; else { i = int(i); if (i < 0) i += len; if (i >= len) i = len - 1; }
+for (; i >= 0; --i) if (i in this && this[i] === searchElement) return i;
+return -1;
+}),
 	reduce: unconstructable(function reduce(callbackfn) { // .length should be 1
 	var o = Object(this), len = uint32(o.length), k = 0, acc;
 	if (typeof callbackfn !== "function") throw TypeError();
@@ -1633,10 +1647,10 @@ return (this.length = len + n);
 	defineProperties(JSON, { dontEnum: true }, {
 	stringify: unconstructable(function stringify(val, replacer, space) {
 	var stack = [ ], replacerFunction = (typeof replacer === "function" ? replacer : null), gap = '', includeProps;
-if (typeof replacer === "object" && replacer && $getInternalProperty(replacer, "class") === "Array") {
-includeProps = { };
-for (var i = replacer.length; --i >= 0;) includeProps[replacer[i]] = true;
-}
+	if ($getInternalProperty(replacer, "class") === "Array") {
+	includeProps = { };
+	for (var i = replacer.length; --i >= 0;) includeProps[replacer[i]] = true;
+	}
 	if (typeof space === "number" || (typeof space === "object" && $getInternalProperty(space, "class") === "Number")) {
 	space = +space;
 	for (var i = (space > 10 ? 10 : space); --i >= 0;) gap += ' ';
