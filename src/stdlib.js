@@ -1633,10 +1633,10 @@ return (this.length = len + n);
 	defineProperties(JSON, { dontEnum: true }, {
 	stringify: unconstructable(function stringify(val, replacer, space) {
 	var stack = [ ], replacerFunction = (typeof replacer === "function" ? replacer : null), gap = '', includeProps;
-	if ($getInternalProperty(replacer, "class") === "Array") {
-	includeProps = { };
-	for (var i = replacer.length; --i >= 0;) includeProps[replacer[i]] = true;
-	}
+if (typeof replacer === "object" && replacer && $getInternalProperty(replacer, "class") === "Array") {
+includeProps = { };
+for (var i = replacer.length; --i >= 0;) includeProps[replacer[i]] = true;
+}
 	if (typeof space === "number" || (typeof space === "object" && $getInternalProperty(space, "class") === "Number")) {
 	space = +space;
 	for (var i = (space > 10 ? 10 : space); --i >= 0;) gap += ' ';
