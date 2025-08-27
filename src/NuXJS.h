@@ -24,6 +24,10 @@
 #ifndef NuXJS_h
 #define NuXJS_h
 
+#ifndef NUXJS_ES5
+#define NUXJS_ES5 1
+#endif
+
 #include "assert.h"
 #include <algorithm>
 #include <string>

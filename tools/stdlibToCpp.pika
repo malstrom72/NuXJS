@@ -3,11 +3,15 @@
 include('stdlib.pika');
 run('./initPPEG.pika');
 
-vargs(@exe,, @inputFile, @outputFile);
-defaults(@inputFile, 'stdlib.js', @outputFile, 'stdlibJS.cpp');
+vargs(@exe,, @inputFile, @es5File, @outputFile);
+if (!exists(@outputFile)) {
+        outputFile = es5File;
+        es5File = '../src/stdlibES5.js';
+}
+defaults(@inputFile, '../src/stdlib.js', @es5File, '../src/stdlibES5.js', @outputFile, '../src/stdlibJS.cpp');
 
-print(bake('Loading {inputFile}'));
-src = load(inputFile);
+print(bake('Loading {inputFile} and {es5File}'));
+src = load(inputFile) # LF # load(es5File);
 
 print('Compiling parser');
 

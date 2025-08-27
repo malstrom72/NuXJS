@@ -6,6 +6,8 @@ NuXJS today is a portable C++03 engine that fully implements ECMAScript 3 with
 All ES5.1 work should be driven by regression tests. Whenever a roadmap item lands, reference its verifying `.io` file in this document.
 ES5‑specific regression tests live in `tests/es5`.
 
+ES5 support can be toggled at compile time with the `NUXJS_ES5` flag (enabled by default). Standard library extensions live in `src/stdlibES5.js` and are appended to `src/stdlib.js` by `tools/stdlibToCpp.pika`.
+
 ## Roadmap to ES5.1
 
 ### Object model & descriptors
