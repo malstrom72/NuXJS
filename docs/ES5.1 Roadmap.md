@@ -8,6 +8,10 @@ ES5‑specific regression tests live in `tests/es5`.
 
 ES5 support can be toggled at compile time with the `NUXJS_ES5` flag (enabled by default). Standard library extensions live in `src/stdlibES5.js` and are appended to `src/stdlib.js` by `tools/stdlibToCpp.pika`.
 
+## Known issues
+
+- Running `timeout 180 ./build.sh` currently aborts while bootstrapping the standard library. `Runtime::setupStandardLibrary()` throws **TypeError: Cannot convert undefined or null to object**, so no JavaScript tests execute. The failure happens during the JSON setup stage before any user code runs. Investigate the ES5 library additions that execute at load time—such as the `Object.keys` polyfill—to determine which one is receiving a `null` or `undefined` input.
+
 ## Roadmap to ES5.1
 
 ### Object model & descriptors
