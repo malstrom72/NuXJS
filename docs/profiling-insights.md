@@ -307,5 +307,5 @@ These numbers show NuXJS generally lags behind QuickJS and often Duktape on stri
 ## Notes
 
 - `GCList::deleteAll` now sweeps with a cached-next pointer loop, dropping the `gc_bm_1.js` median from 3.49s to 3.40s.
-- Replacing `Runtime::newStringConstantWithHash` comparisons with `memcmp` showed no benchmark improvement and was reverted.
+- `Runtime::newStringConstantWithHash` now compares cached literals with `std::memcmp`, cutting `string_bm_1.js` from 2.418 s to 2.149 s.
 - Always run the benchmark suite before and after changes to confirm any claimed speedups.
