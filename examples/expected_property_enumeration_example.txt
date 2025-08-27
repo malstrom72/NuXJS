@@ -1,5 +1,0 @@
-inProto = from proto
-own = 1
-number = 42
-nested = [object Object]
-text = hello

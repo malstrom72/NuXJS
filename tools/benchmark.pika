@@ -2,40 +2,22 @@
 
 include('stdlib.pika');
 include('systools.pika');
+include('debug.pika');
 
-// benchmark.pika <test(s)> <exe>|<rev-rev>|<rev>|makegold ignoregold
+// benchmark.pika <test(s)> <exe>|makegold ignoregold
 
-vargs(@me,, @tests, @exe, @ignoregold);
+vargs(@me,, @tests, @exe, @ignoregold, @runs);
 defaults(@ignoregold, '');
+defaults(@runs, 5);
 
 if (!exists(@tests) || tests === '-') tests = '*.js'
 else if (right(tests, 3) != '.js') tests #= '.js';
 
-revs.n = 0;
 makeGold = false;
-doRevRange = false;
-fromRev = toRev = '';
-if (exists(@exe)) {
-	if (exe === 'makegold') {
-		makeGold = true;
-		delete(@exe);
-	} else {
-		doRevRange = wildmatch(exe, '{[0-9]?*}[-:]{[0-9]?*}', @fromRev, @toRev);
-		if (!doRevRange) {
-			if (doRevRange = wildmatch(exe, '{[0-9]?*}', @fromRev)) toRev = fromRev;
-		};
-		if (doRevRange) {
-			print('Listing revisions...');
-			svnlog = pipe(bake("svn log -q -r{fromRev}:{toRev} svn://svn.elysian.se/nuedgesvn/NuXJS/trunk src/NuXJS.h src/NuXJS.cpp src/stdlibJS.cpp"));
-			tokenize(svnlog, >{ if (wildmatch($0, 'r{[0-9]?*} *', @r)) append(@revs, r); });
-			s = '';
-			iterate(@revs, >s #= (if (s != '') ',') # $2);
-			print('Revs: ' # s);
-			delete(@exe);
-		};
-	};
+if (exists(@exe) && exe === 'makegold') {
+	makeGold = true;
+	delete(@exe);
 };
-if (revs.n == 0) append(@revs, '');
 
 if (PLATFORM === 'UNIX') {
 	defaults(@exe, './output/NuXJS -s -t');
@@ -65,74 +47,91 @@ dir("benchmarks" # DIR_SLASH # tests, >{
 	name = basenameOfPath(fn);
 	append(@names, name);
 	defaults(@widths[name], length(name));
+	timeLines[name].n = 0;
 });
 
-iterate(@revs, >{
-	rev = $2;
-	err = try(>{
-		if (rev !== void) {
-			print('Checking out ' # rev # '...');
-			pipe('svn update -r' # rev # ' src\NuXJS.cpp src\NuXJS.h src\stdlib.js src\stdlibJS.cpp');
-			print('Building...');
-			pipe(BUILD_CPP_COMMAND);
-			print('Done.');
-		};
-		iterate(@names, >{
-			name = $2;
-			fn = name # '.js';
-			print(name);
-			print(repeat('-', length(name)));
-			cmd = bake(TIME_COMMAND_FORMAT);
+err = try(>{
+	iterate(@names, >{
+		name = $2;
+		fn = name # '.js';
+		print(name);
+		print(repeat('-', length(name)));
+		cmd = bake(TIME_COMMAND_FORMAT);
+		runLines.n = 0;
+		timeSamples.n = 0;
+		times = '';
+		for (i = 0; i < runs && times !== 'FAIL'; ++i) {
 			rc = system(cmd);
 			times = load(timePath);
-			output = load(outPath);
-			output = replace(output, "\r\n", "\n");
-			goldenFile = bake('benchmarks{DIR_SLASH}golden{DIR_SLASH}{name}.txt');
-			if (makeGold) {
-				save(goldenFile, output);
-			} else if (ignoregold !== 'ignoregold') {
-				expected = load(goldenFile);
-				if (output != expected) {
-					times = 'FAIL';
-					save('.\failed.txt', output);
-					save('.\expected.txt', expected);
-				}
-			};
-			print(times);
-			a = @timeLines[name][rev];
-			[a].n = 0;
-			if (times == 'FAIL') append(a, 'FAIL')
-			else {
-				parseTimeOutput(times, a);
-				iterate(a, >widths[name] = max(widths[name], length($2)));
+			if (times !== 'FAIL') {
+				runLines.n = 0;
+				parseTimeOutput(times, @runLines);
+				print(runLines[0]);
+				append(@timeSamples, chop(runLines[0], 1));
+				mem1 = runLines[1];
+				mem2 = runLines[2];
+				mem3 = runLines[3];
 			}
-		});
+		};
+		output = load(outPath);
+		output = replace(output, "\r\n", "\n");
+		goldenFile = bake('benchmarks{DIR_SLASH}golden{DIR_SLASH}{name}.txt');
+		if (makeGold) {
+			save(goldenFile, output);
+		} else if (ignoregold !== 'ignoregold') {
+			expected = load(goldenFile);
+			if (output !== expected) {
+				times = 'FAIL';
+				save("output" # DIR_SLASH # 'failed.txt', output);
+				save("output" # DIR_SLASH # 'expected.txt', expected);
+			}
+		};
+		a = @timeLines[name];
+		if (times == 'FAIL') {
+			print(LF # '!!! FAIL !!!' # LF);
+			append(a, 'FAIL');
+		} else {
+			sort(@timeSamples);
+			m = floor(timeSamples.n / 2);
+			if ((timeSamples.n % 2) != 0) medianTime = timeSamples[m]
+			else medianTime = (timeSamples[m - 1] + timeSamples[m]) / 2;
+			medianString = medianTime # 's';
+			append(a, medianString);
+			append(a, mem1);
+			append(a, mem2);
+			append(a, mem3);
+			iterate(a, >widths[name] = max(widths[name], length($2)));
+			print('median: ' # medianString # LF);
+		}
 	});
-	print(err);
 });
+if (err != void) print(err);
 
 prune(@lines);
 lines[0] = '        ';
 lines[1] = '        ';
-lines.n = 2;
+compose(@labels, 'median', 'mem1', 'mem2', 'mem3');
+for (l = 0; l < labels.n; ++l) lines[l + 2] = labels[l] # repeat(' ', 8 - length(labels[l]));
+overallMedians.n = 0;
 iterate(@names, >{
 	name = $2;
 	lines[0] #= name # repeat(' ', widths[name] - length(name)) # '  ';
 	lines[1] #= repeat('-', widths[name]) # '  ';
-	lineIndex = 2;
-	iterate(@revs, >{
-		rev = $2;
-		for (l = 0; l < 4; ++l) {
-			if (lineIndex >= lines.n) {
-				lines[lineIndex] = (if (l == 0) (rev # repeat(' ', 8 - length(rev))) else '        ');
-				++lines.n;
-			};
-			s = coalesce(@timeLines[name][rev][l], '');
-			lines[lineIndex] #= s # repeat(' ', widths[name] - length(s)) # '  ';
-			++lineIndex;
-		}
-	});
+	for (l = 0; l < 4; ++l) {
+		s = coalesce(@timeLines[name][l], '');
+		lines[l + 2] #= s # repeat(' ', widths[name] - length(s)) # '  ';
+	};
+	lines.n = l + 2;
+	append(@overallMedians, chop(timeLines[name][0], 1));
 });
 iterate(@lines, >print($2));
 
 wipeTempDir(tempDir);
+if (overallMedians.n != 0) {
+	sort(@overallMedians);
+	m = floor(overallMedians.n / 2);
+	if ((overallMedians.n % 2) != 0) allMedian = overallMedians[m]
+	else allMedian = (overallMedians[m - 1] + overallMedians[m]) / 2;
+	print(LF # 'median of all tests: ' # allMedian # 's');
+}
+

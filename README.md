@@ -71,6 +71,11 @@ int main(int argc, const char* argv[]) {
 - `tools/buildAndTest.sh` / `.cmd` – build and test a single configuration
 - `tools/runExamples.sh` / `.cmd` – compile and run all example programs
 - `tools/BuildCpp.sh` / `.cmd` – low-level wrapper around the C++ compiler
+
+## Benchmarking
+
+- `tools/benchmark.pika` – run NuXJS micro benchmarks or generate golden results
+- `tools/compareEngines.sh` / `.cmd` – download Duktape and QuickJS and compare their performance to NuXJS
  
 ## Building the fuzz target
 The `tools/buildReplFuzz.sh` script compiles `tools/NuXJSREPL.cpp` using clang and libFuzzer:

@@ -30,3 +30,19 @@ bash tools/BuildCpp.sh release x64 ./output/NuXJS \
 ```
 
 Either approach leaves `output/NuXJS` ready for benchmarking.
+
+## Running `tools/compareEngines.sh`
+
+To compare NuXJS with other engines, run the helper script from the repository root:
+
+```
+bash tools/compareEngines.sh
+```
+
+Pass specific benchmark files to limit the run:
+
+```
+bash tools/compareEngines.sh benchmarks/bigArray.js benchmarks/bigObject.js
+```
+
+The script downloads and builds Duktape and QuickJS, runs each benchmark, and reports execution times alongside NuXJS.

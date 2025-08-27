@@ -1,0 +1,45 @@
+=== asynchronous_example ===
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+tick
+result=45
+=== callback_example ===
+C++ callback received: iteration 0
+C++ callback received: iteration 1
+C++ callback received: iteration 2
+JavaScript returned: 3
+=== custom_object_example ===
+Counter value: 3
+=== error_handling_example ===
+C++ caught again: ReferenceError: print is not defined
+=== json_conversion_example ===
+{"b":2,"c":3,"a":1}
+=== object_creation_example ===
+Updated user: {"name":"Alice","age":31,"hobbies":["coding","music","photography"]}
+=== property_enumeration_example ===
+inProto = from proto
+own = 1
+number = 42
+nested = [object Object]
+text = hello
+=== time_memory_limits_example ===
+Runtime limit hit: Out of memory

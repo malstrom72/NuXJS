@@ -1484,8 +1484,8 @@ Table::Bucket* Table::find(const String* key, UInt32 hash) {
 	UInt16 hash16 = static_cast<UInt16>(hash & 0xFFFF);
 	Bucket* bucket;
 	while ((bucket = &buckets[i])->keyExists()) {
-		if (bucket->hash16 == hash16 && (bucket->key == key || bucket->key->isEqualTo(*key))) {
-			if (i != (hash & mask)) { // move found bucket one step closer to search entry, to speed up future lookups
+		if (bucket->key == key || (bucket->hash16 == hash16 && bucket->key->isEqualTo(*key))) {
+			if (i != (hash & mask)) {
 				std::swap(buckets[i], buckets[(i - 1) & mask]);
 				i = (i - 1) & mask;
 			}

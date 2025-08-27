@@ -96,4 +96,4 @@ function reTest(re) {
 
 reTest(/submatchthis/)
 reTest(/^((?=\S*?[A-Z])(?=\S*?[a-z])(?=\S*?[0-9]).{6,})\S$/) // password validation from regexp101.com by christian klemp
-reTest(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[#$%\/()=¿?*+-])(?=(?:([\w\d])\1?(?!\1\1)))(?!(?=.*(palabra1|palabra2|palabraN))).{8,20}$/)
+reTest(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[#$%\/()=?*+-])(?=(?:([\w\d])\1?(?!\1\1)))(?!(?=.*(palabra1|palabra2|palabraN))).{8,20}$/)
