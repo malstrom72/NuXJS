@@ -5,9 +5,9 @@ run('./initPPEG.pika');
 
 vargs(@exe,, @inputFile, @es5File, @outputFile);
 if (!exists(@outputFile)) {
-        outputFile = es5File;
-        es5File = '../src/stdlibES5.js';
-}
+outputFile = es5File;
+es5File = '../src/stdlibES5.js';
+};
 defaults(@inputFile, '../src/stdlib.js', @es5File, '../src/stdlibES5.js', @outputFile, '../src/stdlibJS.cpp');
 
 print(bake('Loading {inputFile} and {es5File}'));
