@@ -310,3 +310,4 @@ These numbers show NuXJS generally lags behind QuickJS and often Duktape on stri
 - `Runtime::newStringConstantWithHash` now compares cached literals with `std::memcmp`.
   A gprof run of `string_bm_1.js` shows this helper is never called, so the change only benefits C string constants.
 - Always run the benchmark suite before and after changes to confirm any claimed speedups.
+- Reordering `Table::find` to check pointer equality before the truncated hash avoids needless `hash16` loads. The suite-wide median fell from 1.29 s to 0.95 s after this tweak.
