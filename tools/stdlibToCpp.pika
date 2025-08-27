@@ -11,7 +11,13 @@ es5File = '../src/stdlibES5.js';
 defaults(@inputFile, '../src/stdlib.js', @es5File, '../src/stdlibES5.js', @outputFile, '../src/stdlibJS.cpp');
 
 print(bake('Loading {inputFile} and {es5File}'));
-src = load(inputFile) # LF # load(es5File);
+base = load(inputFile);
+overlay = load(es5File);
+
+// Inject ES5 overlay inside stdlib.js' IIFE before the final `})` so helper
+// functions remain in scope.
+if (base{length(base) - 4:4} != "\t})\n") throw("Unexpected stdlib.js footer");
+src = base{0:length(base) - 4} # overlay # "\t})\n";
 
 print('Compiling parser');
 

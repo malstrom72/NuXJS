@@ -511,10 +511,10 @@ const char* STDLIB_JS =
 ",bB,undefined,U,V,W,eK,B)}else{a.defineProperty(J,bB,ce.value,U,V,W)}}),getPrototypeOf:c(function getPrototypeOf(J){re"
 "turn i(J,\"prototype\")}),keys:c(function keys(J){if(J===undefined||J===null)throw TypeError();var eL=Object(J);var eM"
 "=[];var bB;for(bB in eL){if(Object.prototype.hasOwnProperty.call(eL,bB))eM[eM.length]=bB}return eM})});if(g.toString()"
-"!==\"NaN\")throw Error(\"Internal self test failed. Check C++ compiler options concerning IEEE 754 compliance.\")})eN("
-"Array.prototype,{indexOf:c(function indexOf(eO){var ay=O(this.length),u=arguments[1];if(ay===0)return-1;if((u=M(u))<0)"
-"{u+=ay;if(u<0)u=0}for(;u<ay;++u)if(u in this&&this[u]===eO)return u;return-1}),lastIndexOf:c(function lastIndexOf(eO){"
-"var ay=O(this.length),u=arguments[1];if(ay===0)return-1;if(u===void 0)u=ay-1;else{u=M(u);if(u<0)u+=ay;if(u>=ay)u=ay-1}"
-"for(;u>=0;--u)if(u in this&&this[u]===eO)return u;return-1})});"
+"!==\"NaN\")throw Error(\"Internal self test failed. Check C++ compiler options concerning IEEE 754 compliance.\");Q(Ar"
+"ray.prototype,{indexOf:c(function indexOf(eN){var ay=O(this.length),u=arguments[1];if(ay===0)return-1;if((u=M(u))<0){u"
+"+=ay;if(u<0)u=0}for(;u<ay;++u)if(u in this&&this[u]===eN)return u;return-1}),lastIndexOf:c(function lastIndexOf(eN){va"
+"r ay=O(this.length),u=arguments[1];if(ay===0)return-1;if(u===void 0)u=ay-1;else{u=M(u);if(u<0)u+=ay;if(u>=ay)u=ay-1}fo"
+"r(;u>=0;--u)if(u in this&&this[u]===eN)return u;return-1})})})"
 ;
 }

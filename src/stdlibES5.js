@@ -2,7 +2,7 @@
 ES5 additions to the standard library.
 This file is appended to stdlib.js by tools/stdlibToCpp.pika.
 
-@preserve: indexOf,lastIndexOf
+@preserve: indexOf,lastIndexOf,Q
 */
 
 Q(Array.prototype, {
