@@ -52,7 +52,14 @@ ES5‑specific regression tests live in `tests/es5`.
 	- `Object.getOwnPropertyDescriptor` on arguments must expose `length`, `callee`, and indexed properties with correct attributes.
 - Provide `Function.prototype.bind` and ensure correct `.name`, `.length`, and `toString` outputs.
 	- Implement `bind` in `src/stdlib.js`; the resulting bound functions require a C++ backing type to store the target, bound `this`, and partial arguments while exposing an adjusted `length` and `name`.
-	- Revise function serialization so that `Function.prototype.toString` reconstructs source code for bound and native functions.
+        - Revise function serialization so that `Function.prototype.toString` reconstructs source code for bound and native functions.
+
+### Spec compliance fixes
+- Align ES5 semantics that differ from the current engine implementation.
+	- Permit `for...in` on `null` or `undefined` to yield an empty iteration instead of throwing.  *(see `docs/notes/ECMAScript Compatibility Notes.md`)*
+	- Make user-defined functions' `prototype` properties non-enumerable and adjust `name`/`length` attributes to match ES5.1.
+	- Update `Object.prototype.toString` so `arguments` objects report `[object Arguments]` and enumerate indexed slots during `for...in`.
+	- Add regression tests for each behaviour in `tests/es5`.
 
 ### Array & string methods
 - Add ES5.1 array iteration utilities: `forEach`, `map`, `filter`, `some`, `every`, `reduce`, `reduceRight`, `indexOf`, `lastIndexOf`.
