@@ -24,6 +24,17 @@
 #ifndef NuXJS_h
 #define NuXJS_h
 
+// ---------------------------------------------------------------------------
+// ES version toggle
+//
+// NUXJS_ES5 controls ES5 features and semantics. Keep default at 0 so that
+// building without an explicit -DNUXJS_ES5=1 matches legacy ES3 behavior from
+// the main branch exactly.
+// ---------------------------------------------------------------------------
+#ifndef NUXJS_ES5
+#define NUXJS_ES5 0
+#endif
+
 #include "assert.h"
 #include <algorithm>
 #include <string>
