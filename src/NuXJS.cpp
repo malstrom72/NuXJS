@@ -2612,22 +2612,24 @@ void Processor::innerRun() {
 				pop(1);
 			}
 			break;
-case GET_PROPERTY_OP: {
-const Object* o = convertToObject(sp[-1], false);
-if (o == 0) {
-return;
-}
-Flags f = o->getProperty(rt, *this, sp[0], sp - 1);
-if (f == NONEXISTENT) {
-sp[-1] = UNDEFINED_VALUE;
-pop(1);
-break;
-}
-pop(1);
-if ((f & ACCESSOR_FLAG) != 0) {
-return;
-}
-break;
+			case GET_PROPERTY_OP: {
+				const Object* o = convertToObject(sp[-1], false);
+				if (o == 0) {
+				return;
+				}
+				Flags f = o->getProperty(rt, *this, sp[0], sp - 1);
+				if (f == NONEXISTENT) {
+				sp[-1] = UNDEFINED_VALUE;
+				pop(1);
+				break;
+				}
+				if ((f & ACCESSOR_FLAG) != 0) {
+				sp[-1] = sp[0];
+				pop(1);
+				return;
+				}
+				pop(1);
+				break;
 }
 
 			
