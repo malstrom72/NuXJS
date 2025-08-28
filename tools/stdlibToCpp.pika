@@ -56,7 +56,7 @@ save(outputFile, bake(
 'namespace NuXJS {
 const char* STDLIB_JS =
 --{codeBase}--;
-#if (NUXJS_ES5)
+#if (!defined(NUXJS_ES5) || NUXJS_ES5)
 const char* STDLIB_ES5_JS =
 --{codeES5}--;
 #endif

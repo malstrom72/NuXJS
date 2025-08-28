@@ -15,7 +15,8 @@ CALL .\BuildPikaCmd.cmd || GOTO error
 POPD
 ..\externals\PikaCmd\PikaCmd.exe .\stdlibToCpp.pika ..\src\stdlib.js ..\src\stdlibJS.cpp || GOTO error
 
-REM Optional dual-variant test mode (ES3 and ES5)
+REM Optional dual-variant test mode (ES3 and ES5) — default OFF if not set
+IF "%NUXJS_TEST_ES5_VARIANTS%"=="" SET NUXJS_TEST_ES5_VARIANTS=0
 IF "%NUXJS_TEST_ES5_VARIANTS%"=="1" (
     IF /I "%target%"=="release" IF "%NUXJS_SKIP_RELEASE%"=="1" (
         ECHO Skipping release per NUXJS_SKIP_RELEASE=1
@@ -54,12 +55,12 @@ CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJSTest_%target%_%model%.exe .\
 ..\output\NuXJSTest_%target%_%model% -s >NUL 2>&1 || GOTO error
 ..\output\NuXJSTest_%target%_%model% || GOTO error
 CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJS_%target%_%model%.exe .\NuXJSREPL.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
-REM Select test directories; include ES5 tests only when ES5 is enabled.
-ECHO %CPP_OPTIONS% | FINDSTR /C:"/DNUXJS_ES5=1" >NUL
+REM Select test directories; include ES5 tests unless explicitly disabled with /DNUXJS_ES5=0
+ECHO %CPP_OPTIONS% | FINDSTR /C:"/DNUXJS_ES5=0" >NUL
 IF ERRORLEVEL 1 (
-    SET TEST_DIRS=..\tests\conforming ..\tests\erroneous ..\tests\es3only ..\tests\extremes ..\tests\from262 ..\tests\migrated ..\tests\regression ..\tests\stdlib ..\tests\unconforming ..\tests\unsorted
-) ELSE (
     SET TEST_DIRS=..\tests\conforming ..\tests\erroneous ..\tests\es3only ..\tests\es5 ..\tests\extremes ..\tests\from262 ..\tests\migrated ..\tests\regression ..\tests\stdlib ..\tests\unconforming ..\tests\unsorted
+) ELSE (
+    SET TEST_DIRS=..\tests\conforming ..\tests\erroneous ..\tests\es3only ..\tests\extremes ..\tests\from262 ..\tests\migrated ..\tests\regression ..\tests\stdlib ..\tests\unconforming ..\tests\unsorted
 )
 ..\externals\PikaCmd\PikaCmd.exe .\test.pika -e -x ..\output\NuXJS_%target%_%model% %TEST_DIRS% || GOTO error
 CALL runExamples.cmd %target% || GOTO error

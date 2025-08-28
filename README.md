@@ -100,19 +100,31 @@ Notes:
 
 - The dashboard auto-extracts `externals/test262-master.tar.gz` if `externals/test262-master/` is missing.
 
-## ES5.1 Experimental Mode
+## ES3 vs ES5.1 Builds
 
-This branch adds an optional ES5.1 feature set on top of the stable ES3 engine. ES5.1 support is guarded by a compile-time switch so the default behavior remains ES3-compatible.
+This branch layers an ES5.1 feature set on top of the stable ES3 core. ES5.1 is controlled by the `NUXJS_ES5` compile‑time switch and is enabled by default in this branch.
 
-- Enable ES5.1: set the `NUXJS_ES5` macro to `1` via `CPP_OPTIONS`.
+- Default (ES5.1 on): run `./build.sh` (or `build.cmd`). ES5 tests under `tests/es5/` are included.
+- Force ES3‑only: set `NUXJS_ES5=0` via `CPP_OPTIONS` to disable ES5.1 features and tests.
+  - macOS/Linux: `CPP_OPTIONS='-DNUXJS_ES5=0' ./build.sh`
+  - Windows (PowerShell): `$env:CPP_OPTIONS='/DNUXJS_ES5=0'; ./build.cmd`
+  - Windows (cmd): `SET CPP_OPTIONS=/DNUXJS_ES5=0 && build.cmd`
+- Explicit ES5.1: you can also pass it explicitly (not required):
   - macOS/Linux: `CPP_OPTIONS='-DNUXJS_ES5=1' ./build.sh`
-  - Windows (PowerShell): `$env:CPP_OPTIONS='/DNUXJS_ES5=1'; ./build.cmd`
   - Windows (cmd): `SET CPP_OPTIONS=/DNUXJS_ES5=1 && build.cmd`
-- Test variants: set `NUXJS_TEST_ES5_VARIANTS=1` to build and run the full test suite twice (ES3 then ES5.1).
-  - `NUXJS_TEST_ES5_VARIANTS=1 ./build.sh`
-- Test selection: with ES5.1 enabled, the ES5 tests under `tests/es5/` are included; otherwise they are skipped.
 
-See `docs/ES5.1 Roadmap.md` for current coverage, open items, and notes on semantics. Examples include `Function.prototype.bind`, strict mode semantics, accessor properties, and `Object.create`/`Object.defineProperties` behavior.
+### Test Both Variants (ES3 and ES5.1)
+
+- Two‑pass mode: set `NUXJS_TEST_ES5_VARIANTS=1` to build and run the full suite twice (first with ES3, then with ES5.1):
+  - `NUXJS_TEST_ES5_VARIANTS=1 ./build.sh`
+- Faster inner loop: when using two‑pass mode during development, skip the release target:
+  - macOS/Linux: `NUXJS_SKIP_RELEASE=1 NUXJS_TEST_ES5_VARIANTS=1 ./tools/buildAndTest.sh beta`
+  - Windows (cmd): `SET NUXJS_SKIP_RELEASE=1 & SET NUXJS_TEST_ES5_VARIANTS=1 & tools\buildAndTest.cmd beta`
+
+Notes:
+
+- In single‑pass builds, ES5 tests are included unless you explicitly disable ES5 via `-DNUXJS_ES5=0`.
+- See `docs/ES5.1 Roadmap.md` for current coverage, open items, and semantic notes (e.g. `Function.prototype.bind`, strict mode, accessors, and `Object.create`/`Object.defineProperties`).
 
 ## Example
 
@@ -183,10 +195,12 @@ Each section of every test file is written as a separate entry in the specified 
 
 ## AI Usage
 
-This ES5.1 branch is an experiment informed by AI-assisted development (tests, porting helpers, and doc scaffolding), layered on top of the long‑standing ES3 core. All non-trivial changes are code‑reviewed and validated by the test suite.
-
 AI tools (such as OpenAI Codex) have occasionally been used to assist with documentation, code comments, test
 generation, and repetitive edits. All core source code has been written and refined by hand over many years.
+
+This ES5.1 branch is an experiment informed by AI-assisted development (tests, porting helpers, and doc
+scaffolding), layered on top of the long‑standing ES3 core. All non-trivial changes are code‑reviewed and
+validated by the test suite.
 
 ## License
 

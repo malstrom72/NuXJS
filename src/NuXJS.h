@@ -32,7 +32,7 @@
 // the main branch exactly.
 // ---------------------------------------------------------------------------
 #ifndef NUXJS_ES5
-#define NUXJS_ES5 0
+#define NUXJS_ES5 1
 #endif
 
 #include "assert.h"

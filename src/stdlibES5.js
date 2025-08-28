@@ -7,31 +7,12 @@
     @preserve: now,defineProperties,create,keys,bind
 */
 
-// Helpers (self-contained)
-function defineProperties(object, attribs, props) {
-	var ro = attribs && attribs.readOnly === true;
-	var de = attribs && attribs.dontEnum === true;
-	var dd = attribs && attribs.dontDelete === true;
-	for (var k in props) if (Object.prototype.hasOwnProperty.call(props, k)) {
-		Object.defineProperty(object, k, { value: props[k], writable: !ro, enumerable: !de, configurable: !dd });
-	}
-	return object;
-}
-
-function toInteger(v) {
-	v = +v;
-	if (v !== v) return 0; // NaN
-	if (v === 0 || v === Infinity || v === -Infinity) return v;
-	return (v < 0 ? Math.ceil(v) : Math.floor(v));
-}
-
-function toUint32(v) { return toInteger(v) >>> 0; }
-function toStr(o) { return String(o); }
+// Use helpers provided by the base stdlib: defineProperties, int, uint32, str
 
 // String.prototype.trim*
 defineProperties(String.prototype, { dontEnum: true }, {
 	trimLeft: function trimLeft() {
-		var s = toStr(this), i = 0, j = s.length, c;
+		var s = str(this), i = 0, j = s.length, c;
 		for (; i < j; ++i) {
 			c = s.charCodeAt(i);
 			if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
@@ -39,7 +20,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		return s.substring(i, j);
 	},
 	trimRight: function trimRight() {
-		var s = toStr(this), j = s.length, c;
+		var s = str(this), j = s.length, c;
 		for (; j > 0; --j) {
 			c = s.charCodeAt(j - 1);
 			if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
@@ -47,7 +28,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		return s.substring(0, j);
 	},
 	trim: function trim() {
-		var s = toStr(this), i = 0, j = s.length, c;
+		var s = str(this), i = 0, j = s.length, c;
 		for (; i < j; ++i) {
 			c = s.charCodeAt(i);
 			if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
@@ -63,40 +44,40 @@ defineProperties(String.prototype, { dontEnum: true }, {
 // Array.prototype iteration and search methods
 defineProperties(Array.prototype, { dontEnum: true }, {
 	forEach: function forEach(callbackfn) {
-		var o = Object(this), len = toUint32(o.length), t = arguments[1];
+		var o = Object(this), len = uint32(o.length), t = arguments[1];
 		if (typeof callbackfn !== "function") throw TypeError();
 		for (var k = 0; k < len; ++k) if (k in o) callbackfn.call(t, o[k], k, o);
 	},
 	map: function map(callbackfn) {
-		var o = Object(this), len = toUint32(o.length), t = arguments[1], a = new Array(len);
+		var o = Object(this), len = uint32(o.length), t = arguments[1], a = new Array(len);
 		if (typeof callbackfn !== "function") throw TypeError();
 		for (var k = 0; k < len; ++k) if (k in o) a[k] = callbackfn.call(t, o[k], k, o);
 		return a;
 	},
 	filter: function filter(callbackfn) {
-		var o = Object(this), len = toUint32(o.length), t = arguments[1], a = [], to = 0;
+		var o = Object(this), len = uint32(o.length), t = arguments[1], a = [], to = 0;
 		if (typeof callbackfn !== "function") throw TypeError();
 		for (var k = 0; k < len; ++k) if (k in o) { var v = o[k]; if (callbackfn.call(t, v, k, o)) a[to++] = v; }
 		a.length = to;
 		return a;
 	},
 	indexOf: function indexOf(searchElement) {
-		var len = toUint32(this.length), i = arguments[1];
+		var len = uint32(this.length), i = arguments[1];
 		if (len === 0) return -1;
-		i = toInteger(i);
+		i = int(i);
 		if (i < 0) { i += len; if (i < 0) i = 0; }
 		for (; i < len; ++i) if (i in this && this[i] === searchElement) return i;
 		return -1;
 	},
 	lastIndexOf: function lastIndexOf(searchElement) {
-		var len = toUint32(this.length), i = arguments[1];
+		var len = uint32(this.length), i = arguments[1];
 		if (len === 0) return -1;
-		if (i === void 0) i = len - 1; else { i = toInteger(i); if (i < 0) i += len; if (i >= len) i = len - 1; }
+		if (i === void 0) i = len - 1; else { i = int(i); if (i < 0) i += len; if (i >= len) i = len - 1; }
 		for (; i >= 0; --i) if (i in this && this[i] === searchElement) return i;
 		return -1;
 	},
 	reduce: function reduce(callbackfn) {
-		var o = Object(this), len = toUint32(o.length), k = 0, acc;
+		var o = Object(this), len = uint32(o.length), k = 0, acc;
 		if (typeof callbackfn !== "function") throw TypeError();
 		if (arguments.length > 1) acc = arguments[1]; else {
 			while (k < len && !(k in o)) ++k;
@@ -107,7 +88,7 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return acc;
 	},
 	reduceRight: function reduceRight(callbackfn) {
-		var o = Object(this), len = toUint32(o.length), k = len - 1, acc;
+		var o = Object(this), len = uint32(o.length), k = len - 1, acc;
 		if (typeof callbackfn !== "function") throw TypeError();
 		if (arguments.length > 1) acc = arguments[1]; else {
 			while (k >= 0 && !(k in o)) --k;
@@ -118,13 +99,13 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return acc;
 	},
 	every: function every(callbackfn) {
-		var o = Object(this), len = toUint32(o.length), t = arguments[1];
+		var o = Object(this), len = uint32(o.length), t = arguments[1];
 		if (typeof callbackfn !== "function") throw TypeError();
 		for (var k = 0; k < len; ++k) if (k in o && !callbackfn.call(t, o[k], k, o)) return false;
 		return true;
 	},
 	some: function some(callbackfn) {
-		var o = Object(this), len = toUint32(o.length), t = arguments[1];
+		var o = Object(this), len = uint32(o.length), t = arguments[1];
 		if (typeof callbackfn !== "function") throw TypeError();
 		for (var k = 0; k < len; ++k) if (k in o && callbackfn.call(t, o[k], k, o)) return true;
 		return false;
@@ -139,7 +120,7 @@ defineProperties(Date, { dontEnum: true }, {
 // Object helpers: defineProperty (accessors), defineProperties, create, keys
 defineProperties(Object, { dontEnum: true }, {
 	defineProperty: function defineProperty(o, p, d) {
-		var k = toStr(p);
+		var k = str(p);
 		var ro = !d.writable, de = !d.enumerable, dd = !d.configurable;
 		if ("get" in d || "set" in d) {
 			if ("value" in d || "writable" in d) throw TypeError();
