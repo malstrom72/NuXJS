@@ -1,10 +1,9 @@
 .DS_Store
 /output
-externals/PikaCmd/PikaCmd
+/externals/PikaCmd/PikaCmd
+/externals/PikaCmd/PikaCmd.exe
 /projects/build
-/projects/.vs/NuXJSRepl_MSVC2019/CopilotIndices
 /projects/.vs
+/externals/test262-master
+/externals/._test262-master
 /temp
-externals/PikaCmd/PikaCmd.exe
-/test262-master
-/externals/PikaScriptTmp

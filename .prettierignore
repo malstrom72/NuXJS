@@ -1,0 +1,6 @@
+externals/
+output/
+projects/
+benchmarks/
+test262-master/
+externals/PikaCmd/
