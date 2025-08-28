@@ -1844,7 +1844,7 @@ defineProperties(Object, { dontEnum: true }, {
 });
 
 // Evaluate ES5 add-ons only when explicitly enabled; bracket form avoids minifier renaming
-if (support["ES5"] && es5) eval(es5);
+if (es5) eval(es5);
 
 if ($NaN.toString() !== "NaN") throw Error("Internal self test failed. Check C++ compiler options concerning IEEE 754 compliance.");
 
