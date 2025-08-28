@@ -66,9 +66,9 @@ bash ./BuildCpp.sh $target $model ../output/NuXJS_${target}_${model} ../tools/Nu
 
 # Select test directories; include ES5 tests unless explicitly disabled with -DNUXJS_ES5=0.
 if echo " ${CPP_OPTIONS-} " | grep -q -- "-DNUXJS_ES5=0"; then
-    TEST_DIRS=(../tests/conforming ../tests/erroneous ../tests/es3only ../tests/extremes ../tests/from262 ../tests/migrated ../tests/regression ../tests/stdlib ../tests/unconforming ../tests/unsorted)
+    TEST_DIRS=(../tests/conforming/ ../tests/erroneous/ ../tests/es3only/ ../tests/extremes/ ../tests/from262/ ../tests/migrated/ ../tests/regression/ ../tests/stdlib/ ../tests/unconforming/ ../tests/unsorted)
 else
-    TEST_DIRS=(../tests/conforming ../tests/erroneous ../tests/es3only ../tests/es5 ../tests/extremes ../tests/from262 ../tests/migrated ../tests/regression ../tests/stdlib ../tests/unconforming ../tests/unsorted)
+    TEST_DIRS=(../tests/conforming/ ../tests/erroneous/ ../tests/es3only/ ../tests/es5/ ../tests/extremes/ ../tests/from262/ ../tests/migrated/ ../tests/regression/ ../tests/stdlib/ ../tests/unconforming/ ../tests/unsorted)
 fi
 ../externals/PikaCmd/PikaCmd ./test.pika -e -x ../output/NuXJS_${target}_${model} "${TEST_DIRS[@]}"
 bash ./runExamples.sh "$target"

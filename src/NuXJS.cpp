@@ -5457,8 +5457,6 @@ void Runtime::setupStandardLibrary() {
 	argv[1] = es5;
 #endif
 	call(func, 2, argv);
-
-// STDLIB_JS evaluates ES5 add-ons internally when the gate is set.
 	
 	fetchFunction(supportObject, "toPrimitive", toPrimitiveFunctions + 0);
 	fetchFunction(supportObject, "toPrimitiveNumber", toPrimitiveFunctions + 1);

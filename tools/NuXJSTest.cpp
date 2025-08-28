@@ -681,9 +681,23 @@ static void testArrayVars() {
 	const Var::const_iterator e = arrayVar.end();
 	int elementsInArray = 0;
 	for (Var::const_iterator it = arrayVar.begin(); it != e; ++it) {
-		elementsInArray |= (1 << (*it).to<int>());
+	    elementsInArray |= (1 << (*it).to<int>());
 	}
 	EXPECT_EQUAL(elementsInArray, 0x3FFFFFFF);
+}
+
+static void testStandardLibrary() {
+	std::cout << std::endl << "***** Standard Library *****" << std::endl << std::endl;
+
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
+
+	Var result = rt.eval("var a = []; a.push(1); a.length;");
+	EXPECT_EQUAL(result.to<Int32>(), 1);
+
+	Var upper = rt.eval("'abc'.toUpperCase();");
+	EXPECT_EQUAL(upper.to<std::wstring>(), L"ABC");
 }
 
 static void testJSON() {
@@ -1752,9 +1766,10 @@ int main(int argc, const char* argv[]) {
 		testVectors();
 		testStrings();
 		testTables();
-		testVars();
-		testArrayVars();
-		testJSON();
+			testVars();
+			testArrayVars();
+			testStandardLibrary();
+			testJSON();
 		testCompilation();
 		testLimits();
 		testHighLevelAPI();

@@ -4,13 +4,14 @@
 
     @preserve: trim,trimLeft,trimRight,forEach,map,filter,reduce,reduceRight,every,some
     @preserve: get,set
-    @preserve: now,defineProperties,create,keys,bind
+    @preserve: now,create,keys,bind
+	@preserve: defineProperties
 */
 
-// Use helpers provided by the base stdlib: defineProperties, int, uint32, str
+// Use helpers provided by the base stdlib: defProps, int, uint32, str
 
 // String.prototype.trim*
-defineProperties(String.prototype, { dontEnum: true }, {
+defProps(String.prototype, { dontEnum: true }, {
 	trimLeft: function trimLeft() {
 		var s = str(this), i = 0, j = s.length, c;
 		for (; i < j; ++i) {
@@ -42,7 +43,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 });
 
 // Array.prototype iteration and search methods
-defineProperties(Array.prototype, { dontEnum: true }, {
+defProps(Array.prototype, { dontEnum: true }, {
 	forEach: function forEach(callbackfn) {
 		var o = Object(this), len = uint32(o.length), t = arguments[1];
 		if (typeof callbackfn !== "function") throw TypeError();
@@ -113,12 +114,12 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 });
 
 // Date.now
-defineProperties(Date, { dontEnum: true }, {
+defProps(Date, { dontEnum: true }, {
 	now: function now() { return new Date().getTime(); }
 });
 
 // Object helpers: defineProperty (accessors), defineProperties, create, keys
-defineProperties(Object, { dontEnum: true }, {
+defProps(Object, { dontEnum: true }, {
 	defineProperty: function defineProperty(o, p, d) {
 		var k = str(p);
 		var ro = !d.writable, de = !d.enumerable, dd = !d.configurable;
@@ -159,7 +160,7 @@ defineProperties(Object, { dontEnum: true }, {
 });
 
 // Function.prototype.bind (minimal, declared with one formal parameter)
-defineProperties(Function.prototype, { dontEnum: true }, {
+defProps(Function.prototype, { dontEnum: true }, {
 	bind: function bind(thisArg) {
 		var target = this;
 		if (typeof target !== 'function') throw TypeError();

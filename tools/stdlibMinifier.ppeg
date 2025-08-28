@@ -35,6 +35,7 @@
     $$parser.preserve => {
         args(@$s);
         if (exists($r = @[$$parser.state].preserved[$s])) throw('already preserved: ' # $s);
+        if (exists(@[$$parser.state].renames[$s])) throw('preserved word: ' # $s # ' used before preservation');
         [$r] = true;
     }
 }
