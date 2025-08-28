@@ -186,51 +186,51 @@ Var loadFile(Runtime& rt, const Var&, const VarList& args) {
 
 The engine ships with a standard library implemented in JavaScript, providing the objects described in ECMAScript&nbsp;3. It also offers selected ECMAScript&nbsp;5 functionality including JSON and string indexing.
 
-During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.cpp` with `PikaCmd`.  Simply compiling this generated file alongside `NuXJS.cpp` brings in the standard library.  Keeping the bulk of the library in JavaScript makes the core C++ code smaller and allows the VM to run the library asynchronously, which is a primary design goal.
+During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.cpp` with `PikaCmd`. Simply compiling this generated file alongside `NuXJS.cpp` brings in the standard library. Keeping the bulk of the library in JavaScript makes the core C++ code smaller and allows the VM to run the library asynchronously, which is a primary design goal.
 
 ## Conformance and Known Limitations
 
 ### ES3 deviations
 
-* `\0` is interpreted as a null character even if digits follow (octal escapes are not supported).
-* Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The non‑breaking space (`\u00A0`) counts as white space, but the zero-width no‑break space (`\uFEFF`) does not. No other Unicode "space separator" characters are recognised.
-* Custom property getters and setters are not implemented.
-* Implicit `valueOf` and `toString` conversions may happen earlier than specified, for example, `v[o]++` only invokes `toString()` once.
-* Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers.
-* The `arguments` object follows ES3 mapping semantics; changing element attributes does not fully emulate the ES5 behaviour.
-* Every created function has a writable, enumerable, and configurable `name` property.
-* Evaluation order of member expressions follows the ES3 order (object and arguments evaluated before selecting the member).
-* When the identifier of a `catch` clause is called as a function, its `this` value is the global object.
-* Assignments evaluate the right-hand side before resolving the reference on the left-hand side.
-* Property access may convert the property key before converting the base object.
-* In regular expressions the lookahead operators `?=` and `?!` cannot be quantified as in ES3; they behave like the ES5 assertions.
-* Case-insensitive ranges in regular expressions and zero-length captures inside repeats may not perfectly match other engines.
-* A semicolon is required after `do ... while` statements. This matches the ES3 and ES5 grammar, even though ES6 made the semicolon optional.
-* Creating a numeric property on an object can shadow a read-only numeric property in the prototype chain.
-* Several tests under `tests/unconforming` demonstrate additional corner cases.
-* Assigning an object to an array's `length` property is unsupported.
-* Recursive grammar constructs are limited to 64 levels to avoid a C++ stack overflow.
+- `\0` is interpreted as a null character even if digits follow (octal escapes are not supported).
+- Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The non‑breaking space (`\u00A0`) counts as white space, but the zero-width no‑break space (`\uFEFF`) does not. No other Unicode "space separator" characters are recognised.
+- Custom property getters and setters are not implemented.
+- Implicit `valueOf` and `toString` conversions may happen earlier than specified, for example, `v[o]++` only invokes `toString()` once.
+- Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers.
+- The `arguments` object follows ES3 mapping semantics; changing element attributes does not fully emulate the ES5 behaviour.
+- Every created function has a writable, enumerable, and configurable `name` property.
+- Evaluation order of member expressions follows the ES3 order (object and arguments evaluated before selecting the member).
+- When the identifier of a `catch` clause is called as a function, its `this` value is the global object.
+- Assignments evaluate the right-hand side before resolving the reference on the left-hand side.
+- Property access may convert the property key before converting the base object.
+- In regular expressions the lookahead operators `?=` and `?!` cannot be quantified as in ES3; they behave like the ES5 assertions.
+- Case-insensitive ranges in regular expressions and zero-length captures inside repeats may not perfectly match other engines.
+- A semicolon is required after `do ... while` statements. This matches the ES3 and ES5 grammar, even though ES6 made the semicolon optional.
+- Creating a numeric property on an object can shadow a read-only numeric property in the prototype chain.
+- Several tests under `tests/unconforming` demonstrate additional corner cases.
+- Assigning an object to an array's `length` property is unsupported.
+- Recursive grammar constructs are limited to 64 levels to avoid a C++ stack overflow.
 
 ### Partial ES5 features
 
-| Feature | Support |
-| ------- | ------- |
-| `Array.isArray` | yes |
-| `Object.prototype.hasOwnProperty` | yes |
-| `Object.prototype.isPrototypeOf` | yes |
-| `Object.getPrototypeOf` | yes |
-| `Object.defineProperty` | data properties only |
-| `JSON.parse` / `JSON.stringify` | yes |
-| String indexing | yes |
-| `eval()` direct vs indirect | yes |
-| `String.prototype.match` | ES5 behaviour |
-| `Date` object | most ES5 methods |
-| Unicode format control | preserved |
+| Feature                           | Support              |
+| --------------------------------- | -------------------- |
+| `Array.isArray`                   | yes                  |
+| `Object.prototype.hasOwnProperty` | yes                  |
+| `Object.prototype.isPrototypeOf`  | yes                  |
+| `Object.getPrototypeOf`           | yes                  |
+| `Object.defineProperty`           | data properties only |
+| `JSON.parse` / `JSON.stringify`   | yes                  |
+| String indexing                   | yes                  |
+| `eval()` direct vs indirect       | yes                  |
+| `String.prototype.match`          | ES5 behaviour        |
+| `Date` object                     | most ES5 methods     |
+| Unicode format control            | preserved            |
 
 ### ES6-inspired extras
 
-* `Array.prototype.splice` with a single argument deletes the rest of the array.
-* Regular expression flags cannot contain Unicode escapes.
+- `Array.prototype.splice` with a single argument deletes the rest of the array.
+- Regular expression flags cannot contain Unicode escapes.
 
 ## Testing and Benchmarking
 
@@ -251,4 +251,4 @@ Patches should be validated by running `./build.sh` before submission. Follow th
 
 ## License
 
-NuXJS is released under the terms of the BSD&nbsp;2‑Clause license.  See the `LICENSE` file for details.
+NuXJS is released under the terms of the BSD&nbsp;2‑Clause license. See the `LICENSE` file for details.

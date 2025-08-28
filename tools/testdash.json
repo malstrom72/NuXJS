@@ -8,14 +8,8 @@
 	"annexB/language/statements/try/catch-redeclared-var-statement-captured": {
 		"category": ""
 	},
-	"annexB/language/statements/try/catch-redeclared-var-statement": {
-		"category": "todo"
-	},
 	"language/comments/S7.4_A5": {
 		"category": ""
-	},
-	"language/comments/S7.4_A6": {
-		"category": "todo"
 	},
 	"language/computed-property-names/basics/number": {
 		"category": "not_es3"
@@ -56,50 +50,14 @@
 	"language/expressions/array/S11.1.4_A1.2": {
 		"category": ""
 	},
-	"language/expressions/array/11.1.4_5-6-1": {
-		"category": "tbd"
-	},
-	"language/expressions/array/11.1.4_4-5-1": {
-		"category": "tbd"
-	},
-	"language/expressions/addition/S9.3_A4.1_T2": {
-		"category": "tbd"
-	},
 	"language/expressions/addition/S11.6.1_A1": {
 		"category": ""
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.10_T2": {
 		"category": "tbd"
 	},
-	"language/expressions/delete/11.4.1-4.a-13": {
-		"category": "tbd"
-	},
 	"language/expressions/conditional/S11.12_A1": {
 		"category": ""
-	},
-	"language/literals/numeric/S7.8.3_A2.2_T1": {
-		"category": "todo"
-	},
-	"language/literals/numeric/S7.8.3_A2.2_T3": {
-		"category": "todo"
-	},
-	"language/literals/numeric/S7.8.3_A2.2_T2": {
-		"category": "todo"
-	},
-	"language/literals/numeric/S7.8.3_A2.2_T4": {
-		"category": "todo"
-	},
-	"language/literals/numeric/S7.8.3_A2.2_T5": {
-		"category": "todo"
-	},
-	"language/literals/numeric/S7.8.3_A2.2_T6": {
-		"category": "todo"
-	},
-	"language/literals/numeric/S7.8.3_A3.4_T3": {
-		"category": "todo"
-	},
-	"language/literals/numeric/S7.8.3_A3.4_T4": {
-		"category": "todo"
 	},
 	"language/literals/numeric/S7.8.3_A5.1_T2": {
 		"category": ""
@@ -121,9 +79,6 @@
 	},
 	"language/literals/string/7.8.4-1-s": {
 		"category": "tbd"
-	},
-	"language/literals/string/S7.8.4_A7.2_T6": {
-		"category": "todo"
 	},
 	"language/arguments-object/10.6-12-2": {
 		"category": "not_es3"
@@ -611,9 +566,6 @@
 	"language/expressions/assignment/8.12.5-5-b_1": {
 		"category": "tbd"
 	},
-	"language/expressions/assignment/8.14.4-8-b_1": {
-		"category": "tbd"
-	},
 	"language/expressions/assignment/S11.13.1_A1": {
 		"category": ""
 	},
@@ -628,9 +580,6 @@
 	},
 	"language/expressions/assignment/S11.13.1_A5_T4": {
 		"category": "by_design"
-	},
-	"language/expressions/assignment/S11.13.1_A5_T5": {
-		"category": "tbd"
 	},
 	"language/expressions/assignment/S11.13.1_A6_T1": {
 		"category": "by_design"
@@ -1016,23 +965,8 @@
 	"language/expressions/assignment/destructuring/obj-prop-put-unresolvable-no-strict": {
 		"category": "not_es3"
 	},
-	"language/statements/for-in/head-const-bound-names-dup": {
-		"category": "not_es3"
-	},
-	"language/statements/for-in/head-const-bound-names-in-stmt": {
-		"category": "not_es3"
-	},
-	"language/statements/for-in/head-const-bound-names-let": {
-		"category": "not_es3"
-	},
 	"language/statements/for-in/head-expr-expr": {
 		"category": ""
-	},
-	"language/statements/for-in/head-let-bound-names-in-stmt": {
-		"category": "not_es3"
-	},
-	"language/statements/for-in/head-let-bound-names-let": {
-		"category": "not_es3"
 	},
 	"language/statements/for-in/head-lhs-cover": {
 		"category": ""
@@ -1046,50 +980,8 @@
 	"language/statements/for-in/head-var-bound-names-in-stmt": {
 		"category": ""
 	},
-	"language/statements/for-in/head-var-bound-names-let": {
-		"category": "not_es3"
-	},
 	"language/statements/for-in/head-var-expr": {
 		"category": ""
-	},
-	"language/statements/for-in/labeled-fn-stmt-const": {
-		"category": "not_es3"
-	},
-	"language/statements/for-in/labeled-fn-stmt-let": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/head-const-bound-names-dup": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/head-const-bound-names-in-stmt": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/head-const-bound-names-let": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/head-decl-no-expr": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/head-expr-no-expr": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/head-let-bound-names-dup": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/head-let-bound-names-in-stmt": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/head-let-bound-names-let": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/head-lhs-cover-non-asnmt-trgt": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/head-lhs-invalid-asnmt-ptrn-ary": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/head-lhs-invalid-asnmt-ptrn-obj": {
-		"category": "not_es3"
 	},
 	"language/statements/for-in/S12.6.4_A1": {
 		"category": "not_es3"
@@ -1101,24 +993,6 @@
 		"category": ""
 	},
 	"language/statements/for-in/S12.6.4_A2": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/head-lhs-non-asnmt-trgt": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/head-var-no-expr": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/labeled-fn-stmt-const": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/labeled-fn-stmt-let": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/labeled-fn-stmt-lhs": {
-		"category": "not_es3"
-	},
-	"language/statements/for-of/labeled-fn-stmt-var": {
 		"category": "not_es3"
 	},
 	"language/arguments-object/10.6-14-c-1-s": {
@@ -1214,42 +1088,6 @@
 	"language/arguments-object/unmapped/Symbol.iterator": {
 		"category": "not_es3"
 	},
-	"language/asi/S7.9.2_A1_T4": {
-		"category": "todo"
-	},
-	"language/asi/S7.9.2_A1_T5": {
-		"category": "todo"
-	},
-	"language/asi/S7.9_A1": {
-		"category": "todo"
-	},
-	"language/asi/S7.9_A2": {
-		"category": "todo"
-	},
-	"language/asi/S7.9_A3": {
-		"category": "todo"
-	},
-	"language/asi/S7.9_A4": {
-		"category": "todo"
-	},
-	"language/asi/S7.9_A5.1_T1": {
-		"category": "todo"
-	},
-	"language/asi/S7.9_A5.2_T1": {
-		"category": "todo"
-	},
-	"language/asi/S7.9_A5.3_T1": {
-		"category": "todo"
-	},
-	"language/asi/S7.9_A5.4_T1": {
-		"category": "todo"
-	},
-	"language/asi/S7.9_A5.6_T1": {
-		"category": "todo"
-	},
-	"language/asi/S7.9_A5.6_T2": {
-		"category": "todo"
-	},
 	"language/directive-prologue/10.1.1-14-s": {
 		"category": "not_es3"
 	},
@@ -1343,9 +1181,6 @@
 	"language/directive-prologue/14.1-9-s": {
 		"category": "not_es3"
 	},
-	"language/eval-code/10.4.2-1-4": {
-		"category": "todo"
-	},
 	"language/eval-code/10.4.2-3-c-1-s": {
 		"category": "not_es3"
 	},
@@ -1366,9 +1201,6 @@
 	},
 	"language/eval-code/non-definable-global-generator": {
 		"category": "not_es3"
-	},
-	"language/expressions/addition/S11.6.1_A2.2_T2": {
-		"category": "todo"
 	},
 	"language/expressions/assignment/fn-name-arrow": {
 		"category": "not_es3"
@@ -1727,33 +1559,6 @@
 	"language/expressions/conditional/symbol-conditional-evaluation": {
 		"category": "not_es3"
 	},
-	"language/expressions/delete/11.4.1-4-a-3-s": {
-		"category": "tbd"
-	},
-	"language/expressions/delete/11.4.1-4-a-4-s": {
-		"category": "tbd"
-	},
-	"language/expressions/delete/11.4.1-4.a-1": {
-		"category": "tbd"
-	},
-	"language/expressions/delete/11.4.1-4.a-10": {
-		"category": "todo"
-	},
-	"language/expressions/delete/11.4.1-4.a-2": {
-		"category": "not_es3"
-	},
-	"language/expressions/delete/11.4.1-4.a-3": {
-		"category": "tbd"
-	},
-	"language/expressions/delete/11.4.1-4.a-5": {
-		"category": "todo"
-	},
-	"language/expressions/delete/11.4.1-4.a-6": {
-		"category": "todo"
-	},
-	"language/expressions/delete/11.4.1-5-a-28-s": {
-		"category": "tbd"
-	},
 	"language/expressions/delete/S11.4.1_A1": {
 		"category": ""
 	},
@@ -1991,36 +1796,6 @@
 	"language/expressions/in/S11.8.7_A1": {
 		"category": ""
 	},
-	"language/expressions/object/11.1.5_3-3-1": {
-		"category": "tbd"
-	},
-	"language/expressions/object/11.1.5_4-4-b-1": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-4-b-2": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-4-c-1": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-4-c-2": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-4-d-1": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-4-d-2": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-4-d-3": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-4-d-4": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-5-1": {
-		"category": "tbd"
-	},
 	"language/expressions/object/11.1.5_5-4-1": {
 		"category": "tbd"
 	},
@@ -2222,9 +1997,6 @@
 	"language/expressions/object/method-definition/yield-as-expression-without-rhs": {
 		"category": "not_es3"
 	},
-	"language/expressions/postfix-decrement/S11.3.2_A1.1_T1": {
-		"category": "todo"
-	},
 	"language/expressions/object/method-definition/yield-as-function-expression-binding-identifier": {
 		"category": "not_es3"
 	},
@@ -2255,29 +2027,11 @@
 	"language/expressions/object/method-definition/yield-star-before-newline": {
 		"category": "not_es3"
 	},
-	"language/white-space/S7.2_A2.5_T2": {
-		"category": "todo"
-	},
-	"language/types/number/8.5.1": {
-		"category": "todo"
-	},
-	"language/types/number/S8.5_A13_T2": {
-		"category": "todo"
-	},
-	"language/types/number/S8.5_A14_T1": {
-		"category": "todo"
-	},
-	"language/types/number/S8.5_A14_T2": {
-		"category": "todo"
-	},
 	"language/types/object/S8.6.2_A8": {
 		"category": "not_es3"
 	},
-	"language/types/reference/8.7.2-6-s": {
-		"category": "tbd"
-	},
 	"language/types/reference/8.7.2-7-s": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/types/string/S8.4_A7.2": {
 		"category": ""
@@ -2291,9 +2045,6 @@
 	"language/white-space/S7.2_A1.5_T1": {
 		"category": ""
 	},
-	"language/white-space/S7.2_A1.5_T2": {
-		"category": "todo"
-	},
 	"language/expressions/in/S8.12.6_A2_T2": {
 		"category": ""
 	},
@@ -2304,9 +2055,6 @@
 		"category": "not_es3"
 	},
 	"language/expressions/instanceof/prototype-getter-with-object": {
-		"category": "not_es3"
-	},
-	"language/expressions/instanceof/prototype-getter-with-primitive": {
 		"category": "not_es3"
 	},
 	"language/expressions/instanceof/symbol-hasinstance-get-err": {
@@ -2339,9 +2087,6 @@
 	"language/expressions/logical-not/S11.4.9_A1": {
 		"category": ""
 	},
-	"language/expressions/logical-not/S9.2_A6_T2": {
-		"category": "todo"
-	},
 	"language/expressions/logical-not/symbol-logical-not-evaluation": {
 		"category": "not_es3"
 	},
@@ -2354,9 +2099,6 @@
 	"language/expressions/modulus/S11.5.3_A1": {
 		"category": ""
 	},
-	"language/expressions/modulus/S11.5.3_A4_T7": {
-		"category": "todo"
-	},
 	"language/expressions/multiplication/S11.5.1_A1": {
 		"category": ""
 	},
@@ -2366,26 +2108,8 @@
 	"language/expressions/new/S11.2.2_A1.2": {
 		"category": ""
 	},
-	"language/expressions/object/11.1.5-0-1": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5-0-2": {
-		"category": "not_es3"
-	},
-	"language/expressions/postfix-decrement/S11.3.2_A1.1_T2": {
-		"category": "todo"
-	},
 	"language/expressions/postfix-decrement/S11.3.2_A1.2_T1": {
 		"category": ""
-	},
-	"language/expressions/postfix-decrement/S11.3.2_A4_T1": {
-		"category": "todo"
-	},
-	"language/expressions/postfix-decrement/S11.3.2_A4_T3": {
-		"category": "todo"
-	},
-	"language/expressions/postfix-decrement/S11.3.2_A4_T4": {
-		"category": "todo"
 	},
 	"language/expressions/postfix-decrement/S11.3.2_A5_T1": {
 		"category": "not_es3"
@@ -2408,23 +2132,8 @@
 	"language/expressions/postfix-decrement/S11.3.2_A6_T2": {
 		"category": "by_design"
 	},
-	"language/expressions/postfix-increment/S11.3.1_A1.1_T1": {
-		"category": "todo"
-	},
-	"language/expressions/postfix-increment/S11.3.1_A1.1_T2": {
-		"category": "todo"
-	},
 	"language/expressions/postfix-increment/S11.3.1_A1.2_T1": {
 		"category": ""
-	},
-	"language/expressions/postfix-increment/S11.3.1_A4_T1": {
-		"category": "todo"
-	},
-	"language/expressions/postfix-increment/S11.3.1_A4_T3": {
-		"category": "todo"
-	},
-	"language/expressions/postfix-increment/S11.3.1_A4_T4": {
-		"category": "todo"
 	},
 	"language/expressions/postfix-increment/S11.3.1_A5_T1": {
 		"category": "not_es3"
@@ -2500,27 +2209,6 @@
 	},
 	"language/expressions/property-accessors/S11.2.1_A1.2": {
 		"category": ""
-	},
-	"language/expressions/property-accessors/S11.2.1_A3_T2": {
-		"category": "todo"
-	},
-	"language/expressions/property-accessors/S11.2.1_A3_T3": {
-		"category": "todo"
-	},
-	"language/expressions/property-accessors/S11.2.1_A4_T1": {
-		"category": "todo"
-	},
-	"language/expressions/property-accessors/S11.2.1_A4_T4": {
-		"category": "todo"
-	},
-	"language/expressions/property-accessors/S11.2.1_A4_T5": {
-		"category": "todo"
-	},
-	"language/expressions/property-accessors/S11.2.1_A4_T8": {
-		"category": "todo"
-	},
-	"language/expressions/property-accessors/S11.2.1_A4_T9": {
-		"category": "todo"
 	},
 	"language/expressions/right-shift/S11.7.2_A1": {
 		"category": ""
@@ -2699,21 +2387,6 @@
 	"language/expressions/template-literal/tv-zwnbsp": {
 		"category": "not_es3"
 	},
-	"language/expressions/typeof/built-in-functions": {
-		"category": "todo"
-	},
-	"language/expressions/typeof/native-call": {
-		"category": "todo"
-	},
-	"language/expressions/typeof/native-no-call": {
-		"category": "todo"
-	},
-	"language/expressions/typeof/null": {
-		"category": "tbd"
-	},
-	"language/expressions/typeof/string": {
-		"category": "todo"
-	},
 	"language/expressions/typeof/symbol": {
 		"category": "not_es3"
 	},
@@ -2787,12 +2460,6 @@
 		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-100gs": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-101-s": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-101gs": {
 		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-102-s": {
@@ -2943,30 +2610,6 @@
 		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-53gs": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-54-s": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-54gs": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-55-s": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-55gs": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-56-s": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-56gs": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-57-s": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-57gs": {
 		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-58-s": {
@@ -3125,73 +2768,28 @@
 	"language/function-code/eval-param-env-with-prop-initializer": {
 		"category": "not_es3"
 	},
-	"language/identifier-resolution/S10.2.2_A1_T5": {
-		"category": "todo"
-	},
-	"language/identifier-resolution/S10.2.2_A1_T6": {
-		"category": "todo"
-	},
-	"language/identifier-resolution/S10.2.2_A1_T7": {
-		"category": "todo"
-	},
-	"language/identifier-resolution/S10.2.2_A1_T8": {
-		"category": "todo"
-	},
-	"language/identifier-resolution/S10.2.2_A1_T9": {
-		"category": "todo"
-	},
 	"language/identifier-resolution/unscopables": {
 		"category": "not_es3"
 	},
 	"language/identifiers/part-digits-via-escape-hex": {
 		"category": "tbd"
 	},
-	"language/identifiers/part-digits-via-escape-hex4": {
-		"category": "tbd"
-	},
-	"language/identifiers/start-escape-seq": {
-		"category": "tbd"
-	},
 	"language/identifiers/val-dollar-sign-via-escape-hex": {
-		"category": "tbd"
-	},
-	"language/identifiers/val-dollar-sign-via-escape-hex4": {
 		"category": "tbd"
 	},
 	"language/identifiers/val-underscore-via-escape-hex": {
 		"category": "tbd"
 	},
-	"language/identifiers/val-underscore-via-escape-hex4": {
-		"category": "tbd"
-	},
 	"language/identifiers/vals-eng-alpha-lower-via-escape-hex": {
-		"category": "tbd"
-	},
-	"language/identifiers/vals-eng-alpha-lower-via-escape-hex4": {
 		"category": "tbd"
 	},
 	"language/identifiers/vals-eng-alpha-upper-via-escape-hex": {
 		"category": "tbd"
 	},
-	"language/identifiers/vals-eng-alpha-upper-via-escape-hex4": {
-		"category": "tbd"
-	},
 	"language/identifiers/vals-rus-alpha-lower-via-escape-hex": {
 		"category": "tbd"
 	},
-	"language/identifiers/vals-rus-alpha-lower-via-escape-hex4": {
-		"category": "tbd"
-	},
-	"language/identifiers/vals-rus-alpha-lower": {
-		"category": "tbd"
-	},
 	"language/identifiers/vals-rus-alpha-upper-via-escape-hex": {
-		"category": "tbd"
-	},
-	"language/identifiers/vals-rus-alpha-upper-via-escape-hex4": {
-		"category": "tbd"
-	},
-	"language/identifiers/vals-rus-alpha-upper": {
 		"category": "tbd"
 	},
 	"language/line-terminators/7.3-1": {
@@ -3218,14 +2816,8 @@
 	"language/line-terminators/S7.3_A2.4": {
 		"category": ""
 	},
-	"language/line-terminators/S7.3_A3.3_T1": {
-		"category": "tbd"
-	},
 	"language/line-terminators/S7.3_A3.3_T2": {
 		"category": ""
-	},
-	"language/line-terminators/S7.3_A3.4_T1": {
-		"category": "tbd"
 	},
 	"language/line-terminators/S7.3_A3.4_T2": {
 		"category": ""
@@ -3260,9 +2852,6 @@
 	"language/line-terminators/S7.3_A7_T8": {
 		"category": ""
 	},
-	"language/literals/null/S7.8.1_A1_T2": {
-		"category": "tbd"
-	},
 	"language/literals/regexp/7.8.5-2gs": {
 		"category": ""
 	},
@@ -3276,7 +2865,7 @@
 		"category": ""
 	},
 	"language/literals/regexp/S7.8.5_A1.4_T2": {
-		"category": "todo"
+		"category": "not_es3"
 	},
 	"language/literals/regexp/S7.8.5_A2.1_T1": {
 		"category": ""
@@ -3288,7 +2877,7 @@
 		"category": ""
 	},
 	"language/literals/regexp/S7.8.5_A2.4_T2": {
-		"category": "todo"
+		"category": "not_es3"
 	},
 	"language/literals/regexp/S7.8.5_A3.1_T1": {
 		"category": ""
@@ -3334,54 +2923,6 @@
 	},
 	"language/literals/regexp/u-unicode-esc": {
 		"category": "not_es3"
-	},
-	"language/literals/string/S7.8.4_A2.2_T1": {
-		"category": "todo"
-	},
-	"language/literals/string/S7.8.4_A2.2_T2": {
-		"category": "todo"
-	},
-	"language/literals/string/S7.8.4_A4.2_T1": {
-		"category": "todo"
-	},
-	"language/literals/string/S7.8.4_A4.2_T2": {
-		"category": "todo"
-	},
-	"language/literals/string/S7.8.4_A4.2_T3": {
-		"category": "todo"
-	},
-	"language/literals/string/S7.8.4_A4.2_T4": {
-		"category": "todo"
-	},
-	"language/literals/string/S7.8.4_A4.2_T5": {
-		"category": "todo"
-	},
-	"language/literals/string/S7.8.4_A4.2_T6": {
-		"category": "todo"
-	},
-	"language/literals/string/S7.8.4_A4.2_T7": {
-		"category": "todo"
-	},
-	"language/literals/string/S7.8.4_A4.2_T8": {
-		"category": "todo"
-	},
-	"language/literals/string/S7.8.4_A7.1_T4": {
-		"category": "todo"
-	},
-	"language/literals/string/S7.8.4_A7.2_T1": {
-		"category": "todo"
-	},
-	"language/literals/string/S7.8.4_A7.2_T2": {
-		"category": "todo"
-	},
-	"language/literals/string/S7.8.4_A7.2_T3": {
-		"category": "todo"
-	},
-	"language/literals/string/S7.8.4_A7.2_T4": {
-		"category": "todo"
-	},
-	"language/literals/string/S7.8.4_A7.2_T5": {
-		"category": "todo"
 	},
 	"language/module-code/strict-mode": {
 		"category": "not_es3"
@@ -3530,102 +3071,6 @@
 	"language/reserved-words/7.6.1-3-9": {
 		"category": ""
 	},
-	"language/reserved-words/7.6.1-4-1": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-4-10": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-4-11": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-4-12": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-4-13": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-4-14": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-4-15": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-4-16": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-4-2": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-4-3": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-4-4": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-4-5": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-4-6": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-4-7": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-4-8": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-4-9": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-1": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-10": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-11": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-12": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-13": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-14": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-15": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-16": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-2": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-3": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-4": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-5": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-6": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-7": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-8": {
-		"category": "not_es3"
-	},
-	"language/reserved-words/7.6.1-8-9": {
-		"category": "not_es3"
-	},
 	"language/reserved-words/await-module": {
 		"category": "not_es3"
 	},
@@ -3658,12 +3103,6 @@
 	},
 	"language/rest-parameters/with-new-target": {
 		"category": "not_es3"
-	},
-	"language/source-text/6.1": {
-		"category": "todo"
-	},
-	"language/statements/break/S12.8_A2": {
-		"category": "todo"
 	},
 	"language/statements/class/name": {
 		"category": "not_es3"
@@ -4211,9 +3650,6 @@
 	"language/statements/const/syntax/with-initializer-default-statement-list": {
 		"category": "not_es3"
 	},
-	"language/statements/continue/S12.7_A2": {
-		"category": "todo"
-	},
 	"language/statements/continue/labeled-continue": {
 		"category": "not_es3"
 	},
@@ -4234,9 +3670,6 @@
 	},
 	"language/statements/continue/simple-and-labeled": {
 		"category": "not_es3"
-	},
-	"language/statements/do-while/S12.6.1_A8": {
-		"category": "todo"
 	},
 	"language/statements/do-while/cptn-abrupt-empty": {
 		"category": "tbd"
@@ -4282,36 +3715,6 @@
 	},
 	"language/statements/for-in/12.6.4-2": {
 		"category": "tbd"
-	},
-	"language/statements/for-in/S12.6.4_A3.1": {
-		"category": "tbd"
-	},
-	"language/statements/for-in/S12.6.4_A3": {
-		"category": "tbd"
-	},
-	"language/statements/for-in/S12.6.4_A4.1": {
-		"category": "tbd"
-	},
-	"language/statements/for-in/S12.6.4_A4": {
-		"category": "tbd"
-	},
-	"language/statements/for-in/S12.6.4_A5.1": {
-		"category": "todo"
-	},
-	"language/statements/for-in/S12.6.4_A5": {
-		"category": "todo"
-	},
-	"language/statements/for-in/S12.6.4_A6": {
-		"category": "todo"
-	},
-	"language/statements/for-in/S12.6.4_A6.1": {
-		"category": "todo"
-	},
-	"language/statements/for-in/S12.6.4_A7_T1": {
-		"category": "todo"
-	},
-	"language/statements/for-in/S12.6.4_A7_T2": {
-		"category": "todo"
 	},
 	"language/statements/for-in/cptn-decl-abrupt-empty": {
 		"category": "tbd"
@@ -4847,9 +4250,6 @@
 	"language/statements/variable/fn-name-fn": {
 		"category": "not_es3"
 	},
-	"language/statements/switch/S12.11_A1_T4": {
-		"category": "todo"
-	},
 	"language/statements/let/block-local-closure-get-before-initialization": {
 		"category": "not_es3"
 	},
@@ -4940,9 +4340,6 @@
 	"language/statements/let/syntax/without-initialisers-in-statement-positions-default-statement-list": {
 		"category": "not_es3"
 	},
-	"language/statements/return/S12.9_A2": {
-		"category": "todo"
-	},
 	"language/statements/generators/declaration": {
 		"category": "not_es3"
 	},
@@ -5018,15 +4415,6 @@
 	"language/statements/generators/yield-star-before-newline": {
 		"category": "not_es3"
 	},
-	"language/statements/with/12.10-0-12": {
-		"category": "todo"
-	},
-	"language/statements/with/12.10-2-4": {
-		"category": "todo"
-	},
-	"language/statements/with/12.10-2-5": {
-		"category": "todo"
-	},
 	"language/statements/with/12.10.1-1-s": {
 		"category": "not_es3"
 	},
@@ -5060,9 +4448,6 @@
 	"language/statements/with/binding-not-blocked-by-unscopables-non-obj": {
 		"category": "not_es3"
 	},
-	"language/statements/variable/S12.2_A9": {
-		"category": "todo"
-	},
 	"language/statements/with/unscopables-get-err": {
 		"category": "not_es3"
 	},
@@ -5071,18 +4456,6 @@
 	},
 	"language/statements/with/unscopables-prop-get-err": {
 		"category": "not_es3"
-	},
-	"language/expressions/postfix-decrement/S11.3.2_A1.1_T3": {
-		"category": "todo"
-	},
-	"language/expressions/postfix-decrement/S11.3.2_A1.1_T4": {
-		"category": "todo"
-	},
-	"language/expressions/postfix-increment/S11.3.1_A1.1_T3": {
-		"category": "todo"
-	},
-	"language/expressions/postfix-increment/S11.3.1_A1.1_T4": {
-		"category": "todo"
 	},
 	"language/statements/function/13.2-17-1": {
 		"category": "tbd"
@@ -5095,9 +4468,6 @@
 	},
 	"language/statements/variable/fn-name-cover": {
 		"category": "not_es3"
-	},
-	"language/statements/while/S12.6.2_A8": {
-		"category": "todo"
 	},
 	"language/statements/while/cptn-abrupt-empty": {
 		"category": "not_es3"
@@ -5212,12 +4582,6 @@
 	},
 	"language/statements/try/cptn-try": {
 		"category": "not_es3"
-	},
-	"language/statements/variable/S12.2_A4": {
-		"category": "todo"
-	},
-	"language/statements/function/S13_A7_T1": {
-		"category": "todo"
 	},
 	"language/statements/try/cptn-finally-from-catch": {
 		"category": "not_es3"
@@ -8524,5 +7888,23 @@
 	},
 	"language/statements/function/S13.2.1_A1_T1": {
 		"category": "by_design"
+	},
+	"language/expressions/object/11.1.5-3-s": {
+		"category": "not_es3"
+	},
+	"language/expressions/object/11.1.5-4-s": {
+		"category": "not_es3"
+	},
+	"language/expressions/assignment/destructuring/obj-prop-nested-obj-invalid": {
+		"category": "not_es3"
+	},
+	"language/expressions/assignment/destructuring/array-elem-nested-obj-invalid": {
+		"category": "not_es3"
+	},
+	"language/statements/function/13.2-30-s": {
+		"category": "not_es3"
+	},
+	"language/statements/function/name": {
+		"category": "not_es3"
 	}
 }

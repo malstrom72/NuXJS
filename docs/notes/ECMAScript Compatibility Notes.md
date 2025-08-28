@@ -61,7 +61,7 @@ NuXJS also handles several subtle parts of the standard that are easy to miss:
 
 - **Hidden `ToObject` on every property access.** The spec converts primitive
   bases to objects before retrieving a property. Strings would therefore need a
-  wrapper object for every indexed read. The engine uses *shallow* string
+  wrapper object for every indexed read. The engine uses _shallow_ string
   wrappers so indexing does not allocate, while method calls still turn `this`
   into a full `String` object as required.
 

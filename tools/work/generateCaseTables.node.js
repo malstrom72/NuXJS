@@ -4,10 +4,10 @@
 
 ***/
 
-const readline = require('readline');
+const readline = require("readline");
 
 const rl = readline.createInterface({
-  input: process.stdin
+	input: process.stdin,
 });
 
 var lowerToUpper = {};
@@ -17,7 +17,7 @@ var skipped = 0;
 
 function exportTable(name, table) {
 	var l = [];
-	for (var c in table) 
+	for (var c in table)
 		if (c.length === 4) l.push(c);
 		else skipped++;
 
@@ -26,13 +26,12 @@ function exportTable(name, table) {
 	for (var i in l) {
 		var f = decode("\\u" + l[i].toLowerCase());
 		var t = decode("\\u" + table[l[i]].toLowerCase());
-		console.log("\t\"" + f + "\":\"" + t + "\"," + 
-			"                         ".substr(f.length + t.length) + " // " + names[l[i]]);
+		console.log('\t"' + f + '":"' + t + '",' + "                         ".substr(f.length + t.length) + " // " + names[l[i]]);
 	}
 	console.log("};\n");
-};
+}
 
-rl.on('line', (line) => {
+rl.on("line", (line) => {
 	// code;name;<ignore*10>;uppercase;lowercase;<ignore>
 	var m = line.match(/^([0-9a-z]{4,6});([^;]*);(?:[^;]*;){10}([0-9a-z]{4,6})?;([0-9a-z]{4,6})?;[^;]*$/i);
 	if (m && m.length === 5) {
@@ -45,12 +44,13 @@ rl.on('line', (line) => {
 		m = line.match(/^([0-9A-Z]{4});\s*([ 0-9A-Z]+);[ 0-9A-Z ]+;\s*([ 0-9A-Z ]+); # (.*)$/i);
 		if (m && m.length === 5) {
 			names[m[1]] = m[4] + " (SpecialCase)";
-			if (m[1] !== m[2]) upperToLower[m[1]] = m[2].replace(/ /g,"\\u");
-			if (m[1] !== m[3]) lowerToUpper[m[1]] = m[3].replace(/ /g,"\\u");
+			if (m[1] !== m[2]) upperToLower[m[1]] = m[2].replace(/ /g, "\\u");
+			if (m[1] !== m[3]) lowerToUpper[m[1]] = m[3].replace(/ /g, "\\u");
 		} else console.warn("Skipping line: " + line);
 	}
-}).on('close', () => {
-	var a, bidirectional = {};
+}).on("close", () => {
+	var a,
+		bidirectional = {};
 	for (a in upperToLower) {
 		if (upperToLower[a] && lowerToUpper[upperToLower[a]] === a) {
 			bidirectional[a] = upperToLower[a];
@@ -77,7 +77,7 @@ function decode(s) {
 	return s
 		.replace(/\\u00/gi, "\\x")
 		.replace(/\\x41/gi, "A")
-		.replace(/\\x42/gi, 'B')
+		.replace(/\\x42/gi, "B")
 		.replace(/\\x43/gi, "C")
 		.replace(/\\x44/gi, "D")
 		.replace(/\\x45/gi, "E")
@@ -103,7 +103,7 @@ function decode(s) {
 		.replace(/\\x59/gi, "Y")
 		.replace(/\\x5A/gi, "Z")
 		.replace(/\\x61/gi, "a")
-		.replace(/\\x62/gi, 'b')
+		.replace(/\\x62/gi, "b")
 		.replace(/\\x63/gi, "c")
 		.replace(/\\x64/gi, "d")
 		.replace(/\\x65/gi, "e")
@@ -127,6 +127,5 @@ function decode(s) {
 		.replace(/\\x77/gi, "w")
 		.replace(/\\x78/gi, "x")
 		.replace(/\\x79/gi, "y")
-		.replace(/\\x7A/gi, "z")
-		;
+		.replace(/\\x7A/gi, "z");
 }
