@@ -1,6 +1,7 @@
 "use strict";
 
 const fs = require("fs");
+const path = require("path");
 const http = require("http");
 const url = require("url");
 const child_process = require("child_process");
@@ -8,16 +9,49 @@ const readline = require("readline");
 
 const TEST_PATH = "./externals/test262-master/";
 const TEST_TAR = "./externals/test262-master.tar.gz";
-const ENGINE = fs.existsSync("./output/NuXJS_beta_native") ? "./output/NuXJS_beta_native" :
-fs.existsSync("./output/NuXJS_release_native") ? "./output/NuXJS_release_native" :
-"./output/NuXJS";
+
+// Resolve the engine binary across platforms/build variants
+function resolveEngine() {
+    // Prefer platform-specific names
+    if (process.platform === "win32") {
+        if (fs.existsSync(path.join(".", "output", "NuXJS_beta_x64.exe"))) return path.join(".", "output", "NuXJS_beta_x64.exe");
+        if (fs.existsSync(path.join(".", "output", "NuXJS.exe"))) return path.join(".", "output", "NuXJS.exe");
+        // fallback to non-.exe name (cmd will resolve .exe)
+        return path.join(".", "output", "NuXJS");
+    }
+    if (fs.existsSync("./output/NuXJS_beta_native")) return "./output/NuXJS_beta_native";
+    if (fs.existsSync("./output/NuXJS_release_native")) return "./output/NuXJS_release_native";
+    return "./output/NuXJS";
+}
+const ENGINE = resolveEngine();
+
 const TEST_ARGS_BASE = [
 	"-u",
 	"./externals/test262-master/tools/packaging/test262.py",
 	"--non_strict_only",
 	"--tests=" + TEST_PATH,
-	"--command=" + ENGINE + " -s"
+	"--command=" + (process.platform === "win32" ? ("\"" + path.resolve(ENGINE) + "\"") : ENGINE) + " -s"
 ];
+
+// Resolve a Python 2 interpreter robustly:
+// 1) Respect NUXJS_PYTHON2 if provided
+// 2) Prefer the repo's portable env created by tools/setupPython2.*
+// 3) Fall back to "python2" on PATH
+function resolvePython2() {
+    const envOverride = process.env.NUXJS_PYTHON2 && process.env.NUXJS_PYTHON2.trim();
+    if (envOverride) return envOverride;
+
+    if (process.platform === "win32") {
+        const exe = path.join(__dirname, "..", "output", "python2", "env", "python.exe");
+        if (fs.existsSync(exe)) return exe;
+    } else {
+        const shim = path.join(process.env.HOME || "", ".local", "bin", "python2");
+        if (shim && fs.existsSync(shim)) return shim;
+    }
+
+    return "python2";
+}
+const PY2 = resolvePython2();
 
 if (!fs.existsSync(TEST_PATH)) {
 	console.log("Extracting Test262 suite to externals/...");
@@ -57,9 +91,9 @@ function runTests(callback, limit) {
 	console.log("Running tests");
         var captureMode = false;
         var count = 0;
-        var dir = limit ? "language/arguments" : "language";
-        var args = TEST_ARGS_BASE.concat([dir]);
-        var child = child_process.spawn("python2", args);
+        const dirArg = limit ? path.join("language", "arguments") : "language";
+        var args = TEST_ARGS_BASE.concat([dirArg]);
+        var child = child_process.spawn(PY2, args);
 	var rl = readline.createInterface({
 		input: child.stdout
 	}).on("line", (line) => {
@@ -73,6 +107,8 @@ function runTests(callback, limit) {
 			var m = line.match(/(=== )?(\S+) (.+?)( ===)?$/);
 			if (m) {
 				var testName = m[2];
+				// Normalize to forward slashes so keys match tools/testdash.json across platforms
+				testName = testName.replace(/\\/g, '/');
 				var passed = interpretResult(m[3]);
 				tests[testName] = extend( { name:testName, passed:passed, output: "" }, config[testName] );
 				currentTest = tests[testName];
@@ -80,7 +116,14 @@ function runTests(callback, limit) {
 			count++;
 			if (limit && count >= limit) child.kill("SIGKILL");
 
-			} else if (line) console.warn("Unknown output: " + line);
+			} else if (line) {
+				// Handle runner messages gracefully (e.g., "Error: No tests to run")
+				if (/^Error:\s+No tests to run/i.test(line)) {
+					console.error(line);
+					return;
+				}
+				console.warn("Unknown output: " + line);
+			}
 		}
 // console.log("> ", line);
 
@@ -175,10 +218,30 @@ if (cliMode) {
                process.exit(totals.failed);
        }, maxTests);
 } else {
-	server.listen(12345, () => {
-		var address = server.address();
-		console.log("opened HTTP server on http://" + address.address + ":" + address.port);
-		child_process.spawn("open", [ "http://localhost:" + address.port ]);
-	});
-	runTests(undefined, maxTests);
+    server.listen(12345, () => {
+        const address = server.address();
+        const urlToOpen = "http://localhost:" + address.port;
+        console.log("opened HTTP server on " + urlToOpen);
+
+        let cmd, args;
+        if (process.platform === "win32") {
+            cmd = "cmd";
+            args = ["/c", "start", "", urlToOpen];
+        } else if (process.platform === "darwin") {
+            cmd = "open";
+            args = [urlToOpen];
+        } else {
+            cmd = "xdg-open";
+            args = [urlToOpen];
+        }
+
+        try {
+            const opener = child_process.spawn(cmd, args, { detached: true, stdio: "ignore" });
+            opener.on("error", (e) => console.warn("Failed to open browser: " + e.message));
+            opener.unref();
+        } catch (e) {
+            console.warn("Failed to open browser: " + e.message);
+        }
+    });
+    runTests(undefined, maxTests);
 }
