@@ -1,11 +1,66 @@
 /*
 ES5 additions to the standard library.
-This file is appended to stdlib.js by tools/stdlibToCpp.pika.
+This file is appended into stdlib.js at build time when present (see tools/stdlibToCpp.pika).
+It runs inside the stdlib IIFE and can access helpers like defineProperties, str, $sub, int, uint32, etc.
 
-@preserve: indexOf,lastIndexOf,Q
+@preserve: String,Array,Object,Date,JSON,Function
+@preserve: defineProperties,unconstructable,str,$sub,int,uint32,$getInternalProperty
+@preserve: trim,trimLeft,trimRight,forEach,map,filter,indexOf,lastIndexOf,reduce,reduceRight,every,some
+@preserve: now,defineProperty,defineProperties,create,keys,getPrototypeOf,get,set
 */
 
-Q(Array.prototype, {
+// String.prototype.trim*, added to the existing String prototype
+defineProperties(String.prototype, { dontEnum: true }, {
+trimLeft: unconstructable(function trimLeft() {
+var s = str(this), i = 0, j = s.length, c;
+for (; i < j; ++i) {
+c = s.charCodeAt(i);
+if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
+}
+return $sub(s, i, j);
+}),
+trimRight: unconstructable(function trimRight() {
+var s = str(this), j = s.length, c;
+for (; j > 0; --j) {
+c = s.charCodeAt(j - 1);
+if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
+}
+return $sub(s, 0, j);
+}),
+trim: unconstructable(function trim() {
+var s = str(this), i = 0, j = s.length, c;
+for (; i < j; ++i) {
+c = s.charCodeAt(i);
+if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
+}
+for (; j > i; --j) {
+c = s.charCodeAt(j - 1);
+if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
+}
+return $sub(s, i, j);
+})
+});
+
+// Array.prototype iteration and search methods
+defineProperties(Array.prototype, { dontEnum: true }, {
+forEach: unconstructable(function forEach(callbackfn) { // .length should be 1
+var o = Object(this), len = uint32(o.length), t = arguments[1];
+if (typeof callbackfn !== "function") throw TypeError();
+for (var k = 0; k < len; ++k) if (k in o) callbackfn.call(t, o[k], k, o);
+}),
+map: unconstructable(function map(callbackfn) { // .length should be 1
+var o = Object(this), len = uint32(o.length), t = arguments[1], a = new Array(len);
+if (typeof callbackfn !== "function") throw TypeError();
+for (var k = 0; k < len; ++k) if (k in o) a[k] = callbackfn.call(t, o[k], k, o);
+return a;
+}),
+filter: unconstructable(function filter(callbackfn) { // .length should be 1
+var o = Object(this), len = uint32(o.length), t = arguments[1], a = [], to = 0;
+if (typeof callbackfn !== "function") throw TypeError();
+for (var k = 0; k < len; ++k) if (k in o) { var v = o[k]; if (callbackfn.call(t, v, k, o)) a[to++] = v; }
+a.length = to;
+return a;
+}),
 indexOf: unconstructable(function indexOf(searchElement) {
 var len = uint32(this.length), i = arguments[1];
 if (len === 0) return -1;
@@ -19,6 +74,83 @@ if (len === 0) return -1;
 if (i === void 0) i = len - 1; else { i = int(i); if (i < 0) i += len; if (i >= len) i = len - 1; }
 for (; i >= 0; --i) if (i in this && this[i] === searchElement) return i;
 return -1;
+}),
+reduce: unconstructable(function reduce(callbackfn) { // .length should be 1
+var o = Object(this), len = uint32(o.length), k = 0, acc;
+if (typeof callbackfn !== "function") throw TypeError();
+if (arguments.length > 1) acc = arguments[1]; else {
+while (k < len && !(k in o)) ++k;
+if (k >= len) throw TypeError();
+acc = o[k++];
+}
+for (; k < len; ++k) if (k in o) acc = callbackfn.call(void 0, acc, o[k], k, o);
+return acc;
+}),
+reduceRight: unconstructable(function reduceRight(callbackfn) { // .length should be 1
+var o = Object(this), len = uint32(o.length), k = len - 1, acc;
+if (typeof callbackfn !== "function") throw TypeError();
+if (arguments.length > 1) acc = arguments[1]; else {
+while (k >= 0 && !(k in o)) --k;
+if (k < 0) throw TypeError();
+acc = o[k--];
+}
+for (; k >= 0; --k) if (k in o) acc = callbackfn.call(void 0, acc, o[k], k, o);
+return acc;
+}),
+every: unconstructable(function every(callbackfn) { // .length should be 1
+var o = Object(this), len = uint32(o.length), t = arguments[1];
+if (typeof callbackfn !== "function") throw TypeError();
+for (var k = 0; k < len; ++k) if (k in o && !callbackfn.call(t, o[k], k, o)) return false;
+return true;
+}),
+some: unconstructable(function some(callbackfn) { // .length should be 1
+var o = Object(this), len = uint32(o.length), t = arguments[1];
+if (typeof callbackfn !== "function") throw TypeError();
+for (var k = 0; k < len; ++k) if (k in o && callbackfn.call(t, o[k], k, o)) return true;
+return false;
 })
 });
 
+// Date.now
+defineProperties(Date, { dontEnum: true }, {
+now: unconstructable(function now() { return support.getCurrentTime(); })
+});
+
+// Object helpers: defineProperty (accessors), defineProperties, create, keys
+defineProperties(Object, {dontEnum : true}, {
+defineProperty : unconstructable(function defineProperty(o, p, d) {
+var k = str(p);
+var ro = !d.writable, de = !d.enumerable, dd = !d.configurable;
+if ("get" in d || "set" in d) {
+if ("value" in d || "writable" in d) throw TypeError();
+var g = d.get; var s = d.set;
+if (g !== undefined && typeof g !== "function") throw TypeError();
+if (s !== undefined && typeof s !== "function") throw TypeError();
+support.defineProperty(o, k, undefined, ro, de, dd, g, s);
+} else {
+support.defineProperty(o, k, d.value, ro, de, dd);
+}
+}),
+defineProperties : unconstructable(function defineProperties(o, props) {
+if (o === undefined || o === null) throw TypeError();
+var obj = Object(o);
+for (var k in props) {
+if (Object.prototype.hasOwnProperty.call(props, k)) Object.defineProperty(obj, k, props[k]);
+}
+return obj;
+}),
+create : unconstructable(function create(proto, properties) {
+if (proto === null) throw TypeError();
+var t = typeof proto;
+if (t !== "object" && t !== "function") throw TypeError();
+var o = support.createWrapper("Object", void 0, proto);
+if (properties !== void 0) Object.defineProperties(o, Object(properties));
+return o;
+}),
+keys : unconstructable(function keys(o) {
+if (o === undefined || o === null) throw TypeError();
+var obj = Object(o); var res = []; var k;
+for (k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) res[res.length] = k;
+return res;
+})
+});

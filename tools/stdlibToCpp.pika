@@ -29,8 +29,11 @@ print(bake('Code shrunk from {length(src)} to {length(minifiedBase)}'));
 
 
 if (hasES5) {
-	// Do not minify ES5 payload; emit as-is under preprocessor guard.
-	minifiedES5 = es5src;
+    // Minify ES5 payload too; reuse the same PEG minifier.
+    // Prepend a small header to ensure preserve tags are respected.
+    // (The ES5 file already includes @preserve lines; this is just to keep structure consistent.)
+    ok = minifier(es5src, @minifiedES5, @i2);
+    if (!ok) throw("Failed parsing ES5 at offset " # i2);
 };
 
 code = '';
