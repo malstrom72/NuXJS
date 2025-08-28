@@ -47,6 +47,28 @@ During this process, `src/stdlib.js` is minified and converted into `src/stdlibJ
 
 The build outputs a console REPL named `NuXJS`. Type `help()` inside the REPL to see available helper functions and commands.
 
+## Test262 Dashboard
+
+The Test262 suite is stored as an archive in `externals/` and extracted to `externals/test262-master/` on first use.
+
+- Manual unpack (optional): `tar -xzf externals/test262-master.tar.gz -C externals`
+- Start the dashboard server: `node tools/testdash.node.js` (opens a browser)
+- CLI mode (headless summary): `node tools/testdash.node.js --cli`
+
+Python 2 requirement (for the Test262 harness):
+- Install a self-contained Python 2 shim: `bash tools/setupPython2.sh`
+- Add the shim to PATH in this terminal: `export PATH="$HOME/.local/bin:$PATH"`
+- The script appends this to `~/.zshrc`/`~/.bashrc` for future shells.
+- Verify: `python2 -V` → prints Python 2.7.x
+- One-off run without editing PATH: `PATH="$HOME/.local/bin:$PATH" node tools/testdash.node.js --cli`
+
+Apple Silicon note: Python 2 packages are only available for x86_64. The setup script creates an `osx-64` conda env that runs under Rosetta 2. If needed, install Rosetta: `softwareupdate --install-rosetta --agree-to-license`.
+
+Windows: use `tools/setupPython2.cmd` (wraps the bash script) and run the Node commands in a shell where `python2` resolves.
+
+Notes:
+- The dashboard auto-extracts `externals/test262-master.tar.gz` if `externals/test262-master/` is missing.
+
 ## Example
 
 Here’s a minimal example of embedding NuXJS using the high-level API:

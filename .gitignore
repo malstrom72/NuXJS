@@ -6,3 +6,4 @@ externals/PikaCmd/PikaCmd
 /projects/.vs
 /temp
 externals/PikaCmd/PikaCmd.exe
+/externals/test262-master

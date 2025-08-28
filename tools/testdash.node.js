@@ -6,16 +6,23 @@ const url = require("url");
 const child_process = require("child_process");
 const readline = require("readline");
 
-const TEST_PATH = "./test262-master/";
+const TEST_PATH = "./externals/test262-master/";
 const TEST_TAR = "./externals/test262-master.tar.gz";
 const ENGINE = fs.existsSync("./output/NuXJS_beta_native") ? "./output/NuXJS_beta_native" :
 fs.existsSync("./output/NuXJS_release_native") ? "./output/NuXJS_release_native" :
 "./output/NuXJS";
-const TEST_ARGS_BASE = ["-u", "./test262-master/tools/packaging/test262.py", "--non_strict_only", "--tests=" + TEST_PATH, "--command=" + ENGINE + " -s" ];
+const TEST_ARGS_BASE = [
+	"-u",
+	"./externals/test262-master/tools/packaging/test262.py",
+	"--non_strict_only",
+	"--tests=" + TEST_PATH,
+	"--command=" + ENGINE + " -s"
+];
 
 if (!fs.existsSync(TEST_PATH)) {
-	console.log("Extracting Test262 suite...");
-	child_process.execFileSync("tar", [ "-xzf", TEST_TAR ]);
+	console.log("Extracting Test262 suite to externals/...");
+	if (!fs.existsSync("./externals")) fs.mkdirSync("./externals", { recursive:true });
+	child_process.execFileSync("tar", [ "-xzf", TEST_TAR, "-C", "./externals" ]);
 }
 function interpretResult(text) {
 	text = text.replace(/\x1B\[[0-9;]*m/g, "").trim().toLowerCase();
