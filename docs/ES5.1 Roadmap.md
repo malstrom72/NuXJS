@@ -6,6 +6,19 @@ NuXJS today is a portable C++03 engine that fully implements ECMAScript 3 with
 All ES5.1 work should be driven by regression tests. Whenever a roadmap item lands, reference its verifying `.io` file in this document.
 ES5‑specific regression tests live in `tests/es5`.
 
+## Current Status
+
+- Build toggle: ES5.1 features are guarded by the `NUXJS_ES5` macro. Default remains ES3 (`NUXJS_ES5=0`). Use
+  `CPP_OPTIONS='-DNUXJS_ES5=1' ./build.sh` to enable ES5.1 during development. The README documents both modes and a
+  two‑pass variant with `NUXJS_TEST_ES5_VARIANTS=1`.
+- Test suite (with ES5.1 enabled): all ES5.1 tests pass except `tests/es5/functionBind.io`.
+  - Failing behavior: `Function.prototype.bind` returns a bound function whose `length` remains `0`; expected is
+    `max(0, target.length − boundArgCount)`.
+  - Root cause: function `length` is installed by the engine as a read‑only own data property when the function object
+    is materialized. The JS‐level `support.defineProperty(bound, "length", ...)` cannot override it.
+  - Proposed fix: add a native helper (e.g. `support.setFunctionLength(fn, len)`) that bypasses read‑only when called
+    from the stdlib, or special‑case the bound‐function construction path to accept an override value.
+
 ## Roadmap to ES5.1
 
 ### Object model & descriptors
@@ -15,6 +28,9 @@ ES5‑specific regression tests live in `tests/es5`.
                - `GET_PROPERTY_OP` in `Processor` already delegates to `Object::getProperty`; when an `ACCESSOR_FLAG` bucket is found, the getter function replaces the original value and the processor invokes it via its standard `invokeFunction` path with the object as `this`, leaving the call result on the stack.
                - `SET_PROPERTY_OP` similarly uses `Object::setProperty`; when an accessor exists, the processor calls the setter through `invokeFunction` with the provided value and keeps the caller's value as the final result.
 - Implement full `Object.defineProperty`, `Object.defineProperties`, `Object.getOwnPropertyDescriptor`, and `Object.create` in both the C++ core and `src/stdlib.js`.
+    - `Object.defineProperty` supports data and accessor descriptors in `src/stdlib.js`.
+    - `Object.defineProperties` implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io).
+    - `Object.create` (non-null prototype) implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io).
 - Replace the legacy `support.defineProperty(o, name, value, readOnly, dontEnum, dontDelete)` with a `PropertyDescriptor` structure that can carry `value`, `get`, `set`, and attribute flags.
 - The runtime helper in `src/NuXJS.cpp` should validate descriptor combinations and install either a data or accessor property in the object's hash table.
 - Expose enumeration helpers like `Object.keys` and `Object.getOwnPropertyNames`.
@@ -51,8 +67,10 @@ ES5‑specific regression tests live in `tests/es5`.
 	- Introduce an `ArgumentsObject` class that can either map indices to parameters or, in strict mode, hold a copy without parameter aliases.
 	- `Object.getOwnPropertyDescriptor` on arguments must expose `length`, `callee`, and indexed properties with correct attributes.
 - Provide `Function.prototype.bind` and ensure correct `.name`, `.length`, and `toString` outputs.
-	- Implement `bind` in `src/stdlib.js`; the resulting bound functions require a C++ backing type to store the target, bound `this`, and partial arguments while exposing an adjusted `length` and `name`.
-        - Revise function serialization so that `Function.prototype.toString` reconstructs source code for bound and native functions.
+    - Implemented in `src/stdlib.js` with correct constructor behavior and partial application semantics.
+    - Remaining: bound function `.length` needs an engine‑level override hook; currently `length` stays `0` due to
+      read‑only flags on function objects. See `tests/es5/functionBind.io`.
+    - Optional: consider `bound` function `.name` as `"bound " + target.name` (not required by ES5.1 but common).
 
 ### Spec compliance fixes
 - Align ES5 semantics that differ from the current engine implementation.

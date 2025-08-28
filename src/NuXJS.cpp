@@ -175,6 +175,7 @@ const String BOOLEAN_STRING("boolean"), FUNCTION_STRING("function"), NUMBER_STRI
 		, STRING_STRING("string");
 
 const String EMPTY_STRING, LENGTH_STRING("length"), NULL_STRING("null"), UNDEFINED_STRING("undefined");
+static const String ES5_STRING("ES5");
 
 const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_STRING("Boolean"), D_ATE_STRING("Date")
                 , E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
@@ -5429,6 +5430,10 @@ void Runtime::setupStandardLibrary() {
 	supportObject->setOwnProperty(*this, &UNDEFINED_STRING, UNDEFINED_VALUE);
 	supportObject->setOwnProperty(*this, &NAN_STRING, NAN_VALUE);
 	supportObject->setOwnProperty(*this, &INFINITY_STRING, INFINITY_VALUE);
+
+	#if (NUXJS_ES5)
+		supportObject->setOwnProperty(*this, &ES5_STRING, TRUE_VALUE);
+	#endif
 	supportObject->setOwnProperty(*this, &MAX_NUMBER_STRING, std::numeric_limits<double>::max());
 	supportObject->setOwnProperty(*this, &MIN_NUMBER_STRING, std::numeric_limits<double>::denorm_min());
 

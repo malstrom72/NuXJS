@@ -3,11 +3,11 @@
 	@preserve: NEGATIVE_INFINITY,NaN,Number,Object,PI,POSITIVE_INFINITY,RangeError,RegExp,SQRT1_2,SQRT2,String
 	@preserve: SyntaxError,TypeError,UTC,abs,acos,apply,arguments,asin,atan,atan2,break,call,callWithArgs,case,ceil
 	@preserve: charAt,charCodeAt,configurable,concat,cos,default,defineProperty,delete,do,dontDelete,dontEnum,get,set
-	@preserve: else,enumerable,eval,exec,exp,false,finally,floor,for,forEach,fromCharCode,function,getCurrentTime
+	@preserve: else,enumerable,eval,exec,exp,false,finally,floor,for,forEach,fromCharCode,function,getCurrentTime,bind
 	@preserve: getDate,getDay,getFullYear,getHours,getInternalProperty,getMilliseconds,getMinutes,getMonth
 	@preserve: getPrototypeOf,getSeconds,getTime,getTimezoneOffset,getUTCDate,getUTCDay,getUTCFullYear,getUTCHours
-	@preserve: getUTCMilliseconds,getUTCMinutes,getUTCMonth,getUTCSeconds,hasOwnProperty,if,ignoreCase,in,index,indexOf
-        @preserve: input,isArray,isFinite,isNaN,isPropertyEnumerable,join,lastIndex,lastIndexOf,length,localeCompare,log,keys
+	@preserve: getUTCMilliseconds,getUTCMinutes,getUTCMonth,getUTCSeconds,hasOwnProperty,if,ignoreCase,in,index,indexOf,create
+        @preserve: input,isArray,isFinite,isNaN,isPropertyEnumerable,join,lastIndex,lastIndexOf,length,localeCompare,log,keys,defineProperties
 	@preserve: match,max,maxNumber,message,min,minNumber,multiline,name,new,now,null,parseFloat,parseInt,pow
 	@preserve: propertyIsEnumerable,prototype,push,readOnly,regExpCanonicalize,return,reverse,round,setDate
 	@preserve: setFullYear,setHours,setMilliseconds,setMinutes,setMonth,setSeconds,setTime,setUTCDate
@@ -241,6 +241,47 @@ support: {
 	}),
 	call: unconstructable(function call(thisArg) { // FIX : <- 100% native version in the future I think
 	return $callWithArgs(this, thisArg, arguments, 1);
+	}),
+	bind: unconstructable(function bind(thisArg) { // ES5.1 Function.prototype.bind
+	var target = this;
+	var boundCount = (arguments.length > 1 ? arguments.length - 1 : 0);
+	var preArgs = (boundCount > 0 ? new Array(boundCount) : null);
+	for (var i = 0; i < boundCount; ++i) preArgs[i] = arguments[i + 1];
+	function callWrapper() {
+	var argc = arguments.length, args;
+	if (preArgs && preArgs.length) {
+		var n = preArgs.length;
+		args = new Array(n + argc);
+		for (var j = 0; j < n; ++j) args[j] = preArgs[j];
+		for (var k = 0; k < argc; ++k) args[n + k] = arguments[k];
+	} else {
+		args = arguments;
+	}
+	return $callWithArgs(target, thisArg, args);
+	}
+	function constructWrapper() {
+	var argc = arguments.length, args;
+	if (preArgs && preArgs.length) {
+		var n = preArgs.length;
+		args = new Array(n + argc);
+		for (var j = 0; j < n; ++j) args[j] = preArgs[j];
+		for (var k = 0; k < argc; ++k) args[n + k] = arguments[k];
+	} else {
+		args = arguments;
+	}
+	var r = $callWithArgs(target, this, args);
+	return (r && typeof r === "object" ? r : this);
+	}
+	// If target lacks an own 'prototype' it is not a constructor; make 'new bound' throw.
+	var canConstruct = support.hasOwnProperty(target, "prototype");
+	var bound = support.distinctConstructor(callWrapper, (canConstruct ? constructWrapper : void 0));
+	if (canConstruct) bound.prototype = target.prototype;
+	// Set length = max(0, target.length - boundCount)
+	var L = +target.length;
+	if (L !== L || L < 0) L = 0;
+	var newLen = L - boundCount; if (newLen < 0) newLen = 0;
+	support.defineProperty(bound, "length", newLen, true, true, true);
+	return bound;
 	}),
 	toString: unconstructable(function toString() { // FIX : <- generic, make a factory function
 	checkClass(this, "Function", "toString");
@@ -1824,28 +1865,46 @@ return -1;
 	isArray: unconstructable(function isArray(o) { return $getInternalProperty(o, "class") === "Array"; })
 	});
 	defineProperties(Object, {dontEnum : true}, {
-	defineProperty : unconstructable(function defineProperty(o, p, d) {
-	var k = str(p);
-	var ro = !d.writable, de = !d.enumerable, dd = !d.configurable;
-	if ("get" in d || "set" in d) {
-	if ("value" in d || "writable" in d)
-	throw TypeError();
-	var g = d.get;
-	var s = d.set;
-	if (g !== undefined && typeof g !== "function")
-	throw TypeError();
-	if (s !== undefined && typeof s !== "function")
-	throw TypeError();
-	support.defineProperty(o, k, undefined, ro, de, dd, g, s);
-	} else {
-	support.defineProperty(o, k, d.value, ro, de, dd);
-	}
-	}),
-	getPrototypeOf : unconstructable(function getPrototypeOf(o) {
-	return $getInternalProperty(o, "prototype");
-	}),
-	keys : unconstructable(function keys(o) {
-	if (o === undefined || o === null) throw TypeError();
+		defineProperty : unconstructable(function defineProperty(o, p, d) {
+		var k = str(p);
+		var ro = !d.writable, de = !d.enumerable, dd = !d.configurable;
+		if ("get" in d || "set" in d) {
+		if ("value" in d || "writable" in d)
+		throw TypeError();
+		var g = d.get;
+		var s = d.set;
+		if (g !== undefined && typeof g !== "function")
+		throw TypeError();
+		if (s !== undefined && typeof s !== "function")
+		throw TypeError();
+		support.defineProperty(o, k, undefined, ro, de, dd, g, s);
+		} else {
+		support.defineProperty(o, k, d.value, ro, de, dd);
+		}
+		}),
+		defineProperties : unconstructable(function defineProperties(o, props) {
+		if (o === undefined || o === null) throw TypeError();
+		var obj = Object(o);
+		for (var k in props) {
+			if (Object.prototype.hasOwnProperty.call(props, k)) {
+				Object.defineProperty(obj, k, props[k]);
+			}
+		}
+		return obj;
+		}),
+		create : unconstructable(function create(proto, properties) {
+		if (proto === null) throw TypeError();
+		var t = typeof proto;
+		if (t !== "object" && t !== "function") throw TypeError();
+		var o = support.createWrapper("Object", void 0, proto);
+		if (properties !== void 0) Object.defineProperties(o, Object(properties));
+		return o;
+		}),
+		getPrototypeOf : unconstructable(function getPrototypeOf(o) {
+		return $getInternalProperty(o, "prototype");
+		}),
+		keys : unconstructable(function keys(o) {
+		if (o === undefined || o === null) throw TypeError();
 	var obj = Object(o);
 	var res = [];
 	var k;

@@ -47,6 +47,20 @@ During this process, `src/stdlib.js` is minified and converted into `src/stdlibJ
 
 The build outputs a console REPL named `NuXJS`. Type `help()` inside the REPL to see available helper functions and commands.
 
+## ES5.1 Experimental Mode
+
+This branch adds an optional ES5.1 feature set on top of the stable ES3 engine. ES5.1 support is guarded by a compile-time switch so the default behavior remains ES3-compatible.
+
+- Enable ES5.1: set the `NUXJS_ES5` macro to `1` via `CPP_OPTIONS`.
+  - macOS/Linux: `CPP_OPTIONS='-DNUXJS_ES5=1' ./build.sh`
+  - Windows (PowerShell): `$env:CPP_OPTIONS='/DNUXJS_ES5=1'; ./build.cmd`
+  - Windows (cmd): `SET CPP_OPTIONS=/DNUXJS_ES5=1 && build.cmd`
+- Test variants: set `NUXJS_TEST_ES5_VARIANTS=1` to build and run the full test suite twice (ES3 then ES5.1).
+  - `NUXJS_TEST_ES5_VARIANTS=1 ./build.sh`
+- Test selection: with ES5.1 enabled, the ES5 tests under `tests/es5/` are included; otherwise they are skipped.
+
+See `docs/ES5.1 Roadmap.md` for current coverage, open items, and notes on semantics. Examples include `Function.prototype.bind`, strict mode semantics, accessor properties, and `Object.create`/`Object.defineProperties` behavior.
+
 ## Example
 
 Here’s a minimal example of embedding NuXJS using the high-level API:
@@ -108,12 +122,14 @@ Each section of every test file is written as a separate entry in the specified 
 ## Documentation
 
 - [NuXJS Documentation](docs/NuXJS%20Documentation.md)
+- [Authoring the Standard Library](docs/stdlib.js%20Authoring%20Guide.md)
 - [ECMAScript Compatibility Notes](docs/notes/ECMAScript%20Compatibility%20Notes.md)
 - [TypeScript Compatibility](docs/notes/TypeScript%20Compatibility.md)
+- [ES5.1 Implementation Roadmap](docs/ES5.1%20Roadmap.md)
 
 ## AI Usage
 
-AI tools (such as OpenAI Codex) have occasionally been used to assist with documentation, code comments, test generation, and repetitive edits. All core source code has been written and refined by hand over many years.
+This ES5.1 branch is an experiment informed by AI-assisted development (tests, porting helpers, and doc scaffolding), layered on top of the long‑standing ES3 core. All non-trivial changes are code‑reviewed and validated by the test suite.
 
 ## License
 

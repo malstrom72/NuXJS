@@ -12,7 +12,11 @@ if [ ! -e ./PikaCmd ]; then
 fi
 bash ./BuildPikaCmd.sh
 cd ../../tools
-if [ "../src/stdlib.js" -nt "../src/stdlibJS.cpp" ]; then
+# Rebuild stdlibJS.cpp when any relevant source changed (base stdlib, ES5 extras, or the minifier pipeline).
+if [ "../src/stdlib.js" -nt "../src/stdlibJS.cpp" ] || \
+   [ "../src/stdlibES5.js" -nt "../src/stdlibJS.cpp" ] || \
+   [ "./stdlibToCpp.pika" -nt "../src/stdlibJS.cpp" ] || \
+   [ "./stdlibMinifier.ppeg" -nt "../src/stdlibJS.cpp" ]; then
 	../externals/PikaCmd/PikaCmd ./stdlibToCpp.pika ../src/stdlib.js ../src/stdlibJS.cpp
 fi
 

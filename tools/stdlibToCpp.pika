@@ -1,7 +1,9 @@
 #! /usr/local/bin/PikaCmd
 
 include('stdlib.pika');
-run('./initPPEG.pika');
+include('systools.pika');
+// Use run.root from systools so paths resolve relative to this script regardless of CWD.
+run(run.root # 'initPPEG.pika');
 
 vargs(@exe,, @inputFile, @outputFile);
 defaults(@inputFile, 'stdlib.js', @outputFile, 'stdlibJS.cpp');
@@ -9,24 +11,51 @@ defaults(@inputFile, 'stdlib.js', @outputFile, 'stdlibJS.cpp');
 print(bake('Loading {inputFile}'));
 src = load(inputFile);
 
+// Probe optional ES5 source next to the base stdlib (no-op unless present).
+baseDir = dirOfPath(inputFile);
+es5path = baseDir # 'stdlibES5.js';
+hasES5 = (try(>es5src = load(es5path)) == void);
+
 print('Compiling parser');
 
-ok = ppeg.compileFunction(load('./stdlibMinifier.ppeg'), @minifier);
+ok = ppeg.compileFunction(load(run.root # 'stdlibMinifier.ppeg'), @minifier);
 if (!ok) throw("Error compiling the stdlib parser peg");
 
 print('Shrinking code');
 
-ok = minifier(src, @minified, @i);
+ok = minifier(src, @minifiedBase, @i);
 if (!ok) throw("Failed parsing at offset " # i);
+print(bake('Code shrunk from {length(src)} to {length(minifiedBase)}'));
 
-print(bake('Code shrunk from {length(src)} to {length(minified)}'));
+
+if (hasES5) {
+	// Do not minify ES5 payload; emit as-is under preprocessor guard.
+	minifiedES5 = es5src;
+};
 
 code = '';
-for (offset = 0; offset < length(minified); offset += n) {
-	for (n = min(length(minified) - offset, 118)
-			; { line = '"' # (escape("\n" # minified{offset:n}){3:}); length(line) > 120 }
+// Emit base stdlib as quoted lines
+for (offset = 0; offset < length(minifiedBase); offset += n) {
+	for (n = min(length(minifiedBase) - offset, 118)
+			; { line = '"' # (escape("\n" # minifiedBase{offset:n}){3:}); length(line) > 120 }
 			; --n);
 	code #= line # LF;
+};
+
+// If present, emit ES5 code under C++ preprocessor guard and runtime check
+if (hasES5) {
+	code #= '#if (NUXJS_ES5)' # LF;
+	ws = '"' # (escape("\nif (support[\'ES5\']) { "){3:});
+	code #= ws # LF;
+	for (o2 = 0; o2 < length(minifiedES5); o2 += n2) {
+		for (n2 = min(length(minifiedES5) - o2, 118)
+				; { w = '"' # (escape("\n" # minifiedES5{o2:n2}){3:}); length(w) > 120 }
+				; --n2);
+		code #= w # LF;
+	};
+	we = '"' # (escape("\n};"){3:});
+	code #= we # LF;
+	code #= '#endif' # LF;
 };
 
 save(outputFile, bake(
