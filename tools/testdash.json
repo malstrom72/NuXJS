@@ -2865,7 +2865,7 @@
 		"category": ""
 	},
 	"language/literals/regexp/S7.8.5_A1.4_T2": {
-		"category": "todo"
+		"category": "not_es3"
 	},
 	"language/literals/regexp/S7.8.5_A2.1_T1": {
 		"category": ""
@@ -2877,7 +2877,7 @@
 		"category": ""
 	},
 	"language/literals/regexp/S7.8.5_A2.4_T2": {
-		"category": "todo"
+		"category": "not_es3"
 	},
 	"language/literals/regexp/S7.8.5_A3.1_T1": {
 		"category": ""
@@ -7902,6 +7902,9 @@
 		"category": "not_es3"
 	},
 	"language/statements/function/13.2-30-s": {
+		"category": "not_es3"
+	},
+	"language/statements/function/name": {
 		"category": "not_es3"
 	}
 }

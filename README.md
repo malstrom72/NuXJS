@@ -22,31 +22,55 @@ A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with prec
 
 ## Why ECMAScript 3?
 
-ECMAScript 3 was the first broadly adopted JS standard; it provides everything needed in a _scripting_ language without a large runtime or a complex compiler. Staying with ES3 keeps the engine tiny and predictable. Selective ES5 features are “back-ported” where they add essential value, e.g.:
+ECMAScript 3 was the first broadly adopted JS standard; it provides everything needed in a _scripting_ language without
+a large runtime or a complex compiler. Staying with ES3 keeps the engine tiny and predictable. Selective ES5 features
+are “back-ported” where they add essential value, e.g.:
 
 - Character indexing on `String` via `str[i]`
 - `JSON` support
 
 ## Why C++03?
 
-This project began a few years before C++11. When I resumed work on it, I chose to keep the original C++03 style for consistency. The code is simple — just basic templates and plain C++ classes — and has minimal dependencies, so updating to a newer C++ standard didn’t feel necessary. Some C++11 features would be useful, especially in the high-level API, but I have prioritized consistency.
+This project began a few years before C++11. When I resumed work on it, I chose to keep the original C++03 style for
+consistency. The code is simple, just basic templates and plain C++ classes, and has minimal dependencies, so updating
+to a newer C++ standard didn’t feel necessary. Some C++11 features would be useful, especially in the high-level API,
+but I have prioritized consistency.
 
 ## Prerequisites
 
 You will need a standard C++ compiler with C++03 support.
 
 - On **macOS** or **Linux**, use `g++` or `clang++`.
-- On **Windows**, the build requires Microsoft Visual C++. Any version from Visual Studio 2008 (VC9.0) onward should work. The build script automatically locates the latest version using `vswhere.exe`, falling back to older versions if needed.
+- On **Windows**, the build requires Microsoft Visual C++. Any version from Visual Studio 2008 (VC9.0) onward should
+  work. The build script automatically locates the latest version using `vswhere.exe`, falling back to older versions
+  if needed.
 
 ## Build & Test
 
-Run `./build.sh` (or `build.cmd` on Windows) from the root. This calls `tools/buildAndTest.sh`, which builds both the **beta** and **release** configurations and runs all tests.
+Run `./build.sh` (or `build.cmd` on Windows) from the root. This calls `tools/buildAndTest.sh`, which builds both
+the **beta** and **release** configurations and runs all tests.
 
-Both the **beta** and **release** targets are compiled with optimizations enabled. The **beta** build retains runtime assertions for debugging purposes, while the **release** build disables assertions for maximum performance.
+Both the **beta** and **release** targets are compiled with optimizations enabled. The **beta** build retains runtime
+assertions for debugging purposes, while the **release** build disables assertions for maximum performance.
 
-During this process, `src/stdlib.js` is minified and converted into `src/stdlibJS.cpp`. See `docs/NuXJS Documentation.md` for details.
+During this process, `src/stdlib.js` is minified and converted into `src/stdlibJS.cpp`. See `docs/NuXJS
+Documentation.md` for details.
 
-The build outputs a console REPL named `NuXJS`. Type `help()` inside the REPL to see available helper functions and commands.
+The build outputs a console REPL named `NuXJS`. Type `help()` inside the REPL to see available helper functions and
+commands.
+
+## ECMAScript 3 Compliance
+
+- Zero failures across 3,242 applicable ES3 tests (Test262).
+- 1,349 tests are excluded by category and not counted toward ES3 support:
+  - ES >3: 1,218 (modern features not targeted)
+  - TBD: 112 (pending triage or harness compatibility)
+  - BY DESIGN: 19 (intentional, documented deviations)
+
+These results come from the Test262 harness included in this repo; see the dashboard below to reproduce.
+
+About Test262: we use an older snapshot, the newest one we found that still runs ES3 engines. Newer Test262 assumes ES5+
+semantics and a different harness, so it would mark out‑of‑scope features as failures.
 
 ## Test262 Dashboard
 
@@ -67,7 +91,8 @@ Python 2 requirement (for the Test262 harness):
 - Verify: `python2 -V` → prints Python 2.7.x
 - One-off run without editing PATH: `PATH="$HOME/.local/bin:$PATH" node tools/testdash.node.js --cli`
 
-Apple Silicon note: Python 2 packages are only available for x86_64. The setup script creates an `osx-64` conda env that runs under Rosetta 2. If needed, install Rosetta: `softwareupdate --install-rosetta --agree-to-license`.
+Apple Silicon note: Python 2 packages are only available for x86_64. The setup script creates an `osx-64` conda env that
+runs under Rosetta 2. If needed, install Rosetta: `softwareupdate --install-rosetta --agree-to-license`.
 
 Windows: use `tools/setupPython2.cmd` (wraps the bash script) and run the Node commands in a shell where `python2` resolves.
 
@@ -114,7 +139,8 @@ The resulting binary is placed in `output/NuXJSFuzz` and can be run with a direc
 ./output/NuXJSFuzz corpus/
 ```
 
-On macOS the default clang from Xcode does not ship the libFuzzer runtime. Install the `llvm` package via Homebrew and invoke the script with that compiler:
+On macOS the default clang from Xcode does not ship the libFuzzer runtime. Install the `llvm` package via Homebrew and
+invoke the script with that compiler:
 
 ```bash
 CPP_COMPILER=$(brew --prefix llvm)/bin/clang++ bash tools/buildReplFuzz.sh
@@ -136,7 +162,8 @@ Each section of every test file is written as a separate entry in the specified 
 
 ## AI Usage
 
-AI tools (such as OpenAI Codex) have occasionally been used to assist with documentation, code comments, test generation, and repetitive edits. All core source code has been written and refined by hand over many years.
+AI tools (such as OpenAI Codex) have occasionally been used to assist with documentation, code comments, test
+generation, and repetitive edits. All core source code has been written and refined by hand over many years.
 
 ## License
 
