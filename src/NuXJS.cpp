@@ -4712,7 +4712,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	const Char* directiveStart = p;
 	white();
 #if (NUXJS_ES5)
-	const bool foundStrict = false;
+	bool foundStrict = false;
 #endif
 #if (NUXJS_ES5)
 	while (p < e && (*p == '"' || *p == '\'')) {
@@ -5461,6 +5461,8 @@ void Runtime::setupStandardLibrary() {
 	argv[1] = es5;
 #endif
 	call(func, 2, argv);
+
+// STDLIB_JS evaluates ES5 add-ons internally when the gate is set.
 	
 	fetchFunction(supportObject, "toPrimitive", toPrimitiveFunctions + 0);
 	fetchFunction(supportObject, "toPrimitiveNumber", toPrimitiveFunctions + 1);

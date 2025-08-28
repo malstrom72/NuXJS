@@ -3,11 +3,44 @@ ES5 additions to the standard library.
 This file is appended into stdlib.js at build time when present (see tools/stdlibToCpp.pika).
 It runs inside the stdlib IIFE and can access helpers like defineProperties, str, $sub, int, uint32, etc.
 
+# Renaming rules must match stdlib.js minifier expectations. We preserve core language keywords
+# and helper names used across both files so the generated ES5 code parses and binds within the
+# stdlib IIFE lexical scope. Do not preserve `unconstructable` so it aliases to the same short
+# name as in stdlib.js (currently `d`).
+
+@preserve: Array,Boolean,Date,E,Error,Function,Infinity,LN10,LN2,LOG10E,LOG2E,MAX_VALUE,MIN_VALUE,Math
+@preserve: NEGATIVE_INFINITY,NaN,Number,Object,PI,POSITIVE_INFINITY,RangeError,RegExp,SQRT1_2,SQRT2,String
+@preserve: SyntaxError,TypeError,UTC,abs,acos,apply,arguments,asin,atan,atan2,break,call,callWithArgs,case,ceil
+@preserve: charAt,charCodeAt,configurable,concat,cos,default,defineProperty,delete,do,dontDelete,dontEnum
+@preserve: else,enumerable,eval,exec,exp,false,finally,floor,for,fromCharCode,function,getCurrentTime
+@preserve: getDate,getDay,getFullYear,getHours,getInternalProperty,getMilliseconds,getMinutes,getMonth
+@preserve: getPrototypeOf,getSeconds,getTime,getTimezoneOffset,getUTCDate,getUTCDay,getUTCFullYear,getUTCHours
+@preserve: getUTCMilliseconds,getUTCMinutes,getUTCMonth,getUTCSeconds,hasOwnProperty,if,ignoreCase,in,index,indexOf
+@preserve: input,isArray,isFinite,isNaN,isPropertyEnumerable,join,lastIndex,lastIndexOf,length,localeCompare,log
+@preserve: match,max,maxNumber,message,min,minNumber,multiline,name,new,null,parseFloat,parseInt,pow
+@preserve: propertyIsEnumerable,prototype,push,readOnly,regExpCanonicalize,return,reverse,round,setDate
+@preserve: setFullYear,setHours,setMilliseconds,setMinutes,setMonth,setSeconds,setTime,setUTCDate
+@preserve: setUTCFullYear,setUTCHours,setUTCMilliseconds,setUTCMinutes,setUTCMonth,setUTCSeconds,shift,sin,slice
+@preserve: sort,distinctConstructor,sqrt,submatch,substr,substring,switch,tan,this,throw,time,toExponential
+@preserve: toFixed,toISOString,toLocaleDateString,toLocaleLowerCase,toLocaleString,toLocaleTimeString
+@preserve: toLocaleUpperCase,toLowerCase,toPrecision,toString,toTimeString,toUTCString,toUpperCase,true,try,typeof
+@preserve: undefined,upperToLower,value,valueOf,var,void,while,writable,pop,parse,toDateString,instanceof,test
+@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,$match
+@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
+@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
+
 @preserve: String,Array,Object,Date,JSON,Function
-@preserve: defineProperties,unconstructable,str,$sub,int,uint32,$getInternalProperty
+@preserve: str,$sub,int,uint32,$getInternalProperty
 @preserve: trim,trimLeft,trimRight,forEach,map,filter,indexOf,lastIndexOf,reduce,reduceRight,every,some
 @preserve: now,defineProperty,defineProperties,create,keys,getPrototypeOf,get,set
 */
+
+// Local helper: mirror stdlib.js defineProperties so we can use it below
+function defineProperties(object, attribs, props) {
+var ro = attribs.readOnly, de = attribs.dontEnum, dd = attribs.dontDelete;
+for (var p in props) support.defineProperty(object, p, props[p], ro, de, dd);
+return object;
+}
 
 // String.prototype.trim*, added to the existing String prototype
 defineProperties(String.prototype, { dontEnum: true }, {
