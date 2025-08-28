@@ -1,19 +1,20 @@
 # NuXJS
+
 A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with precise execution control.
 
 ## Features
 
-- **Fully ECMAScript 3 compliant** with focused ECMAScript 5 additions (string indexing, JSON).  
-- Entire engine fits in **one .cpp file, one .h file, and a `stdlib.js`** (~7 000 LOC of C++).  
-- Written in standard, architecture-agnostic **C++03** – *no* platform-specific code.  
-- Fully asynchronous, **non-blocking VM**; run as many cycles as you like between host calls.  
-- Simple but **fast stack machine**; competitive with other interpreted JS engines.  
-- **Sandboxed and secure** – guest JS cannot crash the host process.  
-- Instantiate **any number of engines** across as many threads as you wish.  
-- Re-entrant and **thread-safe by design** (no hidden globals, nothing implicitly shared).  
-- **Fast single-pass compiler** (hand-written recursive-descent / precedence parser).  
-- Mark-and-sweep, stop-the-world **GC** with adaptive trigger rate and memory cap.  
-- Uses the standard C++ heap with **object pools** for quick allocation of small blocks.  
+- **Fully ECMAScript 3 compliant** with focused ECMAScript 5 additions (string indexing, JSON).
+- Entire engine fits in **one .cpp file, one .h file, and a `stdlib.js`** (~7 000 LOC of C++).
+- Written in standard, architecture-agnostic **C++03** – _no_ platform-specific code.
+- Fully asynchronous, **non-blocking VM**; run as many cycles as you like between host calls.
+- Simple but **fast stack machine**; competitive with other interpreted JS engines.
+- **Sandboxed and secure** – guest JS cannot crash the host process.
+- Instantiate **any number of engines** across as many threads as you wish.
+- Re-entrant and **thread-safe by design** (no hidden globals, nothing implicitly shared).
+- **Fast single-pass compiler** (hand-written recursive-descent / precedence parser).
+- Mark-and-sweep, stop-the-world **GC** with adaptive trigger rate and memory cap.
+- Uses the standard C++ heap with **object pools** for quick allocation of small blocks.
 - **Zero external dependencies** (even STL containers are avoided).
 - **Standard library and regexp compiler written in JavaScript** for safety and smaller footprint.
 - **Easy-to-use high-level C++ API** for integrating and embedding the engine.
@@ -21,7 +22,7 @@ A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with prec
 
 ## Why ECMAScript 3?
 
-ECMAScript 3 was the first broadly adopted JS standard; it provides everything needed in a *scripting* language without a large runtime or a complex compiler. Staying with ES3 keeps the engine tiny and predictable. Selective ES5 features are “back-ported” where they add essential value, e.g.:
+ECMAScript 3 was the first broadly adopted JS standard; it provides everything needed in a _scripting_ language without a large runtime or a complex compiler. Staying with ES3 keeps the engine tiny and predictable. Selective ES5 features are “back-ported” where they add essential value, e.g.:
 
 - Character indexing on `String` via `str[i]`
 - `JSON` support
@@ -54,8 +55,12 @@ The Test262 suite is stored as an archive in `externals/` and extracted to `exte
 - Manual unpack (optional): `tar -xzf externals/test262-master.tar.gz -C externals`
 - Start the dashboard server: `node tools/testdash.node.js` (opens a browser)
 - CLI mode (headless summary): `node tools/testdash.node.js --cli`
+- Include ignored categories in the summary: `node tools/testdash.node.js --cli --include-ignored`
+- Reset category for all passing tests (does not touch failures; also includes ignored):
+  `node tools/testdash.node.js --cli --reset-passed`
 
 Python 2 requirement (for the Test262 harness):
+
 - Install a self-contained Python 2 shim: `bash tools/setupPython2.sh`
 - Add the shim to PATH in this terminal: `export PATH="$HOME/.local/bin:$PATH"`
 - The script appends this to `~/.zshrc`/`~/.bashrc` for future shells.
@@ -67,6 +72,7 @@ Apple Silicon note: Python 2 packages are only available for x86_64. The setup s
 Windows: use `tools/setupPython2.cmd` (wraps the bash script) and run the Node commands in a shell where `python2` resolves.
 
 Notes:
+
 - The dashboard auto-extracts `externals/test262-master.tar.gz` if `externals/test262-master/` is missing.
 
 ## Example
@@ -93,8 +99,9 @@ int main(int argc, const char* argv[]) {
 - `tools/buildAndTest.sh` / `.cmd` – build and test a single configuration
 - `tools/runExamples.sh` / `.cmd` – compile and run all example programs
 - `tools/BuildCpp.sh` / `.cmd` – low-level wrapper around the C++ compiler
- 
+
 ## Building the fuzz target
+
 The `tools/buildReplFuzz.sh` script compiles `tools/NuXJSREPL.cpp` using clang and libFuzzer:
 
 ```bash
@@ -120,7 +127,6 @@ PikaCmd tools/makeCorpus.pika corpus
 ```
 
 Each section of every test file is written as a separate entry in the specified directory.
-
 
 ## Documentation
 
