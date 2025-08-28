@@ -1843,7 +1843,8 @@ defineProperties(Object, { dontEnum: true }, {
 	getPrototypeOf: unconstructable(function getPrototypeOf(o) { return $getInternalProperty(o, "prototype"); })
 });
 
-if (support.ES5 && es5) eval(es5);
+// Evaluate ES5 add-ons only when explicitly enabled; bracket form avoids minifier renaming
+if (support["ES5"] && es5) eval(es5);
 
 if ($NaN.toString() !== "NaN") throw Error("Internal self test failed. Check C++ compiler options concerning IEEE 754 compliance.");
 

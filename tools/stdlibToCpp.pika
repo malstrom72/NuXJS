@@ -1,6 +1,7 @@
 #! /usr/local/bin/PikaCmd
 
 include('stdlib.pika');
+include('debug.pika');
 include('systools.pika');
 // Use run.root from systools so paths resolve relative to this script regardless of CWD.
 run(run.root # 'initPPEG.pika');
@@ -23,15 +24,10 @@ if (!ok) throw("Error compiling the stdlib parser peg");
 
 print('Shrinking code');
 
-ok = minifier(src, @minifiedBase, @i);
+ok = minifier(src, @state, @i);
 if (!ok) throw("Failed parsing at offset " # i);
+minifiedBase = state.output;
 print(bake('Code shrunk from {length(src)} to {length(minifiedBase)}'));
-
-if (hasES5) {
-	ok = minifier(es5src, @minifiedES5, @i2);
-	if (!ok) throw("Failed parsing ES5 at offset " # i2);
-	print(bake('ES5 shrunk from {length(es5src)} to {length(minifiedES5)}'));
-};
 
 codeBase = '';
 for (offset = 0; offset < length(minifiedBase); offset += n) {
@@ -42,6 +38,11 @@ for (offset = 0; offset < length(minifiedBase); offset += n) {
 };
 
 if (hasES5) {
+	ok = minifier(es5src, @state, @i2);
+	if (!ok) throw("Failed parsing ES5 at offset " # i2);
+	minifiedES5 = state.output;
+	print(bake('ES5 shrunk from {length(es5src)} to {length(minifiedES5)}'));
+
 	codeES5 = '';
 	for (o2 = 0; o2 < length(minifiedES5); o2 += n2) {
 		for (n2 = min(length(minifiedES5) - o2, 118)
