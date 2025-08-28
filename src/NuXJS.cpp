@@ -2041,13 +2041,13 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, 
 	if (code->getArgumentsCount() > argc) {
 		std::fill(e, locals.end(), UNDEFINED_VALUE);
 	}
-	#if (NUXJS_ES5)
+#if (NUXJS_ES5)
 	if (code->strict) {
 		Heap& heap = gcList.getHeap();
 		arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
 		arguments->detach();
 	}
-	#endif
+#endif
 
 }
 
@@ -2057,11 +2057,11 @@ JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
 		dynamicVars = new(heap) JSObject(heap.managed(), 0);
 		if (arguments == 0) {
 			arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
-			#if (NUXJS_ES5)
+		#if (NUXJS_ES5)
 			if (function->code->strict) {
 				arguments->detach();
 			}
-			#endif
+		#endif
 		}
 		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING, arguments, DONT_DELETE_FLAG);
 	}
@@ -2191,11 +2191,11 @@ static struct EvalFunction : public Function {
 
 		Heap& heap = rt.getHeap();
 		const String* expression = argv[0].toString(heap);
-			#if (NUXJS_ES5)
-			bool strict = direct && processor.isCurrentStrict();
-			#else
-			bool strict = false;
-			#endif
+		#if (NUXJS_ES5)
+			const bool strict = direct && processor.isCurrentStrict();
+		#else
+			const bool strict = false;
+		#endif
 			processor.enterEvalCode(rt.compileEvalCode(expression, strict), direct);
 		return UNDEFINED_VALUE;
 	}
@@ -3321,11 +3321,11 @@ const String* Compiler::identifier(bool required, bool allowKeywords) {
                 error(SYNTAX_ERROR, "Illegal use of keyword");
         }
         const String* name = newHashedString(heap, parsed.begin(), parsed.end());
-        #if (NUXJS_ES5)
+	#if (NUXJS_ES5)
         if (code->isStrict() && name->isEqualTo(EVAL_STRING)) {
                 error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
         }
-        #endif
+	#endif
         return name;
 }
 
@@ -3682,19 +3682,19 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 				case ExpressionResult::NONE:
 				case ExpressionResult::CONSTANT: xr = ExpressionResult(ExpressionResult::CONSTANT, true); break;
 				case ExpressionResult::LOCAL:
-						#if (NUXJS_ES5)
-						if (code->isStrict()) {
-							error(SYNTAX_ERROR, "Deleting identifier in strict code");
-						}
-						#endif
+				#if (NUXJS_ES5)
+					if (code->isStrict()) {
+						error(SYNTAX_ERROR, "Deleting identifier in strict code");
+					}
+				#endif
 					xr = ExpressionResult(ExpressionResult::CONSTANT, false);
 					break;
 				case ExpressionResult::NAMED:
-						#if (NUXJS_ES5)
-						if (code->isStrict()) {
-							error(SYNTAX_ERROR, "Deleting identifier in strict code");
-						}
-						#endif
+				#if (NUXJS_ES5)
+					if (code->isStrict()) {
+						error(SYNTAX_ERROR, "Deleting identifier in strict code");
+					}
+				#endif
 					emitWithConstant(Processor::DELETE_NAMED_OP, xr.v);
 					xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
 					break;
@@ -4057,11 +4057,11 @@ void Compiler::rvalueGroup() {
 
 // FIX : ok, this is serious mess
 Compiler::ExpressionResult Compiler::declareIdentifier(const String* name, bool func) {
-	#if (NUXJS_ES5)
+#if (NUXJS_ES5)
 	if (code->isStrict() && (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING))) {
 		error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
 	}
-	#endif
+#endif
 	ExpressionResult lxr(ExpressionResult::NAMED, name);
 	if (compilingFor != FOR_FUNCTION) {
 		CodeSection* previousSection = changeSection(&setupSection);
@@ -4217,11 +4217,11 @@ void Compiler::functionStatement() {
 }
 
 void Compiler::withStatement(SemanticScope* currentScope) {
-	#if (NUXJS_ES5)
+#if (NUXJS_ES5)
 	if (code->isStrict()) {
 		error(SYNTAX_ERROR, "\"with\" is not allowed in strict code");
 	}
-	#endif
+#endif
 	rvalueGroup();
 	emit(Processor::WITH_SCOPE_OP);
 	{
@@ -4711,15 +4711,19 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	acceptInOperator = true;
 	const Char* directiveStart = p;
 	white();
-	#if (NUXJS_ES5)
-	bool foundStrict = false;
-	#endif
-	#if (NUXJS_ES5)
+#if (NUXJS_ES5)
+	const bool foundStrict = false;
+#endif
+#if (NUXJS_ES5)
 	while (p < e && (*p == '"' || *p == '\'')) {
 		Char q = *p++;
 		const Char* litStart = p;
-		while (p < e && *p != q) { ++p; }
-		if (p >= e) { break; }
+		while (p < e && *p != q) {
+			++p;
+		}
+		if (p >= e) {
+			break;
+		}
 		if (!foundStrict && p - litStart == 10 && strncmp(litStart, "use strict", 10) == 0) {
 			foundStrict = true;
 		}
@@ -4732,8 +4736,10 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 		}
 		break;
 	}
-	if (foundStrict) { code->setStrict(true); }
-	#endif
+	if (foundStrict) {
+		code->setStrict(true);
+	}
+#endif
 	p = directiveStart;
 	
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
@@ -4782,11 +4788,11 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 			white();
 		}
 			const String* name = identifier(true, false);
-			#if (NUXJS_ES5)
+		#if (NUXJS_ES5)
 			if (code->isStrict() && (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING))) {
 				error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
 			}
-			#endif
+		#endif
 		for (size_t i = 0; i < argumentNames.size(); ++i) {
 			if (argumentNames[i]->isEqualTo(*name)) {
 				hasDuplicateParameters = true;
@@ -4801,11 +4807,11 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 	expectToken("{", true);
 	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
 	expectToken("}", false);
-		#if (NUXJS_ES5)
+	#if (NUXJS_ES5)
 		if (code->strict && hasDuplicateParameters) {
 			error(SYNTAX_ERROR, "Duplicate parameter name not allowed in strict code");
 		}
-		#endif
+	#endif
 	code->name = functionName;
 	code->selfName = selfName;
 	code->source = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
@@ -5358,7 +5364,7 @@ Var Runtime::eval(const String& expression) {
 Code* Runtime::compileEvalCode(const String* expression, bool strict) {
 	#if !(NUXJS_ES5)
 	strict = false;
-	#endif
+#endif
 	const Table::Bucket* bucket = (strict ? 0 : evalCodeCache.lookup(expression));
 	if (bucket != 0) {
 		Object* o = bucket->getValue().getObject();
@@ -5366,9 +5372,9 @@ Code* Runtime::compileEvalCode(const String* expression, bool strict) {
 		return reinterpret_cast<Code*>(o);
 	} else {
 		Code* code = new(heap) Code(heap.managed());
-		#if (NUXJS_ES5)
+	#if (NUXJS_ES5)
 		if (strict) { code->setStrict(true); }
-		#endif
+	#endif
 		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
 		compiler.compile(*expression);
 		if (!strict) { evalCodeCache.update(evalCodeCache.insert(expression), code); }
@@ -5398,6 +5404,9 @@ void Runtime::fetchFunction(const Object* supportObject, const char* name, Funct
 }
 
 extern const char* STDLIB_JS;
+#if (NUXJS_ES5)
+extern const char* STDLIB_ES5_JS;
+#endif
 
 double Runtime::getCurrentEpochTime() {
 	std::time_t t;
@@ -5431,9 +5440,9 @@ void Runtime::setupStandardLibrary() {
 	supportObject->setOwnProperty(*this, &NAN_STRING, NAN_VALUE);
 	supportObject->setOwnProperty(*this, &INFINITY_STRING, INFINITY_VALUE);
 
-	#if (NUXJS_ES5)
-		supportObject->setOwnProperty(*this, &ES5_STRING, TRUE_VALUE);
-	#endif
+#if (NUXJS_ES5)
+	supportObject->setOwnProperty(*this, &ES5_STRING, TRUE_VALUE);
+#endif
 	supportObject->setOwnProperty(*this, &MAX_NUMBER_STRING, std::numeric_limits<double>::max());
 	supportObject->setOwnProperty(*this, &MIN_NUMBER_STRING, std::numeric_limits<double>::denorm_min());
 
@@ -5446,8 +5455,12 @@ void Runtime::setupStandardLibrary() {
 	}
 	
 	const Var func = eval(*String::allocate(heap, STDLIB_JS));
-	Value argv[1] = { protectedSupportObject };
-	call(func, 1, argv);
+	Value argv[2] = { protectedSupportObject, UNDEFINED_VALUE };
+#if (NUXJS_ES5)
+	const Var es5(*this, String::allocate(heap, STDLIB_ES5_JS));
+	argv[1] = es5;
+#endif
+	call(func, 2, argv);
 	
 	fetchFunction(supportObject, "toPrimitive", toPrimitiveFunctions + 0);
 	fetchFunction(supportObject, "toPrimitiveNumber", toPrimitiveFunctions + 1);

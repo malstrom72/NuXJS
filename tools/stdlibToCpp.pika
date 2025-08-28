@@ -27,44 +27,38 @@ ok = minifier(src, @minifiedBase, @i);
 if (!ok) throw("Failed parsing at offset " # i);
 print(bake('Code shrunk from {length(src)} to {length(minifiedBase)}'));
 
-
 if (hasES5) {
-    // Minify ES5 payload too; reuse the same PEG minifier.
-    // Prepend a small header to ensure preserve tags are respected.
-    // (The ES5 file already includes @preserve lines; this is just to keep structure consistent.)
-    ok = minifier(es5src, @minifiedES5, @i2);
-    if (!ok) throw("Failed parsing ES5 at offset " # i2);
+	ok = minifier(es5src, @minifiedES5, @i2);
+	if (!ok) throw("Failed parsing ES5 at offset " # i2);
+	print(bake('ES5 shrunk from {length(es5src)} to {length(minifiedES5)}'));
 };
 
-code = '';
-// Emit base stdlib as quoted lines
+codeBase = '';
 for (offset = 0; offset < length(minifiedBase); offset += n) {
 	for (n = min(length(minifiedBase) - offset, 118)
 			; { line = '"' # (escape("\n" # minifiedBase{offset:n}){3:}); length(line) > 120 }
 			; --n);
-	code #= line # LF;
+	codeBase #= line # LF;
 };
 
-// If present, emit ES5 code under C++ preprocessor guard and runtime check
 if (hasES5) {
-	code #= '#if (NUXJS_ES5)' # LF;
-	ws = '"' # (escape("\nif (support[\'ES5\']) { "){3:});
-	code #= ws # LF;
+	codeES5 = '';
 	for (o2 = 0; o2 < length(minifiedES5); o2 += n2) {
 		for (n2 = min(length(minifiedES5) - o2, 118)
 				; { w = '"' # (escape("\n" # minifiedES5{o2:n2}){3:}); length(w) > 120 }
 				; --n2);
-		code #= w # LF;
+		codeES5 #= w # LF;
 	};
-	we = '"' # (escape("\n};"){3:});
-	code #= we # LF;
-	code #= '#endif' # LF;
 };
 
 save(outputFile, bake(
 'namespace NuXJS {
 const char* STDLIB_JS =
---{code}--;
+--{codeBase}--;
+#if (NUXJS_ES5)
+const char* STDLIB_ES5_JS =
+--{codeES5}--;
+#endif
 }
 ', '--{', '}--'));
 

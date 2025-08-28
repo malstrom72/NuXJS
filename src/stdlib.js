@@ -61,7 +61,7 @@
 	}
 */
 
-(function(support) {
+(function(support, es5) {
 
 var globals = this;
 var unconstructable = support.distinctConstructor; // these are the same now, but not guaranteed in the future
@@ -1842,6 +1842,8 @@ defineProperties(Object, { dontEnum: true }, {
 	}),
 	getPrototypeOf: unconstructable(function getPrototypeOf(o) { return $getInternalProperty(o, "prototype"); })
 });
+
+if (support.ES5 && es5) eval(es5);
 
 if ($NaN.toString() !== "NaN") throw Error("Internal self test failed. Check C++ compiler options concerning IEEE 754 compliance.");
 
