@@ -20,6 +20,14 @@ A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with prec
 - **Easy-to-use high-level C++ API** for integrating and embedding the engine.
 - **Extensive automated tests** – zero-tolerance for bugs.
 
+## Sandboxing
+
+- Runs scripts in a contained VM with no built-in file, network, or other system APIs.
+- Ships a standard library written entirely in JavaScript; host applications inject native functions to expose capabilities.
+- Each runtime keeps its own isolated state with nothing shared across runtimes or threads.
+- Hosts may step execution and bound resources via `Runtime::setMemoryCap` and `Runtime::resetTimeOut`.
+- All failures surface as managed exceptions, preventing crashes and keeping untrusted code within the sandbox.
+
 ## Why ECMAScript 3?
 
 ECMAScript 3 was the first broadly adopted JS standard; it provides everything needed in a _scripting_ language without
