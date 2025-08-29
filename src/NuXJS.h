@@ -24,6 +24,17 @@
 #ifndef NuXJS_h
 #define NuXJS_h
 
+// ---------------------------------------------------------------------------
+// ES version toggle
+//
+// NUXJS_ES5 controls ES5 features and semantics. Keep default at 0 so that
+// building without an explicit -DNUXJS_ES5=1 matches legacy ES3 behavior from
+// the main branch exactly.
+// ---------------------------------------------------------------------------
+#ifndef NUXJS_ES5
+#define NUXJS_ES5 1
+#endif
+
 #include "assert.h"
 #include <algorithm>
 #include <string>
@@ -447,11 +458,13 @@ const Flags READ_ONLY_FLAG = 2;
 const Flags DONT_ENUM_FLAG = 4;
 const Flags DONT_DELETE_FLAG = 8;
 const Flags INDEX_TYPE_FLAG = 16;	///< internal index type, only used as an optimization for faster name -> local index lookup
+const Flags ACCESSOR_FLAG = 32;       ///< property stores accessor pair
 const Flags STANDARD_FLAGS = EXISTS_FLAG;	///< use with setOwnProperty()
 const Flags HIDDEN_CONST_FLAGS = READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG | EXISTS_FLAG;
 const Flags NONEXISTENT = 0;		///< use with getOwnProperty() to check for existence, e.g. getOwnProperty(o, k, v) != NONEXISTENT
 const UInt32 TABLE_BUILT_IN_N = 3; ///< 1 << 3 == 8
 
+class Accessor;
 /**
 	Table implements a hash table for storing object properties. It provides fast lookup and is used internally by JS
 	objects.
@@ -538,13 +551,16 @@ class Object : public GCItem {
 		virtual Object* getPrototype(Runtime& rt) const;		///< Default returns the Object prototype.
 
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;								///< Don't touch v if you return NONEXISTENT. Default returns NONEXISTENT.
+		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);								///< Update existing property. Return false if it doesn't exist or can't be updated (e.g. read-only property exists). Can be overriden for optimization. (Default implementation checks existence with hasOwnProperty() first.)
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);												///< Default returns false.
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;											///< Default returns an empty enumerator.
 
 		Flags getProperty(Runtime& rt, const Value& key, Value* v) const; 	///< Searches prototype chain.
+		Flags getProperty(Runtime& rt, Processor& processor, const Value& key, Value* v) const;
 		bool setProperty(Runtime& rt, const Value& key, const Value& v); 	///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
+		bool setProperty(Runtime& rt, Processor& processor, const Value& key, const Value& v);
 		bool isOwnPropertyEnumerable(Runtime& rt, const Value& key) const;
 		bool hasOwnProperty(Runtime& rt, const Value& key) const; 			///< Checks via getOwnProperty().
 		bool hasProperty(Runtime& rt, const Value& key) const;				///< Checks via getProperty().
@@ -707,6 +723,7 @@ class JSObject : public Object, public Table {
 		JSObject(GCList& gcList, Object* prototype);
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
@@ -742,6 +759,7 @@ template<class SUPER> class LazyJSObject : public SUPER {
 		typedef SUPER super;
 		LazyJSObject(GCList& gcList) : super(gcList), completeObject(0) { }
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
@@ -773,6 +791,7 @@ class JSArray : public LazyJSObject<Object> {
 		virtual Object* getPrototype(Runtime& rt) const;
 		// FIX : toString too?
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
@@ -833,6 +852,8 @@ class Code : public Object {
 		const String* getName() const { return name; }
 		const String* getSource() const { return source; }
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
+		bool isStrict() const { return strict; }
+		void setStrict(bool v) { strict = v; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
 
 	protected:
@@ -846,6 +867,7 @@ class Code : public Object {
 		const String* source;
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
+		bool strict;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, constants);
@@ -881,6 +903,20 @@ class Function : public Object {
 	protected:
 		Function() { }
 		Function(GCList& gcList) : super(gcList) { }
+};
+
+class Accessor : public Object {
+	public:
+		Accessor(GCList& gcList, Function* g, Function* s)
+			: Object(gcList), getter(g), setter(s) { }
+		Function* getter;
+		Function* setter;
+	protected:
+		virtual void gcMarkReferences(Heap& heap) const {
+			gcMark(heap, getter);
+			gcMark(heap, setter);
+			super::gcMarkReferences(heap);
+		}
 };
 
 typedef Value (*NativeFunction)(Runtime&, Processor&, UInt32, const Value*, Object*);
@@ -983,6 +1019,7 @@ class Error : public LazyJSObject<Object> {
 		virtual const String* toString(Heap& heap) const;
 		virtual Value getInternalValue(Heap& heap) const; // error type name
 		virtual Object* getPrototype(Runtime& rt) const;
+		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		ErrorType getErrorType() const;
@@ -1007,12 +1044,14 @@ class FunctionScope;
 class Arguments : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
+		friend class FunctionScope;
 
         Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
 		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
@@ -1027,6 +1066,7 @@ class Arguments : public LazyJSObject<Object> {
 		UInt32 const argumentsCount;
 		Vector<Byte> deletedArguments;
 		Vector<Value> values;	// Contains copied values after the Argument has been detached from its closure.
+		FunctionScope* owner;	// Weak reference to owning FunctionScope for cleanup.
 
 		/**
 			Notice that we do not mark the scope reference, thus creating a "weak" reference that is handled by
@@ -1133,7 +1173,7 @@ class Runtime : public GCItem {
 		JSArray* newJSArray(UInt32 initialLength = 0) const;	///< Convenience routine for `new(heap) JSArray(heap.managed(), initialLength)`
 		const String* newStringConstant(const char* s);
 
-		Code* compileEvalCode(const String* expression);
+		Code* compileEvalCode(const String* expression, bool strict = false);
 		Code* compileGlobalCode(const String& source, const String* filename = 0);
 
 		Var getGlobalsVar();							///< Convenience routine for `Var(rt, rt.getGlobalObject())`
@@ -1336,18 +1376,46 @@ class Var : public GCItem, public AccessorBase {
 **/
 class Property : public AccessorBase {
 	friend class AccessorBase;
-	
-	public:
-		template<typename T> const Property& operator=(const T& v) const { object->setProperty(rt, key, Var(rt, v)); return *this; }
-		template<typename T> const Property& operator+=(const T& r) const { object->setProperty(rt, key, get().add(rt.getHeap(), makeValue(r))); return *this; }
 
-	protected:
-		typedef AccessorBase super;
-		Property(Runtime& rt, Object* object, const Var& key) : super(rt), object(object), key(key) { }
-		virtual Value get() const { Value v(UNDEFINED_VALUE); object->getProperty(rt, key, &v); return v; }
-		virtual Var call(int argc, const Value* argv) const { return rt.call(*this, argc, argv, object); }
-		Object* const object;
-		const Var key;
+  public:
+	template <typename T> const Property &operator=(const T &v) const {
+		Value current;
+		Flags flags = object->getProperty(rt, key, &current);
+		if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+			Accessor *acc = static_cast<Accessor *>(current.asObject());
+			Function *setter = (acc != 0 ? acc->setter : 0);
+			if (setter != 0) {
+				Value arg = Var(rt, v);
+				rt.call(setter, 1, &arg, object);
+				return *this;
+			}
+		}
+		object->setProperty(rt, key, Var(rt, v));
+		return *this;
+	}
+	template <typename T> const Property &operator+=(const T &r) const {
+		object->setProperty(rt, key, get().add(rt.getHeap(), makeValue(r)));
+		return *this;
+	}
+
+  protected:
+	typedef AccessorBase super;
+	Property(Runtime &rt, Object *object, const Var &key) : super(rt), object(object), key(key) {}
+	virtual Value get() const {
+		Value v(UNDEFINED_VALUE);
+		Flags flags = object->getProperty(rt, key, &v);
+		if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+			Accessor *acc = static_cast<Accessor *>(v.asObject());
+			Function *getter = (acc != 0 ? acc->getter : 0);
+			return (getter != 0 ? rt.call(getter, 0, 0, object) : UNDEFINED_VALUE);
+		}
+		return v;
+	}
+	virtual Var call(int argc, const Value *argv) const {
+		return rt.call(*this, argc, argv, object);
+	}
+	Object *const object;
+	const Var key;
 };
 
 /**
@@ -1531,6 +1599,8 @@ class Processor : public GCItem {
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
 			, SET_PROPERTY_POP_OP							// stack: object, name, value ->
 			, ADD_PROPERTY_OP								// operand: const_index (name), stack: object, value -> object
+							, ADD_GETTER_OP						// operand: const_index(name), stack: object, function -> object
+							, ADD_SETTER_OP						// operand: const_index(name), stack: object, function -> object
 			, PUSH_ELEMENTS_OP								// operand: count, stack: object, count * elements ... -> object
 			, OBJ_TO_PRIMITIVE_OP							// stack: value -> primitive_value (no preference)	// these three must be in this exact order
 			, OBJ_TO_NUMBER_OP								// stack: value -> primitive_value (number preferred)
@@ -1585,7 +1655,12 @@ class Processor : public GCItem {
 		};
 	
 		struct OpcodeInfo {
-			enum { TERMINAL = 1, POP_OPERAND = 2, POP_ON_BRANCH = 4, NO_POP_ON_BRANCH = 8 };
+			enum {
+				TERMINAL = 1,			/// instruction ends current basic block
+				POP_OPERAND = 2,	/// pop `operand` values after execution
+				POP_ON_BRANCH = 4,	/// branch path pops the top of stack
+				NO_POP_ON_BRANCH = 8	/// branch path keeps the top of stack
+			};
 			Opcode opcode;
 			const char* mnemonic;
 			Int32 stackUse;
@@ -1600,12 +1675,13 @@ class Processor : public GCItem {
 		Processor(Runtime& rt);
 		void invokeFunction(Function* f, Int32 argc, const Value* argv, Object* thisObject = 0);
 		void enterGlobalCode(const Code* code);
-		void enterEvalCode(const Code* code, bool local = false);
+		void enterEvalCode(const Code* code, bool direct = false);
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
 		void throwVirtualException(const Value& exception);
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);
 		Value getResult() const;	// make sure you've called run() until it returns false before calling this
+		bool isCurrentStrict() const { return currentFrame != 0 && currentFrame->code->isStrict(); }
 
 	protected:
 		struct Frame : public GCItem {

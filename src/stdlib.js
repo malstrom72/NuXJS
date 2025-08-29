@@ -61,7 +61,7 @@
 	}
 */
 
-(function(support) {
+(function(support, es5) {
 
 var globals = this;
 var unconstructable = support.distinctConstructor; // these are the same now, but not guaranteed in the future
@@ -130,7 +130,7 @@ function uint32(v) { return int(v) >>> 0; }
 // TODO : what a waste of cycles, could be a simple OBJ_TO_STRING, problem with ''+s is that it uses OBJ_TO_NUMBER which only affects the priority of toString vs valueOf... so subtle!
 function str(o) { return '' + (isPrimitive(o) ? o : support.toPrimitiveString(o)) }
 
-function defineProperties(object, attribs, props) {
+function defProps(object, attribs, props) {
 	var ro = attribs.readOnly, de = attribs.dontEnum, dd = attribs.dontDelete;
 	for (var p in props) support.defineProperty(object, p, props[p], ro, de, dd);
 	return object
@@ -217,8 +217,8 @@ var Object = function Object(v) {
 		case "string": return new String(v);
 	}
 };
-defineProperties(Object, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Object });
-defineProperties(Object.prototype, { dontEnum: true }, {
+defProps(Object, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Object });
+defProps(Object.prototype, { dontEnum: true }, {
 	constructor: Object,
 	valueOf: unconstructable(function valueOf() { return this }),
 	toLocaleString: unconstructable(function toLocaleString() { return this.toString() }),
@@ -248,8 +248,8 @@ var Function = function Function(body) {
 	if (n >= 0) src += argv[n];
 	return support.compileFunction(src + "\n}", "anonymous")
 };
-defineProperties(Function, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Function });
-defineProperties(Function.prototype, { dontEnum: true }, {
+defProps(Function, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Function });
+defProps(Function.prototype, { dontEnum: true }, {
 	constructor: Function,
 	apply: unconstructable(function apply(thisArg, argArray) { // FIX : <- 100% native version in the future I think
 		var theClass;
@@ -275,8 +275,8 @@ var Boolean = support.distinctConstructor(function Boolean(v) {
 }, function Boolean(v) {
 	return support.createWrapper("Boolean", !!v, support.prototypes.Boolean);
 });
-defineProperties(Boolean, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Boolean });
-defineProperties(Boolean.prototype, { dontEnum: true }, {
+defProps(Boolean, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Boolean });
+defProps(Boolean.prototype, { dontEnum: true }, {
 	constructor: Boolean,
 	valueOf: unconstructable(function valueOf() {
 		checkClass(this, "Boolean", "valueOf");
@@ -300,15 +300,15 @@ var Number = support.distinctConstructor(function Number(v) {
 }, function Number(v) {
 	return support.createWrapper("Number", arguments.length ? +v : 0, support.prototypes.Number);
 });
-defineProperties(Number, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Number });
-defineProperties(Number, { dontEnum: true, readOnly: true, dontDelete: true }, {
+defProps(Number, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Number });
+defProps(Number, { dontEnum: true, readOnly: true, dontDelete: true }, {
 	MAX_VALUE: support.maxNumber,
 	MIN_VALUE: support.minNumber,
 	NaN: $NaN,
 	NEGATIVE_INFINITY: -$Infinity,
 	POSITIVE_INFINITY: $Infinity
 });
-defineProperties(Number.prototype, { dontEnum: true }, {
+defProps(Number.prototype, { dontEnum: true }, {
 	constructor: Number,
 	valueOf: unconstructable(function valueOf() { return getInternalNumber(this, "valueOf") }),
 	toLocaleString: Object.prototype.toLocaleString,
@@ -426,12 +426,12 @@ var String = support.distinctConstructor(function String(v) {
 	return (arguments.length ? str(v) : '');
 }, function String(v) {
 	var s;
-	return defineProperties(
+	return defProps(
 			support.createWrapper("String", (s = (arguments.length ? str(v) : '')), support.prototypes.String)
 			,  { readOnly: true, dontEnum: true, dontDelete: true }, { length: s.length });
 });
-defineProperties(String, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.String });
-defineProperties(String, { dontEnum: true }, {
+defProps(String, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.String });
+defProps(String, { dontEnum: true }, {
 	fromCharCode: unconstructable(function fromCharCode(v) {
 		var argc, argv;
 		if ((argc = (argv = arguments).length) === 1) return support.fromCharCode(v & 65535);
@@ -439,7 +439,7 @@ defineProperties(String, { dontEnum: true }, {
 		return s;
 	})
 });
-defineProperties(String.prototype, { dontEnum: true }, {
+defProps(String.prototype, { dontEnum: true }, {
 	constructor: String,
 	charAt: unconstructable(function charAt(pos) {
 		var s;
@@ -611,8 +611,8 @@ var Array = function Array(v) {
 	}
 	return a
 };
-defineProperties(Array, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Array });
-defineProperties(Array.prototype, { dontEnum: true }, {
+defProps(Array, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Array });
+defProps(Array.prototype, { dontEnum: true }, {
 	constructor: Array,
 	concat: unconstructable(function concat(item1) {
 		var a = [ ], argv, argc = (argv = arguments).length, n = 0, v = this;
@@ -873,8 +873,8 @@ var parseDate, Date = support.distinctConstructor(function Date() {
 	return support.createWrapper("Date", v, support.prototypes.Date);
 });
 
-defineProperties(Date, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Date });
-defineProperties(Date, { dontEnum: true }, {
+defProps(Date, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Date });
+defProps(Date, { dontEnum: true }, {
 	parse: unconstructable(parseDate = function parse(s) {
 		var z, y, i, ch, tz, tzh, tzm, i = 0;
 		function readPart(len) {
@@ -907,7 +907,7 @@ defineProperties(Date, { dontEnum: true }, {
 	})
 });
 
-defineProperties(Date.prototype, { dontEnum: true }, {
+defProps(Date.prototype, { dontEnum: true }, {
 	constructor: Date,
 	toISOString: unconstructable(function toISOString() {
 		var s;
@@ -1514,13 +1514,13 @@ var RegExp = support.distinctConstructor(function RegExp(pattern, flags) {
 	if (!(func = regExpCache[key = pattern + ',' + template.ignoreCase + ',' + template.multiline]))
 		regExpCache[key] = func = evalThere(compileRegExp(pattern, template.ignoreCase, template.multiline));
 	var re = support.createWrapper("RegExp", func, regExpPrototype);
-	defineProperties(re, { dontEnum: true, readOnly: true, dontDelete: true }, template);
-	defineProperties(re, { dontEnum: true, dontDelete: true }, { lastIndex: 0 });
+	defProps(re, { dontEnum: true, readOnly: true, dontDelete: true }, template);
+	defProps(re, { dontEnum: true, dontDelete: true }, { lastIndex: 0 });
 	return re;
 });
 
-defineProperties(RegExp, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: regExpPrototype = RegExp.prototype });
-defineProperties(RegExp.prototype, { dontEnum: true }, {
+defProps(RegExp, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: regExpPrototype = RegExp.prototype });
+defProps(RegExp.prototype, { dontEnum: true }, {
 	exec: unconstructable(function exec(string) { checkClass(this, "RegExp", "exec"); return regExpExecMethod(this, string); }),
 	test: unconstructable(function test(string) { checkClass(this, "RegExp", "test"); return execRegExp(this, string) !== void 0; }),
 	toString: unconstructable(function toString() {
@@ -1531,7 +1531,7 @@ defineProperties(RegExp.prototype, { dontEnum: true }, {
 
 /* --- Set up globals --- */
 
-defineProperties(globals, { dontEnum: true }, {
+defProps(globals, { dontEnum: true }, {
 	Array: Array,
 	Boolean: Boolean,
 	Date: Date,
@@ -1566,13 +1566,13 @@ defineProperties(globals, { dontEnum: true }, {
 	})
 });
 
-defineProperties(globals, { dontEnum: true, dontDelete: true }, {
+defProps(globals, { dontEnum: true, dontDelete: true }, {
 	NaN: $NaN, Infinity: $Infinity, undefined: support.undefined
 });
 
 /* --- Math --- */
 
-defineProperties(Math, { readOnly: true, dontEnum: true, dontDelete: true }, {
+defProps(Math, { readOnly: true, dontEnum: true, dontDelete: true }, {
 	E: 2.718281828459045235360,
 	LN10: 2.302585092994045684018,
 	LN2: 0.6931471805599453094172,
@@ -1583,7 +1583,7 @@ defineProperties(Math, { readOnly: true, dontEnum: true, dontDelete: true }, {
 	SQRT2: 1.414213562373095048802
 });
 
-defineProperties(Math, { dontEnum: true }, {
+defProps(Math, { dontEnum: true }, {
 	abs: unconstructable(abs = function abs(v) { return ((v = +v) < 0 ? -v : v) }),
 	acos: unconstructable(function acos(v) { return support.acos(+v) }),
 	asin: unconstructable(function asin(v) { return support.asin(+v) }),
@@ -1623,12 +1623,12 @@ function createErrorConstructor(name, prototype) {
 		support.defineProperty(globals, n = ERROR_NAMES[i], c = createErrorConstructor(n, p = support.prototypes[n])
 				, false, true, false);
 		c.name = n;	// Notice: from ES6 and upwards "name" is read-only (and you would have to delete it to modify here), but it isn't in this implementation
-		defineProperties(c, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: p });
-		defineProperties(p, { dontEnum: true }, { constructor: c });
+		defProps(c, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: p });
+		defProps(p, { dontEnum: true }, { constructor: c });
 		p.name = n;
 	}
 
-	defineProperties(Error.prototype, { dontEnum: true }, {
+	defProps(Error.prototype, { dontEnum: true }, {
 		message: '',
 		toString: unconstructable(function toString() {
 			return (this.name === void 0 ? "Error" : this.name) + (this.message ? (": " + this.message) : '');
@@ -1648,7 +1648,7 @@ var JSON_ESCAPE_SEQUENCES = { '\\': "\\\\", '"': "\\\"", '\b': "\\b", '\f': "\\f
 var MAX_JSON_DEPTH = 61;	// compiler internal recursion limit is 64 (as of 20180610), we must stick under this for eval() to work and 61 gives us enough margin
 
 // TODO : use StringBuilder?
-defineProperties(JSON, { dontEnum: true }, {
+defProps(JSON, { dontEnum: true }, {
 	stringify: unconstructable(function stringify(val, replacer, space) {
 		var stack = [ ], replacerFunction = (typeof replacer === "function" ? replacer : null), gap = '', includeProps;
 
@@ -1832,16 +1832,25 @@ defineProperties(JSON, { dontEnum: true }, {
 	})
 });
 
-defineProperties(Array, { dontEnum: true }, {
+defProps(Array, { dontEnum: true }, {
 	isArray: unconstructable(function isArray(o) { return $getInternalProperty(o, "class") === "Array"; })
 });
 
-defineProperties(Object, { dontEnum: true }, {
+defProps(Object, { dontEnum: true }, {
 	defineProperty: unconstructable(function defineProperty(o, p, d) {
 		support.defineProperty(o, str(p), d.value, !d.writable, !d.enumerable, !d.configurable);
 	}),
 	getPrototypeOf: unconstructable(function getPrototypeOf(o) { return $getInternalProperty(o, "prototype"); })
 });
+
+// Evaluate ES5 add-ons only when explicitly enabled; bracket form avoids minifier renaming
+if (es5) {
+	// At the time of this call, the "recognized" direct eval function is support.eval, not support.evalFunction
+	// support.evalFunction will be recognized after stdlib is setup
+	eval = support.eval;
+	eval(es5);
+	eval = support.evalFunction;
+}
 
 if ($NaN.toString() !== "NaN") throw Error("Internal self test failed. Check C++ compiler options concerning IEEE 754 compliance.");
 
