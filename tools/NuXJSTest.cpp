@@ -306,6 +306,9 @@ Value gcTest(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, 
 
 static void testVars() {
 	std::cout << std::endl << "***** Var *****" << std::endl << std::endl;
+	std::cout << "  - primitives and conversions" << std::endl;
+	std::cout << "  - numeric edge cases" << std::endl;
+	std::cout << "  - objects, arrays and functions" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -634,6 +637,9 @@ static void testVars() {
 
 static void testArrayVars() {
 	std::cout << std::endl << "***** Array Vars *****" << std::endl << std::endl;
+	std::cout << "  - element access and insertion" << std::endl;
+	std::cout << "  - length updates" << std::endl;
+	std::cout << "  - iteration" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -681,13 +687,15 @@ static void testArrayVars() {
 	const Var::const_iterator e = arrayVar.end();
 	int elementsInArray = 0;
 	for (Var::const_iterator it = arrayVar.begin(); it != e; ++it) {
-	    elementsInArray |= (1 << (*it).to<int>());
+		elementsInArray |= (1 << (*it).to<int>());
 	}
 	EXPECT_EQUAL(elementsInArray, 0x3FFFFFFF);
 }
 
 static void testStandardLibrary() {
 	std::cout << std::endl << "***** Standard Library *****" << std::endl << std::endl;
+	std::cout << "  - array operations" << std::endl;
+	std::cout << "  - string utilities" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -702,6 +710,8 @@ static void testStandardLibrary() {
 
 static void testJSON() {
 	std::cout << std::endl << "***** JSON *****" << std::endl << std::endl;
+	std::cout << "  - stringify objects" << std::endl;
+	std::cout << "  - parse JSON strings" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -719,6 +729,9 @@ static void testJSON() {
 
 static void testCompilation() {
 	std::cout << std::endl << "***** Compilation *****" << std::endl << std::endl;
+	std::cout << "  - eval compilation" << std::endl;
+	std::cout << "  - global code compilation" << std::endl;
+	std::cout << "  - global object setup" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -748,6 +761,8 @@ static void testCompilation() {
 
 static void testLimits() {
 	std::cout << std::endl << "***** Limits *****" << std::endl << std::endl;
+	std::cout << "  - memory limits" << std::endl;
+	std::cout << "  - execution timeouts" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -791,6 +806,9 @@ static Value returnFortyTwo(Runtime&, Processor&, UInt32, const Value*, Object*)
 
 static void testHighLevelAPI() {
 	std::cout << std::endl << "***** High Level API *****" << std::endl << std::endl;
+	std::cout << "  - C++ to JS binding" << std::endl;
+	std::cout << "  - object and array helpers" << std::endl;
+	std::cout << "  - type conversions" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -1633,7 +1651,11 @@ void testValues() {
 
 void testStrings() {
 	std::cout << std::endl << "***** String *****" << std::endl << std::endl;
-	
+	std::cout << "  - construction and comparison" << std::endl;
+	std::cout << "  - wide/UTF-8 conversions" << std::endl;
+	std::cout << "  - surrogate pair handling" << std::endl;
+	std::cout << "  - character arrays" << std::endl;
+
 	Heap heap;
 	
 	{
@@ -1701,6 +1723,9 @@ void testStrings() {
 
 void testTables() {
 	std::cout << std::endl << "***** Table *****" << std::endl << std::endl;
+	std::cout << "  - insertion and lookup" << std::endl;
+	std::cout << "  - flag handling" << std::endl;
+	std::cout << "  - iteration" << std::endl;
 
 	Heap heap;
 	{
@@ -1766,10 +1791,9 @@ int main(int argc, const char* argv[]) {
 		testVectors();
 		testStrings();
 		testTables();
-			testVars();
-			testArrayVars();
-			testStandardLibrary();
-			testJSON();
+		testVars();
+		testArrayVars();
+		testJSON();
 		testCompilation();
 		testLimits();
 		testHighLevelAPI();
