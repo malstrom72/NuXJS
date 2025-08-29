@@ -50,6 +50,10 @@ Key style points:
 
 See `docs/NuXJS Documentation.md` for details on how `src/stdlib.js` is minified and converted to `src/stdlibJS.cpp` during the build, and `docs/Standard Library Guidelines.md` for authoring and editing the standard library.
 
+When handling files with command-line tools (which may break tab characters):
+- Always run `expand -t 4` on the file before processing.
+- Always run `unexpand -t 4` on the file after processing.
+
 ## Script portability
 All user-facing `.sh` and `.cmd` files must work when launched from any directory. They should start by changing to their own folder (or the repository root) so that relative paths resolve correctly.
 
