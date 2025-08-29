@@ -5025,31 +5025,50 @@ struct Support {
 		return UNDEFINED_VALUE;
 	}
 
-	static Value defineProperty(Runtime &rt, Processor &, UInt32 argc, const Value *argv, Object *) {
-		bool success = false;
-		if (argc >= 2) {
-			Object *o = argv[0].asObject();
-			if (o != 0) {
-				Flags flags = (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0) |
-				              (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0) |
-				              (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0) | EXISTS_FLAG;
-				if (argc >= 7) {
-					Heap &heap = rt.getHeap();
-					Accessor *acc = new (heap)
-					    Accessor(heap.managed(), argv[6].asFunction(), (argc >= 8 ? argv[7].asFunction() : 0));
-					success = o->setOwnProperty(rt, argv[1], acc, flags | ACCESSOR_FLAG);
-				} else {
-					success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
-				}
-			}
-		}
-		return success;
-	}
+       static Value defineProperty(Runtime &rt, Processor &, UInt32 argc, const Value *argv, Object *) {
+               bool success = false;
+               if (argc >= 2) {
+                       Object *o = argv[0].asObject();
+                       if (o != 0) {
+                               Flags flags = (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0) |
+                                             (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0) |
+                                             (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0) | EXISTS_FLAG;
+                               if (argc >= 7) {
+                                       Heap &heap = rt.getHeap();
+                                       Accessor *acc = new (heap)
+                                           Accessor(heap.managed(), argv[6].asFunction(), (argc >= 8 ? argv[7].asFunction() : 0));
+                                       success = o->setOwnProperty(rt, argv[1], acc, flags | ACCESSOR_FLAG);
+                               } else {
+                                       success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
+                               }
+                       }
+               }
+               return success;
+       }
 
-	static Value compileFunction(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-		if (argc >= 1) {
-			Heap& heap = rt.getHeap();
-			const String* source = argv[0].toString(heap);
+       static Value setFunctionLength(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+               bool success = false;
+               if (argc >= 2) {
+                       Function* fn = argv[0].asFunction();
+                       if (fn != 0) {
+                               ExtensibleFunction* ef = static_cast<ExtensibleFunction*>(fn);
+                               JSObject* props = ef->getCompleteObject(rt);
+                               Table::Bucket* bucket = props->lookup(&LENGTH_STRING);
+                               if (bucket != 0) {
+                                       Flags flags = bucket->getFlags();
+                                       bucket->flags &= ~READ_ONLY_FLAG;
+                                       props->update(bucket, argv[1], flags);
+                                       success = true;
+                               }
+                       }
+               }
+               return success;
+       }
+
+       static Value compileFunction(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+               if (argc >= 1) {
+                       Heap& heap = rt.getHeap();
+                       const String* source = argv[0].toString(heap);
 			Code* code = new(heap) Code(heap.managed());
 			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
 			compiler.compileFunction(source->begin(), source->end()
@@ -5209,15 +5228,15 @@ static struct {
 	String name;
 	FunctorAdapter<NativeFunction> func;
 } SUPPORT_FUNCTIONS[] = {
-	{ "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
-	{ "defineProperty", Support::defineProperty }, { "compileFunction", Support::compileFunction },
-	{ "distinctConstructor", Support::distinctConstructor }, { "callWithArgs", Support::callWithArgs },
-	{ "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
-	{ "isPropertyEnumerable", Support::isPropertyEnumerable }, { "atan2", Support::atan2 },
-	{ "pow", Support::pow }, { "parseFloat", Support::parseFloat }, { "charCodeAt", Support::charCodeAt },
-	{ "substring", Support::substring }, { "submatch", Support::submatch },
-	{ "getCurrentTime", Support::getCurrentTime }, { "localTimeDifference", Support::localTimeDifference },
-	{ "random", Support::random }, { "updateDateValue", Support::updateDateValue }
+       { "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
+       { "defineProperty", Support::defineProperty }, { "setFunctionLength", Support::setFunctionLength },
+       { "compileFunction", Support::compileFunction }, { "distinctConstructor", Support::distinctConstructor },
+       { "callWithArgs", Support::callWithArgs }, { "hasOwnProperty", Support::hasOwnProperty },
+       { "fromCharCode", Support::fromCharCode }, { "isPropertyEnumerable", Support::isPropertyEnumerable },
+       { "atan2", Support::atan2 }, { "pow", Support::pow }, { "parseFloat", Support::parseFloat },
+       { "charCodeAt", Support::charCodeAt }, { "substring", Support::substring }, { "submatch", Support::submatch },
+       { "getCurrentTime", Support::getCurrentTime }, { "localTimeDifference", Support::localTimeDifference },
+       { "random", Support::random }, { "updateDateValue", Support::updateDateValue }
 };
 
 static UnaryMathFunction<bool (double)> IS_NAN_FUNCTION(isNaN);
