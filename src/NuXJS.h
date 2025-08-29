@@ -470,14 +470,16 @@ class Accessor;
 	objects.
 **/
 class Table {
-	public:
+       friend struct Support;
+       public:
 		/**
 			The main reason why Bucket doesn't contain the Value class, but rather holds it's own Byte type and Variant
 			union, is memory. This solution makes it possible to squeeze in key flags and a truncated 16-bit hash
 			(for even quicker value lookup) in the same space as a Value.
 		**/
-		class Bucket {
-			friend class Table;
+               class Bucket {
+                       friend class Table;
+                       friend struct Support;
 
 			public:
 				Bucket() : key(0) { };
@@ -755,17 +757,18 @@ class JSObject : public Object, public Table {
 	This class is a template so this concept can be used with different super classes.
 **/
 template<class SUPER> class LazyJSObject : public SUPER {
-	public:
-		typedef SUPER super;
-		LazyJSObject(GCList& gcList) : super(gcList), completeObject(0) { }
-		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
-		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
-		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
-		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
-		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
+       friend struct Support;
+       public:
+               typedef SUPER super;
+               LazyJSObject(GCList& gcList) : super(gcList), completeObject(0) { }
+               virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+               virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+               virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
+               virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
+               virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 
-	protected:
-		virtual void constructCompleteObject(Runtime& rt) const = 0;
+       protected:
+               virtual void constructCompleteObject(Runtime& rt) const = 0;
 		JSObject* getCompleteObject(Runtime& rt) const;
 		mutable JSObject* completeObject;
 
@@ -892,10 +895,11 @@ class Function : public Object {
 		virtual Function* asFunction();
 		virtual const String* typeOfString() const;
 		virtual const String* getClassName() const;	// &F_UNCTION_STRING
-		virtual const String* toString(Heap& heap) const;
-		virtual Value getInternalValue(Heap& heap) const;
-		virtual Object* getPrototype(Runtime& rt) const;
-		virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
+               virtual const String* toString(Heap& heap) const;
+               virtual Value getInternalValue(Heap& heap) const;
+               virtual Object* getPrototype(Runtime& rt) const;
+               virtual Function* getConstructTarget();
+               virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
 		virtual bool hasInstance(Runtime& rt, Object* object) const;
 		virtual const Code* getScriptCode() const { return 0; }
 		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject = 0) = 0;
