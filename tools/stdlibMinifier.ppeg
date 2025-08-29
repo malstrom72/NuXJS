@@ -1,46 +1,39 @@
 {
+    $$parser.nextName = '9';
     $$parser.symbolChars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
     $$parser.createNextName => {
-        defaults(@[$$parser.state].nextName, '9');
         for (; {
-            for ($nn = [$$parser.state].nextName; {
+            for ($nn = $$parser.nextName; {
                     $nn !== '' && {
                         $nc = $$parser.symbolChars{find($$parser.symbolChars, right($nn, 1)) + 1};
                         $nc === ''
                     }
                 }; $nn = chop($nn, 1));
             if ($nn === '') {
-                $nn = 'a' # repeat('0', length([$$parser.state].nextName));
+                $nn = 'a' # repeat('0', length($$parser.nextName));
             } else {
                 $nn = chop($nn, 1) # $nc;
-                $nn #= repeat('0', length([$$parser.state].nextName) - length($nn));
+                $nn #= repeat('0', length($$parser.nextName) - length($nn));
             };
-            [$$parser.state].nextName = $nn;
-            exists(@[$$parser.state].preserved[$nn])
+            $$parser.nextName = $nn;
+            exists(@$$parser.preserved[$nn])
         }; );
-        ( [$$parser.state].nextName )
+        ( $$parser.nextName )
     };
 
     $$parser.rename => {
         args(@$s);
-        if (!exists(@[$$parser.state].preserved[$s])) {
-            if (!exists(@[$$parser.state].renames[$s])) {
-                [$$parser.state].renames[$s] = $$parser.createNextName();
+        if (!exists(@$$parser.preserved[$s])) {
+            if (!exists(@$$parser.renames[$s])) {
+                $$parser.renames[$s] = $$parser.createNextName();
             };
-            $s = [$$parser.state].renames[$s];
+            $s = $$parser.renames[$s];
         };
         ( $s )
     };
-
-    $$parser.preserve => {
-        args(@$s);
-        if (exists($r = @[$$parser.state].preserved[$s])) throw('already preserved: ' # $s);
-        if (exists(@[$$parser.state].renames[$s])) throw('preserved word: ' # $s # ' used before preservation');
-        [$r] = true;
-    }
 }
 
-root            <-                                          { $$parser.state = @$$; $$ = '' }
+root            <-                                          { $$ = '' }
                     (ws
 # can't differentiate regexp literal / from two divisions y / x / z without more advanced parsing, so lets not use regexp literals in stdlib
 #                   / c=(qString / aString / regexp)        { $$ #= $c }
@@ -50,7 +43,7 @@ root            <-                                          { $$parser.state = @
                         )*
                     / ';' ws '}'                            { $$ #= '}'}
                     / c=.                                   { $$ #= $c }
-                    )* eof                                  { [$$parser.state].output = $$ }
+                    )* eof
 
 token           <-  n=number                                { $$ = $n }
                     / i=identifier                          { $$ = $$parser.rename($i) }
@@ -64,7 +57,7 @@ comment         <-  '/*' (preserveList / !'*/' .)* '*/' / "//" (preserveList / !
 
 preserveList    <-  '@preserve:' [ \t]* preserveId ([ \t]* ',' [ \t]* preserveId)*
 
-preserveId      <-  i=identifier                            { $$parser.preserve($i); }
+preserveId      <-  i=identifier                            { $$parser.preserved[$i] = true }
 
 identifier      <-  [$a-zA-Z_0-9]+
 

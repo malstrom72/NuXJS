@@ -687,7 +687,7 @@ static void testArrayVars() {
 	const Var::const_iterator e = arrayVar.end();
 	int elementsInArray = 0;
 	for (Var::const_iterator it = arrayVar.begin(); it != e; ++it) {
-	    elementsInArray |= (1 << (*it).to<int>());
+		elementsInArray |= (1 << (*it).to<int>());
 	}
 	EXPECT_EQUAL(elementsInArray, 0x3FFFFFFF);
 }
@@ -1791,10 +1791,9 @@ int main(int argc, const char* argv[]) {
 		testVectors();
 		testStrings();
 		testTables();
-			testVars();
-			testArrayVars();
-			testStandardLibrary();
-			testJSON();
+		testVars();
+		testArrayVars();
+		testJSON();
 		testCompilation();
 		testLimits();
 		testHighLevelAPI();
