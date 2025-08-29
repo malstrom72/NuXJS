@@ -196,7 +196,7 @@ Each section of every test file is written as a separate entry in the specified 
 ## Documentation
 
 - [NuXJS Documentation](docs/NuXJS%20Documentation.md)
-- [Authoring the Standard Library](docs/stdlib.js%20Authoring%20Guide.md)
+- [Standard Library Guidelines](docs/Standard%20Library%20Guidelines.md)
 - [ECMAScript Compatibility Notes](docs/notes/ECMAScript%20Compatibility%20Notes.md)
 - [TypeScript Compatibility](docs/notes/TypeScript%20Compatibility.md)
 - [ES5.1 Implementation Roadmap](docs/ES5.1%20Roadmap.md)
