@@ -55,12 +55,12 @@ CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJSTest_%target%_%model%.exe .\
 ..\output\NuXJSTest_%target%_%model% -s >NUL 2>&1 || GOTO error
 ..\output\NuXJSTest_%target%_%model% || GOTO error
 CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJS_%target%_%model%.exe .\NuXJSREPL.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
-REM Select test directories; include ES5 tests unless explicitly disabled with /DNUXJS_ES5=0
+REM Select test directories; exclude ES5 tests only when explicitly disabled with /DNUXJS_ES5=0
 ECHO %CPP_OPTIONS% | FINDSTR /C:"/DNUXJS_ES5=0" >NUL
-IF ERRORLEVEL 1 (
-    SET TEST_DIRS=..\tests\conforming\ ..\tests\erroneous\ ..\tests\es3only\ ..\tests\es5\ ..\tests\extremes\ ..\tests\from262\ ..\tests\migrated\ ..\tests\regression\ ..\tests\stdlib\ ..\tests\unconforming\ ..\tests\unsorted
-) ELSE (
+IF ERRORLEVEL 0 (
     SET TEST_DIRS=..\tests\conforming\ ..\tests\erroneous\ ..\tests\es3only\ ..\tests\extremes\ ..\tests\from262\ ..\tests\migrated\ ..\tests\regression\ ..\tests\stdlib\ ..\tests\unconforming\ ..\tests\unsorted
+) ELSE (
+    SET TEST_DIRS=..\tests\conforming\ ..\tests\erroneous\ ..\tests\es3only\ ..\tests\es5\ ..\tests\extremes\ ..\tests\from262\ ..\tests\migrated\ ..\tests\regression\ ..\tests\stdlib\ ..\tests\unconforming\ ..\tests\unsorted
 )
 ..\externals\PikaCmd\PikaCmd.exe .\test.pika -e -x\ ..\output\NuXJS_%target%_%model% %TEST_DIRS% || GOTO error
 CALL runExamples.cmd %target% || GOTO error

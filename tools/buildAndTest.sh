@@ -64,7 +64,7 @@ bash ./BuildCpp.sh $target $model ../output/NuXJSTest_${target}_${model} ../tool
 ../output/NuXJSTest_${target}_${model}
 bash ./BuildCpp.sh $target $model ../output/NuXJS_${target}_${model} ../tools/NuXJSREPL.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
 
-# Select test directories; include ES5 tests unless explicitly disabled with -DNUXJS_ES5=0.
+# Select test directories; exclude ES5 tests only when explicitly disabled with -DNUXJS_ES5=0.
 if echo " ${CPP_OPTIONS-} " | grep -q -- "-DNUXJS_ES5=0"; then
     TEST_DIRS=(../tests/conforming/ ../tests/erroneous/ ../tests/es3only/ ../tests/extremes/ ../tests/from262/ ../tests/migrated/ ../tests/regression/ ../tests/stdlib/ ../tests/unconforming/ ../tests/unsorted)
 else

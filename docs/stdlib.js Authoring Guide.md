@@ -129,13 +129,13 @@ const char* STDLIB_ES5_JS =
 1) Edit `src/stdlib.js`
 2) Run `./build.sh` (or `build.cmd` on Windows). The build checks timestamps and regenerates `src/stdlibJS.cpp` when
 	needed using the local `externals/PikaCmd` tool.
-3) For ES5.1 work, set `CPP_OPTIONS='-DNUXJS_ES5=1'` to enable ES5.1 tests, or set
-	`NUXJS_TEST_ES5_VARIANTS=1` to run both ES3 and ES5.1 passes:
+3) ES5.1 features and tests run by default. To build and test the ES3-only variant, set
+        `CPP_OPTIONS='-DNUXJS_ES5=0'`, or set `NUXJS_TEST_ES5_VARIANTS=1` to run both ES3 and ES5.1 passes:
 
-	```bash
-	CPP_OPTIONS='-DNUXJS_ES5=1' ./build.sh
-	NUXJS_TEST_ES5_VARIANTS=1 ./build.sh
-	```
+        ```bash
+        CPP_OPTIONS='-DNUXJS_ES5=0' ./build.sh
+        NUXJS_TEST_ES5_VARIANTS=1 ./build.sh
+        ```
 
 ## PikaScript reference (why it matters)
 

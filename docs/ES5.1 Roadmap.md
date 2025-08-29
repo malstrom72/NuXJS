@@ -8,8 +8,8 @@ ES5‑specific regression tests live in `tests/es5`.
 
 ## Current Status
 
-- Build toggle: ES5.1 features are guarded by the `NUXJS_ES5` macro. Default remains ES3 (`NUXJS_ES5=0`). Use
-  `CPP_OPTIONS='-DNUXJS_ES5=1' ./build.sh` to enable ES5.1 during development. The README documents both modes and a
+- Build toggle: ES5.1 features are guarded by the `NUXJS_ES5` macro. Default is ES5.1 (`NUXJS_ES5=1`). Use
+  `CPP_OPTIONS='-DNUXJS_ES5=0' ./build.sh` for an ES3-only build. The README documents both modes and a
   two‑pass variant with `NUXJS_TEST_ES5_VARIANTS=1`.
 - Test suite (with ES5.1 enabled): all ES5.1 tests pass except `tests/es5/functionBind.io`.
   - Failing behavior: `Function.prototype.bind` returns a bound function whose `length` remains `0`; expected is
