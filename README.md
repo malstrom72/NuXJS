@@ -110,16 +110,13 @@ Notes:
 
 ## ES3 vs ES5.1 Builds
 
-This branch layers an ES5.1 feature set on top of the stable ES3 core. ES5.1 is controlled by the `NUXJS_ES5` compile‑time switch and is enabled by default in this branch.
+This branch layers an ES5.1 feature set on top of the stable ES3 core. ES5.1 is controlled by the `NUXJS_ES5` compile‑time switch and is enabled by default.
 
-- Default (ES5.1 on): run `./build.sh` (or `build.cmd`). ES5 tests under `tests/es5/` are included.
-- Force ES3‑only: set `NUXJS_ES5=0` via `CPP_OPTIONS` to disable ES5.1 features and tests.
+- Default (ES5.1): run `./build.sh` (or `build.cmd`). All tests, including ES5.1, are executed.
+- ES3-only variant: set `NUXJS_ES5=0` via `CPP_OPTIONS` to disable ES5.1 features and tests.
   - macOS/Linux: `CPP_OPTIONS='-DNUXJS_ES5=0' ./build.sh`
   - Windows (PowerShell): `$env:CPP_OPTIONS='/DNUXJS_ES5=0'; ./build.cmd`
   - Windows (cmd): `SET CPP_OPTIONS=/DNUXJS_ES5=0 && build.cmd`
-- Explicit ES5.1: you can also pass it explicitly (not required):
-  - macOS/Linux: `CPP_OPTIONS='-DNUXJS_ES5=1' ./build.sh`
-  - Windows (cmd): `SET CPP_OPTIONS=/DNUXJS_ES5=1 && build.cmd`
 
 ### Test Both Variants (ES3 and ES5.1)
 
@@ -131,7 +128,7 @@ This branch layers an ES5.1 feature set on top of the stable ES3 core. ES5.1 is 
 
 Notes:
 
-- In single‑pass builds, ES5 tests are included unless you explicitly disable ES5 via `-DNUXJS_ES5=0`.
+- In single‑pass builds, ES5 tests run by default. To skip them, compile with `-DNUXJS_ES5=0`.
 - See `docs/ES5.1 Roadmap.md` for current coverage, open items, and semantic notes (e.g. `Function.prototype.bind`, strict mode, accessors, and `Object.create`/`Object.defineProperties`).
 
 ## Example
