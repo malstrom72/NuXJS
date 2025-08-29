@@ -120,7 +120,7 @@ defProps(Date, { dontEnum: true }, {
 
 // Object helpers: defineProperty (accessors), defineProperties, create, keys
 defProps(Object, { dontEnum: true }, {
-	defineProperty: function defineProperty(o, p, d) {
+	defineProperty: unconstructable(function defineProperty(o, p, d) {
 		var k = str(p);
 		var ro = !d.writable, de = !d.enumerable, dd = !d.configurable;
 		if ("get" in d || "set" in d) {
@@ -134,14 +134,14 @@ defProps(Object, { dontEnum: true }, {
 			// Data descriptor
 			support.defineProperty(o, k, d.value, ro, de, dd);
 		}
-	},
-	defineProperties: function defineProperties(o, props) {
+	}),
+	defineProperties: unconstructable(function defineProperties(o, props) {
 		if (o === undefined || o === null) throw TypeError();
 		var obj = Object(o);
 		for (var k in props) if (Object.prototype.hasOwnProperty.call(props, k)) Object.defineProperty(obj, k, props[k]);
 		return obj;
-	},
-	create: function create(proto, properties) {
+	}),
+	create: unconstructable(function create(proto, properties) {
 		if (proto === null) throw TypeError();
 		var t = typeof proto;
 		if (t !== "object" && t !== "function") throw TypeError();
@@ -150,13 +150,13 @@ defProps(Object, { dontEnum: true }, {
 		var o = new F();
 		if (properties !== void 0) Object.defineProperties(o, Object(properties));
 		return o;
-	},
-	keys: function keys(o) {
+	}),
+	keys: unconstructable(function keys(o) {
 		if (o === undefined || o === null) throw TypeError();
 		var obj = Object(o), res = [], k;
 		for (k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) res[res.length] = k;
 		return res;
-	}
+	})
 });
 
 // Function.prototype.bind (minimal, declared with one formal parameter)
@@ -164,19 +164,8 @@ defProps(Function.prototype, { dontEnum: true }, {
 	bind: function bind(thisArg) {
 		var target = this;
 		if (typeof target !== 'function') throw TypeError();
-		var boundArgs = Array.prototype.slice.call(arguments, 1);
-		function bound(a) {
-			var callArgs = boundArgs.concat(Array.prototype.slice.call(arguments));
-			if (this instanceof bound) {
-				if (!target || !target.prototype) throw TypeError();
-				function NOP(){}
-				NOP.prototype = target.prototype;
-				var self = new NOP();
-				var result = target.apply(self, callArgs);
-				return (result && (typeof result === 'object' || typeof result === 'function')) ? result : self;
-			}
-			return target.apply(thisArg, callArgs);
-		}
-		return bound;
+		var args = [target, thisArg];
+		for (var i = 1; i < arguments.length; ++i) args[args.length] = arguments[i];
+		return support.bind.apply(null, args);
 	}
 });

@@ -11,13 +11,7 @@ ES5‑specific regression tests live in `tests/es5`.
 - Build toggle: ES5.1 features are guarded by the `NUXJS_ES5` macro. Default remains ES3 (`NUXJS_ES5=0`). Use
   `CPP_OPTIONS='-DNUXJS_ES5=1' ./build.sh` to enable ES5.1 during development. The README documents both modes and a
   two‑pass variant with `NUXJS_TEST_ES5_VARIANTS=1`.
-- Test suite (with ES5.1 enabled): all ES5.1 tests pass except `tests/es5/functionBind.io`.
-  - Failing behavior: `Function.prototype.bind` returns a bound function whose `length` remains `0`; expected is
-    `max(0, target.length − boundArgCount)`.
-  - Root cause: function `length` is installed by the engine as a read‑only own data property when the function object
-    is materialized. The JS‐level `support.defineProperty(bound, "length", ...)` cannot override it.
-  - Proposed fix: add a native helper (e.g. `support.setFunctionLength(fn, len)`) that bypasses read‑only when called
-    from the stdlib, or special‑case the bound‐function construction path to accept an override value.
+ - Test suite (with ES5.1 enabled): all ES5.1 tests pass (`tests/es5/functionBind.io`).
 
 ## Roadmap to ES5.1
 
@@ -34,9 +28,10 @@ ES5‑specific regression tests live in `tests/es5`.
 - Replace the legacy `support.defineProperty(o, name, value, readOnly, dontEnum, dontDelete)` with a `PropertyDescriptor` structure that can carry `value`, `get`, `set`, and attribute flags.
 - The runtime helper in `src/NuXJS.cpp` should validate descriptor combinations and install either a data or accessor property in the object's hash table.
 - Expose enumeration helpers like `Object.keys` and `Object.getOwnPropertyNames`.
-	- `Object.keys` implemented in `src/stdlib.js` (`tests/es5/objectKeys.io`).
-	- `Object.getOwnPropertyNames` pending; requires a runtime iterator that can expose non-enumerable properties.
-	- Add support for accessor syntax (`get`/`set` in object literals) and function prototype attributes.
+        - `Object.keys` implemented in `src/stdlib.js` (`tests/es5/objectKeys.io`).
+        - `Object.getOwnPropertyNames` pending; requires a runtime iterator that can expose non-enumerable properties.
+        - Add support for accessor syntax (`get`/`set` in object literals) and function prototype attributes.
+- Ensure `Object.defineProperty`, `Object.defineProperties`, `Object.create`, and `Object.keys` are not constructable. *(Implemented; `tests/stdlib/checkAllPrototypes.io`)*
 - Extend the parser to recognize `get name(){}` and `set name(v){}` tokens and emit descriptor objects for property creation.
 - Bootstrapping of built‑ins in `src/stdlib.js` can then define getters on prototypes, e.g. for `Function.prototype.name`.
 
@@ -66,11 +61,9 @@ ES5‑specific regression tests live in `tests/es5`.
 - Implement ES5.1 arguments-object behavior (decoupled mapping, `Object.getOwnPropertyDescriptor` support).
 	- Introduce an `ArgumentsObject` class that can either map indices to parameters or, in strict mode, hold a copy without parameter aliases.
 	- `Object.getOwnPropertyDescriptor` on arguments must expose `length`, `callee`, and indexed properties with correct attributes.
-- Provide `Function.prototype.bind` and ensure correct `.name`, `.length`, and `toString` outputs.
-    - Implemented in `src/stdlib.js` with correct constructor behavior and partial application semantics.
-    - Remaining: bound function `.length` needs an engine‑level override hook; currently `length` stays `0` due to
-      read‑only flags on function objects. See `tests/es5/functionBind.io`.
-    - Optional: consider `bound` function `.name` as `"bound " + target.name` (not required by ES5.1 but common).
+ - Provide `Function.prototype.bind` and ensure correct `.name`, `.length`, and `toString` outputs.
+    - Implemented via runtime `support.bind` helper producing `BoundFunction` with correct constructor behavior and partial application semantics (`tests/es5/functionBind.io`).
+     - Optional: consider `bound` function `.name` as `"bound " + target.name` (not required by ES5.1 but common).
 
 ### Spec compliance fixes
 - Align ES5 semantics that differ from the current engine implementation.
