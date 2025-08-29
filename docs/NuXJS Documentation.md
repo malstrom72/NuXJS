@@ -18,7 +18,10 @@ This wrapper builds and tests both the `beta` and `release` configurations by in
 
 The implementation depends on IEEE-compliant floating-point math. `src/NuXJS.cpp` includes `#error` directives that trigger if `__FAST_MATH__` is defined. Avoid compiler flags like `-Ofast`, `-ffast-math`, or similar, at least for `src/NuXJS.cpp`.
 
-The standard library lives in `src/stdlib.js`. During the build, it is minified and converted to C++ via `tools/stdlibToCpp.pika` using `PikaCmd`. The build scripts automatically regenerate `src/stdlibJS.cpp` when `stdlib.js` changes.
+The standard library lives in `src/stdlib.js`.
+During the build, it is minified and converted to C++ via `tools/stdlibToCpp.pika` using `PikaCmd`.
+The build scripts automatically regenerate `src/stdlibJS.cpp` when `stdlib.js` changes.
+See `Standard Library Guidelines.md` for rules on modifying this file.
 
 ## Using the REPL
 
