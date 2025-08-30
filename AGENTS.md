@@ -1,15 +1,20 @@
 # Repository Guidelines
 
-To run the test suite use the helper script with up to ten minutes allowed for execution:
+Run the full test suite with the helper script and allow it to finish without
+timeouts:
 
 ```bash
-timeout 600 ./build.sh
+./build.sh
 ```
 
-Always execute this command before committing changes to verify that the build and regression tests succeed.
+Always execute this command before committing changes to verify that the build
+and regression tests succeed.
 
-After completing each item in `TODO_NuXJS_ES5.md`, run `timeout 600 ./build.sh` twice—once with `NUXJS_ES5=0`
-and once with `NUXJS_ES5=1`—to verify both configurations.
+After completing each item in `TODO_NuXJS_ES5.md`, run `./build.sh` twice—once
+with `NUXJS_ES5=0` and once with `NUXJS_ES5=1`—and do not commit until both
+builds complete successfully.
+
+Builds must complete successfully; do **not** rely on timeouts or partial runs.
 
 ## Repository layout
 The project uses a consistent folder structure. Build output is written to `output/` and no source files live there. Useful locations:
