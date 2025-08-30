@@ -1,12 +1,12 @@
 # Repository Guidelines
 
-To run the test suite use the helper script with up to three minutes allowed for execution:
+To run the test suite build both ES3 and ES5 variants with up to ten minutes allowed for execution:
 
 ```bash
-timeout 180 ./build.sh
+NUXJS_TEST_ES5_VARIANTS=1 timeout 600 ./build.sh
 ```
 
-Always execute this command before committing changes to verify that the build and regression tests succeed.
+Always execute this command before committing changes to verify that both builds and the regression tests succeed.
 
 ## Repository layout
 The project uses a consistent folder structure. Build output is written to `output/` and no source files live there. Useful locations:

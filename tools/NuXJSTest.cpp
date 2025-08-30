@@ -724,7 +724,7 @@ static void testJSON() {
 	Var parsed = parse(std::wstring(text));
 	EXPECT_EQUAL(parsed["foo"], 17);
 	EXPECT_EQUAL(parsed["bar"][1], 2);
-	EXPECT_EQUAL(parsed["baz"].to<std::wstring>(), L"hi");
+        EXPECT_EQUAL(parsed["baz"].to<std::wstring>(), L"hi");
 }
 
 static void testCompilation() {

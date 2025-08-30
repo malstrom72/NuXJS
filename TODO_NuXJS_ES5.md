@@ -1,0 +1,48 @@
+- [x] const String EMPTY_STRING, LENGTH_STRING("length"), NULL_STRING("null"), UNDEFIN
+- [x] const String* Object::getClassName() const { return &O_BJECT_STRING; }
+- [x] Flags Object::getProperty(Runtime& rt, const Value& key, Value* v) const {
+- [x] o = o->getPrototype(rt);
+- [x] return false;
+- [x] bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Fla
+- [x] bool JSObject::setOwnProperty(Runtime& rt, const String* key, const Value& v, Fl
+- [x] bool Function::hasInstance(Runtime& rt, Object* object) const {
+- [x] bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
+- [x] template<class SUPER> bool LazyJSObject<SUPER>::setOwnProperty(Runtime& rt, cons
+- [x] void Error::updateReflection(Runtime& rt) {
+- [x] Flags Arguments::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
+- [x] static struct EvalFunction : public Function {
+- [x] const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
+- [x] void Processor::newOperation(const Int32 argc) {
+- [x] const Object* o = convertToObject(sp[-1], false);
+- [x] pop(1);
+- [x] if (o == 0) {
+- [x] case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break
+- [x] case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break
+- [x] Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff
+- [x] Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff
+- [x] void SeparateConstructorFunction::constructCompleteObject(Runtime& rt) const {
+- [x] struct Support {
+- [x] struct Support {
+- [x] static struct {
+- [x] Var Runtime::eval(const String& expression) {
+- [x] Code* Runtime::compileEvalCode(const String* expression, bool strict) {
+- [x] static Value distinctConstructor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+- [x] const Flags READ_ONLY_FLAG = 2;
+- [ ] class Table {
+- [ ] class Object : public GCItem {
+- [ ] class JSObject : public Object, public Table {
+- [ ] template<class SUPER> class LazyJSObject : public SUPER {
+- [ ] class JSArray : public LazyJSObject<Object> {
+- [ ] class Code : public Object {
+- [ ] class Code : public Object {
+- [ ] class Function : public Object {
+- [ ] class Function : public Object {
+- [ ] class Accessor : public Object {
+- [ ] class Error : public LazyJSObject<Object> {
+- [x] class Arguments : public LazyJSObject<Object> {
+- [ ] class Runtime : public GCItem {
+- [ ] class Property : public AccessorBase {
+- [ ] class Property : public AccessorBase {
+- [ ] class Property : public AccessorBase {
+ - [x] class Processor : public GCItem {
+ - [ ] class Processor : public GCItem {
