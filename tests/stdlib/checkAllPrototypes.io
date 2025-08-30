@@ -55,7 +55,7 @@
 >	ok = ok && flags.dontEnum && !flags.readOnly && !flags.dontDelete;
 > 	flags = analyzeFlags(f, 'length');
 >	ok = ok && flags.dontEnum && flags.readOnly && flags.dontDelete;
->	try { var o = new f; print("constructable"); ok = false; } catch (x) { print("unconstructable: " + x.name); }
+>	try { var o = new f; print("constructable"); ok = false; } catch (x) { print("unconstructable: " + x); }
 > 	print("OK: " + ok);
 > 	print("--------");
 > }
@@ -81,7 +81,7 @@
 >	ok = ok && flags.dontEnum && !flags.readOnly && !flags.dontDelete;
 > 	flags = analyzeFlags(f, 'length');
 >	ok = ok && flags.dontEnum && flags.readOnly && flags.dontDelete;
->	try { var o = new f; print("constructable"); ok = false; } catch (x) { print("unconstructable: " + x.name); }
+>	try { var o = new f; print("constructable"); ok = false; } catch (x) { print("unconstructable: " + x); }
 > 	print("OK: " + ok);
 > 	print("--------");
 > }
@@ -124,7 +124,7 @@
 >	ok = ok && flags.dontEnum && !flags.readOnly && !flags.dontDelete;
 > 	flags = analyzeFlags(f, 'length');
 >	ok = ok && flags.dontEnum && flags.readOnly && flags.dontDelete;
->	try { var o = new f; print("constructable"); if (!isConstructor) ok = false; } catch (x) { print("unconstructable: " + x.name); if (isConstructor) ok = false }
+>	try { var o = new f; print("constructable"); if (!isConstructor) ok = false; } catch (x) { print("unconstructable: " + x); if (isConstructor) ok = false }
 > 	print("OK: " + ok);
 > 	print("--------");
 > }
@@ -153,7 +153,7 @@
 < toString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toString is not a constructor
 < OK: true
 < --------
 -
@@ -168,7 +168,7 @@
 < toLocaleString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toLocaleString is not a constructor
 < OK: true
 < --------
 -
@@ -183,7 +183,7 @@
 < concat : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: concat is not a constructor
 < OK: true
 < --------
 -
@@ -198,7 +198,7 @@
 < join : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: join is not a constructor
 < OK: true
 < --------
 -
@@ -213,7 +213,7 @@
 < pop : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: pop is not a constructor
 < OK: true
 < --------
 -
@@ -228,7 +228,7 @@
 < push : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: push is not a constructor
 < OK: true
 < --------
 -
@@ -243,7 +243,7 @@
 < reverse : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: reverse is not a constructor
 < OK: true
 < --------
 -
@@ -258,7 +258,7 @@
 < shift : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: shift is not a constructor
 < OK: true
 < --------
 -
@@ -273,7 +273,7 @@
 < slice : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: slice is not a constructor
 < OK: true
 < --------
 -
@@ -288,7 +288,7 @@
 < sort : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: sort is not a constructor
 < OK: true
 < --------
 -
@@ -303,7 +303,7 @@
 < splice : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: splice is not a constructor
 < OK: true
 < --------
 -
@@ -318,7 +318,7 @@
 < unshift : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: unshift is not a constructor
 < OK: true
 < --------
 -
@@ -331,7 +331,7 @@
 < isArray : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: isArray is not a constructor
 < OK: true
 < --------
 -
@@ -359,7 +359,7 @@
 < toString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toString is not a constructor
 < OK: true
 < --------
 -
@@ -374,7 +374,7 @@
 < apply : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: apply is not a constructor
 < OK: true
 < --------
 -
@@ -389,7 +389,7 @@
 < call : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: call is not a constructor
 < OK: true
 < --------
 -
@@ -402,7 +402,7 @@
 < abs : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: abs is not a constructor
 < OK: true
 < --------
 -
@@ -415,7 +415,7 @@
 < acos : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: acos is not a constructor
 < OK: true
 < --------
 -
@@ -428,7 +428,7 @@
 < asin : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: asin is not a constructor
 < OK: true
 < --------
 -
@@ -441,7 +441,7 @@
 < atan : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: atan is not a constructor
 < OK: true
 < --------
 -
@@ -454,7 +454,7 @@
 < atan2 : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: atan2 is not a constructor
 < OK: true
 < --------
 -
@@ -467,7 +467,7 @@
 < ceil : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: ceil is not a constructor
 < OK: true
 < --------
 -
@@ -480,7 +480,7 @@
 < cos : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: cos is not a constructor
 < OK: true
 < --------
 -
@@ -493,7 +493,7 @@
 < exp : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: exp is not a constructor
 < OK: true
 < --------
 -
@@ -506,7 +506,7 @@
 < floor : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: floor is not a constructor
 < OK: true
 < --------
 -
@@ -519,7 +519,7 @@
 < log : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: log is not a constructor
 < OK: true
 < --------
 -
@@ -532,7 +532,7 @@
 < max : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: max is not a constructor
 < OK: true
 < --------
 -
@@ -545,7 +545,7 @@
 < min : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: min is not a constructor
 < OK: true
 < --------
 -
@@ -558,7 +558,7 @@
 < pow : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: pow is not a constructor
 < OK: true
 < --------
 -
@@ -571,7 +571,7 @@
 < random : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: random is not a constructor
 < OK: true
 < --------
 -
@@ -584,7 +584,7 @@
 < round : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: round is not a constructor
 < OK: true
 < --------
 -
@@ -597,7 +597,7 @@
 < sin : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: sin is not a constructor
 < OK: true
 < --------
 -
@@ -610,7 +610,7 @@
 < sqrt : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: sqrt is not a constructor
 < OK: true
 < --------
 -
@@ -623,7 +623,7 @@
 < tan : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: tan is not a constructor
 < OK: true
 < --------
 -
@@ -723,7 +723,7 @@
 < toString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toString is not a constructor
 < OK: true
 < --------
 -
@@ -738,7 +738,7 @@
 < toLocaleString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toLocaleString is not a constructor
 < OK: true
 < --------
 -
@@ -753,7 +753,7 @@
 < valueOf : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: valueOf is not a constructor
 < OK: true
 < --------
 -
@@ -768,7 +768,7 @@
 < toFixed : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toFixed is not a constructor
 < OK: true
 < --------
 -
@@ -783,7 +783,7 @@
 < toExponential : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toExponential is not a constructor
 < OK: true
 < --------
 -
@@ -798,7 +798,7 @@
 < toPrecision : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toPrecision is not a constructor
 < OK: true
 < --------
 -
@@ -871,7 +871,7 @@
 < toString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toString is not a constructor
 < OK: true
 < --------
 -
@@ -886,7 +886,7 @@
 < toLocaleString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toLocaleString is not a constructor
 < OK: true
 < --------
 -
@@ -901,7 +901,7 @@
 < valueOf : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: valueOf is not a constructor
 < OK: true
 < --------
 -
@@ -916,7 +916,7 @@
 < hasOwnProperty : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: hasOwnProperty is not a constructor
 < OK: true
 < --------
 -
@@ -931,7 +931,7 @@
 < isPrototypeOf : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: isPrototypeOf is not a constructor
 < OK: true
 < --------
 -
@@ -944,7 +944,7 @@
 < defineProperty : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: defineProperty is not a constructor
 < OK: true
 < --------
 -
@@ -957,7 +957,7 @@
 < getPrototypeOf : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getPrototypeOf is not a constructor
 < OK: true
 < --------
 -
@@ -985,7 +985,7 @@
 < exec : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: exec is not a constructor
 < OK: true
 < --------
 -
@@ -1000,7 +1000,7 @@
 < test : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: test is not a constructor
 < OK: true
 < --------
 -
@@ -1015,7 +1015,7 @@
 < toString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toString is not a constructor
 < OK: true
 < --------
 -
@@ -1043,7 +1043,7 @@
 < toString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toString is not a constructor
 < OK: true
 < --------
 -
@@ -1058,7 +1058,7 @@
 < valueOf : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: valueOf is not a constructor
 < OK: true
 < --------
 -
@@ -1073,7 +1073,7 @@
 < charAt : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: charAt is not a constructor
 < OK: true
 < --------
 -
@@ -1088,7 +1088,7 @@
 < concat : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: concat is not a constructor
 < OK: true
 < --------
 -
@@ -1103,7 +1103,7 @@
 < indexOf : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: indexOf is not a constructor
 < OK: true
 < --------
 -
@@ -1118,7 +1118,7 @@
 < lastIndexOf : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: lastIndexOf is not a constructor
 < OK: true
 < --------
 -
@@ -1133,7 +1133,7 @@
 < localeCompare : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: localeCompare is not a constructor
 < OK: true
 < --------
 -
@@ -1148,7 +1148,7 @@
 < match : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: match is not a constructor
 < OK: true
 < --------
 -
@@ -1163,7 +1163,7 @@
 < replace : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: replace is not a constructor
 < OK: true
 < --------
 -
@@ -1178,7 +1178,7 @@
 < search : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: search is not a constructor
 < OK: true
 < --------
 -
@@ -1193,7 +1193,7 @@
 < slice : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: slice is not a constructor
 < OK: true
 < --------
 -
@@ -1208,7 +1208,7 @@
 < split : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: split is not a constructor
 < OK: true
 < --------
 -
@@ -1223,7 +1223,7 @@
 < substring : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: substring is not a constructor
 < OK: true
 < --------
 -
@@ -1238,7 +1238,7 @@
 < toLowerCase : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toLowerCase is not a constructor
 < OK: true
 < --------
 -
@@ -1253,7 +1253,7 @@
 < toLocaleLowerCase : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toLocaleLowerCase is not a constructor
 < OK: true
 < --------
 -
@@ -1268,7 +1268,7 @@
 < toUpperCase : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toUpperCase is not a constructor
 < OK: true
 < --------
 -
@@ -1283,7 +1283,7 @@
 < toLocaleUpperCase : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toLocaleUpperCase is not a constructor
 < OK: true
 < --------
 -
@@ -1311,7 +1311,7 @@
 < toISOString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toISOString is not a constructor
 < OK: true
 < --------
 -
@@ -1326,7 +1326,7 @@
 < toUTCString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toUTCString is not a constructor
 < OK: true
 < --------
 -
@@ -1341,7 +1341,7 @@
 < toString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toString is not a constructor
 < OK: true
 < --------
 -
@@ -1356,7 +1356,7 @@
 < toDateString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toDateString is not a constructor
 < OK: true
 < --------
 -
@@ -1371,7 +1371,7 @@
 < toTimeString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toTimeString is not a constructor
 < OK: true
 < --------
 -
@@ -1386,7 +1386,7 @@
 < toLocaleString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toLocaleString is not a constructor
 < OK: true
 < --------
 -
@@ -1401,7 +1401,7 @@
 < toLocaleDateString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toLocaleDateString is not a constructor
 < OK: true
 < --------
 -
@@ -1416,7 +1416,7 @@
 < toLocaleTimeString : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: toLocaleTimeString is not a constructor
 < OK: true
 < --------
 -
@@ -1431,7 +1431,7 @@
 < valueOf : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: valueOf is not a constructor
 < OK: true
 < --------
 -
@@ -1446,7 +1446,7 @@
 < getTime : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getTime is not a constructor
 < OK: true
 < --------
 -
@@ -1461,7 +1461,7 @@
 < getFullYear : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getFullYear is not a constructor
 < OK: true
 < --------
 -
@@ -1476,7 +1476,7 @@
 < getUTCFullYear : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getUTCFullYear is not a constructor
 < OK: true
 < --------
 -
@@ -1491,7 +1491,7 @@
 < getMonth : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getMonth is not a constructor
 < OK: true
 < --------
 -
@@ -1506,7 +1506,7 @@
 < getUTCMonth : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getUTCMonth is not a constructor
 < OK: true
 < --------
 -
@@ -1521,7 +1521,7 @@
 < getDate : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getDate is not a constructor
 < OK: true
 < --------
 -
@@ -1536,7 +1536,7 @@
 < getUTCDate : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getUTCDate is not a constructor
 < OK: true
 < --------
 -
@@ -1551,7 +1551,7 @@
 < getDay : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getDay is not a constructor
 < OK: true
 < --------
 -
@@ -1566,7 +1566,7 @@
 < getUTCDay : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getUTCDay is not a constructor
 < OK: true
 < --------
 -
@@ -1581,7 +1581,7 @@
 < getHours : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getHours is not a constructor
 < OK: true
 < --------
 -
@@ -1596,7 +1596,7 @@
 < getUTCHours : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getUTCHours is not a constructor
 < OK: true
 < --------
 -
@@ -1611,7 +1611,7 @@
 < getMinutes : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getMinutes is not a constructor
 < OK: true
 < --------
 -
@@ -1626,7 +1626,7 @@
 < getUTCMinutes : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getUTCMinutes is not a constructor
 < OK: true
 < --------
 -
@@ -1641,7 +1641,7 @@
 < getSeconds : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getSeconds is not a constructor
 < OK: true
 < --------
 -
@@ -1656,7 +1656,7 @@
 < getUTCSeconds : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getUTCSeconds is not a constructor
 < OK: true
 < --------
 -
@@ -1671,7 +1671,7 @@
 < getMilliseconds : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getMilliseconds is not a constructor
 < OK: true
 < --------
 -
@@ -1686,7 +1686,7 @@
 < getUTCMilliseconds : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getUTCMilliseconds is not a constructor
 < OK: true
 < --------
 -
@@ -1701,7 +1701,7 @@
 < getTimezoneOffset : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: getTimezoneOffset is not a constructor
 < OK: true
 < --------
 -
@@ -1716,7 +1716,7 @@
 < setTime : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: setTime is not a constructor
 < OK: true
 < --------
 -
@@ -1731,7 +1731,7 @@
 < setMilliseconds : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: setMilliseconds is not a constructor
 < OK: true
 < --------
 -
@@ -1746,7 +1746,7 @@
 < setUTCMilliseconds : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: setUTCMilliseconds is not a constructor
 < OK: true
 < --------
 -
@@ -1761,7 +1761,7 @@
 < setSeconds : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: setSeconds is not a constructor
 < OK: true
 < --------
 -
@@ -1776,7 +1776,7 @@
 < setUTCSeconds : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: setUTCSeconds is not a constructor
 < OK: true
 < --------
 -
@@ -1791,7 +1791,7 @@
 < setMinutes : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: setMinutes is not a constructor
 < OK: true
 < --------
 -
@@ -1806,7 +1806,7 @@
 < setUTCMinutes : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: setUTCMinutes is not a constructor
 < OK: true
 < --------
 -
@@ -1821,7 +1821,7 @@
 < setHours : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: setHours is not a constructor
 < OK: true
 < --------
 -
@@ -1836,7 +1836,7 @@
 < setUTCHours : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: setUTCHours is not a constructor
 < OK: true
 < --------
 -
@@ -1851,7 +1851,7 @@
 < setDate : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: setDate is not a constructor
 < OK: true
 < --------
 -
@@ -1866,7 +1866,7 @@
 < setUTCDate : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: setUTCDate is not a constructor
 < OK: true
 < --------
 -
@@ -1881,7 +1881,7 @@
 < setMonth : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: setMonth is not a constructor
 < OK: true
 < --------
 -
@@ -1896,7 +1896,7 @@
 < setUTCMonth : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: setUTCMonth is not a constructor
 < OK: true
 < --------
 -
@@ -1911,7 +1911,7 @@
 < setFullYear : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: setFullYear is not a constructor
 < OK: true
 < --------
 -
@@ -1926,7 +1926,7 @@
 < setUTCFullYear : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: setUTCFullYear is not a constructor
 < OK: true
 < --------
 -
@@ -1966,7 +1966,7 @@
 < eval : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: eval is not a constructor
 < OK: true
 < --------
 -
@@ -1979,7 +1979,7 @@
 < parseInt : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: parseInt is not a constructor
 < OK: true
 < --------
 -
@@ -1992,7 +1992,7 @@
 < parseFloat : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: parseFloat is not a constructor
 < OK: true
 < --------
 -
@@ -2005,7 +2005,7 @@
 < isNaN : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: isNaN is not a constructor
 < OK: true
 < --------
 -
@@ -2018,7 +2018,7 @@
 < isFinite : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: isFinite is not a constructor
 < OK: true
 < --------
 -
@@ -2032,7 +2032,7 @@
 < decodeURI : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: decodeURI is not a constructor
 < OK: true
 < --------
 -
@@ -2046,7 +2046,7 @@
 < decodeURIComponent : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: decodeURIComponent is not a constructor
 < OK: true
 < --------
 -
@@ -2060,7 +2060,7 @@
 < encodeURI : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: encodeURI is not a constructor
 < OK: true
 < --------
 -
@@ -2074,7 +2074,7 @@
 < encodeURIComponent : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: encodeURIComponent is not a constructor
 < OK: true
 < --------
 -
@@ -2087,7 +2087,7 @@
 < stringify : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: stringify is not a constructor
 < OK: true
 < --------
 -
@@ -2100,7 +2100,7 @@
 < parse : dontEnum, (deleted:true)
 < name : dontEnum, (deleted:true)
 < length : dontEnum,readOnly,dontDelete, (deleted:false)
-< unconstructable: TypeError
+< unconstructable: TypeError: parse is not a constructor
 < OK: true
 < --------
 -

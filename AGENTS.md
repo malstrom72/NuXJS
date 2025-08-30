@@ -6,7 +6,10 @@ To run the test suite use the helper script with up to ten minutes allowed for e
 timeout 600 ./build.sh
 ```
 
-Always execute this command before committing changes to verify that both builds and the regression tests succeed.
+Always execute this command before committing changes to verify that the build and regression tests succeed.
+
+After completing each item in `TODO_NuXJS_ES5.md`, run `timeout 600 ./build.sh` twice—once with `NUXJS_ES5=0`
+and once with `NUXJS_ES5=1`—to verify both configurations.
 
 ## Repository layout
 The project uses a consistent folder structure. Build output is written to `output/` and no source files live there. Useful locations:
@@ -22,6 +25,7 @@ The project uses a consistent folder structure. Build output is written to `outp
 - `output/` – contains only build artifacts (and any runtime dependencies), no source files.
 
 Root-level `build.sh` and `build.cmd` (mirrored implementations) should build and test both the beta and release targets.
+Set the environment variable `NUXJS_TARGET=beta` to run only the beta build when needed.
 
 ### PikaCmd directory
 The `externals/PikaCmd` folder is a separate project copied into this repository. Ignore it when applying formatting or running tests.

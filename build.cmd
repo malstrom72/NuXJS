@@ -17,11 +17,14 @@ IF /I "%variant%"=="es3" (
 
 IF "%model%"=="" SET model=x64
 
-CALL tools\buildAndTest.cmd beta %model% || GOTO error
-CALL tools\buildAndTest.cmd release %model% || GOTO error
+SET targets=%NUXJS_TARGET%
+IF "%targets%"=="" SET targets=beta release
+FOR %%t IN (%targets%) DO (
+        CALL tools\buildAndTest.cmd %%t %model% || GOTO error
+)
 
 IF EXIST output\NuXJS_release_%model%.exe (
-	MOVE /Y output\NuXJS_release_%model%.exe output\NuXJS.exe >NUL
+        MOVE /Y output\NuXJS_release_%model%.exe output\NuXJS.exe >NUL
 )
 POPD
 EXIT /b 0
