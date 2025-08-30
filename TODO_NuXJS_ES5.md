@@ -1,6 +1,3 @@
-Between each item run `timeout 600 ./build.sh` with `NUXJS_ES5=0`
-and `NUXJS_ES5=1` to verify both configurations.
-
 - [x] const String EMPTY_STRING, LENGTH_STRING("length"), NULL_STRING("null"), UNDEFIN
 - [x] const String* Object::getClassName() const { return &O_BJECT_STRING; }
 - [x] Flags Object::getProperty(Runtime& rt, const Value& key, Value* v) const {
@@ -31,7 +28,7 @@ and `NUXJS_ES5=1` to verify both configurations.
 - [x] Code* Runtime::compileEvalCode(const String* expression, bool strict) {
 - [x] static Value distinctConstructor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 - [x] const Flags READ_ONLY_FLAG = 2;
-- [x] class Table {
+- [ ] class Table {
 - [ ] class Object : public GCItem {
 - [ ] class JSObject : public Object, public Table {
 - [ ] template<class SUPER> class LazyJSObject : public SUPER {

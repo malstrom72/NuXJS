@@ -1,20 +1,12 @@
 # Repository Guidelines
 
-Run the full test suite with the helper script and allow it to finish without
-timeouts:
+To run the test suite build both ES3 and ES5 variants with up to ten minutes allowed for execution:
 
 ```bash
-./build.sh
+NUXJS_TEST_ES5_VARIANTS=1 timeout 600 ./build.sh
 ```
 
-Always execute this command before committing changes to verify that the build
-and regression tests succeed.
-
-After completing each item in `TODO_NuXJS_ES5.md`, run `./build.sh` twice—once
-with `NUXJS_ES5=0` and once with `NUXJS_ES5=1`—and do not commit until both
-builds complete successfully.
-
-Builds must complete successfully; do **not** rely on timeouts or partial runs.
+Always execute this command before committing changes to verify that both builds and the regression tests succeed.
 
 ## Repository layout
 The project uses a consistent folder structure. Build output is written to `output/` and no source files live there. Useful locations:
@@ -30,7 +22,6 @@ The project uses a consistent folder structure. Build output is written to `outp
 - `output/` – contains only build artifacts (and any runtime dependencies), no source files.
 
 Root-level `build.sh` and `build.cmd` (mirrored implementations) should build and test both the beta and release targets.
-Set the environment variable `NUXJS_TARGET=beta` to run only the beta build when needed.
 
 ### PikaCmd directory
 The `externals/PikaCmd` folder is a separate project copied into this repository. Ignore it when applying formatting or running tests.
@@ -57,11 +48,11 @@ Key style points:
 	void blahblah(int blah);	/// brief description of `blahblah`
 - Inside comment text, wrap any variable, parameter, class or function names in back-ticks, e.g. `blah` is the temporary buffer.
 
+See `docs/NuXJS Documentation.md` for details on how `src/stdlib.js` is minified and converted to `src/stdlibJS.cpp` during the build, and `docs/Standard Library Guidelines.md` for authoring and editing the standard library.
+
 When handling files with command-line tools (which may break tab characters):
 - Always run `expand -t 4` on the file before processing.
 - Always run `unexpand -t 4` on the file after processing.
-
-See `docs/NuXJS Documentation.md` for details on how `src/stdlib.js` is minified and converted to `src/stdlibJS.cpp` during the build, and `docs/Standard Library Guidelines.md` for rules when editing the standard library.
 
 ## Script portability
 All user-facing `.sh` and `.cmd` files must work when launched from any directory. They should start by changing to their own folder (or the repository root) so that relative paths resolve correctly.

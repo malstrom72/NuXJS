@@ -708,26 +708,24 @@ static void testStandardLibrary() {
 	EXPECT_EQUAL(upper.to<std::wstring>(), L"ABC");
 }
 
-#if (NUXJS_ES5)
 static void testJSON() {
-       std::cout << std::endl << "***** JSON *****" << std::endl << std::endl;
-       std::cout << "  - stringify objects" << std::endl;
-       std::cout << "  - parse JSON strings" << std::endl;
+	std::cout << std::endl << "***** JSON *****" << std::endl << std::endl;
+	std::cout << "  - stringify objects" << std::endl;
+	std::cout << "  - parse JSON strings" << std::endl;
 
-       Heap heap;
-       Runtime rt(heap);
-       rt.setupStandardLibrary();
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
 
-       Var obj = rt.eval("({ foo: 17, bar: [1,2,3], baz: 'hi' })");
-       Var stringify = rt.getGlobalsVar()["JSON"]["stringify"];
-       Var parse = rt.getGlobalsVar()["JSON"]["parse"];
-       const std::wstring text = stringify(obj);
-       Var parsed = parse(std::wstring(text));
-       EXPECT_EQUAL(parsed["foo"], 17);
-       EXPECT_EQUAL(parsed["bar"][1], 2);
-       EXPECT_EQUAL(parsed["baz"].to<std::wstring>(), L"hi");
+	Var obj = rt.eval("({ foo: 17, bar: [1,2,3], baz: 'hi' })");
+	Var stringify = rt.getGlobalsVar()["JSON"]["stringify"];
+	Var parse = rt.getGlobalsVar()["JSON"]["parse"];
+	const std::wstring text = stringify(obj);
+	Var parsed = parse(std::wstring(text));
+	EXPECT_EQUAL(parsed["foo"], 17);
+	EXPECT_EQUAL(parsed["bar"][1], 2);
+        EXPECT_EQUAL(parsed["baz"].to<std::wstring>(), L"hi");
 }
-#endif
 
 static void testCompilation() {
 	std::cout << std::endl << "***** Compilation *****" << std::endl << std::endl;
@@ -1794,11 +1792,9 @@ int main(int argc, const char* argv[]) {
 		testStrings();
 		testTables();
 		testVars();
-               testArrayVars();
-#if (NUXJS_ES5)
-               testJSON();
-#endif
-               testCompilation();
+		testArrayVars();
+		testJSON();
+		testCompilation();
 		testLimits();
 		testHighLevelAPI();
 		readMeSample1();
