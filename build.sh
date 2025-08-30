@@ -21,7 +21,8 @@ case "$variant" in
 		;;
 esac
 
-for target in beta release; do
+targets=${NUXJS_TARGET:-"beta release"}
+for target in $targets; do
 	bash ./tools/buildAndTest.sh "$target" "$model"
 done
 
