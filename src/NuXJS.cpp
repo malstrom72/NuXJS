@@ -5185,6 +5185,11 @@ struct Support {
                                 {
                                         success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
                                 }
+                                if (success && o == rt.getGlobalObject()) {
+                                        rt.getGlobalScope()->declareVar(rt, argv[1].getString(),
+                                                (argc >= 3 ? argv[2] : UNDEFINED_VALUE),
+                                                (flags & DONT_DELETE_FLAG) != 0);
+                                }
                         }
                 }
                 return success;
