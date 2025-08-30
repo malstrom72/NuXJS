@@ -1524,28 +1524,23 @@ JSObject::JSObject(GCList& gcList, Object* prototype)
 Object* JSObject::getPrototype(Runtime&) const { return prototype; }
 
 bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
-#if (NUXJS_ES5)
-       return setOwnProperty(rt, key.toString(rt.getHeap()), v, flags);
-#else
-       Table::Bucket* bucket = insert(key.toString(rt.getHeap()));
-       return update(bucket, v, flags);
-#endif
+	return setOwnProperty(rt, key.toString(rt.getHeap()), v, flags);
 }
 
 bool JSObject::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-       Table::Bucket* bucket = insert(key);
-       if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
-               Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
-               Accessor* nv = static_cast<Accessor*>(v.getObject());
-               if (nv->getter != 0) {
-                       acc->getter = nv->getter;
-               }
-               if (nv->setter != 0) {
-                       acc->setter = nv->setter;
-               }
-               return true;
-       }
-       return update(bucket, v, flags);
+	Table::Bucket* bucket = insert(key);
+	if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
+	Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
+	Accessor* nv = static_cast<Accessor*>(v.getObject());
+	if (nv->getter != 0) {
+	acc->getter = nv->getter;
+	}
+	if (nv->setter != 0) {
+	acc->setter = nv->setter;
+	}
+	return true;
+	}
+	return update(bucket, v, flags);
 }
 
 
@@ -1616,15 +1611,12 @@ const String* JoiningEnumerator::nextPropertyName() {
 /* --- Code --- */
 
 Code::Code(GCList& gcList, Constants* sharedConstants)
-: super(gcList), codeWords(0, &gcList.getHeap())
-, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
-, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
-, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
-#if (NUXJS_ES5)
-, strict(false)
-#endif
+	: super(gcList), codeWords(0, &gcList.getHeap())
+	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
+	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
+, selfName(0), source(0), bloomSet(0), maxStackDepth(0), strict(false)
 {
-assert(constants != 0);
+	assert(constants != 0);
 }
 
 bool Code::lookupNameIndex(const String* name, Int32& index) const {
@@ -2668,16 +2660,11 @@ Object* o = convertToObject(sp[-2], false);
 if (o == 0) {
 return;
 }
-#if (NUXJS_ES5)
 bool acc = o->setProperty(rt, *this, sp[-1], sp[0]);
 pop(3);
 if (acc) {
 return;
 }
-#else
-o->setProperty(rt, sp[-1], sp[0]);
-pop(3);
-#endif
 break;
 }
 
@@ -3913,8 +3900,8 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
-Code* func = new(heap) Code(heap.managed(), code->constants);
-func->setStrict(code->isStrict());
+	Code* func = new(heap) Code(heap.managed(), code->constants);
+	func->strict = code->strict;
 	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
