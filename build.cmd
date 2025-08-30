@@ -2,7 +2,19 @@
 SETLOCAL ENABLEEXTENSIONS ENABLEDELAYEDEXPANSION
 PUSHD %~dp0
 
-SET model=%1
+SET variant=%1
+SET model=%2
+
+IF /I "%variant%"=="es3" (
+	SET CPP_OPTIONS=%CPP_OPTIONS% /DNUXJS_ES5=0
+) ELSE IF /I "%variant%"=="es5" (
+	SET CPP_OPTIONS=%CPP_OPTIONS% /DNUXJS_ES5=1
+) ELSE IF /I "%variant%"=="both" (
+	SET NUXJS_TEST_ES5_VARIANTS=1
+) ELSE (
+	SET model=%variant%
+)
+
 IF "%model%"=="" SET model=x64
 
 CALL tools\buildAndTest.cmd beta %model% || GOTO error

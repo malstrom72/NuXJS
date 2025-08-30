@@ -708,6 +708,7 @@ static void testStandardLibrary() {
 	EXPECT_EQUAL(upper.to<std::wstring>(), L"ABC");
 }
 
+#if (NUXJS_ES5)
 static void testJSON() {
 	std::cout << std::endl << "***** JSON *****" << std::endl << std::endl;
 	std::cout << "  - stringify objects" << std::endl;
@@ -724,8 +725,9 @@ static void testJSON() {
 	Var parsed = parse(std::wstring(text));
 	EXPECT_EQUAL(parsed["foo"], 17);
 	EXPECT_EQUAL(parsed["bar"][1], 2);
-        EXPECT_EQUAL(parsed["baz"].to<std::wstring>(), L"hi");
+  EXPECT_EQUAL(parsed["baz"].to<std::wstring>(), L"hi");
 }
+#endif
 
 static void testCompilation() {
 	std::cout << std::endl << "***** Compilation *****" << std::endl << std::endl;
@@ -1792,9 +1794,11 @@ int main(int argc, const char* argv[]) {
 		testStrings();
 		testTables();
 		testVars();
-		testArrayVars();
-		testJSON();
-		testCompilation();
+               testArrayVars();
+#if (NUXJS_ES5)
+               testJSON();
+#endif
+               testCompilation();
 		testLimits();
 		testHighLevelAPI();
 		readMeSample1();

@@ -110,26 +110,17 @@ Notes:
 
 ## ES3 vs ES5.1 Builds
 
-This branch layers an ES5.1 feature set on top of the stable ES3 core. ES5.1 is controlled by the `NUXJS_ES5` compile‑time switch and is enabled by default.
+This branch layers an ES5.1 feature set on top of the stable ES3 core.
 
-- Default (ES5.1): run `./build.sh` (or `build.cmd`). All tests, including ES5.1, are executed.
-- ES3-only variant: set `NUXJS_ES5=0` via `CPP_OPTIONS` to disable ES5.1 features and tests.
-  - macOS/Linux: `CPP_OPTIONS='-DNUXJS_ES5=0' ./build.sh`
-  - Windows (PowerShell): `$env:CPP_OPTIONS='/DNUXJS_ES5=0'; ./build.cmd`
-  - Windows (cmd): `SET CPP_OPTIONS=/DNUXJS_ES5=0 && build.cmd`
+`build.sh` and `build.cmd` accept an optional first argument selecting the ECMAScript variant:
 
-### Test Both Variants (ES3 and ES5.1)
+- `es5` – build and test with ES5.1 features enabled.
+- `es3` – disable ES5.1 features and tests.
+- `both` (default) – run the full suite for both ES3 and ES5.1.
 
-- Two‑pass mode: set `NUXJS_TEST_ES5_VARIANTS=1` to build and run the full suite twice (first with ES3, then with ES5.1):
-  - `NUXJS_TEST_ES5_VARIANTS=1 ./build.sh`
-- Faster inner loop: when using two‑pass mode during development, skip the release target:
-  - macOS/Linux: `NUXJS_SKIP_RELEASE=1 NUXJS_TEST_ES5_VARIANTS=1 ./tools/buildAndTest.sh beta`
-  - Windows (cmd): `SET NUXJS_SKIP_RELEASE=1 & SET NUXJS_TEST_ES5_VARIANTS=1 & tools\buildAndTest.cmd beta`
+A second argument may specify the model (e.g. architecture); it defaults to `native` on Unix and `x64` on Windows.
 
-Notes:
-
-- In single‑pass builds, ES5 tests run by default. To skip them, compile with `-DNUXJS_ES5=0`.
-- See `docs/ES5.1 Roadmap.md` for current coverage, open items, and semantic notes (e.g. `Function.prototype.bind`, strict mode, accessors, and `Object.create`/`Object.defineProperties`).
+See `docs/ES5.1 Roadmap.md` for current coverage, open items, and semantic notes (e.g. `Function.prototype.bind`, strict mode, accessors, and `Object.create`/`Object.defineProperties`).
 
 ## Example
 
