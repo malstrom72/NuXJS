@@ -6,7 +6,7 @@ To run the test suite use the helper script with up to ten minutes allowed for e
 timeout 600 ./build.sh
 ```
 
-Always execute this command before committing changes to verify that the build and regression tests succeed.
+Always execute this command before committing changes to verify that both builds and the regression tests succeed.
 
 ## Repository layout
 The project uses a consistent folder structure. Build output is written to `output/` and no source files live there. Useful locations:
