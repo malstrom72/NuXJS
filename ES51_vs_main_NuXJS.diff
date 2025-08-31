@@ -1,21 +1,21 @@
 ## Progress
 - [x] Object literal getters/setters guarded
 - [x] `compileEvalCode` strict-mode overload guarded
-- [ ] Accessor property handling
+- [ ] Accessor property handling – partial
 
 diff --git a/src/NuXJS.cpp b/src/NuXJS.cpp
 index 091635a..ee41b38 100644
 --- a/src/NuXJS.cpp
 +++ b/src/NuXJS.cpp
 @@ -180,6 +180,8 @@ const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_ST
-                 , E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
-                 , S_TRING_STRING("String");
+				 , E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
+				 , S_TRING_STRING("String");
  
 +const String GET_STRING("get"), SET_STRING("set");
 +
  static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
- 		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
- 		, CANNOT_CONVERT_TO_OBJECT_STRING("Cannot convert undefined or null to object")
+		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
+		, CANNOT_CONVERT_TO_OBJECT_STRING("Cannot convert undefined or null to object")
 @@ -1277,6 +1279,7 @@ const String* Object::getClassName() const { return &O_BJECT_STRING; }
  Object* Object::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
  Value Object::getInternalValue(Heap&) const { return UNDEFINED_VALUE; }
@@ -25,7 +25,7 @@ index 091635a..ee41b38 100644
  bool Object::deleteOwnProperty(Runtime&, const Value&) { return false; }
  Enumerator* Object::getOwnPropertyEnumerator(Runtime&) const { return &EMPTY_ENUMERATOR; }
 @@ -1316,6 +1319,31 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v) const {
- 	return NONEXISTENT;
+	return NONEXISTENT;
  }
  
 +Flags Object::getProperty(Runtime& rt, Processor& processor, const Value& key, Value* v) const {
@@ -54,10 +54,10 @@ index 091635a..ee41b38 100644
 +
 +
  bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
- 	if (updateOwnProperty(rt, key, v)) {
- 		return true;
+	if (updateOwnProperty(rt, key, v)) {
+		return true;
 @@ -1330,6 +1358,23 @@ bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
- 	return setOwnProperty(rt, key, v);
+	return setOwnProperty(rt, key, v);
  }
  
 +bool Object::setProperty(Runtime& rt, Processor& processor, const Value& key, const Value& v) {
@@ -78,8 +78,8 @@ index 091635a..ee41b38 100644
 +}
 +
  Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
- 	Heap& heap = rt.getHeap();
- 	Enumerator* enumerator = getOwnPropertyEnumerator(rt);
+	Heap& heap = rt.getHeap();
+	Enumerator* enumerator = getOwnPropertyEnumerator(rt);
 @@ -1479,9 +1524,26 @@ JSObject::JSObject(GCList& gcList, Object* prototype)
  Object* JSObject::getPrototype(Runtime&) const { return prototype; }
  
@@ -106,27 +106,27 @@ index 091635a..ee41b38 100644
 +
 +
  bool JSObject::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
- 	Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
- 	return (bucket != 0 && update(bucket, v));
+	Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
+	return (bucket != 0 && update(bucket, v));
 @@ -1495,7 +1557,6 @@ Flags JSObject::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
- 	}
- 	return NONEXISTENT;
+	}
+	return NONEXISTENT;
  }
 -
  bool JSObject::deleteOwnProperty(Runtime& rt, const Value& key) {
- 	Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
- 	return (bucket == 0 || erase(bucket));
+	Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
+	return (bucket == 0 || erase(bucket));
 @@ -1553,7 +1614,7 @@ Code::Code(GCList& gcList, Constants* sharedConstants)
- 	: super(gcList), codeWords(0, &gcList.getHeap())
- 	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
- 	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
+	: super(gcList), codeWords(0, &gcList.getHeap())
+	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
+	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
 -	, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
 +, selfName(0), source(0), bloomSet(0), maxStackDepth(0), strict(false)
  {
- 	assert(constants != 0);
+	assert(constants != 0);
  }
 @@ -1697,6 +1758,10 @@ bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
- 	return super::setOwnProperty(rt, index, v, STANDARD_FLAGS);
+	return super::setOwnProperty(rt, index, v, STANDARD_FLAGS);
  }
  
 +bool JSArray::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
@@ -134,10 +134,10 @@ index 091635a..ee41b38 100644
 +}
 +
  bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
- 	UInt32 index;
- 	if (key.toArrayIndex(index) && index != 0xFFFFFFFFU) {
+	UInt32 index;
+	if (key.toArrayIndex(index) && index != 0xFFFFFFFFU) {
 @@ -1754,6 +1819,10 @@ template<class SUPER> bool LazyJSObject<SUPER>::setOwnProperty(Runtime& rt, cons
- 	return getCompleteObject(rt)->setOwnProperty(rt, key, v, flags);
+	return getCompleteObject(rt)->setOwnProperty(rt, key, v, flags);
  }
  
 +template<class SUPER> bool LazyJSObject<SUPER>::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
@@ -145,10 +145,10 @@ index 091635a..ee41b38 100644
 +}
 +
  template<class SUPER> bool LazyJSObject<SUPER>::deleteOwnProperty(Runtime& rt, const Value& key) {
- 	return getCompleteObject(rt)->deleteOwnProperty(rt, key);
+	return getCompleteObject(rt)->deleteOwnProperty(rt, key);
  }
 @@ -1828,6 +1897,12 @@ void Error::updateReflection(Runtime& rt) {
- 	message = (getProperty(rt, &MESSAGE_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
+	message = (getProperty(rt, &MESSAGE_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
  }
  
 +bool Error::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
@@ -158,19 +158,19 @@ index 091635a..ee41b38 100644
 +}
 +
  bool Error::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
- 	const bool result = super::setOwnProperty(rt, key, v, flags);
- 	updateReflection(rt);
+	const bool result = super::setOwnProperty(rt, key, v, flags);
+	updateReflection(rt);
 @@ -1850,7 +1925,7 @@ void Error::constructCompleteObject(Runtime& rt) const {
  
  Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
- 	, scope(scope), function(scope->function), argumentsCount(argumentsCount)
+	, scope(scope), function(scope->function), argumentsCount(argumentsCount)
 -	   , deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()) {
 +	, deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()), owner(const_cast<FunctionScope*>(scope)) {
- 	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
+	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
  }
  
 @@ -1884,6 +1959,10 @@ Flags Arguments::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
- 	return (p == 0 ? super::getOwnProperty(rt, key, v) : ((void)(*v = *p), (DONT_ENUM_FLAG | EXISTS_FLAG)));
+	return (p == 0 ? super::getOwnProperty(rt, key, v) : ((void)(*v = *p), (DONT_ENUM_FLAG | EXISTS_FLAG)));
  }
  
 +bool Arguments::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
@@ -178,8 +178,8 @@ index 091635a..ee41b38 100644
 +}
 +
  bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
- 	Value* p = findProperty(key);
- 	if (p != 0 && (flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) != 0) {
+	Value* p = findProperty(key);
+	if (p != 0 && (flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) != 0) {
 @@ -1910,8 +1989,8 @@ void Arguments::constructCompleteObject(Runtime& rt) const {
  }
  
@@ -188,13 +188,13 @@ index 091635a..ee41b38 100644
 -		scope->arguments = 0;
 +	if (owner != 0) {
 +		owner->arguments = 0;
- 	}
+	}
  }
  
 @@ -1961,13 +2040,28 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc,
- 	if (code->getArgumentsCount() > argc) {
- 		std::fill(e, locals.end(), UNDEFINED_VALUE);
- 	}
+	if (code->getArgumentsCount() > argc) {
+		std::fill(e, locals.end(), UNDEFINED_VALUE);
+	}
 +#if (NUXJS_ES5)
 +	if (code->strict) {
 +		Heap& heap = gcList.getHeap();
@@ -206,32 +206,32 @@ index 091635a..ee41b38 100644
  }
  
  JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
- 	if (dynamicVars == 0) {
- 		Heap& heap = rt.getHeap();
- 		dynamicVars = new(heap) JSObject(heap.managed(), 0);
+	if (dynamicVars == 0) {
+		Heap& heap = rt.getHeap();
+		dynamicVars = new(heap) JSObject(heap.managed(), 0);
 +		if (arguments == 0) {
- 			arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
+			arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
 +		#if (NUXJS_ES5)
 +			if (function->code->strict) {
 +				arguments->detach();
 +			}
 +		#endif
 +		}
- 		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING, arguments, DONT_DELETE_FLAG);
- 	}
- 	return dynamicVars;
+		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING, arguments, DONT_DELETE_FLAG);
+	}
+	return dynamicVars;
 @@ -2062,6 +2156,7 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
  
  FunctionScope::~FunctionScope() {
-         if (arguments != 0) {
-+                arguments->owner = 0;
-                 arguments->detach();
-                 arguments = 0;
-         }
+		 if (arguments != 0) {
++				 arguments->owner = 0;
+				 arguments->detach();
+				 arguments = 0;
+		 }
 @@ -2095,7 +2190,12 @@ static struct EvalFunction : public Function {
  
- 		Heap& heap = rt.getHeap();
- 		const String* expression = argv[0].toString(heap);
+		Heap& heap = rt.getHeap();
+		const String* expression = argv[0].toString(heap);
 -		processor.enterEvalCode(rt.compileEvalCode(expression), direct);
 +		#if (NUXJS_ES5)
 +			const bool strict = direct && processor.isCurrentStrict();
@@ -239,22 +239,22 @@ index 091635a..ee41b38 100644
 +			const bool strict = false;
 +		#endif
 +			processor.enterEvalCode(rt.compileEvalCode(expression, strict), direct);
- 		return UNDEFINED_VALUE;
- 	}
- 	bool direct;
+		return UNDEFINED_VALUE;
+	}
+	bool direct;
 @@ -2119,6 +2219,8 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
- 	{ SET_PROPERTY_OP            , "SET_PROPERTY"            , -2     , 0 },
- 	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -3     , 0 },
- 	{ ADD_PROPERTY_OP            , "ADD_PROPERTY"            , -1     , 0 },
-+	{ ADD_GETTER_OP            , "ADD_GETTER"             , -1     , 0 },
-+	{ ADD_SETTER_OP            , "ADD_SETTER"             , -1     , 0 },
- 	{ PUSH_ELEMENTS_OP           , "PUSH_ELEMENTS_OP"        , 0      , OpcodeInfo::POP_OPERAND },
- 	{ OBJ_TO_PRIMITIVE_OP        , "OBJ_TO_PRIMITIVE"        , 0      , 0 },
- 	{ OBJ_TO_NUMBER_OP           , "OBJ_TO_NUMBER"           , 0      , 0 },
+	{ SET_PROPERTY_OP			 , "SET_PROPERTY"			 , -2	  , 0 },
+	{ SET_PROPERTY_POP_OP		 , "SET_PROPERTY_POP"		 , -3	  , 0 },
+	{ ADD_PROPERTY_OP			 , "ADD_PROPERTY"			 , -1	  , 0 },
++	{ ADD_GETTER_OP			   , "ADD_GETTER"			  , -1	   , 0 },
++	{ ADD_SETTER_OP			   , "ADD_SETTER"			  , -1	   , 0 },
+	{ PUSH_ELEMENTS_OP			 , "PUSH_ELEMENTS_OP"		 , 0	  , OpcodeInfo::POP_OPERAND },
+	{ OBJ_TO_PRIMITIVE_OP		 , "OBJ_TO_PRIMITIVE"		 , 0	  , 0 },
+	{ OBJ_TO_NUMBER_OP			 , "OBJ_TO_NUMBER"			 , 0	  , 0 },
 @@ -2202,10 +2304,49 @@ const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
  */
  struct Processor::EvalScope : public Scope {
- 		typedef Scope super;
+		typedef Scope super;
 -	EvalScope(GCList& gcList, Scope* parentScope) : super(gcList, parentScope) { }
 -	virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool) {
 +		EvalScope(GCList& gcList, Scope* parentScope, bool isolated) : super(gcList, parentScope), vars(0), isolated(isolated) { }
@@ -291,8 +291,8 @@ index 091635a..ee41b38 100644
 +				}
 +				vars->setOwnProperty(rt, name, initValue.isUndefined() ? UNDEFINED_VALUE : initValue, dontDelete ? DONT_DELETE_FLAG : 0);
 +			} else {
- 				parentScope->declareVar(rt, name, initValue, false);
- 			}
+				parentScope->declareVar(rt, name, initValue, false);
+			}
 +		}
 +		JSObject* vars;
 +		bool isolated;
@@ -301,20 +301,20 @@ index 091635a..ee41b38 100644
 +			super::gcMarkReferences(heap);
 +		}
  };
- 	
+	
  /*
 @@ -2313,7 +2454,8 @@ void Processor::enter(const Code* code, Scope* scope, Object* thisObject) {
- 	if (sp + code->getMaxStackDepth() > stack.end()) {
- 		ScriptException::throwError(heap, RANGE_ERROR, &STACK_OVERFLOW_STRING); // Notice: we can't use virtual throw here, cause we need to abort any sp changes etc that could happen if we continued execution beyond this point.
- 	} else {
+	if (sp + code->getMaxStackDepth() > stack.end()) {
+		ScriptException::throwError(heap, RANGE_ERROR, &STACK_OVERFLOW_STRING); // Notice: we can't use virtual throw here, cause we need to abort any sp changes etc that could happen if we continued execution beyond this point.
+	} else {
 -		pushFrame(code, scope, (thisObject == 0 ? rt.getGlobalObject() : thisObject));
 +Object* obj = (thisObject == 0 && !code->isStrict() ? rt.getGlobalObject() : thisObject);
 +pushFrame(code, scope, obj);
- 		ip = code->getCodeWords();
- 	}
+		ip = code->getCodeWords();
+	}
  }
 @@ -2326,14 +2468,16 @@ void Processor::enterGlobalCode(const Code* code) {
- 	enter(code, rt.getGlobalScope(), rt.getGlobalObject());
+	enter(code, rt.getGlobalScope(), rt.getGlobalObject());
  }
  
 -void Processor::enterEvalCode(const Code* code, bool local) {
@@ -324,20 +324,20 @@ index 091635a..ee41b38 100644
 +	bool isolate = direct && code->isStrict();
 +	if (direct && currentFrame != 0) {
 +		enter(code, new(heap) Processor::EvalScope(heap.managed(), currentFrame->scope, isolate), currentFrame->thisObject);
- 	} else {
+	} else {
 -		enter(code, new(heap) Processor::EvalScope(heap.managed(), rt.getGlobalScope()), rt.getGlobalObject());
 +		enter(code, new(heap) Processor::EvalScope(heap.managed(), rt.getGlobalScope(), isolate), rt.getGlobalObject());
- 	}
+	}
  }
  
 +
  void Processor::enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject) {
- 	enter(func->code, new(heap) FunctionScope(heap.managed(), func, argc, argv), thisObject);
+	enter(func->code, new(heap) FunctionScope(heap.managed(), func, argc, argv), thisObject);
  }
 @@ -2451,42 +2595,80 @@ void Processor::innerRun() {
- 				}
- 			}
- 			break;
+				}
+			}
+			break;
 -			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
 -			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
 -
@@ -419,22 +419,22 @@ index 091635a..ee41b38 100644
  }
  
 +
- 			case OBJ_TO_PRIMITIVE_OP:
- 			case OBJ_TO_NUMBER_OP:
- 			case OBJ_TO_STRING_OP: {
+			case OBJ_TO_PRIMITIVE_OP:
+			case OBJ_TO_NUMBER_OP:
+			case OBJ_TO_STRING_OP: {
 @@ -2596,7 +2778,7 @@ void Processor::innerRun() {
- 			case NEW_ARRAY_OP: push(new(heap) JSArray(heap.managed())); break;
- 			case NEW_REG_EXP_OP: invokeFunction(rt.createRegExpFunction, 1, 2); return;
- 			case RETURN_OP:	ip = currentFrame->returnIP; popFrame(); return;
+			case NEW_ARRAY_OP: push(new(heap) JSArray(heap.managed())); break;
+			case NEW_REG_EXP_OP: invokeFunction(rt.createRegExpFunction, 1, 2); return;
+			case RETURN_OP: ip = currentFrame->returnIP; popFrame(); return;
 -			case THIS_OP: push(thisObject); break;
 +case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break;
- 			case VOID_OP: push(UNDEFINED_VALUE); break;
- 			
- 			case GEN_FUNC_OP: {
+			case VOID_OP: push(UNDEFINED_VALUE); break;
+			
+			case GEN_FUNC_OP: {
 @@ -2615,6 +2797,20 @@ void Processor::innerRun() {
- 				pop(1);
- 				break;
- 			}
+				pop(1);
+				break;
+			}
 +			case ADD_GETTER_OP: {
 +				Object* o = sp[-1].getObject();
 +				Accessor* acc = new(heap) Accessor(heap.managed(), sp[0].asFunction(), 0);
@@ -450,37 +450,37 @@ index 091635a..ee41b38 100644
 +				break;
 +			}
  
- 			case PUSH_ELEMENTS_OP: {
- 				Object* o = sp[-im].getObject();
+			case PUSH_ELEMENTS_OP: {
+				Object* o = sp[-im].getObject();
 @@ -3123,7 +3319,13 @@ const String* Compiler::identifier(bool required, bool allowKeywords) {
-         if (!allowKeywords && findReservedKeyword(parsed.size(), parsed.begin()) >= 0) {
-                 error(SYNTAX_ERROR, "Illegal use of keyword");
-         }
+		 if (!allowKeywords && findReservedKeyword(parsed.size(), parsed.begin()) >= 0) {
+				 error(SYNTAX_ERROR, "Illegal use of keyword");
+		 }
 -	return newHashedString(heap, parsed.begin(), parsed.end());
-+        const String* name = newHashedString(heap, parsed.begin(), parsed.end());
++		 const String* name = newHashedString(heap, parsed.begin(), parsed.end());
 +	#if (NUXJS_ES5)
-+        if (code->isStrict() && name->isEqualTo(EVAL_STRING)) {
-+                error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
-+        }
++		 if (code->isStrict() && name->isEqualTo(EVAL_STRING)) {
++				 error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
++		 }
 +	#endif
-+        return name;
++		 return name;
  }
  
  static UInt32 unescapedMaxLength(const Char* p, const Char* e) {
 @@ -3367,17 +3569,36 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff
- 	
- 	white();
- 	while (!token("}", false)) {
+	
+	white();
+	while (!token("}", false)) {
 +		bool handled = false;
- 		const Char* b = p;
- 		Value key = stringOrNumberConstant();
- 		if (p == b) {
+		const Char* b = p;
+		Value key = stringOrNumberConstant();
+		if (p == b) {
 -			key = identifier(false, true);
 -			if (key.equalsString(EMPTY_STRING)) {
 +			const String* id = identifier(false, true);
 +			if (id->isEqualTo(EMPTY_STRING)) {
- 			error(SYNTAX_ERROR, "Expected property name");
- 			}
+			error(SYNTAX_ERROR, "Expected property name");
+			}
 +			white();
 +				if ((id->isEqualTo(GET_STRING) || id->isEqualTo(SET_STRING)) && *p != ':') {
 +				bool isGetter = id->isEqualTo(GET_STRING);
@@ -497,19 +497,19 @@ index 091635a..ee41b38 100644
 +			} else {
 +			key = id;
 +			}
- 			}
+			}
 +		if (!handled) {
- 				expectToken(":", true);
- 				rvalueExpression(COMMA_PREC);
- 				emitWithConstant(Processor::ADD_PROPERTY_OP, key);
+				expectToken(":", true);
+				rvalueExpression(COMMA_PREC);
+				emitWithConstant(Processor::ADD_PROPERTY_OP, key);
 +		}
- 			if (token("}", true)) {
- 				break;
- 			}
+			if (token("}", true)) {
+				break;
+			}
 @@ -3459,8 +3680,23 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
- 				case ExpressionResult::PUSHED_PRIMITIVE: emit(Processor::POP_OP, 1); /* fall through */
- 				case ExpressionResult::NONE:
- 				case ExpressionResult::CONSTANT: xr = ExpressionResult(ExpressionResult::CONSTANT, true); break;
+				case ExpressionResult::PUSHED_PRIMITIVE: emit(Processor::POP_OP, 1); /* fall through */
+				case ExpressionResult::NONE:
+				case ExpressionResult::CONSTANT: xr = ExpressionResult(ExpressionResult::CONSTANT, true); break;
 -				case ExpressionResult::LOCAL: xr = ExpressionResult(ExpressionResult::CONSTANT, false); break;
 -				case ExpressionResult::NAMED: emitWithConstant(Processor::DELETE_NAMED_OP, xr.v); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
 +				case ExpressionResult::LOCAL:
@@ -529,17 +529,17 @@ index 091635a..ee41b38 100644
 +					emitWithConstant(Processor::DELETE_NAMED_OP, xr.v);
 +					xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
 +					break;
- 				case ExpressionResult::PROPERTY: emit(Processor::DELETE_OP); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
- 				default: assert(0);
- 			}
+				case ExpressionResult::PROPERTY: emit(Processor::DELETE_OP); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
+				default: assert(0);
+			}
 @@ -3665,6 +3901,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
  void Compiler::functionDefinition(const String* functionName, const String* selfName) {
- 	assert(functionName != 0);
- 	Code* func = new(heap) Code(heap.managed(), code->constants);
+	assert(functionName != 0);
+	Code* func = new(heap) Code(heap.managed(), code->constants);
 +	func->strict = code->strict;
- 	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
- 	try {
- 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
+	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
+	try {
+		p = funcCompiler.compileFunction(p, e, functionName, selfName);
 @@ -3819,6 +4056,11 @@ void Compiler::rvalueGroup() {
  
  // FIX : ok, this is serious mess
@@ -549,9 +549,9 @@ index 091635a..ee41b38 100644
 +		error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
 +	}
 +#endif
- 	ExpressionResult lxr(ExpressionResult::NAMED, name);
- 	if (compilingFor != FOR_FUNCTION) {
- 		CodeSection* previousSection = changeSection(&setupSection);
+	ExpressionResult lxr(ExpressionResult::NAMED, name);
+	if (compilingFor != FOR_FUNCTION) {
+		CodeSection* previousSection = changeSection(&setupSection);
 @@ -3974,6 +4216,11 @@ void Compiler::functionStatement() {
  }
  
@@ -561,13 +561,13 @@ index 091635a..ee41b38 100644
 +		error(SYNTAX_ERROR, "\"with\" is not allowed in strict code");
 +	}
 +#endif
- 	rvalueGroup();
- 	emit(Processor::WITH_SCOPE_OP);
- 	{
+	rvalueGroup();
+	emit(Processor::WITH_SCOPE_OP);
+	{
 @@ -4461,6 +4708,38 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
- 	p = b;
- 	this->e = e;
- 	acceptInOperator = true;
+	p = b;
+	this->e = e;
+	acceptInOperator = true;
 +	const Char* directiveStart = p;
 +	white();
 +#if (NUXJS_ES5)
@@ -600,21 +600,21 @@ index 091635a..ee41b38 100644
 +	}
 +#endif
 +	p = directiveStart;
- 	
- 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
- 	if (compilingFor == FOR_EVAL) {
+	
+	// FIX : not 100% necessary now because we should always start with undefined on top of stack
+	if (compilingFor == FOR_EVAL) {
 @@ -4496,6 +4775,7 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
- 	white();
- 	Table& nameIndexes = code->nameIndexes;
- 	Vector<const String*>& argumentNames = code->argumentNames;
+	white();
+	Table& nameIndexes = code->nameIndexes;
+	Vector<const String*>& argumentNames = code->argumentNames;
 +	bool hasDuplicateParameters = false;
- 	while (!token(")", false)) {
- 		if (eof()) {
- 			error(SYNTAX_ERROR, argumentNames.size() == 0 ? "Expected ')'" : "Expected ',' or ')'");
+	while (!token(")", false)) {
+		if (eof()) {
+			error(SYNTAX_ERROR, argumentNames.size() == 0 ? "Expected ')'" : "Expected ',' or ')'");
 @@ -4507,6 +4787,17 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
- 			white();
- 		}
- 			const String* name = identifier(true, false);
+			white();
+		}
+			const String* name = identifier(true, false);
 +		#if (NUXJS_ES5)
 +			if (code->isStrict() && (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING))) {
 +				error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
@@ -626,46 +626,46 @@ index 091635a..ee41b38 100644
 +				break;
 +			}
 +		}
- 		nameIndexes.update(nameIndexes.insert(name), static_cast<Int32>(argumentNames.size()));
- 		argumentNames.push(name);
- 		code->bloomSet |= name->createBloomCode();
+		nameIndexes.update(nameIndexes.insert(name), static_cast<Int32>(argumentNames.size()));
+		argumentNames.push(name);
+		code->bloomSet |= name->createBloomCode();
 @@ -4515,6 +4806,11 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
- 	expectToken("{", true);
- 	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
- 	expectToken("}", false);
+	expectToken("{", true);
+	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
+	expectToken("}", false);
 +	#if (NUXJS_ES5)
 +		if (code->strict && hasDuplicateParameters) {
 +			error(SYNTAX_ERROR, "Duplicate parameter name not allowed in strict code");
 +		}
 +	#endif
- 	code->name = functionName;
- 	code->selfName = selfName;
- 	code->source = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
+	code->name = functionName;
+	code->selfName = selfName;
+	code->source = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
 @@ -4734,11 +5030,17 @@ struct Support {
- 		if (argc >= 2) {
- 			Object *o = argv[0].asObject();
- 			if (o != 0) {
+		if (argc >= 2) {
+			Object *o = argv[0].asObject();
+			if (o != 0) {
 -				success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE)
 -						, (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0)
 -						| (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0)
 -						| (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0)
 -						| EXISTS_FLAG);
 +				Flags flags = (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0) |
-+				              (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0) |
-+				              (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0) | EXISTS_FLAG;
++							  (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0) |
++							  (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0) | EXISTS_FLAG;
 +				if (argc >= 7) {
 +					Heap &heap = rt.getHeap();
 +					Accessor *acc = new (heap)
-+					    Accessor(heap.managed(), argv[6].asFunction(), (argc >= 8 ? argv[7].asFunction() : 0));
++						Accessor(heap.managed(), argv[6].asFunction(), (argc >= 8 ? argv[7].asFunction() : 0));
 +					success = o->setOwnProperty(rt, argv[1], acc, flags | ACCESSOR_FLAG);
 +				} else {
 +					success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
 +				}
- 			}
- 		}
- 		return success;
+			}
+		}
+		return success;
 @@ -5058,21 +5360,28 @@ Var Runtime::eval(const String& expression) {
- 	return runUntilReturn(processor);
+	return runUntilReturn(processor);
  }
  
 -Code* Runtime::compileEvalCode(const String* expression) {
@@ -675,27 +675,27 @@ index 091635a..ee41b38 100644
 +	strict = false;
 +#endif
 +	const Table::Bucket* bucket = (strict ? 0 : evalCodeCache.lookup(expression));
- 	if (bucket != 0) {
- 		Object* o = bucket->getValue().getObject();
- 		assert(dynamic_cast<Code*>(o) != 0);
- 		return reinterpret_cast<Code*>(o);
- 	} else {
- 		Code* code = new(heap) Code(heap.managed());
+	if (bucket != 0) {
+		Object* o = bucket->getValue().getObject();
+		assert(dynamic_cast<Code*>(o) != 0);
+		return reinterpret_cast<Code*>(o);
+	} else {
+		Code* code = new(heap) Code(heap.managed());
 +	#if (NUXJS_ES5)
 +		if (strict) { code->setStrict(true); }
 +	#endif
- 		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
- 		compiler.compile(*expression);
+		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
+		compiler.compile(*expression);
 -		evalCodeCache.update(evalCodeCache.insert(expression), code);
 +		if (!strict) { evalCodeCache.update(evalCodeCache.insert(expression), code); }
- 		return code;
- 	}
+		return code;
+	}
  }
  
 +
  Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
- 	Code* code = new(heap) Code(heap.managed());
- 	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
+	Code* code = new(heap) Code(heap.managed());
+	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
 @@ -5094,6 +5403,9 @@ void Runtime::fetchFunction(const Object* supportObject, const char* name, Funct
  }
  
@@ -705,19 +705,19 @@ index 091635a..ee41b38 100644
 +#endif
  
  double Runtime::getCurrentEpochTime() {
- 	std::time_t t;
+	std::time_t t;
 @@ -5126,6 +5438,7 @@ void Runtime::setupStandardLibrary() {
- 	supportObject->setOwnProperty(*this, &UNDEFINED_STRING, UNDEFINED_VALUE);
- 	supportObject->setOwnProperty(*this, &NAN_STRING, NAN_VALUE);
- 	supportObject->setOwnProperty(*this, &INFINITY_STRING, INFINITY_VALUE);
+	supportObject->setOwnProperty(*this, &UNDEFINED_STRING, UNDEFINED_VALUE);
+	supportObject->setOwnProperty(*this, &NAN_STRING, NAN_VALUE);
+	supportObject->setOwnProperty(*this, &INFINITY_STRING, INFINITY_VALUE);
 +
- 	supportObject->setOwnProperty(*this, &MAX_NUMBER_STRING, std::numeric_limits<double>::max());
- 	supportObject->setOwnProperty(*this, &MIN_NUMBER_STRING, std::numeric_limits<double>::denorm_min());
+	supportObject->setOwnProperty(*this, &MAX_NUMBER_STRING, std::numeric_limits<double>::max());
+	supportObject->setOwnProperty(*this, &MIN_NUMBER_STRING, std::numeric_limits<double>::denorm_min());
  
 @@ -5138,8 +5451,12 @@ void Runtime::setupStandardLibrary() {
- 	}
- 	
- 	const Var func = eval(*String::allocate(heap, STDLIB_JS));
+	}
+	
+	const Var func = eval(*String::allocate(heap, STDLIB_JS));
 -	Value argv[1] = { protectedSupportObject };
 -	call(func, 1, argv);
 +	Value argv[2] = { protectedSupportObject, UNDEFINED_VALUE };
@@ -726,9 +726,9 @@ index 091635a..ee41b38 100644
 +	argv[1] = es5;
 +#endif
 +	call(func, 2, argv);
- 	
- 	fetchFunction(supportObject, "toPrimitive", toPrimitiveFunctions + 0);
- 	fetchFunction(supportObject, "toPrimitiveNumber", toPrimitiveFunctions + 1);
+	
+	fetchFunction(supportObject, "toPrimitive", toPrimitiveFunctions + 0);
+	fetchFunction(supportObject, "toPrimitiveNumber", toPrimitiveFunctions + 1);
 diff --git a/src/NuXJS.h b/src/NuXJS.h
 index 98904d6..a3750a0 100644
 --- a/src/NuXJS.h
@@ -755,7 +755,7 @@ index 98904d6..a3750a0 100644
  const Flags DONT_ENUM_FLAG = 4;
  const Flags DONT_DELETE_FLAG = 8;
  const Flags INDEX_TYPE_FLAG = 16;	///< internal index type, only used as an optimization for faster name -> local index lookup
-+const Flags ACCESSOR_FLAG = 32;       ///< property stores accessor pair
++const Flags ACCESSOR_FLAG = 32;	   ///< property stores accessor pair
  const Flags STANDARD_FLAGS = EXISTS_FLAG;	///< use with setOwnProperty()
  const Flags HIDDEN_CONST_FLAGS = READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG | EXISTS_FLAG;
  const Flags NONEXISTENT = 0;		///< use with getOwnProperty() to check for existence, e.g. getOwnProperty(o, k, v) != NONEXISTENT
@@ -763,68 +763,68 @@ index 98904d6..a3750a0 100644
  
 +class Accessor;
  /**
- 	Table implements a hash table for storing object properties. It provides fast lookup and is used internally by JS
- 	objects.
+	Table implements a hash table for storing object properties. It provides fast lookup and is used internally by JS
+	objects.
 @@ -538,13 +551,16 @@ class Object : public GCItem {
- 		virtual Object* getPrototype(Runtime& rt) const;		///< Default returns the Object prototype.
+		virtual Object* getPrototype(Runtime& rt) const;		///< Default returns the Object prototype.
  
- 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;								///< Don't touch v if you return NONEXISTENT. Default returns NONEXISTENT.
+		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;								///< Don't touch v if you return NONEXISTENT. Default returns NONEXISTENT.
 +		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
- 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
- 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);								///< Update existing property. Return false if it doesn't exist or can't be updated (e.g. read-only property exists). Can be overriden for optimization. (Default implementation checks existence with hasOwnProperty() first.)
- 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);												///< Default returns false.
- 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;											///< Default returns an empty enumerator.
+		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
+		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);								///< Update existing property. Return false if it doesn't exist or can't be updated (e.g. read-only property exists). Can be overriden for optimization. (Default implementation checks existence with hasOwnProperty() first.)
+		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);												///< Default returns false.
+		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;											///< Default returns an empty enumerator.
  
- 		Flags getProperty(Runtime& rt, const Value& key, Value* v) const; 	///< Searches prototype chain.
+		Flags getProperty(Runtime& rt, const Value& key, Value* v) const;	///< Searches prototype chain.
 +		Flags getProperty(Runtime& rt, Processor& processor, const Value& key, Value* v) const;
- 		bool setProperty(Runtime& rt, const Value& key, const Value& v); 	///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
+		bool setProperty(Runtime& rt, const Value& key, const Value& v);	///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
 +		bool setProperty(Runtime& rt, Processor& processor, const Value& key, const Value& v);
- 		bool isOwnPropertyEnumerable(Runtime& rt, const Value& key) const;
- 		bool hasOwnProperty(Runtime& rt, const Value& key) const; 			///< Checks via getOwnProperty().
- 		bool hasProperty(Runtime& rt, const Value& key) const;				///< Checks via getProperty().
+		bool isOwnPropertyEnumerable(Runtime& rt, const Value& key) const;
+		bool hasOwnProperty(Runtime& rt, const Value& key) const;			///< Checks via getOwnProperty().
+		bool hasProperty(Runtime& rt, const Value& key) const;				///< Checks via getProperty().
 @@ -707,6 +723,7 @@ class JSObject : public Object, public Table {
- 		JSObject(GCList& gcList, Object* prototype);
- 		virtual Object* getPrototype(Runtime& rt) const;
- 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+		JSObject(GCList& gcList, Object* prototype);
+		virtual Object* getPrototype(Runtime& rt) const;
+		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
 +		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
- 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
- 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
- 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
+		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
+		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
+		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 @@ -742,6 +759,7 @@ template<class SUPER> class LazyJSObject : public SUPER {
- 		typedef SUPER super;
- 		LazyJSObject(GCList& gcList) : super(gcList), completeObject(0) { }
- 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+		typedef SUPER super;
+		LazyJSObject(GCList& gcList) : super(gcList), completeObject(0) { }
+		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
 +		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
- 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
- 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
- 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
+		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
+		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
+		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 @@ -773,6 +791,7 @@ class JSArray : public LazyJSObject<Object> {
- 		virtual Object* getPrototype(Runtime& rt) const;
- 		// FIX : toString too?
- 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+		virtual Object* getPrototype(Runtime& rt) const;
+		// FIX : toString too?
+		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
 +		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
- 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
- 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
- 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
+		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
+		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
+		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 @@ -833,6 +852,8 @@ class Code : public Object {
- 		const String* getName() const { return name; }
- 		const String* getSource() const { return source; }
- 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
+		const String* getName() const { return name; }
+		const String* getSource() const { return source; }
+		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 +		bool isStrict() const { return strict; }
 +		void setStrict(bool v) { strict = v; }
- 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
+		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
  
- 	protected:
+	protected:
 @@ -846,6 +867,7 @@ class Code : public Object {
- 		const String* source;
- 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
- 		UInt32 maxStackDepth;
+		const String* source;
+		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
+		UInt32 maxStackDepth;
 +		bool strict;
  
- 		virtual void gcMarkReferences(Heap& heap) const {
- 			gcMark(heap, constants);
+		virtual void gcMarkReferences(Heap& heap) const {
+			gcMark(heap, constants);
 @@ -883,6 +905,20 @@ class Function : public Object {
- 		Function(GCList& gcList) : super(gcList) { }
+		Function(GCList& gcList) : super(gcList) { }
  };
  
 +class Accessor : public Object {
@@ -845,47 +845,47 @@ index 98904d6..a3750a0 100644
  
  // FIX : overkill?
 @@ -983,6 +1019,7 @@ class Error : public LazyJSObject<Object> {
- 		virtual const String* toString(Heap& heap) const;
- 		virtual Value getInternalValue(Heap& heap) const; // error type name
- 		virtual Object* getPrototype(Runtime& rt) const;
+		virtual const String* toString(Heap& heap) const;
+		virtual Value getInternalValue(Heap& heap) const; // error type name
+		virtual Object* getPrototype(Runtime& rt) const;
 +		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
- 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
- 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
- 		ErrorType getErrorType() const;
+		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
+		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
+		ErrorType getErrorType() const;
 @@ -1007,12 +1044,14 @@ class FunctionScope;
  class Arguments : public LazyJSObject<Object> {
- 	public:
- 		typedef LazyJSObject<Object> super;
+	public:
+		typedef LazyJSObject<Object> super;
 +		friend class FunctionScope;
  
-         Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
- 		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
- 		virtual const String* toString(Heap& heap) const;
- 		virtual Object* getPrototype(Runtime& rt) const;
- 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+		 Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
+		virtual const String* getClassName() const; // &A_RGUMENTS_STRING
+		virtual const String* toString(Heap& heap) const;
+		virtual Object* getPrototype(Runtime& rt) const;
+		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
 +		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
- 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
- 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
- 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
+		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
+		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
+		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 @@ -1027,6 +1066,7 @@ class Arguments : public LazyJSObject<Object> {
- 		UInt32 const argumentsCount;
- 		Vector<Byte> deletedArguments;
- 		Vector<Value> values;	// Contains copied values after the Argument has been detached from its closure.
+		UInt32 const argumentsCount;
+		Vector<Byte> deletedArguments;
+		Vector<Value> values;	// Contains copied values after the Argument has been detached from its closure.
 +		FunctionScope* owner;	// Weak reference to owning FunctionScope for cleanup.
  
- 		/**
- 			Notice that we do not mark the scope reference, thus creating a "weak" reference that is handled by
+		/**
+			Notice that we do not mark the scope reference, thus creating a "weak" reference that is handled by
 @@ -1133,7 +1173,7 @@ class Runtime : public GCItem {
- 		JSArray* newJSArray(UInt32 initialLength = 0) const;	///< Convenience routine for `new(heap) JSArray(heap.managed(), initialLength)`
- 		const String* newStringConstant(const char* s);
+		JSArray* newJSArray(UInt32 initialLength = 0) const;	///< Convenience routine for `new(heap) JSArray(heap.managed(), initialLength)`
+		const String* newStringConstant(const char* s);
  
 -		Code* compileEvalCode(const String* expression);
 +		Code* compileEvalCode(const String* expression, bool strict = false);
- 		Code* compileGlobalCode(const String& source, const String* filename = 0);
+		Code* compileGlobalCode(const String& source, const String* filename = 0);
  
- 		Var getGlobalsVar();							///< Convenience routine for `Var(rt, rt.getGlobalObject())`
+		Var getGlobalsVar();							///< Convenience routine for `Var(rt, rt.getGlobalObject())`
 @@ -1338,14 +1378,42 @@ class Property : public AccessorBase {
- 	friend class AccessorBase;
+	friend class AccessorBase;
  
    public:
 -		template<typename T> const Property& operator=(const T& v) const { object->setProperty(rt, key, Var(rt, v)); return *this; }
@@ -911,8 +911,8 @@ index 98904d6..a3750a0 100644
 +	}
  
    protected:
- 	typedef AccessorBase super;
- 	Property(Runtime &rt, Object *object, const Var &key) : super(rt), object(object), key(key) {}
+	typedef AccessorBase super;
+	Property(Runtime &rt, Object *object, const Var &key) : super(rt), object(object), key(key) {}
 -		virtual Value get() const { Value v(UNDEFINED_VALUE); object->getProperty(rt, key, &v); return v; }
 -		virtual Var call(int argc, const Value* argv) const { return rt.call(*this, argc, argv, object); }
 +	virtual Value get() const {
@@ -928,22 +928,22 @@ index 98904d6..a3750a0 100644
 +	virtual Var call(int argc, const Value *argv) const {
 +		return rt.call(*this, argc, argv, object);
 +	}
- 	Object *const object;
- 	const Var key;
+	Object *const object;
+	const Var key;
  };
 @@ -1531,6 +1599,8 @@ class Processor : public GCItem {
- 			, SET_PROPERTY_OP								// stack: object, name, value -> value
- 			, SET_PROPERTY_POP_OP							// stack: object, name, value ->
- 			, ADD_PROPERTY_OP								// operand: const_index (name), stack: object, value -> object
+			, SET_PROPERTY_OP								// stack: object, name, value -> value
+			, SET_PROPERTY_POP_OP							// stack: object, name, value ->
+			, ADD_PROPERTY_OP								// operand: const_index (name), stack: object, value -> object
 +							, ADD_GETTER_OP						// operand: const_index(name), stack: object, function -> object
 +							, ADD_SETTER_OP						// operand: const_index(name), stack: object, function -> object
- 			, PUSH_ELEMENTS_OP								// operand: count, stack: object, count * elements ... -> object
- 			, OBJ_TO_PRIMITIVE_OP							// stack: value -> primitive_value (no preference)	// these three must be in this exact order
- 			, OBJ_TO_NUMBER_OP								// stack: value -> primitive_value (number preferred)
+			, PUSH_ELEMENTS_OP								// operand: count, stack: object, count * elements ... -> object
+			, OBJ_TO_PRIMITIVE_OP							// stack: value -> primitive_value (no preference)	// these three must be in this exact order
+			, OBJ_TO_NUMBER_OP								// stack: value -> primitive_value (number preferred)
 @@ -1585,7 +1655,12 @@ class Processor : public GCItem {
- 		};
- 	
- 		struct OpcodeInfo {
+		};
+	
+		struct OpcodeInfo {
 -			enum { TERMINAL = 1, POP_OPERAND = 2, POP_ON_BRANCH = 4, NO_POP_ON_BRANCH = 8 };
 +			enum {
 +				TERMINAL = 1,			/// instruction ends current basic block
@@ -951,21 +951,21 @@ index 98904d6..a3750a0 100644
 +				POP_ON_BRANCH = 4,	/// branch path pops the top of stack
 +				NO_POP_ON_BRANCH = 8	/// branch path keeps the top of stack
 +			};
- 			Opcode opcode;
- 			const char* mnemonic;
- 			Int32 stackUse;
+			Opcode opcode;
+			const char* mnemonic;
+			Int32 stackUse;
 @@ -1600,12 +1675,13 @@ class Processor : public GCItem {
- 		Processor(Runtime& rt);
- 		void invokeFunction(Function* f, Int32 argc, const Value* argv, Object* thisObject = 0);
- 		void enterGlobalCode(const Code* code);
+		Processor(Runtime& rt);
+		void invokeFunction(Function* f, Int32 argc, const Value* argv, Object* thisObject = 0);
+		void enterGlobalCode(const Code* code);
 -		void enterEvalCode(const Code* code, bool local = false);
 +		void enterEvalCode(const Code* code, bool direct = false);
- 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
- 		void throwVirtualException(const Value& exception);
- 		void error(ErrorType errorType, const String* message = 0);
- 		bool run(Int32 maxCycles);
- 		Value getResult() const;	// make sure you've called run() until it returns false before calling this
+		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
+		void throwVirtualException(const Value& exception);
+		void error(ErrorType errorType, const String* message = 0);
+		bool run(Int32 maxCycles);
+		Value getResult() const;	// make sure you've called run() until it returns false before calling this
 +		bool isCurrentStrict() const { return currentFrame != 0 && currentFrame->code->isStrict(); }
  
- 	protected:
- 		struct Frame : public GCItem {
+	protected:
+		struct Frame : public GCItem {

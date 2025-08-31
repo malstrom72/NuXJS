@@ -563,11 +563,11 @@ class Object : public GCItem {
 
 		Flags getProperty(Runtime& rt, const Value& key, Value* v) const;	///< Searches prototype chain.
 #if (NUXJS_ES5)
-               Flags getProperty(Runtime& rt, Processor& processor, const Value& key, Value* v) const;
+			   Flags getProperty(Runtime& rt, Processor& processor, const Value& key, Value* v) const;
 #endif
 		bool setProperty(Runtime& rt, const Value& key, const Value& v);	///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
 #if (NUXJS_ES5)
-               bool setProperty(Runtime& rt, Processor& processor, const Value& key, const Value& v);
+			   bool setProperty(Runtime& rt, Processor& processor, const Value& key, const Value& v);
 #endif
 		bool isOwnPropertyEnumerable(Runtime& rt, const Value& key) const;
 		bool hasOwnProperty(Runtime& rt, const Value& key) const;			///< Checks via getOwnProperty().
@@ -859,10 +859,15 @@ class Code : public Object {
 		UInt32 getCodeSize() const { return codeWords.size(); }
 		const String* getName() const { return name; }
 		const String* getSource() const { return source; }
-		UInt32 getMaxStackDepth() const { return maxStackDepth; }
-		bool isStrict() const { return strict; }
-		void setStrict(bool v) { strict = v; }
-		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
+UInt32 getMaxStackDepth() const { return maxStackDepth; }
+#if (NUXJS_ES5)
+bool isStrict() const { return strict; }
+void setStrict(bool v) { strict = v; }
+#else
+bool isStrict() const { return false; }
+void setStrict(bool) { }
+#endif
+UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
 
 	protected:
 		Vector<CodeWord> codeWords;
@@ -874,8 +879,10 @@ class Code : public Object {
 		const String* selfName;
 		const String* source;
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
-		UInt32 maxStackDepth;
-		bool strict;
+UInt32 maxStackDepth;
+#if (NUXJS_ES5)
+bool strict;
+#endif
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, constants);
@@ -913,19 +920,21 @@ class Function : public Object {
 		Function(GCList& gcList) : super(gcList) { }
 };
 
+#if (NUXJS_ES5)
 class Accessor : public Object {
-	public:
-		Accessor(GCList& gcList, Function* g, Function* s)
-			: Object(gcList), getter(g), setter(s) { }
-		Function* getter;
-		Function* setter;
-	protected:
-		virtual void gcMarkReferences(Heap& heap) const {
-			gcMark(heap, getter);
-			gcMark(heap, setter);
-			super::gcMarkReferences(heap);
-		}
+public:
+Accessor(GCList& gcList, Function* g, Function* s)
+: Object(gcList), getter(g), setter(s) { }
+Function* getter;
+Function* setter;
+protected:
+virtual void gcMarkReferences(Heap& heap) const {
+gcMark(heap, getter);
+gcMark(heap, setter);
+super::gcMarkReferences(heap);
+}
 };
+#endif
 
 typedef Value (*NativeFunction)(Runtime&, Processor&, UInt32, const Value*, Object*);
 
@@ -1387,51 +1396,51 @@ class Var : public GCItem, public AccessorBase {
 	Property is a helper that provides array-like syntax to access or update object properties through Var.
 **/
 class Property : public AccessorBase {
-	friend class AccessorBase;
+friend class AccessorBase;
 
-  public:
-	template <typename T> const Property &operator=(const T &v) const {
-		Value current;
-               Flags flags = object->getProperty(rt, key, &current);
+public:
 #if (NUXJS_ES5)
-               if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
-                       Accessor *acc = static_cast<Accessor *>(current.asObject());
-                       Function *setter = (acc != 0 ? acc->setter : 0);
-                       if (setter != 0) {
-                               Value arg = Var(rt, v);
-                               rt.call(setter, 1, &arg, object);
-                               return *this;
-                       }
-               }
+template<typename T> const Property& operator=(const T& v) const {
+Value current;
+Flags flags = object->getProperty(rt, key, &current);
+if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+Accessor* acc = static_cast<Accessor*>(current.asObject());
+Function* setter = (acc != 0 ? acc->setter : 0);
+if (setter != 0) {
+Value arg = Var(rt, v);
+rt.call(setter, 1, &arg, object);
+return *this;
+}
+}
+object->setProperty(rt, key, Var(rt, v));
+return *this;
+}
+template<typename T> const Property& operator+=(const T& r) const {
+object->setProperty(rt, key, get().add(rt.getHeap(), makeValue(r)));
+return *this;
+}
+virtual Value get() const {
+Value v(UNDEFINED_VALUE);
+Flags flags = object->getProperty(rt, key, &v);
+if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+Accessor* acc = static_cast<Accessor*>(v.asObject());
+Function* getter = (acc != 0 ? acc->getter : 0);
+return (getter != 0 ? rt.call(getter, 0, 0, object) : UNDEFINED_VALUE);
+}
+return v;
+}
+#else
+template<typename T> const Property& operator=(const T& v) const { object->setProperty(rt, key, Var(rt, v)); return *this; }
+template<typename T> const Property& operator+=(const T& r) const { object->setProperty(rt, key, get().add(rt.getHeap(), makeValue(r))); return *this; }
+virtual Value get() const { Value v(UNDEFINED_VALUE); object->getProperty(rt, key, &v); return v; }
 #endif
-               object->setProperty(rt, key, Var(rt, v));
-               return *this;
-	}
-	template <typename T> const Property &operator+=(const T &r) const {
-		object->setProperty(rt, key, get().add(rt.getHeap(), makeValue(r)));
-		return *this;
-	}
+virtual Var call(int argc, const Value* argv) const { return rt.call(*this, argc, argv, object); }
 
-  protected:
-	typedef AccessorBase super;
-	Property(Runtime &rt, Object *object, const Var &key) : super(rt), object(object), key(key) {}
-	virtual Value get() const {
-               Value v(UNDEFINED_VALUE);
-               Flags flags = object->getProperty(rt, key, &v);
-#if (NUXJS_ES5)
-               if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
-                       Accessor *acc = static_cast<Accessor *>(v.asObject());
-                       Function *getter = (acc != 0 ? acc->getter : 0);
-                       return (getter != 0 ? rt.call(getter, 0, 0, object) : UNDEFINED_VALUE);
-               }
-#endif
-               return v;
-	}
-	virtual Var call(int argc, const Value *argv) const {
-		return rt.call(*this, argc, argv, object);
-	}
-	Object *const object;
-	const Var key;
+protected:
+typedef AccessorBase super;
+Property(Runtime& rt, Object* object, const Var& key) : super(rt), object(object), key(key) {}
+Object* const object;
+const Var key;
 };
 
 /**
@@ -1699,7 +1708,9 @@ class Processor : public GCItem {
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);
 		Value getResult() const;	// make sure you've called run() until it returns false before calling this
-		bool isCurrentStrict() const { return currentFrame != 0 && currentFrame->code->isStrict(); }
+#if (NUXJS_ES5)
+bool isCurrentStrict() const { return currentFrame != 0 && currentFrame->code->isStrict(); }
+#endif
 
 	protected:
 		struct Frame : public GCItem {

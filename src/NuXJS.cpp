@@ -1534,22 +1534,22 @@ bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Fla
 }
 
 bool JSObject::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-        Table::Bucket* bucket = insert(key);
-        
+		Table::Bucket* bucket = insert(key);
+		
 #if (NUXJS_ES5)
-        if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
-        Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
-        Accessor* nv = static_cast<Accessor*>(v.getObject());
-        if (nv->getter != 0) {
-        acc->getter = nv->getter;
-        }
-        if (nv->setter != 0) {
-        acc->setter = nv->setter;
-        }
-        return true;
-        }
+		if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
+		Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
+		Accessor* nv = static_cast<Accessor*>(v.getObject());
+		if (nv->getter != 0) {
+		acc->getter = nv->getter;
+		}
+		if (nv->setter != 0) {
+		acc->setter = nv->setter;
+		}
+		return true;
+		}
 #endif
-        return update(bucket, v, flags);
+		return update(bucket, v, flags);
 }
 
 
@@ -1620,10 +1620,13 @@ const String* JoiningEnumerator::nextPropertyName() {
 /* --- Code --- */
 
 Code::Code(GCList& gcList, Constants* sharedConstants)
-	: super(gcList), codeWords(0, &gcList.getHeap())
-	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
-	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
-, selfName(0), source(0), bloomSet(0), maxStackDepth(0), strict(false)
+		: super(gcList), codeWords(0, &gcList.getHeap())
+		, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
+		, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
+, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
+#if (NUXJS_ES5)
+, strict(false)
+#endif
 {
 	assert(constants != 0);
 }
@@ -3968,9 +3971,11 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
-	Code* func = new(heap) Code(heap.managed(), code->constants);
-	func->strict = code->strict;
-	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
+		Code* func = new(heap) Code(heap.managed(), code->constants);
+#if (NUXJS_ES5)
+		func->strict = code->strict;
+#endif
+		Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
 	}
@@ -5181,18 +5186,18 @@ struct Support {
 				Flags flags = (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0) |
 							  (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0) |
 							  (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0) | EXISTS_FLAG;
-                               if (argc >= 7) {
+							   if (argc >= 7) {
 #if (NUXJS_ES5)
-                                       Heap &heap = rt.getHeap();
-                                       Accessor *acc = new (heap)
-                                               Accessor(heap.managed(), argv[6].asFunction(), (argc >= 8 ? argv[7].asFunction() : 0));
-                                       success = o->setOwnProperty(rt, argv[1], acc, flags | ACCESSOR_FLAG);
+									   Heap &heap = rt.getHeap();
+									   Accessor *acc = new (heap)
+											   Accessor(heap.managed(), argv[6].asFunction(), (argc >= 8 ? argv[7].asFunction() : 0));
+									   success = o->setOwnProperty(rt, argv[1], acc, flags | ACCESSOR_FLAG);
 #else
-                                       success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
+									   success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
 #endif
-                               } else {
-                                       success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
-                               }
+							   } else {
+									   success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
+							   }
 			}
 		}
 		return success;
