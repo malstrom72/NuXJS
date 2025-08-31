@@ -13,13 +13,16 @@
 
 - Use `ES51_vs_main_NuXJS.diff` to locate header changes.
 - For each addition or modification:
-	- Wrap ES5 declarations with `#if (NUXJS_ES5)` and `#endif`.
-	- Provide an `#else` block when ES3 behavior must remain.
+        - Wrap ES5 declarations with `#if (NUXJS_ES5)` and `#endif`.
+        - Provide an `#else` block when ES3 behavior must remain.
+- Recommended order:
+        1. Wrap `compileEvalCode`'s `strict` parameter and add an ES3-only overload.
+        2. Guard accessor infrastructure (`ACCESSOR_FLAG`, `class Accessor`, and accessor-aware `Property` helpers`).
 - After editing `NuXJS.h`, rebuild and test:
-	```
-	timeout 600 ./build.sh es3
-	timeout 600 ./build.sh es5
-	```
+        ```
+        timeout 600 ./build.sh es3
+        timeout 600 ./build.sh es5
+        ```
 
 ## Stage 2 – Guard `NuXJS.cpp`
 
@@ -28,7 +31,8 @@
         - Preserve ES3 code in an `#else` block when needed.
 - Tackle one logical chunk at a time and build after each:
         1. Guard object literal `get`/`set` syntax in `objectInitialiser()`.
-        2. [next step] Guard remaining diff sections.
+       2. Guard `Runtime::compileEvalCode` implementation and callers.
+       3. Add guards for accessor-aware property handling.
 - After completing each substep, compile and run tests:
         ```
         timeout 600 ./build.sh es3
