@@ -1173,7 +1173,11 @@ class Runtime : public GCItem {
 		JSArray* newJSArray(UInt32 initialLength = 0) const;	///< Convenience routine for `new(heap) JSArray(heap.managed(), initialLength)`
 		const String* newStringConstant(const char* s);
 
+	#if (NUXJS_ES5)
 		Code* compileEvalCode(const String* expression, bool strict = false);
+	#else
+		Code* compileEvalCode(const String* expression);
+	#endif
 		Code* compileGlobalCode(const String& source, const String* filename = 0);
 
 		Var getGlobalsVar();							///< Convenience routine for `Var(rt, rt.getGlobalObject())`
