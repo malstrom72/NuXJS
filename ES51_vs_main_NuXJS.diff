@@ -1,3 +1,8 @@
+## Progress
+- [x] Object literal getters/setters guarded
+- [x] `compileEvalCode` strict-mode overload guarded
+- [ ] Accessor property handling
+
 diff --git a/src/NuXJS.cpp b/src/NuXJS.cpp
 index 091635a..ee41b38 100644
 --- a/src/NuXJS.cpp

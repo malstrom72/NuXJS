@@ -1321,6 +1321,7 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v) const {
 	return NONEXISTENT;
 }
 
+#if (NUXJS_ES5)
 Flags Object::getProperty(Runtime& rt, Processor& processor, const Value& key, Value* v) const {
 const Object* o = this;
 do {
@@ -1344,6 +1345,7 @@ o = o->getPrototype(rt);
 } while (o != 0);
 return NONEXISTENT;
 }
+#endif
 
 
 bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
@@ -1360,6 +1362,7 @@ bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 	return setOwnProperty(rt, key, v);
 }
 
+#if (NUXJS_ES5)
 bool Object::setProperty(Runtime& rt, Processor& processor, const Value& key, const Value& v) {
 Value current;
 Flags flags = getProperty(rt, key, &current);
@@ -1376,6 +1379,7 @@ return false;
 setProperty(rt, key, v);
 return false;
 }
+#endif
 
 Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
 	Heap& heap = rt.getHeap();
@@ -1530,19 +1534,22 @@ bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Fla
 }
 
 bool JSObject::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-	Table::Bucket* bucket = insert(key);
-	if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
-	Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
-	Accessor* nv = static_cast<Accessor*>(v.getObject());
-	if (nv->getter != 0) {
-	acc->getter = nv->getter;
-	}
-	if (nv->setter != 0) {
-	acc->setter = nv->setter;
-	}
-	return true;
-	}
-	return update(bucket, v, flags);
+        Table::Bucket* bucket = insert(key);
+        
+#if (NUXJS_ES5)
+        if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
+        Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
+        Accessor* nv = static_cast<Accessor*>(v.getObject());
+        if (nv->getter != 0) {
+        acc->getter = nv->getter;
+        }
+        if (nv->setter != 0) {
+        acc->setter = nv->setter;
+        }
+        return true;
+        }
+#endif
+        return update(bucket, v, flags);
 }
 
 
@@ -2624,6 +2631,7 @@ void Processor::innerRun() {
 				pop(1);
 			}
 			break;
+#if (NUXJS_ES5)
 case GET_PROPERTY_OP: {
 const Object* o = convertToObject(sp[-1], false);
 if (o == 0) {
@@ -2641,8 +2649,24 @@ return;
 }
 break;
 }
+#else
+case GET_PROPERTY_OP: {
+const Object* o = convertToObject(sp[-1], false);
+if (o == 0) {
+return;
+}
+if (o->getProperty(rt, sp[0], sp - 1) == NONEXISTENT) {
+sp[-1] = UNDEFINED_VALUE;
+pop(1);
+break;
+}
+pop(1);
+break;
+}
+#endif
 
 			
+#if (NUXJS_ES5)
 case SET_PROPERTY_OP: {
 Object* o = convertToObject(sp[-2], false);
 if (o == 0) {
@@ -2657,8 +2681,21 @@ return;
 }
 break;
 }
+#else
+case SET_PROPERTY_OP: {
+Object* o = convertToObject(sp[-2], false);
+if (o == 0) {
+return;
+}
+o->setProperty(rt, sp[-1], sp[0]);
+sp[-2] = sp[0];
+pop(2);
+break;
+}
+#endif
 
 			
+#if (NUXJS_ES5)
 case SET_PROPERTY_POP_OP: {
 Object* o = convertToObject(sp[-2], false);
 if (o == 0) {
@@ -2671,6 +2708,17 @@ return;
 }
 break;
 }
+#else
+case SET_PROPERTY_POP_OP: {
+Object* o = convertToObject(sp[-2], false);
+if (o == 0) {
+return;
+}
+o->setProperty(rt, sp[-1], sp[0]);
+pop(3);
+break;
+}
+#endif
 
 
 			case OBJ_TO_PRIMITIVE_OP:
@@ -5133,14 +5181,18 @@ struct Support {
 				Flags flags = (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0) |
 							  (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0) |
 							  (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0) | EXISTS_FLAG;
-				if (argc >= 7) {
-					Heap &heap = rt.getHeap();
-					Accessor *acc = new (heap)
-						Accessor(heap.managed(), argv[6].asFunction(), (argc >= 8 ? argv[7].asFunction() : 0));
-					success = o->setOwnProperty(rt, argv[1], acc, flags | ACCESSOR_FLAG);
-				} else {
-					success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
-				}
+                               if (argc >= 7) {
+#if (NUXJS_ES5)
+                                       Heap &heap = rt.getHeap();
+                                       Accessor *acc = new (heap)
+                                               Accessor(heap.managed(), argv[6].asFunction(), (argc >= 8 ? argv[7].asFunction() : 0));
+                                       success = o->setOwnProperty(rt, argv[1], acc, flags | ACCESSOR_FLAG);
+#else
+                                       success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
+#endif
+                               } else {
+                                       success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
+                               }
 			}
 		}
 		return success;
