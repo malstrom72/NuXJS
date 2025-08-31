@@ -22,7 +22,8 @@ Benchmark output is normally checked against the files in `benchmarks/golden/`. 
 
 ## Building the engine for benchmarking
 
-Compile the binary using the regular `./build.sh` wrapper or call the low-level helper directly:
+Compile the binary using the regular `./build.sh [es3|es5|both]` wrapper (the argument selects the ECMAScript
+variant) or call the low-level helper directly:
 
 ```
 bash tools/BuildCpp.sh release x64 ./output/NuXJS \

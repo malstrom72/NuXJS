@@ -1,6 +1,6 @@
 # Standard Library Guidelines
 
-The standard library lives in `src/stdlib.js`. After editing it, run `./build.sh` to regenerate `src/stdlibJS.cpp` and execute the regression tests. This document combines the previous authoring guide and the general style rules for the standard library.
+The standard library lives in `src/stdlib.js`. After editing it, run `./build.sh [es3|es5|both]` to regenerate `src/stdlibJS.cpp` and execute the regression tests. This document combines the previous authoring guide and the general style rules for the standard library.
 
 ## Formatting and style
 
@@ -151,13 +151,8 @@ const char* STDLIB_ES5_JS =
 ### Testing your changes
 
 1. Edit `src/stdlib.js`
-2. Run `./build.sh` (or `build.cmd` on Windows). The build checks timestamps and regenerates `src/stdlibJS.cpp` when needed using the local `externals/PikaCmd` tool.
-3. For ES5.1 work, set `CPP_OPTIONS='-DNUXJS_ES5=1'` to enable ES5.1 tests, or set `NUXJS_TEST_ES5_VARIANTS=1` to run both ES3 and ES5.1 passes:
-
-   ```bash
-   CPP_OPTIONS='-DNUXJS_ES5=1' ./build.sh
-   NUXJS_TEST_ES5_VARIANTS=1 ./build.sh
-   ```
+2. Run `./build.sh [es3|es5|both]` (or `build.cmd` on Windows). The build checks timestamps and regenerates `src/stdlibJS.cpp` when needed using the local `externals/PikaCmd` tool.
+3. The optional first argument selects the ECMAScript variant. Use `es3` for an ES3-only build, `es5` for ES5.1, or `both` to run both passes (the default).
 
 ### PikaScript reference (why it matters)
 

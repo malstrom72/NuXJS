@@ -9,12 +9,14 @@ NuXJS is a sandboxed JavaScript engine implemented in portable C++03. It has bee
 Helper scripts are available under `tools/` for building and running the test suite. The recommended entry point is:
 
 '''bash
-./build.sh
+./build.sh [es3|es5|both]
 '''
 
 On Windows, use `build.cmd` instead.
 
-This wrapper builds and tests both the `beta` and `release` configurations by invoking `tools/buildAndTest.sh`. Each build runs its own tests. When both complete, the native release REPL is saved as `output/NuXJS`.
+This wrapper builds and tests both the `beta` and `release` configurations by invoking `tools/buildAndTest.sh`. The optional
+first argument selects the ECMAScript variant (`es3`, `es5`, or `both`, with `both` as the default). Each build runs its own
+tests. When both complete, the native release REPL is saved as `output/NuXJS`.
 
 The implementation depends on IEEE-compliant floating-point math. `src/NuXJS.cpp` includes `#error` directives that trigger if `__FAST_MATH__` is defined. Avoid compiler flags like `-Ofast`, `-ffast-math`, or similar, at least for `src/NuXJS.cpp`.
 

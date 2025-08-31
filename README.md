@@ -56,7 +56,8 @@ You will need a standard C++ compiler with C++03 support.
 ## Build & Test
 
 Run `./build.sh` (or `build.cmd` on Windows) from the root. This calls `tools/buildAndTest.sh`, which builds both
-the **beta** and **release** configurations and runs all tests.
+the **beta** and **release** configurations and runs all tests. Pass `es3`, `es5`, or `both` as the first argument to
+select the ECMAScript variant (default is `both`).
 
 Both the **beta** and **release** targets are compiled with optimizations enabled. The **beta** build retains runtime
 assertions for debugging purposes, while the **release** build disables assertions for maximum performance.

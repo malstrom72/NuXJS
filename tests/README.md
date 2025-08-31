@@ -4,7 +4,9 @@ This folder contains regression tests written in `.io` format. Each file lists c
 
 ## Running the tests
 
-The top-level `build.sh` script builds both configurations and runs all tests by calling `tools/buildAndTest.sh`. That script invokes `tools/test.pika` under `PikaCmd` to execute every `.io` file.
+The top-level `build.sh` script builds both configurations and runs all tests by calling `tools/buildAndTest.sh`. Pass
+`es3`, `es5`, or `both` to select the ECMAScript variant (default is `both`). That script invokes `tools/test.pika` under
+`PikaCmd` to execute every `.io` file.
 
 ## `tools/test.pika`
 
