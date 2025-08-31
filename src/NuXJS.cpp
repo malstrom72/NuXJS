@@ -180,7 +180,9 @@ const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_ST
 				, E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
 				, S_TRING_STRING("String");
 
+#if (NUXJS_ES5)
 const String GET_STRING("get"), SET_STRING("set");
+#endif
 
 static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
@@ -2219,8 +2221,10 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ SET_PROPERTY_OP			 , "SET_PROPERTY"			 , -2	  , 0 },
 	{ SET_PROPERTY_POP_OP		 , "SET_PROPERTY_POP"		 , -3	  , 0 },
 	{ ADD_PROPERTY_OP			 , "ADD_PROPERTY"			 , -1	  , 0 },
-	{ ADD_GETTER_OP			   , "ADD_GETTER"			  , -1	   , 0 },
-	{ ADD_SETTER_OP			   , "ADD_SETTER"			  , -1	   , 0 },
+#if (NUXJS_ES5)
+	{ ADD_GETTER_OP					   , "ADD_GETTER"						  , -1	   , 0 },
+	{ ADD_SETTER_OP					   , "ADD_SETTER"						  , -1	   , 0 },
+#endif
 	{ PUSH_ELEMENTS_OP			 , "PUSH_ELEMENTS_OP"		 , 0	  , OpcodeInfo::POP_OPERAND },
 	{ OBJ_TO_PRIMITIVE_OP		 , "OBJ_TO_PRIMITIVE"		 , 0	  , 0 },
 	{ OBJ_TO_NUMBER_OP			 , "OBJ_TO_NUMBER"			 , 0	  , 0 },
@@ -2797,6 +2801,7 @@ case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break
 				pop(1);
 				break;
 			}
+#if (NUXJS_ES5)
 			case ADD_GETTER_OP: {
 				Object* o = sp[-1].getObject();
 				Accessor* acc = new(heap) Accessor(heap.managed(), sp[0].asFunction(), 0);
@@ -2811,6 +2816,7 @@ case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break
 				pop(1);
 				break;
 			}
+#endif
 
 			case PUSH_ELEMENTS_OP: {
 				Object* o = sp[-im].getObject();
@@ -3569,21 +3575,22 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff 
 	
 	white();
 	while (!token("}", false)) {
+	#if (NUXJS_ES5)
 		bool handled = false;
 		const Char* b = p;
 		Value key = stringOrNumberConstant();
 		if (p == b) {
 			const String* id = identifier(false, true);
 			if (id->isEqualTo(EMPTY_STRING)) {
-			error(SYNTAX_ERROR, "Expected property name");
+				error(SYNTAX_ERROR, "Expected property name");
 			}
 			white();
-				if ((id->isEqualTo(GET_STRING) || id->isEqualTo(SET_STRING)) && *p != ':') {
+			if ((id->isEqualTo(GET_STRING) || id->isEqualTo(SET_STRING)) && *p != ':') {
 				bool isGetter = id->isEqualTo(GET_STRING);
 				const Char* b2 = p;
 				Value accKey = stringOrNumberConstant();
 				if (p == b2) {
-				accKey = identifier(true, true);
+					accKey = identifier(true, true);
 				}
 				white();
 				const String* funcName = accKey.toString(heap);
@@ -3591,21 +3598,34 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff 
 				emitWithConstant(isGetter ? Processor::ADD_GETTER_OP : Processor::ADD_SETTER_OP, accKey);
 				handled = true;
 			} else {
-			key = id;
+				key = id;
 			}
-			}
-		if (!handled) {
-				expectToken(":", true);
-				rvalueExpression(COMMA_PREC);
-				emitWithConstant(Processor::ADD_PROPERTY_OP, key);
 		}
-			if (token("}", true)) {
-				break;
+		if (!handled) {
+			expectToken(":", true);
+			rvalueExpression(COMMA_PREC);
+			emitWithConstant(Processor::ADD_PROPERTY_OP, key);
+		}
+	#else
+		const Char* b = p;
+		Value key = stringOrNumberConstant();
+		if (p == b) {
+			key = identifier(false, true);
+			if (key.equalsString(EMPTY_STRING)) {
+				error(SYNTAX_ERROR, "Expected property name");
 			}
-			if (!token(",", true)) {
-				error(SYNTAX_ERROR, "Expected ',' or '}'");
-			}
-			white();
+		}
+		expectToken(":", true);
+		rvalueExpression(COMMA_PREC);
+		emitWithConstant(Processor::ADD_PROPERTY_OP, key);
+	#endif
+		if (token("}", true)) {
+			break;
+		}
+		if (!token(",", true)) {
+			error(SYNTAX_ERROR, "Expected ',' or '}'");
+		}
+		white();
 	}
 	return ExpressionResult(ExpressionResult::PUSHED);
 }
