@@ -3384,13 +3384,13 @@ const String* Compiler::identifier(bool required, bool allowKeywords) {
 		if (!allowKeywords && findReservedKeyword(parsed.size(), parsed.begin()) >= 0) {
 				error(SYNTAX_ERROR, "Illegal use of keyword");
 		}
-		const String* name = newHashedString(heap, parsed.begin(), parsed.end());
-	#if (NUXJS_ES5)
-		if (code->isStrict() && name->isEqualTo(EVAL_STRING)) {
-				error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
-		}
-#endif
-		return name;
+               const String* name = newHashedString(heap, parsed.begin(), parsed.end());
+       #if (NUXJS_ES5)
+               if (!allowKeywords && code->isStrict() && name->isEqualTo(EVAL_STRING)) {
+                               error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
+               }
+       #endif
+               return name;
 }
 
 static UInt32 unescapedMaxLength(const Char* p, const Char* e) {
@@ -4779,38 +4779,36 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	p = b;
 	this->e = e;
 	acceptInOperator = true;
-	const Char* directiveStart = p;
-	white();
-	#if (NUXJS_ES5)
-	bool foundStrict = false;
-#endif
-	#if (NUXJS_ES5)
-	while (p < e && (*p == '"' || *p == '\'')) {
-		Char q = *p++;
-		const Char* litStart = p;
-		while (p < e && *p != q) {
-			++p;
-		}
-		if (p >= e) {
-			break;
-		}
-		if (!foundStrict && p - litStart == 10 && strncmp(litStart, "use strict", 10) == 0) {
-			foundStrict = true;
-		}
-		++p;
-		white();
-		if (p < e && *p == ';') {
-			++p;
-			white();
-			continue;
-		}
-		break;
-	}
-	if (foundStrict) {
-		code->setStrict(true);
-	}
-#endif
-	p = directiveStart;
+       #if (NUXJS_ES5)
+       const Char* directiveStart = p;
+       white();
+       bool foundStrict = false;
+       while (p < e && (*p == '"' || *p == '\'')) {
+               Char q = *p++;
+               const Char* litStart = p;
+               while (p < e && *p != q) {
+                       ++p;
+               }
+               if (p >= e) {
+                       break;
+               }
+               if (!foundStrict && p - litStart == 10 && strncmp(litStart, "use strict", 10) == 0) {
+                       foundStrict = true;
+               }
+               ++p;
+               white();
+               if (p < e && *p == ';') {
+                       ++p;
+                       white();
+                       continue;
+               }
+               break;
+       }
+       if (foundStrict) {
+               code->setStrict(true);
+       }
+       p = directiveStart;
+       #endif
 	
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
 	if (compilingFor == FOR_EVAL) {
@@ -4845,9 +4843,11 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 	expectToken("(", true);
 	white();
 	Table& nameIndexes = code->nameIndexes;
-	Vector<const String*>& argumentNames = code->argumentNames;
-	bool hasDuplicateParameters = false;
-	while (!token(")", false)) {
+       Vector<const String*>& argumentNames = code->argumentNames;
+       #if (NUXJS_ES5)
+       bool hasDuplicateParameters = false;
+       #endif
+       while (!token(")", false)) {
 		if (eof()) {
 			error(SYNTAX_ERROR, argumentNames.size() == 0 ? "Expected ')'" : "Expected ',' or ')'");
 		}
@@ -4863,25 +4863,27 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 				error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
 			}
 		#endif
-		for (size_t i = 0; i < argumentNames.size(); ++i) {
-			if (argumentNames[i]->isEqualTo(*name)) {
-				hasDuplicateParameters = true;
-				break;
-			}
-		}
-		nameIndexes.update(nameIndexes.insert(name), static_cast<Int32>(argumentNames.size()));
-		argumentNames.push(name);
-		code->bloomSet |= name->createBloomCode();
-		white();
-	}
+               #if (NUXJS_ES5)
+               for (size_t i = 0; i < argumentNames.size(); ++i) {
+                       if (argumentNames[i]->isEqualTo(*name)) {
+                               hasDuplicateParameters = true;
+                               break;
+                       }
+               }
+               #endif
+               nameIndexes.update(nameIndexes.insert(name), static_cast<Int32>(argumentNames.size()));
+               argumentNames.push(name);
+               code->bloomSet |= name->createBloomCode();
+               white();
+       }
 	expectToken("{", true);
 	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
 	expectToken("}", false);
-	#if (NUXJS_ES5)
-		if (code->strict && hasDuplicateParameters) {
-			error(SYNTAX_ERROR, "Duplicate parameter name not allowed in strict code");
-		}
-#endif
+       #if (NUXJS_ES5)
+       if (code->strict && hasDuplicateParameters) {
+               error(SYNTAX_ERROR, "Duplicate parameter name not allowed in strict code");
+       }
+       #endif
 	code->name = functionName;
 	code->selfName = selfName;
 	code->source = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
