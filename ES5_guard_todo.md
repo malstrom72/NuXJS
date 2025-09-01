@@ -64,7 +64,7 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
                                                                 - `timeout 600 ./build.sh es3`
                                                                 - `timeout 600 ./build.sh es5`
 ## Build scripts
-- [ ] Verify `build.sh` and `build.cmd` pass `-DNUXJS_ES5` correctly
+- [x] Verify `build.sh` and `build.cmd` pass `-DNUXJS_ES5` correctly
 - [ ] Run combined build to validate both variants: `timeout 600 ./build.sh`
 
 ## Final validation
