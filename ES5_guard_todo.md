@@ -13,6 +13,7 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 ## Header guards
 - [x] Wrap `compileEvalCode` strict parameter and add ES3 overload
 - [x] Guard accessor infrastructure (`ACCESSOR_FLAG`, `class Accessor`, `Property` helpers`)
+- [x] Guard `Code` strict flag and accessors
 - Tests:
 		- `timeout 600 ./build.sh es3`
 		- `timeout 600 ./build.sh es5`
@@ -84,6 +85,8 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
                 - `timeout 600 ./build.sh es3`
                 - `timeout 600 ./build.sh es5`
 3. Guard strict-state handling in `Processor::enter` and `enterEvalCode`
+- Restore original `enterEvalCode` "local" parameter when `NUXJS_ES5` is off
+- Guard `isolate` flag and strict-state propagation
 - Conditionalize strict-state arguments and assignments
 - Tests:
                 - `timeout 600 ./build.sh es3`
