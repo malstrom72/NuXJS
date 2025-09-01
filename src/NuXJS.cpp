@@ -1940,7 +1940,11 @@ void Error::constructCompleteObject(Runtime& rt) const {
 
 Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
 	, scope(scope), function(scope->function), argumentsCount(argumentsCount)
-	, deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()), owner(const_cast<FunctionScope*>(scope)) {
+	, deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap())
+#if (NUXJS_ES5)
+	, owner(const_cast<FunctionScope*>(scope))
+#endif
+{
 	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
 }
 
@@ -2003,11 +2007,19 @@ void Arguments::constructCompleteObject(Runtime& rt) const {
 	completeObject->setOwnProperty(rt, &CALLEE_STRING, function, DONT_ENUM_FLAG);
 }
 
+#if (NUXJS_ES5)
 Arguments::~Arguments() {
 	if (owner != 0) {
 		owner->arguments = 0;
 	}
 }
+#else
+Arguments::~Arguments() {
+	if (scope != 0) {
+		scope->arguments = 0;
+	}
+}
+#endif
 
 /* --- Scope --- */
 
@@ -2170,11 +2182,13 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
 }
 
 FunctionScope::~FunctionScope() {
-		if (arguments != 0) {
-				arguments->owner = 0;
-				arguments->detach();
-				arguments = 0;
-		}
+	if (arguments != 0) {
+	#if (NUXJS_ES5)
+		arguments->owner = 0;
+	#endif
+		arguments->detach();
+		arguments = 0;
+	}
 }
 
 /* --- ScriptException --- */

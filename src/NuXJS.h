@@ -861,15 +861,15 @@ class Code : public Object {
 		UInt32 getCodeSize() const { return codeWords.size(); }
 		const String* getName() const { return name; }
 		const String* getSource() const { return source; }
-               UInt32 getMaxStackDepth() const { return maxStackDepth; }
+			   UInt32 getMaxStackDepth() const { return maxStackDepth; }
 #if (NUXJS_ES5)
-               bool isStrict() const { return strict; }
-               void setStrict(bool v) { strict = v; }
+			   bool isStrict() const { return strict; }
+			   void setStrict(bool v) { strict = v; }
 #else
-               bool isStrict() const { return false; }
-               void setStrict(bool) { }
+			   bool isStrict() const { return false; }
+			   void setStrict(bool) { }
 #endif
-               UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
+			   UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
 
 	protected:
 		Vector<CodeWord> codeWords;
@@ -881,9 +881,9 @@ class Code : public Object {
 		const String* selfName;
 		const String* source;
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
-               UInt32 maxStackDepth;
+			   UInt32 maxStackDepth;
 #if (NUXJS_ES5)
-               bool strict;
+			   bool strict;
 #endif
 
 		virtual void gcMarkReferences(Heap& heap) const {
@@ -1086,7 +1086,9 @@ class Arguments : public LazyJSObject<Object> {
 		UInt32 const argumentsCount;
 		Vector<Byte> deletedArguments;
 		Vector<Value> values;	// Contains copied values after the Argument has been detached from its closure.
+#if (NUXJS_ES5)
 		FunctionScope* owner;	// Weak reference to owning FunctionScope for cleanup.
+#endif
 
 		/**
 			Notice that we do not mark the scope reference, thus creating a "weak" reference that is handled by

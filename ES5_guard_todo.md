@@ -38,9 +38,10 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 - [x] Guard `Object::getProperty` / `setProperty` overloads and interpreter opcodes
 - `timeout 600 ./build.sh es3`
 - `timeout 600 ./build.sh es5`
-		- [ ] Guard runtime classes (`JSObject`, `LazyJSObject`, `JSArray`, `Error`, `Arguments`)
-					- `timeout 600 ./build.sh es3`
-					- `timeout 600 ./build.sh es5`
+- [ ] Guard runtime classes (`JSObject`, `LazyJSObject`, `JSArray`, `Error`, `Arguments`)
+- [x] Guard `Arguments` owner linkage
+- `timeout 600 ./build.sh es3`
+- `timeout 600 ./build.sh es5`
 ## Build scripts
 - [ ] Verify `build.sh` and `build.cmd` pass `-DNUXJS_ES5` correctly
 - [ ] Run combined build to validate both variants: `timeout 600 ./build.sh`

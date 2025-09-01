@@ -1,3 +1,5 @@
+# Progress:
+# [x] Guarded Arguments owner linkage
 diff --git a/src/NuXJS.cpp b/src/NuXJS.cpp
 index 091635a..ee41b38 100644
 --- a/src/NuXJS.cpp
