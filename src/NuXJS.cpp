@@ -21,20 +21,20 @@
 	IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **/
 
-	#ifdef __GNUC__
-	#ifndef __clang__
+			#ifdef __GNUC__
+			#ifndef __clang__
 #pragma GCC push_options
 #pragma GCC optimize ("no-finite-math-only")
 // older gcc might need this too:
 // #pragma GCC optimize ("float-store")
-	#endif
-	#endif
+			#endif
+			#endif
 
-	#ifdef _MSC_VER
+			#ifdef _MSC_VER
 #pragma float_control(precise, on, push)  
 #endif
 
-	#ifdef __FAST_MATH__
+			#ifdef __FAST_MATH__
 #error This code requires IEEE compliant floating point handling. Avoid -Ofast / -ffast-math etc (at least for this source file).
 #endif
 
@@ -42,7 +42,7 @@
 #include "assert.h"
 #include <cmath>
 #include "NuXJS.h"
-	#ifdef _MSC_VER
+			#ifdef _MSC_VER
 #include <float.h>
 #endif
 
@@ -79,7 +79,7 @@ namespace NuXJS {
 
 // MSVC (at least 2010) doesn't do fmod correctly with infinite divisor
 static double NaN() { return std::numeric_limits<double>::quiet_NaN(); }
-	#ifdef _MSC_VER
+			#ifdef _MSC_VER
 bool isNaN(double d) { return (_isnan(d) != 0); }
 bool isFinite(double d) { return (_finite(d) != 0); }
 
@@ -180,7 +180,7 @@ const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_ST
 				, E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
 				, S_TRING_STRING("String");
 
-	#if (NUXJS_ES5)
+			#if (NUXJS_ES5)
 const String GET_STRING("get"), SET_STRING("set");
 #endif
 
@@ -2085,7 +2085,7 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, 
 	if (code->getArgumentsCount() > argc) {
 		std::fill(e, locals.end(), UNDEFINED_VALUE);
 	}
-	#if (NUXJS_ES5)
+			#if (NUXJS_ES5)
 	if (code->strict) {
 		Heap& heap = gcList.getHeap();
 		arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
@@ -2201,9 +2201,9 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
 
 FunctionScope::~FunctionScope() {
 	if (arguments != 0) {
-	#if (NUXJS_ES5)
+			#if (NUXJS_ES5)
 		arguments->owner = 0;
-	#endif
+			#endif
 		arguments->detach();
 		arguments = 0;
 	}
@@ -2237,12 +2237,12 @@ static struct EvalFunction : public Function {
 
 		Heap& heap = rt.getHeap();
 		const String* expression = argv[0].toString(heap);
-	#if (NUXJS_ES5)
+			#if (NUXJS_ES5)
 		const bool strict = direct && processor.isCurrentStrict();
 		processor.enterEvalCode(rt.compileEvalCode(expression, strict), direct);
 	#else
 		processor.enterEvalCode(rt.compileEvalCode(expression), direct);
-	#endif
+			#endif
 		return UNDEFINED_VALUE;
 }
 bool direct;
@@ -2651,6 +2651,7 @@ void Processor::innerRun() {
 			break;
 			case WRITE_NAMED_OP: {
 				const String* name = constants[im].getString();
+			#if (NUXJS_ES5)
 				if (code->isStrict()) {
 					Value dummy;
 					if (scope->readVar(rt, name, &dummy) == NONEXISTENT) {
@@ -2658,11 +2659,13 @@ void Processor::innerRun() {
 						return;
 					}
 				}
+			#endif
 				scope->writeVar(rt, name, sp[0]);
 			}
 			break;
 			case WRITE_NAMED_POP_OP: {
 				const String* name = constants[im].getString();
+			#if (NUXJS_ES5)
 				if (code->isStrict()) {
 					Value dummy;
 					if (scope->readVar(rt, name, &dummy) == NONEXISTENT) {
@@ -2670,6 +2673,7 @@ void Processor::innerRun() {
 						return;
 					}
 				}
+			#endif
 				scope->writeVar(rt, name, sp[0]);
 				pop(1);
 			}
@@ -4133,7 +4137,7 @@ void Compiler::rvalueGroup() {
 
 // FIX : ok, this is serious mess
 Compiler::ExpressionResult Compiler::declareIdentifier(const String* name, bool func) {
-	#if (NUXJS_ES5)
+			#if (NUXJS_ES5)
 	if (code->isStrict() && (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING))) {
 		error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
 	}
@@ -4293,7 +4297,7 @@ void Compiler::functionStatement() {
 }
 
 void Compiler::withStatement(SemanticScope* currentScope) {
-	#if (NUXJS_ES5)
+			#if (NUXJS_ES5)
 	if (code->isStrict()) {
 		error(SYNTAX_ERROR, "\"with\" is not allowed in strict code");
 	}
@@ -5614,7 +5618,7 @@ void Runtime::fetchFunction(const Object* supportObject, const char* name, Funct
 }
 
 extern const char* STDLIB_JS;
-	#if (NUXJS_ES5)
+			#if (NUXJS_ES5)
 extern const char* STDLIB_ES5_JS;
 #endif
 
@@ -5663,7 +5667,7 @@ void Runtime::setupStandardLibrary() {
 	
 	const Var func = eval(*String::allocate(heap, STDLIB_JS));
 	Value argv[2] = { protectedSupportObject, UNDEFINED_VALUE };
-	#if (NUXJS_ES5)
+			#if (NUXJS_ES5)
 	const Var es5(*this, String::allocate(heap, STDLIB_ES5_JS));
 	argv[1] = es5;
 #endif
@@ -5690,12 +5694,12 @@ void Runtime::resetTimeOut(Int32 timeOutSeconds) {
 
 } /* namespace NuXJS */
 
-	#ifdef __GNUC__
-	#ifndef __clang__
+			#ifdef __GNUC__
+			#ifndef __clang__
 #pragma GCC pop_options
 #endif
 #endif
 
-	#ifdef _MSC_VER
+			#ifdef _MSC_VER
 #pragma float_control(pop)	
 #endif

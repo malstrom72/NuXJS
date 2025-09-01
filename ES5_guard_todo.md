@@ -3,6 +3,8 @@
 Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as they are completed.
 
 > **Rule:** If any build or test fails, roll back to the last working commit and fix the issue before committing again.
+> Only run the variant-specific builds: `timeout 600 ./build.sh es3` and `timeout 600 ./build.sh es5`.
+> Skip the combined `./build.sh` run.
 
 ## Baseline
 - [x] Ensure the working tree is clean: `git status --short`
@@ -82,11 +84,11 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 - Tests:
 - `timeout 600 ./build.sh es3`
 - `timeout 600 ./build.sh es5`
-2. Guard strict variable writes in `Processor::innerRun`
-- Wrap `WRITE_NAMED_OP` and `WRITE_NAMED_POP_OP` strict checks
+2. Guard strict variable writes in `Processor::innerRun` (DONE)
+- [x] Wrap `WRITE_NAMED_OP` and `WRITE_NAMED_POP_OP` strict checks
 - Tests:
-				- `timeout 600 ./build.sh es3`
-				- `timeout 600 ./build.sh es5`
+                                - `timeout 600 ./build.sh es3`
+                                - `timeout 600 ./build.sh es5`
 3. Guard strict-state handling in `Processor::enter` and `enterEvalCode`
 - Restore original `enterEvalCode` "local" parameter when `NUXJS_ES5` is off
 - Guard `isolate` flag and strict-state propagation
@@ -101,7 +103,6 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 				- `timeout 600 ./build.sh es5`
 ## Build scripts
 - [x] Verify `build.sh` and `build.cmd` pass `-DNUXJS_ES5` correctly
-- [x] Run combined build to validate both variants: `timeout 600 ./build.sh`
 
 ## Final validation
 - [ ] Compare the ES3 build output with `main`
