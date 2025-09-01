@@ -5069,20 +5069,24 @@ BoundFunction::BoundFunction(GCList& gc,
 }
 
 Value BoundFunction::invoke(Runtime& rt, Processor& proc,
-				UInt32 argc, const Value* argv, Object* thisObj) {
-		VarList args(rt, boundArgc + argc);
-		std::copy(boundArgv, boundArgv + boundArgc, args.begin());
-		std::copy(argv, argv + argc, args.begin() + boundArgc);
-		Object* thisObject = boundThis.toObjectOrNull(rt.getHeap(), false);
-		return target->invoke(rt, proc, boundArgc + argc, args.begin(), thisObject);
+UInt32 argc, const Value* argv, Object* thisObj) {
+VarList args(rt, boundArgc + argc);
+if (boundArgc > 0) {
+std::copy(boundArgv, boundArgv + boundArgc, args.begin());
+}
+std::copy(argv, argv + argc, args.begin() + boundArgc);
+Object* thisObject = boundThis.toObjectOrNull(rt.getHeap(), false);
+return target->invoke(rt, proc, boundArgc + argc, args.begin(), thisObject);
 }
 
 Value BoundFunction::construct(Runtime& rt, Processor& proc,
-				UInt32 argc, const Value* argv, Object* thisObj) {
-		VarList args(rt, boundArgc + argc);
-		std::copy(boundArgv, boundArgv + boundArgc, args.begin());
-		std::copy(argv, argv + argc, args.begin() + boundArgc);
-		return target->construct(rt, proc, boundArgc + argc, args.begin(), thisObj);
+UInt32 argc, const Value* argv, Object* thisObj) {
+VarList args(rt, boundArgc + argc);
+if (boundArgc > 0) {
+std::copy(boundArgv, boundArgv + boundArgc, args.begin());
+}
+std::copy(argv, argv + argc, args.begin() + boundArgc);
+return target->construct(rt, proc, boundArgc + argc, args.begin(), thisObj);
 }
 
 bool BoundFunction::hasInstance(Runtime& rt, Object* object) const {
@@ -5109,10 +5113,12 @@ void BoundFunction::constructCompleteObject(Runtime& rt) const {
 }
 
 void BoundFunction::gcMarkReferences(Heap& heap) const {
-	gcMark(heap, target);
-	gcMark(heap, boundThis);
-	gcMark(heap, boundArgv, boundArgv + boundArgc);
-	super::gcMarkReferences(heap);
+gcMark(heap, target);
+gcMark(heap, boundThis);
+if (boundArgc > 0) {
+gcMark(heap, boundArgv, boundArgv + boundArgc);
+}
+super::gcMarkReferences(heap);
 }
 #endif
 
