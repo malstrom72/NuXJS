@@ -1729,7 +1729,9 @@ class Processor : public GCItem {
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);
 		Value getResult() const;	// make sure you've called run() until it returns false before calling this
-		bool isCurrentStrict() const { return currentFrame != 0 && currentFrame->code->isStrict(); }
+#if (NUXJS_ES5)
+	bool isCurrentStrict() const { return currentFrame != 0 && currentFrame->code->isStrict(); }
+#endif
 
 	protected:
 		struct Frame : public GCItem {

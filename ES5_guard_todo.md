@@ -48,10 +48,10 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 																- [x] `Error::setOwnProperty` string-key overload
 																- [x] `Arguments::setOwnProperty` string-key overload
 								- [x] `Arguments` owner linkage
-								- [ ] `FunctionScope` strict-mode argument handling
-								- Tests:
-												- `timeout 600 ./build.sh es3`
-												- `timeout 600 ./build.sh es5`
+- [x] `FunctionScope` strict-mode argument handling
+- Tests:
+- `timeout 600 ./build.sh es3`
+- `timeout 600 ./build.sh es5`
 4. Strict mode parser checks
 				- [ ] Guard `"use strict"` directive detection
 				- [ ] Guard strict-mode syntax errors:
@@ -59,7 +59,7 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 								- `Deleting identifier in strict code`
 								- `"with" is not allowed in strict code`
 								- `Duplicate parameter name not allowed in strict code`
-				- [ ] Guard `Processor::isCurrentStrict` and related eval call sites
+- [x] Guard `Processor::isCurrentStrict` and related eval call sites
 				- Tests:
 								- `timeout 600 ./build.sh es3`
 								- `timeout 600 ./build.sh es5`
