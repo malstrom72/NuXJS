@@ -557,7 +557,9 @@ class Object : public GCItem {
 		virtual Object* getPrototype(Runtime& rt) const;		///< Default returns the Object prototype.
 
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;								///< Don't touch v if you return NONEXISTENT. Default returns NONEXISTENT.
+#if (NUXJS_ES5)
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
+#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);								///< Update existing property. Return false if it doesn't exist or can't be updated (e.g. read-only property exists). Can be overriden for optimization. (Default implementation checks existence with hasOwnProperty() first.)
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);												///< Default returns false.
@@ -733,7 +735,9 @@ class JSObject : public Object, public Table {
 		JSObject(GCList& gcList, Object* prototype);
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+#if (NUXJS_ES5)
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
@@ -769,7 +773,9 @@ template<class SUPER> class LazyJSObject : public SUPER {
 		typedef SUPER super;
 		LazyJSObject(GCList& gcList) : super(gcList), completeObject(0) { }
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+#if (NUXJS_ES5)
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
@@ -801,7 +807,9 @@ class JSArray : public LazyJSObject<Object> {
 		virtual Object* getPrototype(Runtime& rt) const;
 		// FIX : toString too?
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+#if (NUXJS_ES5)
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
@@ -1039,7 +1047,9 @@ class Error : public LazyJSObject<Object> {
 		virtual const String* toString(Heap& heap) const;
 		virtual Value getInternalValue(Heap& heap) const; // error type name
 		virtual Object* getPrototype(Runtime& rt) const;
+#if (NUXJS_ES5)
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		ErrorType getErrorType() const;
@@ -1071,7 +1081,9 @@ class Arguments : public LazyJSObject<Object> {
 		virtual const String* toString(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+#if (NUXJS_ES5)
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;

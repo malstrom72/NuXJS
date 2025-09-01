@@ -38,15 +38,15 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 				- [x] Guard `Object::getProperty` / `setProperty` overloads and interpreter opcodes
 								- `timeout 600 ./build.sh es3`
 								- `timeout 600 ./build.sh es5`
-				- [ ] Guard `Object::setOwnProperty` string-key overload
-								- `timeout 600 ./build.sh es3`
-								- `timeout 600 ./build.sh es5`
-				- [ ] Guard runtime class helpers
-								- [ ] `JSObject::setOwnProperty` string-key overload
-								- [ ] `LazyJSObject::setOwnProperty` string-key overload
-								- [ ] `JSArray::setOwnProperty` string-key overload
-								- [ ] `Error::setOwnProperty` string-key overload
-								- [ ] `Arguments::setOwnProperty` string-key overload
+								- [x] Guard `Object::setOwnProperty` string-key overload
+																- `timeout 600 ./build.sh es3`
+																- `timeout 600 ./build.sh es5`
+								- [x] Guard runtime class helpers
+																- [x] `JSObject::setOwnProperty` string-key overload
+																- [x] `LazyJSObject::setOwnProperty` string-key overload
+																- [x] `JSArray::setOwnProperty` string-key overload
+																- [x] `Error::setOwnProperty` string-key overload
+																- [x] `Arguments::setOwnProperty` string-key overload
 								- [x] `Arguments` owner linkage
 								- [ ] `FunctionScope` strict-mode argument handling
 								- Tests:
