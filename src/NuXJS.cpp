@@ -2351,52 +2351,62 @@ const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
 	This is the direct scope of an eval(), it only bridges all virtuals to the parent FunctionScope, but has a different
 	code pointer (for constants etc) and it declares deletable vars.
 */
+#if (NUXJS_ES5)
 struct Processor::EvalScope : public Scope {
-		typedef Scope super;
-		EvalScope(GCList& gcList, Scope* parentScope, bool isolated) : super(gcList, parentScope), vars(0), isolated(isolated) { }
-		virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
-			if (isolated && vars != 0) {
-				const Flags flags = vars->getOwnProperty(rt, name, v);
-				if (flags != NONEXISTENT) {
-					return flags;
-				}
-			}
-			return parentScope->readVar(rt, name, v);
-		}
-		virtual void writeVar(Runtime& rt, const String* name, const Value& value) {
-			if (isolated && vars != 0) {
-				Value tmp;
-				if (vars->getOwnProperty(rt, name, &tmp) != NONEXISTENT) {
-					vars->setOwnProperty(rt, name, value);
-					return;
-				}
-			}
-			parentScope->writeVar(rt, name, value);
-		}
-		virtual bool deleteVar(Runtime& rt, const String* name) {
-			if (isolated && vars != 0 && vars->deleteOwnProperty(rt, name)) {
-				return true;
-			}
-			return parentScope->deleteVar(rt, name);
-		}
-		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete) {
-			if (isolated) {
-				if (vars == 0) {
-					Heap& heap = rt.getHeap();
-					vars = new(heap) JSObject(heap.managed(), 0);
-				}
-				vars->setOwnProperty(rt, name, initValue.isUndefined() ? UNDEFINED_VALUE : initValue, dontDelete ? DONT_DELETE_FLAG : 0);
-			} else {
-				parentScope->declareVar(rt, name, initValue, false);
-			}
-		}
-		JSObject* vars;
-		bool isolated;
-		virtual void gcMarkReferences(Heap& heap) const {
-			gcMark(heap, vars);
-			super::gcMarkReferences(heap);
-		}
+typedef Scope super;
+EvalScope(GCList& gcList, Scope* parentScope, bool isolated) : super(gcList, parentScope), vars(0), isolated(isolated) { }
+virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
+if (isolated && vars != 0) {
+const Flags flags = vars->getOwnProperty(rt, name, v);
+if (flags != NONEXISTENT) {
+return flags;
+}
+}
+return parentScope->readVar(rt, name, v);
+}
+virtual void writeVar(Runtime& rt, const String* name, const Value& value) {
+if (isolated && vars != 0) {
+Value tmp;
+if (vars->getOwnProperty(rt, name, &tmp) != NONEXISTENT) {
+vars->setOwnProperty(rt, name, value);
+return;
+}
+}
+parentScope->writeVar(rt, name, value);
+}
+virtual bool deleteVar(Runtime& rt, const String* name) {
+if (isolated && vars != 0 && vars->deleteOwnProperty(rt, name)) {
+return true;
+}
+return parentScope->deleteVar(rt, name);
+}
+virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete) {
+if (isolated) {
+if (vars == 0) {
+Heap& heap = rt.getHeap();
+vars = new(heap) JSObject(heap.managed(), 0);
+}
+vars->setOwnProperty(rt, name, initValue.isUndefined() ? UNDEFINED_VALUE : initValue, dontDelete ? DONT_DELETE_FLAG : 0);
+} else {
+parentScope->declareVar(rt, name, initValue, false);
+}
+}
+JSObject* vars;
+bool isolated;
+virtual void gcMarkReferences(Heap& heap) const {
+gcMark(heap, vars);
+super::gcMarkReferences(heap);
+}
 };
+#else
+struct Processor::EvalScope : public Scope {
+typedef Scope super;
+EvalScope(GCList& gcList, Scope* parentScope) : super(gcList, parentScope) { }
+virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool) {
+parentScope->declareVar(rt, name, initValue, false);
+}
+};
+#endif
 	
 /*
 	The CatchScope is necessary because within a catch block there is a single extra variable that is local to the catch
@@ -2503,8 +2513,12 @@ void Processor::enter(const Code* code, Scope* scope, Object* thisObject) {
 	if (sp + code->getMaxStackDepth() > stack.end()) {
 		ScriptException::throwError(heap, RANGE_ERROR, &STACK_OVERFLOW_STRING); // Notice: we can't use virtual throw here, cause we need to abort any sp changes etc that could happen if we continued execution beyond this point.
 	} else {
-Object* obj = (thisObject == 0 && !code->isStrict() ? rt.getGlobalObject() : thisObject);
-pushFrame(code, scope, obj);
+#if (NUXJS_ES5)
+		Object* obj = (thisObject == 0 && !code->isStrict() ? rt.getGlobalObject() : thisObject);
+		pushFrame(code, scope, obj);
+#else
+		pushFrame(code, scope, (thisObject == 0 ? rt.getGlobalObject() : thisObject));
+#endif
 		ip = code->getCodeWords();
 	}
 }
@@ -2517,14 +2531,24 @@ void Processor::enterGlobalCode(const Code* code) {
 	enter(code, rt.getGlobalScope(), rt.getGlobalObject());
 }
 
+#if (NUXJS_ES5)
 void Processor::enterEvalCode(const Code* code, bool direct) {
-	bool isolate = direct && code->isStrict();
-	if (direct && currentFrame != 0) {
-		enter(code, new(heap) Processor::EvalScope(heap.managed(), currentFrame->scope, isolate), currentFrame->thisObject);
-	} else {
-		enter(code, new(heap) Processor::EvalScope(heap.managed(), rt.getGlobalScope(), isolate), rt.getGlobalObject());
-	}
+		bool isolate = direct && code->isStrict();
+		if (direct && currentFrame != 0) {
+			enter(code, new(heap) Processor::EvalScope(heap.managed(), currentFrame->scope, isolate), currentFrame->thisObject);
+		} else {
+			enter(code, new(heap) Processor::EvalScope(heap.managed(), rt.getGlobalScope(), isolate), rt.getGlobalObject());
+		}
 }
+#else
+void Processor::enterEvalCode(const Code* code, bool local) {
+		if (local && currentFrame != 0) {
+			enter(code, new(heap) Processor::EvalScope(heap.managed(), currentFrame->scope), currentFrame->thisObject);
+		} else {
+			enter(code, new(heap) Processor::EvalScope(heap.managed(), rt.getGlobalScope()), rt.getGlobalObject());
+		}
+}
+#endif
 
 
 void Processor::enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject) {

@@ -1724,9 +1724,13 @@ class Processor : public GCItem {
 	public:
 		Processor(Runtime& rt);
 		void invokeFunction(Function* f, Int32 argc, const Value* argv, Object* thisObject = 0);
-		void enterGlobalCode(const Code* code);
-		void enterEvalCode(const Code* code, bool direct = false);
-		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
+void enterGlobalCode(const Code* code);
+#if (NUXJS_ES5)
+void enterEvalCode(const Code* code, bool direct = false);
+#else
+void enterEvalCode(const Code* code, bool local = false);
+#endif
+void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
 		void throwVirtualException(const Value& exception);
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);
