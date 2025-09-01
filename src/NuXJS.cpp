@@ -1657,7 +1657,11 @@ bool Function::hasInstance(Runtime& rt, Object* object) const {
 			return true;
 		}
 	}
-	return false;
+		return false;
+}
+
+Function* Function::getConstructTarget() {
+	   return this;
 }
 
 /* --- JSArray --- */
@@ -4946,9 +4950,99 @@ void SeparateConstructorFunction::constructCompleteObject(Runtime& rt) const {
 		completeObject->setOwnProperty(rt, &NAME_STRING, v, flags);
 	}
 	flags = templateFunction->getProperty(rt, &LENGTH_STRING, &v);
-	if (flags != NONEXISTENT) { // FIX : in the future I think we should have a getLength
-		completeObject->setOwnProperty(rt, &LENGTH_STRING, v, flags);
-	}
+		if (flags != NONEXISTENT) { // FIX : in the future I think we should have a getLength
+				completeObject->setOwnProperty(rt, &LENGTH_STRING, v, flags);
+		}
+}
+
+struct BoundFunction : public ExtensibleFunction {
+		typedef ExtensibleFunction super;
+
+		BoundFunction(GCList& gc,
+						Function* target,
+						const Value& boundThis,
+						UInt32 boundArgc,
+						const Value* boundArgv);
+
+		virtual Value invoke(Runtime& rt, Processor& proc,
+						UInt32 argc, const Value* argv, Object* thisObj);
+
+		virtual Value construct(Runtime& rt, Processor& proc,
+				UInt32 argc, const Value* argv, Object* thisObj);
+
+		virtual bool hasInstance(Runtime& rt, Object* object) const;
+		virtual Function* getConstructTarget();
+
+protected:
+		virtual void constructCompleteObject(Runtime& rt) const;
+		virtual void gcMarkReferences(Heap& heap) const;
+
+private:
+		Function* const target;
+		Value		   boundThis;
+		UInt32		   boundArgc;
+		Value*		   boundArgv;	 /// GC-managed array of pre-bound args
+};
+
+BoundFunction::BoundFunction(GCList& gc,
+				Function* target,
+				const Value& boundThis,
+				UInt32 boundArgc,
+				const Value* boundArgv)
+		: super(gc), target(target), boundThis(boundThis), boundArgc(boundArgc), boundArgv(0) {
+		if (boundArgc > 0) {
+				Heap& heap = gc.getHeap();
+				Value* argvCopy = new(&heap) Value[boundArgc];
+				std::copy(boundArgv, boundArgv + boundArgc, argvCopy);
+				this->boundArgv = argvCopy;
+		}
+}
+
+Value BoundFunction::invoke(Runtime& rt, Processor& proc,
+				UInt32 argc, const Value* argv, Object* thisObj) {
+		VarList args(rt, boundArgc + argc);
+		std::copy(boundArgv, boundArgv + boundArgc, args.begin());
+		std::copy(argv, argv + argc, args.begin() + boundArgc);
+		Object* thisObject = boundThis.toObjectOrNull(rt.getHeap(), false);
+		return target->invoke(rt, proc, boundArgc + argc, args.begin(), thisObject);
+}
+
+Value BoundFunction::construct(Runtime& rt, Processor& proc,
+				UInt32 argc, const Value* argv, Object* thisObj) {
+		VarList args(rt, boundArgc + argc);
+		std::copy(boundArgv, boundArgv + boundArgc, args.begin());
+		std::copy(argv, argv + argc, args.begin() + boundArgc);
+		return target->construct(rt, proc, boundArgc + argc, args.begin(), thisObj);
+}
+
+bool BoundFunction::hasInstance(Runtime& rt, Object* object) const {
+		return target->hasInstance(rt, object);
+}
+
+Function* BoundFunction::getConstructTarget() {
+		return target->getConstructTarget();
+}
+
+void BoundFunction::constructCompleteObject(Runtime& rt) const {
+		Value v;
+		Flags flags = target->getProperty(rt, &NAME_STRING, &v);
+		if (flags != NONEXISTENT) {
+				completeObject->setOwnProperty(rt, &NAME_STRING, v, flags);
+		}
+		flags = target->getProperty(rt, &LENGTH_STRING, &v);
+		double l = 0;
+		if (flags != NONEXISTENT) {
+				l = v.toDouble() - boundArgc;
+				if (l < 0) l = 0;
+		}
+		completeObject->setOwnProperty(rt, &LENGTH_STRING, Value(l), HIDDEN_CONST_FLAGS);
+}
+
+void BoundFunction::gcMarkReferences(Heap& heap) const {
+		gcMark(heap, target);
+		gcMark(heap, boundThis);
+		gcMark(heap, boundArgv, boundArgv + boundArgc);
+		super::gcMarkReferences(heap);
 }
 
 template<class F> struct UnaryMathFunction : public Function {
@@ -5025,7 +5119,7 @@ struct Support {
 		return UNDEFINED_VALUE;
 	}
 
-	static Value defineProperty(Runtime &rt, Processor &, UInt32 argc, const Value *argv, Object *) {
+static Value defineProperty(Runtime &rt, Processor &, UInt32 argc, const Value *argv, Object *) {
 		bool success = false;
 		if (argc >= 2) {
 			Object *o = argv[0].asObject();
@@ -5044,9 +5138,21 @@ struct Support {
 			}
 		}
 		return success;
-	}
+}
 
-	static Value compileFunction(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+static Value bind(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	   if (argc >= 2) {
+			   Function* target = argv[0].asFunction();
+			   if (target != 0) {
+					   Heap& heap = rt.getHeap();
+					   UInt32 boundArgc = (argc > 2 ? argc - 2 : 0);
+					   return new(heap) BoundFunction(heap.managed(), target, argv[1], boundArgc, argv + 2);
+			   }
+	   }
+	   return UNDEFINED_VALUE;
+}
+
+static Value compileFunction(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 1) {
 			Heap& heap = rt.getHeap();
 			const String* source = argv[0].toString(heap);
@@ -5210,7 +5316,7 @@ static struct {
 	FunctorAdapter<NativeFunction> func;
 } SUPPORT_FUNCTIONS[] = {
 	{ "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
-	{ "defineProperty", Support::defineProperty }, { "compileFunction", Support::compileFunction },
+{ "defineProperty", Support::defineProperty }, { "bind", Support::bind }, { "compileFunction", Support::compileFunction },
 	{ "distinctConstructor", Support::distinctConstructor }, { "callWithArgs", Support::callWithArgs },
 	{ "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
 	{ "isPropertyEnumerable", Support::isPropertyEnumerable }, { "atan2", Support::atan2 },

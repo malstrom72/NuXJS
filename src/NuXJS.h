@@ -894,9 +894,10 @@ class Function : public Object {
 		virtual const String* getClassName() const; // &F_UNCTION_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Value getInternalValue(Heap& heap) const;
-		virtual Object* getPrototype(Runtime& rt) const;
-		virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
-		virtual bool hasInstance(Runtime& rt, Object* object) const;
+			   virtual Object* getPrototype(Runtime& rt) const;
+			   virtual Function* getConstructTarget();
+			   virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
+			   virtual bool hasInstance(Runtime& rt, Object* object) const;
 		virtual const Code* getScriptCode() const { return 0; }
 		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject = 0) = 0;
 
