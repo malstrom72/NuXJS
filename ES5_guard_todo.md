@@ -66,14 +66,14 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
                                                                 - `timeout 600 ./build.sh es3`
                                                                 - `timeout 600 ./build.sh es5`
 5. Bound function support
-                                - [ ] Guard `BoundFunction` type and `bind` helper
-                                - [ ] Guard registration of `support.bind` in the support function table
-                                - Tests:
-                                                                - `timeout 600 ./build.sh es3`
-                                                                - `timeout 600 ./build.sh es5`
+- [x] Guard `BoundFunction` type and `bind` helper
+- [x] Guard registration of `support.bind` in the support function table
+- Tests:
+- `timeout 600 ./build.sh es3`
+- `timeout 600 ./build.sh es5`
 ## Build scripts
 - [x] Verify `build.sh` and `build.cmd` pass `-DNUXJS_ES5` correctly
-- [ ] Run combined build to validate both variants: `timeout 600 ./build.sh`
+- [x] Run combined build to validate both variants: `timeout 600 ./build.sh`
 
 ## Final validation
 - [ ] Compare the ES3 build output with `main`

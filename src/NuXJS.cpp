@@ -5024,6 +5024,7 @@ void SeparateConstructorFunction::constructCompleteObject(Runtime& rt) const {
 		}
 }
 
+#if (NUXJS_ES5)
 struct BoundFunction : public ExtensibleFunction {
 		typedef ExtensibleFunction super;
 
@@ -5108,11 +5109,12 @@ void BoundFunction::constructCompleteObject(Runtime& rt) const {
 }
 
 void BoundFunction::gcMarkReferences(Heap& heap) const {
-		gcMark(heap, target);
-		gcMark(heap, boundThis);
-		gcMark(heap, boundArgv, boundArgv + boundArgc);
-		super::gcMarkReferences(heap);
+	gcMark(heap, target);
+	gcMark(heap, boundThis);
+	gcMark(heap, boundArgv, boundArgv + boundArgc);
+	super::gcMarkReferences(heap);
 }
+#endif
 
 template<class F> struct UnaryMathFunction : public Function {
 	UnaryMathFunction(F& f) : f(f) { }
@@ -5213,17 +5215,19 @@ success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE)
 		return success;
 }
 
+#if (NUXJS_ES5)
 static Value bind(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-	   if (argc >= 2) {
-			   Function* target = argv[0].asFunction();
-			   if (target != 0) {
-					   Heap& heap = rt.getHeap();
-					   UInt32 boundArgc = (argc > 2 ? argc - 2 : 0);
-					   return new(heap) BoundFunction(heap.managed(), target, argv[1], boundArgc, argv + 2);
-			   }
-	   }
-	   return UNDEFINED_VALUE;
+	if (argc >= 2) {
+		Function* target = argv[0].asFunction();
+		if (target != 0) {
+			Heap& heap = rt.getHeap();
+			UInt32 boundArgc = (argc > 2 ? argc - 2 : 0);
+			return new(heap) BoundFunction(heap.managed(), target, argv[1], boundArgc, argv + 2);
+		}
+	}
+	return UNDEFINED_VALUE;
 }
+#endif
 
 static Value compileFunction(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 1) {
@@ -5389,8 +5393,11 @@ static struct {
 	FunctorAdapter<NativeFunction> func;
 } SUPPORT_FUNCTIONS[] = {
 	{ "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
-{ "defineProperty", Support::defineProperty }, { "bind", Support::bind }, { "compileFunction", Support::compileFunction },
-	{ "distinctConstructor", Support::distinctConstructor }, { "callWithArgs", Support::callWithArgs },
+	{ "defineProperty", Support::defineProperty },
+#if (NUXJS_ES5)
+	{ "bind", Support::bind },
+#endif
+	{ "compileFunction", Support::compileFunction }, { "distinctConstructor", Support::distinctConstructor }, { "callWithArgs", Support::callWithArgs },
 	{ "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
 	{ "isPropertyEnumerable", Support::isPropertyEnumerable }, { "atan2", Support::atan2 },
 	{ "pow", Support::pow }, { "parseFloat", Support::parseFloat }, { "charCodeAt", Support::charCodeAt },
