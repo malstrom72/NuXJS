@@ -32,12 +32,12 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 		- [x] Guard `ACCESSOR_FLAG` constant in `NuXJS.h`
 					- `timeout 600 ./build.sh es3`
 					- `timeout 600 ./build.sh es5`
-		- [ ] Guard `class Accessor` and related `Property` helpers in `NuXJS.h`
-					- `timeout 600 ./build.sh es3`
-					- `timeout 600 ./build.sh es5`
-		- [ ] Guard `Object::getProperty` / `setProperty` overloads and interpreter opcodes
-					- `timeout 600 ./build.sh es3`
-					- `timeout 600 ./build.sh es5`
+                - [x] Guard `class Accessor` and related `Property` helpers in `NuXJS.h`
+                                        - `timeout 600 ./build.sh es3`
+                                        - `timeout 600 ./build.sh es5`
+- [x] Guard `Object::getProperty` / `setProperty` overloads and interpreter opcodes
+- `timeout 600 ./build.sh es3`
+- `timeout 600 ./build.sh es5`
 		- [ ] Guard runtime classes (`JSObject`, `LazyJSObject`, `JSArray`, `Error`, `Arguments`)
 					- `timeout 600 ./build.sh es3`
 					- `timeout 600 ./build.sh es5`

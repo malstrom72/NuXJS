@@ -180,7 +180,9 @@ const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_ST
 				, E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
 				, S_TRING_STRING("String");
 
+#if (NUXJS_ES5)
 const String GET_STRING("get"), SET_STRING("set");
+#endif
 
 static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
@@ -1319,6 +1321,7 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v) const {
 	return NONEXISTENT;
 }
 
+#if (NUXJS_ES5)
 Flags Object::getProperty(Runtime& rt, Processor& processor, const Value& key, Value* v) const {
 const Object* o = this;
 do {
@@ -1342,6 +1345,7 @@ o = o->getPrototype(rt);
 } while (o != 0);
 return NONEXISTENT;
 }
+#endif
 
 
 bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
@@ -1358,6 +1362,7 @@ bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 	return setOwnProperty(rt, key, v);
 }
 
+#if (NUXJS_ES5)
 bool Object::setProperty(Runtime& rt, Processor& processor, const Value& key, const Value& v) {
 Value current;
 Flags flags = getProperty(rt, key, &current);
@@ -1374,6 +1379,7 @@ return false;
 setProperty(rt, key, v);
 return false;
 }
+#endif
 
 Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
 	Heap& heap = rt.getHeap();
@@ -1528,19 +1534,21 @@ bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Fla
 }
 
 bool JSObject::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-	Table::Bucket* bucket = insert(key);
-	if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
-	Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
-	Accessor* nv = static_cast<Accessor*>(v.getObject());
-	if (nv->getter != 0) {
-	acc->getter = nv->getter;
-	}
-	if (nv->setter != 0) {
-	acc->setter = nv->setter;
-	}
-	return true;
-	}
-	return update(bucket, v, flags);
+		Table::Bucket* bucket = insert(key);
+#if (NUXJS_ES5)
+		if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
+				Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
+				Accessor* nv = static_cast<Accessor*>(v.getObject());
+				if (nv->getter != 0) {
+						acc->getter = nv->getter;
+				}
+				if (nv->setter != 0) {
+						acc->setter = nv->setter;
+				}
+				return true;
+		}
+#endif
+		return update(bucket, v, flags);
 }
 
 
@@ -2222,9 +2230,11 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ GET_PROPERTY_OP			 , "GET_PROPERTY"			 , -1	  , 0 },
 	{ SET_PROPERTY_OP			 , "SET_PROPERTY"			 , -2	  , 0 },
 	{ SET_PROPERTY_POP_OP		 , "SET_PROPERTY_POP"		 , -3	  , 0 },
-	{ ADD_PROPERTY_OP			 , "ADD_PROPERTY"			 , -1	  , 0 },
-	{ ADD_GETTER_OP			   , "ADD_GETTER"			  , -1	   , 0 },
-	{ ADD_SETTER_OP			   , "ADD_SETTER"			  , -1	   , 0 },
+	{ ADD_PROPERTY_OP						 , "ADD_PROPERTY"						 , -1	  , 0 },
+#if (NUXJS_ES5)
+	{ ADD_GETTER_OP					   , "ADD_GETTER"						  , -1	   , 0 },
+	{ ADD_SETTER_OP					   , "ADD_SETTER"						  , -1	   , 0 },
+#endif
 	{ PUSH_ELEMENTS_OP			 , "PUSH_ELEMENTS_OP"		 , 0	  , OpcodeInfo::POP_OPERAND },
 	{ OBJ_TO_PRIMITIVE_OP		 , "OBJ_TO_PRIMITIVE"		 , 0	  , 0 },
 	{ OBJ_TO_NUMBER_OP			 , "OBJ_TO_NUMBER"			 , 0	  , 0 },
@@ -2630,7 +2640,11 @@ const Object* o = convertToObject(sp[-1], false);
 if (o == 0) {
 return;
 }
+#if (NUXJS_ES5)
 Flags f = o->getProperty(rt, *this, sp[0], sp - 1);
+#else
+Flags f = o->getProperty(rt, sp[0], sp - 1);
+#endif
 if (f == NONEXISTENT) {
 sp[-1] = UNDEFINED_VALUE;
 pop(1);
@@ -2650,26 +2664,37 @@ if (o == 0) {
 return;
 }
 Value v = sp[0];
+#if (NUXJS_ES5)
 bool acc = o->setProperty(rt, *this, sp[-1], sp[0]);
 sp[-2] = v;
 pop(2);
 if (acc) {
 return;
 }
+#else
+o->setProperty(rt, sp[-1], sp[0]);
+sp[-2] = v;
+pop(2);
+#endif
 break;
 }
 
-			
+
 case SET_PROPERTY_POP_OP: {
 Object* o = convertToObject(sp[-2], false);
 if (o == 0) {
 return;
 }
+#if (NUXJS_ES5)
 bool acc = o->setProperty(rt, *this, sp[-1], sp[0]);
 pop(3);
 if (acc) {
 return;
 }
+#else
+o->setProperty(rt, sp[-1], sp[0]);
+pop(3);
+#endif
 break;
 }
 
@@ -2802,6 +2827,7 @@ case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break
 				pop(1);
 				break;
 			}
+#if (NUXJS_ES5)
 			case ADD_GETTER_OP: {
 				Object* o = sp[-1].getObject();
 				Accessor* acc = new(heap) Accessor(heap.managed(), sp[0].asFunction(), 0);
@@ -2816,6 +2842,7 @@ case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break
 				pop(1);
 				break;
 			}
+#endif
 
 			case PUSH_ELEMENTS_OP: {
 				Object* o = sp[-im].getObject();
@@ -3583,6 +3610,7 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff 
 			error(SYNTAX_ERROR, "Expected property name");
 			}
 			white();
+#if (NUXJS_ES5)
 				if ((id->isEqualTo(GET_STRING) || id->isEqualTo(SET_STRING)) && *p != ':') {
 				bool isGetter = id->isEqualTo(GET_STRING);
 				const Char* b2 = p;
@@ -3595,9 +3623,12 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff 
 				functionDefinition(funcName, funcName);
 				emitWithConstant(isGetter ? Processor::ADD_GETTER_OP : Processor::ADD_SETTER_OP, accKey);
 				handled = true;
-			} else {
-			key = id;
-			}
+		} else {
+				key = id;
+		}
+#else
+				key = id;
+#endif
 			}
 		if (!handled) {
 				expectToken(":", true);
@@ -5125,17 +5156,21 @@ static Value defineProperty(Runtime &rt, Processor &, UInt32 argc, const Value *
 		if (argc >= 2) {
 			Object *o = argv[0].asObject();
 			if (o != 0) {
-				Flags flags = (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0) |
-							  (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0) |
-							  (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0) | EXISTS_FLAG;
-				if (argc >= 7) {
-					Heap &heap = rt.getHeap();
-					Accessor *acc = new (heap)
-						Accessor(heap.managed(), argv[6].asFunction(), (argc >= 8 ? argv[7].asFunction() : 0));
-					success = o->setOwnProperty(rt, argv[1], acc, flags | ACCESSOR_FLAG);
-				} else {
-					success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
-				}
+Flags flags = (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0) |
+(argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0) |
+(argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0) | EXISTS_FLAG;
+#if (NUXJS_ES5)
+if (argc >= 7) {
+Heap &heap = rt.getHeap();
+Accessor *acc = new (heap)
+Accessor(heap.managed(), argv[6].asFunction(), (argc >= 8 ? argv[7].asFunction() : 0));
+success = o->setOwnProperty(rt, argv[1], acc, flags | ACCESSOR_FLAG);
+} else {
+success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
+}
+#else
+success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
+#endif
 			}
 		}
 		return success;
