@@ -81,13 +81,18 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 2. Guard strict variable writes in `Processor::innerRun`
 - Wrap `WRITE_NAMED_OP` and `WRITE_NAMED_POP_OP` strict checks
 - Tests:
-- `timeout 600 ./build.sh es3`
-- `timeout 600 ./build.sh es5`
+                - `timeout 600 ./build.sh es3`
+                - `timeout 600 ./build.sh es5`
 3. Guard strict-state handling in `Processor::enter` and `enterEvalCode`
 - Conditionalize strict-state arguments and assignments
 - Tests:
-- `timeout 600 ./build.sh es3`
-- `timeout 600 ./build.sh es5`
+                - `timeout 600 ./build.sh es3`
+                - `timeout 600 ./build.sh es5`
+4. Guard `Processor::EvalScope` strict isolation
+- Wrap added members and overridden methods with `#if (NUXJS_ES5)`
+- Tests:
+                - `timeout 600 ./build.sh es3`
+                - `timeout 600 ./build.sh es5`
 ## Build scripts
 - [x] Verify `build.sh` and `build.cmd` pass `-DNUXJS_ES5` correctly
 - [x] Run combined build to validate both variants: `timeout 600 ./build.sh`
