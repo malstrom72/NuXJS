@@ -1619,10 +1619,13 @@ const String* JoiningEnumerator::nextPropertyName() {
 /* --- Code --- */
 
 Code::Code(GCList& gcList, Constants* sharedConstants)
-	: super(gcList), codeWords(0, &gcList.getHeap())
-	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
-	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
-, selfName(0), source(0), bloomSet(0), maxStackDepth(0), strict(false)
+		: super(gcList), codeWords(0, &gcList.getHeap())
+		, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
+		, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
+		, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
+#if (NUXJS_ES5)
+		, strict(false)
+#endif
 {
 	assert(constants != 0);
 }
@@ -3937,7 +3940,9 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
 	Code* func = new(heap) Code(heap.managed(), code->constants);
+#if (NUXJS_ES5)
 	func->strict = code->strict;
+#endif
 	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);

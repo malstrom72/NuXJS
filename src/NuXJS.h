@@ -32,7 +32,7 @@
 // the main branch exactly.
 // ---------------------------------------------------------------------------
 #ifndef NUXJS_ES5
-#define NUXJS_ES5 1
+#define NUXJS_ES5 0
 #endif
 
 #include "assert.h"
@@ -861,10 +861,15 @@ class Code : public Object {
 		UInt32 getCodeSize() const { return codeWords.size(); }
 		const String* getName() const { return name; }
 		const String* getSource() const { return source; }
-		UInt32 getMaxStackDepth() const { return maxStackDepth; }
-		bool isStrict() const { return strict; }
-		void setStrict(bool v) { strict = v; }
-		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
+               UInt32 getMaxStackDepth() const { return maxStackDepth; }
+#if (NUXJS_ES5)
+               bool isStrict() const { return strict; }
+               void setStrict(bool v) { strict = v; }
+#else
+               bool isStrict() const { return false; }
+               void setStrict(bool) { }
+#endif
+               UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
 
 	protected:
 		Vector<CodeWord> codeWords;
@@ -876,8 +881,10 @@ class Code : public Object {
 		const String* selfName;
 		const String* source;
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
-		UInt32 maxStackDepth;
-		bool strict;
+               UInt32 maxStackDepth;
+#if (NUXJS_ES5)
+               bool strict;
+#endif
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, constants);
