@@ -73,7 +73,10 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 - `timeout 600 ./build.sh es3`
 - `timeout 600 ./build.sh es5`
 6. Runtime strict-mode enforcement
-1. Guard `Function::getConstructTarget` and its use in `Processor::newOperation` (DONE)
+   - **Remaining diff hotspots (regenerated diff):**
+							   - `WRITE_NAMED_OP` / `WRITE_NAMED_POP_OP` strict checks in `Processor::innerRun`
+							   - strict-state plumbing in `Processor::enter`, `enterEvalCode` and `EvalScope`
+   1. Guard `Function::getConstructTarget` and its use in `Processor::newOperation` (DONE)
 - [x] Wrap declaration and definition with `#if (NUXJS_ES5)`
 - [x] Guard call site in `Processor::newOperation`
 - Tests:
@@ -82,20 +85,20 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 2. Guard strict variable writes in `Processor::innerRun`
 - Wrap `WRITE_NAMED_OP` and `WRITE_NAMED_POP_OP` strict checks
 - Tests:
-                - `timeout 600 ./build.sh es3`
-                - `timeout 600 ./build.sh es5`
+				- `timeout 600 ./build.sh es3`
+				- `timeout 600 ./build.sh es5`
 3. Guard strict-state handling in `Processor::enter` and `enterEvalCode`
 - Restore original `enterEvalCode` "local" parameter when `NUXJS_ES5` is off
 - Guard `isolate` flag and strict-state propagation
 - Conditionalize strict-state arguments and assignments
 - Tests:
-                - `timeout 600 ./build.sh es3`
-                - `timeout 600 ./build.sh es5`
+				- `timeout 600 ./build.sh es3`
+				- `timeout 600 ./build.sh es5`
 4. Guard `Processor::EvalScope` strict isolation
 - Wrap added members and overridden methods with `#if (NUXJS_ES5)`
 - Tests:
-                - `timeout 600 ./build.sh es3`
-                - `timeout 600 ./build.sh es5`
+				- `timeout 600 ./build.sh es3`
+				- `timeout 600 ./build.sh es5`
 ## Build scripts
 - [x] Verify `build.sh` and `build.cmd` pass `-DNUXJS_ES5` correctly
 - [x] Run combined build to validate both variants: `timeout 600 ./build.sh`
