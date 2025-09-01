@@ -29,19 +29,40 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 				- `timeout 600 ./build.sh es3`
 				- `timeout 600 ./build.sh es5`
 3. Accessor property handling
-		- [x] Guard `ACCESSOR_FLAG` constant in `NuXJS.h`
-					- `timeout 600 ./build.sh es3`
-					- `timeout 600 ./build.sh es5`
-                - [x] Guard `class Accessor` and related `Property` helpers in `NuXJS.h`
-                                        - `timeout 600 ./build.sh es3`
-                                        - `timeout 600 ./build.sh es5`
-- [x] Guard `Object::getProperty` / `setProperty` overloads and interpreter opcodes
-- `timeout 600 ./build.sh es3`
-- `timeout 600 ./build.sh es5`
-- [ ] Guard runtime classes (`JSObject`, `LazyJSObject`, `JSArray`, `Error`, `Arguments`)
-- [x] Guard `Arguments` owner linkage
-- `timeout 600 ./build.sh es3`
-- `timeout 600 ./build.sh es5`
+				- [x] Guard `ACCESSOR_FLAG` constant in `NuXJS.h`
+								- `timeout 600 ./build.sh es3`
+								- `timeout 600 ./build.sh es5`
+				- [x] Guard `class Accessor` and related `Property` helpers in `NuXJS.h`
+								- `timeout 600 ./build.sh es3`
+								- `timeout 600 ./build.sh es5`
+				- [x] Guard `Object::getProperty` / `setProperty` overloads and interpreter opcodes
+								- `timeout 600 ./build.sh es3`
+								- `timeout 600 ./build.sh es5`
+				- [ ] Guard `Object::setOwnProperty` string-key overload
+								- `timeout 600 ./build.sh es3`
+								- `timeout 600 ./build.sh es5`
+				- [ ] Guard runtime class helpers
+								- [ ] `JSObject::setOwnProperty` string-key overload
+								- [ ] `LazyJSObject::setOwnProperty` string-key overload
+								- [ ] `JSArray::setOwnProperty` string-key overload
+								- [ ] `Error::setOwnProperty` string-key overload
+								- [ ] `Arguments::setOwnProperty` string-key overload
+								- [x] `Arguments` owner linkage
+								- [ ] `FunctionScope` strict-mode argument handling
+								- Tests:
+												- `timeout 600 ./build.sh es3`
+												- `timeout 600 ./build.sh es5`
+4. Strict mode parser checks
+				- [ ] Guard `"use strict"` directive detection
+				- [ ] Guard strict-mode syntax errors:
+								- `Illegal use of eval or arguments`
+								- `Deleting identifier in strict code`
+								- `"with" is not allowed in strict code`
+								- `Duplicate parameter name not allowed in strict code`
+				- [ ] Guard `Processor::isCurrentStrict` and related eval call sites
+				- Tests:
+								- `timeout 600 ./build.sh es3`
+								- `timeout 600 ./build.sh es5`
 ## Build scripts
 - [ ] Verify `build.sh` and `build.cmd` pass `-DNUXJS_ES5` correctly
 - [ ] Run combined build to validate both variants: `timeout 600 ./build.sh`

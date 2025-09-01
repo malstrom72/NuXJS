@@ -1,5 +1,3 @@
-# Progress:
-# [x] Guarded Arguments owner linkage
 diff --git a/src/NuXJS.cpp b/src/NuXJS.cpp
 index 091635a..ee41b38 100644
 --- a/src/NuXJS.cpp
@@ -422,7 +420,7 @@ index 091635a..ee41b38 100644
 @@ -2596,7 +2778,7 @@ void Processor::innerRun() {
 			case NEW_ARRAY_OP: push(new(heap) JSArray(heap.managed())); break;
 			case NEW_REG_EXP_OP: invokeFunction(rt.createRegExpFunction, 1, 2); return;
-			case RETURN_OP: ip = currentFrame->returnIP; popFrame(); return;
+			case RETURN_OP:	ip = currentFrame->returnIP; popFrame(); return;
 -			case THIS_OP: push(thisObject); break;
 +case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break;
 			case VOID_OP: push(UNDEFINED_VALUE); break;
@@ -856,7 +854,7 @@ index 98904d6..a3750a0 100644
 +		friend class FunctionScope;
  
 		 Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
-		virtual const String* getClassName() const; // &A_RGUMENTS_STRING
+		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
