@@ -458,7 +458,11 @@ const Flags READ_ONLY_FLAG = 2;
 const Flags DONT_ENUM_FLAG = 4;
 const Flags DONT_DELETE_FLAG = 8;
 const Flags INDEX_TYPE_FLAG = 16;	///< internal index type, only used as an optimization for faster name -> local index lookup
-const Flags ACCESSOR_FLAG = 32;		  ///< property stores accessor pair
+#if (NUXJS_ES5)
+const Flags ACCESSOR_FLAG = 32;		///< property stores accessor pair
+#else
+const Flags ACCESSOR_FLAG = 0;
+#endif
 const Flags STANDARD_FLAGS = EXISTS_FLAG;	///< use with setOwnProperty()
 const Flags HIDDEN_CONST_FLAGS = READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG | EXISTS_FLAG;
 const Flags NONEXISTENT = 0;		///< use with getOwnProperty() to check for existence, e.g. getOwnProperty(o, k, v) != NONEXISTENT

@@ -2554,9 +2554,10 @@ void Processor::invokeFunction(Function* f, Int32 popCount, Int32 argc, Object* 
 void Processor::newOperation(const Int32 argc) {
 	Function* f = asFunction(sp[-argc]);
 	if (f != 0) { // FIX : sub
-		Value v(UNDEFINED_VALUE);
-		f->getProperty(rt, &PROTOTYPE_STRING, &v);
-		Object* prototype = v.asObject();
+	   Value v(UNDEFINED_VALUE);
+	   Function* target = f->getConstructTarget();
+	   target->getProperty(rt, &PROTOTYPE_STRING, &v);
+	   Object* prototype = v.asObject();
 		Int32 counter = 0;
 		for (Object* p = prototype; p != 0; p = p->getPrototype(rt)) {
 			if (++counter > MAX_PROTOTYPE_CHAIN_LENGTH) {

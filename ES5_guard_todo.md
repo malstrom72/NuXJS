@@ -3,10 +3,10 @@
 Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as they are completed.
 
 ## Baseline
-- [ ] Ensure the working tree is clean: `git status --short`
-- [ ] Run baseline tests for both variants:
-		- `timeout 600 ./build.sh es3`
-		- `timeout 600 ./build.sh es5`
+- [x] Ensure the working tree is clean: `git status --short`
+- [x] Run baseline tests for both variants:
+			- `timeout 600 ./build.sh es3`
+			- `timeout 600 ./build.sh es5`
 
 ## Header guards
 - [x] Wrap `compileEvalCode` strict parameter and add ES3 overload
@@ -29,16 +29,18 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 				- `timeout 600 ./build.sh es3`
 				- `timeout 600 ./build.sh es5`
 3. Accessor property handling
-		- [ ] Guard accessor infrastructure in `NuXJS.h` (`ACCESSOR_FLAG`, `class Accessor`, `Property` helpers`)
-				- `timeout 600 ./build.sh es3`
-				- `timeout 600 ./build.sh es5`
+		- [x] Guard `ACCESSOR_FLAG` constant in `NuXJS.h`
+					- `timeout 600 ./build.sh es3`
+					- `timeout 600 ./build.sh es5`
+		- [ ] Guard `class Accessor` and related `Property` helpers in `NuXJS.h`
+					- `timeout 600 ./build.sh es3`
+					- `timeout 600 ./build.sh es5`
 		- [ ] Guard `Object::getProperty` / `setProperty` overloads and interpreter opcodes
-				- `timeout 600 ./build.sh es3`
-				- `timeout 600 ./build.sh es5`
+					- `timeout 600 ./build.sh es3`
+					- `timeout 600 ./build.sh es5`
 		- [ ] Guard runtime classes (`JSObject`, `LazyJSObject`, `JSArray`, `Error`, `Arguments`)
-				- `timeout 600 ./build.sh es3`
-				- `timeout 600 ./build.sh es5`
-
+					- `timeout 600 ./build.sh es3`
+					- `timeout 600 ./build.sh es5`
 ## Build scripts
 - [ ] Verify `build.sh` and `build.cmd` pass `-DNUXJS_ES5` correctly
 - [ ] Run combined build to validate both variants: `timeout 600 ./build.sh`
