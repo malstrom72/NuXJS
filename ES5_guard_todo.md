@@ -71,6 +71,13 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 - Tests:
 - `timeout 600 ./build.sh es3`
 - `timeout 600 ./build.sh es5`
+6. Runtime strict-mode enforcement
+- [ ] Guard `Function::getConstructTarget` and its use in `Processor::newOperation`
+- [ ] Guard strict variable writes in `Processor::innerRun` (`WRITE_NAMED_OP` / `WRITE_NAMED_POP_OP`)
+- [ ] Guard strict-state handling in `Processor::enter` and `enterEvalCode`
+- Tests:
+- `timeout 600 ./build.sh es3`
+- `timeout 600 ./build.sh es5`
 ## Build scripts
 - [x] Verify `build.sh` and `build.cmd` pass `-DNUXJS_ES5` correctly
 - [x] Run combined build to validate both variants: `timeout 600 ./build.sh`
