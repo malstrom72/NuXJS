@@ -27,13 +27,8 @@
 // ---------------------------------------------------------------------------
 // ES version toggle
 //
-// NUXJS_ES5 controls ES5 features and semantics. Keep default at 0 so that
-// building without an explicit -DNUXJS_ES5=1 matches legacy ES3 behavior from
-// the main branch exactly.
+// Define `NUXJS_ES5` at build time to enable ES5 features; leave undefined for ES3.
 // ---------------------------------------------------------------------------
-#ifndef NUXJS_ES5
-#define NUXJS_ES5 0
-#endif
 
 #include "assert.h"
 #include <algorithm>
@@ -116,7 +111,7 @@ class GCItem {
 	private:
 		static void* operator new[](size_t, Heap* heap); // N/A
 		static void operator delete[](void*); // N/A
-};
+		};
 
 /**
 	GCList is a simple intrusive list used by the garbage collector. Lists are double linked and contain a dummy node to
@@ -1705,12 +1700,7 @@ class Processor : public GCItem {
 		};
 	
 		struct OpcodeInfo {
-			enum {
-				TERMINAL = 1,			/// instruction ends current basic block
-				POP_OPERAND = 2,	/// pop `operand` values after execution
-				POP_ON_BRANCH = 4,	/// branch path pops the top of stack
-				NO_POP_ON_BRANCH = 8	/// branch path keeps the top of stack
-			};
+			enum { TERMINAL = 1, POP_OPERAND = 2, POP_ON_BRANCH = 4, NO_POP_ON_BRANCH = 8 };
 			Opcode opcode;
 			const char* mnemonic;
 			Int32 stackUse;
