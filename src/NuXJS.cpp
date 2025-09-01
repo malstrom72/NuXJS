@@ -27,8 +27,8 @@
 #pragma GCC optimize ("no-finite-math-only")
 // older gcc might need this too:
 // #pragma GCC optimize ("float-store")
-#endif
-#endif
+	#endif
+	#endif
 
 	#ifdef _MSC_VER
 #pragma float_control(precise, on, push)  
@@ -180,7 +180,7 @@ const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_ST
 				, E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
 				, S_TRING_STRING("String");
 
-#if (NUXJS_ES5)
+	#if (NUXJS_ES5)
 const String GET_STRING("get"), SET_STRING("set");
 #endif
 
@@ -1534,7 +1534,7 @@ Object* JSObject::getPrototype(Runtime&) const { return prototype; }
 bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 #if (NUXJS_ES5)
 	return setOwnProperty(rt, key.toString(rt.getHeap()), v, flags);
-#else
+	#else
 	return update(insert(key.toString(rt.getHeap())), v, flags);
 #endif
 }
@@ -1679,9 +1679,11 @@ bool Function::hasInstance(Runtime& rt, Object* object) const {
 		return false;
 }
 
+#if (NUXJS_ES5)
 Function* Function::getConstructTarget() {
-	   return this;
+	return this;
 }
+#endif
 
 /* --- JSArray --- */
 
@@ -2029,7 +2031,7 @@ Arguments::~Arguments() {
 		owner->arguments = 0;
 	}
 }
-#else
+	#else
 Arguments::~Arguments() {
 	if (scope != 0) {
 		scope->arguments = 0;
@@ -2597,10 +2599,14 @@ void Processor::invokeFunction(Function* f, Int32 popCount, Int32 argc, Object* 
 void Processor::newOperation(const Int32 argc) {
 	Function* f = asFunction(sp[-argc]);
 	if (f != 0) { // FIX : sub
-	   Value v(UNDEFINED_VALUE);
-	   Function* target = f->getConstructTarget();
-	   target->getProperty(rt, &PROTOTYPE_STRING, &v);
-	   Object* prototype = v.asObject();
+		Value v(UNDEFINED_VALUE);
+#if (NUXJS_ES5)
+		Function* target = f->getConstructTarget();
+		target->getProperty(rt, &PROTOTYPE_STRING, &v);
+#else
+		f->getProperty(rt, &PROTOTYPE_STRING, &v);
+#endif
+		Object* prototype = v.asObject();
 		Int32 counter = 0;
 		for (Object* p = prototype; p != 0; p = p->getPrototype(rt)) {
 			if (++counter > MAX_PROTOTYPE_CHAIN_LENGTH) {
@@ -3384,13 +3390,13 @@ const String* Compiler::identifier(bool required, bool allowKeywords) {
 		if (!allowKeywords && findReservedKeyword(parsed.size(), parsed.begin()) >= 0) {
 				error(SYNTAX_ERROR, "Illegal use of keyword");
 		}
-               const String* name = newHashedString(heap, parsed.begin(), parsed.end());
-       #if (NUXJS_ES5)
-               if (!allowKeywords && code->isStrict() && name->isEqualTo(EVAL_STRING)) {
-                               error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
-               }
-       #endif
-               return name;
+			   const String* name = newHashedString(heap, parsed.begin(), parsed.end());
+	   #if (NUXJS_ES5)
+			   if (!allowKeywords && code->isStrict() && name->isEqualTo(EVAL_STRING)) {
+							   error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
+			   }
+	   #endif
+			   return name;
 }
 
 static UInt32 unescapedMaxLength(const Char* p, const Char* e) {
@@ -4779,36 +4785,36 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	p = b;
 	this->e = e;
 	acceptInOperator = true;
-       #if (NUXJS_ES5)
-       const Char* directiveStart = p;
-       white();
-       bool foundStrict = false;
-       while (p < e && (*p == '"' || *p == '\'')) {
-               Char q = *p++;
-               const Char* litStart = p;
-               while (p < e && *p != q) {
-                       ++p;
-               }
-               if (p >= e) {
-                       break;
-               }
-               if (!foundStrict && p - litStart == 10 && strncmp(litStart, "use strict", 10) == 0) {
-                       foundStrict = true;
-               }
-               ++p;
-               white();
-               if (p < e && *p == ';') {
-                       ++p;
-                       white();
-                       continue;
-               }
-               break;
-       }
-       if (foundStrict) {
-               code->setStrict(true);
-       }
-       p = directiveStart;
-       #endif
+	   #if (NUXJS_ES5)
+	   const Char* directiveStart = p;
+	   white();
+	   bool foundStrict = false;
+	   while (p < e && (*p == '"' || *p == '\'')) {
+			   Char q = *p++;
+			   const Char* litStart = p;
+			   while (p < e && *p != q) {
+					   ++p;
+			   }
+			   if (p >= e) {
+					   break;
+			   }
+			   if (!foundStrict && p - litStart == 10 && strncmp(litStart, "use strict", 10) == 0) {
+					   foundStrict = true;
+			   }
+			   ++p;
+			   white();
+			   if (p < e && *p == ';') {
+					   ++p;
+					   white();
+					   continue;
+			   }
+			   break;
+	   }
+	   if (foundStrict) {
+			   code->setStrict(true);
+	   }
+	   p = directiveStart;
+	   #endif
 	
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
 	if (compilingFor == FOR_EVAL) {
@@ -4843,11 +4849,11 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 	expectToken("(", true);
 	white();
 	Table& nameIndexes = code->nameIndexes;
-       Vector<const String*>& argumentNames = code->argumentNames;
-       #if (NUXJS_ES5)
-       bool hasDuplicateParameters = false;
-       #endif
-       while (!token(")", false)) {
+	   Vector<const String*>& argumentNames = code->argumentNames;
+	   #if (NUXJS_ES5)
+	   bool hasDuplicateParameters = false;
+	   #endif
+	   while (!token(")", false)) {
 		if (eof()) {
 			error(SYNTAX_ERROR, argumentNames.size() == 0 ? "Expected ')'" : "Expected ',' or ')'");
 		}
@@ -4863,27 +4869,27 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 				error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
 			}
 		#endif
-               #if (NUXJS_ES5)
-               for (size_t i = 0; i < argumentNames.size(); ++i) {
-                       if (argumentNames[i]->isEqualTo(*name)) {
-                               hasDuplicateParameters = true;
-                               break;
-                       }
-               }
-               #endif
-               nameIndexes.update(nameIndexes.insert(name), static_cast<Int32>(argumentNames.size()));
-               argumentNames.push(name);
-               code->bloomSet |= name->createBloomCode();
-               white();
-       }
+			   #if (NUXJS_ES5)
+			   for (size_t i = 0; i < argumentNames.size(); ++i) {
+					   if (argumentNames[i]->isEqualTo(*name)) {
+							   hasDuplicateParameters = true;
+							   break;
+					   }
+			   }
+			   #endif
+			   nameIndexes.update(nameIndexes.insert(name), static_cast<Int32>(argumentNames.size()));
+			   argumentNames.push(name);
+			   code->bloomSet |= name->createBloomCode();
+			   white();
+	   }
 	expectToken("{", true);
 	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
 	expectToken("}", false);
-       #if (NUXJS_ES5)
-       if (code->strict && hasDuplicateParameters) {
-               error(SYNTAX_ERROR, "Duplicate parameter name not allowed in strict code");
-       }
-       #endif
+	   #if (NUXJS_ES5)
+	   if (code->strict && hasDuplicateParameters) {
+			   error(SYNTAX_ERROR, "Duplicate parameter name not allowed in strict code");
+	   }
+	   #endif
 	code->name = functionName;
 	code->selfName = selfName;
 	code->source = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));

@@ -34,11 +34,11 @@ IF "%NUXJS_TEST_ES5_VARIANTS%"=="1" (
 		..\output\NuXJSTest_%target%_%model% -s >NUL 2>&1 || GOTO error
 		..\output\NuXJSTest_%target%_%model% || GOTO error
 		CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJS_%target%_%model%.exe .\NuXJSREPL.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
-		IF "%%E"=="1" (
-SET TEST_DIRS=..\tests\conforming ..\tests\erroneous ..\tests\es3only ..\tests\es5 ..\tests\extremes ..\tests\migrated ..\tests\regression ..\tests\stdlib ..\tests\unconforming ..\tests\unsorted
-		) ELSE (
-			SET TEST_DIRS=..\tests\conforming ..\tests\erroneous ..\tests\es3only ..\tests\extremes ..\tests\migrated ..\tests\regression ..\tests\stdlib ..\tests\unconforming ..\tests\unsorted
-		)
+				IF "%%E"=="1" (
+SET TEST_DIRS=..\tests\conforming ..\tests\erroneous ..\tests\es3only ..\tests\es5 ..\tests\extremes ..\tests\migrated ..\tests\regression ..\tests\stdlib ..\tests\unconforming ..\tests\unsorted ..\tests\from262
+				) ELSE (
+						SET TEST_DIRS=..\tests\conforming ..\tests\erroneous ..\tests\es3only ..\tests\extremes ..\tests\migrated ..\tests\regression ..\tests\stdlib ..\tests\unconforming ..\tests\unsorted
+				)
 		..\externals\PikaCmd\PikaCmd.exe .\test.pika -e -x ..\output\NuXJS_%target%_%model% %TEST_DIRS% || GOTO error
 		CALL runExamples.cmd %target% || GOTO error
 		ECHO Done NUXJS_ES5=%%E (%target% %model%)
@@ -58,9 +58,9 @@ CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJS_%target%_%model%.exe .\NuXJ
 REM Select test directories; exclude ES5 tests only when explicitly disabled with /DNUXJS_ES5=0
 ECHO %CPP_OPTIONS% | FINDSTR /C:"/DNUXJS_ES5=0" >NUL
 IF ERRORLEVEL 0 (
-	SET TEST_DIRS=..\tests\conforming\ ..\tests\erroneous\ ..\tests\es3only\ ..\tests\extremes\..\tests\migrated\ ..\tests\regression\ ..\tests\stdlib\ ..\tests\unconforming\ ..\tests\unsorted
+		SET TEST_DIRS=..\tests\conforming\ ..\tests\erroneous\ ..\tests\es3only\ ..\tests\extremes\..\tests\migrated\ ..\tests\regression\ ..\tests\stdlib\ ..\tests\unconforming\ ..\tests\unsorted
 ) ELSE (
-SET TEST_DIRS=..\tests\conforming\ ..\tests\erroneous\ ..\tests\es3only\ ..\tests\es5\ ..\tests\extremes\ ..\tests\migrated\ ..\tests\regression\ ..\tests\stdlib\ ..\tests\unconforming\ ..\tests\unsorted
+SET TEST_DIRS=..\tests\conforming\ ..\tests\erroneous\ ..\tests\es3only\ ..\tests\es5\ ..\tests\extremes\ ..\tests\migrated\ ..\tests\regression\ ..\tests\stdlib\ ..\tests\unconforming\ ..\tests\unsorted\ ..\tests\from262\
 )
 ..\externals\PikaCmd\PikaCmd.exe .\test.pika -e -x\ ..\output\NuXJS_%target%_%model% %TEST_DIRS% || GOTO error
 CALL runExamples.cmd %target% || GOTO error

@@ -42,7 +42,7 @@ if [ "${NUXJS_TEST_ES5_VARIANTS-0}" = "1" ]; then
 		bash ./BuildCpp.sh $target $model ../output/NuXJS_${target}_${model} ../tools/NuXJSREPL.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
 		# Select test directories; include ES5 tests only when ES5 is enabled.
 if [ "$es5" = "1" ]; then
-TEST_DIRS=(../tests/conforming ../tests/erroneous ../tests/es3only ../tests/es5 ../tests/extremes ../tests/migrated ../tests/regression ../tests/stdlib ../tests/unconforming ../tests/unsorted)
+TEST_DIRS=(../tests/conforming ../tests/erroneous ../tests/es3only ../tests/es5 ../tests/extremes ../tests/migrated ../tests/regression ../tests/stdlib ../tests/unconforming ../tests/unsorted ../tests/from262)
 else
 TEST_DIRS=(../tests/conforming ../tests/erroneous ../tests/es3only ../tests/extremes ../tests/migrated ../tests/regression ../tests/stdlib ../tests/unconforming ../tests/unsorted)
 fi
@@ -66,9 +66,9 @@ bash ./BuildCpp.sh $target $model ../output/NuXJS_${target}_${model} ../tools/Nu
 
 # Select test directories; exclude ES5 tests only when explicitly disabled with -DNUXJS_ES5=0.
 if echo " ${CPP_OPTIONS-} " | grep -q -- "-DNUXJS_ES5=0"; then
-	TEST_DIRS=(../tests/conforming/ ../tests/erroneous/ ../tests/es3only/ ../tests/extremes/ ../tests/migrated/ ../tests/regression/ ../tests/stdlib/ ../tests/unconforming/ ../tests/unsorted)
+		TEST_DIRS=(../tests/conforming/ ../tests/erroneous/ ../tests/es3only/ ../tests/extremes/ ../tests/migrated/ ../tests/regression/ ../tests/stdlib/ ../tests/unconforming/ ../tests/unsorted)
 else
-TEST_DIRS=(../tests/conforming/ ../tests/erroneous/ ../tests/es3only/ ../tests/es5/ ../tests/extremes/ ../tests/migrated/ ../tests/regression/ ../tests/stdlib/ ../tests/unconforming/ ../tests/unsorted)
+TEST_DIRS=(../tests/conforming/ ../tests/erroneous/ ../tests/es3only/ ../tests/es5/ ../tests/extremes/ ../tests/migrated/ ../tests/regression/ ../tests/stdlib/ ../tests/unconforming/ ../tests/unsorted/ ../tests/from262/)
 fi
 ../externals/PikaCmd/PikaCmd ./test.pika -e -x ../output/NuXJS_${target}_${model} "${TEST_DIRS[@]}"
 bash ./runExamples.sh "$target"

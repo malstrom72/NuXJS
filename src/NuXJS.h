@@ -920,7 +920,9 @@ class Function : public Object {
 		virtual const String* toString(Heap& heap) const;
 		virtual Value getInternalValue(Heap& heap) const;
 			   virtual Object* getPrototype(Runtime& rt) const;
-			   virtual Function* getConstructTarget();
+#if (NUXJS_ES5)
+		virtual Function* getConstructTarget();
+#endif
 			   virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
 			   virtual bool hasInstance(Runtime& rt, Object* object) const;
 		virtual const Code* getScriptCode() const { return 0; }

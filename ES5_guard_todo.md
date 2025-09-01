@@ -55,16 +55,16 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 - `timeout 600 ./build.sh es3`
 - `timeout 600 ./build.sh es5`
 4. Strict mode parser checks
-                                - [x] Guard `"use strict"` directive detection
-                                - [x] Guard strict-mode syntax errors:
-                                                                - `Illegal use of eval or arguments`
-                                                                - `Deleting identifier in strict code`
-                                                                - `"with" is not allowed in strict code`
-                                                                - `Duplicate parameter name not allowed in strict code`
-                                - [x] Guard `Processor::isCurrentStrict` and related eval call sites
-                                - Tests:
-                                                                - `timeout 600 ./build.sh es3`
-                                                                - `timeout 600 ./build.sh es5`
+								- [x] Guard `"use strict"` directive detection
+								- [x] Guard strict-mode syntax errors:
+																- `Illegal use of eval or arguments`
+																- `Deleting identifier in strict code`
+																- `"with" is not allowed in strict code`
+																- `Duplicate parameter name not allowed in strict code`
+								- [x] Guard `Processor::isCurrentStrict` and related eval call sites
+								- Tests:
+																- `timeout 600 ./build.sh es3`
+																- `timeout 600 ./build.sh es5`
 5. Bound function support
 - [x] Guard `BoundFunction` type and `bind` helper
 - [x] Guard registration of `support.bind` in the support function table
@@ -72,9 +72,9 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 - `timeout 600 ./build.sh es3`
 - `timeout 600 ./build.sh es5`
 6. Runtime strict-mode enforcement
-1. Guard `Function::getConstructTarget` and its use in `Processor::newOperation`
-- Wrap declaration and definition with `#if (NUXJS_ES5)`
-- Guard call site in `Processor::newOperation`
+1. Guard `Function::getConstructTarget` and its use in `Processor::newOperation` (DONE)
+- [x] Wrap declaration and definition with `#if (NUXJS_ES5)`
+- [x] Guard call site in `Processor::newOperation`
 - Tests:
 - `timeout 600 ./build.sh es3`
 - `timeout 600 ./build.sh es5`
