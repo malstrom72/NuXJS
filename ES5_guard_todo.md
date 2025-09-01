@@ -2,6 +2,8 @@
 
 Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as they are completed.
 
+> **Rule:** If any build or test fails, roll back to the last working commit and fix the issue before committing again.
+
 ## Baseline
 - [x] Ensure the working tree is clean: `git status --short`
 - [x] Run baseline tests for both variants:
@@ -60,6 +62,12 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
                                                                 - `"with" is not allowed in strict code`
                                                                 - `Duplicate parameter name not allowed in strict code`
                                 - [x] Guard `Processor::isCurrentStrict` and related eval call sites
+                                - Tests:
+                                                                - `timeout 600 ./build.sh es3`
+                                                                - `timeout 600 ./build.sh es5`
+5. Bound function support
+                                - [ ] Guard `BoundFunction` type and `bind` helper
+                                - [ ] Guard registration of `support.bind` in the support function table
                                 - Tests:
                                                                 - `timeout 600 ./build.sh es3`
                                                                 - `timeout 600 ./build.sh es5`
