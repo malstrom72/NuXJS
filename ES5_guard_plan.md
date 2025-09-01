@@ -32,9 +32,9 @@
 - Tackle one logical chunk at a time and build after each:
 		1. ✅ Guard object literal `get`/`set` syntax in `objectInitialiser()`.
 		2. ✅ Guard `Runtime::compileEvalCode` implementation and callers.
-		3. ☐ Add guards for accessor-aware property handling.
-				- [x] Guard Object::getProperty/setProperty and interpreter opcodes
-				- [ ] Guard remaining accessor classes and property helpers
+               3. ✅ Add guards for accessor-aware property handling.
+                               - [x] Guard Object::getProperty/setProperty and interpreter opcodes
+                               - [x] Guard remaining accessor classes and property helpers
 - After completing each substep, compile and run tests:
 		```
 		timeout 600 ./build.sh es3

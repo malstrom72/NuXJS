@@ -1281,7 +1281,9 @@ const String* Object::getClassName() const { return &O_BJECT_STRING; }
 Object* Object::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
 Value Object::getInternalValue(Heap&) const { return UNDEFINED_VALUE; }
 Flags Object::getOwnProperty(Runtime&, const Value&, Value*) const { return NONEXISTENT; }
+#if (NUXJS_ES5)
 bool Object::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) { return setOwnProperty(rt, Value(key), v, flags); }
+#endif
 bool Object::setOwnProperty(Runtime&, const Value&, const Value&, Flags) { return false; }
 bool Object::deleteOwnProperty(Runtime&, const Value&) { return false; }
 Enumerator* Object::getOwnPropertyEnumerator(Runtime&) const { return &EMPTY_ENUMERATOR; }
@@ -1533,24 +1535,24 @@ bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Fla
 	return setOwnProperty(rt, key.toString(rt.getHeap()), v, flags);
 }
 
-bool JSObject::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-		Table::Bucket* bucket = insert(key);
-		
 #if (NUXJS_ES5)
-		if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
-		Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
-		Accessor* nv = static_cast<Accessor*>(v.getObject());
-		if (nv->getter != 0) {
-		acc->getter = nv->getter;
-		}
-		if (nv->setter != 0) {
-		acc->setter = nv->setter;
-		}
-		return true;
-		}
-#endif
-		return update(bucket, v, flags);
+bool JSObject::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
+Table::Bucket* bucket = insert(key);
+
+if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
+Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
+Accessor* nv = static_cast<Accessor*>(v.getObject());
+if (nv->getter != 0) {
+acc->getter = nv->getter;
 }
+if (nv->setter != 0) {
+acc->setter = nv->setter;
+}
+return true;
+}
+return update(bucket, v, flags);
+}
+#endif
 
 
 bool JSObject::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
@@ -1770,9 +1772,11 @@ bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 	return super::setOwnProperty(rt, index, v, STANDARD_FLAGS);
 }
 
+#if (NUXJS_ES5)
 bool JSArray::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-	return setOwnProperty(rt, Value(key), v, flags);
+return setOwnProperty(rt, Value(key), v, flags);
 }
+#endif
 
 bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	UInt32 index;
@@ -1831,9 +1835,11 @@ template<class SUPER> bool LazyJSObject<SUPER>::setOwnProperty(Runtime& rt, cons
 	return getCompleteObject(rt)->setOwnProperty(rt, key, v, flags);
 }
 
+#if (NUXJS_ES5)
 template<class SUPER> bool LazyJSObject<SUPER>::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-	return getCompleteObject(rt)->setOwnProperty(rt, key, v, flags);
+return getCompleteObject(rt)->setOwnProperty(rt, key, v, flags);
 }
+#endif
 
 template<class SUPER> bool LazyJSObject<SUPER>::deleteOwnProperty(Runtime& rt, const Value& key) {
 	return getCompleteObject(rt)->deleteOwnProperty(rt, key);
@@ -1909,11 +1915,13 @@ void Error::updateReflection(Runtime& rt) {
 	message = (getProperty(rt, &MESSAGE_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
 }
 
+#if (NUXJS_ES5)
 bool Error::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-	const bool result = super::setOwnProperty(rt, key, v, flags);
-	updateReflection(rt);
-	return result;
+const bool result = super::setOwnProperty(rt, key, v, flags);
+updateReflection(rt);
+return result;
 }
+#endif
 
 bool Error::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	const bool result = super::setOwnProperty(rt, key, v, flags);
@@ -1936,8 +1944,12 @@ void Error::constructCompleteObject(Runtime& rt) const {
 /* --- Arguments --- */
 
 Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
-	, scope(scope), function(scope->function), argumentsCount(argumentsCount)
-	, deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()), owner(const_cast<FunctionScope*>(scope)) {
+, scope(scope), function(scope->function), argumentsCount(argumentsCount)
+, deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap())
+#if (NUXJS_ES5)
+, owner(const_cast<FunctionScope*>(scope))
+#endif
+{
 	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
 }
 
@@ -1971,9 +1983,11 @@ Flags Arguments::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 	return (p == 0 ? super::getOwnProperty(rt, key, v) : ((void)(*v = *p), (DONT_ENUM_FLAG | EXISTS_FLAG)));
 }
 
+#if (NUXJS_ES5)
 bool Arguments::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-	return setOwnProperty(rt, Value(key), v, flags);
+return setOwnProperty(rt, Value(key), v, flags);
 }
+#endif
 
 bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	Value* p = findProperty(key);
@@ -2001,9 +2015,11 @@ void Arguments::constructCompleteObject(Runtime& rt) const {
 }
 
 Arguments::~Arguments() {
-	if (owner != 0) {
-		owner->arguments = 0;
-	}
+#if (NUXJS_ES5)
+if (owner != 0) {
+owner->arguments = 0;
+}
+#endif
 }
 
 /* --- Scope --- */
@@ -2167,11 +2183,13 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
 }
 
 FunctionScope::~FunctionScope() {
-		if (arguments != 0) {
-				arguments->owner = 0;
-				arguments->detach();
-				arguments = 0;
-		}
+if (arguments != 0) {
+#if (NUXJS_ES5)
+arguments->owner = 0;
+#endif
+arguments->detach();
+arguments = 0;
+}
 }
 
 /* --- ScriptException --- */
