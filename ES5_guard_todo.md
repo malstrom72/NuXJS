@@ -109,3 +109,10 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 - [x] Run full test suite:
 		- `timeout 600 ./build.sh es3`
 		- `timeout 600 ./build.sh es5`
+## Diff blocks to verify
+- [ ] `GET_STRING`/`SET_STRING` constants (`ES51_vs_main_NuXJS.diff`: lines ~1-20)
+- [ ] String-key property helpers like `Object::setOwnProperty` and `Object::getProperty` (`ES51_vs_main_NuXJS.diff`: lines ~40-110)
+- [ ] Accessor-aware `Object::setProperty` and runtime class overrides (`ES51_vs_main_NuXJS.diff`: lines ~110-170)
+- [ ] Interpreter opcode additions `ADD_GETTER_OP` and `ADD_SETTER_OP` (`ES51_vs_main_NuXJS.diff`: lines ~300-330)
+- [ ] `Processor::enterEvalCode` overload and `isCurrentStrict` helper (`ES51_vs_main_NuXJS.diff`: lines ~330-380)
+- [ ] `BoundFunction` type, `support.bind` helper, and `Function::getConstructTarget` (`ES51_vs_main_NuXJS.diff`: lines ~740-840)
