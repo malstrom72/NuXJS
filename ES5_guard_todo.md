@@ -11,6 +11,7 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 - [x] Run baseline tests for both variants:
 			- `timeout 600 ./build.sh es3`
 			- `timeout 600 ./build.sh es5`
+			- Latest run: both variants passed on current commit
 
 ## Header guards
 - [x] Wrap `compileEvalCode` strict parameter and add ES3 overload
@@ -57,6 +58,7 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 - Tests:
 - `timeout 600 ./build.sh es3`
 - `timeout 600 ./build.sh es5`
+- Latest run: both variants passed on current commit
 4. Strict mode parser checks
 								- [x] Guard `"use strict"` directive detection
 								- [x] Guard strict-mode syntax errors:
