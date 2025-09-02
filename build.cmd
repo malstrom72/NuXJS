@@ -11,6 +11,7 @@ CALL tools\buildAndTest.cmd release %model% || GOTO error
 IF EXIST output\NuXJS_release_%model%.exe (
 	MOVE /Y output\NuXJS_release_%model%.exe output\NuXJS.exe >NUL
 )
+ECHO === ALL BUILDS AND TESTS COMPLETED SUCCESSFULLY ===
 POPD
 EXIT /b 0
 
