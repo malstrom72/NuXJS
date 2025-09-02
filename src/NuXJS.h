@@ -33,7 +33,7 @@
 // ---------------------------------------------------------------------------
 #ifndef NUXJS_ES5
 #define NUXJS_ES5 1
-#endif
+			#endif
 
 #include "assert.h"
 #include <algorithm>
@@ -92,7 +92,7 @@ class GCItem {
 	public:
 		static void* operator new(size_t n, Heap& heap);	///< Will store a secret pointer to Heap in allocated memory.
 		static void operator delete(void* ptr);				///< Will use the secret pointer to delete from correct Heap.
-		static void operator delete(void* ptr, Heap& heap);	///< C++ calls this (only) if constructor throws.
+		static void operator delete(void* ptr, Heap& heap); ///< C++ calls this (only) if constructor throws.
 	
 	protected:
 		GCItem() throw() : _gcList(0) { _gcPrev = _gcNext = this; }
@@ -157,7 +157,7 @@ class Heap {
 		GCList& roots() throw() { return rootList; }
 		void* allocate(size_t size);					///< Notice that allocated memory is *not* automatically released when Heap is destroyed (unless it is indirectly freed via the deletion of all managed GCItems).
 		void free(void* ptr);							///< Null pointer is not ok, and naturally you must not free an already freed pointer.
-		void drain(); 									///< Frees pooled blocks. Suggestion: call before each gc to only hold on to as much memory as we required since last gc.
+		void drain();									///< Frees pooled blocks. Suggestion: call before each gc to only hold on to as much memory as we required since last gc.
 		UInt32 count() const { return allocatedCount; }
 		size_t size() const { return allocatedSize; }
 		size_t pooled() const { return pooledSize; }
@@ -262,7 +262,7 @@ template<typename T, UInt32 INTERNAL_COUNT = DEFAULT_INTERNAL_COUNT> class Vecto
 
 		void insert(T* p, const T* b, const T* e) {
 			assert(begin() <= p && p <= end());
-			assert(!(b <= p && p < e));	// can't insert from itself
+			assert(!(b <= p && p < e)); // can't insert from itself
 			const UInt32 o = distance(begin(), p);
 			const UInt32 n = distance(b, e);
 			resize(count + n);
@@ -404,7 +404,7 @@ class Value {
 		bool toArrayIndex(UInt32& index) const;				///< returns false if value is outside valid array index range (0..2^32-1)
 		double toDouble() const;							///< Will *not* convert objects to numbers (as this would require running JS code).
 		Function* toFunction(Heap& heap) const;
-		const String* toString(Heap& heap) const; 			///< this toString() method does not run any script code, so it doesn't honor any user toString or valueOf implementations.
+		const String* toString(Heap& heap) const;			///< this toString() method does not run any script code, so it doesn't honor any user toString or valueOf implementations.
 		std::wstring toWideString(Heap& heap) const;
 		Object* toObjectOrNull(Heap& heap, bool requireExtensible) const;
 		Object* toObject(Heap& heap, bool requireExtensible) const;
@@ -458,7 +458,7 @@ const Flags READ_ONLY_FLAG = 2;
 const Flags DONT_ENUM_FLAG = 4;
 const Flags DONT_DELETE_FLAG = 8;
 const Flags INDEX_TYPE_FLAG = 16;	///< internal index type, only used as an optimization for faster name -> local index lookup
-const Flags ACCESSOR_FLAG = 32;       ///< property stores accessor pair
+const Flags ACCESSOR_FLAG = 32;		  ///< property stores accessor pair
 const Flags STANDARD_FLAGS = EXISTS_FLAG;	///< use with setOwnProperty()
 const Flags HIDDEN_CONST_FLAGS = READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG | EXISTS_FLAG;
 const Flags NONEXISTENT = 0;		///< use with getOwnProperty() to check for existence, e.g. getOwnProperty(o, k, v) != NONEXISTENT
@@ -470,14 +470,16 @@ class Accessor;
 	objects.
 **/
 class Table {
-	public:
+	   friend struct Support;
+	   public:
 		/**
 			The main reason why Bucket doesn't contain the Value class, but rather holds it's own Byte type and Variant
 			union, is memory. This solution makes it possible to squeeze in key flags and a truncated 16-bit hash
 			(for even quicker value lookup) in the same space as a Value.
 		**/
-		class Bucket {
-			friend class Table;
+			   class Bucket {
+					   friend class Table;
+					   friend struct Support;
 
 			public:
 				Bucket() : key(0) { };
@@ -546,23 +548,29 @@ class Object : public GCItem {
 		virtual Error* asError();								///< Default returns 0. (Errors return `this`.)
 		virtual const String* typeOfString() const;				///< Default returns "object". (Strings and functions override.)
 		virtual const String* getClassName() const;				///< Default returns &O_BJECT_STRING ("Object"). Override if you implement custom native objects. Must return the same string pointer everytime.
-		virtual const String* toString(Heap& heap) const; 		///< this toString() method does not run any script code, so it doesn't honor any user toString or valueOf implementations.
+		virtual const String* toString(Heap& heap) const;		///< this toString() method does not run any script code, so it doesn't honor any user toString or valueOf implementations.
 		virtual Value getInternalValue(Heap& heap) const;		///< Used by the standard library to retrieve internal value for wrappers (Number, String etc), source code for functions and parser function for RegExp. Default returns UNDEFINED_VALUE.
 		virtual Object* getPrototype(Runtime& rt) const;		///< Default returns the Object prototype.
 
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;								///< Don't touch v if you return NONEXISTENT. Default returns NONEXISTENT.
+		#if (NUXJS_ES5)
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
+		#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);								///< Update existing property. Return false if it doesn't exist or can't be updated (e.g. read-only property exists). Can be overriden for optimization. (Default implementation checks existence with hasOwnProperty() first.)
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);												///< Default returns false.
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;											///< Default returns an empty enumerator.
 
-		Flags getProperty(Runtime& rt, const Value& key, Value* v) const; 	///< Searches prototype chain.
+		Flags getProperty(Runtime& rt, const Value& key, Value* v) const;	///< Searches prototype chain.
+		#if (NUXJS_ES5)
 		Flags getProperty(Runtime& rt, Processor& processor, const Value& key, Value* v) const;
-		bool setProperty(Runtime& rt, const Value& key, const Value& v); 	///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
+		#endif
+		bool setProperty(Runtime& rt, const Value& key, const Value& v);	///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
+		#if (NUXJS_ES5)
 		bool setProperty(Runtime& rt, Processor& processor, const Value& key, const Value& v);
+		#endif
 		bool isOwnPropertyEnumerable(Runtime& rt, const Value& key) const;
-		bool hasOwnProperty(Runtime& rt, const Value& key) const; 			///< Checks via getOwnProperty().
+		bool hasOwnProperty(Runtime& rt, const Value& key) const;			///< Checks via getOwnProperty().
 		bool hasProperty(Runtime& rt, const Value& key) const;				///< Checks via getProperty().
 		Enumerator* getPropertyEnumerator(Runtime& rt) const;				///< Unlike getOwnPropertyEnumerator() this one also enumerates all prototype properties.
 
@@ -661,7 +669,7 @@ class String : public Object {
 		String(GCList& gcList, const std::string& s);
 		String(GCList& gcList, const std::wstring& s);									///< If wchar_t is 16-bit, this constructor assumes the wstring is already in UTF16 format and simply copies all characters. If it is 32-bit, it will be converted to UTF16 accordingly.
 		virtual const String* typeOfString() const;
-		virtual const String* getClassName() const;	// &S_TRING_STRING
+		virtual const String* getClassName() const; // &S_TRING_STRING
 		virtual const String* toString(Heap&) const { return this; }
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
@@ -723,7 +731,12 @@ class JSObject : public Object, public Table {
 		JSObject(GCList& gcList, Object* prototype);
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+		#if (NUXJS_ES5)
+		#if (NUXJS_ES5)
+
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+		#endif
+		#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
@@ -746,26 +759,29 @@ class JSObject : public Object, public Table {
 		user accesses properties or extends the object(but you still need an object reference). Example are Functions
 		which are most often not treated as objects by the user.
 	
-	2) 	Memory: until the user accesses or adds properties, LazyJSObjects can be super tiny (vtable pointer + pointer
+	2)	Memory: until the user accesses or adds properties, LazyJSObjects can be super tiny (vtable pointer + pointer
 		to complete object + whatever internal fields are needed).
 	
-	3) 	Doesn't require a Runtime or even a Heap to be constructed. Although they are required to be placed on the
+	3)	Doesn't require a Runtime or even a Heap to be constructed. Although they are required to be placed on the
 		heap since they contain a reference.
 	
 	This class is a template so this concept can be used with different super classes.
 **/
 template<class SUPER> class LazyJSObject : public SUPER {
+	friend struct Support;
 	public:
-		typedef SUPER super;
-		LazyJSObject(GCList& gcList) : super(gcList), completeObject(0) { }
-		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
-		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
-		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
-		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
-		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
+			typedef SUPER super;
+			LazyJSObject(GCList& gcList) : super(gcList), completeObject(0) { }
+			virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+			#if (NUXJS_ES5)
+			virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+			#endif
+			virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
+			virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
+			   virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 
-	protected:
-		virtual void constructCompleteObject(Runtime& rt) const = 0;
+	   protected:
+			   virtual void constructCompleteObject(Runtime& rt) const = 0;
 		JSObject* getCompleteObject(Runtime& rt) const;
 		mutable JSObject* completeObject;
 
@@ -786,18 +802,20 @@ class JSArray : public LazyJSObject<Object> {
 		JSArray(GCList& gcList);
 		JSArray(GCList& gcList, UInt32 initialLength);	// Will fill with UNDEFINED_VALUE. Just an optimization if you know the final array length beforehand.
 		JSArray(GCList& gcList, UInt32 initialLength, const Value* initialElements);
-		virtual const String* getClassName() const;	// &A_RRAY_STRING
+		virtual const String* getClassName() const; // &A_RRAY_STRING
 		virtual JSArray* asArray();
 		virtual Object* getPrototype(Runtime& rt) const;
 		// FIX : toString too?
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+		#if (NUXJS_ES5)
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+		#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 		void pushElements(Runtime& rt, Int32 count, const Value* elements);
-		UInt32 getLength() const { return length; }	// fix: make virtual and have for all objects?
+		UInt32 getLength() const { return length; } // fix: make virtual and have for all objects?
 		bool updateLength(UInt32 newLength);	// fix: make virtual and have for all objects?
 		Value getElement(Runtime& rt, UInt32 index) const;
 		bool setElement(Runtime& rt, UInt32 index, const Value& v);
@@ -891,11 +909,14 @@ class Function : public Object {
 	
 		virtual Function* asFunction();
 		virtual const String* typeOfString() const;
-		virtual const String* getClassName() const;	// &F_UNCTION_STRING
-		virtual const String* toString(Heap& heap) const;
-		virtual Value getInternalValue(Heap& heap) const;
-		virtual Object* getPrototype(Runtime& rt) const;
-		virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
+		virtual const String* getClassName() const; // &F_UNCTION_STRING
+			   virtual const String* toString(Heap& heap) const;
+			   virtual Value getInternalValue(Heap& heap) const;
+			   virtual Object* getPrototype(Runtime& rt) const;
+			   #if (NUXJS_ES5)
+			   virtual Function* getConstructTarget();
+			   #endif
+			   virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
 		virtual bool hasInstance(Runtime& rt, Object* object) const;
 		virtual const Code* getScriptCode() const { return 0; }
 		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject = 0) = 0;
@@ -1014,12 +1035,14 @@ class Error : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 		Error(GCList& heap, ErrorType type, const String* message = 0);
-		virtual const String* getClassName() const;	// &E_RROR_STRING
+		virtual const String* getClassName() const; // &E_RROR_STRING
 		virtual Error* asError();
 		virtual const String* toString(Heap& heap) const;
 		virtual Value getInternalValue(Heap& heap) const; // error type name
 		virtual Object* getPrototype(Runtime& rt) const;
+		#if (NUXJS_ES5)
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+		#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		ErrorType getErrorType() const;
@@ -1031,8 +1054,8 @@ class Error : public LazyJSObject<Object> {
 		void updateReflection(Runtime& rt);
 
 		const ErrorType errorType;
-		const String* name; 	// may get updated by script code
-		const String* message; 	// may get updated by script code
+		const String* name;		// may get updated by script code
+		const String* message;	// may get updated by script code
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, name);
 			gcMark(heap, message);
@@ -1046,12 +1069,14 @@ class Arguments : public LazyJSObject<Object> {
 		typedef LazyJSObject<Object> super;
 		friend class FunctionScope;
 
-        Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
-		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
+		Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
+		virtual const String* getClassName() const; // &A_RGUMENTS_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+		#if (NUXJS_ES5)
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+		#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
@@ -1060,8 +1085,8 @@ class Arguments : public LazyJSObject<Object> {
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
-        Value* findProperty(const Value& key) const;
-        const FunctionScope* scope;
+		Value* findProperty(const Value& key) const;
+		const FunctionScope* scope;
 		JSFunction* const function;
 		UInt32 const argumentsCount;
 		Vector<Byte> deletedArguments;
@@ -1094,7 +1119,7 @@ class FunctionScope : public Scope {
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		JSObject* getDynamicVars(Runtime& rt) const;
-	   	virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
+		virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
 
 	protected:
 		JSFunction* const function;
@@ -1169,11 +1194,15 @@ class Runtime : public GCItem {
 		Object* getErrorPrototype(ErrorType error) const;
 		Object* getGlobalObject() const { assert(globalObject != 0); return globalObject; }
 		Runtime::GlobalScope* getGlobalScope() { return &globalScope; }
-		JSObject* newJSObject() const; 							///< Convenience routine for `new(heap) JSObject(heap.managed(), rt.getObjectPrototype())`
+		JSObject* newJSObject() const;							///< Convenience routine for `new(heap) JSObject(heap.managed(), rt.getObjectPrototype())`
 		JSArray* newJSArray(UInt32 initialLength = 0) const;	///< Convenience routine for `new(heap) JSArray(heap.managed(), initialLength)`
 		const String* newStringConstant(const char* s);
 
-		Code* compileEvalCode(const String* expression, bool strict = false);
+#if (NUXJS_ES5)
+Code* compileEvalCode(const String* expression, bool strict = false);
+#else
+Code* compileEvalCode(const String* expression);
+#endif
 		Code* compileGlobalCode(const String& source, const String* filename = 0);
 
 		Var getGlobalsVar();							///< Convenience routine for `Var(rt, rt.getGlobalObject())`
@@ -1345,7 +1374,7 @@ class AccessorBase {
 template<> inline bool AccessorBase::to<bool>() const { return get().toBool(); }	// operator bool() is ambiguous and notoriously dangerous so we left it out. Use var.to<bool>() instead.
 template<> inline Int32 AccessorBase::to<Int32>() const { return get().toInt(); }	// Adding an operator int() would cause ambiguity with implicit casts, but to<Int32> is still a good idea.
 template<> inline UInt32 AccessorBase::to<UInt32>() const { return static_cast<UInt32>(get().toInt()); }	// Adding an operator unsigned int() would cause ambiguity with implicit casts, but to<UInt32> is still a good idea.
-template<> inline Value AccessorBase::to<Value>() const { return get(); } 			// to<Value> ends up ambigious without this.
+template<> inline Value AccessorBase::to<Value>() const { return get(); }			// to<Value> ends up ambigious without this.
 
 /**
 	Var is a garbage collected wrapper that exposes convenient C++ access to JavaScript values.
@@ -1598,10 +1627,12 @@ class Processor : public GCItem {
 			, GET_PROPERTY_OP								// stack: object, name -> value
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
 			, SET_PROPERTY_POP_OP							// stack: object, name, value ->
-			, ADD_PROPERTY_OP								// operand: const_index (name), stack: object, value -> object
-							, ADD_GETTER_OP						// operand: const_index(name), stack: object, function -> object
-							, ADD_SETTER_OP						// operand: const_index(name), stack: object, function -> object
-			, PUSH_ELEMENTS_OP								// operand: count, stack: object, count * elements ... -> object
+				, ADD_PROPERTY_OP							// operand: const_index(name), stack: object, value -> object
+			#if (NUXJS_ES5)
+						, ADD_GETTER_OP							 // operand: const_index(name), stack: object, function -> object
+						, ADD_SETTER_OP							 // operand: const_index(name), stack: object, function -> object
+			#endif
+				, PUSH_ELEMENTS_OP							// operand: count, stack: object, count * elements ... -> object
 			, OBJ_TO_PRIMITIVE_OP							// stack: value -> primitive_value (no preference)	// these three must be in this exact order
 			, OBJ_TO_NUMBER_OP								// stack: value -> primitive_value (number preferred)
 			, OBJ_TO_STRING_OP								// stack: value -> primitive_value (string preferred)
