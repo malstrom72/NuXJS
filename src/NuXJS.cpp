@@ -2099,18 +2099,20 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, 
 JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
 	if (dynamicVars == 0) {
 		Heap& heap = rt.getHeap();
-		dynamicVars = new(heap) JSObject(heap.managed(), 0);
-		if (arguments == 0) {
-			arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
-		#if (NUXJS_ES5)
-			if (function->code->strict) {
-				arguments->detach();
-			}
-		#endif
-		}
-		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING, arguments, DONT_DELETE_FLAG);
-	}
-	return dynamicVars;
+			   dynamicVars = new(heap) JSObject(heap.managed(), 0);
+#if (NUXJS_ES5)
+			   if (arguments == 0) {
+					   arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
+					   if (function->code->strict) {
+							   arguments->detach();
+					   }
+			   }
+#else
+			   arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
+#endif
+			   dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING, arguments, DONT_DELETE_FLAG);
+	   }
+	   return dynamicVars;
 }
 
 Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v) const {
