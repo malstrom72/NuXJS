@@ -104,6 +104,7 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 ## Build scripts
 - [x] Verify `build.sh` and `build.cmd` pass `-DNUXJS_ES5` correctly
 - [x] Ensure `NUXJS_ES5` defaults to `1` when unspecified
+- [x] In `tools/stdlibToCpp.pika`, gate `STDLIB_ES5_JS` with `#if (!defined(NUXJS_ES5) || NUXJS_ES5)` so generated `stdlibJS.cpp` works without including `NuXJS.h`
 
 ## Final validation
 - [x] Compare the ES3 build output with `main`
