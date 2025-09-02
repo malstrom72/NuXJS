@@ -53,7 +53,8 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 																- [x] `JSArray::setOwnProperty` string-key overload
 																- [x] `Error::setOwnProperty` string-key overload
 																- [x] `Arguments::setOwnProperty` string-key overload
-								- [x] `Arguments` owner linkage
+- [x] `Arguments` owner linkage
+- [ ] Guard conditional allocation in `FunctionScope::getDynamicVars`
 - [x] `FunctionScope` strict-mode argument handling
 - Tests:
 - `timeout 600 ./build.sh es3`

@@ -1634,7 +1634,7 @@ Code::Code(GCList& gcList, Constants* sharedConstants)
 #if (NUXJS_ES5)
 		, strict(false)
 #endif
-{
+	{
 	assert(constants != 0);
 }
 
@@ -1956,9 +1956,10 @@ void Error::constructCompleteObject(Runtime& rt) const {
 
 Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
 	, scope(scope), function(scope->function), argumentsCount(argumentsCount)
-	, deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap())
 #if (NUXJS_ES5)
-	, owner(const_cast<FunctionScope*>(scope))
+	, deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()), owner(const_cast<FunctionScope*>(scope))
+#else
+	, deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap())
 #endif
 {
 	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
