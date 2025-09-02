@@ -1,19 +1,19 @@
---- /tmp/nu_upstream.cpp	2025-09-02 11:35:55.393484687 +0000
-+++ /tmp/nu_local.cpp	2025-09-02 11:35:53.785498660 +0000
+--- /tmp/NuXJS.cpp.main	2025-09-02 11:48:44.316782692 +0000
++++ /tmp/NuXJS.cpp	2025-09-02 11:48:43.100780674 +0000
 @@ -1850,7 +1859,8 @@
  
  Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
-	   , scope(scope), function(scope->function), argumentsCount(argumentsCount)
+ 	   , scope(scope), function(scope->function), argumentsCount(argumentsCount)
 -	   , deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()) {
 +	, deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap())
 +{
-	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
+ 	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
  }
  
 @@ -2451,18 +2464,32 @@
-				}
-			}
-			break;
+ 				}
+ 			}
+ 			break;
 -			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
 -			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
 -
@@ -28,55 +28,55 @@
 +				pop(1);
 +			}
 +			break;
-			case GET_PROPERTY_OP: {
-				const Object* o = convertToObject(sp[-1], false);
-				if (o == 0) {
-					return;
-				}
+ 			case GET_PROPERTY_OP: {
+ 				const Object* o = convertToObject(sp[-1], false);
+ 				if (o == 0) {
+ 					return;
+ 				}
 -				if (o->getProperty(rt, sp[0], sp - 1) == NONEXISTENT) {
 +Flags f = o->getProperty(rt, sp[0], sp - 1);
 +if (f == NONEXISTENT) {
-					sp[-1] = UNDEFINED_VALUE;
+ 					sp[-1] = UNDEFINED_VALUE;
 +pop(1);
 +break;
-				}
-				pop(1);
+ 				}
+ 				pop(1);
 +if ((f & ACCESSOR_FLAG) != 0) {
 +return;
 +}
-				break;
-			}
-			
+ 				break;
+ 			}
+ 			
 @@ -2466,13 +2493,15 @@
-				break;
-			}
-			
+ 				break;
+ 			}
+ 			
 +			
-			case SET_PROPERTY_OP: {
-				Object* o = convertToObject(sp[-2], false);
-				if (o == 0) {
-					return;
-				}
+ 			case SET_PROPERTY_OP: {
+ 				Object* o = convertToObject(sp[-2], false);
+ 				if (o == 0) {
+ 					return;
+ 				}
 +Value v = sp[0];
-				o->setProperty(rt, sp[-1], sp[0]);
+ 				o->setProperty(rt, sp[-1], sp[0]);
 -				sp[-2] = sp[0];
 +sp[-2] = v;
-				pop(2);
-				break;
-			}
+ 				pop(2);
+ 				break;
+ 			}
 @@ -2596,7 +2627,7 @@
-			case NEW_ARRAY_OP: push(new(heap) JSArray(heap.managed())); break;
-			case NEW_REG_EXP_OP: invokeFunction(rt.createRegExpFunction, 1, 2); return;
-			case RETURN_OP: ip = currentFrame->returnIP; popFrame(); return;
+ 			case NEW_ARRAY_OP: push(new(heap) JSArray(heap.managed())); break;
+ 			case NEW_REG_EXP_OP: invokeFunction(rt.createRegExpFunction, 1, 2); return;
+ 			case RETURN_OP:	ip = currentFrame->returnIP; popFrame(); return;
 -			case THIS_OP: push(thisObject); break;
 +case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break;
-			case VOID_OP: push(UNDEFINED_VALUE); break;
-			
-			case GEN_FUNC_OP: {
+ 			case VOID_OP: push(UNDEFINED_VALUE); break;
+ 			
+ 			case GEN_FUNC_OP: {
 @@ -3123,7 +3154,8 @@
-	if (!allowKeywords && findReservedKeyword(parsed.size(), parsed.begin()) >= 0) {
-		error(SYNTAX_ERROR, "Illegal use of keyword");
-	}
+ 	if (!allowKeywords && findReservedKeyword(parsed.size(), parsed.begin()) >= 0) {
+ 		error(SYNTAX_ERROR, "Illegal use of keyword");
+ 	}
 -	return newHashedString(heap, parsed.begin(), parsed.end());
 +			   const String* name = newHashedString(heap, parsed.begin(), parsed.end());
 +			   return name;
@@ -84,34 +84,34 @@
  
  static UInt32 unescapedMaxLength(const Char* p, const Char* e) {
 @@ -3367,17 +3399,22 @@
-	
-	white();
-	while (!token("}", false)) {
+ 	
+ 	white();
+ 	while (!token("}", false)) {
 +		bool handled = false;
-		const Char* b = p;
-		Value key = stringOrNumberConstant();
-		if (p == b) {
+ 		const Char* b = p;
+ 		Value key = stringOrNumberConstant();
+ 		if (p == b) {
 -			key = identifier(false, true);
 -			if (key.equalsString(EMPTY_STRING)) {
 +			const String* id = identifier(false, true);
 +			if (id->isEqualTo(EMPTY_STRING)) {
-				error(SYNTAX_ERROR, "Expected property name");
-			}
+ 				error(SYNTAX_ERROR, "Expected property name");
+ 			}
 +			white();
 +				key = id;
-		}
+ 		}
 +		if (!handled) {
-		expectToken(":", true);
-		rvalueExpression(COMMA_PREC);
-		emitWithConstant(Processor::ADD_PROPERTY_OP, key);
+ 		expectToken(":", true);
+ 		rvalueExpression(COMMA_PREC);
+ 		emitWithConstant(Processor::ADD_PROPERTY_OP, key);
 +		}
-		if (token("}", true)) {
-			break;
-		}
+ 		if (token("}", true)) {
+ 			break;
+ 		}
 @@ -3459,8 +3496,13 @@
-				case ExpressionResult::PUSHED_PRIMITIVE: emit(Processor::POP_OP, 1); /* fall through */
-				case ExpressionResult::NONE:
-				case ExpressionResult::CONSTANT: xr = ExpressionResult(ExpressionResult::CONSTANT, true); break;
+ 				case ExpressionResult::PUSHED_PRIMITIVE: emit(Processor::POP_OP, 1); /* fall through */
+ 				case ExpressionResult::NONE:
+ 				case ExpressionResult::CONSTANT: xr = ExpressionResult(ExpressionResult::CONSTANT, true); break;
 -				case ExpressionResult::LOCAL: xr = ExpressionResult(ExpressionResult::CONSTANT, false); break;
 -				case ExpressionResult::NAMED: emitWithConstant(Processor::DELETE_NAMED_OP, xr.v); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
 +				case ExpressionResult::LOCAL:
@@ -121,13 +121,13 @@
 +					emitWithConstant(Processor::DELETE_NAMED_OP, xr.v);
 +					xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
 +					break;
-				case ExpressionResult::PROPERTY: emit(Processor::DELETE_OP); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
-				default: assert(0);
-			}
+ 				case ExpressionResult::PROPERTY: emit(Processor::DELETE_OP); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
+ 				default: assert(0);
+ 			}
 @@ -4734,11 +4777,10 @@
-		if (argc >= 2) {
-			Object* o = argv[0].asObject();
-			if (o != 0) {
+ 		if (argc >= 2) {
+ 			Object* o = argv[0].asObject();
+ 			if (o != 0) {
 -				success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE)
 -						, (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0)
 -						| (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0)
@@ -137,36 +137,87 @@
 +(argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0) |
 +(argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0) | EXISTS_FLAG;
 +success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
-			}
-		}
-		return success;
+ 			}
+ 		}
+ 		return success;
 @@ -4908,8 +4951,8 @@
-	FunctorAdapter<NativeFunction> func;
+ 	FunctorAdapter<NativeFunction> func;
  } SUPPORT_FUNCTIONS[] = {
-	{ "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
+ 	{ "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
 -	{ "defineProperty", Support::defineProperty }, { "compileFunction", Support::compileFunction },
 -	{ "distinctConstructor", Support::distinctConstructor }, { "callWithArgs", Support::callWithArgs },
 +	{ "defineProperty", Support::defineProperty },
 +	{ "compileFunction", Support::compileFunction }, { "distinctConstructor", Support::distinctConstructor }, { "callWithArgs", Support::callWithArgs },
-	{ "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
-	{ "isPropertyEnumerable", Support::isPropertyEnumerable }, { "atan2", Support::atan2 },
-	{ "pow", Support::pow }, { "parseFloat", Support::parseFloat }, { "charCodeAt", Support::charCodeAt },
+ 	{ "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
+ 	{ "isPropertyEnumerable", Support::isPropertyEnumerable }, { "atan2", Support::atan2 },
+ 	{ "pow", Support::pow }, { "parseFloat", Support::parseFloat }, { "charCodeAt", Support::charCodeAt },
 @@ -5058,6 +5101,7 @@
-	return runUntilReturn(processor);
+ 	return runUntilReturn(processor);
  }
  
 +// Guarded: ES5 adds strict-flag support and conditional caching
  Code* Runtime::compileEvalCode(const String* expression) {
-	const Table::Bucket* bucket = evalCodeCache.lookup(expression);
-	if (bucket != 0) {
-@@ -5138,8 +5184,8 @@
-	}
-	
-	const Var func = eval(*String::allocate(heap, STDLIB_JS));
--	Value argv[1] = { protectedSupportObject };
--	call(func, 1, argv);
-+	Value argv[2] = { protectedSupportObject, UNDEFINED_VALUE };
-+	call(func, 2, argv);
-	
-	fetchFunction(supportObject, "toPrimitive", toPrimitiveFunctions + 0);
-	fetchFunction(supportObject, "toPrimitiveNumber", toPrimitiveFunctions + 1);
+ 	const Table::Bucket* bucket = evalCodeCache.lookup(expression);
+ 	if (bucket != 0) {
+--- /tmp/NuXJS.h.main	2025-09-02 11:48:44.396782826 +0000
++++ /tmp/NuXJS.h	2025-09-02 11:48:43.180780807 +0000
+@@ -24,6 +24,13 @@
+ #ifndef NuXJS_h
+ #define NuXJS_h
+ 
++// ---------------------------------------------------------------------------
++// ES version toggle
++//
++// `NUXJS_ES5` selects ES5 features. It defaults to 1; define to 0 for ES3.
++// ---------------------------------------------------------------------------
++
++
+ #include "assert.h"
+ #include <algorithm>
+ #include <string>
+@@ -447,6 +454,7 @@
+ const Flags DONT_ENUM_FLAG = 4;
+ const Flags DONT_DELETE_FLAG = 8;
+ const Flags INDEX_TYPE_FLAG = 16;	///< internal index type, only used as an optimization for faster name -> local index lookup
++const Flags ACCESSOR_FLAG = 0;
+ const Flags STANDARD_FLAGS = EXISTS_FLAG;	///< use with setOwnProperty()
+ const Flags HIDDEN_CONST_FLAGS = READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG | EXISTS_FLAG;
+ const Flags NONEXISTENT = 0;		///< use with getOwnProperty() to check for existence, e.g. getOwnProperty(o, k, v) != NONEXISTENT
+@@ -833,6 +841,8 @@
+ 		const String* getName() const { return name; }
+ 		const String* getSource() const { return source; }
+ 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
++			   bool isStrict() const { return false; }
++			   void setStrict(bool) { }
+ 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
+ 
+ 	protected:
+@@ -1007,6 +1018,7 @@
+ class Arguments : public LazyJSObject<Object> {
+ 	public:
+ 		typedef LazyJSObject<Object> super;
++		friend class FunctionScope;
+ 
+         Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
+ 		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
+@@ -1339,13 +1351,18 @@
+ 	
+ 	public:
+ 		template<typename T> const Property& operator=(const T& v) const { object->setProperty(rt, key, Var(rt, v)); return *this; }
+-		template<typename T> const Property& operator+=(const T& r) const { object->setProperty(rt, key, get().add(rt.getHeap(), makeValue(r))); return *this; }
++	   template <typename T> const Property &operator+=(const T &r) const {
++			   object->setProperty(rt, key, get().add(rt.getHeap(), makeValue(r)));
++			   return *this;
++	   }
+ 
+ 	protected:
+ 		typedef AccessorBase super;
+ 		Property(Runtime& rt, Object* object, const Var& key) : super(rt), object(object), key(key) { }
+ 		virtual Value get() const { Value v(UNDEFINED_VALUE); object->getProperty(rt, key, &v); return v; }
+-		virtual Var call(int argc, const Value* argv) const { return rt.call(*this, argc, argv, object); }
++	   virtual Var call(int argc, const Value *argv) const {
++			   return rt.call(*this, argc, argv, object);
++	   }
+ 		Object* const object;
+ 		const Var key;
+ };

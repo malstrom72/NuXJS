@@ -5692,13 +5692,15 @@ void Runtime::setupStandardLibrary() {
 		prototypesObject->setOwnProperty(*this, PROTOTYPE_NAMES[i], prototypes[i]);
 	}
 	
-	const Var func = eval(*String::allocate(heap, STDLIB_JS));
-	Value argv[2] = { protectedSupportObject, UNDEFINED_VALUE };
-			#if (NUXJS_ES5)
-	const Var es5(*this, String::allocate(heap, STDLIB_ES5_JS));
-	argv[1] = es5;
+		const Var func = eval(*String::allocate(heap, STDLIB_JS));
+#if (NUXJS_ES5)
+		const Var es5(*this, String::allocate(heap, STDLIB_ES5_JS));
+		Value argv[2] = { protectedSupportObject, es5 };
+		call(func, 2, argv);
+#else
+		Value argv[1] = { protectedSupportObject };
+		call(func, 1, argv);
 #endif
-	call(func, 2, argv);
 	
 	fetchFunction(supportObject, "toPrimitive", toPrimitiveFunctions + 0);
 	fetchFunction(supportObject, "toPrimitiveNumber", toPrimitiveFunctions + 1);

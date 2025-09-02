@@ -131,4 +131,4 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 - [ ] `Arguments::Arguments` constructor layout
 - [ ] Simplify `WRITE_NAMED_OP`/`WRITE_NAMED_POP_OP` when strict checks are disabled
 - [ ] Guard flag assembly in `Support::defineProperty`
-- [ ] Restore original `Runtime::compileEvalCode` invocation without extra `UNDEFINED_VALUE`
+- [x] Restore original `Runtime::compileEvalCode` invocation without extra `UNDEFINED_VALUE`
