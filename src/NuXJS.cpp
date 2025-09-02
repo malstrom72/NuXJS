@@ -27,8 +27,8 @@
 #pragma GCC optimize ("no-finite-math-only")
 // older gcc might need this too:
 // #pragma GCC optimize ("float-store")
-#endif
-#endif
+			#endif
+			#endif
 
 #ifdef _MSC_VER
 #pragma float_control(precise, on, push)  
@@ -180,7 +180,9 @@ const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_ST
 				, E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
 				, S_TRING_STRING("String");
 
+			#if (NUXJS_ES5)
 const String GET_STRING("get"), SET_STRING("set");
+#endif
 
 static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
@@ -713,7 +715,7 @@ double Value::toDouble() const {
 	switch (type) {
 		default: assert(0);
 		case UNDEFINED_TYPE:
-		case OBJECT_TYPE: return NaN();  // Notice, you shouldn't normally call toDouble on an object as proper ToNumber requires conversion to a primitive type
+		case OBJECT_TYPE: return NaN();	 // Notice, you shouldn't normally call toDouble on an object as proper ToNumber requires conversion to a primitive type
 		case NULL_TYPE: return 0.0;
 		case BOOLEAN_TYPE: return var.boolean ? 1.0 : 0.0;
 		case NUMBER_TYPE: return var.number;
@@ -1032,8 +1034,8 @@ Enumerator* String::getOwnPropertyEnumerator(Runtime& rt) const {
 const String* String::fromInt(Heap& heap, Int32 i) {
 	Char buffer[32];
 	return (i >= -QUICK_CONSTANTS_INTEGERS_RANGE && i <= QUICK_CONSTANTS_INTEGERS_RANGE)
-		 	? &QUICK_CONSTANTS.integers[i + QUICK_CONSTANTS_INTEGERS_RANGE]
-		 	: new(heap) String(heap.managed(), intToString(buffer, i), buffer + 32);
+			? &QUICK_CONSTANTS.integers[i + QUICK_CONSTANTS_INTEGERS_RANGE]
+			: new(heap) String(heap.managed(), intToString(buffer, i), buffer + 32);
 }
 
 const String* String::fromDouble(Heap& heap, double d) {
@@ -1088,7 +1090,7 @@ std::wstring String::toWideString() const {
 		for (const Char* p = begin(); p != e; ++p) {
 			assert(*p < 0xDC00 || *p >= 0xE000);	// Surrogate code points inside UTF32 string are not legal!
 			if (*p >= 0xD800 && *p <= 0xDBFF) {
-				assert(p + 1 != e && p[1] >= 0xDC00 && p[1] < 0xE000);  // Next should be low surrogate.
+				assert(p + 1 != e && p[1] >= 0xDC00 && p[1] < 0xE000);	// Next should be low surrogate.
 				++p;
 				--n;
 			}
@@ -1467,7 +1469,7 @@ void Table::gcMarkReferences(Heap& heap) const {
 					default: break;
 				}
 				++rebuildLoadCount;
-				       }
+					   }
 			   }
 	}
 	assert(rebuildLoadCount <= loadCount);
@@ -1638,7 +1640,7 @@ Value Function::getInternalValue(Heap&) const { return &NATIVE_FUNCTION_STRING; 
 Object* Function::getPrototype(Runtime& rt) const { return rt.getPrototypeObject(Runtime::FUNCTION_PROTOTYPE); }
 
 Value Function::construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
-        return invoke(rt, processor, argc, argv, thisObject);
+		return invoke(rt, processor, argc, argv, thisObject);
 }
 
 bool Function::hasInstance(Runtime& rt, Object* object) const {
@@ -1660,7 +1662,7 @@ bool Function::hasInstance(Runtime& rt, Object* object) const {
 	return false;
 }
 
-#if (NUXJS_ES5)
+			#if (NUXJS_ES5)
 Function* Function::getConstructTarget() {
 	return this;
 }
@@ -2214,88 +2216,90 @@ const Int32 MAX_OPERAND_VALUE = (1 << 23) - 1;
 
 // This list must be in enum order
 const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
-	{ CONST_OP                   , "CONST"                   , +1     , 0 },
-	{ READ_LOCAL_OP              , "READ_LOCAL"              , +1     , 0 },
-	{ WRITE_LOCAL_OP             , "WRITE_LOCAL"             , 0      , 0 },
-	{ WRITE_LOCAL_POP_OP         , "WRITE_LOCAL_POP"         , -1     , 0 },
-	{ READ_NAMED_OP              , "READ_NAMED"              , 1      , 0 },
-	{ WRITE_NAMED_OP             , "WRITE_NAMED"             , 0      , 0 },
-	{ WRITE_NAMED_POP_OP         , "WRITE_NAMED_POP"         , -1     , 0 },
-	{ GET_PROPERTY_OP            , "GET_PROPERTY"            , -1     , 0 },
-	{ SET_PROPERTY_OP            , "SET_PROPERTY"            , -2     , 0 },
-	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -3     , 0 },
-	{ ADD_PROPERTY_OP            , "ADD_PROPERTY"            , -1     , 0 },
-	{ ADD_GETTER_OP            , "ADD_GETTER"             , -1     , 0 },
-	{ ADD_SETTER_OP            , "ADD_SETTER"             , -1     , 0 },
-	{ PUSH_ELEMENTS_OP           , "PUSH_ELEMENTS_OP"        , 0      , OpcodeInfo::POP_OPERAND },
-	{ OBJ_TO_PRIMITIVE_OP        , "OBJ_TO_PRIMITIVE"        , 0      , 0 },
-	{ OBJ_TO_NUMBER_OP           , "OBJ_TO_NUMBER"           , 0      , 0 },
-	{ OBJ_TO_STRING_OP           , "OBJ_TO_STRING"           , 0      , 0 },
-	{ PRE_EQ_OP                  , "PRE_EQ"                  , 0      , 0 },
-	{ INC_OP                     , "INC"                     , 0      , 0 },
-	{ DEC_OP                     , "DEC"                     , 0      , 0 },
-	{ ADD_OP                     , "ADD"                     , -1     , 0 },
-	{ SUB_OP                     , "SUB"                     , -1     , 0 },
-	{ MUL_OP                     , "MUL"                     , -1     , 0 },
-	{ DIV_OP                     , "DIV"                     , -1     , 0 },
-	{ MOD_OP                     , "MOD"                     , -1     , 0 },
-	{ OR_OP                      , "OR"                      , -1     , 0 },
-	{ XOR_OP                     , "XOR"                     , -1     , 0 },
-	{ AND_OP                     , "AND"                     , -1     , 0 },
-	{ SHL_OP                     , "SHL"                     , -1     , 0 },
-	{ SHR_OP                     , "SHR"                     , -1     , 0 },
-	{ USHR_OP                    , "USHR"                    , -1     , 0 },
-	{ PLUS_OP                    , "PLUS"                    , 0      , 0 },
-	{ MINUS_OP                   , "MINUS"                   , 0      , 0 },
-	{ INV_OP                     , "INV"                     , 0      , 0 },
-	{ NOT_OP                     , "NOT"                     , 0      , 0 },
-	{ X_EQ_OP                    , "X_EQ"                    , -1     , 0 },
-	{ X_NEQ_OP                   , "X_NEQ"                   , -1     , 0 },
-	{ EQ_OP                      , "EQ"                      , -1     , 0 },
-	{ NEQ_OP                     , "NEQ"                     , -1     , 0 },
-	{ LT_OP                      , "LT"                      , -1     , 0 },
-	{ LEQ_OP                     , "LEQ"                     , -1     , 0 },
-	{ GT_OP                      , "GT"                      , -1     , 0 },
-	{ GEQ_OP                     , "GEQ"                     , -1     , 0 },
-	{ JMP_OP                     , "JMP"                     , 0      , OpcodeInfo::TERMINAL },
-	{ JSR_OP                     , "JSR"                     , 0      , 0 },
-	{ JT_OP                      , "JT"                      , -1     , 0 },
-	{ JF_OP                      , "JF"                      , -1     , 0 },
-	{ JT_OR_POP_OP               , "JT_OR_POP"               , -1     , OpcodeInfo::NO_POP_ON_BRANCH },
-	{ JF_OR_POP_OP               , "JF_OR_POP"               , -1     , OpcodeInfo::NO_POP_ON_BRANCH },
-	{ POP_OP                     , "POP"                     , 0      , OpcodeInfo::POP_OPERAND },
-	{ PUSH_BACK_OP               , "PUSH_BACK"               , 0      , OpcodeInfo::POP_OPERAND },
-	{ REPUSH_OP                  , "REPUSH"                  , 1      , 0 },
-	{ SWAP_OP                    , "SWAP"                    , 0      , 0 },
-	{ REPUSH_2_OP                , "REPUSH_2"                , +2     , 0 },
-	{ POST_SHUFFLE_OP            , "POST_SHUFFLE"            , +1     , 0 },
-	{ CALL_OP                    , "CALL"                    , 0      , OpcodeInfo::POP_OPERAND },
-	{ CALL_METHOD_OP             , "CALL_METHOD"             , -1     , OpcodeInfo::POP_OPERAND },
-	{ CALL_EVAL_OP               , "CALL_EVAL"               , 0      , OpcodeInfo::POP_OPERAND },
-	{ NEW_OP                     , "NEW"                     , +1     , OpcodeInfo::POP_OPERAND },
-	{ NEW_RESULT_OP              , "NEW_RESULT"              , -1     , 0 },
-	{ NEW_OBJECT_OP              , "NEW_OBJECT"              , +1     , 0 },
-	{ NEW_ARRAY_OP               , "NEW_ARRAY"               , +1     , 0 },
-	{ NEW_REG_EXP_OP             , "NEW_REG_EXP"             , -1     , 0 },
-	{ RETURN_OP                  , "RETURN"                  , -1     , OpcodeInfo::TERMINAL },
-	{ THIS_OP                    , "THIS"                    , +1     , 0 },
-	{ VOID_OP                    , "VOID"                    , +1     , 0 },
-	{ DELETE_OP                  , "DELETE"                  , -1     , 0 },
-	{ DELETE_NAMED_OP            , "DELETE_NAMED"            , 1      , 0 },
-	{ GEN_FUNC_OP                , "GEN_FUNC"                , +1     , 0 },
-	{ DECLARE_OP                 , "DECLARE"                 , -1     , 0 },
-	{ CATCH_SCOPE_OP             , "CATCH_SCOPE"             , -1     , 0 },
-	{ WITH_SCOPE_OP              , "WITH_SCOPE"              , -1     , 0 },
-	{ POP_FRAME_OP               , "POP_FRAME"               , 0      , 0 },
-	{ TRY_OP                     , "TRY"                     , 0      , OpcodeInfo::NO_POP_ON_BRANCH },
-	{ TRIED_OP                   , "TRIED"                   , 0      , 0 },
-	{ THROW_OP                   , "THROW"                   , -1     , OpcodeInfo::TERMINAL },
-	{ IN_OP                      , "IN"                      , -1     , 0 },
-	{ INSTANCE_OF_OP             , "INSTANCE_OF"             , -1     , 0 },
-	{ TYPEOF_OP                  , "TYPEOF"                  , 0      , 0 },
-	{ TYPEOF_NAMED_OP            , "TYPEOF_NAMED"            , 1      , 0 },
-	{ GET_ENUMERATOR_OP          , "GET_ENUMERATOR"          , 0      , 0 },
-	{ NEXT_PROPERTY_OP           , "NEXT_PROPERTY"           , 0      , OpcodeInfo::POP_ON_BRANCH }
+	{ CONST_OP					 , "CONST"					 , +1	  , 0 },
+	{ READ_LOCAL_OP				 , "READ_LOCAL"				 , +1	  , 0 },
+	{ WRITE_LOCAL_OP			 , "WRITE_LOCAL"			 , 0	  , 0 },
+	{ WRITE_LOCAL_POP_OP		 , "WRITE_LOCAL_POP"		 , -1	  , 0 },
+	{ READ_NAMED_OP				 , "READ_NAMED"				 , 1	  , 0 },
+	{ WRITE_NAMED_OP			 , "WRITE_NAMED"			 , 0	  , 0 },
+	{ WRITE_NAMED_POP_OP		 , "WRITE_NAMED_POP"		 , -1	  , 0 },
+	{ GET_PROPERTY_OP			 , "GET_PROPERTY"			 , -1	  , 0 },
+	{ SET_PROPERTY_OP			 , "SET_PROPERTY"			 , -2	  , 0 },
+	{ SET_PROPERTY_POP_OP		 , "SET_PROPERTY_POP"		 , -3	  , 0 },
+	{ ADD_PROPERTY_OP					, "ADD_PROPERTY"					, -1	 , 0 },
+#if (NUXJS_ES5)
+	{ ADD_GETTER_OP					, "ADD_GETTER"				 , -1	 , 0 },
+	{ ADD_SETTER_OP					, "ADD_SETTER"				 , -1	 , 0 },
+#endif
+	{ PUSH_ELEMENTS_OP			, "PUSH_ELEMENTS_OP"		, 0		, OpcodeInfo::POP_OPERAND },
+	{ OBJ_TO_PRIMITIVE_OP		 , "OBJ_TO_PRIMITIVE"		 , 0	  , 0 },
+	{ OBJ_TO_NUMBER_OP			 , "OBJ_TO_NUMBER"			 , 0	  , 0 },
+	{ OBJ_TO_STRING_OP			 , "OBJ_TO_STRING"			 , 0	  , 0 },
+	{ PRE_EQ_OP					 , "PRE_EQ"					 , 0	  , 0 },
+	{ INC_OP					 , "INC"					 , 0	  , 0 },
+	{ DEC_OP					 , "DEC"					 , 0	  , 0 },
+	{ ADD_OP					 , "ADD"					 , -1	  , 0 },
+	{ SUB_OP					 , "SUB"					 , -1	  , 0 },
+	{ MUL_OP					 , "MUL"					 , -1	  , 0 },
+	{ DIV_OP					 , "DIV"					 , -1	  , 0 },
+	{ MOD_OP					 , "MOD"					 , -1	  , 0 },
+	{ OR_OP						 , "OR"						 , -1	  , 0 },
+	{ XOR_OP					 , "XOR"					 , -1	  , 0 },
+	{ AND_OP					 , "AND"					 , -1	  , 0 },
+	{ SHL_OP					 , "SHL"					 , -1	  , 0 },
+	{ SHR_OP					 , "SHR"					 , -1	  , 0 },
+	{ USHR_OP					 , "USHR"					 , -1	  , 0 },
+	{ PLUS_OP					 , "PLUS"					 , 0	  , 0 },
+	{ MINUS_OP					 , "MINUS"					 , 0	  , 0 },
+	{ INV_OP					 , "INV"					 , 0	  , 0 },
+	{ NOT_OP					 , "NOT"					 , 0	  , 0 },
+	{ X_EQ_OP					 , "X_EQ"					 , -1	  , 0 },
+	{ X_NEQ_OP					 , "X_NEQ"					 , -1	  , 0 },
+	{ EQ_OP						 , "EQ"						 , -1	  , 0 },
+	{ NEQ_OP					 , "NEQ"					 , -1	  , 0 },
+	{ LT_OP						 , "LT"						 , -1	  , 0 },
+	{ LEQ_OP					 , "LEQ"					 , -1	  , 0 },
+	{ GT_OP						 , "GT"						 , -1	  , 0 },
+	{ GEQ_OP					 , "GEQ"					 , -1	  , 0 },
+	{ JMP_OP					 , "JMP"					 , 0	  , OpcodeInfo::TERMINAL },
+	{ JSR_OP					 , "JSR"					 , 0	  , 0 },
+	{ JT_OP						 , "JT"						 , -1	  , 0 },
+	{ JF_OP						 , "JF"						 , -1	  , 0 },
+	{ JT_OR_POP_OP				 , "JT_OR_POP"				 , -1	  , OpcodeInfo::NO_POP_ON_BRANCH },
+	{ JF_OR_POP_OP				 , "JF_OR_POP"				 , -1	  , OpcodeInfo::NO_POP_ON_BRANCH },
+	{ POP_OP					 , "POP"					 , 0	  , OpcodeInfo::POP_OPERAND },
+	{ PUSH_BACK_OP				 , "PUSH_BACK"				 , 0	  , OpcodeInfo::POP_OPERAND },
+	{ REPUSH_OP					 , "REPUSH"					 , 1	  , 0 },
+	{ SWAP_OP					 , "SWAP"					 , 0	  , 0 },
+	{ REPUSH_2_OP				 , "REPUSH_2"				 , +2	  , 0 },
+	{ POST_SHUFFLE_OP			 , "POST_SHUFFLE"			 , +1	  , 0 },
+	{ CALL_OP					 , "CALL"					 , 0	  , OpcodeInfo::POP_OPERAND },
+	{ CALL_METHOD_OP			 , "CALL_METHOD"			 , -1	  , OpcodeInfo::POP_OPERAND },
+	{ CALL_EVAL_OP				 , "CALL_EVAL"				 , 0	  , OpcodeInfo::POP_OPERAND },
+	{ NEW_OP					 , "NEW"					 , +1	  , OpcodeInfo::POP_OPERAND },
+	{ NEW_RESULT_OP				 , "NEW_RESULT"				 , -1	  , 0 },
+	{ NEW_OBJECT_OP				 , "NEW_OBJECT"				 , +1	  , 0 },
+	{ NEW_ARRAY_OP				 , "NEW_ARRAY"				 , +1	  , 0 },
+	{ NEW_REG_EXP_OP			 , "NEW_REG_EXP"			 , -1	  , 0 },
+	{ RETURN_OP					 , "RETURN"					 , -1	  , OpcodeInfo::TERMINAL },
+	{ THIS_OP					 , "THIS"					 , +1	  , 0 },
+	{ VOID_OP					 , "VOID"					 , +1	  , 0 },
+	{ DELETE_OP					 , "DELETE"					 , -1	  , 0 },
+	{ DELETE_NAMED_OP			 , "DELETE_NAMED"			 , 1	  , 0 },
+	{ GEN_FUNC_OP				 , "GEN_FUNC"				 , +1	  , 0 },
+	{ DECLARE_OP				 , "DECLARE"				 , -1	  , 0 },
+	{ CATCH_SCOPE_OP			 , "CATCH_SCOPE"			 , -1	  , 0 },
+	{ WITH_SCOPE_OP				 , "WITH_SCOPE"				 , -1	  , 0 },
+	{ POP_FRAME_OP				 , "POP_FRAME"				 , 0	  , 0 },
+	{ TRY_OP					 , "TRY"					 , 0	  , OpcodeInfo::NO_POP_ON_BRANCH },
+	{ TRIED_OP					 , "TRIED"					 , 0	  , 0 },
+	{ THROW_OP					 , "THROW"					 , -1	  , OpcodeInfo::TERMINAL },
+	{ IN_OP						 , "IN"						 , -1	  , 0 },
+	{ INSTANCE_OF_OP			 , "INSTANCE_OF"			 , -1	  , 0 },
+	{ TYPEOF_OP					 , "TYPEOF"					 , 0	  , 0 },
+	{ TYPEOF_NAMED_OP			 , "TYPEOF_NAMED"			 , 1	  , 0 },
+	{ GET_ENUMERATOR_OP			 , "GET_ENUMERATOR"			 , 0	  , 0 },
+	{ NEXT_PROPERTY_OP			 , "NEXT_PROPERTY"			 , 0	  , OpcodeInfo::POP_ON_BRANCH }
 };
 
 const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
@@ -2366,7 +2370,7 @@ struct Processor::CatchScope : public Scope {
 
 	CatchScope(GCList& gcList, Scope* parentScope, const String* exceptionName, const Value& exceptionValue)
 			: super(gcList, parentScope), exceptionName(exceptionName), exceptionValue(exceptionValue) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const  {
+	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const	{
 		if (name->isEqualTo(*exceptionName)) {
 			*v = exceptionValue;
 			return DONT_DELETE_FLAG | EXISTS_FLAG;
@@ -2402,7 +2406,7 @@ struct Processor::CatchScope : public Scope {
 struct Processor::WithScope : public Scope {
 	typedef Scope super;
 	WithScope(GCList& gcList, Scope* parentScope, Object* withObject)
-	 		: super(gcList, parentScope), withObject(withObject) { }
+			: super(gcList, parentScope), withObject(withObject) { }
 	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
 		Flags flags = withObject->getProperty(rt, name, v);
 		return (flags != NONEXISTENT ? flags : parentScope->readVar(rt, name, v));
@@ -2554,7 +2558,7 @@ void Processor::invokeFunction(Function* f, Int32 popCount, Int32 argc, Object* 
 }
 
 void Processor::newOperation(const Int32 argc) {
-       Function* f = asFunction(sp[-argc]);
+	   Function* f = asFunction(sp[-argc]);
 if (f != 0) { // FIX : sub
 	Value v(UNDEFINED_VALUE);
 #if (NUXJS_ES5)
@@ -2563,12 +2567,12 @@ if (f != 0) { // FIX : sub
 	Function* target = f;
 #endif
 target->getProperty(rt, &PROTOTYPE_STRING, &v);
-               Object* prototype = v.asObject();
-               Int32 counter = 0;
-               for (Object* p = prototype; p != 0; p = p->getPrototype(rt)) {
-                       if (++counter > MAX_PROTOTYPE_CHAIN_LENGTH) {
-                               error(RANGE_ERROR, &PROTOTYPE_CHAIN_TOO_LONG);
-                               return;
+			   Object* prototype = v.asObject();
+			   Int32 counter = 0;
+			   for (Object* p = prototype; p != 0; p = p->getPrototype(rt)) {
+					   if (++counter > MAX_PROTOTYPE_CHAIN_LENGTH) {
+							   error(RANGE_ERROR, &PROTOTYPE_CHAIN_TOO_LONG);
+							   return;
 			}
 		}
 		Object* newObject = new(heap) JSObject(heap.managed(), prototype != 0 ? prototype : rt.getObjectPrototype());
@@ -2808,6 +2812,7 @@ case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break
 				pop(1);
 				break;
 			}
+		#if (NUXJS_ES5)
 			case ADD_GETTER_OP: {
 				Object* o = sp[-1].getObject();
 				Accessor* acc = new(heap) Accessor(heap.managed(), sp[0].asFunction(), 0);
@@ -2822,6 +2827,7 @@ case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break
 				pop(1);
 				break;
 			}
+		#endif
 
 			case PUSH_ELEMENTS_OP: {
 				Object* o = sp[-im].getObject();
@@ -2903,7 +2909,7 @@ case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break
 				Object* o = sp[0].getObject();
 				assert(dynamic_cast<Enumerator*>(o) != 0);
 				const String* name = reinterpret_cast<Enumerator*>(o)->nextPropertyName();
- 				if (name != 0) {
+				if (name != 0) {
 					sp[0] = name;
 				} else {
 					ip += im;
@@ -3088,12 +3094,12 @@ struct Compiler::SemanticScope {
 	}
 	
 	Type type;
-	const String label; 				// empty for automatic while, for, case labels
+	const String label;					// empty for automatic while, for, case labels
 	SemanticScope* const next;
 	Int32 stackDepthOnEntry;
-	Vector<BranchPoint> breaks; 		// source points for break jmp's
-	Vector<BranchPoint> continues; 		// source points for continue jmp's
-	Vector<BranchPoint> finallys; 		// source points for finally jsr's
+	Vector<BranchPoint> breaks;			// source points for break jmp's
+	Vector<BranchPoint> continues;		// source points for continue jmp's
+	Vector<BranchPoint> finallys;		// source points for finally jsr's
 };
 
 Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter)
@@ -3352,7 +3358,7 @@ static UInt32 unescapedMaxLength(const Char* p, const Char* e) {
 	return l;
 }
 
-static const Char ESCAPE_CHARS[] = { '\\', '\"', '\'', 'b',  'f',  'n',  'r',  't',  'v', '0' };
+static const Char ESCAPE_CHARS[] = { '\\', '\"', '\'', 'b',	 'f',  'n',	 'r',  't',	 'v', '0' };
 static const Char ESCAPE_CODES[] = { '\\', '\"', '\'', '\b', '\f', '\n', '\r', '\t', '\v', '\0' };
 const int ESCAPE_CODE_COUNT = sizeof (ESCAPE_CHARS) / sizeof (*ESCAPE_CHARS);
 
@@ -3588,23 +3594,26 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff 
 			if (id->isEqualTo(EMPTY_STRING)) {
 			error(SYNTAX_ERROR, "Expected property name");
 			}
-			white();
-				if ((id->isEqualTo(GET_STRING) || id->isEqualTo(SET_STRING)) && *p != ':') {
-				bool isGetter = id->isEqualTo(GET_STRING);
-				const Char* b2 = p;
-				Value accKey = stringOrNumberConstant();
-				if (p == b2) {
-				accKey = identifier(true, true);
-				}
 				white();
-				const String* funcName = accKey.toString(heap);
-				functionDefinition(funcName, funcName);
-				emitWithConstant(isGetter ? Processor::ADD_GETTER_OP : Processor::ADD_SETTER_OP, accKey);
-				handled = true;
-			} else {
-			key = id;
-			}
-			}
+			#if (NUXJS_ES5)
+				if ((id->isEqualTo(GET_STRING) || id->isEqualTo(SET_STRING)) && *p != ':') {
+						bool isGetter = id->isEqualTo(GET_STRING);
+						const Char* b2 = p;
+						Value accKey = stringOrNumberConstant();
+						if (p == b2) {
+								accKey = identifier(true, true);
+						}
+						white();
+						const String* funcName = accKey.toString(heap);
+						functionDefinition(funcName, funcName);
+						emitWithConstant(isGetter ? Processor::ADD_GETTER_OP : Processor::ADD_SETTER_OP, accKey);
+						handled = true;
+				} else
+			#endif
+				{
+						key = id;
+				}
+		}
 		if (!handled) {
 				expectToken(":", true);
 				rvalueExpression(COMMA_PREC);
@@ -4145,7 +4154,7 @@ void Compiler::completeBreaks(const SemanticScope* ofScope) {
 void Compiler::forInStatement(SemanticScope* emptyLabelScope, SemanticScope* scopeLabelsEnd
 		, const CodeSection& iterationSection, const ExpressionResult& iterationXR) {
 	ExpressionResult enumXR(rvalueExpression());
- 	emit(Processor::GET_ENUMERATOR_OP);
+	emit(Processor::GET_ENUMERATOR_OP);
 	enumXR = safeKeep();
 	expectToken(")", true);
 	for (SemanticScope* s = emptyLabelScope; s != scopeLabelsEnd; s = s->next) {	// we must change stack depth of all labels that point to this scope, otherwise we'll pop the enumerator on continue
@@ -4759,7 +4768,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	}
 	SemanticScope rootScope(heap, SemanticScope::ROOT_TYPE, 1, 0);
 	statementList(&rootScope);
- 	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
+	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
 	if (compilingFor != FOR_EVAL) {
 		// FIX : if RETURN_OP took a push back count we could just do void_op here, or even have another RETURN_VOID_OP
 		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
@@ -4975,11 +4984,11 @@ struct BoundFunction : public ExtensibleFunction {
 	virtual Value invoke(Runtime& rt, Processor& proc,
 			UInt32 argc, const Value* argv, Object* thisObj);
 
-        virtual Value construct(Runtime& rt, Processor& proc,
-                UInt32 argc, const Value* argv, Object* thisObj);
+		virtual Value construct(Runtime& rt, Processor& proc,
+				UInt32 argc, const Value* argv, Object* thisObj);
 
-        virtual bool hasInstance(Runtime& rt, Object* object) const;
-       virtual Function* getConstructTarget();
+		virtual bool hasInstance(Runtime& rt, Object* object) const;
+	   virtual Function* getConstructTarget();
 
 protected:
 	virtual void constructCompleteObject(Runtime& rt) const;
@@ -4987,9 +4996,9 @@ protected:
 
 private:
 	Function* const target;
-	Value          boundThis;
-	UInt32         boundArgc;
-	Value*         boundArgv;    /// GC-managed array of pre-bound args
+	Value		   boundThis;
+	UInt32		   boundArgc;
+	Value*		   boundArgv;	 /// GC-managed array of pre-bound args
 };
 
 BoundFunction::BoundFunction(GCList& gc,
@@ -5024,11 +5033,11 @@ Value BoundFunction::construct(Runtime& rt, Processor& proc,
 }
 
 bool BoundFunction::hasInstance(Runtime& rt, Object* object) const {
-        return target->hasInstance(rt, object);
+		return target->hasInstance(rt, object);
 }
 
 Function* BoundFunction::getConstructTarget() {
-       return target->getConstructTarget();
+	   return target->getConstructTarget();
 }
 
 void BoundFunction::constructCompleteObject(Runtime& rt) const {
@@ -5047,10 +5056,10 @@ void BoundFunction::constructCompleteObject(Runtime& rt) const {
 }
 
 void BoundFunction::gcMarkReferences(Heap& heap) const {
-       gcMark(heap, target);
-       gcMark(heap, boundThis);
-       gcMark(heap, boundArgv, boundArgv + boundArgc);
-       super::gcMarkReferences(heap);
+	   gcMark(heap, target);
+	   gcMark(heap, boundThis);
+	   gcMark(heap, boundArgv, boundArgv + boundArgc);
+	   super::gcMarkReferences(heap);
 }
 #endif
 
@@ -5131,20 +5140,20 @@ struct Support {
 	   static Value defineProperty(Runtime &rt, Processor &, UInt32 argc, const Value *argv, Object *) {
 			   bool success = false;
 			   if (argc >= 2) {
-				       Object *o = argv[0].asObject();
-				       if (o != 0) {
-				               Flags flags = (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0) |
-				                             (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0) |
-				                             (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0) | EXISTS_FLAG;
-				               if (argc >= 7) {
-				                       Heap &heap = rt.getHeap();
-				                       Accessor *acc = new (heap)
-				                           Accessor(heap.managed(), argv[6].asFunction(), (argc >= 8 ? argv[7].asFunction() : 0));
-				                       success = o->setOwnProperty(rt, argv[1], acc, flags | ACCESSOR_FLAG);
-				               } else {
-				                       success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
-				               }
-				       }
+					   Object *o = argv[0].asObject();
+					   if (o != 0) {
+							   Flags flags = (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0) |
+											 (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0) |
+											 (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0) | EXISTS_FLAG;
+							   if (argc >= 7) {
+									   Heap &heap = rt.getHeap();
+									   Accessor *acc = new (heap)
+										   Accessor(heap.managed(), argv[6].asFunction(), (argc >= 8 ? argv[7].asFunction() : 0));
+									   success = o->setOwnProperty(rt, argv[1], acc, flags | ACCESSOR_FLAG);
+							   } else {
+									   success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
+							   }
+					   }
 			   }
 			   return success;
 	   }
@@ -5165,8 +5174,8 @@ static Value bind(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Objec
 
 	   static Value compileFunction(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 			   if (argc >= 1) {
-				       Heap& heap = rt.getHeap();
-				       const String* source = argv[0].toString(heap);
+					   Heap& heap = rt.getHeap();
+					   const String* source = argv[0].toString(heap);
 			Code* code = new(heap) Code(heap.managed());
 			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
 			compiler.compileFunction(source->begin(), source->end()
@@ -5326,7 +5335,7 @@ static struct {
 	String name;
 	FunctorAdapter<NativeFunction> func;
 } SUPPORT_FUNCTIONS[] = {
-       { "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
+	   { "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
 { "defineProperty", Support::defineProperty },
 #if (NUXJS_ES5)
 { "bind", Support::bind },
@@ -5618,5 +5627,5 @@ void Runtime::resetTimeOut(Int32 timeOutSeconds) {
 #endif
 
 #ifdef _MSC_VER
-#pragma float_control(pop)  
+#pragma float_control(pop)	
 #endif
