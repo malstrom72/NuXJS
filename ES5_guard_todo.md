@@ -110,8 +110,15 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 ## Final validation
 - [x] Compare the ES3 build output with `main`
 - [x] Run full test suite:
-		- `timeout 600 ./build.sh es3`
-		- `timeout 600 ./build.sh es5`
+				- `timeout 600 ./build.sh es3`
+				- `timeout 600 ./build.sh es5`
+- [ ] Strip `#if (NUXJS_ES5)` sections and diff against upstream to confirm no unguarded changes:
+			   - `unifdef -DNUXJS_ES5=0 src/NuXJS.cpp > /tmp/NuXJS.cpp`
+			   - `git show upstream/main:src/NuXJS.cpp > /tmp/NuXJS.cpp.main`
+			   - `diff -u -w -B /tmp/NuXJS.cpp.main /tmp/NuXJS.cpp > ES3_vs_main_NuXJS.diff`
+			   - Repeat for `src/NuXJS.h`
+			   - If `ES3_vs_main_NuXJS.diff` is non-empty, add remaining differences to this plan
+			   - Current diff shows gaps around `Arguments::Arguments`, strict variable writes in `Processor::innerRun`, `Support::defineProperty` flags, and `Runtime::compileEvalCode`
 ## Diff blocks to verify
 - [x] `GET_STRING`/`SET_STRING` constants (`ES51_vs_main_NuXJS.diff`: lines ~1-20)
 - [x] String-key property helpers like `Object::setOwnProperty` and `Object::getProperty` (`ES51_vs_main_NuXJS.diff`: lines ~40-110)
@@ -119,3 +126,9 @@ Detailed plan to wrap ES5 differences with `#if (NUXJS_ES5)`. Check off tasks as
 - [x] Interpreter opcode additions `ADD_GETTER_OP` and `ADD_SETTER_OP` (`ES51_vs_main_NuXJS.diff`: lines ~300-330)
 - [x] `Processor::enterEvalCode` overload and `isCurrentStrict` helper (`ES51_vs_main_NuXJS.diff`: lines ~330-380)
 - [x] `BoundFunction` type, `support.bind` helper, and `Function::getConstructTarget` (`ES51_vs_main_NuXJS.diff`: lines ~740-840)
+
+## Remaining unguarded sections (from `ES3_vs_main_NuXJS.diff`)
+- [ ] `Arguments::Arguments` constructor layout
+- [ ] Simplify `WRITE_NAMED_OP`/`WRITE_NAMED_POP_OP` when strict checks are disabled
+- [ ] Guard flag assembly in `Support::defineProperty`
+- [ ] Restore original `Runtime::compileEvalCode` invocation without extra `UNDEFINED_VALUE`
