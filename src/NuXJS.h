@@ -27,8 +27,12 @@
 // ---------------------------------------------------------------------------
 // ES version toggle
 //
-// Define `NUXJS_ES5` at build time to enable ES5 features; leave undefined for ES3.
+// `NUXJS_ES5` selects ES5 features. It defaults to 1; define to 0 for ES3.
 // ---------------------------------------------------------------------------
+
+#ifndef NUXJS_ES5
+#define NUXJS_ES5 1
+#endif
 
 #include "assert.h"
 #include <algorithm>
