@@ -4,6 +4,7 @@
 
 ## Completed
 - Guarded `Runtime::compileEvalCode` so ES3 builds keep the single-argument signature.
+- Wrapped `BoundFunction` and `support.bind` so ES3 builds skip bound-function infrastructure.
 
 ## Remaining
 - Guard remaining diffs noted in `tools/diffs/whitespace_ignored_diff_from_main.patch` with `#if (NUXJS_ES5)`.
