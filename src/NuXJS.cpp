@@ -822,7 +822,7 @@ bool Value::compareStrictly(const Value& r) const {
 bool Value::isEqualTo(const Value& r) const {
 	if (type == r.type) {
 		return compareStrictly(r);
-	} else if (type < r.type) {	// Symmetrical operation, flip for simpler logic.
+	} else if (type < r.type) { // Symmetrical operation, flip for simpler logic.
 		return r.isEqualTo(*this);
 	} else {
 		switch (type) {
@@ -1281,7 +1281,9 @@ const String* Object::getClassName() const { return &O_BJECT_STRING; }
 Object* Object::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
 Value Object::getInternalValue(Heap&) const { return UNDEFINED_VALUE; }
 Flags Object::getOwnProperty(Runtime&, const Value&, Value*) const { return NONEXISTENT; }
+#if (NUXJS_ES5)
 bool Object::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) { return setOwnProperty(rt, Value(key), v, flags); }
+#endif
 bool Object::setOwnProperty(Runtime&, const Value&, const Value&, Flags) { return false; }
 bool Object::deleteOwnProperty(Runtime&, const Value&) { return false; }
 Enumerator* Object::getOwnPropertyEnumerator(Runtime&) const { return &EMPTY_ENUMERATOR; }
@@ -1321,6 +1323,7 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v) const {
 	return NONEXISTENT;
 }
 
+#if (NUXJS_ES5)
 Flags Object::getProperty(Runtime& rt, Processor& processor, const Value& key, Value* v) const {
 const Object* o = this;
 do {
@@ -1344,7 +1347,7 @@ o = o->getPrototype(rt);
 } while (o != 0);
 return NONEXISTENT;
 }
-
+#endif
 
 bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 	if (updateOwnProperty(rt, key, v)) {
@@ -1360,6 +1363,7 @@ bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 	return setOwnProperty(rt, key, v);
 }
 
+#if (NUXJS_ES5)
 bool Object::setProperty(Runtime& rt, Processor& processor, const Value& key, const Value& v) {
 Value current;
 Flags flags = getProperty(rt, key, &current);
@@ -1376,6 +1380,7 @@ return false;
 setProperty(rt, key, v);
 return false;
 }
+#endif
 
 Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
 	Heap& heap = rt.getHeap();
@@ -1526,24 +1531,30 @@ JSObject::JSObject(GCList& gcList, Object* prototype)
 Object* JSObject::getPrototype(Runtime&) const { return prototype; }
 
 bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
-	return setOwnProperty(rt, key.toString(rt.getHeap()), v, flags);
+#if (NUXJS_ES5)
+return setOwnProperty(rt, key.toString(rt.getHeap()), v, flags);
+#else
+return update(insert(key.toString(rt.getHeap())), v, flags);
+#endif
 }
 
+#if (NUXJS_ES5)
 bool JSObject::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-	Table::Bucket* bucket = insert(key);
-	if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
-	Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
-	Accessor* nv = static_cast<Accessor*>(v.getObject());
-	if (nv->getter != 0) {
-	acc->getter = nv->getter;
-	}
-	if (nv->setter != 0) {
-	acc->setter = nv->setter;
-	}
-	return true;
-	}
-	return update(bucket, v, flags);
+Table::Bucket* bucket = insert(key);
+if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
+Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
+Accessor* nv = static_cast<Accessor*>(v.getObject());
+if (nv->getter != 0) {
+acc->getter = nv->getter;
 }
+if (nv->setter != 0) {
+acc->setter = nv->setter;
+}
+return true;
+}
+return update(bucket, v, flags);
+}
+#endif
 
 
 bool JSObject::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
@@ -1766,9 +1777,11 @@ bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 	return super::setOwnProperty(rt, index, v, STANDARD_FLAGS);
 }
 
+#if (NUXJS_ES5)
 bool JSArray::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-	return setOwnProperty(rt, Value(key), v, flags);
+return setOwnProperty(rt, Value(key), v, flags);
 }
+#endif
 
 bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	UInt32 index;
@@ -1827,9 +1840,11 @@ template<class SUPER> bool LazyJSObject<SUPER>::setOwnProperty(Runtime& rt, cons
 	return getCompleteObject(rt)->setOwnProperty(rt, key, v, flags);
 }
 
+#if (NUXJS_ES5)
 template<class SUPER> bool LazyJSObject<SUPER>::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-	return getCompleteObject(rt)->setOwnProperty(rt, key, v, flags);
+return getCompleteObject(rt)->setOwnProperty(rt, key, v, flags);
 }
+#endif
 
 template<class SUPER> bool LazyJSObject<SUPER>::deleteOwnProperty(Runtime& rt, const Value& key) {
 	return getCompleteObject(rt)->deleteOwnProperty(rt, key);
@@ -1905,11 +1920,13 @@ void Error::updateReflection(Runtime& rt) {
 	message = (getProperty(rt, &MESSAGE_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
 }
 
+#if (NUXJS_ES5)
 bool Error::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-	const bool result = super::setOwnProperty(rt, key, v, flags);
-	updateReflection(rt);
-	return result;
+const bool result = super::setOwnProperty(rt, key, v, flags);
+updateReflection(rt);
+return result;
 }
+#endif
 
 bool Error::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	const bool result = super::setOwnProperty(rt, key, v, flags);
@@ -1967,9 +1984,11 @@ Flags Arguments::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 	return (p == 0 ? super::getOwnProperty(rt, key, v) : ((void)(*v = *p), (DONT_ENUM_FLAG | EXISTS_FLAG)));
 }
 
+#if (NUXJS_ES5)
 bool Arguments::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-	return setOwnProperty(rt, Value(key), v, flags);
+return setOwnProperty(rt, Value(key), v, flags);
 }
+#endif
 
 bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	Value* p = findProperty(key);
@@ -2640,6 +2659,7 @@ const Object* o = convertToObject(sp[-1], false);
 if (o == 0) {
 return;
 }
+#if (NUXJS_ES5)
 Flags f = o->getProperty(rt, *this, sp[0], sp - 1);
 if (f == NONEXISTENT) {
 sp[-1] = UNDEFINED_VALUE;
@@ -2650,6 +2670,13 @@ pop(1);
 if ((f & ACCESSOR_FLAG) != 0) {
 return;
 }
+#else
+Flags f = o->getProperty(rt, sp[0], sp - 1);
+if (f == NONEXISTENT) {
+sp[-1] = UNDEFINED_VALUE;
+}
+pop(1);
+#endif
 break;
 }
 
@@ -2660,12 +2687,18 @@ if (o == 0) {
 return;
 }
 Value v = sp[0];
+#if (NUXJS_ES5)
 bool acc = o->setProperty(rt, *this, sp[-1], sp[0]);
 sp[-2] = v;
 pop(2);
 if (acc) {
 return;
 }
+#else
+o->setProperty(rt, sp[-1], sp[0]);
+sp[-2] = v;
+pop(2);
+#endif
 break;
 }
 
@@ -2675,11 +2708,16 @@ Object* o = convertToObject(sp[-2], false);
 if (o == 0) {
 return;
 }
+#if (NUXJS_ES5)
 bool acc = o->setProperty(rt, *this, sp[-1], sp[0]);
 pop(3);
 if (acc) {
 return;
 }
+#else
+o->setProperty(rt, sp[-1], sp[0]);
+pop(3);
+#endif
 break;
 }
 
@@ -2792,7 +2830,7 @@ break;
 			case NEW_OBJECT_OP: push(new(heap) JSObject(heap.managed(), rt.getObjectPrototype())); break;
 			case NEW_ARRAY_OP: push(new(heap) JSArray(heap.managed())); break;
 			case NEW_REG_EXP_OP: invokeFunction(rt.createRegExpFunction, 1, 2); return;
-			case RETURN_OP:	ip = currentFrame->returnIP; popFrame(); return;
+			case RETURN_OP: ip = currentFrame->returnIP; popFrame(); return;
 case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break;
 			case VOID_OP: push(UNDEFINED_VALUE); break;
 			
@@ -3119,7 +3157,7 @@ const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e
 void Compiler::error(ErrorType type, const char* message) { ScriptException::throwError(heap, type, message); }
 
 void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
-	if (inDeadCode()) {	// unknown stack depth = dead code
+	if (inDeadCode()) { // unknown stack depth = dead code
 		return;
 	}
 	const Processor::OpcodeInfo& opcodeInfo = Processor::getOpcodeInfo(opcode);
@@ -3362,7 +3400,7 @@ static const Char ESCAPE_CHARS[] = { '\\', '\"', '\'', 'b',	 'f',  'n',	 'r',  '
 static const Char ESCAPE_CODES[] = { '\\', '\"', '\'', '\b', '\f', '\n', '\r', '\t', '\v', '\0' };
 const int ESCAPE_CODE_COUNT = sizeof (ESCAPE_CHARS) / sizeof (*ESCAPE_CHARS);
 
-Char* Compiler::unescape(Char* buffer, const Char* e) {	
+Char* Compiler::unescape(Char* buffer, const Char* e) { 
 	assert(!eof() && (*p == '"' || *p == '\''));
 	Char endChar = *p;
 	++p;
@@ -4550,7 +4588,7 @@ void Compiler::tryStatement(SemanticScope* currentScope) {
 	completeForwardBranch(finallyRethrowPoint);
 	if (token("finally", true)) {
 		SemanticScope finallyScope(heap, SemanticScope::FINALLY_TYPE, currentSection->stackDepth, currentScope);
-		if (compilingFor == FOR_EVAL) {	// Ecmascript dictates that finally block should never change completion value.
+		if (compilingFor == FOR_EVAL) { // Ecmascript dictates that finally block should never change completion value.
 			emit(Processor::VOID_OP);
 		}
 		block(&finallyScope);
@@ -4763,7 +4801,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
 	if (compilingFor == FOR_EVAL) {
-		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
+		emit(Processor::POP_OP, 1); // FIX : only if we reserve one element for return like we do now
 		emit(Processor::VOID_OP);
 	}
 	SemanticScope rootScope(heap, SemanticScope::ROOT_TYPE, 1, 0);
@@ -4771,7 +4809,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
 	if (compilingFor != FOR_EVAL) {
 		// FIX : if RETURN_OP took a push back count we could just do void_op here, or even have another RETURN_VOID_OP
-		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
+		emit(Processor::POP_OP, 1); // FIX : only if we reserve one element for return like we do now
 		emit(Processor::VOID_OP);
 	}
 	emit(Processor::RETURN_OP);

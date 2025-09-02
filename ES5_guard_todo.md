@@ -7,6 +7,8 @@
 - Wrapped `BoundFunction` and `support.bind` so ES3 builds skip bound-function infrastructure.
 - Guarded object literal getter/setter parsing and opcodes.
 
+- Guarded string-key property helpers and processor-based property access.
+
 ## Remaining
 - Guard remaining diffs noted in `tools/diffs/whitespace_ignored_diff_from_main.patch` with `#if (NUXJS_ES5)`.
 

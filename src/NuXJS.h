@@ -33,7 +33,7 @@
 // ---------------------------------------------------------------------------
 #ifndef NUXJS_ES5
 #define NUXJS_ES5 1
-#endif
+			#endif
 
 #include "assert.h"
 #include <algorithm>
@@ -92,7 +92,7 @@ class GCItem {
 	public:
 		static void* operator new(size_t n, Heap& heap);	///< Will store a secret pointer to Heap in allocated memory.
 		static void operator delete(void* ptr);				///< Will use the secret pointer to delete from correct Heap.
-		static void operator delete(void* ptr, Heap& heap);	///< C++ calls this (only) if constructor throws.
+		static void operator delete(void* ptr, Heap& heap); ///< C++ calls this (only) if constructor throws.
 	
 	protected:
 		GCItem() throw() : _gcList(0) { _gcPrev = _gcNext = this; }
@@ -262,7 +262,7 @@ template<typename T, UInt32 INTERNAL_COUNT = DEFAULT_INTERNAL_COUNT> class Vecto
 
 		void insert(T* p, const T* b, const T* e) {
 			assert(begin() <= p && p <= end());
-			assert(!(b <= p && p < e));	// can't insert from itself
+			assert(!(b <= p && p < e)); // can't insert from itself
 			const UInt32 o = distance(begin(), p);
 			const UInt32 n = distance(b, e);
 			resize(count + n);
@@ -553,16 +553,22 @@ class Object : public GCItem {
 		virtual Object* getPrototype(Runtime& rt) const;		///< Default returns the Object prototype.
 
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;								///< Don't touch v if you return NONEXISTENT. Default returns NONEXISTENT.
+		#if (NUXJS_ES5)
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
+		#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);								///< Update existing property. Return false if it doesn't exist or can't be updated (e.g. read-only property exists). Can be overriden for optimization. (Default implementation checks existence with hasOwnProperty() first.)
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);												///< Default returns false.
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;											///< Default returns an empty enumerator.
 
 		Flags getProperty(Runtime& rt, const Value& key, Value* v) const;	///< Searches prototype chain.
+		#if (NUXJS_ES5)
 		Flags getProperty(Runtime& rt, Processor& processor, const Value& key, Value* v) const;
+		#endif
 		bool setProperty(Runtime& rt, const Value& key, const Value& v);	///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
+		#if (NUXJS_ES5)
 		bool setProperty(Runtime& rt, Processor& processor, const Value& key, const Value& v);
+		#endif
 		bool isOwnPropertyEnumerable(Runtime& rt, const Value& key) const;
 		bool hasOwnProperty(Runtime& rt, const Value& key) const;			///< Checks via getOwnProperty().
 		bool hasProperty(Runtime& rt, const Value& key) const;				///< Checks via getProperty().
@@ -663,7 +669,7 @@ class String : public Object {
 		String(GCList& gcList, const std::string& s);
 		String(GCList& gcList, const std::wstring& s);									///< If wchar_t is 16-bit, this constructor assumes the wstring is already in UTF16 format and simply copies all characters. If it is 32-bit, it will be converted to UTF16 accordingly.
 		virtual const String* typeOfString() const;
-		virtual const String* getClassName() const;	// &S_TRING_STRING
+		virtual const String* getClassName() const; // &S_TRING_STRING
 		virtual const String* toString(Heap&) const { return this; }
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
@@ -725,7 +731,12 @@ class JSObject : public Object, public Table {
 		JSObject(GCList& gcList, Object* prototype);
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+		#if (NUXJS_ES5)
+		#if (NUXJS_ES5)
+
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+		#endif
+		#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
@@ -757,14 +768,16 @@ class JSObject : public Object, public Table {
 	This class is a template so this concept can be used with different super classes.
 **/
 template<class SUPER> class LazyJSObject : public SUPER {
-	   friend struct Support;
-	   public:
-			   typedef SUPER super;
-			   LazyJSObject(GCList& gcList) : super(gcList), completeObject(0) { }
-			   virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
-			   virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
-			   virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
-			   virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
+	friend struct Support;
+	public:
+			typedef SUPER super;
+			LazyJSObject(GCList& gcList) : super(gcList), completeObject(0) { }
+			virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+			#if (NUXJS_ES5)
+			virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+			#endif
+			virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
+			virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 			   virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 
 	   protected:
@@ -789,18 +802,20 @@ class JSArray : public LazyJSObject<Object> {
 		JSArray(GCList& gcList);
 		JSArray(GCList& gcList, UInt32 initialLength);	// Will fill with UNDEFINED_VALUE. Just an optimization if you know the final array length beforehand.
 		JSArray(GCList& gcList, UInt32 initialLength, const Value* initialElements);
-		virtual const String* getClassName() const;	// &A_RRAY_STRING
+		virtual const String* getClassName() const; // &A_RRAY_STRING
 		virtual JSArray* asArray();
 		virtual Object* getPrototype(Runtime& rt) const;
 		// FIX : toString too?
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+		#if (NUXJS_ES5)
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+		#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 		void pushElements(Runtime& rt, Int32 count, const Value* elements);
-		UInt32 getLength() const { return length; }	// fix: make virtual and have for all objects?
+		UInt32 getLength() const { return length; } // fix: make virtual and have for all objects?
 		bool updateLength(UInt32 newLength);	// fix: make virtual and have for all objects?
 		Value getElement(Runtime& rt, UInt32 index) const;
 		bool setElement(Runtime& rt, UInt32 index, const Value& v);
@@ -894,7 +909,7 @@ class Function : public Object {
 	
 		virtual Function* asFunction();
 		virtual const String* typeOfString() const;
-		virtual const String* getClassName() const;	// &F_UNCTION_STRING
+		virtual const String* getClassName() const; // &F_UNCTION_STRING
 			   virtual const String* toString(Heap& heap) const;
 			   virtual Value getInternalValue(Heap& heap) const;
 			   virtual Object* getPrototype(Runtime& rt) const;
@@ -1020,12 +1035,14 @@ class Error : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 		Error(GCList& heap, ErrorType type, const String* message = 0);
-		virtual const String* getClassName() const;	// &E_RROR_STRING
+		virtual const String* getClassName() const; // &E_RROR_STRING
 		virtual Error* asError();
 		virtual const String* toString(Heap& heap) const;
 		virtual Value getInternalValue(Heap& heap) const; // error type name
 		virtual Object* getPrototype(Runtime& rt) const;
+		#if (NUXJS_ES5)
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+		#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		ErrorType getErrorType() const;
@@ -1053,11 +1070,13 @@ class Arguments : public LazyJSObject<Object> {
 		friend class FunctionScope;
 
 		Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
-		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
+		virtual const String* getClassName() const; // &A_RGUMENTS_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
+		#if (NUXJS_ES5)
 		virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags = STANDARD_FLAGS);
+		#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
