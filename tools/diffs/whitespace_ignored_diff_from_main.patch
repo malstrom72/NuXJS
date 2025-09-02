@@ -1,202 +1,5 @@
-diff --git a/docs/ES5.1 Roadmap.md b/docs/ES5.1 Roadmap.md
-new file mode 100644
-index 000000000..4791d2522
---- /dev/null
-+++ b/docs/ES5.1 Roadmap.md	
-@@ -0,0 +1,109 @@
-+# ES5.1 Implementation Roadmap
-+
-+## Overview
-+NuXJS today is a portable C++03 engine that fully implements ECMAScript 3 with a few ES5 conveniences such as JSON support and indexed string access. Custom property getters and setters are not yet available and `Object.defineProperty` only handles data properties. Built‑in library objects are written directly in JavaScript and omit modern helpers like `Object.assign` or `Array.prototype.map`. The repository already contains a broad test suite, including `tests/from262` for conformance.
-+
-+All ES5.1 work should be driven by regression tests. Whenever a roadmap item lands, reference its verifying `.io` file in this document.
-+ES5‑specific regression tests live in `tests/es5`.
-+
-+## Roadmap to ES5.1
-+
-+### Object model & descriptors
-+	- Extend the internal property representation to track attributes (`[[Writable]]`, `[[Enumerable]]`, `[[Configurable]]`) and accessor pairs.
-+       - `src/NuXJS.h` defines `Object::Table::Bucket`; expand the union to hold either a `Value` or a `{ get, set }` pair and add an `ACCESSOR_FLAG` bit.
-+       - Update `Object::getProperty` and `Object::setProperty` in `src/NuXJS.cpp` so that accessor buckets surface the getter or setter function while respecting attribute bits during writes and deletes.
-+               - `GET_PROPERTY_OP` in `Processor` already delegates to `Object::getProperty`; when an `ACCESSOR_FLAG` bucket is found, the getter function replaces the original value and the processor invokes it via its standard `invokeFunction` path with the object as `this`, leaving the call result on the stack.
-+               - `SET_PROPERTY_OP` similarly uses `Object::setProperty`; when an accessor exists, the processor calls the setter through `invokeFunction` with the provided value and keeps the caller's value as the final result.
-+- Implement full `Object.defineProperty`, `Object.defineProperties`, `Object.getOwnPropertyDescriptor`, and `Object.create` in both the C++ core and `src/stdlib.js`.
-+- Replace the legacy `support.defineProperty(o, name, value, readOnly, dontEnum, dontDelete)` with a `PropertyDescriptor` structure that can carry `value`, `get`, `set`, and attribute flags.
-+- The runtime helper in `src/NuXJS.cpp` should validate descriptor combinations and install either a data or accessor property in the object's hash table.
-+- Expose enumeration helpers like `Object.keys` and `Object.getOwnPropertyNames`.
-+	- `Object.keys` implemented in `src/stdlib.js` (`tests/es5/objectKeys.io`).
-+	- `Object.getOwnPropertyNames` pending; requires a runtime iterator that can expose non-enumerable properties.
-+	- Add support for accessor syntax (`get`/`set` in object literals) and function prototype attributes.
-+- Extend the parser to recognize `get name(){}` and `set name(v){}` tokens and emit descriptor objects for property creation.
-+- Bootstrapping of built‑ins in `src/stdlib.js` can then define getters on prototypes, e.g. for `Function.prototype.name`.
-+
-+### Strict mode
-+- Detect strict directives and propagate mode.
-+    - Add a `bool strict` member to `Code` in `src/NuXJS.h`. *(Implemented; `tests/es5/strictThisBinding.io`)*
-+   - In `Compiler::compile` and `compileFunction` (`src/NuXJS.cpp`), scan the directive prologue by walking the leading string literals before any other token. A literal whose contents are exactly `use strict` (10 characters, case‑sensitive) toggles `code->strict`. *(Implemented; `tests/es5/strictThisBinding.io`)*
-+- Enforce identifier restrictions and parameter checks.
-+   - Update `Compiler::identifier` so `eval` and `arguments` trigger a syntax error when the current scope is strict. *(Implemented; `tests/es5/strictEvalArgsBinding.io`)*
-+   - During parameter list parsing, reject duplicate names in strict functions. *(Implemented; `tests/es5/strictDuplicateParam.io`)*
-+- Preserve `undefined` for unbound `this` values.
-+    - Modify `Processor::enter` to skip substituting the global object when `code->strict` is set. *(Implemented; `tests/es5/strictThisBinding.io`)*
-+- Reject `with` statements in strict code.
-+    - Have `Compiler::withStatement` test the active scope’s `strict` flag and emit a syntax error if encountered. *(Implemented; `tests/es5/strictWithStatement.io`)*
-+- Propagate strict mode through `eval` and isolate its environment. *(Implemented; `tests/es5/strictEvalScope.io`)*
-+    - Pass the caller’s strict flag to `CALL_EVAL_OP` and down to `Runtime::compileEvalCode` and `Processor::enterEvalCode`. *(Implemented; `tests/es5/strictEvalScope.io`)*
-+    - When strict, compile eval code with a fresh variable environment. *(Implemented; `tests/es5/strictEvalScope.io`)*
-+- Tighten `delete` semantics.
-+    - If `delete` targets a simple identifier in strict mode, emit a syntax error instead of `DELETE_NAMED_OP`. *(Implemented; `tests/es5/strictDeleteIdentifier.io`)*
-+- Disallow implicit global variable creation.
-+   - When strict code assigns to an undeclared identifier, raise a `ReferenceError` rather than defining a global property. *(Implemented; `tests/es5/strictImplicitGlobal.io`)*
-+- Implement strict arguments-object behavior. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
-+    - Introduce a non-mapped `ArgumentsObject` variant and construct it in `FunctionScope` when `code->strict`. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
-+    - Ensure `arguments` does not alias parameters. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
-+
-+### Arguments object & function semantics
-+- Implement ES5.1 arguments-object behavior (decoupled mapping, `Object.getOwnPropertyDescriptor` support).
-+	- Introduce an `ArgumentsObject` class that can either map indices to parameters or, in strict mode, hold a copy without parameter aliases.
-+	- `Object.getOwnPropertyDescriptor` on arguments must expose `length`, `callee`, and indexed properties with correct attributes.
-+- Provide `Function.prototype.bind` and ensure correct `.name`, `.length`, and `toString` outputs.
-+	- Implement `bind` in `src/stdlib.js`; the resulting bound functions require a C++ backing type to store the target, bound `this`, and partial arguments while exposing an adjusted `length` and `name`.
-+        - Revise function serialization so that `Function.prototype.toString` reconstructs source code for bound and native functions.
-+
-+### Spec compliance fixes
-+- Align ES5 semantics that differ from the current engine implementation.
-+	- Permit `for...in` on `null` or `undefined` to yield an empty iteration instead of throwing.  *(see `docs/notes/ECMAScript Compatibility Notes.md`)*
-+	- Make user-defined functions' `prototype` properties non-enumerable and adjust `name`/`length` attributes to match ES5.1.
-+	- Update `Object.prototype.toString` so `arguments` objects report `[object Arguments]` and enumerate indexed slots during `for...in`.
-+	- Add regression tests for each behaviour in `tests/es5`.
-+
-+### Array & string methods
-+- Add ES5.1 array iteration utilities: `forEach`, `map`, `filter`, `some`, `every`, `reduce`, `reduceRight`, `indexOf`, `lastIndexOf`.
-+- These are pure library additions to `src/stdlib.js`; each helper must follow the spec's callback invocation pattern and handle sparse arrays via `Object` property checks rather than simple loops.
-+- `Array.prototype.indexOf` and `Array.prototype.lastIndexOf` implemented (`tests/es5/arrayIndexOf.io`).
-+- `Array.prototype.forEach` implemented (`tests/es5/arrayForEach.io`).
-+- `Array.prototype.map` and `Array.prototype.filter` implemented (`tests/es5/arrayMapFilter.io`).
-+- `Array.prototype.some` and `Array.prototype.every` implemented (`tests/es5/arraySomeEvery.io`).
-+- `Array.prototype.reduce` and `Array.prototype.reduceRight` implemented (`tests/es5/arrayReduce.io`).
-+- Implement string utilities like `trim`, `trimLeft`, `trimRight`, and JSON-related `toJSON` helpers.
-+- Extend the string section in `src/stdlib.js` with whitespace tables identical to the spec and expose `String.prototype.trim*` methods.
-+ - `String.prototype.trim` implemented (`tests/es5/stringTrim.io`).
-+ - `String.prototype.trimLeft` and `trimRight` implemented (`tests/es5/stringTrimLeftRight.io`).
-+- Add `Date.prototype.toJSON` and `Number.prototype.toJSON` wrappers that call the internal `toISOString`/conversion paths.
-+
-+### Object immutability controls
-+- Support `Object.preventExtensions`, `Object.seal`, `Object.freeze`, and related predicates (`isExtensible`, `isSealed`, `isFrozen`).
-+	- Add an `extensible` flag to the base `Object` class and teach `setProperty`/`setOwnProperty` to honor it, returning false when extensions are blocked.
-+	- Implement helpers in `src/stdlib.js` that iterate over `Object.getOwnPropertyNames` descriptors and toggle `[[Configurable]]`/`[[Writable]]` bits as required by `seal` and `freeze`.
-+
-+### Date and Number extras
-+- Finish remaining ES5.1 Date features such as `toISOString`, `toJSON`, and `now`.
-+ - `Date.now` implemented using `support.getCurrentTime` (`tests/es5/dateNow.io`).
-+- Add a spec‑compliant `toISOString` implementation in JavaScript.
-+- Add Number and Math helpers (`isNaN`, `isFinite` refinements, `parseInt`/`parseFloat` alignment).
-+	- Refine `support.isNaN`/`isFinite` semantics and expose `Number.isNaN` and `Number.isFinite` shims.
-+	- Ensure `parseInt` and `parseFloat` follow ES5.1 whitespace trimming rules and radix handling; update the `Math` object with any missing constants.
-+
-+### Parser/VM robustness
-+- Update grammar to allow reserved words as property keys and recognize accessor definitions.
-+	- Expand the lexical grammar in `src/Parser.cpp` to treat keywords as identifiers in object literals and hook into the new accessor creation path.
-+- Revisit bytecode generation for new features and enforce ES5.1 evaluation order.
-+	- The compiler in `src/NuXJS.cpp` must emit bytecode for accessors, strict arguments, and `bind` calls while guaranteeing left‑to‑right evaluation as mandated by ES5.1.
-+
-+### Testing & conformance
-+- Expand the existing `tests/from262` set with ES5.1 cases from Test262.
-+- Import the ES5.1 section of Test262 and hook them into the `tests/from262` runner so failures can be tracked.
-+- Introduce regression tests for each new feature and run the full suite (`timeout 180 ./build.sh`) during development.
-+ - Add coverage in `tests/es5` for accessor edge cases, strict‑mode violations, and bound function behavior before shipping any change.
-+
-+### Documentation & tooling
-+- Revise compatibility notes and TypeScript guidance to reflect ES5.1 support.
-+- Expand `docs/notes/ECMAScript Compatibility Notes.md` once features land and document any intentional deviations.
-+- Update examples and `lib.NuXJS.d.ts` to expose new APIs and maintain TypeScript type safety.
-+- Regenerate declaration files so that editors pick up getters/setters and newly added methods.
-+- Refresh `docs/NuXJS Documentation.md` once features land.
-+- The "Partial ES5 features" table currently lists the arguments object as ES3-mapped and `Object.defineProperty` as data-only; rewrite these notes after the new behavior ships.
-diff --git a/docs/getter-setter-attempt.md b/docs/getter-setter-attempt.md
-new file mode 100644
-index 000000000..bb57cce59
---- /dev/null
-+++ b/docs/getter-setter-attempt.md
-@@ -0,0 +1,13 @@
-+# Getter/Setter Work
-+
-+Initial infrastructure for ES5.1 accessor properties is in place. A new `Accessor` object stores getter and setter pairs in property buckets flagged with `ACCESSOR_FLAG`.
-+
-+`Object.defineProperty` now accepts descriptor objects containing `get` or `set` and forwards the functions to the runtime without invoking the blocking `Runtime::call` path.
-+
-+However, accessor properties remain non-functional: the example in `examples/getter_setter_example.cpp` still prints `obj.value = undefined` and leaves `obj._v` unchanged. Further work is needed to wire descriptor plumbing to property lookup and write paths.
-+
-+Current limitations:
-+- Descriptor validation is minimal and object literal `get`/`set` syntax is still unparsed.
-+- Redefinition semantics and strict mode error handling remain incomplete.
-+- Runtime `support.defineProperty` receives `undefined` for the `get` and `set` slots, indicating argument propagation from the
-+  JavaScript wrapper is still broken.
-diff --git a/examples/getter_setter_example.cpp b/examples/getter_setter_example.cpp
-new file mode 100644
-index 000000000..e3a29b9f3
---- /dev/null
-+++ b/examples/getter_setter_example.cpp
-@@ -0,0 +1,57 @@
-+/**
-+	NuXJS is released under the BSD 2-Clause License.
-+
-+	Copyright (c) 2018-2025, Magnus Lidström
-+
-+	Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
-+	following conditions are met:
-+
-+	1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following
-+	disclaimer.
-+
-+	2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
-+	disclaimer in the documentation and/or other materials provided with the distribution.
-+
-+	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
-+	INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-+	DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-+	SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-+	SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-+	WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-+	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+**/
-+
-+#include <iostream>
-+#include "../src/NuXJS.h"
-+
-+using namespace NuXJS;
-+
-+int main() {
-+	Heap heap;
-+	Runtime rt(heap);
-+	rt.setupStandardLibrary();
-+
-+	Var globals = rt.getGlobalsVar();
-+rt.run(
-+"var obj = {\n" \
-+"\t_v: 1,\n" \
-+"\tget value() { return this._v; },\n" \
-+"\tset value(v) { this._v = v; },\n" \
-+"\tget double() { return this._v * 2; },\n" \
-+"\tset double(v) { this._v = v / 2; }\n" \
-+"};\n" \
-+"var start = obj.value;\n" \
-+"var startDouble = obj.double;\n" \
-+"obj.double = 50;\n" \
-+"var afterSetDouble = obj.value;\n" \
-+"obj.value = 15;\n" \
-+"var finalDouble = obj.double;"
-+);
-+	Var obj = globals["obj"];
-+	std::wcout << L"start = " << globals["start"].to<int>() << std::endl;
-+	std::wcout << L"startDouble = " << globals["startDouble"].to<int>() << std::endl;
-+	std::wcout << L"afterSetDouble = " << globals["afterSetDouble"].to<int>() << std::endl;
-+	std::wcout << L"finalDouble = " << globals["finalDouble"].to<int>() << std::endl;
-+	std::wcout << L"obj._v = " << obj["_v"].to<int>() << std::endl;
-+	return 0;
-+}
 diff --git a/src/NuXJS.cpp b/src/NuXJS.cpp
-index 091635a04..5ba35b11d 100644
+index 091635a..c0bb234 100644
 --- a/src/NuXJS.cpp
 +++ b/src/NuXJS.cpp
 @@ -180,6 +180,8 @@ const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_ST
@@ -278,8 +81,8 @@ index 091635a04..5ba35b11d 100644
  bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 -	return update(insert(key.toString(rt.getHeap())), v, flags);
 +	return setOwnProperty(rt, key.toString(rt.getHeap()), v, flags);
-+}
-+
+ }
+ 
 +bool JSObject::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
 +	Table::Bucket* bucket = insert(key);
 +	if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
@@ -294,8 +97,8 @@ index 091635a04..5ba35b11d 100644
 +	return true;
 +	}
 +	return update(bucket, v, flags);
- }
- 
++}
++
 +
  bool JSObject::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
  	Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
@@ -383,15 +186,17 @@ index 091635a04..5ba35b11d 100644
  	}
  }
  
-@@ -1961,13 +2040,24 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc,
+@@ -1961,13 +2040,28 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc,
  	if (code->getArgumentsCount() > argc) {
  		std::fill(e, locals.end(), UNDEFINED_VALUE);
  	}
++#if (NUXJS_ES5)
 +	if (code->strict) {
 +		Heap& heap = gcList.getHeap();
 +		arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
 +		arguments->detach();
 +	}
++#endif
 +
  }
  
@@ -401,14 +206,16 @@ index 091635a04..5ba35b11d 100644
  		dynamicVars = new(heap) JSObject(heap.managed(), 0);
 +		if (arguments == 0) {
  			arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
++		#if (NUXJS_ES5)
 +			if (function->code->strict) {
 +				arguments->detach();
 +			}
++		#endif
 +		}
  		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING, arguments, DONT_DELETE_FLAG);
  	}
  	return dynamicVars;
-@@ -2062,6 +2152,7 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
+@@ -2062,6 +2156,7 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
  
  FunctionScope::~FunctionScope() {
          if (arguments != 0) {
@@ -416,17 +223,20 @@ index 091635a04..5ba35b11d 100644
                  arguments->detach();
                  arguments = 0;
          }
-@@ -2095,7 +2186,8 @@ static struct EvalFunction : public Function {
+@@ -2095,7 +2190,12 @@ static struct EvalFunction : public Function {
  
- 		Heap& heap = rt.getHeap();
- 		const String* expression = argv[0].toString(heap);
--		processor.enterEvalCode(rt.compileEvalCode(expression), direct);
-+		bool strict = direct && processor.isCurrentStrict();
-+		processor.enterEvalCode(rt.compileEvalCode(expression, strict), direct);
- 		return UNDEFINED_VALUE;
+ Heap& heap = rt.getHeap();
+ const String* expression = argv[0].toString(heap);
++#if (NUXJS_ES5)
++const bool strict = direct && processor.isCurrentStrict();
++processor.enterEvalCode(rt.compileEvalCode(expression, strict), direct);
++#else
+ processor.enterEvalCode(rt.compileEvalCode(expression), direct);
++#endif
+ return UNDEFINED_VALUE;
  	}
  	bool direct;
-@@ -2119,6 +2211,8 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
+@@ -2119,6 +2219,8 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
  	{ SET_PROPERTY_OP            , "SET_PROPERTY"            , -2     , 0 },
  	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -3     , 0 },
  	{ ADD_PROPERTY_OP            , "ADD_PROPERTY"            , -1     , 0 },
@@ -435,7 +245,7 @@ index 091635a04..5ba35b11d 100644
  	{ PUSH_ELEMENTS_OP           , "PUSH_ELEMENTS_OP"        , 0      , OpcodeInfo::POP_OPERAND },
  	{ OBJ_TO_PRIMITIVE_OP        , "OBJ_TO_PRIMITIVE"        , 0      , 0 },
  	{ OBJ_TO_NUMBER_OP           , "OBJ_TO_NUMBER"           , 0      , 0 },
-@@ -2202,10 +2296,49 @@ const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
+@@ -2202,10 +2304,49 @@ const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
  */
  struct Processor::EvalScope : public Scope {
  		typedef Scope super;
@@ -487,7 +297,7 @@ index 091635a04..5ba35b11d 100644
  };
  	
  /*
-@@ -2313,7 +2446,8 @@ void Processor::enter(const Code* code, Scope* scope, Object* thisObject) {
+@@ -2313,7 +2454,8 @@ void Processor::enter(const Code* code, Scope* scope, Object* thisObject) {
  	if (sp + code->getMaxStackDepth() > stack.end()) {
  		ScriptException::throwError(heap, RANGE_ERROR, &STACK_OVERFLOW_STRING); // Notice: we can't use virtual throw here, cause we need to abort any sp changes etc that could happen if we continued execution beyond this point.
  	} else {
@@ -497,7 +307,7 @@ index 091635a04..5ba35b11d 100644
  		ip = code->getCodeWords();
  	}
  }
-@@ -2326,14 +2460,16 @@ void Processor::enterGlobalCode(const Code* code) {
+@@ -2326,14 +2468,16 @@ void Processor::enterGlobalCode(const Code* code) {
  	enter(code, rt.getGlobalScope(), rt.getGlobalObject());
  }
  
@@ -518,7 +328,7 @@ index 091635a04..5ba35b11d 100644
  void Processor::enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject) {
  	enter(func->code, new(heap) FunctionScope(heap.managed(), func, argc, argv), thisObject);
  }
-@@ -2451,42 +2587,80 @@ void Processor::innerRun() {
+@@ -2451,42 +2595,80 @@ void Processor::innerRun() {
  				}
  			}
  			break;
@@ -606,7 +416,7 @@ index 091635a04..5ba35b11d 100644
  			case OBJ_TO_PRIMITIVE_OP:
  			case OBJ_TO_NUMBER_OP:
  			case OBJ_TO_STRING_OP: {
-@@ -2596,7 +2770,7 @@ void Processor::innerRun() {
+@@ -2596,7 +2778,7 @@ void Processor::innerRun() {
  			case NEW_ARRAY_OP: push(new(heap) JSArray(heap.managed())); break;
  			case NEW_REG_EXP_OP: invokeFunction(rt.createRegExpFunction, 1, 2); return;
  			case RETURN_OP:	ip = currentFrame->returnIP; popFrame(); return;
@@ -615,7 +425,7 @@ index 091635a04..5ba35b11d 100644
  			case VOID_OP: push(UNDEFINED_VALUE); break;
  			
  			case GEN_FUNC_OP: {
-@@ -2615,6 +2789,20 @@ void Processor::innerRun() {
+@@ -2615,6 +2797,20 @@ void Processor::innerRun() {
  				pop(1);
  				break;
  			}
@@ -636,20 +446,22 @@ index 091635a04..5ba35b11d 100644
  
  			case PUSH_ELEMENTS_OP: {
  				Object* o = sp[-im].getObject();
-@@ -3123,7 +3311,11 @@ const String* Compiler::identifier(bool required, bool allowKeywords) {
+@@ -3123,7 +3319,13 @@ const String* Compiler::identifier(bool required, bool allowKeywords) {
          if (!allowKeywords && findReservedKeyword(parsed.size(), parsed.begin()) >= 0) {
                  error(SYNTAX_ERROR, "Illegal use of keyword");
          }
 -	return newHashedString(heap, parsed.begin(), parsed.end());
 +        const String* name = newHashedString(heap, parsed.begin(), parsed.end());
++	#if (NUXJS_ES5)
 +        if (code->isStrict() && name->isEqualTo(EVAL_STRING)) {
 +                error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
 +        }
++	#endif
 +        return name;
  }
  
  static UInt32 unescapedMaxLength(const Char* p, const Char* e) {
-@@ -3367,17 +3559,36 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff
+@@ -3367,17 +3569,36 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff
  	
  	white();
  	while (!token("}", false)) {
@@ -688,29 +500,33 @@ index 091635a04..5ba35b11d 100644
  			if (token("}", true)) {
  				break;
  			}
-@@ -3459,8 +3670,19 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
+@@ -3459,8 +3680,23 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
  				case ExpressionResult::PUSHED_PRIMITIVE: emit(Processor::POP_OP, 1); /* fall through */
  				case ExpressionResult::NONE:
  				case ExpressionResult::CONSTANT: xr = ExpressionResult(ExpressionResult::CONSTANT, true); break;
 -				case ExpressionResult::LOCAL: xr = ExpressionResult(ExpressionResult::CONSTANT, false); break;
 -				case ExpressionResult::NAMED: emitWithConstant(Processor::DELETE_NAMED_OP, xr.v); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
 +				case ExpressionResult::LOCAL:
++				#if (NUXJS_ES5)
 +					if (code->isStrict()) {
 +						error(SYNTAX_ERROR, "Deleting identifier in strict code");
 +					}
++				#endif
 +					xr = ExpressionResult(ExpressionResult::CONSTANT, false);
 +					break;
 +				case ExpressionResult::NAMED:
++				#if (NUXJS_ES5)
 +					if (code->isStrict()) {
 +						error(SYNTAX_ERROR, "Deleting identifier in strict code");
 +					}
++				#endif
 +					emitWithConstant(Processor::DELETE_NAMED_OP, xr.v);
 +					xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
 +					break;
  				case ExpressionResult::PROPERTY: emit(Processor::DELETE_OP); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
  				default: assert(0);
  			}
-@@ -3665,6 +3887,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
+@@ -3665,6 +3901,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
  void Compiler::functionDefinition(const String* functionName, const String* selfName) {
  	assert(functionName != 0);
  	Code* func = new(heap) Code(heap.managed(), code->constants);
@@ -718,38 +534,49 @@ index 091635a04..5ba35b11d 100644
  	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
  	try {
  		p = funcCompiler.compileFunction(p, e, functionName, selfName);
-@@ -3819,6 +4042,9 @@ void Compiler::rvalueGroup() {
+@@ -3819,6 +4056,11 @@ void Compiler::rvalueGroup() {
  
  // FIX : ok, this is serious mess
  Compiler::ExpressionResult Compiler::declareIdentifier(const String* name, bool func) {
++#if (NUXJS_ES5)
 +	if (code->isStrict() && (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING))) {
 +		error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
 +	}
++#endif
  	ExpressionResult lxr(ExpressionResult::NAMED, name);
  	if (compilingFor != FOR_FUNCTION) {
  		CodeSection* previousSection = changeSection(&setupSection);
-@@ -3974,6 +4200,9 @@ void Compiler::functionStatement() {
+@@ -3974,6 +4216,11 @@ void Compiler::functionStatement() {
  }
  
  void Compiler::withStatement(SemanticScope* currentScope) {
++#if (NUXJS_ES5)
 +	if (code->isStrict()) {
 +		error(SYNTAX_ERROR, "\"with\" is not allowed in strict code");
 +	}
++#endif
  	rvalueGroup();
  	emit(Processor::WITH_SCOPE_OP);
  	{
-@@ -4461,6 +4690,28 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
+@@ -4461,6 +4708,38 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
  	p = b;
  	this->e = e;
  	acceptInOperator = true;
 +	const Char* directiveStart = p;
 +	white();
++#if (NUXJS_ES5)
 +	bool foundStrict = false;
++#endif
++#if (NUXJS_ES5)
 +	while (p < e && (*p == '"' || *p == '\'')) {
 +		Char q = *p++;
 +		const Char* litStart = p;
-+		while (p < e && *p != q) { ++p; }
-+		if (p >= e) { break; }
++		while (p < e && *p != q) {
++			++p;
++		}
++		if (p >= e) {
++			break;
++		}
 +		if (!foundStrict && p - litStart == 10 && strncmp(litStart, "use strict", 10) == 0) {
 +			foundStrict = true;
 +		}
@@ -762,12 +589,15 @@ index 091635a04..5ba35b11d 100644
 +		}
 +		break;
 +	}
-+	if (foundStrict) { code->setStrict(true); }
++	if (foundStrict) {
++		code->setStrict(true);
++	}
++#endif
 +	p = directiveStart;
  	
  	// FIX : not 100% necessary now because we should always start with undefined on top of stack
  	if (compilingFor == FOR_EVAL) {
-@@ -4496,6 +4747,7 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
+@@ -4496,6 +4775,7 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
  	white();
  	Table& nameIndexes = code->nameIndexes;
  	Vector<const String*>& argumentNames = code->argumentNames;
@@ -775,13 +605,15 @@ index 091635a04..5ba35b11d 100644
  	while (!token(")", false)) {
  		if (eof()) {
  			error(SYNTAX_ERROR, argumentNames.size() == 0 ? "Expected ')'" : "Expected ',' or ')'");
-@@ -4507,6 +4759,15 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
+@@ -4507,6 +4787,17 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
  			white();
  		}
- 		const String* name = identifier(true, false);
-+		if (code->isStrict() && (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING))) {
-+			error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
-+		}
+ 			const String* name = identifier(true, false);
++		#if (NUXJS_ES5)
++			if (code->isStrict() && (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING))) {
++				error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
++			}
++		#endif
 +		for (size_t i = 0; i < argumentNames.size(); ++i) {
 +			if (argumentNames[i]->isEqualTo(*name)) {
 +				hasDuplicateParameters = true;
@@ -791,17 +623,19 @@ index 091635a04..5ba35b11d 100644
  		nameIndexes.update(nameIndexes.insert(name), static_cast<Int32>(argumentNames.size()));
  		argumentNames.push(name);
  		code->bloomSet |= name->createBloomCode();
-@@ -4515,6 +4776,9 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
+@@ -4515,6 +4806,11 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
  	expectToken("{", true);
  	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
  	expectToken("}", false);
-+	if (code->strict && hasDuplicateParameters) {
-+		error(SYNTAX_ERROR, "Duplicate parameter name not allowed in strict code");
-+	}
++	#if (NUXJS_ES5)
++		if (code->strict && hasDuplicateParameters) {
++			error(SYNTAX_ERROR, "Duplicate parameter name not allowed in strict code");
++		}
++	#endif
  	code->name = functionName;
  	code->selfName = selfName;
  	code->source = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
-@@ -4734,11 +4998,17 @@ struct Support {
+@@ -4734,11 +5030,17 @@ struct Support {
  		if (argc >= 2) {
  			Object *o = argv[0].asObject();
  			if (o != 0) {
@@ -824,38 +658,95 @@ index 091635a04..5ba35b11d 100644
  			}
  		}
  		return success;
-@@ -5058,21 +5328,23 @@ Var Runtime::eval(const String& expression) {
+@@ -5058,6 +5360,23 @@ Var Runtime::eval(const String& expression) {
  	return runUntilReturn(processor);
  }
  
--Code* Runtime::compileEvalCode(const String* expression) {
--	const Table::Bucket* bucket = evalCodeCache.lookup(expression);
++#if (NUXJS_ES5)
 +Code* Runtime::compileEvalCode(const String* expression, bool strict) {
-+	const Table::Bucket* bucket = (strict ? 0 : evalCodeCache.lookup(expression));
- 	if (bucket != 0) {
- 		Object* o = bucket->getValue().getObject();
- 		assert(dynamic_cast<Code*>(o) != 0);
- 		return reinterpret_cast<Code*>(o);
- 	} else {
- 		Code* code = new(heap) Code(heap.managed());
-+		if (strict) { code->setStrict(true); }
- 		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
- 		compiler.compile(*expression);
--		evalCodeCache.update(evalCodeCache.insert(expression), code);
-+		if (!strict) { evalCodeCache.update(evalCodeCache.insert(expression), code); }
- 		return code;
- 	}
++const Table::Bucket* bucket = (strict ? 0 : evalCodeCache.lookup(expression));
++if (bucket != 0) {
++Object* o = bucket->getValue().getObject();
++assert(dynamic_cast<Code*>(o) != 0);
++return reinterpret_cast<Code*>(o);
++} else {
++Code* code = new(heap) Code(heap.managed());
++if (strict) { code->setStrict(true); }
++Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
++compiler.compile(*expression);
++if (!strict) { evalCodeCache.update(evalCodeCache.insert(expression), code); }
++return code;
++}
++}
++#else
+ Code* Runtime::compileEvalCode(const String* expression) {
+ const Table::Bucket* bucket = evalCodeCache.lookup(expression);
+ if (bucket != 0) {
+@@ -5072,6 +5391,8 @@ Code* Runtime::compileEvalCode(const String* expression) {
+ return code;
  }
- 
+ }
++#endif
 +
+ 
  Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
  	Code* code = new(heap) Code(heap.managed());
- 	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
+@@ -5094,6 +5415,9 @@ void Runtime::fetchFunction(const Object* supportObject, const char* name, Funct
+ }
+ 
+ extern const char* STDLIB_JS;
++#if (NUXJS_ES5)
++extern const char* STDLIB_ES5_JS;
++#endif
+ 
+ double Runtime::getCurrentEpochTime() {
+ 	std::time_t t;
+@@ -5126,6 +5450,7 @@ void Runtime::setupStandardLibrary() {
+ 	supportObject->setOwnProperty(*this, &UNDEFINED_STRING, UNDEFINED_VALUE);
+ 	supportObject->setOwnProperty(*this, &NAN_STRING, NAN_VALUE);
+ 	supportObject->setOwnProperty(*this, &INFINITY_STRING, INFINITY_VALUE);
++
+ 	supportObject->setOwnProperty(*this, &MAX_NUMBER_STRING, std::numeric_limits<double>::max());
+ 	supportObject->setOwnProperty(*this, &MIN_NUMBER_STRING, std::numeric_limits<double>::denorm_min());
+ 
+@@ -5138,8 +5463,12 @@ void Runtime::setupStandardLibrary() {
+ 	}
+ 	
+ 	const Var func = eval(*String::allocate(heap, STDLIB_JS));
+-	Value argv[1] = { protectedSupportObject };
+-	call(func, 1, argv);
++	Value argv[2] = { protectedSupportObject, UNDEFINED_VALUE };
++#if (NUXJS_ES5)
++	const Var es5(*this, String::allocate(heap, STDLIB_ES5_JS));
++	argv[1] = es5;
++#endif
++	call(func, 2, argv);
+ 	
+ 	fetchFunction(supportObject, "toPrimitive", toPrimitiveFunctions + 0);
+ 	fetchFunction(supportObject, "toPrimitiveNumber", toPrimitiveFunctions + 1);
 diff --git a/src/NuXJS.h b/src/NuXJS.h
-index 98904d66f..08901b336 100644
+index 98904d6..a6dbe55 100644
 --- a/src/NuXJS.h
 +++ b/src/NuXJS.h
-@@ -447,11 +447,13 @@ const Flags READ_ONLY_FLAG = 2;
+@@ -24,6 +24,17 @@
+ #ifndef NuXJS_h
+ #define NuXJS_h
+ 
++// ---------------------------------------------------------------------------
++// ES version toggle
++//
++// NUXJS_ES5 controls ES5 features and semantics. Keep default at 0 so that
++// building without an explicit -DNUXJS_ES5=1 matches legacy ES3 behavior from
++// the main branch exactly.
++// ---------------------------------------------------------------------------
++#ifndef NUXJS_ES5
++#define NUXJS_ES5 1
++#endif
++
+ #include "assert.h"
+ #include <algorithm>
+ #include <string>
+@@ -447,11 +458,13 @@ const Flags READ_ONLY_FLAG = 2;
  const Flags DONT_ENUM_FLAG = 4;
  const Flags DONT_DELETE_FLAG = 8;
  const Flags INDEX_TYPE_FLAG = 16;	///< internal index type, only used as an optimization for faster name -> local index lookup
@@ -869,7 +760,7 @@ index 98904d66f..08901b336 100644
  /**
  	Table implements a hash table for storing object properties. It provides fast lookup and is used internally by JS
  	objects.
-@@ -538,13 +540,16 @@ class Object : public GCItem {
+@@ -538,13 +551,16 @@ class Object : public GCItem {
  		virtual Object* getPrototype(Runtime& rt) const;		///< Default returns the Object prototype.
  
  		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;								///< Don't touch v if you return NONEXISTENT. Default returns NONEXISTENT.
@@ -886,7 +777,7 @@ index 98904d66f..08901b336 100644
  		bool isOwnPropertyEnumerable(Runtime& rt, const Value& key) const;
  		bool hasOwnProperty(Runtime& rt, const Value& key) const; 			///< Checks via getOwnProperty().
  		bool hasProperty(Runtime& rt, const Value& key) const;				///< Checks via getProperty().
-@@ -707,6 +712,7 @@ class JSObject : public Object, public Table {
+@@ -707,6 +723,7 @@ class JSObject : public Object, public Table {
  		JSObject(GCList& gcList, Object* prototype);
  		virtual Object* getPrototype(Runtime& rt) const;
  		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
@@ -894,7 +785,7 @@ index 98904d66f..08901b336 100644
  		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
  		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
  		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
-@@ -742,6 +748,7 @@ template<class SUPER> class LazyJSObject : public SUPER {
+@@ -742,6 +759,7 @@ template<class SUPER> class LazyJSObject : public SUPER {
  		typedef SUPER super;
  		LazyJSObject(GCList& gcList) : super(gcList), completeObject(0) { }
  		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
@@ -902,7 +793,7 @@ index 98904d66f..08901b336 100644
  		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
  		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
  		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
-@@ -773,6 +780,7 @@ class JSArray : public LazyJSObject<Object> {
+@@ -773,6 +791,7 @@ class JSArray : public LazyJSObject<Object> {
  		virtual Object* getPrototype(Runtime& rt) const;
  		// FIX : toString too?
  		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
@@ -910,7 +801,7 @@ index 98904d66f..08901b336 100644
  		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
  		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
  		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
-@@ -833,6 +841,8 @@ class Code : public Object {
+@@ -833,6 +852,8 @@ class Code : public Object {
  		const String* getName() const { return name; }
  		const String* getSource() const { return source; }
  		UInt32 getMaxStackDepth() const { return maxStackDepth; }
@@ -919,7 +810,7 @@ index 98904d66f..08901b336 100644
  		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
  
  	protected:
-@@ -846,6 +856,7 @@ class Code : public Object {
+@@ -846,6 +867,7 @@ class Code : public Object {
  		const String* source;
  		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
  		UInt32 maxStackDepth;
@@ -927,7 +818,7 @@ index 98904d66f..08901b336 100644
  
  		virtual void gcMarkReferences(Heap& heap) const {
  			gcMark(heap, constants);
-@@ -883,6 +894,20 @@ class Function : public Object {
+@@ -883,6 +905,20 @@ class Function : public Object {
  		Function(GCList& gcList) : super(gcList) { }
  };
  
@@ -948,7 +839,7 @@ index 98904d66f..08901b336 100644
  typedef Value (*NativeFunction)(Runtime&, Processor&, UInt32, const Value*, Object*);
  
  // FIX : overkill?
-@@ -983,6 +1008,7 @@ class Error : public LazyJSObject<Object> {
+@@ -983,6 +1019,7 @@ class Error : public LazyJSObject<Object> {
  		virtual const String* toString(Heap& heap) const;
  		virtual Value getInternalValue(Heap& heap) const; // error type name
  		virtual Object* getPrototype(Runtime& rt) const;
@@ -956,7 +847,7 @@ index 98904d66f..08901b336 100644
  		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
  		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
  		ErrorType getErrorType() const;
-@@ -1007,12 +1033,14 @@ class FunctionScope;
+@@ -1007,12 +1044,14 @@ class FunctionScope;
  class Arguments : public LazyJSObject<Object> {
  	public:
  		typedef LazyJSObject<Object> super;
@@ -971,7 +862,7 @@ index 98904d66f..08901b336 100644
  		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
  		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
  		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
-@@ -1027,6 +1055,7 @@ class Arguments : public LazyJSObject<Object> {
+@@ -1027,6 +1066,7 @@ class Arguments : public LazyJSObject<Object> {
  		UInt32 const argumentsCount;
  		Vector<Byte> deletedArguments;
  		Vector<Value> values;	// Contains copied values after the Argument has been detached from its closure.
@@ -979,16 +870,19 @@ index 98904d66f..08901b336 100644
  
  		/**
  			Notice that we do not mark the scope reference, thus creating a "weak" reference that is handled by
-@@ -1133,7 +1162,7 @@ class Runtime : public GCItem {
+@@ -1133,7 +1173,11 @@ class Runtime : public GCItem {
  		JSArray* newJSArray(UInt32 initialLength = 0) const;	///< Convenience routine for `new(heap) JSArray(heap.managed(), initialLength)`
  		const String* newStringConstant(const char* s);
  
--		Code* compileEvalCode(const String* expression);
-+		Code* compileEvalCode(const String* expression, bool strict = false);
++#if (NUXJS_ES5)
++Code* compileEvalCode(const String* expression, bool strict = false);
++#else
+ Code* compileEvalCode(const String* expression);
++#endif
  		Code* compileGlobalCode(const String& source, const String* filename = 0);
  
  		Var getGlobalsVar();							///< Convenience routine for `Var(rt, rt.getGlobalObject())`
-@@ -1338,14 +1367,42 @@ class Property : public AccessorBase {
+@@ -1338,14 +1382,42 @@ class Property : public AccessorBase {
  	friend class AccessorBase;
  
    public:
@@ -1035,7 +929,7 @@ index 98904d66f..08901b336 100644
  	Object *const object;
  	const Var key;
  };
-@@ -1531,6 +1588,8 @@ class Processor : public GCItem {
+@@ -1531,6 +1603,8 @@ class Processor : public GCItem {
  			, SET_PROPERTY_OP								// stack: object, name, value -> value
  			, SET_PROPERTY_POP_OP							// stack: object, name, value ->
  			, ADD_PROPERTY_OP								// operand: const_index (name), stack: object, value -> object
@@ -1044,7 +938,7 @@ index 98904d66f..08901b336 100644
  			, PUSH_ELEMENTS_OP								// operand: count, stack: object, count * elements ... -> object
  			, OBJ_TO_PRIMITIVE_OP							// stack: value -> primitive_value (no preference)	// these three must be in this exact order
  			, OBJ_TO_NUMBER_OP								// stack: value -> primitive_value (number preferred)
-@@ -1585,7 +1644,12 @@ class Processor : public GCItem {
+@@ -1585,7 +1659,12 @@ class Processor : public GCItem {
  		};
  	
  		struct OpcodeInfo {
@@ -1058,7 +952,7 @@ index 98904d66f..08901b336 100644
  			Opcode opcode;
  			const char* mnemonic;
  			Int32 stackUse;
-@@ -1600,12 +1664,13 @@ class Processor : public GCItem {
+@@ -1600,12 +1679,13 @@ class Processor : public GCItem {
  		Processor(Runtime& rt);
  		void invokeFunction(Function* f, Int32 argc, const Value* argv, Object* thisObject = 0);
  		void enterGlobalCode(const Code* code);
@@ -1073,1723 +967,3 @@ index 98904d66f..08901b336 100644
  
  	protected:
  		struct Frame : public GCItem {
-diff --git a/src/stdlib.js b/src/stdlib.js
-index 2c8acffc9..0571ba0d2 100644
---- a/src/stdlib.js
-+++ b/src/stdlib.js
-@@ -2,24 +2,24 @@
- 	@preserve: Array,Boolean,Date,E,Error,Function,Infinity,LN10,LN2,LOG10E,LOG2E,MAX_VALUE,MIN_VALUE,Math
- 	@preserve: NEGATIVE_INFINITY,NaN,Number,Object,PI,POSITIVE_INFINITY,RangeError,RegExp,SQRT1_2,SQRT2,String
- 	@preserve: SyntaxError,TypeError,UTC,abs,acos,apply,arguments,asin,atan,atan2,break,call,callWithArgs,case,ceil
--	@preserve: charAt,charCodeAt,configurable,concat,cos,default,defineProperty,delete,do,dontDelete,dontEnum
--	@preserve: else,enumerable,eval,exec,exp,false,finally,floor,for,fromCharCode,function,getCurrentTime
-+	@preserve: charAt,charCodeAt,configurable,concat,cos,default,defineProperty,delete,do,dontDelete,dontEnum,get,set
-+	@preserve: else,enumerable,eval,exec,exp,false,finally,floor,for,forEach,fromCharCode,function,getCurrentTime
- 	@preserve: getDate,getDay,getFullYear,getHours,getInternalProperty,getMilliseconds,getMinutes,getMonth
- 	@preserve: getPrototypeOf,getSeconds,getTime,getTimezoneOffset,getUTCDate,getUTCDay,getUTCFullYear,getUTCHours
- 	@preserve: getUTCMilliseconds,getUTCMinutes,getUTCMonth,getUTCSeconds,hasOwnProperty,if,ignoreCase,in,index,indexOf
--	@preserve: input,isArray,isFinite,isNaN,isPropertyEnumerable,join,lastIndex,lastIndexOf,length,localeCompare,log
--	@preserve: match,max,maxNumber,message,min,minNumber,multiline,name,new,null,parseFloat,parseInt,pow
-+        @preserve: input,isArray,isFinite,isNaN,isPropertyEnumerable,join,lastIndex,lastIndexOf,length,localeCompare,log,keys
-+	@preserve: match,max,maxNumber,message,min,minNumber,multiline,name,new,now,null,parseFloat,parseInt,pow
- 	@preserve: propertyIsEnumerable,prototype,push,readOnly,regExpCanonicalize,return,reverse,round,setDate
- 	@preserve: setFullYear,setHours,setMilliseconds,setMinutes,setMonth,setSeconds,setTime,setUTCDate
- 	@preserve: setUTCFullYear,setUTCHours,setUTCMilliseconds,setUTCMinutes,setUTCMonth,setUTCSeconds,shift,sin,slice
- 	@preserve: sort,distinctConstructor,sqrt,submatch,substr,substring,switch,tan,this,throw,time,toExponential
- 	@preserve: toFixed,toISOString,toLocaleDateString,toLocaleLowerCase,toLocaleString,toLocaleTimeString
--	@preserve: toLocaleUpperCase,toLowerCase,toPrecision,toString,toTimeString,toUTCString,toUpperCase,true,try,typeof
-+	@preserve: toLocaleUpperCase,toLowerCase,toPrecision,toString,toTimeString,toUTCString,toUpperCase,trim,trimLeft,trimRight,true,try,typeof
- 	@preserve: undefined,upperToLower,value,valueOf,var,void,while,writable,pop,parse,toDateString,instanceof,test
- 	@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,$match
- @preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
- @preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
--
-+@preserve: every,some,filter,map,reduce,reduceRight
- support: {
- 	prototypes: {	// built-in prototype objects
- 	object, function, string, boolean, number, date, array
-@@ -60,19 +60,15 @@
- 	Infinity
- 	}
- 	*/
--
- 	(function(support) {
--
- 	var globals = this;
- 	var unconstructable = support.distinctConstructor; // these are the same now, but not guaranteed in the future
--
- 	var $isNaN = support.isNaN, $isFinite = support.isFinite, $floor = support.floor, $NaN = support.NaN
- 	, $Infinity = support.Infinity, $match = support.submatch, $sub = support.substring // "$match" and "$sub" are used from within regexps, so names has to be preserved
- 	, $getInternalProperty = support.getInternalProperty, $callWithArgs = support.callWithArgs
- 	, $charCodeAt = support.charCodeAt, abs, syntaxError, rangeError, typeError
- 	, ALPHA_DIGITS_LOWER = "0123456789abcdefghijklmnopqrstuvwxyz", ALPHA_DIGITS_UPPER = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
- 	, WHITE_SPACES = " \f\n\r\t\v\xA0\u2028\u2029";
--
- 	var PARSE_INT_CHARS = (function() {
- 	var pic = { }, ws = WHITE_SPACES;
- 	for (var i = ws.length - 1; i >= 0; --i) {
-@@ -85,7 +81,6 @@ var PARSE_INT_CHARS = (function() {
- 	}
- 	return pic
- 	})();
--
- 	function StringBuilder() {
- 	var i = 20, b = this.buffers = [ ];
- 	do { b[--i] = '' } while (i > 0)
-@@ -102,12 +97,10 @@ StringBuilder.prototype.build = function build() {
- 	do { s += b[--i] } while (i > 0);
- 	return s
- 	};
--
- 	function isPrimitive(v) {
- 	var v, t;
- 	return (((t = typeof v) !== "object" || v === null) && t !== "function")
- 	}
--
- 	function objectToPrimitive(o, f1, f2) {
- 	var v;
- 	if ((typeof (o[f1]) !== "function" || !isPrimitive(v = o[f1]()))
-@@ -116,34 +109,27 @@ function objectToPrimitive(o, f1, f2) {
- 	}
- 	return v
- 	}
--
- 	support.toPrimitiveNumber = function(o) { return objectToPrimitive(o, "valueOf", "toString"); };
- 	support.toPrimitiveString = function(o) { return objectToPrimitive(o, "toString", "valueOf"); };
- 	support.toPrimitive = function(o) {
- 	return support[$getInternalProperty(o, "class") === "Date" ? "toPrimitiveString" : "toPrimitiveNumber"](o);
- 	};
--
- 	function int(v) { return $isNaN(v = +v) ? 0 : (!$isFinite(v) ? v : (v < 0 ? -$floor(-v) : $floor(v))); }
- 	function int32(v) { return int(v) | 0; }
- 	function uint32(v) { return int(v) >>> 0; }
--
- 	// TODO : what a waste of cycles, could be a simple OBJ_TO_STRING, problem with ''+s is that it uses OBJ_TO_NUMBER which only affects the priority of toString vs valueOf... so subtle!
- 	function str(o) { return '' + (isPrimitive(o) ? o : support.toPrimitiveString(o)) }
--
- 	function defineProperties(object, attribs, props) {
- 	var ro = attribs.readOnly, de = attribs.dontEnum, dd = attribs.dontDelete;
- 	for (var p in props) support.defineProperty(object, p, props[p], ro, de, dd);
- 	return object
- 	}
--
- 	function checkClass(object, expectedClass, forFunction) {
- 	if ($getInternalProperty(object, "class") !== expectedClass) {
- 	throw typeError(expectedClass + ".prototype." + forFunction + " is not generic");
- 	}
- 	}
--
- 	function leftPad(s, l) { var n = (s = "00000000000000000000" + s).length; return $sub(s, n - l, n); }
--
- 	function numberToString(num, digits, eNotationBelow) {
- 	var string = '';
- 	if (num < 0) {
-@@ -187,7 +173,6 @@ function numberToString(num, digits, eNotationBelow) {
- 	if (exponent !== null) string += (exponent >= 0 ? "e+" : 'e') + exponent;
- 	return string
- 	}
--
- 	function numberToRadix(val, radix) {
- 	var sign = '', s = '';
- 	if ((val = int(val)) < 0) {
-@@ -197,16 +182,13 @@ function numberToRadix(val, radix) {
- 	do { s = ALPHA_DIGITS_LOWER[val % radix] + s } while ((val = $floor(val / radix)) > 0);
- 	return sign + s;
- 	}
--
- 	// eval without loads of local variables but with access to all internals
- 	function evalThere(s) {
- 	var customEval = eval;
- 	eval = support.evalFunction; // must reassign for "direct mode" eval
- 	try { return eval(s); } finally { eval = customEval; }
- 	}
--
- 	/* --- Object --- */
--
- 	var Object = function Object(v) {
- 	switch (typeof v) {
- 	case "object":
-@@ -235,9 +217,7 @@ defineProperties(Object.prototype, { dontEnum: true }, {
- 	return false;
- 	})
- 	});
--
- 	/* --- Function --- */
--
- 	var Function = function Function(body) {
- 	var argv, src = '(', n = (argv = arguments).length - 1;
- 	for (var i = 0; i < n; ++i) {
-@@ -267,9 +247,7 @@ defineProperties(Function.prototype, { dontEnum: true }, {
- 	return $getInternalProperty(this, "value");
- 	})
- 	});
--
- 	/* --- Boolean --- */
--
- 	var Boolean = support.distinctConstructor(function Boolean(v) {
- 	return !!v;
- 	}, function Boolean(v) {
-@@ -287,14 +265,11 @@ defineProperties(Boolean.prototype, { dontEnum: true }, {
- 	return '' + $getInternalProperty(this, "value");
- 	})
- 	});
--
- 	/* --- Number --- */
--
- 	function getInternalNumber(object, forFunction) {
- 	checkClass(object, "Number", forFunction);
- 	return $getInternalProperty(object, "value")
- 	}
--
- 	var Number = support.distinctConstructor(function Number(v) {
- 	return (arguments.length ? +v : 0);
- 	}, function Number(v) {
-@@ -362,11 +337,8 @@ defineProperties(Number.prototype, { dontEnum: true }, {
- 	}
- 	})
- 	});
--
- 	/* --- String --- */
--
- 	var lowerToUpper, upperToLower; // "upperToLower" is used from within regexps, so the name has to be preserved
--
- 	function createCaseTables() {
- 	// In the future constant tables might be (nearly) free to setup, but as of 20160423 this is quite "expensive".
- 	lowerToUpper = {
-@@ -405,23 +377,19 @@ function createCaseTables() {
- 	};
- 	for (c in BIDIRECTIONAL) lowerToUpper[upperToLower[c] = BIDIRECTIONAL[c]] = c
- 	};
--
- 	function translateString(string, table) {
- 	var i = -1, len = string.length, s = '', t, c;
- 	while (++i < len) s += (t = table[c = string[i]]) ? t : c;
- 	return s
- 	}
--
- 	function toLower(o) {
- 	if (!lowerToUpper) createCaseTables();
- 	return translateString(str(o), upperToLower);
- 	}
--
- 	function toUpper(o) {
- 	if (!lowerToUpper) createCaseTables();
- 	return translateString(str(o), lowerToUpper);
- 	}
--
- 	var String = support.distinctConstructor(function String(v) {
- 	return (arguments.length ? str(v) : '');
- 	}, function String(v) {
-@@ -589,6 +557,34 @@ defineProperties(String.prototype, { dontEnum: true }, {
- 	toLocaleUpperCase: unconstructable(function toLocaleUpperCase() { return toUpper(this) }),
- 	toLowerCase: unconstructable(function toLowerCase() { return toLower(this) }),
- 	toLocaleLowerCase: unconstructable(function toLocaleLowerCase() { return toLower(this) }),
-+	trimLeft: unconstructable(function trimLeft() {
-+	var s = str(this), i = 0, j = s.length, c;
-+	for (; i < j; ++i) {
-+	c = s.charCodeAt(i);
-+	if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
-+	}
-+	return $sub(s, i, j);
-+	}),
-+	trimRight: unconstructable(function trimRight() {
-+	var s = str(this), j = s.length, c;
-+	for (; j > 0; --j) {
-+	c = s.charCodeAt(j - 1);
-+	if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
-+	}
-+	return $sub(s, 0, j);
-+	}),
-+	trim: unconstructable(function trim() {
-+	var s = str(this), i = 0, j = s.length, c;
-+	for (; i < j; ++i) {
-+	c = s.charCodeAt(i);
-+	if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
-+	}
-+	for (; j > i; --j) {
-+	c = s.charCodeAt(j - 1);
-+	if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
-+	}
-+	return $sub(s, i, j);
-+	}),
- 	valueOf: unconstructable(function valueOf() {
- 	checkClass(this, "String", "valueOf");
- 	return $getInternalProperty(this, "value");
-@@ -598,9 +594,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
- 	return $getInternalProperty(this, "value");
- 	})
- 	});
--
- 	/* --- Array --- */
--
- 	var Array = function Array(v) {
- 	var a = [ ], argv, argc;
- 	if ((argc = (argv = arguments).length) === 1 && typeof v === "number") {
-@@ -764,11 +758,75 @@ defineProperties(Array.prototype, { dontEnum: true }, {
- }
- for (var i = 0; i < n; ++i) this[i] = argv[i];
- return (this.length = len + n);
-+	}),
-+	forEach: unconstructable(function forEach(callbackfn) { // .length should be 1
-+	var o = Object(this), len = uint32(o.length), t = arguments[1];
-+	if (typeof callbackfn !== "function") throw TypeError();
-+	for (var k = 0; k < len; ++k) if (k in o) callbackfn.call(t, o[k], k, o);
-+	}),
-+	map: unconstructable(function map(callbackfn) { // .length should be 1
-+	var o = Object(this), len = uint32(o.length), t = arguments[1], a = new Array(len);
-+	if (typeof callbackfn !== "function") throw TypeError();
-+	for (var k = 0; k < len; ++k) if (k in o) a[k] = callbackfn.call(t, o[k], k, o);
-+	return a;
-+	}),
-+	filter: unconstructable(function filter(callbackfn) { // .length should be 1
-+	var o = Object(this), len = uint32(o.length), t = arguments[1], a = [], to = 0;
-+	if (typeof callbackfn !== "function") throw TypeError();
-+	for (var k = 0; k < len; ++k) if (k in o) { var v = o[k]; if (callbackfn.call(t, v, k, o)) a[to++] = v; }
-+	a.length = to;
-+	return a;
-+	}),
-+	indexOf: unconstructable(function indexOf(searchElement) {
-+	var len = uint32(this.length), i = arguments[1];
-+	if (len === 0) return -1;
-+	if ((i = int(i)) < 0) { i += len; if (i < 0) i = 0; }
-+	for (; i < len; ++i) if (i in this && this[i] === searchElement) return i;
-+	return -1;
-+	}),
-+lastIndexOf: unconstructable(function lastIndexOf(searchElement) {
-+var len = uint32(this.length), i = arguments[1];
-+if (len === 0) return -1;
-+if (i === void 0) i = len - 1; else { i = int(i); if (i < 0) i += len; if (i >= len) i = len - 1; }
-+for (; i >= 0; --i) if (i in this && this[i] === searchElement) return i;
-+return -1;
-+}),
-+	reduce: unconstructable(function reduce(callbackfn) { // .length should be 1
-+	var o = Object(this), len = uint32(o.length), k = 0, acc;
-+	if (typeof callbackfn !== "function") throw TypeError();
-+	if (arguments.length > 1) acc = arguments[1]; else {
-+	while (k < len && !(k in o)) ++k;
-+	if (k >= len) throw TypeError();
-+	acc = o[k++];
-+	}
-+	for (; k < len; ++k) if (k in o) acc = callbackfn.call(void 0, acc, o[k], k, o);
-+	return acc;
-+	}),
-+	reduceRight: unconstructable(function reduceRight(callbackfn) { // .length should be 1
-+	var o = Object(this), len = uint32(o.length), k = len - 1, acc;
-+	if (typeof callbackfn !== "function") throw TypeError();
-+	if (arguments.length > 1) acc = arguments[1]; else {
-+	while (k >= 0 && !(k in o)) --k;
-+	if (k < 0) throw TypeError();
-+	acc = o[k--];
-+	}
-+	for (; k >= 0; --k) if (k in o) acc = callbackfn.call(void 0, acc, o[k], k, o);
-+	return acc;
-+	}),
-+	every: unconstructable(function every(callbackfn) { // .length should be 1
-+	var o = Object(this), len = uint32(o.length), t = arguments[1];
-+	if (typeof callbackfn !== "function") throw TypeError();
-+	for (var k = 0; k < len; ++k) if (k in o && !callbackfn.call(t, o[k], k, o)) return false;
-+	return true;
-+	}),
-+	some: unconstructable(function some(callbackfn) { // .length should be 1
-+	var o = Object(this), len = uint32(o.length), t = arguments[1];
-+	if (typeof callbackfn !== "function") throw TypeError();
-+	for (var k = 0; k < len; ++k) if (k in o && callbackfn.call(t, o[k], k, o)) return true;
-+	return false;
- 	})
- });
--
- 	/* --- Date --- */
--
- 	function localMaxDiff() { // local max is during DST
- 	var startOfYearDiff = support.localTimeDifference(14516064e5); // 2016-01-01T00:00:00.000Z
- 	var midOfYearDiff = support.localTimeDifference(14673312e5); // 2016-07-01T00:00:00.000Z
-@@ -781,18 +839,15 @@ function localMinDiff() { // local min is timezone (non DST)
- 	}
- 	function localTimeDiff(z) { var l = support.localTimeDifference(z); return ($isNaN(l) ? localMinDiff() : l) }
- 	function toLocalTime(z) { return $isNaN(z) ? z : z + localTimeDiff(z) }
--
- 	function checkDateClass(object) {
- 	if ($getInternalProperty(object, "class") !== "Date") throw typeError("this is not a Date object");
- 	}
--
- 	function getDateValue(object) { checkDateClass(object); return $getInternalProperty(object, "value"); }
- 	function getLocalDateValue(object) { return toLocalTime(getDateValue(object)); }
- 	function setDateValue(object, v) { checkDateClass(object); support.updateDateValue(object, v); return v; }
- 	function localDateTimeToString(v) {
- 	return $isNaN(v = toLocalTime(v)) ? "Invalid Date" : (epochToDateString(v) + ' ' + epochToTimeString(v));
- 	}
--
- 	function floorMod(x, n) { return (x % n + n) % n }
- 	function epochFromTime(hour, minute, second, ms) { return hour * 36e5 + minute * 6e4 + second * 1e3 + ms }
- 	function timeFromEpoch(z) { return [ floorMod($floor(z / 36e5), 24), floorMod($floor(z / 6e4), 60), floorMod($floor(z / 1e3), 60), floorMod(z, 1e3) ] }
-@@ -804,7 +859,6 @@ function secFromTime(z) { return floorMod($floor(z / 1e3), 60) }
- 	function msFromTime(z) { return floorMod(z, 1e3) }
- 	function timeClip(z) { return (!$isFinite(z) || abs(z) > 8.64e15 ? $NaN : int(z)) }
- 	function timeClipLocal(z) { return fromLocalTime(timeClip(z)); }
--
- 	function dateFromEpoch(z) {
- 	z = $floor(z / 864e5) + 719468;
- 	var era = int( (z >= 0 ? z : z - 146096) / 146097 );
-@@ -817,19 +871,16 @@ function dateFromEpoch(z) {
- 	var d = doy - int( (153 * mp + 2) / 5 ) + 1;
- 	return [ (y + (m <= 1)), m, d ];
- 	}
--
- 	function epochToDateString(z) {
- 	var y, dt = dateFromEpoch(z);
- 	return (0 <= (y = dt[0]) && y <= 9999 ? leftPad(y, 4) : (y < 0 ? "-" : "+") + leftPad(abs(y), 6))
- 	+ "-" + leftPad(dt[1] + 1, 2) + "-" + leftPad(dt[2], 2);
- 	}
--
- 	function epochToTimeString(z, ms) {
- 	var tm = timeFromEpoch(z);
- 	return leftPad(tm[0], 2) + ":" + leftPad(tm[1], 2) + ":" + leftPad(tm[2], 2)
- 	+ (ms ? "." + leftPad($sub(tm[3], 0, 3), 3) : "")
- 	}
--
- 	function epochFromDate(year, month, day) {
- 	year += $floor(month / 12) - (floorMod(month, 12) <= 1);
- 	var era = int( (year >= 0 ? year : year - 399) / 400 );
-@@ -838,31 +889,26 @@ function epochFromDate(year, month, day) {
- 	var doe = yoe * 365 + int(yoe / 4) - int(yoe / 100) + doy;
- 	return (era * 146097 + doe - 719468) * 864e5;
- 	}
--
- 	function setDateParts(z, n, a) {
- 	var i, d = dateFromEpoch(z), r = floorMod(z, 864e5);
- 	for (i = 0; i < a.length; ++i, ++n) d[n] = int(a[i]);
- 	return $callWithArgs(epochFromDate, null, d) + r;
- 	}
--
- 	function setTimeParts(z, n, a) {
- 	var i, t = timeFromEpoch(z), r = $floor(z / 864e5) * 864e5;
- 	for (i = 0; i < a.length; ++i, ++n) t[n] = int(a[i]);
- 	return $callWithArgs(epochFromTime, null, t) + r;
- 	}
--
- 	function makeDateTime(year, month, date, hours, minutes, seconds, ms) {
- 	var argc = arguments.length;
- 	return epochFromDate( (year = int(year)) + (0 <= year && year <= 99 ? 1900 : 0),
- 	int(month), (argc > 2 ? int(date) : 1)) + epochFromTime( argc > 3 ? int(hours) : 0,
- 	argc > 4 ? int(minutes) : 0, argc > 5 ? int(seconds) : 0, argc > 6 ? int(ms) : 0);
- 	}
--
- 	function isoDate(d) {
- 	var z;
- 	return $isNaN(z = getDateValue(d)) ? null : epochToDateString(z) + "T" + epochToTimeString(z, true) + "Z";
- 	}
--
- 	var parseDate, Date = support.distinctConstructor(function Date() {
- 	return localDateTimeToString(support.getCurrentTime());
- 	}, function Date(year, month, date, hours, minutes, seconds, ms) {
-@@ -872,7 +918,6 @@ var parseDate, Date = support.distinctConstructor(function Date() {
- 	else v = support.getCurrentTime();
- 	return support.createWrapper("Date", v, support.prototypes.Date);
- 	});
--
- 	defineProperties(Date, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Date });
- 	defineProperties(Date, { dontEnum: true }, {
- 	parse: unconstructable(parseDate = function parse(s) {
-@@ -891,9 +936,7 @@ defineProperties(Date, { dontEnum: true }, {
- 	s[i] === ":" && (++i, readPart(2)) || 0,
- 	s[i] === ":" && (++i, readPart(2)) || 0,
- 	s[i] === "." && (++i, readPart(3)) || 0);
--
- 	while ((ch = s[i]) !== void 0 && ch !== "Z" && ch !== "z" && ch !== "+" && ch !== "-") ++i;
--
- 	if (ch === "Z" || ch === "z") tz = 0;
- 	else if (ch === "+" || ch === "-") {
- 	++i, tzh = readPart(2) * 36e5,
-@@ -904,9 +947,11 @@ defineProperties(Date, { dontEnum: true }, {
- 	}),
- 	UTC: unconstructable(function UTC(year, month, date, hours, minutes, seconds, ms) {
- 		return timeClip(makeDateTime(year, month, date, hours, minutes, seconds, ms))
-+	}),
-+	now: unconstructable(function now() {
-+		return support.getCurrentTime();
- 	})
- 	});
--
- 	defineProperties(Date.prototype, { dontEnum: true }, {
- 	constructor: Date,
- 	toISOString: unconstructable(function toISOString() {
-@@ -970,9 +1015,7 @@ defineProperties(Date.prototype, { dontEnum: true }, {
- 	// TODO: this isn't as generic as in the ES5 spec, e.g. not converting this to object, not going via the objects reassignable `toISOString`.
- 	toJSON: unconstructable(function toJSON() { return isoDate(this); })
- 	});
--
- 	/* --- RegExp --- */
--
- 	var v = 1;
- 	var EMPTY_CHAR = v, NEWLINE_CHAR = (v <<= 1), SPACE_CHAR = (v <<= 1), WORD_CHAR = (v <<= 1), DECIMAL_CHAR = (v <<= 1)
- 	, LETTER_CHAR = (v <<= 1), HEX_CHAR = (v <<= 1), ESCAPE_CHAR = (v <<= 1), SPECIAL_CHAR = (v <<= 1)
-@@ -980,7 +1023,6 @@ var EMPTY_CHAR = v, NEWLINE_CHAR = (v <<= 1), SPACE_CHAR = (v <<= 1), WORD_CHAR
- 	var CC = { }; // "CC" is used from within regexps, so the name has to be preserved
- 	(function() {
- 	function setupCharClass(mask, chars) { for (var i in chars) CC[chars[i]] |= mask }
--
- 	setupCharClass(SPECIAL_CHAR, "^$.*+?()[]{}|");
- 	setupCharClass(DECIMAL_CHAR | HEX_CHAR | WORD_CHAR, "0123456789");
- 	setupCharClass(HEX_CHAR | LETTER_CHAR | WORD_CHAR, "abcdefABCDEF");
-@@ -1000,7 +1042,6 @@ var CC = { }; // "CC" is used from within regexps, so the name has to be preserv
- 	for (var j = IDENTITY_ESCAPE_RANGES[i], k = IDENTITY_ESCAPE_RANGES[i + 1]; j < k; ++j)
- 	CC[support.fromCharCode(j)] |= IDENTITY_ESCAPE_CHAR;
- 	})();
--
- 	// "regExpCanonicalize" is used from within regexps, so the name has to be preserved
- 	function regExpCanonicalize(s) {
- 	var t = '', c, d;
-@@ -1009,25 +1050,20 @@ function regExpCanonicalize(s) {
- 	t += ((d = lowerToUpper[c = s[i]]) && d.length === 1 && (c < '\x80' || d >= '\x80') ? d : c);
- 	return t
- 	}
--
- 	// FIX : all charCodeAt etc need to be stowed away so that we won't destroy regexp if changing global objects. This is true for all the code in here actually.
- 	function compileRegExp(s, caseInsensitive, multiLine) {
- 	var p = 0, functions = '', functionCounter = 0, captureCounter = 0, closureVars = '', maxBackReference = 0;
--
- 	function isClass(char, mask) { return ((CC[char] & mask) !== 0); }
--
- 	function areClass(s, mask) { // FIX : only used once
- 	for (var i = s.length - 1; i >= 0; --i) if ((CC[s[i]] & mask) === 0) return false;
- 	return true;
- 	}
--
- 	var CHAR_CLASS_RULES = {
- 	'D': [ DECIMAL_CHAR, true ], 'd': [ DECIMAL_CHAR, false ],
- 	'S': [ SPACE_CHAR, true ], 's': [ SPACE_CHAR, false ],
- 	'W': [ WORD_CHAR, true ], 'w': [ WORD_CHAR, false ],
- 	'.': [ NEWLINE_CHAR, true ]
- 	};
--
- 	function parseNumber(defaultValue) {
- 	var n = defaultValue;
- 	if (isClass(s[p], DECIMAL_CHAR)) {
-@@ -1039,7 +1075,6 @@ function compileRegExp(s, caseInsensitive, multiLine) {
- 	}
- 	return n;
- 	}
--
- 	function parseQuantifier() {
- 	var mini = 0, maxi = $Infinity, greedy = true;
- 	switch (s[p]) {
-@@ -1075,17 +1110,14 @@ function compileRegExp(s, caseInsensitive, multiLine) {
- 	}
- 	return { mini: mini, maxi: maxi, greedy: greedy };
- 	}
--
- 	function escapeCharacter(c) {
- 	if (isClass(c, OK_IN_STRING_LITERAL)) return c;
- 	// TODO : shorter escapes for \n etc
- 	return (c <= '~' ? "\\x" : "\\u") + leftPad(numberToRadix($charCodeAt(c, 0), 16), (c <= '~' ? 2 : 4));
- 	}
--
- 	function canonicalizeAndEscape(c) {
- 	return escapeCharacter(caseInsensitive ? regExpCanonicalize(c) : c);
- 	}
--
- 	function parseLiteralCharacter() {
- 	var c0, c1, sub;
- 	if ((c0 = s[p]) === '\\') {
-@@ -1129,14 +1161,12 @@ function compileRegExp(s, caseInsensitive, multiLine) {
- 	return c0;
- 	}
- 	}
--
- 	function parseLiteralSequence() {
- 	var literalSequence = [ ], v, n = 0;
- 	while (!isClass(s[p], SPECIAL_CHAR) && (v = parseLiteralCharacter()))
- 	literalSequence[n++] = canonicalizeAndEscape(v);
- 	return (literalSequence.length ? literalSequence : null);
- 	}
--
- 	function parseClassAtom() {
- 	var v, rule, c;
- 	if ((c = s[p]) !== ']' && (v = parseLiteralCharacter())) return v;
-@@ -1151,9 +1181,7 @@ function compileRegExp(s, caseInsensitive, multiLine) {
- 	}
- 	}
- 	}
--	
- 	function positionToCode(offset) { return (offset === 0 ? 'p' : ((offset < 0 ? 'p' : 'p+') + offset)); }
--
- 	function literalSequenceToCode(literalSequence, offset) {
- 	if (literalSequence.length === 0) return "true";
- 	else if (literalSequence.length === 1)
-@@ -1166,7 +1194,6 @@ function compileRegExp(s, caseInsensitive, multiLine) {
- 	return "$match(s," + positionToCode(offset) + ',"' + s + '")';
- 	}
- 	}
--
- 	function and(a, b) {
- 	switch (a) {
- 	case "false": return "false";
-@@ -1174,7 +1201,6 @@ function compileRegExp(s, caseInsensitive, multiLine) {
- 	default: return (b === "true" ? a : a + " && " + b);
- 	}
- 	}
--
- 	function or(a, b) {
- 	switch (a) {
- 	case "false": return b;
-@@ -1182,12 +1208,10 @@ function compileRegExp(s, caseInsensitive, multiLine) {
- 	default: return (b === "false" ? a : a + " || " + b);
- 	}
- 	}
--	
- 	function addFunction(name, definition) {
- 	// TODO : sometimes functions are identical (e.g. class-tests), reuse here or in '[' parsing directly?
- 	functions += "\tfunction " + name + "(p) { " + definition + " }\n";
- 	}
--
- 	function quantify(code, offset, repeatCode, tail, quantity, stepSize) {
- 	// TODO : eliminate unnecessary b=p+0,e=p+Infinity and stuff
- 	var functionName = 'q' + (++functionCounter)
-@@ -1206,7 +1230,6 @@ function compileRegExp(s, caseInsensitive, multiLine) {
- 	}
- 	return and(code, functionName + "(" + positionToCode(offset) + ")");
- 	}
--	
- 	function captureWrap(code, capture, resetCaptureFrom, resetCaptureTo) {
- 	if (capture === null && resetCaptureFrom === resetCaptureTo) {
- 	return "return " + code;
-@@ -1239,11 +1262,9 @@ function compileRegExp(s, caseInsensitive, multiLine) {
- 	return "var " + declares + "; return " + code;
- 	}
- 	}
--
- 	function charClassToCode(ch, rule) {
- 	return (rule[1] ? '!' : "!!") + "(CC[" + ch + "]&" + (rule[0] | (rule[1] ? EMPTY_CHAR : 0)) + ')';
- 	}
--
- 	function compileTerms(offset, junction) {
- 	var literalSequence, quantity, code = "true";
- 	termLoop: for (;;) {
-@@ -1436,7 +1457,6 @@ function compileRegExp(s, caseInsensitive, multiLine) {
- 	default: return and(code, junction + '(' + positionToCode(offset) + ')');
- 	}
- 	}
--
- 	function compileDisjunction(offset, junction) { // junction = function name, undefined (for none for lookahead) or '' (for end of pattern)
- 	var code = compileTerms(offset, junction);
- 	if (s[p] === '|') {
-@@ -1448,7 +1468,6 @@ function compileRegExp(s, caseInsensitive, multiLine) {
- 	}
- 	return code;
- 	}
--
- 	var disjunction = compileDisjunction(0, ''); 
- 	if (p < s.length) throw syntaxError("Invalid regular expression");
- 	if (maxBackReference > captureCounter) throw syntaxError("Invalid back reference in regular expression");
-@@ -1460,9 +1479,7 @@ function compileRegExp(s, caseInsensitive, multiLine) {
- 	code += "];\n})";
- 	return code
- 	}
--
- 	var REG_EXP_FLAG_TO_PROPERTY = { 'g': "global", 'i': "ignoreCase", 'm': "multiline" }, regExpCache = { }, regExpPrototype;
--
- 	function execRegExp(re, string) {
- 	string = str(string);
- 	var i;
-@@ -1476,7 +1493,6 @@ function execRegExp(re, string) {
- 	}
- 	re.lastIndex = 0
- 	}
--
- 	function regExpExecMethod(re, string) {
- 	var m, a = null;
- 	if (m = execRegExp(re, string)) {
-@@ -1487,9 +1503,7 @@ function regExpExecMethod(re, string) {
- 	}
- 	return a;
- 	}
--
- 	function convertFlagsToText(re) { return (re.global ? 'g' : '') + (re.ignoreCase ? 'i' : '') + (re.multiline ? 'm' : ''); }
--
- 	var RegExp = support.distinctConstructor(function RegExp(pattern, flags) {
- 	return ($getInternalProperty(pattern, "class") === "RegExp" && flags === void 0 ? pattern : new support.createRegExp(pattern, flags));
- 	}, support.createRegExp = function RegExp(pattern, flags) {
-@@ -1498,7 +1512,6 @@ var RegExp = support.distinctConstructor(function RegExp(pattern, flags) {
- 	flags = convertFlagsToText(pattern);
- 	pattern = pattern.source;
- 	}
--	
- 	// TODO : short-cut most of this through cache instead of only the func def.
- 	// TODO : limit number of entries in cache
- 	pattern = (pattern === void 0 ? '' : str(pattern));
-@@ -1518,7 +1531,6 @@ var RegExp = support.distinctConstructor(function RegExp(pattern, flags) {
- 	defineProperties(re, { dontEnum: true, dontDelete: true }, { lastIndex: 0 });
- 	return re;
- 	});
--
- 	defineProperties(RegExp, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: regExpPrototype = RegExp.prototype });
- 	defineProperties(RegExp.prototype, { dontEnum: true }, {
- 	exec: unconstructable(function exec(string) { checkClass(this, "RegExp", "exec"); return regExpExecMethod(this, string); }),
-@@ -1528,9 +1540,7 @@ defineProperties(RegExp.prototype, { dontEnum: true }, {
- 	return '/' + this.source + '/' + convertFlagsToText(this);
- 	})
- 	});
--
- 	/* --- Set up globals --- */
--
- 	defineProperties(globals, { dontEnum: true }, {
- 	Array: Array,
- 	Boolean: Boolean,
-@@ -1565,13 +1575,10 @@ defineProperties(globals, { dontEnum: true }, {
- 	return (b === i ? $NaN : v * sign);
- 	})
- 	});
--
- 	defineProperties(globals, { dontEnum: true, dontDelete: true }, {
- 	NaN: $NaN, Infinity: $Infinity, undefined: support.undefined
- 	});
--
- 	/* --- Math --- */
--
- 	defineProperties(Math, { readOnly: true, dontEnum: true, dontDelete: true }, {
- 	E: 2.718281828459045235360,
- 	LN10: 2.302585092994045684018,
-@@ -1582,7 +1589,6 @@ defineProperties(Math, { readOnly: true, dontEnum: true, dontDelete: true }, {
- 	SQRT1_2: 0.7071067811865475244008,
- 	SQRT2: 1.414213562373095048802
- 	});
--
- 	defineProperties(Math, { dontEnum: true }, {
- 	abs: unconstructable(abs = function abs(v) { return ((v = +v) < 0 ? -v : v) }),
- 	acos: unconstructable(function acos(v) { return support.acos(+v) }),
-@@ -1603,9 +1609,7 @@ defineProperties(Math, { dontEnum: true }, {
- 	sqrt: unconstructable(function sqrt(v) { return support.sqrt(+v) }),
- 	tan: unconstructable(function tan(v) { return support.tan(+v) })
- 	});
--
- 	/* --- Errors --- */
--
- 	function createErrorConstructor(name, prototype) {
- 	return function(message) {
- 	var e;
-@@ -1614,10 +1618,8 @@ function createErrorConstructor(name, prototype) {
- 	return e
- 	}
- 	};
--
- 	(function() {
- 	var ERROR_NAMES = [ "Error", "EvalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError", "URIError" ];
--
- 	for (var i = ERROR_NAMES.length; --i >= 0;) {
- 	var n, c, p;
- 	support.defineProperty(globals, n = ERROR_NAMES[i], c = createErrorConstructor(n, p = support.prototypes[n])
-@@ -1627,43 +1629,34 @@ function createErrorConstructor(name, prototype) {
- 	defineProperties(p, { dontEnum: true }, { constructor: c });
- 	p.name = n;
- 	}
--
- 	defineProperties(Error.prototype, { dontEnum: true }, {
- 	message: '',
- 	toString: unconstructable(function toString() {
- 	return (this.name === void 0 ? "Error" : this.name) + (this.message ? (": " + this.message) : '');
- 	})
- 	});
--
- 	syntaxError = SyntaxError;
- 	rangeError = RangeError;
- 	typeError = TypeError;
- 	})();
--
- 	/* --- ES >3 polyfills --- */
--
- 	// These are not guaranteed to be 100% compatible
--
- 	var JSON_ESCAPE_SEQUENCES = { '\\': "\\\\", '"': "\\\"", '\b': "\\b", '\f': "\\f", '\n': "\\n", '\r': "\\r", '\t': "\\t" };
- 	var MAX_JSON_DEPTH = 61;	// compiler internal recursion limit is 64 (as of 20180610), we must stick under this for eval() to work and 61 gives us enough margin
--
- 	// TODO : use StringBuilder?
- 	defineProperties(JSON, { dontEnum: true }, {
- 	stringify: unconstructable(function stringify(val, replacer, space) {
- 	var stack = [ ], replacerFunction = (typeof replacer === "function" ? replacer : null), gap = '', includeProps;
--
- 	if ($getInternalProperty(replacer, "class") === "Array") {
- 	includeProps = { };
- 	for (var i = replacer.length; --i >= 0;) includeProps[replacer[i]] = true;
- 	}
--
- 	if (typeof space === "number" || (typeof space === "object" && $getInternalProperty(space, "class") === "Number")) {
- 	space = +space;
- 	for (var i = (space > 10 ? 10 : space); --i >= 0;) gap += ' ';
- 	} else if (typeof space === "string" || (typeof space === "object" && $getInternalProperty(space, "class") === "String")) {
- 	gap = $sub(str(space), 0, 10);
- 	}
--
- 	function quote(s) {
- 	var t = '"', len = s.length;
- 	for (var i = 0; i < len; ++i) {
-@@ -1674,12 +1667,10 @@ defineProperties(JSON, { dontEnum: true }, {
- 	}
- 	return t + '"';
- 	}
--
- 	function string(key, holder, indent) {
- 	var val;
- 	if ((val = holder[key]) && typeof val === "object" && typeof val.toJSON === "function") val = val.toJSON(key);
- 	if (replacerFunction) val = $callWithArgs(replacerFunction, holder, [ key, val ]);
--
- 	var lineEnd = (gap ? '\n' + indent : '');
- 	if (typeof val === "object") {
- 	switch ($getInternalProperty(val, "class")) {
-@@ -1719,7 +1710,6 @@ defineProperties(JSON, { dontEnum: true }, {
- 	--stack.length;
- 	return s.build();
- 	}
--
- 	case "string": return quote(val);
- 	case "number": return ($isFinite(val) ? str(val) : "null");
- 	case "boolean": return str(val);
-@@ -1727,7 +1717,6 @@ defineProperties(JSON, { dontEnum: true }, {
- 	}
- 	return string('', { '': val }, '');
- 	}),
--
- 	parse: unconstructable(function parse(text, reviver) {
- 	var nest = 0;
- 	function space(t, p) {
-@@ -1831,18 +1820,40 @@ defineProperties(JSON, { dontEnum: true }, {
- 	throw syntaxError("Error parsing JSON");
- 	})
- 	});
--
- 	defineProperties(Array, { dontEnum: true }, {
- 	isArray: unconstructable(function isArray(o) { return $getInternalProperty(o, "class") === "Array"; })
- 	});
--
- 	defineProperties(Object, {dontEnum : true}, {
- 	defineProperty : unconstructable(function defineProperty(o, p, d) {
--		support.defineProperty(o, str(p), d.value, !d.writable, !d.enumerable, !d.configurable);
-+	var k = str(p);
-+	var ro = !d.writable, de = !d.enumerable, dd = !d.configurable;
-+	if ("get" in d || "set" in d) {
-+	if ("value" in d || "writable" in d)
-+	throw TypeError();
-+	var g = d.get;
-+	var s = d.set;
-+	if (g !== undefined && typeof g !== "function")
-+	throw TypeError();
-+	if (s !== undefined && typeof s !== "function")
-+	throw TypeError();
-+	support.defineProperty(o, k, undefined, ro, de, dd, g, s);
-+	} else {
-+	support.defineProperty(o, k, d.value, ro, de, dd);
-+	}
-+	}),
-+	getPrototypeOf : unconstructable(function getPrototypeOf(o) {
-+	return $getInternalProperty(o, "prototype");
- 	}),
--	getPrototypeOf: unconstructable(function getPrototypeOf(o) { return $getInternalProperty(o, "prototype"); })
-+	keys : unconstructable(function keys(o) {
-+	if (o === undefined || o === null) throw TypeError();
-+	var obj = Object(o);
-+	var res = [];
-+	var k;
-+	for (k in obj) {
-+		if (Object.prototype.hasOwnProperty.call(obj, k)) res[res.length] = k;
-+	}
-+	return res;
-+	})
- 	});
--
- 	if ($NaN.toString() !== "NaN") throw Error("Internal self test failed. Check C++ compiler options concerning IEEE 754 compliance.");
--
- 	})
-diff --git a/src/stdlibES5.js b/src/stdlibES5.js
-new file mode 100644
-index 000000000..b4df0abcc
---- /dev/null
-+++ b/src/stdlibES5.js
-@@ -0,0 +1,24 @@
-+/*
-+ES5 additions to the standard library.
-+This file is appended to stdlib.js by tools/stdlibToCpp.pika.
-+
-+@preserve: indexOf,lastIndexOf,Q
-+*/
-+
-+Q(Array.prototype, {
-+indexOf: unconstructable(function indexOf(searchElement) {
-+var len = uint32(this.length), i = arguments[1];
-+if (len === 0) return -1;
-+if ((i = int(i)) < 0) { i += len; if (i < 0) i = 0; }
-+for (; i < len; ++i) if (i in this && this[i] === searchElement) return i;
-+return -1;
-+}),
-+lastIndexOf: unconstructable(function lastIndexOf(searchElement) {
-+var len = uint32(this.length), i = arguments[1];
-+if (len === 0) return -1;
-+if (i === void 0) i = len - 1; else { i = int(i); if (i < 0) i += len; if (i >= len) i = len - 1; }
-+for (; i >= 0; --i) if (i in this && this[i] === searchElement) return i;
-+return -1;
-+})
-+});
-+
-diff --git a/src/stdlibJS.cpp b/src/stdlibJS.cpp
-index 8754846d4..faef14492 100644
---- a/src/stdlibJS.cpp
-+++ b/src/stdlibJS.cpp
-@@ -252,240 +252,269 @@ const char* STDLIB_JS =
- "aX;return $sub(B,aX,(length===void 0?h:aX+M(length)))}),substring:c(function substring(aX,aY){aX=M(aX);if(aY===void 0)"
- "aY=h;else if((aY=M(aY))<aX){var b5=aX;aX=aY;aY=b5}return $sub(P(this),aX,aY)}),toUpperCase:c(function toUpperCase(){re"
- "turn aA(this)}),toLocaleUpperCase:c(function toLocaleUpperCase(){return aA(this)}),toLowerCase:c(function toLowerCase("
--"){return az(this)}),toLocaleLowerCase:c(function toLocaleLowerCase(){return az(this)}),valueOf:c(function valueOf(){Y("
--"this,\"String\",\"valueOf\");return i(this,\"value\")}),toString:c(function toString(){Y(this,\"String\",\"toString\")"
--";return i(this,\"value\")})});var Array=function Array(G){var aM=[],ak,aB;if((aB=(ak=arguments).length)===1&&typeof G="
--"==\"number\"){if((G>>>0)!==G)throw m(\"Invalid array length\");aM.length=G}else{for(var u=0;u<aB;++u)aM[u]=ak[u]}retur"
--"n aM};Q(Array,{dontEnum:true,readOnly:true,dontDelete:true},{prototype:a.prototypes.Array});Q(Array.prototype,{dontEnu"
--"m:true},{constructor:Array,concat:c(function concat(b6){var aM=[],ak,aB=(ak=arguments).length,C=0,G=this;for(var u=-1;"
--"u<aB;G=ak[++u]){if(i(G,\"class\")!==\"Array\"){aM[C++]=G}else{for(var b7=0,aG=G.length;b7<aG;++b7)if(b7 in G)aM[C+b7]="
--"G[b7];aM.length=(C+=b7)}}return aM}),join:c(function join(aZ){var B=new x,b8,ay=O(this.length);aZ=(aZ===void 0?',':P(a"
--"Z));for(var u=0;u<ay;++u){if(u>0)B.A(aZ);if((b8=this[u])!=null)B.A(P(b8))}return B.D()}),pop:c(function pop(){var G=vo"
--"id 0,ay;if((ay=O(this.length))>0)G=this[--ay];this.length=ay;return G}),push:c(function push(b9){var ak,ba=O(this.leng"
--"th),aY=(ak=arguments).length+ba;for(var u=ba;u<aY;++u)this[u]=ak[u-ba];return(this.length=aY)}),reverse:c(function rev"
--"erse(){var ay,bb=f((ay=O(this.length))/2);--ay;for(var bc=0;bc<bb;++bc){var bd=ay-bc;var be=(bd in this),bf=this[bd];i"
--"f(bc in this)this[bd]=this[bc];else delete this[bd];if(be)this[bc]=bf;else delete this[bc]}return this}),shift:c(funct"
--"ion shift(){var ay,bg;if(ay=O(this.length)){bg=this[0];for(var u=1;u<ay;++u){if(u in this)this[u-1]=this[u];else delet"
--"e this[u-1]}--ay};this.length=ay;return bg}),slice:c(function slice(aX,aY){var aM=[],ay=O(this.length);if((aX=M(aX))<0"
--"){aX+=ay;if(aX<0)aX=0}if(aY===void 0||(aY=M(aY))>ay)aY=ay;else if(aY<0)aY+=ay;for(var u=aX,b7=0;u<aY;++u,++b7)if(u in "
--"this)aM[b7]=this[u];aM.length=b7;return aM}),sort:c(function sort(bh){var bi=this;function b5(bj,bk,bl){var bm=(bk in "
--"bj),bn=bj[bk];if(bl in bj)bj[bk]=bj[bl];else delete bj[bk];if(bm)bj[bl]=bn;else delete bj[bl]};function bo(bj,bk,bl){i"
--"f(!(bk in bj)&&!(bl in bj))return 0;else if(!(bk in bj))return 1;else if(!(bl in bj))return-1;else{var aM=bj[bk];var y"
--"=bj[bl];if(aM===void 0&&y===void 0)return 0;else if(aM===void 0)return 1;else if(y===void 0)return-1;else return bh(aM"
--",y)}};function bp(bq,br){var bs=b5,bt=bo,bj=bi,bb,bu;for(--br;bq+1<br;bq=bu){var bv=br;bu=bq;bb=f((bu+bv)/2);while(bu<"
--"bv){while(bu<=bv&&bt(bj,bu,bb)<=0&&bt(bj,bv,bb)>=0){++bu;--bv}while(bu<=bv&&bt(bj,bv,bb)>0)--bv;while(bu<=bv&&bt(bj,bu"
--",bb)<0)++bu;if(bb===bu||bb===bv)bb^=bv^bu;if(bu<bv)bs(bj,bu,bv)}bp(bq,bu)}if(bq<br&&bt(bj,bq,br)>0)bs(bj,bq,br)};if(bh"
--"===void 0){bh=function(aM,y){return((aM=P(aM))<(y=P(y))?-1:(aM>y?1:0))}};bp(0,this.length>>>0);return this}),splice:c("
--"function splice(aX,bw){var aM=[],ay=O(this.length),ak,aB=(ak=arguments).length,aY,bx,by;if((aX=M(aX))<0){aX+=ay;if(aX<"
--"0)aX=0}else if(aX>ay)aX=ay;if(aB==1||(aY=aX+M(bw))>ay)aY=ay;else if(aY<aX)aY=aX;for(var u=aX,b7=0;u<aY;++u,++b7)if(u i"
--"n this)aM[b7]=this[u];aM.length=b7;if((bx=aB-2)<0)bx=0;if((by=aX+bx-aY)!==0){var bz=1,b7=aY;if(by>0){bz=-1;b7=ay-1}for"
--"(u=ay-aY;--u>=0;b7+=bz){if(b7 in this)this[b7+by]=this[b7];else delete this[b7+by]}for(u=ay;--u>=ay+by;)delete this[u]"
--"}for(u=2,b7=aX;u<aB;++u,++b7)this[b7]=ak[u];this.length=ay+by;return aM}),toLocaleString:Object.prototype.toLocaleStri"
--"ng,toString:c(function toString(){Y(this,\"Array\",\"toString\");return this.join()}),unshift:c(function unshift(b6){v"
--"ar ay,ak,C=(ak=arguments).length;if(ay=O(this.length)){for(var u=ay;--u>=0;){if(u in this)this[u+C]=this[u];else delet"
--"e this[u+C]}}for(var u=0;u<C;++u)this[u]=ak[u];return(this.length=ay+C)})});function bA(){var bB=a.localTimeDifference"
--"(14516064e5);var bC=a.localTimeDifference(14673312e5);return(bB>bC?bB:bC)}function bD(){var bB=a.localTimeDifference(1"
--"4516064e5);var bC=a.localTimeDifference(14673312e5);return(bB<bC?bB:bC)}function bE(bF){var a2=a.localTimeDifference(b"
--"F);return(d(a2)?bD():a2)}function bG(bF){return d(bF)?bF:bF+bE(bF)}function bH(R){if(i(R,\"class\")!==\"Date\")throw n"
--"(\"this is not a Date object\")}function bI(R){bH(R);return i(R,\"value\")}function bJ(R){return bG(bI(R))}function bK"
--"(R,G){bH(R);a.updateDateValue(R,G);return G}function bL(G){return d(G=bG(G))?\"Invalid Date\":(bM(G)+' '+bN(G))}functi"
--"on bO(bP,C){return(bP%C+C)%C}function bQ(bR,bS,bT,bU){return bR*36e5+bS*6e4+bT*1e3+bU}function bV(bF){return[bO(f(bF/3"
--"6e5),24),bO(f(bF/6e4),60),bO(f(bF/1e3),60),bO(bF,1e3)]}function bW(bF){return d(bF)?bF:(bF-bE(bF-bA()))}function bX(bF"
--"){return bO(f(bF/864e5)+4,7)}function bY(bF){return bO(f(bF/36e5),24)}function bZ(bF){return bO(f(bF/6e4),60)}function"
--" c0(bF){return bO(f(bF/1e3),60)}function c1(bF){return bO(bF,1e3)}function c2(bF){return(!e(bF)||abs(bF)>8.64e15?g:M(b"
--"F))}function c3(bF){return bW(c2(bF))}function c4(bF){bF=f(bF/864e5)+719468;var c5=M((bF>=0?bF:bF-146096)/146097);var "
--"c6=bF-c5*146097;var c7=M((c6-M(c6/1460)+M(c6/36524)-M(c6/146096))/365);var c8=c7+c5*400;var c9=c6-(365*c7+M(c7/4)-M(c7"
--"/100));var ca=M((5*c9+2)/153);var aT=ca+(ca<10?2:-10);var cb=c9-M((153*ca+2)/5)+1;return[(c8+(aT<=1)),aT,cb]}function "
--"bM(bF){var c8,cc=c4(bF);return(0<=(c8=cc[0])&&c8<=9999?a1(c8,4):(c8<0?\"-\":\"+\")+a1(abs(c8),6))+\"-\"+a1(cc[1]+1,2)+"
--"\"-\"+a1(cc[2],2)}function bN(bF,bU){var cd=bV(bF);return a1(cd[0],2)+\":\"+a1(cd[1],2)+\":\"+a1(cd[2],2)+(bU?\".\"+a1"
--"($sub(cd[3],0,3),3):\"\")}function ce(cf,cg,ch){cf+=f(cg/12)-(bO(cg,12)<=1);var c5=M((cf>=0?cf:cf-399)/400);var c7=cf-"
--"c5*400;var c9=M((153*(cg+(cg>1?-2:10))+2)/5)+ch-1;var c6=c7*365+M(c7/4)-M(c7/100)+c9;return(c5*146097+c6-719468)*864e5"
--"}function ci(bF,C,aM){var u,cb=c4(bF),aN=bO(bF,864e5);for(u=0;u<aM.length;++u,++C)cb[C]=M(aM[u]);return j(ce,null,cb)+"
--"aN}function cj(bF,C,aM){var u,H=bV(bF),aN=f(bF/864e5)*864e5;for(u=0;u<aM.length;++u,++C)H[C]=M(aM[u]);return j(bQ,null"
--",H)+aN}function ck(cf,cg,cl,cm,cn,co,bU){var aB=arguments.length;return ce((cf=M(cf))+(0<=cf&&cf<=99?1900:0),M(cg),(aB"
--">2?M(cl):1))+bQ(aB>3?M(cm):0,aB>4?M(cn):0,aB>5?M(co):0,aB>6?M(bU):0)}function cp(cb){var bF;return d(bF=bI(cb))?null:b"
--"M(bF)+\"T\"+bN(bF,true)+\"Z\"}var cq,Date=a.distinctConstructor(function Date(){return bL(a.getCurrentTime())},functio"
--"n Date(cf,cg,cl,cm,cn,co,bU){var G,aB;if((aB=arguments.length)>=2&&aB<=7)G=c3(j(ck,null,arguments));else if(aB===1)G=c"
--"2(typeof(G=a.toPrimitive(cf))===\"string\"?cq(G):+G);else G=a.getCurrentTime();return a.createWrapper(\"Date\",G,a.pro"
--"totypes.Date)});Q(Date,{dontEnum:true,readOnly:true,dontDelete:true},{prototype:a.prototypes.Date});Q(Date,{dontEnum:t"
--"rue},{parse:c(cq=function parse(B){var bF,c8,u,aU,cr,cs,ct,u=0;function cu(ay){var G;for(G=0;--ay>=0;)if(\"0\"<=B[u]&&"
--"B[u]<=\"9\")G=G*10+(+B[u++]);else return g;return G}bF=ce(((aU=B[u])===\"+\"||aU===\"-\")&&(++u,c8=cu(6),aU===\"-\"?-c"
--"8:c8)||cu(4),B[u]===\"-\"&&(++u,cu(2)-1)||0,B[u]===\"-\"&&(++u,cu(2))||1);bF+=bQ(((aU=B[u])===\"T\"||aU===\"t\"||aU==="
--"' ')&&(++u,cu(2))||0,B[u]===\":\"&&(++u,cu(2))||0,B[u]===\":\"&&(++u,cu(2))||0,B[u]===\".\"&&(++u,cu(3))||0);while((aU"
--"=B[u])!==void 0&&aU!==\"Z\"&&aU!==\"z\"&&aU!==\"+\"&&aU!==\"-\")++u;if(aU===\"Z\"||aU===\"z\")cr=0;else if(aU===\"+\"|"
--"|aU===\"-\"){++u,cs=cu(2)*36e5,B[u]===\":\"&&++u,cs+=d(ct=cu(2))?0:ct*6e4,d(cs)||(cr=aU===\"-\"?-cs:cs)}return(cr===vo"
--"id 0?bW(bF):bF-cr)}),UTC:c(function UTC(cf,cg,cl,cm,cn,co,bU){return c2(ck(cf,cg,cl,cm,cn,co,bU))})});Q(Date.prototype"
--",{dontEnum:true},{constructor:Date,toISOString:c(function toISOString(){var B;if((B=cp(this))===null)throw m(\"Invalid"
--" time value\");return B}),toUTCString:c(function toUTCString(){var bF;if(d(bF=bI(this)))return\"Invalid Date\";return("
--"bM(bF)+' '+bN(bF))}),toString:c(function toString(){return bL(bI(this))}),toDateString:c(function toDateString(){var a"
--"2;if(d(a2=bJ(this)))return\"Invalid Date\";return bM(a2)}),toTimeString:c(function toTimeString(){var a2;if(d(a2=bJ(th"
--"is)))return\"Invalid Date\";return bN(a2)}),toLocaleString:Object.prototype.toLocaleString,toLocaleDateString:c(functi"
--"on toLocaleDateString(){return this.toDateString()}),toLocaleTimeString:c(function toLocaleTimeString(){return this.to"
--"TimeString()}),valueOf:c(function valueOf(){return bI(this)}),getTime:c(function getTime(){return bI(this)}),getFullYe"
--"ar:c(function getFullYear(){return c4(bJ(this))[0]}),getUTCFullYear:c(function getUTCFullYear(){return c4(bI(this))[0]"
--"}),getMonth:c(function getMonth(){return c4(bJ(this))[1]}),getUTCMonth:c(function getUTCMonth(){return c4(bI(this))[1]"
--"}),getDate:c(function getDate(){return c4(bJ(this))[2]}),getUTCDate:c(function getUTCDate(){return c4(bI(this))[2]}),g"
--"etDay:c(function getDay(){return bX(bJ(this))}),getUTCDay:c(function getUTCDay(){return bX(bI(this))}),getHours:c(func"
--"tion getHours(){return bY(bJ(this))}),getUTCHours:c(function getUTCHours(){return bY(bI(this))}),getMinutes:c(function"
--" getMinutes(){return bZ(bJ(this))}),getUTCMinutes:c(function getUTCMinutes(){return bZ(bI(this))}),getSeconds:c(functi"
--"on getSeconds(){return c0(bJ(this))}),getUTCSeconds:c(function getUTCSeconds(){return c0(bI(this))}),getMilliseconds:c"
--"(function getMilliseconds(){return c1(bJ(this))}),getUTCMilliseconds:c(function getUTCMilliseconds(){return c1(bI(this"
--"))}),getTimezoneOffset:c(function getTimezoneOffset(){var G=bI(this);return(G-bG(G))/6e4}),setTime:c(function setTime("
--"time){return bK(c2(+time))}),setMilliseconds:c(function setMilliseconds(bU){return bK(this,c3(cj(bJ(this),3,arguments)"
--"))}),setUTCMilliseconds:c(function setUTCMilliseconds(bU){return bK(this,c2(cj(bI(this),3,arguments)))}),setSeconds:c("
--"function setSeconds(B,bU){return bK(this,c3(cj(bJ(this),2,arguments)))}),setUTCSeconds:c(function setUTCSeconds(B,bU){"
--"return bK(this,c2(cj(bI(this),2,arguments)))}),setMinutes:c(function setMinutes(aT,B,bU){return bK(this,c3(cj(bJ(this)"
--",1,arguments)))}),setUTCMinutes:c(function setUTCMinutes(aT,B,bU){return bK(this,c2(cj(bI(this),1,arguments)))}),setHo"
--"urs:c(function setHours(cv,aT,B,bU){return bK(this,c3(cj(bJ(this),0,arguments)))}),setUTCHours:c(function setUTCHours("
--"cv,aT,B,bU){return bK(this,c2(cj(bI(this),0,arguments)))}),setDate:c(function setDate(cl){return bK(this,c3(ci(bJ(this"
--"),2,arguments)))}),setUTCDate:c(function setUTCDate(cl){return bK(this,c2(ci(bI(this),2,arguments)))}),setMonth:c(func"
--"tion setMonth(cg,cl){return bK(this,c3(ci(bJ(this),1,arguments)))}),setUTCMonth:c(function setUTCMonth(cg,cl){return b"
--"K(this,c2(ci(bI(this),1,arguments)))}),setFullYear:c(function setFullYear(cf,cg,cl){var G;return bK(this,c3(ci(d(G=bI("
--"this))?0:bG(G),0,arguments)))}),setUTCFullYear:c(function setUTCFullYear(cf,cg,cl){var G;return bK(this,c2(ci(d(G=bI(t"
--"his))?0:G,0,arguments)))}),toJSON:c(function toJSON(){return cp(this)})});var G=1;var cw=G,cx=(G<<=1),cy=(G<<=1),cz=(G"
--"<<=1),cA=(G<<=1),cB=(G<<=1),cC=(G<<=1),cD=(G<<=1),cE=(G<<=1),cF=(G<<=1),cG=(G<<=1);var CC={};(function(){function cH(c"
--"I,cJ){for(var u in cJ)CC[cJ[u]]|=cI}cH(cE,\"^$.*+?()[]{}|\");cH(cA|cC|cz,\"0123456789\");cH(cC|cB|cz,\"abcdefABCDEF\")"
--";cH(cB|cz,\"ghijklmnopqrstuvwxyzGHIJKLMNOPQRSTUVWXYZ\");cH(cx|cy,\"\\n\\r\\u2028\\u2029\");cH(cy,\" \\t\\v\\f\\xA0\");"
--"CC['_']|=cz;CC[\"undefined\"]|=cw;CC['']|=cw;cH(cD,\"fnrtv\");for(var u=32;u<=126;++u){var au=a.fromCharCode(u);if(au!"
--"=='\"'&&au!=='\\\\')CC[a.fromCharCode(u)]|=cF}var cK=[0,48,58,65,91,95,96,97,123,128];for(var u=cK.length-2;u>=0;u-=2)"
--"for(var b7=cK[u],cL=cK[u+1];b7<cL;++b7)CC[a.fromCharCode(b7)]|=cG})();function regExpCanonicalize(B){var H='',au,cb;if"
--"(!as)at();for(var u=0,ay=B.length;u<ay;++u)H+=((cb=as[au=B[u]])&&cb.length===1&&(au<'\\x80'||cb>='\\x80')?cb:au);retur"
--"n H}function cM(B,cN,cO){var X=0,cP='',cQ=0,cR=0,cS='',cT=0;function cU(cV,cI){return((CC[cV]&cI)!==0)}function cW(B,c"
--"I){for(var u=B.length-1;u>=0;--u)if((CC[B[u]]&cI)===0)return false;return true}var cX={'D':[cA,true],'d':[cA,false],'S"
--"':[cy,true],'s':[cy,false],'W':[cz,true],'w':[cz,false],'.':[cx,true]};function cY(cZ){var C=cZ;if(cU(B[X],cA)){C=0;do"
--"{C=C*10+(k(B,X)-48);++X}while(cU(B[X],cA))}return C}function d0(){var d1=0,d2=h,d3=true;switch(B[X]){case'*':++X;break"
--";case'+':++X;d1=1;break;case'?':++X;d2=1;break;case'{':{var y=X;++X;if((d1=d2=cY(-1))<0){X=y;return null}if(B[X]===','"
--"){++X;d2=cY(h)}if(B[X]!=='}'){X=y;return null}if(d1>d2){throw l(\"Min greater than max in regular expression quantifie"
--"r\")}++X;break}default:return null}if(B[X]==='?'){++X;d3=false}return{d1:d1,d2:d2,d3:d3}}function d4(au){if(cU(au,cF))"
--"return au;return(au<='~'?\"\\\\x\":\"\\\\u\")+a1(ad(k(au,0),16),(au<='~'?2:4))}function d5(au){return d4(cN?regExpCano"
--"nicalize(au):au)}function d6(){var d7,d8,d9;if((d7=B[X])==='\\\\'){switch(d8=B[X+1]){case'0':{if(!cU(B[X+2],cA)){X+=2;"
--"return'\\0'}break}case'c':{if(cU(B[X+2],cB)){X+=3;return a.fromCharCode(k(B,X-1)&31)}break}case'x':case'u':{var C=(d8="
--"=='x'?2:4);if(cW(d9=$sub(B,X+2,X+2+C),cC)){X+=2+C;return a.fromCharCode(parseInt(d9,16))}break}default:{if(cU(d8,cD)){"
--"X+=2;return eval('\"\\\\'+d8+'\"')}else if(cU(d8,cG)){X+=2;return d8}break}}}else if(d7){++X;return d7}}function da(){"
--"var db=[],G,C=0;while(!cU(B[X],cE)&&(G=d6()))db[C++]=d5(G);return(db.length?db:null)}function dc(){var G,dd,au;if((au="
--"B[X])!==']'&&(G=d6()))return G;if(au==='\\\\'){if((au=B[X+1])==='b'){X+=2;return'\\b'}if(dd=cX[au]){X+=2;return dd}}}f"
--"unction de(ba){return(ba===0?'p':((ba<0?'p':'p+')+ba))}function df(db,ba){if(db.length===0)return\"true\";else if(db.l"
--"ength===1)return\"s[\"+de(ba)+']===\"'+db[0]+'\"';else if(db.length===2)return\"s[\"+de(ba)+']===\"'+db[0]+'\" && s['+"
--"de(ba+1)+']===\"'+db[1]+'\"';else{for(var u=0,B='',a2=db.length;u<a2;++u)B+=db[u];return\"$match(s,\"+de(ba)+',\"'+B+'"
--"\")'}}function dg(aM,y){switch(aM){case\"false\":return\"false\";case\"true\":return y;default:return(y===\"true\"?aM:"
--"aM+\" && \"+y)}}function dh(aM,y){switch(aM){case\"false\":return y;case\"true\":return\"true\";default:return(y===\"f"
--"alse\"?aM:aM+\" || \"+y)}}function di(name,dj){cP+=\"\\tfunction \"+name+\"(p) { \"+dj+\" }\\n\"}function dk(dl,ba,dm,"
--"dn,dp,dq){var dr='q'+(++cQ),ds=(dq?\"var h=\"+dq+\",\":\"var \")+(dp.d1?\"b=p+\"+dp.d1+(dq?\"*h\":\"\"):\"b=p\")+(dp.d"
--"2<h?\",e=p+\"+dp.d2+(dq?\"*h\":\"\"):\"\")+\"; \";if(dq)ds+=\"if (h<=0 || h!==h) return \"+dn+\"; \";if(dp.d3){di(dr,d"
--"s+\"while (\"+dg((dp.d2<h?\"p<e\":\"true\"),dm)+\") \"+(dq?\"p+=h\":\"++p\")+\"; while (\"+dg(\"p>=b\",\"!(\"+dn+\")\""
--")+\") \"+(dq?\"p-=h\":\"--p\")+\"; return p>=b\")}else{di(dr,ds+\"while (\"+dh((dp.d1?\"p<b\":\"false\"),\"!(\"+dn+\")"
--"\")+\") { if (\"+dh((dp.d2<h?\"p>=e\":\"false\"),\"!(\"+dm+\")\")+\") return false; \"+(dq?\"p+=h\":\"++p\")+\" }; ret"
--"urn true\")}return dg(dl,dr+\"(\"+de(ba)+\")\")}function dt(dl,du,dv,dw){if(du===null&&dv===dw){return\"return \"+dl}e"
--"lse{var dx='',dy='',dz='';if(du!==null){dx+='r'+du+\"=c\"+du;dy='c'+du+\"=p\";dz='c'+du+\"=r\"+du}if(dw!==void 0){for("
--"var u=dv;u<dw;++u){var b7=u*2;if(du!==null||u>dv){dx+=',';dz+=',';if(u===dv){dy+=','}}dx+='r'+b7+\"=c\"+b7;dy+='c'+b7+"
--"'=';dz+='c'+b7+\"=r\"+b7;if(u===dw-1){dy+=\"void 0\"}}}dl=dy+\", \"+dh(dl,'('+dz+\",false)\");return\"var \"+dx+\"; re"
--"turn \"+dl}}function dA(aU,dd){return(dd[1]?'!':\"!!\")+\"(CC[\"+aU+\"]&\"+(dd[0]|(dd[1]?cw:0))+')'}function dB(ba,dC)"
--"{var db,dp,dl=\"true\";dD:for(;;){if(db=da()){if(dp=d0()){var dE=db[db.length-1];--db.length;return dk(dg(dl,df(db,ba)"
--"),ba+db.length,df(dE,0),dB(0,dC),dp)}dl=dg(dl,df(db,ba));ba+=db.length}else{var au,dF,dn,dG,dH;switch(au=B[X]){case'^'"
--":{++X;dF=de(ba)+\"===0\";if(cO)dF='('+dh(dF,\"!!(CC[s[\"+de(ba-1)+\"]]&\"+cx+')')+')';dl=dg(dl,dF);break}case'$':{++X;"
--"dF=de(ba)+\"===l\";if(cO)dF='('+dh(dF,\"!!(CC[s[\"+de(ba)+\"]]&\"+cx+')')+')';dl=dg(dl,dF);break}case'[':{var dI=false"
--",dJ,dK,dL=\"false\";if(B[++X]==='^'){dI=true;++X}while(dJ=dc()){var y=X;if(B[X]==='-'&&(++X,dK=dc())){if(typeof dJ==="
--"\"string\"&&typeof dK===\"string\"&&dJ<=dK){if(cN&&(dJ>'~'||dK>'~'||(regExpCanonicalize(dJ)!==dJ)!==(regExpCanonicaliz"
--"e(dK)!==dK))){dJ=d4(dJ);dK=d4(dK);dL=dh(dL,dg('upperToLower[c]>=\"'+dJ+'\"','upperToLower[c]<=\"'+dK+'\"'))}else{dJ=d5"
--"(dJ);dK=d5(dK)}dL=dh(dL,dg('c>=\"'+dJ+'\"','c<=\"'+dK+'\"'))}else{throw l(\"Invalid character class syntax in regular "
--"expression\")}}else if(typeof dJ===\"string\"){X=y;dL=dh(dL,'c===\"'+d5(dJ)+'\"')}else{dL=dh(dL,dA('c',dJ))}}if(B[X]!="
--"=']'){throw l(\"Invalid character class syntax in regular expression\")}++X;var dr='k'+(++cQ);di(dr,\"var c=s[p]; retu"
--"rn \"+(dI?\"p!==l && !(\"+dL+')':dL));if(dp=d0()){return dk(dl,ba,dr+'('+de(0)+')',dB(0,dC),dp)}dl=dg(dl,dr+'('+de(ba)"
--"+')');++ba;break}case'\\\\':{var C;++X;if((C=cY(-1))>=0){if(C>cT)cT=C;C=(C-1)*2;dp=d0();var dq='c'+(C+1)+\"-c\"+C,dM="
--"\"$match(s,\"+de(ba)+\",$sub(s, c\"+C+\",c\"+(C+1)+\"))\";dn=dB(0,dC);var dN='t'+(++cQ);di(dN,\"return \"+dn);return d"
--"p?dk(dl,ba,dM,dN+'('+de(0)+')',dp,dq):dg(dl,'(c'+C+\"<c\"+(C+1)+\" ? \"+dg(dM,dN+'('+de(ba)+'+'+dq+')')+\" : \"+dN+'('"
--"+de(ba)+\"))\")}else if((au=B[X])==='b'||au==='B'){++X;dl=dg(dl,(au==='b'?\"!!((CC[s[\":\"!((CC[s[\")+de(ba-1)+\"]]^CC"
--"[s[\"+de(ba)+\"]])&\"+cz+')');break}}case'.':{var dd;if(!(dd=cX[au]))throw l(\"Invalid escape in regular expression\")"
--";++X;if(dp=d0()){return dk(dl,ba,dA(\"s[\"+de(0)+']',dd),dB(0,dC),dp)}dl=dg(dl,dA(\"s[\"+de(ba)+']',dd));++ba;break}ca"
--"se'(':{var dO=++cQ,dP='g'+dO,dQ=dP+'('+de(ba)+')',dR='j'+dO,dS=dR+'('+de(ba)+')',dT=true,dU=false,dV=false;++X;if(B[X]"
--"==='?'){switch(B[X+1]){case'!':dV=true;case'=':dU=true;case':':dT=false;X+=2}}var dW=null,dX=null;if(dT){(dX=(dW=(cR++"
--")*2)+1);cS+=\",c\"+dW+\",c\"+dX}var dY=cR,dZ=e0(0,(dU?void 0:dR)),e1=cR;if((au=B[X])!==')'){throw l(au?\"Unterminated "
--"group in regular expression\":\"Invalid regular expression\")}++X;dp=(dU?null:d0());dn=dB(0,dC);dH=dZ;var e2='',e3=(dp"
--"&&dp.d2>1);if(e3&&(dp.d2<h||dp.d1>1)){cS+=\",n\"+dO+\"=0\";dH=((dp.d2<h)?dg(\"++n\"+dO+\"<=\"+dp.d2,dH):\"++n\"+dO+\","
--" \"+dH);if(dp.d1>1){dH=dg(dH,'n'+dO+\">=\"+dp.d1);e2='n'+dO+'<'+dp.d1}dH=dh(dH,\"(--n\"+dO+\",false)\")}if(dU){dG=dR+'"
--"('+de(0)+')';if(dV){dH=\"!(\"+dH+')';if(dY<e1){var e4='';for(var u=dY;u<e1;++u)e4+='c'+u*2+'=';dG='('+e4+\"void 0, \"+"
--"dG+')'}}dH=dg(dH,dG)}if(e3){cS+=\",p\"+dO;var e5='p'+dO+\"!=p\";dH=dg(e2?'('+dh(e5,e2)+')':e5,\"(p\"+dO+\"=p, \"+dH+')"
--"')}di(dP,dt(dH,dW,dY,e1));if(e3){var e6=dP+'('+de(0)+')';dH=(dp.d3?dh(e6,dn):dh(dn,e6));di(dR,dt(dH,dX));dG=(dp.d1===0"
--"?dS:dQ);dl=dg(dl,'(p'+dO+\"=void 0,\"+dG+')')}else{di(dR,dt(dn,dX));dl=((dp&&dp.d1===0)?dg(dl,(dp.d2===0?dS:'('+(dp.d3"
--"?dh(dQ,dS):dh(dS,dQ))+')')):dg(dl,dQ))}return dl}default:break dD}}}switch(dC){case void 0:return dl;case'':return dg("
--"dl,\"(q=\"+de(ba)+\",true)\");default:return dg(dl,dC+'('+de(ba)+')')}}function e0(ba,dC){var dl=dB(ba,dC);if(B[X]==='"
--"|'){do{++X;dl=dh(dl,dB(ba,dC))}while(B[X]==='|');dl='('+dl+')'}return dl}var dZ=e0(0,'');if(X<B.length)throw l(\"Inval"
--"id regular expression\");if(cT>cR)throw l(\"Invalid back reference in regular expression\");var dl=\"(function(s, p) {"
--"\\n\";if(cN)dl+=\"\\ts=regExpCanonicalize(s)\\n\";dl+=\"\\tvar l=s.length,q\";dl+=cS+\";\\n\"+cP+\"\\tif (\"+dZ+\") re"
--"turn [p,q\";for(var u=0;u<cR*2;++u)dl+=\",c\"+u;dl+=\"];\\n})\";return dl}var e7={'g':\"global\",'i':\"ignoreCase\",'m"
--"':\"multiline\"},e8={},e9;function ea(b4,a7){a7=P(a7);var u;if((u=(b4.global?M(b4.lastIndex):0))>=0){var aW=i(b4,\"val"
--"ue\"),ay=a7.length,aT;for(;u<=ay;++u)if(aT=aW(a7,u)){if(b4.global)b4.lastIndex=aT[1];return aT}}b4.lastIndex=0}functio"
--"n aL(b4,a7){var aT,aM=null;if(aT=ea(b4,a7)){(aM=[]).input=a7;aM.index=aT[0];for(var b7=0;b7<aT.length;b7+=2)aM[aM.leng"
--"th]=((aT[b7]===void 0)?void 0:$sub(a7,aT[b7],aT[b7+1]))}return aM}function eb(b4){return(b4.global?'g':'')+(b4.ignoreC"
--"ase?'i':'')+(b4.multiline?'m':'')}var RegExp=a.distinctConstructor(function RegExp(ec,ed){return(i(ec,\"class\")===\"R"
--"egExp\"&&ed===void 0?ec:new a.createRegExp(ec,ed))},a.createRegExp=function RegExp(ec,ed){if(i(ec,\"class\")===\"RegEx"
--"p\"){if(ed!==void 0)throw n(\"Cannot supply flags when constructing one RegExp from another\");ed=eb(ec);ec=ec.source}"
--"ec=(ec===void 0?'':P(ec));ed=(ed===void 0?'':P(ed));var ee={global:false,ignoreCase:false,multiline:false,source:ec};f"
--"or(var u=ed.length-1;u>=0;--u){var X;if(!(X=e7[ed[u]])||ee[X])throw l(\"Invalid regular expression flags\");ee[X]=true"
--"}var ef,eg;if(!(eg=e8[ef=ec+','+ee.ignoreCase+','+ee.multiline]))e8[ef]=eg=ah(cM(ec,ee.ignoreCase,ee.multiline));var b"
--"4=a.createWrapper(\"RegExp\",eg,e9);Q(b4,{dontEnum:true,readOnly:true,dontDelete:true},ee);Q(b4,{dontEnum:true,dontDel"
--"ete:true},{lastIndex:0});return b4});Q(RegExp,{dontEnum:true,readOnly:true,dontDelete:true},{prototype:e9=RegExp.proto"
--"type});Q(RegExp.prototype,{dontEnum:true},{exec:c(function exec(a7){Y(this,\"RegExp\",\"exec\");return aL(this,a7)}),t"
--"est:c(function test(a7){Y(this,\"RegExp\",\"test\");return ea(this,a7)!==void 0}),toString:c(function toString(){Y(thi"
--"s,\"RegExp\",\"toString\");return'/'+this.source+'/'+eb(this)})});Q(b,{dontEnum:true},{Array:Array,Boolean:Boolean,Dat"
--"e:Date,Function:Function,Math:a.createWrapper(\"Math\",void 0),Number:Number,Object:Object,RegExp:RegExp,String:String"
--",isFinite:c(function isFinite(G){return e(+G)}),isNaN:c(function isNaN(G){return d(+G)}),JSON:a.createWrapper(\"JSON\""
--",void 0),eval:a.evalFunction=c(function eval(bP){return a.eval(bP)}),parseFloat:c(function parseFloat(a7){return a.par"
--"seFloat(P(a7))}),parseInt:c(function parseInt(a7,af){a7=P(a7);var s=r,u=-1,ag=1;while(s[a7[++u]]===null);switch(a7[u])"
--"{case'-':ag=-1;case'+':++u}if(((af=N(af))===0||af===16)&&(a7[u]==='0'&&a7[u+1]==='x')){u+=2;af=16}if(af===0)af=10;else"
--" if(af<2||af>36)return g;var G=0,y,aG=a7.length,C;for(y=u;u<aG&&(C=s[a7[u]])!=null&&C<af;++u)G=G*af+C;return(y===u?g:G"
--"*ag)})});Q(b,{dontEnum:true,dontDelete:true},{NaN:g,Infinity:h,undefined:a.undefined});Q(Math,{readOnly:true,dontEnum:"
--"true,dontDelete:true},{E:2.718281828459045235360,LN10:2.302585092994045684018,LN2:0.6931471805599453094172,LOG10E:0.43"
--"429448190325182765113,LOG2E:1.442695040888963407360,PI:3.1415926535897932,SQRT1_2:0.7071067811865475244008,SQRT2:1.414"
--"213562373095048802});Q(Math,{dontEnum:true},{abs:c(abs=function abs(G){return((G=+G)<0?-G:G)}),acos:c(function acos(G)"
--"{return a.acos(+G)}),asin:c(function asin(G){return a.asin(+G)}),atan:c(function atan(G){return a.atan(+G)}),atan2:c(f"
--"unction atan2(c8,bP){return a.atan2(+c8,+bP)}),ceil:c(function ceil(G){return-f(-G)}),cos:c(function cos(G){return a.c"
--"os(+G)}),exp:c(function exp(G){return a.exp(+G)}),floor:c(function floor(G){return f(+G)}),log:c(function log(G){retur"
--"n a.log(+G)}),max:c(function max(bP,c8){var aT=-h,G,ak;for(var u=(ak=arguments).length-1;u>=0;--u)if((G=+ak[u])>aT||d("
--"G))aT=G;return aT}),min:c(function min(bP,c8){var aT=h,G,ak;for(var u=(ak=arguments).length-1;u>=0;--u)if((G=+ak[u])<a"
--"T||d(G))aT=G;return aT}),pow:c(function pow(bP,c8){return a.pow(+bP,+c8)}),random:c(function random(){return a.random("
--")}),round:c(function round(G){return(G===0.0?G:(G>=-0.5&&G<0.0?-0.0:f(G+0.5)))}),sin:c(function sin(G){return a.sin(+G"
--")}),sqrt:c(function sqrt(G){return a.sqrt(+G)}),tan:c(function tan(G){return a.tan(+G)})});function eh(name,prototype)"
--"{return function(message){var aG;a.defineProperty(aG=a.createWrapper(\"Error\",name,prototype),\"message\",(message!=="
--"void 0?P(message):''),false,true,false);return aG}};(function(){var ei=[\"Error\",\"EvalError\",\"RangeError\",\"Refer"
--"enceError\",\"SyntaxError\",\"TypeError\",\"URIError\"];for(var u=ei.length;--u>=0;){var C,au,X;a.defineProperty(b,C=e"
--"i[u],au=eh(C,X=a.prototypes[C]),false,true,false);au.name=C;Q(au,{dontEnum:true,readOnly:true,dontDelete:true},{protot"
--"ype:X});Q(X,{dontEnum:true},{constructor:au});X.name=C}Q(Error.prototype,{dontEnum:true},{message:'',toString:c(functi"
--"on toString(){return(this.name===void 0?\"Error\":this.name)+(this.message?(\": \"+this.message):'')})});l=SyntaxError"
--";m=RangeError;n=TypeError})();var ej={'\\\\':\"\\\\\\\\\",'\"':\"\\\\\\\"\",'\\b':\"\\\\b\",'\\f':\"\\\\f\",'\\n':\"\\"
--"\\n\",'\\r':\"\\\\r\",'\\t':\"\\\\t\"};var ek=61;Q(JSON,{dontEnum:true},{stringify:c(function stringify(ae,el,em){var "
--"en=[],eo=(typeof el===\"function\"?el:null),ep='',eq;if(i(el,\"class\")===\"Array\"){eq={};for(var u=el.length;--u>=0;"
--")eq[el[u]]=true}if(typeof em===\"number\"||(typeof em===\"object\"&&i(em,\"class\")===\"Number\")){em=+em;for(var u=(e"
--"m>10?10:em);--u>=0;)ep+=' '}else if(typeof em===\"string\"||(typeof em===\"object\"&&i(em,\"class\")===\"String\")){ep"
--"=$sub(P(em),0,10)}function er(B){var H='\"',ay=B.length;for(var u=0;u<ay;++u){var aU=B[u],es;H+=((es=ej[aU])?es:((aU>="
--"' '&&aU<='~')?aU:\"\\\\u\"+a1(ad(k(aU,0),16),4)))}return H+'\"'}function a7(ef,et,eu){var ae;if((ae=et[ef])&&typeof ae"
--"===\"object\"&&typeof ae.toJSON===\"function\")ae=ae.toJSON(ef);if(eo)ae=j(eo,et,[ef,ae]);var ev=(ep?'\\n'+eu:'');if(t"
--"ypeof ae===\"object\"){switch(i(ae,\"class\")){case\"Number\":ae=+ae;break;case\"String\":ae=P(ae);break;case\"Boolean"
--"\":ae=i(ae,\"value\");break}}switch(typeof ae){case\"object\":{if(!ae)return\"null\";var ay,B=new x,G;for(var u=(ay=en"
--".length);--u>=0;){if(en[u]===ae)throw n(\"Cannot convert circular structure to JSON\")}if(ay>ek)throw n(\"Structure to"
--"o deeply nested for JSON conversion\");en[ay]=ae;if(i(ae,\"class\")===\"Array\"){ay=ae.length;for(var u=0;u<ay;++u){B."
--"A((u==0?'[':',')+ev+ep+(a7(u,ae,eu+ep)||\"null\"))}B.A(ay==0?\"[]\":ev+']')}else{var ew=false;for(var cL in(eq?eq:ae))"
--"{if(a.hasOwnProperty(ae,cL)){if(G=a7(cL,ae,eu+ep)){B.A((ew?',':'{')+ev+ep+er(cL)+(ep?\": \":':')+G);ew=true}}}B.A(ew?e"
--"v+'}':\"{}\")}--en.length;return B.D()}case\"string\":return er(ae);case\"number\":return(e(ae)?P(ae):\"null\");case\""
--"boolean\":return P(ae)}}return a7('',{'':ae},'')}),parse:c(function parse(ex,ey){var ez=0;function em(H,X){var aU;whil"
--"e((aU=H[X])===' '||aU==='\\t'||aU==='\\r'||aU==='\\n')++X;return X}function eA(H,X){var aU;if(H[X]==='-')++X;if((aU=H["
--"X])==='0')aU=H[++X];else if(aU>='1'&&aU<='9')do{aU=H[++X]}while(aU>='0'&&aU<='9');else return;if(aU==='.'){if((aU=H[++"
--"X])<'0'||aU>'9')return;while((aU=H[++X])>='0'&&aU<='9')}if(aU==='e'||aU==='E'){if((aU=H[++X])==='-'||aU==='+')aU=H[++X"
--"];if(aU<'0'||aU>'9')return;while((aU=H[++X])>='0'&&aU<='9')}return X}function a7(H,X){var aU;if(H[X]!=='\"')return;++X"
--";while((aU=H[X])!=='\"'&&aU>=' '){if(aU==='\\\\'){switch(H[++X]){default:return;case'\"':case'/':case'\\\\':case'b':ca"
--"se'f':case'n':case'r':case't':break;case'u':for(var u=4;--u>=0;)if(!(((aU=H[++X])>='0'&&aU<='9')||(aU>='a'&&aU<='f')||"
--"(aU>='A'&&aU<='F')))return;break}}++X}if(aU==='\"')return++X}function eB(H,X){if($match(H,X,\"true\")||$match(H,X,\"nu"
--"ll\"))return X+4;else if($match(H,X,\"false\"))return X+5}function R(H,X){if(ez>ek)throw n(\"Structure too deeply nest"
--"ed for JSON conversion\");++ez;try{var aU,eC=false,eD=H[X],eE=(eD==='['?']':'}');X=em(H,++X);while((aU=H[X])!==eE&&aU)"
--"{if(eC){if(aU!==',')return;X=em(H,++X)}if(eD==='{'){if(!(X=a7(H,X))||H[X=em(H,X)]!==':')return;X=em(H,++X)}if(!(eF=eG["
--"H[X]])||!(X=eF(H,X)))return;X=em(H,X);eC=true}if(aU===eE)return++X}finally{--ez}}var eG={'{':R,'[':R,'\"':a7,'t':eB,'f"
--"':eB,'n':eB,'-':eA,'0':eA,'1':eA,'2':eA,'3':eA,'4':eA,'5':eA,'6':eA,'7':eA,'8':eA,'9':eA};ex=P(ex);var X,eF;if((eF=eG["
--"ex[X=em(ex,0)]])&&(X=eF(ex,X))&&em(ex,X)===ex.length){var ae=eval('('+ex+')');if(typeof ey===\"function\"){function eH"
--"(et,ef){var cL,G,J;if(typeof(J=et[ef])===\"object\"&&J){for(cL in J){if(a.hasOwnProperty(J,cL)){if((G=eH(J,cL))!==void"
--" 0)J[cL]=G;else delete J[cL]}}}return j(ey,et,[ef,J])}ae=eH({\"\":ae},\"\")}return ae}throw l(\"Error parsing JSON\")}"
--")});Q(Array,{dontEnum:true},{isArray:c(function isArray(J){return i(J,\"class\")===\"Array\"})});Q(Object,{dontEnum:tr"
--"ue},{defineProperty:c(function defineProperty(J,X,cb){a.defineProperty(J,P(X),cb.value,!cb.writable,!cb.enumerable,!cb"
--".configurable)}),getPrototypeOf:c(function getPrototypeOf(J){return i(J,\"prototype\")})});if(g.toString()!==\"NaN\")t"
--"hrow Error(\"Internal self test failed. Check C++ compiler options concerning IEEE 754 compliance.\")})"
-+"){return az(this)}),toLocaleLowerCase:c(function toLocaleLowerCase(){return az(this)}),trimLeft:c(function trimLeft(){"
-+"var B=P(this),u=0,b6=B.length,au;for(;u<b6;++u){au=B.charCodeAt(u);if(au!==0x20&&(au<0x09||au>0x0D)&&au!==0xA0&&au!==0"
-+"x2028&&au!==0x2029&&au!==0xFEFF)break}return $sub(B,u,b6)}),trimRight:c(function trimRight(){var B=P(this),b6=B.length"
-+",au;for(;b6>0;--b6){au=B.charCodeAt(b6-1);if(au!==0x20&&(au<0x09||au>0x0D)&&au!==0xA0&&au!==0x2028&&au!==0x2029&&au!=="
-+"0xFEFF)break}return $sub(B,0,b6)}),trim:c(function trim(){var B=P(this),u=0,b6=B.length,au;for(;u<b6;++u){au=B.charCod"
-+"eAt(u);if(au!==0x20&&(au<0x09||au>0x0D)&&au!==0xA0&&au!==0x2028&&au!==0x2029&&au!==0xFEFF)break}for(;b6>u;--b6){au=B.c"
-+"harCodeAt(b6-1);if(au!==0x20&&(au<0x09||au>0x0D)&&au!==0xA0&&au!==0x2028&&au!==0x2029&&au!==0xFEFF)break}return $sub(B"
-+",u,b6)}),valueOf:c(function valueOf(){Y(this,\"String\",\"valueOf\");return i(this,\"value\")}),toString:c(function to"
-+"String(){Y(this,\"String\",\"toString\");return i(this,\"value\")})});var Array=function Array(G){var aM=[],ak,aB;if(("
-+"aB=(ak=arguments).length)===1&&typeof G===\"number\"){if((G>>>0)!==G)throw m(\"Invalid array length\");aM.length=G}els"
-+"e{for(var u=0;u<aB;++u)aM[u]=ak[u]}return aM};Q(Array,{dontEnum:true,readOnly:true,dontDelete:true},{prototype:a.proto"
-+"types.Array});Q(Array.prototype,{dontEnum:true},{constructor:Array,concat:c(function concat(b7){var aM=[],ak,aB=(ak=ar"
-+"guments).length,C=0,G=this;for(var u=-1;u<aB;G=ak[++u]){if(i(G,\"class\")!==\"Array\"){aM[C++]=G}else{for(var b6=0,aG="
-+"G.length;b6<aG;++b6)if(b6 in G)aM[C+b6]=G[b6];aM.length=(C+=b6)}}return aM}),join:c(function join(aZ){var B=new x,b8,a"
-+"y=O(this.length);aZ=(aZ===void 0?',':P(aZ));for(var u=0;u<ay;++u){if(u>0)B.A(aZ);if((b8=this[u])!=null)B.A(P(b8))}retu"
-+"rn B.D()}),pop:c(function pop(){var G=void 0,ay;if((ay=O(this.length))>0)G=this[--ay];this.length=ay;return G}),push:c"
-+"(function push(b9){var ak,ba=O(this.length),aY=(ak=arguments).length+ba;for(var u=ba;u<aY;++u)this[u]=ak[u-ba];return("
-+"this.length=aY)}),reverse:c(function reverse(){var ay,bb=f((ay=O(this.length))/2);--ay;for(var bc=0;bc<bb;++bc){var bd"
-+"=ay-bc;var be=(bd in this),bf=this[bd];if(bc in this)this[bd]=this[bc];else delete this[bd];if(be)this[bc]=bf;else del"
-+"ete this[bc]}return this}),shift:c(function shift(){var ay,bg;if(ay=O(this.length)){bg=this[0];for(var u=1;u<ay;++u){i"
-+"f(u in this)this[u-1]=this[u];else delete this[u-1]}--ay};this.length=ay;return bg}),slice:c(function slice(aX,aY){var"
-+" aM=[],ay=O(this.length);if((aX=M(aX))<0){aX+=ay;if(aX<0)aX=0}if(aY===void 0||(aY=M(aY))>ay)aY=ay;else if(aY<0)aY+=ay;"
-+"for(var u=aX,b6=0;u<aY;++u,++b6)if(u in this)aM[b6]=this[u];aM.length=b6;return aM}),sort:c(function sort(bh){var bi=t"
-+"his;function b5(bj,bk,bl){var bm=(bk in bj),bn=bj[bk];if(bl in bj)bj[bk]=bj[bl];else delete bj[bk];if(bm)bj[bl]=bn;els"
-+"e delete bj[bl]};function bo(bj,bk,bl){if(!(bk in bj)&&!(bl in bj))return 0;else if(!(bk in bj))return 1;else if(!(bl "
-+"in bj))return-1;else{var aM=bj[bk];var y=bj[bl];if(aM===void 0&&y===void 0)return 0;else if(aM===void 0)return 1;else "
-+"if(y===void 0)return-1;else return bh(aM,y)}};function bp(bq,br){var bs=b5,bt=bo,bj=bi,bb,bu;for(--br;bq+1<br;bq=bu){v"
-+"ar bv=br;bu=bq;bb=f((bu+bv)/2);while(bu<bv){while(bu<=bv&&bt(bj,bu,bb)<=0&&bt(bj,bv,bb)>=0){++bu;--bv}while(bu<=bv&&bt"
-+"(bj,bv,bb)>0)--bv;while(bu<=bv&&bt(bj,bu,bb)<0)++bu;if(bb===bu||bb===bv)bb^=bv^bu;if(bu<bv)bs(bj,bu,bv)}bp(bq,bu)}if(b"
-+"q<br&&bt(bj,bq,br)>0)bs(bj,bq,br)};if(bh===void 0){bh=function(aM,y){return((aM=P(aM))<(y=P(y))?-1:(aM>y?1:0))}};bp(0,"
-+"this.length>>>0);return this}),splice:c(function splice(aX,bw){var aM=[],ay=O(this.length),ak,aB=(ak=arguments).length"
-+",aY,bx,by;if((aX=M(aX))<0){aX+=ay;if(aX<0)aX=0}else if(aX>ay)aX=ay;if(aB==1||(aY=aX+M(bw))>ay)aY=ay;else if(aY<aX)aY=a"
-+"X;for(var u=aX,b6=0;u<aY;++u,++b6)if(u in this)aM[b6]=this[u];aM.length=b6;if((bx=aB-2)<0)bx=0;if((by=aX+bx-aY)!==0){v"
-+"ar bz=1,b6=aY;if(by>0){bz=-1;b6=ay-1}for(u=ay-aY;--u>=0;b6+=bz){if(b6 in this)this[b6+by]=this[b6];else delete this[b6"
-+"+by]}for(u=ay;--u>=ay+by;)delete this[u]}for(u=2,b6=aX;u<aB;++u,++b6)this[b6]=ak[u];this.length=ay+by;return aM}),toLo"
-+"caleString:Object.prototype.toLocaleString,toString:c(function toString(){Y(this,\"Array\",\"toString\");return this.j"
-+"oin()}),unshift:c(function unshift(b7){var ay,ak,C=(ak=arguments).length;if(ay=O(this.length)){for(var u=ay;--u>=0;){i"
-+"f(u in this)this[u+C]=this[u];else delete this[u+C]}}for(var u=0;u<C;++u)this[u]=ak[u];return(this.length=ay+C)}),forE"
-+"ach:c(function forEach(bA){var J=Object(this),ay=O(J.length),H=arguments[1];if(typeof bA!==\"function\")throw TypeErro"
-+"r();for(var bB=0;bB<ay;++bB)if(bB in J)bA.call(H,J[bB],bB,J)}),map:c(function map(bA){var J=Object(this),ay=O(J.length"
-+"),H=arguments[1],aM=new Array(ay);if(typeof bA!==\"function\")throw TypeError();for(var bB=0;bB<ay;++bB)if(bB in J)aM["
-+"bB]=bA.call(H,J[bB],bB,J);return aM}),filter:c(function filter(bA){var J=Object(this),ay=O(J.length),H=arguments[1],aM"
-+"=[],br=0;if(typeof bA!==\"function\")throw TypeError();for(var bB=0;bB<ay;++bB)if(bB in J){var G=J[bB];if(bA.call(H,G,"
-+"bB,J))aM[br++]=G}aM.length=br;return aM}),indexOf:c(function indexOf(bC){var ay=O(this.length),u=arguments[1];if(ay==="
-+"0)return-1;if((u=M(u))<0){u+=ay;if(u<0)u=0}for(;u<ay;++u)if(u in this&&this[u]===bC)return u;return-1}),lastIndexOf:c("
-+"function lastIndexOf(bC){var ay=O(this.length),u=arguments[1];if(ay===0)return-1;if(u===void 0)u=ay-1;else{u=M(u);if(u"
-+"<0)u+=ay;if(u>=ay)u=ay-1}for(;u>=0;--u)if(u in this&&this[u]===bC)return u;return-1}),reduce:c(function reduce(bA){var"
-+" J=Object(this),ay=O(J.length),bB=0,bD;if(typeof bA!==\"function\")throw TypeError();if(arguments.length>1)bD=argument"
-+"s[1];else{while(bB<ay&&!(bB in J))++bB;if(bB>=ay)throw TypeError();bD=J[bB++]}for(;bB<ay;++bB)if(bB in J)bD=bA.call(vo"
-+"id 0,bD,J[bB],bB,J);return bD}),reduceRight:c(function reduceRight(bA){var J=Object(this),ay=O(J.length),bB=ay-1,bD;if"
-+"(typeof bA!==\"function\")throw TypeError();if(arguments.length>1)bD=arguments[1];else{while(bB>=0&&!(bB in J))--bB;if"
-+"(bB<0)throw TypeError();bD=J[bB--]}for(;bB>=0;--bB)if(bB in J)bD=bA.call(void 0,bD,J[bB],bB,J);return bD}),every:c(fun"
-+"ction every(bA){var J=Object(this),ay=O(J.length),H=arguments[1];if(typeof bA!==\"function\")throw TypeError();for(var"
-+" bB=0;bB<ay;++bB)if(bB in J&&!bA.call(H,J[bB],bB,J))return false;return true}),some:c(function some(bA){var J=Object(t"
-+"his),ay=O(J.length),H=arguments[1];if(typeof bA!==\"function\")throw TypeError();for(var bB=0;bB<ay;++bB)if(bB in J&&b"
-+"A.call(H,J[bB],bB,J))return true;return false})});function bE(){var bF=a.localTimeDifference(14516064e5);var bG=a.loca"
-+"lTimeDifference(14673312e5);return(bF>bG?bF:bG)}function bH(){var bF=a.localTimeDifference(14516064e5);var bG=a.localT"
-+"imeDifference(14673312e5);return(bF<bG?bF:bG)}function bI(bJ){var a2=a.localTimeDifference(bJ);return(d(a2)?bH():a2)}f"
-+"unction bK(bJ){return d(bJ)?bJ:bJ+bI(bJ)}function bL(R){if(i(R,\"class\")!==\"Date\")throw n(\"this is not a Date obje"
-+"ct\")}function bM(R){bL(R);return i(R,\"value\")}function bN(R){return bK(bM(R))}function bO(R,G){bL(R);a.updateDateVa"
-+"lue(R,G);return G}function bP(G){return d(G=bK(G))?\"Invalid Date\":(bQ(G)+' '+bR(G))}function bS(bT,C){return(bT%C+C)"
-+"%C}function bU(bV,bW,bX,bY){return bV*36e5+bW*6e4+bX*1e3+bY}function bZ(bJ){return[bS(f(bJ/36e5),24),bS(f(bJ/6e4),60),"
-+"bS(f(bJ/1e3),60),bS(bJ,1e3)]}function c0(bJ){return d(bJ)?bJ:(bJ-bI(bJ-bE()))}function c1(bJ){return bS(f(bJ/864e5)+4,"
-+"7)}function c2(bJ){return bS(f(bJ/36e5),24)}function c3(bJ){return bS(f(bJ/6e4),60)}function c4(bJ){return bS(f(bJ/1e3"
-+"),60)}function c5(bJ){return bS(bJ,1e3)}function c6(bJ){return(!e(bJ)||abs(bJ)>8.64e15?g:M(bJ))}function c7(bJ){return"
-+" c0(c6(bJ))}function c8(bJ){bJ=f(bJ/864e5)+719468;var c9=M((bJ>=0?bJ:bJ-146096)/146097);var ca=bJ-c9*146097;var cb=M(("
-+"ca-M(ca/1460)+M(ca/36524)-M(ca/146096))/365);var cc=cb+c9*400;var cd=ca-(365*cb+M(cb/4)-M(cb/100));var ce=M((5*cd+2)/1"
-+"53);var aT=ce+(ce<10?2:-10);var cf=cd-M((153*ce+2)/5)+1;return[(cc+(aT<=1)),aT,cf]}function bQ(bJ){var cc,cg=c8(bJ);re"
-+"turn(0<=(cc=cg[0])&&cc<=9999?a1(cc,4):(cc<0?\"-\":\"+\")+a1(abs(cc),6))+\"-\"+a1(cg[1]+1,2)+\"-\"+a1(cg[2],2)}function"
-+" bR(bJ,bY){var ch=bZ(bJ);return a1(ch[0],2)+\":\"+a1(ch[1],2)+\":\"+a1(ch[2],2)+(bY?\".\"+a1($sub(ch[3],0,3),3):\"\")}"
-+"function ci(cj,ck,cl){cj+=f(ck/12)-(bS(ck,12)<=1);var c9=M((cj>=0?cj:cj-399)/400);var cb=cj-c9*400;var cd=M((153*(ck+("
-+"ck>1?-2:10))+2)/5)+cl-1;var ca=cb*365+M(cb/4)-M(cb/100)+cd;return(c9*146097+ca-719468)*864e5}function cm(bJ,C,aM){var "
-+"u,cf=c8(bJ),aN=bS(bJ,864e5);for(u=0;u<aM.length;++u,++C)cf[C]=M(aM[u]);return j(ci,null,cf)+aN}function cn(bJ,C,aM){va"
-+"r u,H=bZ(bJ),aN=f(bJ/864e5)*864e5;for(u=0;u<aM.length;++u,++C)H[C]=M(aM[u]);return j(bU,null,H)+aN}function co(cj,ck,c"
-+"p,cq,cr,cs,bY){var aB=arguments.length;return ci((cj=M(cj))+(0<=cj&&cj<=99?1900:0),M(ck),(aB>2?M(cp):1))+bU(aB>3?M(cq)"
-+":0,aB>4?M(cr):0,aB>5?M(cs):0,aB>6?M(bY):0)}function ct(cf){var bJ;return d(bJ=bM(cf))?null:bQ(bJ)+\"T\"+bR(bJ,true)+\""
-+"Z\"}var cu,Date=a.distinctConstructor(function Date(){return bP(a.getCurrentTime())},function Date(cj,ck,cp,cq,cr,cs,b"
-+"Y){var G,aB;if((aB=arguments.length)>=2&&aB<=7)G=c7(j(co,null,arguments));else if(aB===1)G=c6(typeof(G=a.toPrimitive(c"
-+"j))===\"string\"?cu(G):+G);else G=a.getCurrentTime();return a.createWrapper(\"Date\",G,a.prototypes.Date)});Q(Date,{do"
-+"ntEnum:true,readOnly:true,dontDelete:true},{prototype:a.prototypes.Date});Q(Date,{dontEnum:true},{parse:c(cu=function "
-+"parse(B){var bJ,cc,u,aU,cv,cw,cx,u=0;function cy(ay){var G;for(G=0;--ay>=0;)if(\"0\"<=B[u]&&B[u]<=\"9\")G=G*10+(+B[u++"
-+"]);else return g;return G}bJ=ci(((aU=B[u])===\"+\"||aU===\"-\")&&(++u,cc=cy(6),aU===\"-\"?-cc:cc)||cy(4),B[u]===\"-\"&"
-+"&(++u,cy(2)-1)||0,B[u]===\"-\"&&(++u,cy(2))||1);bJ+=bU(((aU=B[u])===\"T\"||aU===\"t\"||aU===' ')&&(++u,cy(2))||0,B[u]="
-+"==\":\"&&(++u,cy(2))||0,B[u]===\":\"&&(++u,cy(2))||0,B[u]===\".\"&&(++u,cy(3))||0);while((aU=B[u])!==void 0&&aU!==\"Z"
-+"\"&&aU!==\"z\"&&aU!==\"+\"&&aU!==\"-\")++u;if(aU===\"Z\"||aU===\"z\")cv=0;else if(aU===\"+\"||aU===\"-\"){++u,cw=cy(2)"
-+"*36e5,B[u]===\":\"&&++u,cw+=d(cx=cy(2))?0:cx*6e4,d(cw)||(cv=aU===\"-\"?-cw:cw)}return(cv===void 0?c0(bJ):bJ-cv)}),UTC:"
-+"c(function UTC(cj,ck,cp,cq,cr,cs,bY){return c6(co(cj,ck,cp,cq,cr,cs,bY))}),now:c(function now(){return a.getCurrentTim"
-+"e()})});Q(Date.prototype,{dontEnum:true},{constructor:Date,toISOString:c(function toISOString(){var B;if((B=ct(this))="
-+"==null)throw m(\"Invalid time value\");return B}),toUTCString:c(function toUTCString(){var bJ;if(d(bJ=bM(this)))return"
-+"\"Invalid Date\";return(bQ(bJ)+' '+bR(bJ))}),toString:c(function toString(){return bP(bM(this))}),toDateString:c(funct"
-+"ion toDateString(){var a2;if(d(a2=bN(this)))return\"Invalid Date\";return bQ(a2)}),toTimeString:c(function toTimeStrin"
-+"g(){var a2;if(d(a2=bN(this)))return\"Invalid Date\";return bR(a2)}),toLocaleString:Object.prototype.toLocaleString,toL"
-+"ocaleDateString:c(function toLocaleDateString(){return this.toDateString()}),toLocaleTimeString:c(function toLocaleTim"
-+"eString(){return this.toTimeString()}),valueOf:c(function valueOf(){return bM(this)}),getTime:c(function getTime(){ret"
-+"urn bM(this)}),getFullYear:c(function getFullYear(){return c8(bN(this))[0]}),getUTCFullYear:c(function getUTCFullYear("
-+"){return c8(bM(this))[0]}),getMonth:c(function getMonth(){return c8(bN(this))[1]}),getUTCMonth:c(function getUTCMonth("
-+"){return c8(bM(this))[1]}),getDate:c(function getDate(){return c8(bN(this))[2]}),getUTCDate:c(function getUTCDate(){re"
-+"turn c8(bM(this))[2]}),getDay:c(function getDay(){return c1(bN(this))}),getUTCDay:c(function getUTCDay(){return c1(bM("
-+"this))}),getHours:c(function getHours(){return c2(bN(this))}),getUTCHours:c(function getUTCHours(){return c2(bM(this))"
-+"}),getMinutes:c(function getMinutes(){return c3(bN(this))}),getUTCMinutes:c(function getUTCMinutes(){return c3(bM(this"
-+"))}),getSeconds:c(function getSeconds(){return c4(bN(this))}),getUTCSeconds:c(function getUTCSeconds(){return c4(bM(th"
-+"is))}),getMilliseconds:c(function getMilliseconds(){return c5(bN(this))}),getUTCMilliseconds:c(function getUTCMillisec"
-+"onds(){return c5(bM(this))}),getTimezoneOffset:c(function getTimezoneOffset(){var G=bM(this);return(G-bK(G))/6e4}),set"
-+"Time:c(function setTime(time){return bO(c6(+time))}),setMilliseconds:c(function setMilliseconds(bY){return bO(this,c7("
-+"cn(bN(this),3,arguments)))}),setUTCMilliseconds:c(function setUTCMilliseconds(bY){return bO(this,c6(cn(bM(this),3,argu"
-+"ments)))}),setSeconds:c(function setSeconds(B,bY){return bO(this,c7(cn(bN(this),2,arguments)))}),setUTCSeconds:c(funct"
-+"ion setUTCSeconds(B,bY){return bO(this,c6(cn(bM(this),2,arguments)))}),setMinutes:c(function setMinutes(aT,B,bY){retur"
-+"n bO(this,c7(cn(bN(this),1,arguments)))}),setUTCMinutes:c(function setUTCMinutes(aT,B,bY){return bO(this,c6(cn(bM(this"
-+"),1,arguments)))}),setHours:c(function setHours(cz,aT,B,bY){return bO(this,c7(cn(bN(this),0,arguments)))}),setUTCHours"
-+":c(function setUTCHours(cz,aT,B,bY){return bO(this,c6(cn(bM(this),0,arguments)))}),setDate:c(function setDate(cp){retu"
-+"rn bO(this,c7(cm(bN(this),2,arguments)))}),setUTCDate:c(function setUTCDate(cp){return bO(this,c6(cm(bM(this),2,argume"
-+"nts)))}),setMonth:c(function setMonth(ck,cp){return bO(this,c7(cm(bN(this),1,arguments)))}),setUTCMonth:c(function set"
-+"UTCMonth(ck,cp){return bO(this,c6(cm(bM(this),1,arguments)))}),setFullYear:c(function setFullYear(cj,ck,cp){var G;retu"
-+"rn bO(this,c7(cm(d(G=bM(this))?0:bK(G),0,arguments)))}),setUTCFullYear:c(function setUTCFullYear(cj,ck,cp){var G;retur"
-+"n bO(this,c6(cm(d(G=bM(this))?0:G,0,arguments)))}),toJSON:c(function toJSON(){return ct(this)})});var G=1;var cA=G,cB="
-+"(G<<=1),cC=(G<<=1),cD=(G<<=1),cE=(G<<=1),cF=(G<<=1),cG=(G<<=1),cH=(G<<=1),cI=(G<<=1),cJ=(G<<=1),cK=(G<<=1);var CC={};("
-+"function(){function cL(cM,cN){for(var u in cN)CC[cN[u]]|=cM}cL(cI,\"^$.*+?()[]{}|\");cL(cE|cG|cD,\"0123456789\");cL(cG"
-+"|cF|cD,\"abcdefABCDEF\");cL(cF|cD,\"ghijklmnopqrstuvwxyzGHIJKLMNOPQRSTUVWXYZ\");cL(cB|cC,\"\\n\\r\\u2028\\u2029\");cL("
-+"cC,\" \\t\\v\\f\\xA0\");CC['_']|=cD;CC[\"undefined\"]|=cA;CC['']|=cA;cL(cH,\"fnrtv\");for(var u=32;u<=126;++u){var au="
-+"a.fromCharCode(u);if(au!=='\"'&&au!=='\\\\')CC[a.fromCharCode(u)]|=cJ}var cO=[0,48,58,65,91,95,96,97,123,128];for(var "
-+"u=cO.length-2;u>=0;u-=2)for(var b6=cO[u],bB=cO[u+1];b6<bB;++b6)CC[a.fromCharCode(b6)]|=cK})();function regExpCanonical"
-+"ize(B){var H='',au,cf;if(!as)at();for(var u=0,ay=B.length;u<ay;++u)H+=((cf=as[au=B[u]])&&cf.length===1&&(au<'\\x80'||c"
-+"f>='\\x80')?cf:au);return H}function cP(B,cQ,cR){var X=0,cS='',cT=0,cU=0,cV='',cW=0;function cX(cY,cM){return((CC[cY]&"
-+"cM)!==0)}function cZ(B,cM){for(var u=B.length-1;u>=0;--u)if((CC[B[u]]&cM)===0)return false;return true}var d0={'D':[cE"
-+",true],'d':[cE,false],'S':[cC,true],'s':[cC,false],'W':[cD,true],'w':[cD,false],'.':[cB,true]};function d1(d2){var C=d"
-+"2;if(cX(B[X],cE)){C=0;do{C=C*10+(k(B,X)-48);++X}while(cX(B[X],cE))}return C}function d3(){var d4=0,d5=h,d6=true;switch"
-+"(B[X]){case'*':++X;break;case'+':++X;d4=1;break;case'?':++X;d5=1;break;case'{':{var y=X;++X;if((d4=d5=d1(-1))<0){X=y;r"
-+"eturn null}if(B[X]===','){++X;d5=d1(h)}if(B[X]!=='}'){X=y;return null}if(d4>d5){throw l(\"Min greater than max in regu"
-+"lar expression quantifier\")}++X;break}default:return null}if(B[X]==='?'){++X;d6=false}return{d4:d4,d5:d5,d6:d6}}funct"
-+"ion d7(au){if(cX(au,cJ))return au;return(au<='~'?\"\\\\x\":\"\\\\u\")+a1(ad(k(au,0),16),(au<='~'?2:4))}function d8(au)"
-+"{return d7(cQ?regExpCanonicalize(au):au)}function d9(){var da,db,dc;if((da=B[X])==='\\\\'){switch(db=B[X+1]){case'0':{"
-+"if(!cX(B[X+2],cE)){X+=2;return'\\0'}break}case'c':{if(cX(B[X+2],cF)){X+=3;return a.fromCharCode(k(B,X-1)&31)}break}cas"
-+"e'x':case'u':{var C=(db==='x'?2:4);if(cZ(dc=$sub(B,X+2,X+2+C),cG)){X+=2+C;return a.fromCharCode(parseInt(dc,16))}break"
-+"}default:{if(cX(db,cH)){X+=2;return eval('\"\\\\'+db+'\"')}else if(cX(db,cK)){X+=2;return db}break}}}else if(da){++X;r"
-+"eturn da}}function dd(){var de=[],G,C=0;while(!cX(B[X],cI)&&(G=d9()))de[C++]=d8(G);return(de.length?de:null)}function "
-+"df(){var G,dg,au;if((au=B[X])!==']'&&(G=d9()))return G;if(au==='\\\\'){if((au=B[X+1])==='b'){X+=2;return'\\b'}if(dg=d0"
-+"[au]){X+=2;return dg}}}function dh(ba){return(ba===0?'p':((ba<0?'p':'p+')+ba))}function di(de,ba){if(de.length===0)ret"
-+"urn\"true\";else if(de.length===1)return\"s[\"+dh(ba)+']===\"'+de[0]+'\"';else if(de.length===2)return\"s[\"+dh(ba)+']"
-+"===\"'+de[0]+'\" && s['+dh(ba+1)+']===\"'+de[1]+'\"';else{for(var u=0,B='',a2=de.length;u<a2;++u)B+=de[u];return\"$mat"
-+"ch(s,\"+dh(ba)+',\"'+B+'\")'}}function dj(aM,y){switch(aM){case\"false\":return\"false\";case\"true\":return y;default"
-+":return(y===\"true\"?aM:aM+\" && \"+y)}}function dk(aM,y){switch(aM){case\"false\":return y;case\"true\":return\"true"
-+"\";default:return(y===\"false\"?aM:aM+\" || \"+y)}}function dl(name,dm){cS+=\"\\tfunction \"+name+\"(p) { \"+dm+\" }\\"
-+"n\"}function dn(dp,ba,dq,dr,ds,dt){var du='q'+(++cT),dv=(dt?\"var h=\"+dt+\",\":\"var \")+(ds.d4?\"b=p+\"+ds.d4+(dt?\""
-+"*h\":\"\"):\"b=p\")+(ds.d5<h?\",e=p+\"+ds.d5+(dt?\"*h\":\"\"):\"\")+\"; \";if(dt)dv+=\"if (h<=0 || h!==h) return \"+dr"
-+"+\"; \";if(ds.d6){dl(du,dv+\"while (\"+dj((ds.d5<h?\"p<e\":\"true\"),dq)+\") \"+(dt?\"p+=h\":\"++p\")+\"; while (\"+dj"
-+"(\"p>=b\",\"!(\"+dr+\")\")+\") \"+(dt?\"p-=h\":\"--p\")+\"; return p>=b\")}else{dl(du,dv+\"while (\"+dk((ds.d4?\"p<b\""
-+":\"false\"),\"!(\"+dr+\")\")+\") { if (\"+dk((ds.d5<h?\"p>=e\":\"false\"),\"!(\"+dq+\")\")+\") return false; \"+(dt?\""
-+"p+=h\":\"++p\")+\" }; return true\")}return dj(dp,du+\"(\"+dh(ba)+\")\")}function dw(dp,dx,dy,dz){if(dx===null&&dy===d"
-+"z){return\"return \"+dp}else{var dA='',dB='',dC='';if(dx!==null){dA+='r'+dx+\"=c\"+dx;dB='c'+dx+\"=p\";dC='c'+dx+\"=r"
-+"\"+dx}if(dz!==void 0){for(var u=dy;u<dz;++u){var b6=u*2;if(dx!==null||u>dy){dA+=',';dC+=',';if(u===dy){dB+=','}}dA+='r"
-+"'+b6+\"=c\"+b6;dB+='c'+b6+'=';dC+='c'+b6+\"=r\"+b6;if(u===dz-1){dB+=\"void 0\"}}}dp=dB+\", \"+dk(dp,'('+dC+\",false)\""
-+");return\"var \"+dA+\"; return \"+dp}}function dD(aU,dg){return(dg[1]?'!':\"!!\")+\"(CC[\"+aU+\"]&\"+(dg[0]|(dg[1]?cA:"
-+"0))+')'}function dE(ba,dF){var de,ds,dp=\"true\";dG:for(;;){if(de=dd()){if(ds=d3()){var dH=de[de.length-1];--de.length"
-+";return dn(dj(dp,di(de,ba)),ba+de.length,di(dH,0),dE(0,dF),ds)}dp=dj(dp,di(de,ba));ba+=de.length}else{var au,dI,dr,dJ,"
-+"dK;switch(au=B[X]){case'^':{++X;dI=dh(ba)+\"===0\";if(cR)dI='('+dk(dI,\"!!(CC[s[\"+dh(ba-1)+\"]]&\"+cB+')')+')';dp=dj("
-+"dp,dI);break}case'$':{++X;dI=dh(ba)+\"===l\";if(cR)dI='('+dk(dI,\"!!(CC[s[\"+dh(ba)+\"]]&\"+cB+')')+')';dp=dj(dp,dI);b"
-+"reak}case'[':{var dL=false,dM,dN,dO=\"false\";if(B[++X]==='^'){dL=true;++X}while(dM=df()){var y=X;if(B[X]==='-'&&(++X,"
-+"dN=df())){if(typeof dM===\"string\"&&typeof dN===\"string\"&&dM<=dN){if(cQ&&(dM>'~'||dN>'~'||(regExpCanonicalize(dM)!="
-+"=dM)!==(regExpCanonicalize(dN)!==dN))){dM=d7(dM);dN=d7(dN);dO=dk(dO,dj('upperToLower[c]>=\"'+dM+'\"','upperToLower[c]<"
-+"=\"'+dN+'\"'))}else{dM=d8(dM);dN=d8(dN)}dO=dk(dO,dj('c>=\"'+dM+'\"','c<=\"'+dN+'\"'))}else{throw l(\"Invalid character"
-+" class syntax in regular expression\")}}else if(typeof dM===\"string\"){X=y;dO=dk(dO,'c===\"'+d8(dM)+'\"')}else{dO=dk("
-+"dO,dD('c',dM))}}if(B[X]!==']'){throw l(\"Invalid character class syntax in regular expression\")}++X;var du='k'+(++cT)"
-+";dl(du,\"var c=s[p]; return \"+(dL?\"p!==l && !(\"+dO+')':dO));if(ds=d3()){return dn(dp,ba,du+'('+dh(0)+')',dE(0,dF),d"
-+"s)}dp=dj(dp,du+'('+dh(ba)+')');++ba;break}case'\\\\':{var C;++X;if((C=d1(-1))>=0){if(C>cW)cW=C;C=(C-1)*2;ds=d3();var d"
-+"t='c'+(C+1)+\"-c\"+C,dP=\"$match(s,\"+dh(ba)+\",$sub(s, c\"+C+\",c\"+(C+1)+\"))\";dr=dE(0,dF);var dQ='t'+(++cT);dl(dQ,"
-+"\"return \"+dr);return ds?dn(dp,ba,dP,dQ+'('+dh(0)+')',ds,dt):dj(dp,'(c'+C+\"<c\"+(C+1)+\" ? \"+dj(dP,dQ+'('+dh(ba)+'+"
-+"'+dt+')')+\" : \"+dQ+'('+dh(ba)+\"))\")}else if((au=B[X])==='b'||au==='B'){++X;dp=dj(dp,(au==='b'?\"!!((CC[s[\":\"!((C"
-+"C[s[\")+dh(ba-1)+\"]]^CC[s[\"+dh(ba)+\"]])&\"+cD+')');break}}case'.':{var dg;if(!(dg=d0[au]))throw l(\"Invalid escape "
-+"in regular expression\");++X;if(ds=d3()){return dn(dp,ba,dD(\"s[\"+dh(0)+']',dg),dE(0,dF),ds)}dp=dj(dp,dD(\"s[\"+dh(ba"
-+")+']',dg));++ba;break}case'(':{var dR=++cT,dS='g'+dR,dT=dS+'('+dh(ba)+')',dU='j'+dR,dV=dU+'('+dh(ba)+')',dW=true,dX=fa"
-+"lse,dY=false;++X;if(B[X]==='?'){switch(B[X+1]){case'!':dY=true;case'=':dX=true;case':':dW=false;X+=2}}var dZ=null,e0=n"
-+"ull;if(dW){(e0=(dZ=(cU++)*2)+1);cV+=\",c\"+dZ+\",c\"+e0}var e1=cU,e2=e3(0,(dX?void 0:dU)),e4=cU;if((au=B[X])!==')'){th"
-+"row l(au?\"Unterminated group in regular expression\":\"Invalid regular expression\")}++X;ds=(dX?null:d3());dr=dE(0,dF"
-+");dK=e2;var e5='',e6=(ds&&ds.d5>1);if(e6&&(ds.d5<h||ds.d4>1)){cV+=\",n\"+dR+\"=0\";dK=((ds.d5<h)?dj(\"++n\"+dR+\"<=\"+"
-+"ds.d5,dK):\"++n\"+dR+\", \"+dK);if(ds.d4>1){dK=dj(dK,'n'+dR+\">=\"+ds.d4);e5='n'+dR+'<'+ds.d4}dK=dk(dK,\"(--n\"+dR+\","
-+"false)\")}if(dX){dJ=dU+'('+dh(0)+')';if(dY){dK=\"!(\"+dK+')';if(e1<e4){var e7='';for(var u=e1;u<e4;++u)e7+='c'+u*2+'='"
-+";dJ='('+e7+\"void 0, \"+dJ+')'}}dK=dj(dK,dJ)}if(e6){cV+=\",p\"+dR;var e8='p'+dR+\"!=p\";dK=dj(e5?'('+dk(e8,e5)+')':e8,"
-+"\"(p\"+dR+\"=p, \"+dK+')')}dl(dS,dw(dK,dZ,e1,e4));if(e6){var e9=dS+'('+dh(0)+')';dK=(ds.d6?dk(e9,dr):dk(dr,e9));dl(dU,"
-+"dw(dK,e0));dJ=(ds.d4===0?dV:dT);dp=dj(dp,'(p'+dR+\"=void 0,\"+dJ+')')}else{dl(dU,dw(dr,e0));dp=((ds&&ds.d4===0)?dj(dp,"
-+"(ds.d5===0?dV:'('+(ds.d6?dk(dT,dV):dk(dV,dT))+')')):dj(dp,dT))}return dp}default:break dG}}}switch(dF){case void 0:ret"
-+"urn dp;case'':return dj(dp,\"(q=\"+dh(ba)+\",true)\");default:return dj(dp,dF+'('+dh(ba)+')')}}function e3(ba,dF){var "
-+"dp=dE(ba,dF);if(B[X]==='|'){do{++X;dp=dk(dp,dE(ba,dF))}while(B[X]==='|');dp='('+dp+')'}return dp}var e2=e3(0,'');if(X<"
-+"B.length)throw l(\"Invalid regular expression\");if(cW>cU)throw l(\"Invalid back reference in regular expression\");va"
-+"r dp=\"(function(s, p) {\\n\";if(cQ)dp+=\"\\ts=regExpCanonicalize(s)\\n\";dp+=\"\\tvar l=s.length,q\";dp+=cV+\";\\n\"+"
-+"cS+\"\\tif (\"+e2+\") return [p,q\";for(var u=0;u<cU*2;++u)dp+=\",c\"+u;dp+=\"];\\n})\";return dp}var ea={'g':\"global"
-+"\",'i':\"ignoreCase\",'m':\"multiline\"},eb={},ec;function ed(b4,a7){a7=P(a7);var u;if((u=(b4.global?M(b4.lastIndex):0"
-+"))>=0){var aW=i(b4,\"value\"),ay=a7.length,aT;for(;u<=ay;++u)if(aT=aW(a7,u)){if(b4.global)b4.lastIndex=aT[1];return aT"
-+"}}b4.lastIndex=0}function aL(b4,a7){var aT,aM=null;if(aT=ed(b4,a7)){(aM=[]).input=a7;aM.index=aT[0];for(var b6=0;b6<aT"
-+".length;b6+=2)aM[aM.length]=((aT[b6]===void 0)?void 0:$sub(a7,aT[b6],aT[b6+1]))}return aM}function ee(b4){return(b4.gl"
-+"obal?'g':'')+(b4.ignoreCase?'i':'')+(b4.multiline?'m':'')}var RegExp=a.distinctConstructor(function RegExp(ef,eg){retu"
-+"rn(i(ef,\"class\")===\"RegExp\"&&eg===void 0?ef:new a.createRegExp(ef,eg))},a.createRegExp=function RegExp(ef,eg){if(i"
-+"(ef,\"class\")===\"RegExp\"){if(eg!==void 0)throw n(\"Cannot supply flags when constructing one RegExp from another\")"
-+";eg=ee(ef);ef=ef.source}ef=(ef===void 0?'':P(ef));eg=(eg===void 0?'':P(eg));var eh={global:false,ignoreCase:false,mult"
-+"iline:false,source:ef};for(var u=eg.length-1;u>=0;--u){var X;if(!(X=ea[eg[u]])||eh[X])throw l(\"Invalid regular expres"
-+"sion flags\");eh[X]=true}var ei,ej;if(!(ej=eb[ei=ef+','+eh.ignoreCase+','+eh.multiline]))eb[ei]=ej=ah(cP(ef,eh.ignoreC"
-+"ase,eh.multiline));var b4=a.createWrapper(\"RegExp\",ej,ec);Q(b4,{dontEnum:true,readOnly:true,dontDelete:true},eh);Q(b"
-+"4,{dontEnum:true,dontDelete:true},{lastIndex:0});return b4});Q(RegExp,{dontEnum:true,readOnly:true,dontDelete:true},{p"
-+"rototype:ec=RegExp.prototype});Q(RegExp.prototype,{dontEnum:true},{exec:c(function exec(a7){Y(this,\"RegExp\",\"exec\""
-+");return aL(this,a7)}),test:c(function test(a7){Y(this,\"RegExp\",\"test\");return ed(this,a7)!==void 0}),toString:c(f"
-+"unction toString(){Y(this,\"RegExp\",\"toString\");return'/'+this.source+'/'+ee(this)})});Q(b,{dontEnum:true},{Array:A"
-+"rray,Boolean:Boolean,Date:Date,Function:Function,Math:a.createWrapper(\"Math\",void 0),Number:Number,Object:Object,Reg"
-+"Exp:RegExp,String:String,isFinite:c(function isFinite(G){return e(+G)}),isNaN:c(function isNaN(G){return d(+G)}),JSON:"
-+"a.createWrapper(\"JSON\",void 0),eval:a.evalFunction=c(function eval(bT){return a.eval(bT)}),parseFloat:c(function par"
-+"seFloat(a7){return a.parseFloat(P(a7))}),parseInt:c(function parseInt(a7,af){a7=P(a7);var s=r,u=-1,ag=1;while(s[a7[++u"
-+"]]===null);switch(a7[u]){case'-':ag=-1;case'+':++u}if(((af=N(af))===0||af===16)&&(a7[u]==='0'&&a7[u+1]==='x')){u+=2;af"
-+"=16}if(af===0)af=10;else if(af<2||af>36)return g;var G=0,y,aG=a7.length,C;for(y=u;u<aG&&(C=s[a7[u]])!=null&&C<af;++u)G"
-+"=G*af+C;return(y===u?g:G*ag)})});Q(b,{dontEnum:true,dontDelete:true},{NaN:g,Infinity:h,undefined:a.undefined});Q(Math,"
-+"{readOnly:true,dontEnum:true,dontDelete:true},{E:2.718281828459045235360,LN10:2.302585092994045684018,LN2:0.6931471805"
-+"599453094172,LOG10E:0.43429448190325182765113,LOG2E:1.442695040888963407360,PI:3.1415926535897932,SQRT1_2:0.7071067811"
-+"865475244008,SQRT2:1.414213562373095048802});Q(Math,{dontEnum:true},{abs:c(abs=function abs(G){return((G=+G)<0?-G:G)})"
-+",acos:c(function acos(G){return a.acos(+G)}),asin:c(function asin(G){return a.asin(+G)}),atan:c(function atan(G){retur"
-+"n a.atan(+G)}),atan2:c(function atan2(cc,bT){return a.atan2(+cc,+bT)}),ceil:c(function ceil(G){return-f(-G)}),cos:c(fu"
-+"nction cos(G){return a.cos(+G)}),exp:c(function exp(G){return a.exp(+G)}),floor:c(function floor(G){return f(+G)}),log"
-+":c(function log(G){return a.log(+G)}),max:c(function max(bT,cc){var aT=-h,G,ak;for(var u=(ak=arguments).length-1;u>=0;"
-+"--u)if((G=+ak[u])>aT||d(G))aT=G;return aT}),min:c(function min(bT,cc){var aT=h,G,ak;for(var u=(ak=arguments).length-1;"
-+"u>=0;--u)if((G=+ak[u])<aT||d(G))aT=G;return aT}),pow:c(function pow(bT,cc){return a.pow(+bT,+cc)}),random:c(function r"
-+"andom(){return a.random()}),round:c(function round(G){return(G===0.0?G:(G>=-0.5&&G<0.0?-0.0:f(G+0.5)))}),sin:c(functio"
-+"n sin(G){return a.sin(+G)}),sqrt:c(function sqrt(G){return a.sqrt(+G)}),tan:c(function tan(G){return a.tan(+G)})});fun"
-+"ction ek(name,prototype){return function(message){var aG;a.defineProperty(aG=a.createWrapper(\"Error\",name,prototype)"
-+",\"message\",(message!==void 0?P(message):''),false,true,false);return aG}};(function(){var el=[\"Error\",\"EvalError"
-+"\",\"RangeError\",\"ReferenceError\",\"SyntaxError\",\"TypeError\",\"URIError\"];for(var u=el.length;--u>=0;){var C,au"
-+",X;a.defineProperty(b,C=el[u],au=ek(C,X=a.prototypes[C]),false,true,false);au.name=C;Q(au,{dontEnum:true,readOnly:true"
-+",dontDelete:true},{prototype:X});Q(X,{dontEnum:true},{constructor:au});X.name=C}Q(Error.prototype,{dontEnum:true},{mes"
-+"sage:'',toString:c(function toString(){return(this.name===void 0?\"Error\":this.name)+(this.message?(\": \"+this.messa"
-+"ge):'')})});l=SyntaxError;m=RangeError;n=TypeError})();var em={'\\\\':\"\\\\\\\\\",'\"':\"\\\\\\\"\",'\\b':\"\\\\b\",'"
-+"\\f':\"\\\\f\",'\\n':\"\\\\n\",'\\r':\"\\\\r\",'\\t':\"\\\\t\"};var en=61;Q(JSON,{dontEnum:true},{stringify:c(function"
-+" stringify(ae,eo,ep){var eq=[],er=(typeof eo===\"function\"?eo:null),es='',et;if(i(eo,\"class\")===\"Array\"){et={};fo"
-+"r(var u=eo.length;--u>=0;)et[eo[u]]=true}if(typeof ep===\"number\"||(typeof ep===\"object\"&&i(ep,\"class\")===\"Numbe"
-+"r\")){ep=+ep;for(var u=(ep>10?10:ep);--u>=0;)es+=' '}else if(typeof ep===\"string\"||(typeof ep===\"object\"&&i(ep,\"c"
-+"lass\")===\"String\")){es=$sub(P(ep),0,10)}function eu(B){var H='\"',ay=B.length;for(var u=0;u<ay;++u){var aU=B[u],ev;"
-+"H+=((ev=em[aU])?ev:((aU>=' '&&aU<='~')?aU:\"\\\\u\"+a1(ad(k(aU,0),16),4)))}return H+'\"'}function a7(ei,ew,ex){var ae;"
-+"if((ae=ew[ei])&&typeof ae===\"object\"&&typeof ae.toJSON===\"function\")ae=ae.toJSON(ei);if(er)ae=j(er,ew,[ei,ae]);var"
-+" ey=(es?'\\n'+ex:'');if(typeof ae===\"object\"){switch(i(ae,\"class\")){case\"Number\":ae=+ae;break;case\"String\":ae="
-+"P(ae);break;case\"Boolean\":ae=i(ae,\"value\");break}}switch(typeof ae){case\"object\":{if(!ae)return\"null\";var ay,B"
-+"=new x,G;for(var u=(ay=eq.length);--u>=0;){if(eq[u]===ae)throw n(\"Cannot convert circular structure to JSON\")}if(ay>"
-+"en)throw n(\"Structure too deeply nested for JSON conversion\");eq[ay]=ae;if(i(ae,\"class\")===\"Array\"){ay=ae.length"
-+";for(var u=0;u<ay;++u){B.A((u==0?'[':',')+ey+es+(a7(u,ae,ex+es)||\"null\"))}B.A(ay==0?\"[]\":ey+']')}else{var ez=false"
-+";for(var bB in(et?et:ae)){if(a.hasOwnProperty(ae,bB)){if(G=a7(bB,ae,ex+es)){B.A((ez?',':'{')+ey+es+eu(bB)+(es?\": \":'"
-+":')+G);ez=true}}}B.A(ez?ey+'}':\"{}\")}--eq.length;return B.D()}case\"string\":return eu(ae);case\"number\":return(e(a"
-+"e)?P(ae):\"null\");case\"boolean\":return P(ae)}}return a7('',{'':ae},'')}),parse:c(function parse(eA,eB){var eC=0;fun"
-+"ction ep(H,X){var aU;while((aU=H[X])===' '||aU==='\\t'||aU==='\\r'||aU==='\\n')++X;return X}function eD(H,X){var aU;if"
-+"(H[X]==='-')++X;if((aU=H[X])==='0')aU=H[++X];else if(aU>='1'&&aU<='9')do{aU=H[++X]}while(aU>='0'&&aU<='9');else return"
-+";if(aU==='.'){if((aU=H[++X])<'0'||aU>'9')return;while((aU=H[++X])>='0'&&aU<='9')}if(aU==='e'||aU==='E'){if((aU=H[++X])"
-+"==='-'||aU==='+')aU=H[++X];if(aU<'0'||aU>'9')return;while((aU=H[++X])>='0'&&aU<='9')}return X}function a7(H,X){var aU;"
-+"if(H[X]!=='\"')return;++X;while((aU=H[X])!=='\"'&&aU>=' '){if(aU==='\\\\'){switch(H[++X]){default:return;case'\"':case"
-+"'/':case'\\\\':case'b':case'f':case'n':case'r':case't':break;case'u':for(var u=4;--u>=0;)if(!(((aU=H[++X])>='0'&&aU<='"
-+"9')||(aU>='a'&&aU<='f')||(aU>='A'&&aU<='F')))return;break}}++X}if(aU==='\"')return++X}function eE(H,X){if($match(H,X,"
-+"\"true\")||$match(H,X,\"null\"))return X+4;else if($match(H,X,\"false\"))return X+5}function R(H,X){if(eC>en)throw n("
-+"\"Structure too deeply nested for JSON conversion\");++eC;try{var aU,eF=false,eG=H[X],eH=(eG==='['?']':'}');X=ep(H,++X"
-+");while((aU=H[X])!==eH&&aU){if(eF){if(aU!==',')return;X=ep(H,++X)}if(eG==='{'){if(!(X=a7(H,X))||H[X=ep(H,X)]!==':')ret"
-+"urn;X=ep(H,++X)}if(!(eI=eJ[H[X]])||!(X=eI(H,X)))return;X=ep(H,X);eF=true}if(aU===eH)return++X}finally{--eC}}var eJ={'{"
-+"':R,'[':R,'\"':a7,'t':eE,'f':eE,'n':eE,'-':eD,'0':eD,'1':eD,'2':eD,'3':eD,'4':eD,'5':eD,'6':eD,'7':eD,'8':eD,'9':eD};e"
-+"A=P(eA);var X,eI;if((eI=eJ[eA[X=ep(eA,0)]])&&(X=eI(eA,X))&&ep(eA,X)===eA.length){var ae=eval('('+eA+')');if(typeof eB="
-+"==\"function\"){function eK(ew,ei){var bB,G,J;if(typeof(J=ew[ei])===\"object\"&&J){for(bB in J){if(a.hasOwnProperty(J,"
-+"bB)){if((G=eK(J,bB))!==void 0)J[bB]=G;else delete J[bB]}}}return j(eB,ew,[ei,J])}ae=eK({\"\":ae},\"\")}return ae}throw"
-+" l(\"Error parsing JSON\")})});Q(Array,{dontEnum:true},{isArray:c(function isArray(J){return i(J,\"class\")===\"Array"
-+"\"})});Q(Object,{dontEnum:true},{defineProperty:c(function defineProperty(J,X,cf){var bB=P(X);var U=!cf.writable,V=!cf"
-+".enumerable,W=!cf.configurable;if(\"get\"in cf||\"set\"in cf){if(\"value\"in cf||\"writable\"in cf)throw TypeError();v"
-+"ar eL=cf.get;var B=cf.set;if(eL!==undefined&&typeof eL!==\"function\")throw TypeError();if(B!==undefined&&typeof B!=="
-+"\"function\")throw TypeError();a.defineProperty(J,bB,undefined,U,V,W,eL,B)}else{a.defineProperty(J,bB,cf.value,U,V,W)}"
-+"}),getPrototypeOf:c(function getPrototypeOf(J){return i(J,\"prototype\")}),keys:c(function keys(J){if(J===undefined||J"
-+"===null)throw TypeError();var eM=Object(J);var eN=[];var bB;for(bB in eM){if(Object.prototype.hasOwnProperty.call(eM,b"
-+"B))eN[eN.length]=bB}return eN})});if(g.toString()!==\"NaN\")throw Error(\"Internal self test failed. Check C++ compile"
-+"r options concerning IEEE 754 compliance.\")})"
- ;
- }
-diff --git a/tests/es5/arrayForEach.io b/tests/es5/arrayForEach.io
-new file mode 100644
-index 000000000..194d30765
---- /dev/null
-+++ b/tests/es5/arrayForEach.io
-@@ -0,0 +1,19 @@
-+> total = 0;
-+> [1, 2, 3].forEach(function(v){ total += v; });
-+> print(total);
-+< 6
-+-
-+> seen = [];
-+> arr = [ , 5 ];
-+> arr.forEach(function(v,i){ seen.push(i); });
-+> print(seen.length);
-+< 1
-+-
-+> print(seen[0]);
-+< 1
-+-
-+> ctx = { sum: 0 };
-+> [1,2].forEach(function(v){ this.sum += v; }, ctx);
-+> print(ctx.sum);
-+< 3
-+-
-diff --git a/tests/es5/arrayIndexOf.io b/tests/es5/arrayIndexOf.io
-new file mode 100644
-index 000000000..261fda9a1
---- /dev/null
-+++ b/tests/es5/arrayIndexOf.io
-@@ -0,0 +1,23 @@
-+> var a = [1, 2, 3, 2];
-+-
-+> print(a.indexOf(2));
-+< 1
-+-
-+> print(a.indexOf(2, 2));
-+< 3
-+-
-+> print(a.indexOf(4));
-+< -1
-+-
-+> print(a.lastIndexOf(2));
-+< 3
-+-
-+> print(a.lastIndexOf(2, 2));
-+< 1
-+-
-+> print(a.lastIndexOf(2, -3));
-+< 1
-+-
-+> print(a.lastIndexOf(2, -5));
-+< -1
-+-
-diff --git a/tests/es5/arrayMapFilter.io b/tests/es5/arrayMapFilter.io
-new file mode 100644
-index 000000000..47f314308
---- /dev/null
-+++ b/tests/es5/arrayMapFilter.io
-@@ -0,0 +1,28 @@
-+> res = [1,2,3].map(function(v){ return v*2; });
-+> print(res.join(','));
-+< 2,4,6
-+-
-+> ctx = { add: 1 };
-+> res = [1,2].map(function(v){ return v + this.add; }, ctx);
-+> print(res[1]);
-+< 3
-+-
-+> src = [ , 5 ];
-+> res = src.map(function(v){ return v; });
-+> print(0 in res);
-+< false
-+-
-+> filtered = [1,2,3,4].filter(function(v){ return v % 2 === 0; });
-+> print(filtered.join(','));
-+< 2,4
-+-
-+> ctx = { max:2 };
-+> filtered = [1,2,3].filter(function(v){ return v > this.max; }, ctx);
-+> print(filtered[0]);
-+< 3
-+-
-+> src = [ ,1,2 ];
-+> filtered = src.filter(function(v){ return true; });
-+> print(filtered.length);
-+< 2
-+-
-diff --git a/tests/es5/arrayReduce.io b/tests/es5/arrayReduce.io
-new file mode 100644
-index 000000000..8af505de1
---- /dev/null
-+++ b/tests/es5/arrayReduce.io
-@@ -0,0 +1,23 @@
-+> print([1,2,3].reduce(function(a,b){ return a + b; }));
-+< 6
-+-
-+> print([1,2,3].reduce(function(a,b){ return a + b; }, 1));
-+< 7
-+-
-+> print([1,2,3].reduceRight(function(a,b){ return a - b; }));
-+< 0
-+-
-+> print([1,2,3].reduceRight(function(a,b){ return a - b; }, 10));
-+< 4
-+-
-+> calls = 0; arr = [ , 1 ];
-+> arr.reduce(function(acc, v){ calls++; return acc; }, 0);
-+> print(calls);
-+< 1
-+-
-+> try { [].reduce(function(){}); } catch(e){ print(e instanceof TypeError); }
-+< true
-+-
-+> try { [].reduceRight(function(){}); } catch(e){ print(e instanceof TypeError); }
-+< true
-+-
-diff --git a/tests/es5/arraySomeEvery.io b/tests/es5/arraySomeEvery.io
-new file mode 100644
-index 000000000..17f58c1f3
---- /dev/null
-+++ b/tests/es5/arraySomeEvery.io
-@@ -0,0 +1,21 @@
-+> print([1,2,3].some(function(v){ return v > 2; }));
-+< true
-+-
-+> print([1,2,3].some(function(v){ return v > 5; }));
-+< false
-+-
-+> print([1,2,3].every(function(v){ return v < 4; }));
-+< true
-+-
-+> print([1,2,3].every(function(v){ return v < 3; }));
-+< false
-+-
-+> ctx = { t:2 };
-+> print([1,2,3].some(function(v){ return v > this.t; }, ctx));
-+< true
-+-
-+> calls = 0; arr = [ , 1 ];
-+> arr.every(function(v,i){ calls++; return true; });
-+> print(calls);
-+< 1
-+-
-diff --git a/tests/es5/dateNow.io b/tests/es5/dateNow.io
-new file mode 100644
-index 000000000..9251ce153
---- /dev/null
-+++ b/tests/es5/dateNow.io
-@@ -0,0 +1,8 @@
-+> print(typeof Date.now);
-+< function
-+-
-+> delta = Math.abs(Date.now() - new Date().getTime());
-+-
-+> print(delta < 10);
-+< true
-+-
-diff --git a/tests/es5/getterSetterProperties.io b/tests/es5/getterSetterProperties.io
-new file mode 100644
-index 000000000..2aed455c3
---- /dev/null
-+++ b/tests/es5/getterSetterProperties.io
-@@ -0,0 +1,26 @@
-+> obj = { _v: 1, get value() { return this._v; }, set value(v) { this._v = v; }, get double() { return this._v * 2; }, set double(v) { this._v = v / 2; } };
-+-
-+> print(obj.value);
-+< 1
-+-
-+> print(obj.double);
-+< 2
-+-
-+> obj.double = 50;
-+-
-+> print(obj.value);
-+< 25
-+-
-+> obj.value = 15;
-+-
-+> print(obj.double);
-+< 30
-+-
-+> print(obj._v);
-+< 15
-+-
-+> only = { _v: 0, get value() { return this._v; } };
-+> only.value = 5;
-+> print(only.value);
-+< 0
-+-
-diff --git a/tests/es5/objectKeys.io b/tests/es5/objectKeys.io
-new file mode 100644
-index 000000000..bdc0a7f68
---- /dev/null
-+++ b/tests/es5/objectKeys.io
-@@ -0,0 +1,22 @@
-+> print(Object.keys({a:1,b:2}).sort().join(','));
-+< a,b
-+-
-+> function F(){}
-+> F.prototype.a = 1;
-+> var o = new F();
-+> o.b = 2;
-+> print(Object.keys(o).join(','));
-+< b
-+-
-+> var obj = {};
-+> Object.defineProperty(obj, 'x', { value:1, enumerable:false });
-+> obj.y = 2;
-+> print(Object.keys(obj).join(','));
-+< y
-+-
-+> print(Object.keys('hi').length);
-+< 2
-+-
-+> try { Object.keys(null); } catch(e){ print(e instanceof TypeError); }
-+< true
-+-
-diff --git a/tests/es5/strictArgumentsObject.io b/tests/es5/strictArgumentsObject.io
-new file mode 100644
-index 000000000..da3fb355d
---- /dev/null
-+++ b/tests/es5/strictArgumentsObject.io
-@@ -0,0 +1,8 @@
-+> function f(a){ "use strict"; arguments[0] = 2; return a === 1 && arguments[0] === 2; }
-+> print(f(1))
-+< true
-+-
-+> function g(a){ "use strict"; a = 3; return arguments[0] === 1; }
-+> print(g(1))
-+< true
-+-
-diff --git a/tests/es5/strictDeleteIdentifier.io b/tests/es5/strictDeleteIdentifier.io
-new file mode 100644
-index 000000000..8d859e9d6
---- /dev/null
-+++ b/tests/es5/strictDeleteIdentifier.io
-@@ -0,0 +1,7 @@
-+> eval("\"use strict\"; var x = 1; delete x;")
-+! !!!! SyntaxError: Deleting identifier in strict code
-+-
-+> function f(){ "use strict"; var y; delete y; }
-+! !!!! Line: 1
-+! !!!! SyntaxError: Deleting identifier in strict code
-+-
-diff --git a/tests/es5/strictDuplicateParam.io b/tests/es5/strictDuplicateParam.io
-new file mode 100644
-index 000000000..60ae8255e
---- /dev/null
-+++ b/tests/es5/strictDuplicateParam.io
-@@ -0,0 +1,11 @@
-+> function f(a, a){ "use strict"; }
-+! !!!! Line: 1
-+! !!!! SyntaxError: Duplicate parameter name not allowed in strict code
-+-
-+> function g(a, a){ return a; }
-+> print(g(1))
-+< undefined
-+-
-+> eval("\"use strict\"; function h(a, a){ return a; }")
-+! !!!! SyntaxError: Duplicate parameter name not allowed in strict code
-+-
-diff --git a/tests/es5/strictEvalArgsBinding.io b/tests/es5/strictEvalArgsBinding.io
-new file mode 100644
-index 000000000..72f759752
---- /dev/null
-+++ b/tests/es5/strictEvalArgsBinding.io
-@@ -0,0 +1,6 @@
-+> eval("\"use strict\"; var eval = 0;")
-+! !!!! SyntaxError: Illegal use of eval or arguments in strict code
-+-
-+> eval("\"use strict\"; function arguments(){}");
-+! !!!! SyntaxError: Illegal use of eval or arguments in strict code
-+-
-diff --git a/tests/es5/strictEvalScope.io b/tests/es5/strictEvalScope.io
-new file mode 100644
-index 000000000..71ea5d58e
---- /dev/null
-+++ b/tests/es5/strictEvalScope.io
-@@ -0,0 +1,4 @@
-+> function f(){ "use strict"; eval("1"); }
-+! !!!! Line: 1
-+! !!!! SyntaxError: Illegal use of eval or arguments in strict code
-+-
-diff --git a/tests/es5/strictImplicitGlobal.io b/tests/es5/strictImplicitGlobal.io
-new file mode 100644
-index 000000000..39614742d
---- /dev/null
-+++ b/tests/es5/strictImplicitGlobal.io
-@@ -0,0 +1,7 @@
-+> eval("\"use strict\"; implicit = 1;")
-+! !!!! ReferenceError: implicit is not defined
-+-
-+> f=function(){ "use strict"; implicit2 = 1; }
-+> f()
-+! !!!! ReferenceError: implicit2 is not defined
-+-
-diff --git a/tests/es5/strictThisBinding.io b/tests/es5/strictThisBinding.io
-new file mode 100644
-index 000000000..117112865
---- /dev/null
-+++ b/tests/es5/strictThisBinding.io
-@@ -0,0 +1,8 @@
-+> f=function(){ "use strict"; return this===undefined; }
-+> print(f())
-+< true
-+-
-+> g=function(){ return this===undefined; }
-+> print(g())
-+< false
-+-
-diff --git a/tests/es5/strictWithStatement.io b/tests/es5/strictWithStatement.io
-new file mode 100644
-index 000000000..362f7bcca
---- /dev/null
-+++ b/tests/es5/strictWithStatement.io
-@@ -0,0 +1,7 @@
-+> eval("\"use strict\"; with({}){}")
-+! !!!! SyntaxError: "with" is not allowed in strict code
-+-
-+> function f(){ "use strict"; with({}){} }
-+! !!!! Line: 1
-+! !!!! SyntaxError: "with" is not allowed in strict code
-+-
-diff --git a/tests/es5/stringTrim.io b/tests/es5/stringTrim.io
-new file mode 100644
-index 000000000..9ea2d974a
---- /dev/null
-+++ b/tests/es5/stringTrim.io
-@@ -0,0 +1,6 @@
-+> print(" \tfoo \n".trim())
-+< foo
-+-
-+> print("\u00A0bar\u00A0".trim())
-+< bar
-+-
-diff --git a/tests/es5/stringTrimLeftRight.io b/tests/es5/stringTrimLeftRight.io
-new file mode 100644
-index 000000000..16d13ba3e
---- /dev/null
-+++ b/tests/es5/stringTrimLeftRight.io
-@@ -0,0 +1,14 @@
-+> var s = " \tfoo \n";
-+-
-+> print(s.trimLeft().charCodeAt(0));
-+< 102
-+-
-+> print(s.trimLeft().charCodeAt(s.trimLeft().length - 1));
-+< 10
-+-
-+> print(s.trimRight().charCodeAt(0));
-+< 32
-+-
-+> print(s.trimRight().charCodeAt(s.trimRight().length - 1));
-+< 111
-+-

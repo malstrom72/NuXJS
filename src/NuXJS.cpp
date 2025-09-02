@@ -2188,15 +2188,15 @@ static struct EvalFunction : public Function {
 			return argv[0];
 		}
 
-		Heap& heap = rt.getHeap();
-		const String* expression = argv[0].toString(heap);
-		#if (NUXJS_ES5)
-			const bool strict = direct && processor.isCurrentStrict();
-		#else
-			const bool strict = false;
-		#endif
-			processor.enterEvalCode(rt.compileEvalCode(expression, strict), direct);
-		return UNDEFINED_VALUE;
+Heap& heap = rt.getHeap();
+const String* expression = argv[0].toString(heap);
+#if (NUXJS_ES5)
+const bool strict = direct && processor.isCurrentStrict();
+processor.enterEvalCode(rt.compileEvalCode(expression, strict), direct);
+#else
+processor.enterEvalCode(rt.compileEvalCode(expression), direct);
+#endif
+return UNDEFINED_VALUE;
 	}
 	bool direct;
 } EVAL_FUNCTION(false), DIRECT_EVAL_FUNCTION(true);
@@ -5360,26 +5360,38 @@ Var Runtime::eval(const String& expression) {
 	return runUntilReturn(processor);
 }
 
+#if (NUXJS_ES5)
 Code* Runtime::compileEvalCode(const String* expression, bool strict) {
-	#if !(NUXJS_ES5)
-	strict = false;
-#endif
-	const Table::Bucket* bucket = (strict ? 0 : evalCodeCache.lookup(expression));
-	if (bucket != 0) {
-		Object* o = bucket->getValue().getObject();
-		assert(dynamic_cast<Code*>(o) != 0);
-		return reinterpret_cast<Code*>(o);
-	} else {
-		Code* code = new(heap) Code(heap.managed());
-	#if (NUXJS_ES5)
-		if (strict) { code->setStrict(true); }
-	#endif
-		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
-		compiler.compile(*expression);
-		if (!strict) { evalCodeCache.update(evalCodeCache.insert(expression), code); }
-		return code;
-	}
+const Table::Bucket* bucket = (strict ? 0 : evalCodeCache.lookup(expression));
+if (bucket != 0) {
+Object* o = bucket->getValue().getObject();
+assert(dynamic_cast<Code*>(o) != 0);
+return reinterpret_cast<Code*>(o);
+} else {
+Code* code = new(heap) Code(heap.managed());
+if (strict) { code->setStrict(true); }
+Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
+compiler.compile(*expression);
+if (!strict) { evalCodeCache.update(evalCodeCache.insert(expression), code); }
+return code;
 }
+}
+#else
+Code* Runtime::compileEvalCode(const String* expression) {
+const Table::Bucket* bucket = evalCodeCache.lookup(expression);
+if (bucket != 0) {
+Object* o = bucket->getValue().getObject();
+assert(dynamic_cast<Code*>(o) != 0);
+return reinterpret_cast<Code*>(o);
+} else {
+Code* code = new(heap) Code(heap.managed());
+Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
+compiler.compile(*expression);
+evalCodeCache.update(evalCodeCache.insert(expression), code);
+return code;
+}
+}
+#endif
 
 
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
