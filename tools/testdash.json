@@ -7908,40 +7908,40 @@
 		"category": "not_es3"
 	},
 	"annexB/built-ins/Date/prototype/getYear/B.2.4": {
-		"category": "not_es3"
+		"category": ""
 	},
 	"annexB/built-ins/Date/prototype/getYear/B.2.4.propertyCheck": {
-		"category": "not_es3"
+		"category": ""
 	},
 	"annexB/built-ins/Date/prototype/getYear/length": {
-		"category": "not_es3"
+		"category": ""
 	},
 	"annexB/built-ins/Date/prototype/getYear/name": {
-		"category": "not_es3"
+		"category": ""
 	},
 	"annexB/built-ins/Date/prototype/setYear/B.2.5": {
-		"category": "not_es3"
+		"category": ""
 	},
 	"annexB/built-ins/Date/prototype/setYear/B.2.5.propertyCheck": {
-		"category": "not_es3"
+		"category": ""
 	},
 	"annexB/built-ins/Date/prototype/setYear/length": {
-		"category": "not_es3"
+		"category": ""
 	},
 	"annexB/built-ins/Date/prototype/setYear/name": {
-		"category": "not_es3"
+		"category": ""
 	},
 	"annexB/built-ins/Date/prototype/toGMTString/B.2.6": {
-		"category": "not_es3"
+		"category": ""
 	},
 	"annexB/built-ins/Date/prototype/toGMTString/B.2.6.propertyCheck": {
-		"category": "not_es3"
+		"category": ""
 	},
 	"annexB/built-ins/Date/prototype/toGMTString/length": {
-		"category": "not_es3"
+		"category": ""
 	},
 	"annexB/built-ins/Date/prototype/toGMTString/name": {
-		"category": "not_es3"
+		"category": ""
 	},
 	"annexB/built-ins/Object/prototype/__proto__/B.2.2.1.1": {
 		"category": "not_es3"
@@ -8779,5 +8779,68 @@
 	},
 	"built-ins/Array/prototype/every/name": {
 		"category": "not_es3"
-	}
+	},
+        "built-ins/Object/assign/ObjectOverride-sameproperty": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/OnlyOneArgument": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Override-notstringtarget": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Override": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Source-Null-Undefined": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Source-Number-Boolen-Symbol": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Source-String": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Target-Boolean": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Target-Number": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Target-Object": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Target-String": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Target-Symbol": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/assign-descriptor": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/assign-length": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/name": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/source-get-attr-error": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/source-non-enum": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/source-own-prop-desc-missing": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/source-own-prop-error": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/source-own-prop-keys-error": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/target-set-user-error": {
+                "category": "not_es3"
+        }
 }
