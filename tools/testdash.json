@@ -8780,67 +8780,388 @@
 	"built-ins/Array/prototype/every/name": {
 		"category": "not_es3"
 	},
-        "built-ins/Object/assign/ObjectOverride-sameproperty": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/OnlyOneArgument": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/Override-notstringtarget": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/Override": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/Source-Null-Undefined": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/Source-Number-Boolen-Symbol": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/Source-String": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/Target-Boolean": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/Target-Number": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/Target-Object": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/Target-String": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/Target-Symbol": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/assign-descriptor": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/assign-length": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/name": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/source-get-attr-error": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/source-non-enum": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/source-own-prop-desc-missing": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/source-own-prop-error": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/source-own-prop-keys-error": {
-                "category": "not_es3"
-        },
-        "built-ins/Object/assign/target-set-user-error": {
-                "category": "not_es3"
-        }
+		"built-ins/Object/assign/ObjectOverride-sameproperty": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/OnlyOneArgument": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/Override-notstringtarget": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/Override": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/Source-Null-Undefined": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/Source-Number-Boolen-Symbol": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/Source-String": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/Target-Boolean": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/Target-Number": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/Target-Object": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/Target-String": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/Target-Symbol": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/assign-descriptor": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/assign-length": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/name": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/source-get-attr-error": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/source-non-enum": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/source-own-prop-desc-missing": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/source-own-prop-error": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/source-own-prop-keys-error": {
+				"category": "not_es3"
+		},
+		"built-ins/Object/assign/target-set-user-error": {
+				"category": "not_es3"
+		},
+		"built-ins/Array/prototype/find/array-altered-during-loop": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/find/find": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/find/length": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/find/name": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/find/predicate-call-parameters": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/find/predicate-call-this-non-strict": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/find/predicate-called-for-each-array-property": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/find/predicate-not-called-on-empty-array": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/find/return-abrupt-from-predicate-call": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/find/return-abrupt-from-property": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/find/return-abrupt-from-this-length-as-symbol": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/find/return-abrupt-from-this-length": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/find/return-found-value-predicate-result-is-true": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/find/return-undefined-if-predicate-returns-false-value": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/findIndex/array-altered-during-loop": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/findIndex/findIndex": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/findIndex/length": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/findIndex/name": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/findIndex/predicate-call-parameters": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/findIndex/predicate-call-this-non-strict": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/findIndex/predicate-called-for-each-array-property": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/findIndex/predicate-not-called-on-empty-array": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/findIndex/return-abrupt-from-predicate-call": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/findIndex/return-abrupt-from-property": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/findIndex/return-abrupt-from-this-length-as-symbol": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/findIndex/return-abrupt-from-this-length": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/findIndex/return-index-predicate-result-is-true": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/findIndex/return-negative-one-if-predicate-returns-false-value": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/keys/iteration-mutable": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/keys/iteration": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/keys/keys": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/keys/length": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/keys/name": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/keys/returns-iterator-from-object": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/keys/returns-iterator": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/values/iteration-mutable": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/values/iteration": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/values/length": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/values/name": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/values/prop-desc": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/values/returns-iterator-from-object": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/values/returns-iterator": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/Symbol.iterator": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/Symbol.unscopables/prop-desc": {
+			"category": "not_es3"
+		},
+		"built-ins/Array/prototype/Symbol.unscopables/value": {
+			"category": "not_es3"
+		},
+		"built-ins/IteratorPrototype/Symbol.iterator/length": {
+			"category": "not_es3"
+		},
+		"built-ins/IteratorPrototype/Symbol.iterator/name": {
+			"category": "not_es3"
+		},
+		"built-ins/IteratorPrototype/Symbol.iterator/prop-desc": {
+			"category": "not_es3"
+		},
+		"built-ins/IteratorPrototype/Symbol.iterator/return-val": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/constructor": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/does-not-throw-when-set-is-not-callable": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/get-set-method-failure": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/iterable-calls-set": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/iterator-close-after-set-failure": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/iterator-item-first-entry-returns-abrupt": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/iterator-item-second-entry-returns-abrupt": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/iterator-items-are-not-object-close-iterator": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/iterator-items-are-not-object": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/iterator-next-failure": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/iterator-value-failure": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/length": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/map-iterable-empty-does-not-call-set": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/map-iterable-throws-when-set-is-not-callable": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/map-iterable": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/map-no-iterable-does-not-call-set": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/map-no-iterable": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/map": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/name": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/newtarget": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/properties-of-map-instances": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/properties-of-the-map-prototype-object": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/prototype-of-map": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/symbol-as-entry-key": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/undefined-newtarget": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/Symbol.species/length": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/Symbol.species/symbol-species-name": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/Symbol.species/symbol-species": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/prototype/Symbol.iterator": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/prototype/Symbol.toStringTag": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/prototype/constructor": {
+			"category": "not_es3"
+		},
+		"built-ins/Map/prototype/descriptor": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/constructor": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/length": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/name": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/properties-of-the-set-prototype-object": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/prototype-of-set": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/set-does-not-throw-when-add-is-not-callable": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/set-get-add-method-failure": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/set-iterable-calls-add": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/set-iterable-empty-does-not-call-add": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/set-iterable-throws-when-add-is-not-callable": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/set-iterable": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/set-iterator-close-after-add-failure": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/set-iterator-next-failure": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/set-iterator-value-failure": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/set-newtarget": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/set-no-iterable": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/set-undefined-newtarget": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/set": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/symbol-as-entry": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/Symbol.species/length": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/Symbol.species/symbol-species-name": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/Symbol.species/symbol-species": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/prototype/Symbol.iterator": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/prototype/Symbol.toStringTag": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/prototype/set-prototype": {
+			"category": "not_es3"
+		},
+		"built-ins/Set/prototype/Symbol.toStringTag/property-descriptor": {
+			"category": "not_es3"
+		}
 }
