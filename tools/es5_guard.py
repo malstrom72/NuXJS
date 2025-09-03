@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Inserts conditional `NUXJS_ES5` guards into `src/NuXJS.cpp` and `src/NuXJS.h`
+# by analyzing diffs against `main` to separate ES5-specific code. Existing
+# `NUXJS_ES5` blocks are detected and left unchanged.
 import os
 import re
 import subprocess
@@ -36,18 +39,36 @@ def parse_hunks(diff_lines):
 		files[current].append((new_start, plus, minus))
 	return files
 
+def lines_contain_es5_guard(lines):
+	return any('NUXJS_ES5' in line and line.lstrip().startswith('#') for line in lines)
+
+def already_guarded(lines, start):
+	idx = min(start, len(lines)) - 1
+	depth = 0
+	while idx >= 0:
+		stripped = lines[idx].lstrip()
+		if stripped.startswith('#endif'):
+			depth += 1
+		elif stripped.startswith('#if'):
+			if depth == 0:
+				return 'NUXJS_ES5' in stripped
+			else:
+				depth -= 1
+		idx -= 1
+	return False
+
 def insert_guards(path, hunks):
 	file_path = Path(path)
 	lines = file_path.read_text().splitlines(True)
 	offset = 0
 	for start, plus, minus in hunks:
 		start += offset
-		if plus:
+		if plus and not lines_contain_es5_guard(plus) and not already_guarded(lines, start):
 			indent = re.match(r'\t*', lines[start]).group(0) if start < len(lines) else ''
 			guard_indent = indent[:-1] if len(indent) > 0 else ''
 			lines.insert(start, f"{guard_indent}#if (NUXJS_ES5)\n")
 			end = start + 1 + len(plus)
-			if minus:
+			if minus and not lines_contain_es5_guard(minus):
 				lines.insert(end, f"{guard_indent}#else\n")
 				lines[end + 1:end + 1] = minus
 				lines.insert(end + 1 + len(minus), f"{guard_indent}#endif\n")
@@ -55,7 +76,7 @@ def insert_guards(path, hunks):
 			else:
 				lines.insert(end, f"{guard_indent}#endif\n")
 				offset += 2
-		elif minus:
+		elif minus and not lines_contain_es5_guard(minus) and not already_guarded(lines, start):
 			base = start if start < len(lines) else len(lines)
 			indent = re.match(r'\t*', lines[base]).group(0) if lines else ''
 			guard_indent = indent[:-1] if len(indent) > 0 else ''
