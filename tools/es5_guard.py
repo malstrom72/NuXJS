@@ -40,7 +40,11 @@ def parse_hunks(diff_lines):
 	return files
 
 def lines_contain_es5_guard(lines):
-	return any('NUXJS_ES5' in line and line.lstrip().startswith('#') for line in lines)
+	for line in lines:
+		stripped = line.lstrip()
+		if stripped.startswith('#') and 'NUXJS_ES5' in stripped:
+			return True
+	return False
 
 def already_guarded(lines, start):
 	idx = min(start, len(lines)) - 1
@@ -77,13 +81,14 @@ def insert_guards(path, hunks):
 				lines.insert(end, f"{guard_indent}#endif\n")
 				offset += 2
 		elif minus and not lines_contain_es5_guard(minus) and not already_guarded(lines, start):
-			base = start if start < len(lines) else len(lines)
-			indent = re.match(r'\t*', lines[base]).group(0) if lines else ''
-			guard_indent = indent[:-1] if len(indent) > 0 else ''
-			lines.insert(start, f"{guard_indent}#if (!NUXJS_ES5)\n")
-			lines[start + 1:start + 1] = minus
-			lines.insert(start + 1 + len(minus), f"{guard_indent}#endif\n")
-			offset += len(minus) + 2
+			if any(line.strip() for line in minus):
+				base = start if start < len(lines) else len(lines)
+				indent = re.match(r'\t*', lines[base]).group(0) if lines else ''
+				guard_indent = indent[:-1] if len(indent) > 0 else ''
+				lines.insert(start, f"{guard_indent}#if (!NUXJS_ES5)\n")
+				lines[start + 1:start + 1] = minus
+				lines.insert(start + 1 + len(minus), f"{guard_indent}#endif\n")
+				offset += len(minus) + 2
 	file_path.write_text(''.join(lines))
 
 def main():
