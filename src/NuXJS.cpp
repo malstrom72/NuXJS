@@ -180,10 +180,12 @@ const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_ST
 				, E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
 				, S_TRING_STRING("String");
 
+		#if (NUXJS_ES5)
 			#if (NUXJS_ES5)
 const String GET_STRING("get"), SET_STRING("set");
 #endif
 
+		#endif
 static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
 		, CANNOT_CONVERT_TO_OBJECT_STRING("Cannot convert undefined or null to object")
@@ -1282,7 +1284,9 @@ Object* Object::getPrototype(Runtime& rt) const { return rt.getObjectPrototype()
 Value Object::getInternalValue(Heap&) const { return UNDEFINED_VALUE; }
 Flags Object::getOwnProperty(Runtime&, const Value&, Value*) const { return NONEXISTENT; }
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 bool Object::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) { return setOwnProperty(rt, Value(key), v, flags); }
+#endif
 #endif
 bool Object::setOwnProperty(Runtime&, const Value&, const Value&, Flags) { return false; }
 bool Object::deleteOwnProperty(Runtime&, const Value&) { return false; }
@@ -1324,6 +1328,7 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v) const {
 }
 
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 Flags Object::getProperty(Runtime& rt, Processor& processor, const Value& key, Value* v) const {
 const Object* o = this;
 do {
@@ -1349,6 +1354,7 @@ return NONEXISTENT;
 }
 #endif
 
+#endif
 bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 	if (updateOwnProperty(rt, key, v)) {
 		return true;
@@ -1363,6 +1369,7 @@ bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 	return setOwnProperty(rt, key, v);
 }
 
+#if (NUXJS_ES5)
 #if (NUXJS_ES5)
 bool Object::setProperty(Runtime& rt, Processor& processor, const Value& key, const Value& v) {
 Value current;
@@ -1382,6 +1389,7 @@ return false;
 }
 #endif
 
+#endif
 Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
 	Heap& heap = rt.getHeap();
 	Enumerator* enumerator = getOwnPropertyEnumerator(rt);
@@ -1532,12 +1540,17 @@ Object* JSObject::getPrototype(Runtime&) const { return prototype; }
 
 bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 return setOwnProperty(rt, key.toString(rt.getHeap()), v, flags);
 #else
+#endif
 return update(insert(key.toString(rt.getHeap())), v, flags);
+#if (NUXJS_ES5)
+#endif
 #endif
 }
 
+#if (NUXJS_ES5)
 #if (NUXJS_ES5)
 bool JSObject::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
 Table::Bucket* bucket = insert(key);
@@ -1557,6 +1570,7 @@ return update(bucket, v, flags);
 #endif
 
 
+#endif
 bool JSObject::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
 	Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
 	return (bucket != 0 && update(bucket, v));
@@ -1569,6 +1583,9 @@ Flags JSObject::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 		return bucket->getFlags();
 	}
 	return NONEXISTENT;
+#if (!NUXJS_ES5)
+
+#endif
 }
 bool JSObject::deleteOwnProperty(Runtime& rt, const Value& key) {
 	Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
@@ -1627,7 +1644,11 @@ Code::Code(GCList& gcList, Constants* sharedConstants)
 	: super(gcList), codeWords(0, &gcList.getHeap())
 	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
 	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
+#if (NUXJS_ES5)
 , selfName(0), source(0), bloomSet(0), maxStackDepth(0), strict(false)
+#else
+	, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
+#endif
 {
 	assert(constants != 0);
 }
@@ -1673,12 +1694,14 @@ bool Function::hasInstance(Runtime& rt, Object* object) const {
 	return false;
 }
 
+		#if (NUXJS_ES5)
 			#if (NUXJS_ES5)
 Function* Function::getConstructTarget() {
 	return this;
 }
 #endif
 
+		#endif
 /* --- JSArray --- */
 
 JSArray::JSArray(GCList& gcList) : super(gcList), length(0), denseVector(&gcList.getHeap()) { }
@@ -1778,11 +1801,13 @@ bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 }
 
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 bool JSArray::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
 return setOwnProperty(rt, Value(key), v, flags);
 }
 #endif
 
+#endif
 bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	UInt32 index;
 	if (key.toArrayIndex(index) && index != 0xFFFFFFFFU) {
@@ -1841,11 +1866,13 @@ template<class SUPER> bool LazyJSObject<SUPER>::setOwnProperty(Runtime& rt, cons
 }
 
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 template<class SUPER> bool LazyJSObject<SUPER>::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
 return getCompleteObject(rt)->setOwnProperty(rt, key, v, flags);
 }
 #endif
 
+#endif
 template<class SUPER> bool LazyJSObject<SUPER>::deleteOwnProperty(Runtime& rt, const Value& key) {
 	return getCompleteObject(rt)->deleteOwnProperty(rt, key);
 }
@@ -1921,6 +1948,7 @@ void Error::updateReflection(Runtime& rt) {
 }
 
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 bool Error::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
 const bool result = super::setOwnProperty(rt, key, v, flags);
 updateReflection(rt);
@@ -1928,6 +1956,7 @@ return result;
 }
 #endif
 
+#endif
 bool Error::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	const bool result = super::setOwnProperty(rt, key, v, flags);
 	updateReflection(rt);
@@ -1950,7 +1979,11 @@ void Error::constructCompleteObject(Runtime& rt) const {
 
 Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
 	, scope(scope), function(scope->function), argumentsCount(argumentsCount)
+#if (NUXJS_ES5)
 	, deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()), owner(const_cast<FunctionScope*>(scope)) {
+#else
+	   , deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()) {
+#endif
 	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
 }
 
@@ -1985,11 +2018,13 @@ Flags Arguments::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 }
 
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 bool Arguments::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
 return setOwnProperty(rt, Value(key), v, flags);
 }
 #endif
 
+#endif
 bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	Value* p = findProperty(key);
 	if (p != 0 && (flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) != 0) {
@@ -2016,8 +2051,13 @@ void Arguments::constructCompleteObject(Runtime& rt) const {
 }
 
 Arguments::~Arguments() {
+#if (NUXJS_ES5)
 	if (owner != 0) {
 		owner->arguments = 0;
+#else
+	if (scope != 0) {
+		scope->arguments = 0;
+#endif
 	}
 }
 
@@ -2068,6 +2108,7 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, 
 		std::fill(e, locals.end(), UNDEFINED_VALUE);
 	}
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 	if (code->strict) {
 		Heap& heap = gcList.getHeap();
 		arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
@@ -2075,20 +2116,25 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, 
 	}
 #endif
 
+#endif
 }
 
 JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
 	if (dynamicVars == 0) {
 		Heap& heap = rt.getHeap();
 		dynamicVars = new(heap) JSObject(heap.managed(), 0);
+	#if (NUXJS_ES5)
 		if (arguments == 0) {
+	#endif
 			arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
+	#if (NUXJS_ES5)
 		#if (NUXJS_ES5)
 			if (function->code->strict) {
 				arguments->detach();
 			}
 		#endif
 		}
+	#endif
 		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING, arguments, DONT_DELETE_FLAG);
 	}
 	return dynamicVars;
@@ -2183,7 +2229,9 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
 
 FunctionScope::~FunctionScope() {
 		if (arguments != 0) {
+			#if (NUXJS_ES5)
 				arguments->owner = 0;
+			#endif
 				arguments->detach();
 				arguments = 0;
 		}
@@ -2218,10 +2266,14 @@ static struct EvalFunction : public Function {
 Heap& heap = rt.getHeap();
 const String* expression = argv[0].toString(heap);
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 const bool strict = direct && processor.isCurrentStrict();
 processor.enterEvalCode(rt.compileEvalCode(expression, strict), direct);
 #else
+#endif
 processor.enterEvalCode(rt.compileEvalCode(expression), direct);
+#if (NUXJS_ES5)
+#endif
 #endif
 return UNDEFINED_VALUE;
 	}
@@ -2247,8 +2299,10 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ SET_PROPERTY_POP_OP		 , "SET_PROPERTY_POP"		 , -3	  , 0 },
 	{ ADD_PROPERTY_OP					, "ADD_PROPERTY"					, -1	 , 0 },
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 	{ ADD_GETTER_OP					, "ADD_GETTER"				 , -1	 , 0 },
 	{ ADD_SETTER_OP					, "ADD_SETTER"				 , -1	 , 0 },
+#endif
 #endif
 	{ PUSH_ELEMENTS_OP			, "PUSH_ELEMENTS_OP"		, 0		, OpcodeInfo::POP_OPERAND },
 	{ OBJ_TO_PRIMITIVE_OP		 , "OBJ_TO_PRIMITIVE"		 , 0	  , 0 },
@@ -2333,6 +2387,7 @@ const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
 */
 struct Processor::EvalScope : public Scope {
 		typedef Scope super;
+	#if (NUXJS_ES5)
 		EvalScope(GCList& gcList, Scope* parentScope, bool isolated) : super(gcList, parentScope), vars(0), isolated(isolated) { }
 		virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
 			if (isolated && vars != 0) {
@@ -2367,8 +2422,13 @@ struct Processor::EvalScope : public Scope {
 				}
 				vars->setOwnProperty(rt, name, initValue.isUndefined() ? UNDEFINED_VALUE : initValue, dontDelete ? DONT_DELETE_FLAG : 0);
 			} else {
+	#else
+	EvalScope(GCList& gcList, Scope* parentScope) : super(gcList, parentScope) { }
+	virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool) {
+	#endif
 				parentScope->declareVar(rt, name, initValue, false);
 			}
+	#if (NUXJS_ES5)
 		}
 		JSObject* vars;
 		bool isolated;
@@ -2376,6 +2436,7 @@ struct Processor::EvalScope : public Scope {
 			gcMark(heap, vars);
 			super::gcMarkReferences(heap);
 		}
+	#endif
 };
 	
 /*
@@ -2483,8 +2544,12 @@ void Processor::enter(const Code* code, Scope* scope, Object* thisObject) {
 	if (sp + code->getMaxStackDepth() > stack.end()) {
 		ScriptException::throwError(heap, RANGE_ERROR, &STACK_OVERFLOW_STRING); // Notice: we can't use virtual throw here, cause we need to abort any sp changes etc that could happen if we continued execution beyond this point.
 	} else {
+#if (NUXJS_ES5)
 Object* obj = (thisObject == 0 && !code->isStrict() ? rt.getGlobalObject() : thisObject);
 pushFrame(code, scope, obj);
+#else
+		pushFrame(code, scope, (thisObject == 0 ? rt.getGlobalObject() : thisObject));
+#endif
 		ip = code->getCodeWords();
 	}
 }
@@ -2497,16 +2562,28 @@ void Processor::enterGlobalCode(const Code* code) {
 	enter(code, rt.getGlobalScope(), rt.getGlobalObject());
 }
 
+#if (NUXJS_ES5)
 void Processor::enterEvalCode(const Code* code, bool direct) {
 	bool isolate = direct && code->isStrict();
 	if (direct && currentFrame != 0) {
 		enter(code, new(heap) Processor::EvalScope(heap.managed(), currentFrame->scope, isolate), currentFrame->thisObject);
+#else
+void Processor::enterEvalCode(const Code* code, bool local) {
+	if (local && currentFrame != 0) {
+		enter(code, new(heap) Processor::EvalScope(heap.managed(), currentFrame->scope), currentFrame->thisObject);
+#endif
 	} else {
+	#if (NUXJS_ES5)
 		enter(code, new(heap) Processor::EvalScope(heap.managed(), rt.getGlobalScope(), isolate), rt.getGlobalObject());
+	#else
+		enter(code, new(heap) Processor::EvalScope(heap.managed(), rt.getGlobalScope()), rt.getGlobalObject());
+	#endif
 	}
 }
 
+#if (NUXJS_ES5)
 
+#endif
 void Processor::enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject) {
 	enter(func->code, new(heap) FunctionScope(heap.managed(), func, argc, argv), thisObject);
 }
@@ -2581,11 +2658,15 @@ void Processor::newOperation(const Int32 argc) {
 if (f != 0) { // FIX : sub
 	Value v(UNDEFINED_VALUE);
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 	Function* target = f->getConstructTarget();
 #else
 	Function* target = f;
 #endif
 target->getProperty(rt, &PROTOTYPE_STRING, &v);
+#else
+		f->getProperty(rt, &PROTOTYPE_STRING, &v);
+#endif
 			   Object* prototype = v.asObject();
 			   Int32 counter = 0;
 			   for (Object* p = prototype; p != 0; p = p->getPrototype(rt)) {
@@ -2629,6 +2710,7 @@ void Processor::innerRun() {
 				}
 			}
 			break;
+		#if (NUXJS_ES5)
 			case WRITE_NAMED_OP: {
 				const String* name = constants[im].getString();
 				if (code->isStrict()) {
@@ -2654,19 +2736,31 @@ void Processor::innerRun() {
 				pop(1);
 			}
 			break;
+		#else
+			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
+			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
+
+		#endif
 case GET_PROPERTY_OP: {
 const Object* o = convertToObject(sp[-1], false);
 if (o == 0) {
 return;
 }
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 Flags f = o->getProperty(rt, *this, sp[0], sp - 1);
 if (f == NONEXISTENT) {
+#else
+				if (o->getProperty(rt, sp[0], sp - 1) == NONEXISTENT) {
+#endif
 sp[-1] = UNDEFINED_VALUE;
+#if (NUXJS_ES5)
 pop(1);
 break;
+#endif
 }
 pop(1);
+#if (NUXJS_ES5)
 if ((f & ACCESSOR_FLAG) != 0) {
 return;
 }
@@ -2677,15 +2771,19 @@ sp[-1] = UNDEFINED_VALUE;
 }
 pop(1);
 #endif
+#endif
 break;
 }
 
+		#if (NUXJS_ES5)
 			
+		#endif
 case SET_PROPERTY_OP: {
 Object* o = convertToObject(sp[-2], false);
 if (o == 0) {
 return;
 }
+#if (NUXJS_ES5)
 Value v = sp[0];
 #if (NUXJS_ES5)
 bool acc = o->setProperty(rt, *this, sp[-1], sp[0]);
@@ -2695,19 +2793,29 @@ if (acc) {
 return;
 }
 #else
+#endif
 o->setProperty(rt, sp[-1], sp[0]);
+#if (NUXJS_ES5)
 sp[-2] = v;
+#else
+				sp[-2] = sp[0];
+#endif
 pop(2);
+#if (NUXJS_ES5)
+#endif
 #endif
 break;
 }
 
+		#if (NUXJS_ES5)
 			
+		#endif
 case SET_PROPERTY_POP_OP: {
 Object* o = convertToObject(sp[-2], false);
 if (o == 0) {
 return;
 }
+#if (NUXJS_ES5)
 #if (NUXJS_ES5)
 bool acc = o->setProperty(rt, *this, sp[-1], sp[0]);
 pop(3);
@@ -2715,13 +2823,18 @@ if (acc) {
 return;
 }
 #else
+#endif
 o->setProperty(rt, sp[-1], sp[0]);
 pop(3);
+#if (NUXJS_ES5)
+#endif
 #endif
 break;
 }
 
+#if (NUXJS_ES5)
 
+#endif
 			case OBJ_TO_PRIMITIVE_OP:
 			case OBJ_TO_NUMBER_OP:
 			case OBJ_TO_STRING_OP: {
@@ -2831,7 +2944,11 @@ break;
 			case NEW_ARRAY_OP: push(new(heap) JSArray(heap.managed())); break;
 			case NEW_REG_EXP_OP: invokeFunction(rt.createRegExpFunction, 1, 2); return;
 			case RETURN_OP: ip = currentFrame->returnIP; popFrame(); return;
+#if (NUXJS_ES5)
 case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break;
+#else
+			case THIS_OP: push(thisObject); break;
+#endif
 			case VOID_OP: push(UNDEFINED_VALUE); break;
 			
 			case GEN_FUNC_OP: {
@@ -2850,6 +2967,7 @@ case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break
 				pop(1);
 				break;
 			}
+	#if (NUXJS_ES5)
 		#if (NUXJS_ES5)
 			case ADD_GETTER_OP: {
 				Object* o = sp[-1].getObject();
@@ -2866,6 +2984,7 @@ case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break
 				break;
 			}
 		#endif
+	#endif
 
 			case PUSH_ELEMENTS_OP: {
 				Object* o = sp[-im].getObject();
@@ -3374,6 +3493,7 @@ const String* Compiler::identifier(bool required, bool allowKeywords) {
 		if (!allowKeywords && findReservedKeyword(parsed.size(), parsed.begin()) >= 0) {
 				error(SYNTAX_ERROR, "Illegal use of keyword");
 		}
+	#if (NUXJS_ES5)
 		const String* name = newHashedString(heap, parsed.begin(), parsed.end());
 	#if (NUXJS_ES5)
 		if (code->isStrict() && name->isEqualTo(EVAL_STRING)) {
@@ -3381,6 +3501,9 @@ const String* Compiler::identifier(bool required, bool allowKeywords) {
 		}
 	#endif
 		return name;
+	#else
+	return newHashedString(heap, parsed.begin(), parsed.end());
+	#endif
 }
 
 static UInt32 unescapedMaxLength(const Char* p, const Char* e) {
@@ -3624,14 +3747,22 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff 
 	
 	white();
 	while (!token("}", false)) {
+	#if (NUXJS_ES5)
 		bool handled = false;
+	#endif
 		const Char* b = p;
 		Value key = stringOrNumberConstant();
 		if (p == b) {
+		#if (NUXJS_ES5)
 			const String* id = identifier(false, true);
 			if (id->isEqualTo(EMPTY_STRING)) {
+		#else
+			key = identifier(false, true);
+			if (key.equalsString(EMPTY_STRING)) {
+		#endif
 			error(SYNTAX_ERROR, "Expected property name");
 			}
+			#if (NUXJS_ES5)
 				white();
 			#if (NUXJS_ES5)
 				if ((id->isEqualTo(GET_STRING) || id->isEqualTo(SET_STRING)) && *p != ':') {
@@ -3651,12 +3782,17 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff 
 				{
 						key = id;
 				}
+			#endif
 		}
+	#if (NUXJS_ES5)
 		if (!handled) {
+	#endif
 				expectToken(":", true);
 				rvalueExpression(COMMA_PREC);
 				emitWithConstant(Processor::ADD_PROPERTY_OP, key);
+	#if (NUXJS_ES5)
 		}
+	#endif
 			if (token("}", true)) {
 				break;
 			}
@@ -3738,6 +3874,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 				case ExpressionResult::PUSHED_PRIMITIVE: emit(Processor::POP_OP, 1); /* fall through */
 				case ExpressionResult::NONE:
 				case ExpressionResult::CONSTANT: xr = ExpressionResult(ExpressionResult::CONSTANT, true); break;
+			#if (NUXJS_ES5)
 				case ExpressionResult::LOCAL:
 				#if (NUXJS_ES5)
 					if (code->isStrict()) {
@@ -3755,6 +3892,10 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 					emitWithConstant(Processor::DELETE_NAMED_OP, xr.v);
 					xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
 					break;
+			#else
+				case ExpressionResult::LOCAL: xr = ExpressionResult(ExpressionResult::CONSTANT, false); break;
+				case ExpressionResult::NAMED: emitWithConstant(Processor::DELETE_NAMED_OP, xr.v); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
+			#endif
 				case ExpressionResult::PROPERTY: emit(Processor::DELETE_OP); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
 				default: assert(0);
 			}
@@ -3959,7 +4100,9 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
 	Code* func = new(heap) Code(heap.managed(), code->constants);
+#if (NUXJS_ES5)
 	func->strict = code->strict;
+#endif
 	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
@@ -4115,9 +4258,11 @@ void Compiler::rvalueGroup() {
 // FIX : ok, this is serious mess
 Compiler::ExpressionResult Compiler::declareIdentifier(const String* name, bool func) {
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 	if (code->isStrict() && (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING))) {
 		error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
 	}
+#endif
 #endif
 	ExpressionResult lxr(ExpressionResult::NAMED, name);
 	if (compilingFor != FOR_FUNCTION) {
@@ -4275,9 +4420,11 @@ void Compiler::functionStatement() {
 
 void Compiler::withStatement(SemanticScope* currentScope) {
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 	if (code->isStrict()) {
 		error(SYNTAX_ERROR, "\"with\" is not allowed in strict code");
 	}
+#endif
 #endif
 	rvalueGroup();
 	emit(Processor::WITH_SCOPE_OP);
@@ -4766,6 +4913,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	p = b;
 	this->e = e;
 	acceptInOperator = true;
+#if (NUXJS_ES5)
 	const Char* directiveStart = p;
 	white();
 #if (NUXJS_ES5)
@@ -4798,6 +4946,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	}
 #endif
 	p = directiveStart;
+#endif
 	
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
 	if (compilingFor == FOR_EVAL) {
@@ -4833,7 +4982,9 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 	white();
 	Table& nameIndexes = code->nameIndexes;
 	Vector<const String*>& argumentNames = code->argumentNames;
+#if (NUXJS_ES5)
 	bool hasDuplicateParameters = false;
+#endif
 	while (!token(")", false)) {
 		if (eof()) {
 			error(SYNTAX_ERROR, argumentNames.size() == 0 ? "Expected ')'" : "Expected ',' or ')'");
@@ -4845,6 +4996,7 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 			white();
 		}
 			const String* name = identifier(true, false);
+	#if (NUXJS_ES5)
 		#if (NUXJS_ES5)
 			if (code->isStrict() && (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING))) {
 				error(SYNTAX_ERROR, "Illegal use of eval or arguments in strict code");
@@ -4856,6 +5008,7 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 				break;
 			}
 		}
+	#endif
 		nameIndexes.update(nameIndexes.insert(name), static_cast<Int32>(argumentNames.size()));
 		argumentNames.push(name);
 		code->bloomSet |= name->createBloomCode();
@@ -4864,11 +5017,13 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 	expectToken("{", true);
 	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
 	expectToken("}", false);
+#if (NUXJS_ES5)
 	#if (NUXJS_ES5)
 		if (code->strict && hasDuplicateParameters) {
 			error(SYNTAX_ERROR, "Duplicate parameter name not allowed in strict code");
 		}
 	#endif
+#endif
 	code->name = functionName;
 	code->selfName = selfName;
 	code->source = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
@@ -5010,6 +5165,7 @@ void SeparateConstructorFunction::constructCompleteObject(Runtime& rt) const {
 }
 
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 struct BoundFunction : public ExtensibleFunction {
 	typedef ExtensibleFunction super;
 
@@ -5101,6 +5257,7 @@ void BoundFunction::gcMarkReferences(Heap& heap) const {
 }
 #endif
 
+#endif
 template<class F> struct UnaryMathFunction : public Function {
 	UnaryMathFunction(F& f) : f(f) { }
 	virtual Value invoke(Runtime&, Processor&, UInt32 argc, const Value* argv, Object*) {
@@ -5180,6 +5337,7 @@ struct Support {
 			   if (argc >= 2) {
 					   Object *o = argv[0].asObject();
 					   if (o != 0) {
+						#if (NUXJS_ES5)
 							   Flags flags = (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0) |
 											 (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0) |
 											 (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0) | EXISTS_FLAG;
@@ -5191,11 +5349,19 @@ struct Support {
 							   } else {
 									   success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
 							   }
+						#else
+				success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE)
+						, (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0)
+						| (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0)
+						| (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0)
+						| EXISTS_FLAG);
+						#endif
 					   }
 			   }
 			   return success;
 	   }
 
+#if (NUXJS_ES5)
 #if (NUXJS_ES5)
 static Value bind(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 	if (argc >= 2) {
@@ -5210,6 +5376,7 @@ static Value bind(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Objec
 }
 #endif
 
+#endif
 	   static Value compileFunction(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 			   if (argc >= 1) {
 					   Heap& heap = rt.getHeap();
@@ -5374,6 +5541,7 @@ static struct {
 	FunctorAdapter<NativeFunction> func;
 } SUPPORT_FUNCTIONS[] = {
 	   { "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
+#if (NUXJS_ES5)
 { "defineProperty", Support::defineProperty },
 #if (NUXJS_ES5)
 { "bind", Support::bind },
@@ -5383,6 +5551,14 @@ static struct {
 	   { "fromCharCode", Support::fromCharCode }, { "isPropertyEnumerable", Support::isPropertyEnumerable },
 	   { "atan2", Support::atan2 }, { "pow", Support::pow }, { "parseFloat", Support::parseFloat },
 	   { "charCodeAt", Support::charCodeAt }, { "substring", Support::substring }, { "submatch", Support::submatch },
+#else
+	{ "defineProperty", Support::defineProperty }, { "compileFunction", Support::compileFunction },
+	{ "distinctConstructor", Support::distinctConstructor }, { "callWithArgs", Support::callWithArgs },
+	{ "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
+	{ "isPropertyEnumerable", Support::isPropertyEnumerable }, { "atan2", Support::atan2 },
+	{ "pow", Support::pow }, { "parseFloat", Support::parseFloat }, { "charCodeAt", Support::charCodeAt },
+	{ "substring", Support::substring }, { "submatch", Support::submatch },
+#endif
 	   { "getCurrentTime", Support::getCurrentTime }, { "localTimeDifference", Support::localTimeDifference },
 	   { "random", Support::random }, { "updateDateValue", Support::updateDateValue }
 };
@@ -5528,6 +5704,7 @@ Var Runtime::eval(const String& expression) {
 }
 
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 Code* Runtime::compileEvalCode(const String* expression, bool strict) {
 const Table::Bucket* bucket = (strict ? 0 : evalCodeCache.lookup(expression));
 if (bucket != 0) {
@@ -5544,6 +5721,7 @@ return code;
 }
 }
 #else
+#endif
 Code* Runtime::compileEvalCode(const String* expression) {
 const Table::Bucket* bucket = evalCodeCache.lookup(expression);
 if (bucket != 0) {
@@ -5558,8 +5736,10 @@ evalCodeCache.update(evalCodeCache.insert(expression), code);
 return code;
 }
 }
+#if (NUXJS_ES5)
 #endif
 
+#endif
 
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
 	Code* code = new(heap) Code(heap.managed());
@@ -5583,7 +5763,9 @@ void Runtime::fetchFunction(const Object* supportObject, const char* name, Funct
 
 extern const char* STDLIB_JS;
 #if (NUXJS_ES5)
+#if (NUXJS_ES5)
 extern const char* STDLIB_ES5_JS;
+#endif
 #endif
 
 double Runtime::getCurrentEpochTime() {
@@ -5617,7 +5799,9 @@ void Runtime::setupStandardLibrary() {
 	supportObject->setOwnProperty(*this, &UNDEFINED_STRING, UNDEFINED_VALUE);
 	supportObject->setOwnProperty(*this, &NAN_STRING, NAN_VALUE);
 	supportObject->setOwnProperty(*this, &INFINITY_STRING, INFINITY_VALUE);
+#if (NUXJS_ES5)
 
+#endif
 	supportObject->setOwnProperty(*this, &MAX_NUMBER_STRING, std::numeric_limits<double>::max());
 	supportObject->setOwnProperty(*this, &MIN_NUMBER_STRING, std::numeric_limits<double>::denorm_min());
 
@@ -5630,12 +5814,17 @@ void Runtime::setupStandardLibrary() {
 	}
 	
 	const Var func = eval(*String::allocate(heap, STDLIB_JS));
+#if (NUXJS_ES5)
 	Value argv[2] = { protectedSupportObject, UNDEFINED_VALUE };
 #if (NUXJS_ES5)
 	const Var es5(*this, String::allocate(heap, STDLIB_ES5_JS));
 	argv[1] = es5;
 #endif
 	call(func, 2, argv);
+#else
+	Value argv[1] = { protectedSupportObject };
+	call(func, 1, argv);
+#endif
 	
 	fetchFunction(supportObject, "toPrimitive", toPrimitiveFunctions + 0);
 	fetchFunction(supportObject, "toPrimitiveNumber", toPrimitiveFunctions + 1);
