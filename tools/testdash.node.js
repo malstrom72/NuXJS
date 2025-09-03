@@ -101,8 +101,8 @@ function runTests(callback, limit) {
 	console.log("Running tests");
 	var captureMode = false;
 	var count = 0;
-	const dirArg = limit ? path.join("language", "arguments") : "language";
-	var args = TEST_ARGS_BASE.concat([dirArg]);
+	const dirArgs = limit ? [path.join("language", "arguments")] : ["language", "built-ins"];
+	var args = TEST_ARGS_BASE.concat(dirArgs);
 	var child = child_process.spawn(PY2, args);
 	var rl = readline
 		.createInterface({
@@ -246,7 +246,7 @@ if (cliMode) {
 		console.log("  Failed: " + totals.failed);
 		console.log("  Ignored: " + totals.ignored);
 		for (var c in ignored) {
-			console.log("    " + (CATEGORY_LABELS[c] || c) + ": " + ignored[c]);
+			console.log("	 " + (CATEGORY_LABELS[c] || c) + ": " + ignored[c]);
 		}
 		process.exit(totals.failed);
 	}, maxTests);
