@@ -7906,5 +7906,941 @@
 	},
 	"language/statements/function/name": {
 		"category": "not_es3"
-	}
+	},
+	"annexB/built-ins/Date/prototype/getYear/B.2.4": {
+		"category": ""
+	},
+	"annexB/built-ins/Date/prototype/getYear/B.2.4.propertyCheck": {
+		"category": ""
+	},
+	"annexB/built-ins/Date/prototype/getYear/length": {
+		"category": ""
+	},
+	"annexB/built-ins/Date/prototype/getYear/name": {
+		"category": ""
+	},
+	"annexB/built-ins/Date/prototype/setYear/B.2.5": {
+		"category": ""
+	},
+	"annexB/built-ins/Date/prototype/setYear/B.2.5.propertyCheck": {
+		"category": ""
+	},
+	"annexB/built-ins/Date/prototype/setYear/length": {
+		"category": ""
+	},
+	"annexB/built-ins/Date/prototype/setYear/name": {
+		"category": ""
+	},
+	"annexB/built-ins/Date/prototype/toGMTString/B.2.6": {
+		"category": ""
+	},
+	"annexB/built-ins/Date/prototype/toGMTString/B.2.6.propertyCheck": {
+		"category": ""
+	},
+	"annexB/built-ins/Date/prototype/toGMTString/length": {
+		"category": ""
+	},
+	"annexB/built-ins/Date/prototype/toGMTString/name": {
+		"category": ""
+	},
+	"annexB/built-ins/Object/prototype/__proto__/B.2.2.1.1": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/Object/prototype/__proto__/B.2.2.1.2": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/RegExp/RegExp-control-escape-russian-letter": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/RegExp/RegExp-decimal-escape-class-range": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/RegExp/RegExp-decimal-escape-not-capturing": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/RegExp/RegExp-leading-escape-BMP": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/RegExp/RegExp-leading-escape": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/RegExp/RegExp-trailing-escape-BMP": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/RegExp/RegExp-trailing-escape": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/RegExp/prototype/compile/B.RegExp.prototype.compile": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/RegExp/prototype/compile/length": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/RegExp/prototype/compile/name": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/String/prototype/substr/B.2.3": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/String/prototype/substr/length": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/String/prototype/substr/name": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/escape/B.2.1": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/escape/B.2.1.propertyCheck": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/escape/length": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/escape/name": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/unescape/B.2.2": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/unescape/B.2.2.propertyCheck": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/unescape/length": {
+		"category": "not_es3"
+	},
+	"annexB/built-ins/unescape/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/isArray/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/of/construct-this-with-the-number-of-arguments": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/of/creates-a-new-array-from-arguments": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/of/does-not-use-prototype-properties": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/of/length": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/of/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/of/of": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/of/return-a-custom-instance": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/of/return-a-new-array-object": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/of/return-abrupt-from-contructor": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/of/return-abrupt-from-data-property-using-proxy": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/of/return-abrupt-from-setting-length": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/of/sets-length": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/coerced-values-end": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/coerced-values-start": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/coerced-values-target": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/copyWithin": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/fill-holes": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/length": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/negative-end": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/negative-out-of-bounds-end": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/negative-out-of-bounds-start": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/negative-out-of-bounds-target": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/negative-start": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/negative-target": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/non-negative-out-of-bounds-end": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/non-negative-out-of-bounds-target-and-start": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/non-negative-target-and-start": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/non-negative-target-start-and-end": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/return-abrupt-from-delete-proxy-target": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/return-abrupt-from-end-as-symbol": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/return-abrupt-from-end": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/return-abrupt-from-get-start-value": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/return-abrupt-from-has-start": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/return-abrupt-from-set-target-value": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/return-abrupt-from-start-as-symbol": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/return-abrupt-from-start": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/return-abrupt-from-target-as-symbol": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/return-abrupt-from-target": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/return-abrupt-from-this-length-as-symbol": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/return-abrupt-from-this-length": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/return-this": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/copyWithin/undefined-end": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/entries/entries": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/entries/iteration-mutable": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/entries/iteration": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/entries/length": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/entries/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/entries/returns-iterator-from-object": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/entries/returns-iterator": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-0-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-0-2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-1-10": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-1-11": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-1-12": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-1-13": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-1-14": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-1-15": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-1-3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-1-4": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-1-5": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-1-6": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-1-7": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-1-8": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-1-9": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-10": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-11": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-12": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-13": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-14": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-15": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-17": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-18": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-19": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-4": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-5": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-6": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-7": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-8": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-2-9": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-10": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-11": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-12": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-13": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-14": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-15": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-16": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-17": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-18": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-19": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-20": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-21": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-22": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-23": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-24": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-25": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-29": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-4": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-5": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-6": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-7": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-8": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-9": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-4-10": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-4-11": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-4-12": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-4-15": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-4-8": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-4-9": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-1-s": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-10": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-11": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-12": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-13": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-14": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-15": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-16": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-17": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-18": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-19": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-21": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-22": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-23": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-24": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-4": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-5": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-6": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-7": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-5-9": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-4": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-5": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-6": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-7": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-8": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-9": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-10": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-11": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-12": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-13": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-14": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-15": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-16": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-4": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-5": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-6": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-7": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-8": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-b-9": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-10": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-11": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-12": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-13": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-14": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-15": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-16": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-17": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-18": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-19": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-20": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-21": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-22": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-23": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-25": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-26": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-27": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-28": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-29": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-30": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-31": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-4": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-5": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-6": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-7": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-8": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-i-9": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-10": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-11": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-12": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-13": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-16": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-17": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-18": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-19": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-20": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-21": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-22": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-23": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-4": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-5": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-6": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-7": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-8": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-ii-9": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-10": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-11": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-12": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-13": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-14": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-15": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-16": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-17": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-18": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-19": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-20": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-21": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-22": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-23": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-24": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-25": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-27": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-28": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-29": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-4": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-5": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-6": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-7": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-8": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-7-c-iii-9": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-8-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-8-10": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-8-11": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-8-12": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-8-13": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-8-2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-8-3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-8-4": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-8-5": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-8-6": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-8-7": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-8-8": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/every/name": {
+		"category": "not_es3"
+	},
+        "built-ins/Object/assign/ObjectOverride-sameproperty": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/OnlyOneArgument": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Override-notstringtarget": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Override": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Source-Null-Undefined": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Source-Number-Boolen-Symbol": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Source-String": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Target-Boolean": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Target-Number": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Target-Object": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Target-String": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/Target-Symbol": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/assign-descriptor": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/assign-length": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/name": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/source-get-attr-error": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/source-non-enum": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/source-own-prop-desc-missing": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/source-own-prop-error": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/source-own-prop-keys-error": {
+                "category": "not_es3"
+        },
+        "built-ins/Object/assign/target-set-user-error": {
+                "category": "not_es3"
+        }
 }
