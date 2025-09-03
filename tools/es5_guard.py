@@ -67,12 +67,12 @@ def insert_guards(path, hunks):
 	offset = 0
 	for start, plus, minus in hunks:
 		start += offset
-		if plus and not lines_contain_es5_guard(plus) and not already_guarded(lines, start):
+		if plus and any(line.strip() for line in plus) and not lines_contain_es5_guard(plus) and not already_guarded(lines, start):
 			indent = re.match(r'\t*', lines[start]).group(0) if start < len(lines) else ''
 			guard_indent = indent[:-1] if len(indent) > 0 else ''
 			lines.insert(start, f"{guard_indent}#if (NUXJS_ES5)\n")
 			end = start + 1 + len(plus)
-			if minus and not lines_contain_es5_guard(minus):
+			if minus and any(line.strip() for line in minus) and not lines_contain_es5_guard(minus):
 				lines.insert(end, f"{guard_indent}#else\n")
 				lines[end + 1:end + 1] = minus
 				lines.insert(end + 1 + len(minus), f"{guard_indent}#endif\n")
