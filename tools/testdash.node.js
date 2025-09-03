@@ -96,54 +96,57 @@ function extend(target, obj) {
 var runningTest = false;
 var currentTest = undefined;
 function runTests(callback, limit) {
-	runningTest = true;
-	currentTest = undefined;
-	console.log("Running tests");
-	var captureMode = false;
-	var count = 0;
-	const dirArgs = limit ? [path.join("language", "arguments")] : ["language", "built-ins"];
-	var args = TEST_ARGS_BASE.concat(dirArgs);
-	var child = child_process.spawn(PY2, args);
-	var rl = readline
-		.createInterface({
-			input: child.stdout,
-		})
-		.on("line", (line) => {
-			if (captureMode) {
-				if (line.substr(-3) === "===") {
-					line = line.slice(0, -3);
-					captureMode = false;
-				}
-				currentTest.output += line + "\n";
-			} else {
-				var m = line.match(/(=== )?(\S+) (.+?)( ===)?$/);
-				if (m) {
-					var testName = m[2];
-					// Normalize to forward slashes so keys match tools/testdash.json across platforms
-					testName = testName.replace(/\\/g, "/");
-					var passed = interpretResult(m[3]);
-					tests[testName] = extend({ name: testName, passed: passed, output: "" }, config[testName]);
-					currentTest = tests[testName];
-					captureMode = m[4] === " ===";
-					count++;
-					if (limit && count >= limit) child.kill("SIGKILL");
-				} else if (line) {
-					// Handle runner messages gracefully (e.g., "Error: No tests to run")
-					if (/^Error:\s+No tests to run/i.test(line)) {
-						console.error(line);
-						return;
-					}
-					console.warn("Unknown output: " + line);
-				}
-			}
-			// console.log("> ", line);
-		})
-		.on("close", () => {
-			console.log("Completed");
-			runningTest = false;
-			if (callback) callback();
-			// console.log(tests);
-		});
+        runningTest = true;
+        currentTest = undefined;
+        console.log("Running tests");
+        var captureMode = false;
+        var count = 0;
+        const dirs = limit ? [path.join("language", "arguments")] : ["language", "built-ins"];
+
+        function runDir(index) {
+                if (index >= dirs.length) {
+                        console.log("Completed");
+                        runningTest = false;
+                        if (callback) callback();
+                        return;
+                }
+
+                captureMode = false;
+                var args = TEST_ARGS_BASE.concat(dirs[index]);
+                var child = child_process.spawn(PY2, args);
+                readline
+                        .createInterface({ input: child.stdout })
+                        .on("line", (line) => {
+                                if (captureMode) {
+                                        if (line.substr(-3) === "===") {
+                                                line = line.slice(0, -3);
+                                                captureMode = false;
+                                        }
+                                        currentTest.output += line + "\n";
+                                } else {
+                                        var m = line.match(/(=== )?(\S+) (.+?)( ===)?$/);
+                                        if (m) {
+                                                var testName = m[2];
+                                                testName = testName.replace(/\\/g, "/");
+                                                var passed = interpretResult(m[3]);
+                                                tests[testName] = extend({ name: testName, passed: passed, output: "" }, config[testName]);
+                                                currentTest = tests[testName];
+                                                captureMode = m[4] === " ===";
+                                                count++;
+                                                if (limit && count >= limit) child.kill("SIGKILL");
+                                        } else if (line) {
+                                                if (/^Error:\s+No tests to run/i.test(line)) {
+                                                        console.error(line);
+                                                        return;
+                                                }
+                                                console.warn("Unknown output: " + line);
+                                        }
+                                }
+                        })
+                        .on("close", () => runDir(index + 1));
+        }
+
+        runDir(0);
 }
 
 var server = http.createServer(function (req, res) {
