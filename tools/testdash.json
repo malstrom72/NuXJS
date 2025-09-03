@@ -25472,7 +25472,40 @@
 	"language/types/string/S8.4_A7.4": {
 		"category": ""
 	},
-	"language/white-space/S7.2_A1.5_T1": {
-		"category": ""
-	}
+		"language/white-space/S7.2_A1.5_T1": {
+			"category": ""
+		},
+		"built-ins/Function/prototype/restricted-property-arguments": {
+			"category": "not_es3"
+		},
+		"built-ins/Function/prototype/restricted-property-caller": {
+			"category": "not_es3"
+		},
+		"built-ins/Function/15.3.2.1-10-6gs": {
+			"category": "not_es3"
+		},
+		"built-ins/Object/getPrototypeOf/15.2.3.2-1": {
+			"category": "not_es3"
+		},
+		"built-ins/Object/keys/15.2.3.14-0-1": {
+			"category": "not_es3"
+		},
+		"built-ins/Object/setPrototypeOf/length": {
+			"category": "not_es3"
+		},
+		"built-ins/Object/symbol_object-returns-fresh-symbol": {
+			"category": "not_es3"
+		},
+		"built-ins/Number/string-binary-literal": {
+			"category": "not_es3"
+		},
+		"built-ins/Object/prototype/hasOwnProperty/symbol_own_property": {
+			"category": "not_es3"
+		},
+		"language/function-code/10.4.3-1-54-s": {
+			"category": "not_es3"
+		},
+		"built-ins/Object/prototype/toString/symbol-tag-str": {
+			"category": "not_es3"
+		}
 }
