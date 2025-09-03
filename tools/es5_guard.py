@@ -4,76 +4,74 @@ import re
 import subprocess
 from pathlib import Path
 
-def git_diff_paths():
+def git_diff_lines():
 	cmd = ['git', 'diff', '-U0', '-w', 'main', '--', 'src/NuXJS.cpp', 'src/NuXJS.h']
 	return subprocess.run(cmd, check=True, capture_output=True, text=True).stdout.splitlines()
 
-def parse_ranges(diff_lines):
-	file_ranges = {}
+def parse_hunks(diff_lines):
+	files = {}
 	current = None
+	new_start = None
+	plus = []
+	minus = []
 	for line in diff_lines:
 		if line.startswith('diff --git'):
+			if new_start is not None:
+				files[current].append((new_start, plus, minus))
+				new_start, plus, minus = None, [], []
 			parts = line.split()
 			current = parts[3][2:]
-			file_ranges.setdefault(current, [])
+			files.setdefault(current, [])
 		elif line.startswith('@@'):
+			if new_start is not None:
+				files[current].append((new_start, plus, minus))
 			m = re.search(r'\+(\d+)(?:,(\d+))?', line)
-			if m:
-				start = int(m.group(1)) - 1
-				count = int(m.group(2) or '1')
-				file_ranges[current].append([start, start + count - 1])
-	return file_ranges
+			new_start = int(m.group(1)) - 1
+			plus, minus = [], []
+		elif line.startswith('+') and not line.startswith('+++'):
+			plus.append(line[1:] + '\n')
+		elif line.startswith('-') and not line.startswith('---'):
+			minus.append(line[1:] + '\n')
+	if new_start is not None:
+		files[current].append((new_start, plus, minus))
+	return files
 
-def mark_es5(lines):
-	stack = []
-	active = [False] * len(lines)
-	for i, line in enumerate(lines):
-		stripped = line.strip()
-		if stripped.startswith('#if'):
-			if 'NUXJS_ES5' in stripped:
-				stack.append((True, True))
-			else:
-				stack.append((False, stack[-1][1] if stack else False))
-		elif stripped.startswith('#else'):
-			if stack:
-				cond, branch = stack.pop()
-				if cond:
-					stack.append((cond, not branch))
-				else:
-					stack.append((cond, stack[-1][1] if stack else False))
-		elif stripped.startswith('#elif'):
-			if stack:
-				cond, branch = stack.pop()
-				stack.append((cond, False if cond else stack[-1][1] if stack else False))
-		elif stripped.startswith('#endif'):
-			if stack:
-				stack.pop()
-		active[i] = any(c and b for c, b in stack)
-	return active
-
-def insert_guards(path, ranges):
+def insert_guards(path, hunks):
 	file_path = Path(path)
 	lines = file_path.read_text().splitlines(True)
 	offset = 0
-	for start, end in sorted(ranges):
+	for start, plus, minus in hunks:
 		start += offset
-		end += offset
-		active = mark_es5(lines)
-		if all(active[i] for i in range(start, end + 1)):
-			continue
-		indent = re.match(r'\t*', lines[start]).group(0)
-		guard_indent = indent[:-1] if len(indent) > 0 else ''
-		lines.insert(start, f"{guard_indent}#if (NUXJS_ES5)\n")
-		lines.insert(end + 2, f"{guard_indent}#endif\n")
-		offset += 2
+		if plus:
+			indent = re.match(r'\t*', lines[start]).group(0) if start < len(lines) else ''
+			guard_indent = indent[:-1] if len(indent) > 0 else ''
+			lines.insert(start, f"{guard_indent}#if (NUXJS_ES5)\n")
+			end = start + 1 + len(plus)
+			if minus:
+				lines.insert(end, f"{guard_indent}#else\n")
+				lines[end + 1:end + 1] = minus
+				lines.insert(end + 1 + len(minus), f"{guard_indent}#endif\n")
+				offset += len(minus) + 3
+			else:
+				lines.insert(end, f"{guard_indent}#endif\n")
+				offset += 2
+		elif minus:
+			base = start if start < len(lines) else len(lines)
+			indent = re.match(r'\t*', lines[base]).group(0) if lines else ''
+			guard_indent = indent[:-1] if len(indent) > 0 else ''
+			lines.insert(start, f"{guard_indent}#if (!NUXJS_ES5)\n")
+			lines[start + 1:start + 1] = minus
+			lines.insert(start + 1 + len(minus), f"{guard_indent}#endif\n")
+			offset += len(minus) + 2
 	file_path.write_text(''.join(lines))
 
 def main():
 	root = Path(__file__).resolve().parent.parent
 	os.chdir(root)
-	diff_lines = git_diff_paths()
-	for path, ranges in parse_ranges(diff_lines).items():
-		insert_guards(path, ranges)
+	diff_lines = git_diff_lines()
+	for path, hunks in parse_hunks(diff_lines).items():
+		insert_guards(path, hunks)
 
 if __name__ == '__main__':
 	main()
+
