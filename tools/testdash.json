@@ -25472,7 +25472,178 @@
 	"language/types/string/S8.4_A7.4": {
 		"category": ""
 	},
-	"language/white-space/S7.2_A1.5_T1": {
-		"category": ""
+"language/white-space/S7.2_A1.5_T1": {
+"category": ""
+},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-to-string-throws": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-value-of-throws": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_array-like-negative-length": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_array-like-primitive-non-number-length": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_array-like-string-length": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_array-like-to-length-throws": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_array-like": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_descriptor": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_holey-sloppy-arguments": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_large-typed-array": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_length-throws": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-throws": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-with-dupes": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_small-typed-array": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/Array.prototype.concat_strict-arguments": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/join/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/pop/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/push/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/reverse/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/shift/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/slice/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/sort/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/splice/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/toLocaleString/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/toString/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/unshift/name": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/Float32Array": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/Float64Array": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/Int16Array": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/Int32Array": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/Int8Array": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/Uint16Array": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/Uint32Array": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/Uint8Array": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/Uint8ClampedArray": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/args-mapped-expansion-after-exhaustion": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/args-mapped-expansion-before-exhaustion": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/args-mapped-iteration": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/args-mapped-truncation-before-exhaustion": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/args-unmapped-expansion-after-exhaustion": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/args-unmapped-expansion-before-exhaustion": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/args-unmapped-iteration": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/args-unmapped-truncation-before-exhaustion": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/iteration-mutable": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/iteration": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/length": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/name": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/non-own-slots": {
+		"category": "not_es3"
+	},
+	"built-ins/ArrayIteratorPrototype/next/property-descriptor": {
+		"category": "not_es3"
+	},
+	"built-ins/Boolean/symbol-coercion": {
+		"category": "not_es3"
+	},
+	"built-ins/Boolean/prototype/toString/length": {
+		"category": "not_es3"
+	},
+	"built-ins/Boolean/prototype/toString/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Boolean/prototype/valueOf/length": {
+		"category": "not_es3"
+	},
+	"built-ins/Boolean/prototype/valueOf/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Date/UTC/name": {
+		"category": "not_es3"
 	}
 }
