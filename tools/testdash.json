@@ -25472,178 +25472,326 @@
 	"language/types/string/S8.4_A7.4": {
 		"category": ""
 	},
-"language/white-space/S7.2_A1.5_T1": {
-"category": ""
+	"language/white-space/S7.2_A1.5_T1": {
+		"category": ""
+	},
+	"built-ins/Function/prototype/restricted-property-arguments": {
+		"category": "not_es3"
+	},
+	"built-ins/Function/prototype/restricted-property-caller": {
+		"category": "not_es3"
+	},
+	"built-ins/Function/15.3.2.1-10-6gs": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/getPrototypeOf/15.2.3.2-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/keys/15.2.3.14-0-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/setPrototypeOf/length": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/symbol_object-returns-fresh-symbol": {
+		"category": "not_es3"
+	},
+	"built-ins/Number/string-binary-literal": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/prototype/hasOwnProperty/symbol_own_property": {
+		"category": "not_es3"
+	},
+	"language/function-code/10.4.3-1-54-s": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/prototype/toString/symbol-tag-str": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/S15.4.4.4_A4.2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/join/S15.4.4.5_A4_T3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/pop/S15.4.4.6_A5.2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/pop/S15.4.4.6_A5.3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/push/S15.4.4.7_A6.2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/push/S15.4.4.7_A6.3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/reverse/S15.4.4.8_A5.2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/reverse/S15.4.4.8_A5.3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/shift/S15.4.4.9_A5.2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/shift/S15.4.4.9_A5.3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/slice/S15.4.4.10_A5.2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/slice/S15.4.4.10_A5.3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/splice/S15.4.4.12_A5.2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/splice/S15.4.4.12_A5.3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/unshift/S15.4.4.13_A5.2": {
+		"category": "not_es3"
+	},
+"built-ins/Array/prototype/unshift/S15.4.4.13_A5.3": {
+"category": "not_es3"
 },
-	"built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-to-string-throws": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-value-of-throws": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/Array.prototype.concat_array-like-negative-length": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/Array.prototype.concat_array-like-primitive-non-number-length": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/Array.prototype.concat_array-like-string-length": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/Array.prototype.concat_array-like-to-length-throws": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/Array.prototype.concat_array-like": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/Array.prototype.concat_descriptor": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/Array.prototype.concat_holey-sloppy-arguments": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/Array.prototype.concat_large-typed-array": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/Array.prototype.concat_length-throws": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-throws": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-with-dupes": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/Array.prototype.concat_small-typed-array": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/Array.prototype.concat_strict-arguments": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/concat/name": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/join/name": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/pop/name": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/push/name": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/reverse/name": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/shift/name": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/slice/name": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/sort/name": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/splice/name": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/toLocaleString/name": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/toString/name": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/unshift/name": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/Float32Array": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/Float64Array": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/Int16Array": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/Int32Array": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/Int8Array": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/Uint16Array": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/Uint32Array": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/Uint8Array": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/Uint8ClampedArray": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/args-mapped-expansion-after-exhaustion": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/args-mapped-expansion-before-exhaustion": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/args-mapped-iteration": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/args-mapped-truncation-before-exhaustion": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/args-unmapped-expansion-after-exhaustion": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/args-unmapped-expansion-before-exhaustion": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/args-unmapped-iteration": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/args-unmapped-truncation-before-exhaustion": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/iteration-mutable": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/iteration": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/length": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/name": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/non-own-slots": {
-		"category": "not_es3"
-	},
-	"built-ins/ArrayIteratorPrototype/next/property-descriptor": {
-		"category": "not_es3"
-	},
-	"built-ins/Boolean/symbol-coercion": {
-		"category": "not_es3"
-	},
-	"built-ins/Boolean/prototype/toString/length": {
-		"category": "not_es3"
-	},
-	"built-ins/Boolean/prototype/toString/name": {
-		"category": "not_es3"
-	},
-	"built-ins/Boolean/prototype/valueOf/length": {
-		"category": "not_es3"
-	},
-	"built-ins/Boolean/prototype/valueOf/name": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/UTC/name": {
-		"category": "not_es3"
-	}
+                "built-ins/Object/getPrototypeOf/15.2.3.2-0-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-1-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-1-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-1-4": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-2-12": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-2-13": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-2-14": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-2-15": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-2-16": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-2-17": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/name": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-0-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-1-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-1-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-1-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-4": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-5": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-6": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-7": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-8": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-3-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-3-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-3-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-3-4": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-3-5": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-3-6": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-3-7": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-4-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-10": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-11": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-12": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-13": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-14": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-15": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-16": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-4": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-5": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-6": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-7": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-8": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-9": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-a-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-a-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-a-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-a-4": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-b-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-6-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-6-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-6-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-6-4": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-6-5": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-6-6": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/name": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/setPrototypeOf-with-different-values": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/setPrototypeOf-with-same-value": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/setPrototypeOf/name": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/setPrototypeOf/o-not-obj": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/setPrototypeOf/property-descriptor": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/setPrototypeOf/proto-not-obj": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/setPrototypeOf/set-error": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/setPrototypeOf/set-failure-non-extensible": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/setPrototypeOf/success": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/hasOwnProperty/symbol_property_toPrimitive": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/hasOwnProperty/symbol_property_toString": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/hasOwnProperty/symbol_property_valueOf": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/propertyIsEnumerable/symbol_own_property": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/propertyIsEnumerable/symbol_property_toPrimitive": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/propertyIsEnumerable/symbol_property_toString": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/propertyIsEnumerable/symbol_property_valueOf": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/toString/get-symbol-tag-err": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/toString/symbol-tag-non-str": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/toString/symbol-tag-override": {
+                        "category": "not_es3"
+                },
+                "built-ins/Number/symbol-number-coercion": {
+                        "category": "not_es3"
+                }
+
 }
