@@ -1,14 +1,21 @@
 /*
-    ES5 additions to the standard library.
-    This file is "included" with an eval at the end of stdlib.js if ES5 support is enabled.
+	ES5 additions to the standard library.
+	This file is "included" with an eval at the end of stdlib.js if ES5 support is enabled.
 
-    @preserve: trim,trimLeft,trimRight,forEach,map,filter,reduce,reduceRight,every,some
-    @preserve: get,set
-    @preserve: now,create,keys,bind
+	@preserve: trim,trimLeft,trimRight,forEach,map,filter,reduce,reduceRight,every,some
+	@preserve: get,set
+	@preserve: now,create,keys,bind
 	@preserve: defineProperties
 */
 
 // Use helpers provided by the base stdlib: defProps, int, uint32, str
+
+// ES5 `Object.prototype.toString`
+defProps(Object.prototype, { dontEnum: true }, {
+	toString: unconstructable(function toString() {
+		return "[object " + $getInternalProperty(this, "class") + ']';
+	})
+});
 
 // String.prototype.trim*
 defProps(String.prototype, { dontEnum: true }, {

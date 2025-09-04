@@ -1533,7 +1533,7 @@ Object* JSObject::getPrototype(Runtime&) const { return prototype; }
 
 bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 #if (NUXJS_ES5)
-return setOwnProperty(rt, key.toString(rt.getHeap()), v, flags);
+	return setOwnProperty(rt, key.toString(rt.getHeap()), v, flags);
 }
 
 bool JSObject::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
@@ -1969,8 +1969,12 @@ Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argument
 const String* Arguments::getClassName() const { return &A_RGUMENTS_STRING; }
 
 const String* Arguments::toString(Heap& heap) const {
+#if (NUXJS_ES5)
+	return String::concatenate(heap, String(heap.roots(), BRACKET_OBJECT_STRING, *getClassName()), END_BRACKET_STRING);
+#else
 	return new(heap) String(heap.managed(), String(heap.roots(), BRACKET_OBJECT_STRING, O_BJECT_STRING)
-			, END_BRACKET_STRING);
+, END_BRACKET_STRING);
+#endif
 }
 
 Object* Arguments::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
@@ -2019,7 +2023,32 @@ bool Arguments::deleteOwnProperty(Runtime& rt, const Value& key) {
 }
 
 Enumerator* Arguments::getOwnPropertyEnumerator(Runtime& rt) const {
+#if (NUXJS_ES5)
+	Heap& heap = rt.getHeap();
+	class ArgumentsRangeEnumerator : public Enumerator {
+		public:
+				typedef Enumerator super;
+				ArgumentsRangeEnumerator(GCList& gcList, const Vector<Byte>& deleted, UInt32 count)
+						: super(gcList), heap(gcList.getHeap()), deleted(deleted), count(count), index(0) { }
+				virtual const String* nextPropertyName() {
+						while (index < count) {
+								if (!deleted[index]) return String::fromInt(heap, index++);
+								++index;
+						}
+						return 0;
+				}
+		protected:
+				Heap& heap;
+				const Vector<Byte>& deleted;
+				const UInt32 count;
+				UInt32 index;
+	};
+	Enumerator* rangeEnumerator = new(heap) ArgumentsRangeEnumerator(heap.managed(), deletedArguments, argumentsCount);
+	return (completeObject == 0 ? rangeEnumerator
+						: new(heap) JoiningEnumerator(heap.managed(), rt, completeObject, rangeEnumerator));
+#else
 	return (completeObject == 0 ? super::getOwnPropertyEnumerator(rt) : completeObject->getOwnPropertyEnumerator(rt));
+#endif
 }
 
 void Arguments::constructCompleteObject(Runtime& rt) const {
