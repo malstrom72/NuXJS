@@ -237,7 +237,12 @@ if (cliMode) {
 						totals.passed++;
 					} else {
 						totals.failed++;
-						console.log("FAIL " + testName);
+						console.log(testName);
+						console.log("source");
+						console.log("--- output ---");
+						process.stdout.write(t.output);
+						if (t.output.substr(-1) !== "\n") console.log();
+						console.log();
 					}
 				}
 			}
