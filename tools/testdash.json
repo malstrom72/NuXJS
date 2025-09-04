@@ -7049,22 +7049,64 @@
     "built-ins/Date/prototype/getTime/name": {
         "category": "not_es3"
     },
+    "built-ins/Date/prototype/getTimezoneOffset/S15.9.5.26_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getTimezoneOffset/S15.9.5.26_A3_T2": {
+        "category": "not_es3"
+    },
     "built-ins/Date/prototype/getTimezoneOffset/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getUTCDate/S15.9.5.15_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getUTCDate/S15.9.5.15_A3_T2": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/getUTCDate/name": {
         "category": "not_es3"
     },
+    "built-ins/Date/prototype/getUTCDay/S15.9.5.17_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getUTCDay/S15.9.5.17_A3_T2": {
+        "category": "not_es3"
+    },
     "built-ins/Date/prototype/getUTCDay/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getUTCFullYear/S15.9.5.11_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getUTCFullYear/S15.9.5.11_A3_T2": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/getUTCFullYear/name": {
         "category": "not_es3"
     },
+    "built-ins/Date/prototype/getUTCHours/S15.9.5.19_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getUTCHours/S15.9.5.19_A3_T2": {
+        "category": "not_es3"
+    },
     "built-ins/Date/prototype/getUTCHours/name": {
         "category": "not_es3"
     },
+    "built-ins/Date/prototype/getUTCMilliseconds/S15.9.5.25_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getUTCMilliseconds/S15.9.5.25_A3_T2": {
+        "category": "not_es3"
+    },
     "built-ins/Date/prototype/getUTCMilliseconds/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getUTCMinutes/S15.9.5.21_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getUTCMinutes/S15.9.5.21_A3_T2": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/getUTCMinutes/name": {

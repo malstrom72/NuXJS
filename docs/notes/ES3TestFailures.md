@@ -1238,5 +1238,48 @@ Deletion of `getTime.length` is checked via ES5 APIs; `not_es3`.
 - **built-ins/Date/prototype/getTime/name**
 `name` on `getTime` is post‑ES3; marked `not_es3`.
 
-Progress: 139/755 tests reviewed.
+- **built-ins/Date/prototype/getTimezoneOffset/S15.9.5.26_A3_T1**
+Property descriptor check of `getTimezoneOffset.length` uses ES5 helpers; `not_es3`.
+- **built-ins/Date/prototype/getTimezoneOffset/S15.9.5.26_A3_T2**
+Deletion test for `getTimezoneOffset.length` relies on `Object.defineProperty`; `not_es3`.
+- **built-ins/Date/prototype/getTimezoneOffset/name**
+`name` property of `getTimezoneOffset` added after ES3; marked `not_es3`.
+- **built-ins/Date/prototype/getUTCDate/S15.9.5.15_A3_T1**
+Property descriptor check for `getUTCDate.length` uses ES5-only utilities; `not_es3`.
+- **built-ins/Date/prototype/getUTCDate/S15.9.5.15_A3_T2**
+Deleting `getUTCDate.length` requires ES5 descriptors; `not_es3`.
+- **built-ins/Date/prototype/getUTCDate/name**
+`name` on `getUTCDate` is post‑ES3; marked `not_es3`.
+- **built-ins/Date/prototype/getUTCDay/S15.9.5.17_A3_T1**
+Read‑only check on `getUTCDay.length` uses non‑ES3 property helpers; `not_es3`.
+- **built-ins/Date/prototype/getUTCDay/S15.9.5.17_A3_T2**
+Deletion test for `getUTCDay.length` invokes ES5 APIs; `not_es3`.
+- **built-ins/Date/prototype/getUTCDay/name**
+`name` property on `getUTCDay` introduced after ES3; marked `not_es3`.
+- **built-ins/Date/prototype/getUTCFullYear/S15.9.5.11_A3_T1**
+Property descriptor verification of `getUTCFullYear.length` uses ES5 features; `not_es3`.
+- **built-ins/Date/prototype/getUTCFullYear/S15.9.5.11_A3_T2**
+Deleting `getUTCFullYear.length` relies on `Object.defineProperty`; `not_es3`.
+- **built-ins/Date/prototype/getUTCFullYear/name**
+`name` on `getUTCFullYear` does not exist in ES3; marked `not_es3`.
+- **built-ins/Date/prototype/getUTCHours/S15.9.5.19_A3_T1**
+Read‑only test for `getUTCHours.length` requires ES5 descriptors; `not_es3`.
+- **built-ins/Date/prototype/getUTCHours/S15.9.5.19_A3_T2**
+Deletion of `getUTCHours.length` uses ES5 helpers; `not_es3`.
+- **built-ins/Date/prototype/getUTCHours/name**
+`name` property on `getUTCHours` is post‑ES3; marked `not_es3`.
+- **built-ins/Date/prototype/getUTCMilliseconds/S15.9.5.25_A3_T1**
+Property descriptor check for `getUTCMilliseconds.length` uses ES5-only features; `not_es3`.
+- **built-ins/Date/prototype/getUTCMilliseconds/S15.9.5.25_A3_T2**
+Deletability of `getUTCMilliseconds.length` is tested with ES5 APIs; `not_es3`.
+- **built-ins/Date/prototype/getUTCMilliseconds/name**
+`name` on `getUTCMilliseconds` added post‑ES3; marked `not_es3`.
+- **built-ins/Date/prototype/getUTCMinutes/S15.9.5.21_A3_T1**
+Read‑only check for `getUTCMinutes.length` depends on ES5 property helpers; `not_es3`.
+- **built-ins/Date/prototype/getUTCMinutes/S15.9.5.21_A3_T2**
+Deleting `getUTCMinutes.length` uses `Object.defineProperty`; `not_es3`.
+- **built-ins/Date/prototype/getUTCMinutes/name**
+`name` property on `getUTCMinutes` is not defined in ES3; marked `not_es3`.
+
+Progress: 160/755 tests reviewed.
 
