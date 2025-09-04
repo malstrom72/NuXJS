@@ -7112,24 +7112,6 @@
     "built-ins/Date/prototype/getUTCMinutes/name": {
         "category": "not_es3"
     },
-    "built-ins/Date/prototype/getUTCMonth/name": {
-        "category": "not_es3"
-    },
-    "built-ins/Date/prototype/getUTCSeconds/name": {
-        "category": "not_es3"
-    },
-    "built-ins/Date/prototype/setDate/name": {
-        "category": "not_es3"
-    },
-    "built-ins/Date/prototype/setFullYear/name": {
-        "category": "not_es3"
-    },
-    "built-ins/Date/prototype/setHours/name": {
-        "category": "not_es3"
-    },
-    "built-ins/Date/prototype/setMilliseconds/name": {
-        "category": "not_es3"
-    },
     "built-ins/Date/prototype/setMinutes/name": {
         "category": "not_es3"
     },
@@ -26665,5 +26647,62 @@
     },
     "language/white-space/S7.2_A1.5_T1": {
         "category": ""
+    },
+    "built-ins/Date/prototype/getUTCMonth/S15.9.5.13_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getUTCMonth/S15.9.5.13_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getUTCMonth/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getUTCSeconds/S15.9.5.23_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getUTCSeconds/S15.9.5.23_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getUTCSeconds/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setDate/S15.9.5.36_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setDate/S15.9.5.36_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setDate/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setFullYear/S15.9.5.40_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setFullYear/S15.9.5.40_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setFullYear/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setHours/S15.9.5.34_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setHours/S15.9.5.34_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setHours/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setMilliseconds/S15.9.5.28_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setMilliseconds/S15.9.5.28_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setMilliseconds/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setMinutes/S15.9.5.32_A3_T1": {
+        "category": "not_es3"
     }
 }

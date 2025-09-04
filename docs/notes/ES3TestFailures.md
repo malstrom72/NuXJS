@@ -1281,5 +1281,46 @@ Deleting `getUTCMinutes.length` uses `Object.defineProperty`; `not_es3`.
 - **built-ins/Date/prototype/getUTCMinutes/name**
 `name` property on `getUTCMinutes` is not defined in ES3; marked `not_es3`.
 
-Progress: 160/755 tests reviewed.
+- **built-ins/Date/prototype/getUTCMonth/S15.9.5.13_A3_T1**
+Read-only check for `getUTCMonth.length` uses ES5 property helpers; `not_es3`.
+- **built-ins/Date/prototype/getUTCMonth/S15.9.5.13_A3_T2**
+Deleting `getUTCMonth.length` relies on `Object.defineProperty`; `not_es3`.
+- **built-ins/Date/prototype/getUTCMonth/name**
+`name` property on `getUTCMonth` added after ES3; marked `not_es3`.
+- **built-ins/Date/prototype/getUTCSeconds/S15.9.5.23_A3_T1**
+Property descriptor test for `getUTCSeconds.length` uses ES5 utilities; `not_es3`.
+- **built-ins/Date/prototype/getUTCSeconds/S15.9.5.23_A3_T2**
+Attempt to delete `getUTCSeconds.length` relies on ES5 features; `not_es3`.
+- **built-ins/Date/prototype/getUTCSeconds/name**
+Function `name` property was introduced post‑ES3; `not_es3`.
+- **built-ins/Date/prototype/setDate/S15.9.5.36_A3_T1**
+Read-only attribute check for `setDate.length` requires ES5 descriptors; `not_es3`.
+- **built-ins/Date/prototype/setDate/S15.9.5.36_A3_T2**
+Deleting `setDate.length` uses `Object.defineProperty`; `not_es3`.
+- **built-ins/Date/prototype/setDate/name**
+`name` property on `setDate` is not in ES3; marked `not_es3`.
+- **built-ins/Date/prototype/setFullYear/15.9.5.40_1**
+Calling `setFullYear` on `Date.prototype` should throw a `TypeError` in ES3; NuXJS does not throw.
+- **built-ins/Date/prototype/setFullYear/S15.9.5.40_A3_T1**
+Property attribute check for `setFullYear.length` depends on ES5 APIs; `not_es3`.
+- **built-ins/Date/prototype/setFullYear/S15.9.5.40_A3_T2**
+Deletion test for `setFullYear.length` requires ES5 descriptors; `not_es3`.
+- **built-ins/Date/prototype/setFullYear/name**
+`name` property on `setFullYear` is post‑ES3; marked `not_es3`.
+- **built-ins/Date/prototype/setHours/S15.9.5.34_A3_T1**
+Read-only check for `setHours.length` uses ES5 features; `not_es3`.
+- **built-ins/Date/prototype/setHours/S15.9.5.34_A3_T2**
+Deletion of `setHours.length` relies on `Object.defineProperty`; `not_es3`.
+- **built-ins/Date/prototype/setHours/name**
+Function `name` property introduced after ES3; `not_es3`.
+- **built-ins/Date/prototype/setMilliseconds/S15.9.5.28_A3_T1**
+Property descriptor test for `setMilliseconds.length` uses ES5 helpers; `not_es3`.
+- **built-ins/Date/prototype/setMilliseconds/S15.9.5.28_A3_T2**
+Deleting `setMilliseconds.length` requires ES5 descriptors; `not_es3`.
+- **built-ins/Date/prototype/setMilliseconds/name**
+`name` property on `setMilliseconds` was added after ES3; marked `not_es3`.
+- **built-ins/Date/prototype/setMinutes/S15.9.5.32_A3_T1**
+Read-only attribute check for `setMinutes.length` uses ES5 property helpers; `not_es3`.
+
+Progress: 180/755 tests reviewed.
 
