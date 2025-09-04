@@ -73,6 +73,7 @@ Covers the `Date` constructor, parsing, UTC calculations, and numerous getter/se
 - built-ins/Date/S15.9.3.1_A6_T5
 - built-ins/Date/TimeClip_negative_zero
 - built-ins/Date/prototype/setFullYear/15.9.5.40_1
+
 ## eval (2 tests)
 
 Validates global `eval` executes code in the current scope as specified by ES3.
@@ -132,6 +133,7 @@ Checks that `undefined` is read-only and globally defined.
 Exercises the `Function` constructor and prototype methods such as `call`, `apply`, and `toString`. ES3 specifies these behaviors.
 
 - built-ins/Function/prototype/S15.3.4_A5
+- 
 ## Error (5 tests)
 
 General `Error` object behavior including construction and message properties must conform to ES3 specifications.
@@ -141,22 +143,26 @@ General `Error` object behavior including construction and message properties mu
 - built-ins/Error/prototype/S15.11.4_A2
 - built-ins/Error/prototype/name/15.11.4.2-1
 - built-ins/Error/prototype/toString/15.11.4.4-8-1
+- 
 ## Infinity (1 test)
 
 Confirms the `Infinity` property behaves as a read-only global representing positive infinity per ES3.
 
 - built-ins/Infinity/S15.1.1.2_A2_T2
+- 
 ## NaN (1 test)
 
 These verify that the `NaN` property is non-writable, non-enumerable, non-configurable, and retains its special value.
 
 - built-ins/NaN/S15.1.1.1_A2_T2
+- 
 ## Math (2 tests)
 
 Verifies correctness of `Math` constants and functions such as `sin`, `cos`, `pow`, and rounding behavior, all defined in ES3.
 
 - built-ins/Math/pow/applying-the-exp-operator_A7
 - built-ins/Math/pow/applying-the-exp-operator_A8
+- 
 ## Number (3 tests)
 
 Covers the `Number` constructor, its constants, and prototype methods that ES3 mandates.
@@ -164,6 +170,7 @@ Covers the `Number` constructor, its constants, and prototype methods that ES3 m
 - built-ins/Number/S9.3.1_A2
 - built-ins/Number/S9.3.1_A3_T1
 - built-ins/Number/S9.3.1_A3_T2
+- 
 ## Object (16 tests)
 
 Tests core `Object` constructor and prototype behaviors present in ES3.
@@ -184,6 +191,7 @@ Tests core `Object` constructor and prototype behaviors present in ES3.
 - built-ins/Object/prototype/valueOf/S15.2.4.4_A13
 - built-ins/Object/prototype/valueOf/S15.2.4.4_A14
 - built-ins/Object/prototype/valueOf/S15.2.4.4_A15
+
 ## RegExp (18 tests)
 
 Covers regular expression syntax and `RegExp.prototype.exec`; ES3 defines the full regexp language.
@@ -205,6 +213,7 @@ Covers regular expression syntax and `RegExp.prototype.exec`; ES3 defines the fu
 - built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T3
 - built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T4
 - built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T5
+
 ## String (73 tests)
 
 Validates the `String` constructor and prototype methods such as `charAt`, `indexOf`, and `slice` per ES3.
