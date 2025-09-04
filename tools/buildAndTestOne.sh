@@ -32,6 +32,9 @@ else
 fi
 
 TEST_DIRS=(../tests/conforming/ ../tests/erroneous/ ../tests/es3only/)
+if [[ "$ES5_ENABLED" == "0" ]]; then
+	TEST_DIRS+=(../tests/es3/)
+fi
 if [[ "$ES5_ENABLED" == "1" ]]; then
 	TEST_DIRS+=(../tests/es5/)
 fi

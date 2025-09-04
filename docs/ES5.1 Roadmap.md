@@ -17,60 +17,60 @@ ES5‑specific regression tests live in `tests/es5`.
 
 ### Object model & descriptors
 	- Extend the internal property representation to track attributes (`[[Writable]]`, `[[Enumerable]]`, `[[Configurable]]`) and accessor pairs.
-       - `src/NuXJS.h` defines `Object::Table::Bucket`; expand the union to hold either a `Value` or a `{ get, set }` pair and add an `ACCESSOR_FLAG` bit.
-       - Update `Object::getProperty` and `Object::setProperty` in `src/NuXJS.cpp` so that accessor buckets surface the getter or setter function while respecting attribute bits during writes and deletes.
-               - `GET_PROPERTY_OP` in `Processor` already delegates to `Object::getProperty`; when an `ACCESSOR_FLAG` bucket is found, the getter function replaces the original value and the processor invokes it via its standard `invokeFunction` path with the object as `this`, leaving the call result on the stack.
-               - `SET_PROPERTY_OP` similarly uses `Object::setProperty`; when an accessor exists, the processor calls the setter through `invokeFunction` with the provided value and keeps the caller's value as the final result.
+	   - `src/NuXJS.h` defines `Object::Table::Bucket`; expand the union to hold either a `Value` or a `{ get, set }` pair and add an `ACCESSOR_FLAG` bit.
+	   - Update `Object::getProperty` and `Object::setProperty` in `src/NuXJS.cpp` so that accessor buckets surface the getter or setter function while respecting attribute bits during writes and deletes.
+			   - `GET_PROPERTY_OP` in `Processor` already delegates to `Object::getProperty`; when an `ACCESSOR_FLAG` bucket is found, the getter function replaces the original value and the processor invokes it via its standard `invokeFunction` path with the object as `this`, leaving the call result on the stack.
+			   - `SET_PROPERTY_OP` similarly uses `Object::setProperty`; when an accessor exists, the processor calls the setter through `invokeFunction` with the provided value and keeps the caller's value as the final result.
 - Implement full `Object.defineProperty`, `Object.defineProperties`, `Object.getOwnPropertyDescriptor`, and `Object.create` in both the C++ core and `src/stdlib.js`.
-    - `Object.defineProperty` supports data and accessor descriptors in `src/stdlib.js`.
-    - `Object.defineProperties` implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io).
-    - `Object.create` (non-null prototype) implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io).
+	- `Object.defineProperty` supports data and accessor descriptors in `src/stdlib.js`.
+	- `Object.defineProperties` implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io).
+	- `Object.create` (non-null prototype) implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io).
 - Replace the legacy `support.defineProperty(o, name, value, readOnly, dontEnum, dontDelete)` with a `PropertyDescriptor` structure that can carry `value`, `get`, `set`, and attribute flags.
 - The runtime helper in `src/NuXJS.cpp` should validate descriptor combinations and install either a data or accessor property in the object's hash table.
 - Expose enumeration helpers like `Object.keys` and `Object.getOwnPropertyNames`.
-        - `Object.keys` implemented in `src/stdlib.js` (`tests/es5/objectKeys.io`).
-        - `Object.getOwnPropertyNames` pending; requires a runtime iterator that can expose non-enumerable properties.
-        - Add support for accessor syntax (`get`/`set` in object literals) and function prototype attributes.
+		- `Object.keys` implemented in `src/stdlib.js` (`tests/es5/objectKeys.io`).
+		- `Object.getOwnPropertyNames` pending; requires a runtime iterator that can expose non-enumerable properties.
+		- Add support for accessor syntax (`get`/`set` in object literals) and function prototype attributes.
 - Ensure `Object.defineProperty`, `Object.defineProperties`, `Object.create`, and `Object.keys` are not constructable. *(Implemented; `tests/stdlib/checkAllPrototypes.io`)*
 - Extend the parser to recognize `get name(){}` and `set name(v){}` tokens and emit descriptor objects for property creation.
 - Bootstrapping of built‑ins in `src/stdlib.js` can then define getters on prototypes, e.g. for `Function.prototype.name`.
 
 ### Strict mode
 - Detect strict directives and propagate mode.
-    - Add a `bool strict` member to `Code` in `src/NuXJS.h`. *(Implemented; `tests/es5/strictThisBinding.io`)*
+	- Add a `bool strict` member to `Code` in `src/NuXJS.h`. *(Implemented; `tests/es5/strictThisBinding.io`)*
    - In `Compiler::compile` and `compileFunction` (`src/NuXJS.cpp`), scan the directive prologue by walking the leading string literals before any other token. A literal whose contents are exactly `use strict` (10 characters, case‑sensitive) toggles `code->strict`. *(Implemented; `tests/es5/strictThisBinding.io`)*
 - Enforce identifier restrictions and parameter checks.
    - Update `Compiler::identifier` so `eval` and `arguments` trigger a syntax error when the current scope is strict. *(Implemented; `tests/es5/strictEvalArgsBinding.io`)*
    - During parameter list parsing, reject duplicate names in strict functions. *(Implemented; `tests/es5/strictDuplicateParam.io`)*
 - Preserve `undefined` for unbound `this` values.
-    - Modify `Processor::enter` to skip substituting the global object when `code->strict` is set. *(Implemented; `tests/es5/strictThisBinding.io`)*
+	- Modify `Processor::enter` to skip substituting the global object when `code->strict` is set. *(Implemented; `tests/es5/strictThisBinding.io`)*
 - Reject `with` statements in strict code.
-    - Have `Compiler::withStatement` test the active scope’s `strict` flag and emit a syntax error if encountered. *(Implemented; `tests/es5/strictWithStatement.io`)*
+	- Have `Compiler::withStatement` test the active scope’s `strict` flag and emit a syntax error if encountered. *(Implemented; `tests/es5/strictWithStatement.io`)*
 - Propagate strict mode through `eval` and isolate its environment. *(Implemented; `tests/es5/strictEvalScope.io`)*
-    - Pass the caller’s strict flag to `CALL_EVAL_OP` and down to `Runtime::compileEvalCode` and `Processor::enterEvalCode`. *(Implemented; `tests/es5/strictEvalScope.io`)*
-    - When strict, compile eval code with a fresh variable environment. *(Implemented; `tests/es5/strictEvalScope.io`)*
+	- Pass the caller’s strict flag to `CALL_EVAL_OP` and down to `Runtime::compileEvalCode` and `Processor::enterEvalCode`. *(Implemented; `tests/es5/strictEvalScope.io`)*
+	- When strict, compile eval code with a fresh variable environment. *(Implemented; `tests/es5/strictEvalScope.io`)*
 - Tighten `delete` semantics.
-    - If `delete` targets a simple identifier in strict mode, emit a syntax error instead of `DELETE_NAMED_OP`. *(Implemented; `tests/es5/strictDeleteIdentifier.io`)*
+	- If `delete` targets a simple identifier in strict mode, emit a syntax error instead of `DELETE_NAMED_OP`. *(Implemented; `tests/es5/strictDeleteIdentifier.io`)*
 - Disallow implicit global variable creation.
    - When strict code assigns to an undeclared identifier, raise a `ReferenceError` rather than defining a global property. *(Implemented; `tests/es5/strictImplicitGlobal.io`)*
 - Implement strict arguments-object behavior. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
-    - Introduce a non-mapped `ArgumentsObject` variant and construct it in `FunctionScope` when `code->strict`. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
-    - Ensure `arguments` does not alias parameters. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
+	- Introduce a non-mapped `ArgumentsObject` variant and construct it in `FunctionScope` when `code->strict`. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
+	- Ensure `arguments` does not alias parameters. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
 
 ### Arguments object & function semantics
 - Implement ES5.1 arguments-object behavior (decoupled mapping, `Object.getOwnPropertyDescriptor` support).
 	- Introduce an `ArgumentsObject` class that can either map indices to parameters or, in strict mode, hold a copy without parameter aliases.
 	- `Object.getOwnPropertyDescriptor` on arguments must expose `length`, `callee`, and indexed properties with correct attributes.
  - Provide `Function.prototype.bind` and ensure correct `.name`, `.length`, and `toString` outputs.
-    - Implemented via runtime `support.bind` helper producing `BoundFunction` with correct constructor behavior and partial application semantics (`tests/es5/functionBind.io`).
-     - Optional: consider `bound` function `.name` as `"bound " + target.name` (not required by ES5.1 but common).
+	- Implemented via runtime `support.bind` helper producing `BoundFunction` with correct constructor behavior and partial application semantics (`tests/es5/functionBind.io`).
+	 - Optional: consider `bound` function `.name` as `"bound " + target.name` (not required by ES5.1 but common).
 
 ### Spec compliance fixes
 - Align ES5 semantics that differ from the current engine implementation.
 	- Permit `for...in` on `null` or `undefined` to yield an empty iteration instead of throwing.  *(see `docs/notes/ECMAScript Compatibility Notes.md`)*
-	- Make user-defined functions' `prototype` properties non-enumerable and adjust `name`/`length` attributes to match ES5.1.
-	- Update `Object.prototype.toString` so `arguments` objects report `[object Arguments]` and enumerate indexed slots during `for...in`.
-	- Add regression tests for each behaviour in `tests/es5`.
+		- Make user-defined functions' `prototype` properties non-enumerable and adjust `name`/`length` attributes to match ES5.1. (`tests/es5/functionPrototypeNonEnum.io`)
+		- Update `Object.prototype.toString` so `arguments` objects report `[object Arguments]` and enumerate indexed slots during `for...in`. (`tests/es5/argumentsToStringEnum.io`)
+		- Add regression tests for each behaviour in `tests/es5`.
 
 ### Array & string methods
 - Add ES5.1 array iteration utilities: `forEach`, `map`, `filter`, `some`, `every`, `reduce`, `reduceRight`, `indexOf`, `lastIndexOf`.
