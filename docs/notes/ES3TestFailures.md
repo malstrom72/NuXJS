@@ -1322,5 +1322,40 @@ Deleting `setMilliseconds.length` requires ES5 descriptors; `not_es3`.
 - **built-ins/Date/prototype/setMinutes/S15.9.5.32_A3_T1**
 Read-only attribute check for `setMinutes.length` uses ES5 property helpers; `not_es3`.
 
-Progress: 180/755 tests reviewed.
+- **built-ins/Date/prototype/setMinutes/S15.9.5.32_A3_T2**
+Deletion test expects `setMinutes.length` to be configurable, but ES3 defines built-in function lengths as non-deletable; `not_es3`.
+- **built-ins/Date/prototype/setMinutes/name**
+Function `name` property introduced in ES6; `not_es3`.
+- **built-ins/Date/prototype/setMonth/S15.9.5.38_A3_T1**
+Attribute check for `setMonth.length` uses ES5 `propertyHelper`; `not_es3`.
+- **built-ins/Date/prototype/setMonth/S15.9.5.38_A3_T2**
+Test assumes `setMonth.length` is deletable, contradicting ES3 attributes; `not_es3`.
+- **built-ins/Date/prototype/setMonth/name**
+`name` property on `setMonth` is post‑ES3; `not_es3`.
+- **built-ins/Date/prototype/setSeconds/S15.9.5.30_A3_T1**
+Read-only check for `setSeconds.length` relies on ES5 helpers; `not_es3`.
+- **built-ins/Date/prototype/setSeconds/S15.9.5.30_A3_T2**
+Test expects `setSeconds.length` to be deletable; ES3 keeps it; `not_es3`.
+- **built-ins/Date/prototype/setSeconds/name**
+Function `name` property is absent in ES3; `not_es3`.
+- **built-ins/Date/prototype/setTime/S15.9.5.27_A3_T1**
+Property helper used to verify `setTime.length` read-only; `not_es3`.
+- **built-ins/Date/prototype/setTime/S15.9.5.27_A3_T2**
+Deletion test for `setTime.length` assumes configurability; ES3 forbids deletion; `not_es3`.
+- **built-ins/Date/prototype/setTime/name**
+`name` property introduced later; `not_es3`.
+- **built-ins/Date/prototype/setUTCDate/S15.9.5.37_A3_T1**
+Read-only check uses ES5 features; `not_es3`.
+- **built-ins/Date/prototype/setUTCDate/S15.9.5.37_A3_T2**
+Deletion test conflicts with ES3 `DontDelete` attribute; `not_es3`.
+- **built-ins/Date/prototype/setUTCDate/name**
+Function `name` property not part of ES3; `not_es3`.
+- **built-ins/Date/prototype/setUTCFullYear/S15.9.5.41_A3_T1**
+Property descriptor check for `setUTCFullYear.length` uses ES5 helpers; `not_es3`.
+- **built-ins/Date/prototype/setUTCFullYear/S15.9.5.41_A3_T2**
+Test expects `setUTCFullYear.length` deletable; ES3 length properties are `DontDelete`; `not_es3`.
+- **built-ins/Date/prototype/setUTCFullYear/name**
+Function `name` property is post-ES3; `not_es3`.
+
+Progress: 197/755 tests reviewed.
 
