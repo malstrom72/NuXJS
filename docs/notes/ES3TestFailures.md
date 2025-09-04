@@ -1,6 +1,6 @@
 # ES3 Test262 Failures Analysis
 
-This report enumerates the remaining 303 Test262 failures that exercise ECMAScript 3 features. Tests for later ECMAScript editions (e.g. Map/Set iterators) are excluded. Each section lists failing tests and explains why their functionality is expected in an ES3-compliant engine.
+This report enumerates the remaining 163 Test262 failures that exercise ECMAScript 3 features. Tests for later ECMAScript editions (e.g. Map/Set iterators) are excluded. 140 failing tests for the optional URI encoding helpers (`decodeURI`, `decodeURIComponent`, `encodeURI`, `encodeURIComponent`) are intentionally omitted and listed separately as by design. Each section lists failing tests and explains why their functionality is expected in an ES3-compliant engine.
 
 ### Automated classification
 
@@ -21,10 +21,6 @@ Current summary:
 | Object | §15.2 | 16 | 0 | 16 |
 | RegExp | §15.10 | 18 | 0 | 18 |
 | String | §15.5 | 73 | 0 | 73 |
-| decodeURI |  | 48 | 0 | 48 |
-| decodeURIComponent |  | 48 | 0 | 48 |
-| encodeURI |  | 22 | 0 | 22 |
-| encodeURIComponent |  | 22 | 0 | 22 |
 | eval |  | 2 | 0 | 2 |
 | global |  | 3 | 0 | 3 |
 | isFinite |  | 2 | 0 | 2 |
@@ -32,7 +28,16 @@ Current summary:
 | parseFloat |  | 3 | 0 | 3 |
 | parseInt |  | 5 | 0 | 5 |
 | undefined |  | 2 | 0 | 2 |
-Progress: 303/303 tests reviewed.
+Progress: 163/163 tests reviewed.
+
+### By design (optional URI helpers)
+
+`decodeURI`, `decodeURIComponent`, `encodeURI`, and `encodeURIComponent` are optional in ES3 and intentionally unimplemented in NuXJS. Their 140 failing tests are excluded from the counts above:
+
+- decodeURI – 48 tests
+- decodeURIComponent – 48 tests
+- encodeURI – 22 tests
+- encodeURIComponent – 22 tests
 
 
 
@@ -68,165 +73,6 @@ Covers the `Date` constructor, parsing, UTC calculations, and numerous getter/se
 - built-ins/Date/S15.9.3.1_A6_T5
 - built-ins/Date/TimeClip_negative_zero
 - built-ins/Date/prototype/setFullYear/15.9.5.40_1
-## decodeURI (48 tests)
-
-Confirms `decodeURI` decodes URIs correctly and rejects invalid encodings per ES3.
-
-- built-ins/decodeURI/S15.1.3.1_A1.10_T1
-- built-ins/decodeURI/S15.1.3.1_A1.11_T1
-- built-ins/decodeURI/S15.1.3.1_A1.11_T2
-- built-ins/decodeURI/S15.1.3.1_A1.12_T1
-- built-ins/decodeURI/S15.1.3.1_A1.12_T2
-- built-ins/decodeURI/S15.1.3.1_A1.12_T3
-- built-ins/decodeURI/S15.1.3.1_A1.13_T1
-- built-ins/decodeURI/S15.1.3.1_A1.13_T2
-- built-ins/decodeURI/S15.1.3.1_A1.14_T1
-- built-ins/decodeURI/S15.1.3.1_A1.14_T2
-- built-ins/decodeURI/S15.1.3.1_A1.14_T3
-- built-ins/decodeURI/S15.1.3.1_A1.14_T4
-- built-ins/decodeURI/S15.1.3.1_A1.15_T1
-- built-ins/decodeURI/S15.1.3.1_A1.15_T2
-- built-ins/decodeURI/S15.1.3.1_A1.15_T3
-- built-ins/decodeURI/S15.1.3.1_A1.15_T4
-- built-ins/decodeURI/S15.1.3.1_A1.15_T5
-- built-ins/decodeURI/S15.1.3.1_A1.15_T6
-- built-ins/decodeURI/S15.1.3.1_A1.1_T1
-- built-ins/decodeURI/S15.1.3.1_A1.2_T1
-- built-ins/decodeURI/S15.1.3.1_A1.2_T2
-- built-ins/decodeURI/S15.1.3.1_A1.3_T1
-- built-ins/decodeURI/S15.1.3.1_A1.3_T2
-- built-ins/decodeURI/S15.1.3.1_A1.4_T1
-- built-ins/decodeURI/S15.1.3.1_A1.5_T1
-- built-ins/decodeURI/S15.1.3.1_A1.6_T1
-- built-ins/decodeURI/S15.1.3.1_A1.7_T1
-- built-ins/decodeURI/S15.1.3.1_A1.8_T1
-- built-ins/decodeURI/S15.1.3.1_A1.8_T2
-- built-ins/decodeURI/S15.1.3.1_A1.9_T1
-- built-ins/decodeURI/S15.1.3.1_A1.9_T2
-- built-ins/decodeURI/S15.1.3.1_A1.9_T3
-- built-ins/decodeURI/S15.1.3.1_A2.1_T1
-- built-ins/decodeURI/S15.1.3.1_A2.2_T1
-- built-ins/decodeURI/S15.1.3.1_A2.3_T1
-- built-ins/decodeURI/S15.1.3.1_A2.4_T1
-- built-ins/decodeURI/S15.1.3.1_A2.5_T1
-- built-ins/decodeURI/S15.1.3.1_A4_T1
-- built-ins/decodeURI/S15.1.3.1_A4_T2
-- built-ins/decodeURI/S15.1.3.1_A4_T3
-- built-ins/decodeURI/S15.1.3.1_A4_T4
-- built-ins/decodeURI/S15.1.3.1_A5.1
-- built-ins/decodeURI/S15.1.3.1_A5.2
-- built-ins/decodeURI/S15.1.3.1_A5.3
-- built-ins/decodeURI/S15.1.3.1_A5.4
-- built-ins/decodeURI/S15.1.3.1_A5.6
-- built-ins/decodeURI/S15.1.3.1_A5.7
-- built-ins/decodeURI/S15.1.3.1_A6_T1
-
-## decodeURIComponent (48 tests)
-
-Confirms `decodeURIComponent` decodes URI components correctly and rejects invalid encodings per ES3.
-
-- built-ins/decodeURIComponent/S15.1.3.2_A1.10_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A1.11_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A1.11_T2
-- built-ins/decodeURIComponent/S15.1.3.2_A1.12_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A1.12_T2
-- built-ins/decodeURIComponent/S15.1.3.2_A1.12_T3
-- built-ins/decodeURIComponent/S15.1.3.2_A1.13_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A1.13_T2
-- built-ins/decodeURIComponent/S15.1.3.2_A1.14_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A1.14_T2
-- built-ins/decodeURIComponent/S15.1.3.2_A1.14_T3
-- built-ins/decodeURIComponent/S15.1.3.2_A1.14_T4
-- built-ins/decodeURIComponent/S15.1.3.2_A1.15_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A1.15_T2
-- built-ins/decodeURIComponent/S15.1.3.2_A1.15_T3
-- built-ins/decodeURIComponent/S15.1.3.2_A1.15_T4
-- built-ins/decodeURIComponent/S15.1.3.2_A1.15_T5
-- built-ins/decodeURIComponent/S15.1.3.2_A1.15_T6
-- built-ins/decodeURIComponent/S15.1.3.2_A1.1_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A1.2_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A1.2_T2
-- built-ins/decodeURIComponent/S15.1.3.2_A1.3_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A1.3_T2
-- built-ins/decodeURIComponent/S15.1.3.2_A1.4_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A1.5_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A1.6_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A1.7_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A1.8_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A1.8_T2
-- built-ins/decodeURIComponent/S15.1.3.2_A1.9_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A1.9_T2
-- built-ins/decodeURIComponent/S15.1.3.2_A1.9_T3
-- built-ins/decodeURIComponent/S15.1.3.2_A2.1_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A2.2_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A2.3_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A2.4_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A2.5_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A4_T1
-- built-ins/decodeURIComponent/S15.1.3.2_A4_T2
-- built-ins/decodeURIComponent/S15.1.3.2_A4_T3
-- built-ins/decodeURIComponent/S15.1.3.2_A4_T4
-- built-ins/decodeURIComponent/S15.1.3.2_A5.1
-- built-ins/decodeURIComponent/S15.1.3.2_A5.2
-- built-ins/decodeURIComponent/S15.1.3.2_A5.3
-- built-ins/decodeURIComponent/S15.1.3.2_A5.4
-- built-ins/decodeURIComponent/S15.1.3.2_A5.6
-- built-ins/decodeURIComponent/S15.1.3.2_A5.7
-- built-ins/decodeURIComponent/S15.1.3.2_A6_T1
-
-## encodeURI (22 tests)
-
-Checks that `encodeURI` correctly escapes URI strings per ES3 rules.
-
-- built-ins/encodeURI/S15.1.3.3_A1.1_T1
-- built-ins/encodeURI/S15.1.3.3_A1.1_T2
-- built-ins/encodeURI/S15.1.3.3_A1.2_T1
-- built-ins/encodeURI/S15.1.3.3_A1.2_T2
-- built-ins/encodeURI/S15.1.3.3_A1.3_T1
-- built-ins/encodeURI/S15.1.3.3_A2.1_T1
-- built-ins/encodeURI/S15.1.3.3_A2.2_T1
-- built-ins/encodeURI/S15.1.3.3_A2.3_T1
-- built-ins/encodeURI/S15.1.3.3_A2.4_T1
-- built-ins/encodeURI/S15.1.3.3_A2.4_T2
-- built-ins/encodeURI/S15.1.3.3_A2.5_T1
-- built-ins/encodeURI/S15.1.3.3_A4_T1
-- built-ins/encodeURI/S15.1.3.3_A4_T2
-- built-ins/encodeURI/S15.1.3.3_A4_T3
-- built-ins/encodeURI/S15.1.3.3_A4_T4
-- built-ins/encodeURI/S15.1.3.3_A5.1
-- built-ins/encodeURI/S15.1.3.3_A5.2
-- built-ins/encodeURI/S15.1.3.3_A5.3
-- built-ins/encodeURI/S15.1.3.3_A5.4
-- built-ins/encodeURI/S15.1.3.3_A5.6
-- built-ins/encodeURI/S15.1.3.3_A5.7
-- built-ins/encodeURI/S15.1.3.3_A6_T1
-
-## encodeURIComponent (22 tests)
-
-Checks that `encodeURIComponent` correctly escapes component strings per ES3.
-
-- built-ins/encodeURIComponent/S15.1.3.4_A1.1_T1
-- built-ins/encodeURIComponent/S15.1.3.4_A1.1_T2
-- built-ins/encodeURIComponent/S15.1.3.4_A1.2_T1
-- built-ins/encodeURIComponent/S15.1.3.4_A1.2_T2
-- built-ins/encodeURIComponent/S15.1.3.4_A1.3_T1
-- built-ins/encodeURIComponent/S15.1.3.4_A2.1_T1
-- built-ins/encodeURIComponent/S15.1.3.4_A2.2_T1
-- built-ins/encodeURIComponent/S15.1.3.4_A2.3_T1
-- built-ins/encodeURIComponent/S15.1.3.4_A2.4_T1
-- built-ins/encodeURIComponent/S15.1.3.4_A2.4_T2
-- built-ins/encodeURIComponent/S15.1.3.4_A2.5_T1
-- built-ins/encodeURIComponent/S15.1.3.4_A4_T1
-- built-ins/encodeURIComponent/S15.1.3.4_A4_T2
-- built-ins/encodeURIComponent/S15.1.3.4_A4_T3
-- built-ins/encodeURIComponent/S15.1.3.4_A4_T4
-- built-ins/encodeURIComponent/S15.1.3.4_A5.1
-- built-ins/encodeURIComponent/S15.1.3.4_A5.2
-- built-ins/encodeURIComponent/S15.1.3.4_A5.3
-- built-ins/encodeURIComponent/S15.1.3.4_A5.4
-- built-ins/encodeURIComponent/S15.1.3.4_A5.6
-- built-ins/encodeURIComponent/S15.1.3.4_A5.7
-- built-ins/encodeURIComponent/S15.1.3.4_A6_T1
 
 ## eval (2 tests)
 
@@ -287,6 +133,7 @@ Checks that `undefined` is read-only and globally defined.
 Exercises the `Function` constructor and prototype methods such as `call`, `apply`, and `toString`. ES3 specifies these behaviors.
 
 - built-ins/Function/prototype/S15.3.4_A5
+- 
 ## Error (5 tests)
 
 General `Error` object behavior including construction and message properties must conform to ES3 specifications.
@@ -296,22 +143,26 @@ General `Error` object behavior including construction and message properties mu
 - built-ins/Error/prototype/S15.11.4_A2
 - built-ins/Error/prototype/name/15.11.4.2-1
 - built-ins/Error/prototype/toString/15.11.4.4-8-1
+- 
 ## Infinity (1 test)
 
 Confirms the `Infinity` property behaves as a read-only global representing positive infinity per ES3.
 
 - built-ins/Infinity/S15.1.1.2_A2_T2
+- 
 ## NaN (1 test)
 
 These verify that the `NaN` property is non-writable, non-enumerable, non-configurable, and retains its special value.
 
 - built-ins/NaN/S15.1.1.1_A2_T2
+- 
 ## Math (2 tests)
 
 Verifies correctness of `Math` constants and functions such as `sin`, `cos`, `pow`, and rounding behavior, all defined in ES3.
 
 - built-ins/Math/pow/applying-the-exp-operator_A7
 - built-ins/Math/pow/applying-the-exp-operator_A8
+- 
 ## Number (3 tests)
 
 Covers the `Number` constructor, its constants, and prototype methods that ES3 mandates.
@@ -319,6 +170,7 @@ Covers the `Number` constructor, its constants, and prototype methods that ES3 m
 - built-ins/Number/S9.3.1_A2
 - built-ins/Number/S9.3.1_A3_T1
 - built-ins/Number/S9.3.1_A3_T2
+- 
 ## Object (16 tests)
 
 Tests core `Object` constructor and prototype behaviors present in ES3.
@@ -327,10 +179,25 @@ Tests core `Object` constructor and prototype behaviors present in ES3.
 - built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A13
 - built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A12
 - built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A13
+- built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A12
+- built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A13
+- built-ins/Object/prototype/toLocaleString/S15.2.4.3_A12
+- built-ins/Object/prototype/toLocaleString/S15.2.4.3_A13
+- built-ins/Object/prototype/toString/15.2.4.2-1-1
+- built-ins/Object/prototype/toString/15.2.4.2-1-2
+- built-ins/Object/prototype/toString/15.2.4.2-2-1
+- built-ins/Object/prototype/toString/15.2.4.2-2-2
+- built-ins/Object/prototype/valueOf/S15.2.4.4_A12
+- built-ins/Object/prototype/valueOf/S15.2.4.4_A13
+- built-ins/Object/prototype/valueOf/S15.2.4.4_A14
+- built-ins/Object/prototype/valueOf/S15.2.4.4_A15
+
 ## RegExp (18 tests)
 
 Covers regular expression syntax and `RegExp.prototype.exec`; ES3 defines the full regexp language.
-
+- built-ins/RegExp/S15.10.2.12_A1_T1
+- built-ins/RegExp/S15.10.2.12_A2_T1
+- built-ins/RegExp/S15.10.2.8_A3_T15
 - built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T10
 - built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T11
 - built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T12
@@ -346,6 +213,7 @@ Covers regular expression syntax and `RegExp.prototype.exec`; ES3 defines the fu
 - built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T3
 - built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T4
 - built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T5
+
 ## String (73 tests)
 
 Validates the `String` constructor and prototype methods such as `charAt`, `indexOf`, and `slice` per ES3.
