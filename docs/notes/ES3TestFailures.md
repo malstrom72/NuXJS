@@ -896,3 +896,310 @@ Validates the `String` constructor and prototype methods such as `charAt`, `inde
 - built-ins/String/prototype/toUpperCase/supplementary_plane
 - built-ins/String/prototype/valueOf/length
 - built-ins/String/prototype/valueOf/name
+
+## Detailed analysis progress (2025-09-04)
+
+The following failing Test262 cases have been reviewed:
+
+- **built-ins/Array/S15.4.5.1_A2.1_T1**  
+  Assigns values to keys 4294967295, -1 and true on an empty array. ES3 §15.4.5.1 treats these as ordinary properties, leaving `length` at 0. NuXJS increments `length`, indicating incorrect Array index handling.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-to-string-throws**  
+  A spreadable object with a `length` property whose `toString` throws is concatenated. This relies on `Symbol.isConcatSpreadable` and property accessors added in ES2015; ES3 has no symbols or spreadable concatenation. Marked `not_es3`.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-value-of-throws**  
+  Similar to above but the `length` property's `valueOf` throws. Depends on `Symbol.isConcatSpreadable`; not an ES3 feature. Marked `not_es3`.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_array-like-negative-length**  
+  Uses `Symbol.isConcatSpreadable` and an object with negative `length` to verify `ToLength` semantics introduced after ES3. Marked `not_es3`.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_array-like-primitive-non-number-length**  
+  Verifies concatenation when `length` converts to a non-number via `toString`/`valueOf`. Requires `Symbol.isConcatSpreadable`; not ES3. Marked `not_es3`.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_array-like-string-length**  
+  Concatenates a spreadable object with string `length`. Uses `Symbol.isConcatSpreadable` and `ToLength` from later editions. Marked `not_es3`.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_array-like-to-length-throws**  
+  Ensures `Array.prototype.concat` throws when `length` lacks usable numeric conversion. Relies on `Symbol.isConcatSpreadable`; not ES3. Marked `not_es3`.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_array-like**  
+  Demonstrates spreading an object tagged with `Symbol.isConcatSpreadable`. Symbols were introduced in ES2015; test is outside ES3. Marked `not_es3`.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_descriptor**  
+  Checks property descriptor attributes of `concat` via `Object.getOwnPropertyDescriptor`, an ES5 feature. Already tagged `not_es3`.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_holey-sloppy-arguments**  
+  Uses an `arguments` object marked with `Symbol.isConcatSpreadable`. Depends on post-ES3 symbols. Marked `not_es3`.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_large-typed-array**  
+  Concatenates typed arrays and uses `Symbol.isConcatSpreadable`. Typed arrays and symbols are post-ES3; marked `not_es3`.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_length-throws**  
+  Spreads an object with an accessor `length` that throws. Uses `Symbol.isConcatSpreadable` and `Object.defineProperty` (ES5+). Marked `not_es3`.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-throws**  
+  Marks an `arguments` object spreadable and defines a getter that throws. Requires symbols and property descriptors beyond ES3. Marked `not_es3`.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-with-dupes**  
+  Spreadable `arguments` object with duplicate parameters; relies on symbols and `Object.defineProperty`. Marked `not_es3`.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments**  
+  Spreadable `arguments` object with manual `length` override via `Object.defineProperty`. Uses symbols and descriptors, so not ES3. Marked `not_es3`.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_small-typed-array**  
+  Uses typed arrays and `Symbol.isConcatSpreadable`. Typed arrays are ES2015 features; marked `not_es3`.
+
+- **built-ins/Array/prototype/concat/Array.prototype.concat_strict-arguments**  
+  Operates on a strict-mode `arguments` object tagged with `Symbol.isConcatSpreadable`. Strict mode and symbols are post-ES3; marked `not_es3`.
+
+- **built-ins/Array/prototype/concat/name**  
+  Verifies the `name` property of `Array.prototype.concat`. Built-in function `name` properties were standardized after ES3. Marked `not_es3`.
+
+- **built-ins/Array/prototype/pop/S15.4.4.6_A2_T2**  
+  Tests generic `pop` on objects with non-integer lengths (`NaN`, `±Infinity`, `-0`, etc.). ES3 §15.4.4.6 mandates `ToUint32` conversion and returning `undefined` while setting `length` to 0. NuXJS does not implement this conversion correctly.
+
+- **built-ins/Array/prototype/push/S15.4.4.7_A2_T2**
+Exercises generic `push` with irregular `length` values, expecting numeric coercion per ES3 §15.4.4.7. NuXJS fails to coerce `length` via `ToUint32`, yielding incorrect results.
+
+- **built-ins/Array/prototype/push/name**
+Function `name` property wasn't standardized until ES5; flagged as `not_es3`.
+- **language/expressions/object/11.1.5-0-1**
+Object literal getter/setter syntax belongs to ES5; marked `not_es3`.
+- **language/expressions/object/11.1.5-0-2**
+Uses multiple getters/setters in an object literal, a post‑ES3 feature. Marked `not_es3`.
+- **language/expressions/object/11.1.5_4-4-b-1**
+Mixes data property and getter in a literal; accessor properties are not in ES3. Marked `not_es3`.
+- **language/expressions/object/11.1.5_4-4-b-2**
+Getter followed by data property within object literal—relies on ES5 syntax, so `not_es3`.
+- **language/expressions/object/11.1.5_4-4-c-1**
+Combines data property and setter; accessor syntax is ES5. Marked `not_es3`.
+- **language/expressions/object/11.1.5_4-4-c-2**
+Setter followed by data property; accessor features are post‑ES3. Marked `not_es3`.
+- **language/expressions/object/11.1.5_4-4-d-1**
+Duplicate getters are allowed in ES5 object literals; ES3 lacks this. Marked `not_es3`.
+- **language/expressions/object/11.1.5_4-4-d-2**
+Getter duplication in object literal uses ES5 accessors; marked `not_es3`.
+- **language/expressions/object/11.1.5_4-4-d-3**
+Combination of getter/setter/getter uses ES5 accessor syntax. Marked `not_es3`.
+- **language/expressions/object/11.1.5_4-4-d-4**
+Setter/getter/setter sequence relies on ES5 accessors. Marked `not_es3`.
+- **built-ins/Array/prototype/reverse/get_if_present_with_delete**
+Uses `Object.defineProperty` to delete elements during reverse; property descriptors are ES5, so `not_es3`.
+- **built-ins/Array/prototype/reverse/name**
+`name` property for `reverse` appears after ES3; marked `not_es3`.
+- **built-ins/Array/prototype/shift/S15.4.4.9_A3_T3**
+`shift` must apply `ToUint32` to negative `length` values per ES3 §15.4.4.9; NuXJS leaves length unchanged.
+- **built-ins/Array/prototype/shift/S15.4.4.9_A4_T2**
+Relies on inherited elements via prototypes; ES3 expects `shift` to fetch from prototype chain but engine doesn't.
+- **built-ins/Array/prototype/shift/name**
+Built‑in `shift` lacks a `name` property in ES3; marked `not_es3`.
+- **built-ins/Array/prototype/slice/name**
+`slice` function `name` is an ES5 addition. Marked `not_es3`.
+- **language/function-code/10.4.3-1-54gs**
+Strict‑mode getter uses ES5 features (`use strict`, accessors); marked `not_es3`.
+- **language/function-code/10.4.3-1-55-s**
+Strict function semantics belong to ES5; marked `not_es3`.
+- **language/function-code/10.4.3-1-55gs**
+Mixes strict and non‑strict code with getters; post‑ES3 behavior. Marked `not_es3`.
+- **language/function-code/10.4.3-1-56-s**
+Strict mode requirement for `this` binding is ES5; marked `not_es3`.
+- **language/function-code/10.4.3-1-56gs**
+Uses strict semantics with accessors; not part of ES3. Marked `not_es3`.
+- **language/function-code/10.4.3-1-57-s**
+Relies on ES5 strict mode when evaluating getter; marked `not_es3`.
+- **language/function-code/10.4.3-1-57gs**
+Strict getter interaction with global `this` is ES5; marked `not_es3`.
+- **built-ins/Array/prototype/sort/S15.4.4.11_A7.2**
+ES3 requires `length` on `sort` be deletable; NuXJS retains the property, violating §15.4.4.11.
+- **built-ins/Array/prototype/sort/S15.4.4.11_A7.3**
+Checks `sort.length` read‑only via property descriptors (ES5); marked `not_es3`.
+- **built-ins/Array/prototype/sort/name**
+`sort` function `name` property is post‑ES3; marked `not_es3`.
+- **built-ins/Array/prototype/splice/S15.4.4.12_A6.1_T2**
+Uses `Object.defineProperty` to make `length` non‑writable; such descriptors are ES5, so `not_es3`.
+- **built-ins/Array/prototype/splice/name**
+`splice` `name` property introduced after ES3; marked `not_es3`.
+- **built-ins/Array/prototype/toLocaleString/S15.4.4.3_A1_T1**
+`toLocaleString` must call each element's method; engine skips `undefined` and `null` per ES3 §15.4.4.3.
+- **built-ins/Array/prototype/toLocaleString/S15.4.4.3_A3_T1**
+Prototype elements should be visited by `toLocaleString`; NuXJS fails to access inherited slot.
+- **built-ins/Array/prototype/toLocaleString/S15.4.4.3_A4.2**
+`toLocaleString.length` should be deletable; engine treats it as permanent.
+- **built-ins/Array/prototype/toLocaleString/S15.4.4.3_A4.3**
+Uses property descriptors to verify read‑only `length`; ES5 feature so `not_es3`.
+- **built-ins/Array/prototype/toLocaleString/name**
+Function `name` property absent in ES3; marked `not_es3`.
+- **built-ins/Array/prototype/toString/S15.4.4.2_A4.2**
+`toString.length` should be deletable per ES3 but NuXJS prevents deletion.
+- **built-ins/Array/prototype/toString/S15.4.4.2_A4.3**
+Read‑only `length` verified with descriptors (ES5); marked `not_es3`.
+- **built-ins/Array/prototype/toString/name**
+`name` property for `toString` is not in ES3; marked `not_es3`.
+- **built-ins/Array/prototype/unshift/name**
+`unshift` lacks a `name` in ES3; marked `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/Float32Array**
+Typed array iterator protocol is ES2015; marked `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/Float64Array**
+Typed array iterator requires ES2015 features; marked `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/Int16Array**
+Iterators over typed arrays are post‑ES3; marked `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/Int32Array**
+Typed array iterators are ES2015 features; marked `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/Int8Array**
+Relies on ES2015 typed array iterator support; marked `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/Uint16Array**
+Typed array iterator is not part of ES3; marked `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/Uint32Array**
+Typed array iterator is post‑ES3; marked `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/Uint8Array**
+Uses ES2015 iterator protocol; marked `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/Uint8ClampedArray**
+Typed array iterator; mark `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/args-mapped-expansion-after-exhaustion**
+Iterator behavior on mapped arguments object is ES2015; `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/args-mapped-expansion-before-exhaustion**
+Requires iterator protocol on arguments objects; marked `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/args-mapped-iteration**
+ES2015 iterator semantics over mapped arguments; `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/args-mapped-truncation-before-exhaustion**
+Uses ES2015 arguments iterator truncation behavior; `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/args-unmapped-expansion-after-exhaustion**
+Unmapped arguments iteration is ES2015; marked `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/args-unmapped-expansion-before-exhaustion**
+Relies on ES2015 iterator semantics; `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/args-unmapped-iteration**
+Arguments object iterators did not exist in ES3; `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/args-unmapped-truncation-before-exhaustion**
+ES2015 arguments iterator feature; marked `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/iteration-mutable**
+Iterator protocol with live array mutations is ES2015; `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/iteration**
+Array iterators are an ES2015 feature; marked `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/length**
+Iterator `next` method `length` property is ES2015; `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/name**
+`name` on iterator `next` is post‑ES3; `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/non-own-slots**
+Iterator slots are ES2015 internals; marked `not_es3`.
+- **built-ins/ArrayIteratorPrototype/next/property-descriptor**
+Uses `Object.getOwnPropertyDescriptor` on iterator; ES5+ feature, so `not_es3`.
+- **built-ins/Boolean/symbol-coercion**
+Symbol primitives are ES2015; marked `not_es3`.
+- **built-ins/Boolean/prototype/S15.6.3.1_A2**
+Checks `Boolean.prototype` attribute via `Object.defineProperty`; descriptors are ES5, so `not_es3`.
+- **built-ins/Boolean/prototype/S15.6.3.1_A3**
+Deletes `Boolean.prototype` using property descriptors—an ES5 capability; `not_es3`.
+- **built-ins/Boolean/prototype/toString/length**
+Function `length` attribute verified via descriptors; test marked `not_es3`.
+- **built-ins/Boolean/prototype/toString/name**
+`name` property added post‑ES3; marked `not_es3`.
+- **built-ins/Boolean/prototype/valueOf/length**
+Descriptor‑based `length` check uses ES5 features; marked `not_es3`.
+- **built-ins/Boolean/prototype/valueOf/name**
+`name` property absent in ES3; marked `not_es3`.
+- **built-ins/Date/15.9.1.15-1**
+Relies on `Date.prototype.toISOString` introduced after ES3; marked `not_es3`.
+- **built-ins/Date/S15.9.3.1_A5_T1**
+Date constructor with year and month should clip years 0–99 to 1900+Y; NuXJS miscomputes.
+- **built-ins/Date/S15.9.3.1_A5_T2**
+Three‑argument Date should normalize month overflow per ES3; engine returns wrong epoch.
+- **built-ins/Date/S15.9.3.1_A5_T3**
+Constructing with two params should ignore day; NuXJS uses default incorrectly.
+- **built-ins/Date/S15.9.3.1_A5_T4**
+Date normalization for month wrap‑around fails to match ES3 MakeDay algorithm.
+- **built-ins/Date/S15.9.3.1_A5_T5**
+Checks two‑argument constructor near 1970; NuXJS computes wrong time value.
+- **built-ins/Date/S15.9.3.1_A5_T6**
+Date with year 1969 and month 12 should roll to 1970; engine miscalculates.
+- **built-ins/Date/S15.9.3.1_A6_T1**
+With four args, ES3 MakeDay/MakeTime steps yield specific epoch; NuXJS differs.
+- **built-ins/Date/S15.9.3.1_A6_T2**
+Date constructor with year, month, day miscomputes internal time value.
+- **built-ins/Date/S15.9.3.1_A6_T3**
+Engine mishandles hour parameter when minutes/seconds omitted.
+- **built-ins/Date/S15.9.3.1_A6_T4**
+Date normalization for month overflow with day specified doesn't match ES3.
+- **built-ins/Date/S15.9.3.1_A6_T5**
+Constructor with six args should clip to valid time; NuXJS produces wrong result.
+- **built-ins/Date/TimeClip_negative_zero**
+TimeClip must convert −0 to +0 per ES3 §15.9.1.15; engine returns negative zero.
+- **built-ins/Date/construct_with_date**
+Passing a Date object to constructor should call `toString`/`valueOf` in ES3; ES6 behavior is assumed, so marked `not_es3`.
+- **built-ins/Date/UTC/S15.9.4.3_A3_T1**
+Uses property descriptors on `Date.UTC.length`; ES5 feature so `not_es3`.
+- **built-ins/Date/UTC/S15.9.4.3_A3_T2**
+Checks deletability of `Date.UTC.length` via descriptors; marked `not_es3`.
+- **built-ins/Date/UTC/name**
+`name` property on `Date.UTC` is post‑ES3; marked `not_es3`.
+- **built-ins/Date/parse/S15.9.4.2_A3_T1**
+Property descriptor check on `Date.parse.length`; uses ES5 APIs, so `not_es3`.
+- **built-ins/Date/parse/S15.9.4.2_A3_T2**
+Deletion test relies on descriptors; marked `not_es3`.
+- **built-ins/Date/parse/name**
+`name` property for `Date.parse` not defined in ES3; marked `not_es3`.
+- **built-ins/Date/prototype/S15.9.4.1_A1_T1**
+Uses property descriptors to test `Date.prototype` attributes; `not_es3`.
+- **built-ins/Date/prototype/S15.9.4.1_A1_T2**
+Descriptor-based test for deletability of `Date.prototype`; `not_es3`.
+- **built-ins/Date/prototype/constructor/S15.9.5.1_A3_T1**
+Examines `constructor.length` via descriptors; post‑ES3, marked `not_es3`.
+- **built-ins/Date/prototype/constructor/S15.9.5.1_A3_T2**
+Deletion of `constructor.length` uses ES5 property helpers; `not_es3`.
+- **built-ins/Date/prototype/getDate/S15.9.5.14_A3_T1**
+Property descriptor read‑only check on `getDate.length` is ES5; marked `not_es3`.
+- **built-ins/Date/prototype/getDate/S15.9.5.14_A3_T2**
+Deletion check for `getDate.length` uses ES5 APIs; `not_es3`.
+- **built-ins/Date/prototype/getDate/name**
+`name` on `getDate` added after ES3; marked `not_es3`.
+- **built-ins/Date/prototype/getDay/S15.9.5.16_A3_T1**
+Uses descriptors to test `getDay.length`; not ES3.
+- **built-ins/Date/prototype/getDay/S15.9.5.16_A3_T2**
+Deletion of `getDay.length` via ES5 helper; `not_es3`.
+- **built-ins/Date/prototype/getDay/name**
+`name` property is non‑ES3; marked `not_es3`.
+- **built-ins/Date/prototype/getFullYear/S15.9.5.10_A3_T1**
+Read‑only check on `getFullYear.length` uses descriptors; `not_es3`.
+- **built-ins/Date/prototype/getFullYear/S15.9.5.10_A3_T2**
+Deletion test for `getFullYear.length` relies on ES5 APIs; `not_es3`.
+
+- **built-ins/Date/prototype/getFullYear/name**
+`name` property for `getFullYear` introduced after ES3; marked `not_es3`.
+- **built-ins/Date/prototype/getHours/S15.9.5.18_A3_T1**
+Property descriptor check on `getHours.length`; uses ES5 helpers, so `not_es3`.
+- **built-ins/Date/prototype/getHours/S15.9.5.18_A3_T2**
+Deletion test for `getHours.length` needs `Object.defineProperty`; `not_es3`.
+- **built-ins/Date/prototype/getHours/name**
+`name` property on `getHours` is post‑ES3; marked `not_es3`.
+- **built-ins/Date/prototype/getMilliseconds/S15.9.5.24_A3_T1**
+Read‑only verification of `getMilliseconds.length` relies on ES5 descriptors; `not_es3`.
+- **built-ins/Date/prototype/getMilliseconds/S15.9.5.24_A3_T2**
+Deletion check for `getMilliseconds.length` uses ES5 APIs; `not_es3`.
+- **built-ins/Date/prototype/getMilliseconds/name**
+`name` on `getMilliseconds` added after ES3; marked `not_es3`.
+- **built-ins/Date/prototype/getMinutes/S15.9.5.20_A3_T1**
+Property descriptor test for `getMinutes.length`; ES5 feature so `not_es3`.
+- **built-ins/Date/prototype/getMinutes/S15.9.5.20_A3_T2**
+Deletability of `getMinutes.length` checked via ES5 helpers; `not_es3`.
+- **built-ins/Date/prototype/getMinutes/name**
+`name` property on `getMinutes` is non‑ES3; marked `not_es3`.
+- **built-ins/Date/prototype/getMonth/S15.9.5.12_A3_T1**
+Uses property descriptors to ensure `getMonth.length` is read‑only; `not_es3`.
+- **built-ins/Date/prototype/getMonth/S15.9.5.12_A3_T2**
+Deletion test for `getMonth.length` uses non‑ES3 property helpers; `not_es3`.
+- **built-ins/Date/prototype/getMonth/name**
+`name` on `getMonth` introduced post‑ES3; marked `not_es3`.
+- **built-ins/Date/prototype/getSeconds/S15.9.5.22_A3_T1**
+Read‑only check on `getSeconds.length` uses ES5 descriptors; `not_es3`.
+- **built-ins/Date/prototype/getSeconds/S15.9.5.22_A3_T2**
+Deleting `getSeconds.length` relies on ES5 APIs; `not_es3`.
+- **built-ins/Date/prototype/getSeconds/name**
+`name` property on `getSeconds` does not exist in ES3; marked `not_es3`.
+- **built-ins/Date/prototype/getTime/S15.9.5.9_A3_T1**
+Property descriptor verification for `getTime.length` requires ES5 features; `not_es3`.
+- **built-ins/Date/prototype/getTime/S15.9.5.9_A3_T2**
+Deletion of `getTime.length` is checked via ES5 APIs; `not_es3`.
+- **built-ins/Date/prototype/getTime/name**
+`name` on `getTime` is post‑ES3; marked `not_es3`.
+
+Progress: 139/755 tests reviewed.
+
