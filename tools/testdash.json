@@ -27971,6 +27971,9 @@
 	"built-ins/String/prototype/localeCompare/name": {
 		"category": "bad_test"
 	},
+        "built-ins/String/prototype/match/S15.5.4.10_A1_T3": {
+                "category": "bad_test"
+        },
 	"built-ins/String/prototype/match/length": {
 		"category": "bad_test"
 	},
@@ -27998,6 +28001,9 @@
 	"built-ins/String/prototype/split/S15.5.4.14_A10": {
 		"category": "bad_test"
 	},
+        "built-ins/String/prototype/split/S15.5.4.14_A1_T3": {
+                "category": "bad_test"
+        },
 	"built-ins/String/prototype/split/name": {
 		"category": "bad_test"
 	},
@@ -28041,6 +28047,15 @@
 		"category": "bad_test"
 	},
 	"built-ins/eval/S15.1.2.1_A4.3": {
+		"category": "bad_test"
+	},
+	"built-ins/global/S10.2.3_A1.1_T2": {
+		"category": "bad_test"
+	},
+	"built-ins/global/S10.2.3_A1.2_T2": {
+		"category": "bad_test"
+	},
+	"built-ins/global/S10.2.3_A1.3_T2": {
 		"category": "bad_test"
 	},
 	"built-ins/isFinite/S15.1.2.5_A2.3": {
