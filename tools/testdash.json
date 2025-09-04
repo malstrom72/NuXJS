@@ -25553,7 +25553,244 @@
 	"built-ins/Array/prototype/unshift/S15.4.4.13_A5.2": {
 		"category": "not_es3"
 	},
-	"built-ins/Array/prototype/unshift/S15.4.4.13_A5.3": {
-		"category": "not_es3"
-	}
+"built-ins/Array/prototype/unshift/S15.4.4.13_A5.3": {
+"category": "not_es3"
+},
+                "built-ins/Object/getPrototypeOf/15.2.3.2-0-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-1-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-1-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-1-4": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-2-12": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-2-13": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-2-14": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-2-15": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-2-16": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/15.2.3.2-2-17": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/getPrototypeOf/name": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-0-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-1-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-1-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-1-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-4": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-5": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-6": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-7": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-2-8": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-3-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-3-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-3-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-3-4": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-3-5": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-3-6": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-3-7": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-4-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-10": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-11": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-12": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-13": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-14": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-15": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-16": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-4": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-5": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-6": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-7": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-8": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-9": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-a-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-a-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-a-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-a-4": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-5-b-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-6-1": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-6-2": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-6-3": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-6-4": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-6-5": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/15.2.3.14-6-6": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/keys/name": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/setPrototypeOf-with-different-values": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/setPrototypeOf-with-same-value": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/setPrototypeOf/name": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/setPrototypeOf/o-not-obj": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/setPrototypeOf/property-descriptor": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/setPrototypeOf/proto-not-obj": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/setPrototypeOf/set-error": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/setPrototypeOf/set-failure-non-extensible": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/setPrototypeOf/success": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/hasOwnProperty/symbol_property_toPrimitive": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/hasOwnProperty/symbol_property_toString": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/hasOwnProperty/symbol_property_valueOf": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/propertyIsEnumerable/symbol_own_property": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/propertyIsEnumerable/symbol_property_toPrimitive": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/propertyIsEnumerable/symbol_property_toString": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/propertyIsEnumerable/symbol_property_valueOf": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/toString/get-symbol-tag-err": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/toString/symbol-tag-non-str": {
+                        "category": "not_es3"
+                },
+                "built-ins/Object/prototype/toString/symbol-tag-override": {
+                        "category": "not_es3"
+                },
+                "built-ins/Number/symbol-number-coercion": {
+                        "category": "not_es3"
+                }
 }
