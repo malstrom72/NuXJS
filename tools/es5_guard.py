@@ -1,103 +1,147 @@
 #!/usr/bin/env python3
-# Inserts conditional `NUXJS_ES5` guards into `src/NuXJS.cpp` and `src/NuXJS.h`
-# by analyzing diffs against `main` to separate ES5-specific code. Existing
-# `NUXJS_ES5` blocks are detected and left unchanged.
+"""Wrap differences between the current tree and another branch in
+conditional guards.
+
+Existing ``NUXJS_ES5`` blocks are stripped first so the diff operates on
+plain ES5 sources. The resulting hunks are wrapped in ``#if`` / ``#else``
+blocks guarded by a configurable macro (default: ``NUXJS_ES5``).
+
+Running the tool with ``--remove`` performs only the initial stripping,
+restoring the original ES5 code without reapplying the diff.
+"""
+
+import argparse
+import difflib
 import os
 import re
 import subprocess
 from pathlib import Path
 
-def git_diff_lines():
-	cmd = ['git', 'diff', '-U0', '-w', 'main', '--', 'src/NuXJS.cpp', 'src/NuXJS.h']
-	return subprocess.run(cmd, check=True, capture_output=True, text=True).stdout.splitlines()
+DEFAULT_FILES = ["src/NuXJS.cpp", "src/NuXJS.h"]
 
-def parse_hunks(diff_lines):
-	files = {}
-	current = None
-	new_start = None
-	plus = []
-	minus = []
-	for line in diff_lines:
-		if line.startswith('diff --git'):
-			if new_start is not None:
-				files[current].append((new_start, plus, minus))
-				new_start, plus, minus = None, [], []
-			parts = line.split()
-			current = parts[3][2:]
-			files.setdefault(current, [])
-		elif line.startswith('@@'):
-			if new_start is not None:
-				files[current].append((new_start, plus, minus))
-			m = re.search(r'\+(\d+)(?:,(\d+))?', line)
-			new_start = int(m.group(1)) - 1
-			plus, minus = [], []
-		elif line.startswith('+') and not line.startswith('+++'):
-			plus.append(line[1:] + '\n')
-		elif line.startswith('-') and not line.startswith('---'):
-			minus.append(line[1:] + '\n')
-	if new_start is not None:
-		files[current].append((new_start, plus, minus))
-	return files
 
-def lines_contain_es5_guard(lines):
-	for line in lines:
-		stripped = line.lstrip()
-		if stripped.startswith('#') and 'NUXJS_ES5' in stripped:
-			return True
-	return False
+def _normalized(lines: list[str]) -> list[str]:
+	"""Return ``lines`` with all whitespace removed for comparison."""
+	return [re.sub(r"\s+", "", s) for s in lines]
 
-def already_guarded(lines, start):
-	idx = min(start, len(lines)) - 1
-	depth = 0
-	while idx >= 0:
-		stripped = lines[idx].lstrip()
-		if stripped.startswith('#endif'):
-			depth += 1
-		elif stripped.startswith('#if'):
-			if depth == 0:
-				return 'NUXJS_ES5' in stripped
-			else:
-				depth -= 1
-		idx -= 1
-	return False
 
-def insert_guards(path, hunks):
-	file_path = Path(path)
-	lines = file_path.read_text().splitlines(True)
-	offset = 0
-	for start, plus, minus in hunks:
-		start += offset
-		if plus and any(line.strip() for line in plus) and not lines_contain_es5_guard(plus) and not already_guarded(lines, start):
-			indent = re.match(r'\t*', lines[start]).group(0) if start < len(lines) else ''
-			guard_indent = indent[:-1] if len(indent) > 0 else ''
-			lines.insert(start, f"{guard_indent}#if (NUXJS_ES5)\n")
-			end = start + 1 + len(plus)
-			if minus and any(line.strip() for line in minus) and not lines_contain_es5_guard(minus):
-				lines.insert(end, f"{guard_indent}#else\n")
-				lines[end + 1:end + 1] = minus
-				lines.insert(end + 1 + len(minus), f"{guard_indent}#endif\n")
-				offset += len(minus) + 3
-			else:
-				lines.insert(end, f"{guard_indent}#endif\n")
-				offset += 2
-		elif minus and not lines_contain_es5_guard(minus) and not already_guarded(lines, start):
-			if any(line.strip() for line in minus):
-				base = start if start < len(lines) else len(lines)
-				indent = re.match(r'\t*', lines[base]).group(0) if lines else ''
-				guard_indent = indent[:-1] if len(indent) > 0 else ''
-				lines.insert(start, f"{guard_indent}#if (!NUXJS_ES5)\n")
-				lines[start + 1:start + 1] = minus
-				lines.insert(start + 1 + len(minus), f"{guard_indent}#endif\n")
-				offset += len(minus) + 2
-	file_path.write_text(''.join(lines))
+def _indent(line: str) -> str:
+	"""Return the leading tab sequence of ``line``."""
+	m = re.match(r"\t*", line)
+	return m.group(0) if m else ""
 
-def main():
-	root = Path(__file__).resolve().parent.parent
-	os.chdir(root)
-	diff_lines = git_diff_lines()
-	for path, hunks in parse_hunks(diff_lines).items():
-		insert_guards(path, hunks)
 
-if __name__ == '__main__':
+def _check_balance(block: list[str], path: str) -> None:
+		"""Ensure ``block`` has balanced ``#if``/``#endif`` pairs."""
+		depth = 0
+		for line in block:
+				s = line.lstrip()
+				if s.startswith("#if"):
+						depth += 1
+				elif s.startswith("#endif"):
+						depth -= 1
+						if depth < 0:
+								raise ValueError(f"unmatched #endif in {path}")
+		if depth != 0:
+				raise ValueError(f"unbalanced #if/#endif in {path}")
+
+
+def guard_diff(ref: list[str], cur: list[str], macro: str, path: str) -> list[str]:
+		"""Return ``cur`` with differing regions guarded against ``ref``."""
+		out: list[str] = []
+		matcher = difflib.SequenceMatcher(a=ref, b=cur)
+		for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+				if tag == "equal":
+						out.extend(cur[j1:j2])
+						continue
+
+				ref_block = ref[i1:i2]
+				cur_block = cur[j1:j2]
+				_check_balance(ref_block, path)
+				_check_balance(cur_block, path)
+				sample = cur_block[0] if cur_block else (ref_block[0] if ref_block else "")
+				indent = _indent(sample)
+				prefix = indent[:-1] if indent else ""
+				out.append(f"{prefix}#if ({macro})\n")
+				out.extend(cur_block)
+				if ref_block:
+						out.append(f"{prefix}#else\n")
+						out.extend(ref_block)
+				out.append(f"{prefix}#endif\n")
+		return out
+
+
+def strip_macro(lines: list[str], macro: str) -> list[str]:
+		"""Return ``lines`` with ``macro`` guards removed (keeping ES5)."""
+		out: list[str] = []
+		i = 0
+		while i < len(lines):
+				line = lines[i]
+				stripped = line.lstrip()
+				if stripped.startswith("#if") and macro in stripped:
+						negated = "!" in stripped or ("defined" in stripped and "!" in stripped.split(macro, 1)[0]) or stripped.startswith("#ifndef")
+						i += 1
+						if_block: list[str] = []
+						else_block: list[str] = []
+						block = if_block
+						depth = 1
+						while i < len(lines) and depth > 0:
+								cur = lines[i]
+								s = cur.lstrip()
+								if s.startswith("#if"):
+										depth += 1
+										block.append(cur)
+								elif s.startswith("#endif"):
+										depth -= 1
+										if depth > 0:
+												block.append(cur)
+								elif depth == 1 and (s.startswith("#else") or s.startswith("#elif")):
+										block = else_block
+								else:
+										block.append(cur)
+								i += 1
+						out.extend(else_block if negated else if_block)
+						continue
+				out.append(line)
+				i += 1
+		return out
+
+
+def main() -> None:
+		parser = argparse.ArgumentParser(description="Guard or remove ES5 diffs")
+		parser.add_argument("files", nargs="*", default=DEFAULT_FILES,
+				help="Files to process")
+		parser.add_argument("--branch", default="main",
+				help="Branch to diff against (default: main)")
+		parser.add_argument("--macro", default="NUXJS_ES5",
+				help="Preprocessor macro to guard diffs (default: NUXJS_ES5)")
+		parser.add_argument("--remove", action="store_true",
+				help="Strip existing guards without applying new diffs")
+		args = parser.parse_args()
+
+		root = Path(__file__).resolve().parent.parent
+		os.chdir(root)
+
+		for path in args.files:
+				p = Path(path)
+				lines = p.read_text().splitlines(True)
+				stripped = strip_macro(lines, args.macro)
+				if args.remove:
+						p.write_text("".join(stripped))
+						continue
+
+				ref = subprocess.run(
+						["git", "show", f"{args.branch}:{path}"],
+						check=True, capture_output=True, text=True
+				).stdout.splitlines(True)
+				ref = strip_macro(ref, args.macro)
+				if _normalized(ref) == _normalized(stripped):
+						p.write_text("".join(stripped))
+						continue
+				guarded = guard_diff(ref, stripped, args.macro, path)
+				p.write_text("".join(guarded))
+
+
+if __name__ == "__main__":
 	main()
 
