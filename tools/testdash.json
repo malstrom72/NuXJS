@@ -3098,12 +3098,15 @@
 	"built-ins/Array/prototype/indexOf/name": {
 		"category": "not_es3"
 	},
-	"built-ins/Array/prototype/join/S15.4.4.5_A4_T3": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/join/name": {
-		"category": "not_es3"
-	},
+        "built-ins/Array/prototype/join/S15.4.4.5_A4_T3": {
+                "category": "not_es3"
+        },
+        "built-ins/Array/prototype/join/S15.4.4.5_A6.2": {
+                "category": "bad_test"
+        },
+        "built-ins/Array/prototype/join/name": {
+                "category": "not_es3"
+        },
 	"built-ins/Array/prototype/keys/iteration": {
 		"category": "not_es3"
 	},
@@ -4236,6 +4239,15 @@
 		"category": "not_es3"
 	},
 	"built-ins/Array/prototype/map/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/pop/S15.4.4.6_A3_T1": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/pop/S15.4.4.6_A3_T2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/pop/S15.4.4.6_A3_T3": {
 		"category": "not_es3"
 	},
 	"built-ins/Array/prototype/pop/S15.4.4.6_A5.2": {

@@ -10,7 +10,7 @@ Current summary:
 
 | Feature | Spec Clause | Total | non_es3 | Remaining |
 | --- | --- | ---:| ---:| ---:|
-| Array | §15.4 | 55 | 18 | 37 |
+| Array | §15.4 | 55 | 21 | 34 |
 | ArrayIteratorPrototype |	| 23 | 23 | 0 |
 | Boolean | §15.6 | 7 | 1 | 6 |
 | Date | §15.9 | 148 | 6 | 142 |
@@ -38,7 +38,7 @@ Current summary:
 | parseFloat |	| 4 | 0 | 4 |
 | parseInt |  | 6 | 0 | 6 |
 | undefined |  | 3 | 1 | 2 |
-Progress: 149/755 tests reviewed.
+Progress: 169/755 tests reviewed.
 
 ### Non-ES3 Features
 
@@ -60,30 +60,30 @@ Array construction and prototype methods like `concat`, `join`, `pop`, `push`, `
 - built-ins/Array/S15.4_A1.1_T1 — boolean property names must not be treated as array indices (§15.4); the engine treats `true`/`false` as numeric indexes.
 - built-ins/Array/prototype/S15.4.3.1_A3 — `Array.prototype` should be non-configurable and non-deletable (§15.4.3.1), but NuXJS allows deletion.
 - built-ins/Array/prototype/S15.4.3.1_A4 — `Array.prototype` is writable although ES3 (§15.4.3.1) mandates a read-only binding.
-- built-ins/Array/prototype/concat/Array.prototype.concat_array-like
-- built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-to-string-throws — uses `Symbol.isConcatSpreadable` (ES6); marked `not_es3`.
-- built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-value-of-throws — uses `Symbol.isConcatSpreadable` (ES6); marked `not_es3`.
-- built-ins/Array/prototype/concat/Array.prototype.concat_array-like-negative-length — uses `Symbol.isConcatSpreadable` (ES6); marked `not_es3`.
-- built-ins/Array/prototype/concat/Array.prototype.concat_array-like-primitive-non-number-length — uses `Symbol.isConcatSpreadable` (ES6); marked `not_es3`.
-- built-ins/Array/prototype/concat/Array.prototype.concat_array-like-string-length
-- built-ins/Array/prototype/concat/Array.prototype.concat_array-like-to-length-throws
-- built-ins/Array/prototype/concat/Array.prototype.concat_holey-sloppy-arguments
-- built-ins/Array/prototype/concat/Array.prototype.concat_large-typed-array
-- built-ins/Array/prototype/concat/Array.prototype.concat_length-throws
-- built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments
-- built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-throws
-- built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-with-dupes
-- built-ins/Array/prototype/concat/Array.prototype.concat_small-typed-array
-- built-ins/Array/prototype/concat/Array.prototype.concat_strict-arguments
-- built-ins/Array/prototype/concat/S15.4.4.4_A4.3
-- built-ins/Array/prototype/join/S15.4.4.5_A6.2
-- built-ins/Array/prototype/join/S15.4.4.5_A6.3
-- built-ins/Array/prototype/pop/S15.4.4.6_A2_T2
-- built-ins/Array/prototype/pop/S15.4.4.6_A3_T1
-- built-ins/Array/prototype/pop/S15.4.4.6_A3_T2
-- built-ins/Array/prototype/pop/S15.4.4.6_A3_T3
-- built-ins/Array/prototype/pop/S15.4.4.6_A4_T2
-- built-ins/Array/prototype/push/S15.4.4.7_A2_T2
+ - built-ins/Array/prototype/concat/Array.prototype.concat_array-like — uses `Symbol.isConcatSpreadable` (ES6); marked `not_es3`.
+ - built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-to-string-throws — uses `Symbol.isConcatSpreadable` (ES6); marked `not_es3`.
+ - built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-value-of-throws — uses `Symbol.isConcatSpreadable` (ES6); marked `not_es3`.
+ - built-ins/Array/prototype/concat/Array.prototype.concat_array-like-negative-length — uses `Symbol.isConcatSpreadable` (ES6); marked `not_es3`.
+ - built-ins/Array/prototype/concat/Array.prototype.concat_array-like-primitive-non-number-length — uses `Symbol.isConcatSpreadable` (ES6); marked `not_es3`.
+ - built-ins/Array/prototype/concat/Array.prototype.concat_array-like-string-length — spreads an object with string `length` via `Symbol.isConcatSpreadable`; marked `not_es3`.
+ - built-ins/Array/prototype/concat/Array.prototype.concat_array-like-to-length-throws — relies on ES6 `ToLength` with `Symbol.isConcatSpreadable`; marked `not_es3`.
+ - built-ins/Array/prototype/concat/Array.prototype.concat_holey-sloppy-arguments — spreads `arguments` using `Symbol.isConcatSpreadable`; marked `not_es3`.
+ - built-ins/Array/prototype/concat/Array.prototype.concat_large-typed-array — exercises TypedArrays and `Symbol.isConcatSpreadable`; marked `not_es3`.
+ - built-ins/Array/prototype/concat/Array.prototype.concat_length-throws — getter on `length` combined with `Symbol.isConcatSpreadable`; marked `not_es3`.
+ - built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments — uses `Symbol.isConcatSpreadable` and `Object.defineProperty`; marked `not_es3`.
+ - built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-throws — accessor on `arguments` with `Symbol.isConcatSpreadable`; marked `not_es3`.
+ - built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-with-dupes — duplicate `arguments` spread via `Symbol.isConcatSpreadable`; marked `not_es3`.
+ - built-ins/Array/prototype/concat/Array.prototype.concat_small-typed-array — TypedArray inputs with `Symbol.isConcatSpreadable`; marked `not_es3`.
+ - built-ins/Array/prototype/concat/Array.prototype.concat_strict-arguments — strict-mode `arguments` with `Symbol.isConcatSpreadable`; marked `not_es3`.
+ - built-ins/Array/prototype/concat/S15.4.4.4_A4.3 — ES3 §15.4.4.4 requires `concat.length` read-only; NuXJS allows writing.
+ - built-ins/Array/prototype/join/S15.4.4.5_A6.2 — test expects `join.length` deletable, contradicting ES3 §15.3.5.1; mark `bad_test`.
+ - built-ins/Array/prototype/join/S15.4.4.5_A6.3 — ES3 §15.3.5.1 mandates `join.length` be read-only; NuXJS writes to it.
+ - built-ins/Array/prototype/pop/S15.4.4.6_A2_T2 — when `length` is NaN, ±Infinity, or non-integer, ES3 §15.4.4.6 should coerce to 0; NuXJS leaves other values.
+ - built-ins/Array/prototype/pop/S15.4.4.6_A3_T1 — uses ES6 `ToLength` for 2^32; ES3 uses `ToUint32`; marked `not_es3`.
+ - built-ins/Array/prototype/pop/S15.4.4.6_A3_T2 — expects ES6 `ToLength` for 2^32+1; marked `not_es3`.
+ - built-ins/Array/prototype/pop/S15.4.4.6_A3_T3 — negative length processed via ES6 `ToLength`; marked `not_es3`.
+ - built-ins/Array/prototype/pop/S15.4.4.6_A4_T2 — fails to delete own index when prototype defines same property (§15.4.4.6).
+ - built-ins/Array/prototype/push/S15.4.4.7_A2_T2 — with NaN/Infinity `length`, push should coerce via ToUint32 (§15.4.4.7); NuXJS misbehaves.
 - built-ins/Array/prototype/reverse/get_if_present_with_delete
 - built-ins/Array/prototype/shift/S15.4.4.9_A3_T3
 - built-ins/Array/prototype/shift/S15.4.4.9_A4_T2
