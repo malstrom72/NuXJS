@@ -31,44 +31,80 @@ def _indent(line: str) -> str:
 	return m.group(0) if m else ""
 
 
-def _check_balance(block: list[str], path: str) -> None:
-		"""Ensure ``block`` has balanced ``#if``/``#endif`` pairs."""
-		depth = 0
-		for line in block:
-				s = line.lstrip()
-				if s.startswith("#if"):
-						depth += 1
-				elif s.startswith("#endif"):
-						depth -= 1
-						if depth < 0:
-								raise ValueError(f"unmatched #endif in {path}")
-		if depth != 0:
-				raise ValueError(f"unbalanced #if/#endif in {path}")
+def _check_balance(block: list[str], path: str, base: int, label: str) -> None:
+	"""Ensure ``block`` has balanced ``#if``/``#endif`` pairs."""
+	depth = 0
+	for i, line in enumerate(block):
+		s = line.lstrip()
+		if s.startswith("#if"):
+			depth += 1
+		elif s.startswith("#endif"):
+			depth -= 1
+			if depth < 0:
+				raise ValueError(
+					f"unmatched #endif in {path} ({label} line {base + i + 1})"
+				)
+	if depth != 0:
+		raise ValueError(f"unbalanced #if/#endif in {path} ({label})")
 
 
 def guard_diff(ref: list[str], cur: list[str], macro: str, path: str) -> list[str]:
-		"""Return ``cur`` with differing regions guarded against ``ref``."""
-		out: list[str] = []
-		matcher = difflib.SequenceMatcher(a=ref, b=cur)
-		for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-				if tag == "equal":
-						out.extend(cur[j1:j2])
-						continue
+	"""Return ``cur`` with differing regions guarded against ``ref``."""
+	out: list[str] = []
+	matcher = difflib.SequenceMatcher(a=_normalized(ref), b=_normalized(cur))
+	for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+		if tag == "equal":
+			out.extend(cur[j1:j2])
+			continue
 
-				ref_block = ref[i1:i2]
-				cur_block = cur[j1:j2]
-				_check_balance(ref_block, path)
-				_check_balance(cur_block, path)
-				sample = cur_block[0] if cur_block else (ref_block[0] if ref_block else "")
-				indent = _indent(sample)
-				prefix = indent[:-1] if indent else ""
-				out.append(f"{prefix}#if ({macro})\n")
-				out.extend(cur_block)
-				if ref_block:
-						out.append(f"{prefix}#else\n")
-						out.extend(ref_block)
-				out.append(f"{prefix}#endif\n")
-		return out
+		ref_block = ref[i1:i2]
+		cur_block = cur[j1:j2]
+		if (
+			_normalized(ref_block) == _normalized(cur_block)
+			or not any(line.strip() for line in ref_block + cur_block)
+		):
+			out.extend(cur_block)
+			continue
+		_check_balance(ref_block, path, i1, "reference")
+		_check_balance(cur_block, path, j1, "current")
+		sample = cur_block[0] if cur_block else (ref_block[0] if ref_block else "")
+		indent = _indent(sample)
+		prefix = indent[:-1] if indent else ""
+		out.append(f"{prefix}#if ({macro})\n")
+		out.extend(cur_block)
+		if ref_block:
+			out.append(f"{prefix}#else\n")
+			out.extend(ref_block)
+		out.append(f"{prefix}#endif\n")
+	return out
+
+
+def remove_empty_guards(lines: list[str], macro: str) -> list[str]:
+	"""Remove empty ``#if``/``#endif`` blocks guarded by ``macro``."""
+	out: list[str] = []
+	i = 0
+	while i < len(lines):
+		line = lines[i]
+		stripped = line.lstrip()
+		if stripped.startswith("#if") and macro in stripped:
+			j = i + 1
+			depth = 1
+			has_code = False
+			while j < len(lines) and depth > 0:
+				s = lines[j].lstrip()
+				if s.startswith("#if"):
+					depth += 1
+				elif s.startswith("#endif"):
+					depth -= 1
+				elif depth == 1 and s and not s.startswith("#else") and not s.startswith("#elif") and lines[j].strip():
+					has_code = True
+				j += 1
+			if not has_code:
+				i = j
+				continue
+		out.append(line)
+		i += 1
+	return out
 
 
 def strip_macro(lines: list[str], macro: str) -> list[str]:
@@ -126,6 +162,7 @@ def main() -> None:
 				p = Path(path)
 				lines = p.read_text().splitlines(True)
 				stripped = strip_macro(lines, args.macro)
+				stripped = remove_empty_guards(stripped, args.macro)
 				if args.remove:
 						p.write_text("".join(stripped))
 						continue
@@ -135,10 +172,12 @@ def main() -> None:
 						check=True, capture_output=True, text=True
 				).stdout.splitlines(True)
 				ref = strip_macro(ref, args.macro)
+				ref = remove_empty_guards(ref, args.macro)
 				if _normalized(ref) == _normalized(stripped):
 						p.write_text("".join(stripped))
 						continue
 				guarded = guard_diff(ref, stripped, args.macro, path)
+				guarded = remove_empty_guards(guarded, args.macro)
 				p.write_text("".join(guarded))
 
 
