@@ -1,14 +1,21 @@
 /*
-    ES5 additions to the standard library.
-    This file is "included" with an eval at the end of stdlib.js if ES5 support is enabled.
+	ES5 additions to the standard library.
+	This file is "included" with an eval at the end of stdlib.js if ES5 support is enabled.
 
-    @preserve: trim,trimLeft,trimRight,forEach,map,filter,reduce,reduceRight,every,some
-    @preserve: get,set
-    @preserve: now,create,keys,bind
+	@preserve: trim,trimLeft,trimRight,forEach,map,filter,reduce,reduceRight,every,some
+	@preserve: get,set
+	@preserve: now,create,keys,bind
 	@preserve: defineProperties
 */
 
 // Use helpers provided by the base stdlib: defProps, int, uint32, str
+
+// ES5 `Object.prototype.toString`
+defProps(Object.prototype, { dontEnum: true }, {
+	toString: unconstructable(function toString() {
+		return "[object " + $getInternalProperty(this, "class") + ']';
+	})
+});
 
 // String.prototype.trim*
 defProps(String.prototype, { dontEnum: true }, {
@@ -116,6 +123,39 @@ defProps(Array.prototype, { dontEnum: true }, {
 // Date.now
 defProps(Date, { dontEnum: true }, {
 	now: function now() { return new Date().getTime(); }
+});
+
+// Date.prototype.toISOString/toJSON
+defProps(Date.prototype, { dontEnum: true }, {
+toISOString: function toISOString() {
+var t = this.getTime();
+if (!$isFinite(t)) throw RangeError("Invalid time value");
+		function pad(num, len) {
+			var s = '' + num;
+			while (s.length < len) s = '0' + s;
+			return s;
+		}
+		var y = this.getUTCFullYear();
+		var m = this.getUTCMonth() + 1;
+		var d = this.getUTCDate();
+		var h = this.getUTCHours();
+		var min = this.getUTCMinutes();
+		var s = this.getUTCSeconds();
+		var ms = this.getUTCMilliseconds();
+		var year = (y >= 0 && y <= 9999 ? pad(y, 4)
+				: (y < 0 ? '-' : '+') + pad(Math.abs(y), 6));
+		return year + '-' + pad(m, 2) + '-' + pad(d, 2) + 'T'
+				+ pad(h, 2) + ':' + pad(min, 2) + ':' + pad(s, 2)
+				+ '.' + pad(ms, 3) + 'Z';
+	},
+	toJSON: function toJSON(key) {
+		var O = Object(this);
+		var tv = support.toPrimitiveNumber(O);
+		if (typeof tv === "number" && !$isFinite(tv)) return null;
+		var toISO = O.toISOString;
+		if (typeof toISO !== "function") throw TypeError();
+		return toISO.call(O);
+	}
 });
 
 // Object helpers: defineProperty (accessors), defineProperties, create, keys

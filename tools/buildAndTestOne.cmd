@@ -31,6 +31,7 @@ IF NOT "%es5%"=="" (
 )
 
 SET TEST_DIRS=..\tests\conforming\ ..\tests\erroneous\ ..\tests\es3only\
+IF "%es5_enabled%"=="0" SET TEST_DIRS=%TEST_DIRS% ..\tests\es3\
 IF "%es5_enabled%"=="1" SET TEST_DIRS=%TEST_DIRS% ..\tests\es5\
 SET TEST_DIRS=%TEST_DIRS% ..\tests\extremes\
 IF "%es5_enabled%"=="1" SET TEST_DIRS=%TEST_DIRS% ..\tests\from262\

@@ -49,11 +49,7 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 
 NuXJS still follows ES3 semantics for several constructs that changed in ES5:
 
-- `for...in` throws a `TypeError` when the object is `null` or `undefined`.
-- Function `prototype` properties are enumerable on user-defined functions.
 - Function `name` is writable and `length` cannot be deleted.
-- `Object.prototype.toString` reports `[object Object]` for the `arguments` object.
-- Elements of the `arguments` object do not appear in `for...in` enumeration.
 
 ### ECMAScript oddities
 
