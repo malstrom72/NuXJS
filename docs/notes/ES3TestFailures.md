@@ -2,6 +2,43 @@
 
 This report enumerates the remaining 755 Test262 failures that exercise ECMAScript 3 features. Tests for later ECMAScript editions (e.g. Map/Set iterators) are excluded. Each section lists failing tests and explains why their functionality is expected in an ES3-compliant engine.
 
+### Automated classification
+
+Run `python tools/es3_failure_analyzer.py` to group failures by feature area, flag obvious post-ES3 tests using ripgrep, update `tools/testdash.json`, and produce a progress table with ES3 spec clause references.
+
+Current summary:
+
+| Feature | Spec Clause | Total | non_es3 | Remaining |
+| --- | --- | ---:| ---:| ---:|
+| Array | §15.4 | 55 | 18 | 37 |
+| ArrayIteratorPrototype |	| 23 | 23 | 0 |
+| Boolean | §15.6 | 7 | 1 | 6 |
+| Date | §15.9 | 148 | 6 | 142 |
+| Error |  | 10 | 0 | 10 |
+| Function |  | 38 | 6 | 32 |
+| Infinity |  | 4 | 1 | 3 |
+| MapIteratorPrototype |  | 10 | 10 | 0 |
+| Math | §15.8 | 54 | 0 | 54 |
+| NaN |	 | 4 | 1 | 3 |
+| NativeErrors |  | 38 | 7 | 31 |
+| Number | §15.7 | 28 | 1 | 27 |
+| Object | §15.2 | 67 | 22 | 45 |
+| RegExp | §15.10 | 96 | 35 | 61 |
+| SetIteratorPrototype |  | 10 | 10 | 0 |
+| String | §15.5 | 75 | 0 | 75 |
+| decodeURI |  | 52 | 3 | 49 |
+| decodeURIComponent |	| 52 | 3 | 49 |
+| encodeURI |  | 28 | 5 | 23 |
+| encodeURIComponent |	| 28 | 5 | 23 |
+| eval |  | 3 | 0 | 3 |
+| global |	| 3 | 0 | 3 |
+| isFinite |  | 3 | 0 | 3 |
+| isNaN |  | 3 | 0 | 3 |
+| language |  | 17 | 0 | 17 |
+| parseFloat |	| 4 | 0 | 4 |
+| parseInt |  | 6 | 0 | 6 |
+| undefined |  | 3 | 1 | 2 |
+
 ### Non-ES3 Features
 
 A few failing entries rely on features added after the third edition and are tagged "not_es3" in `tools/testdash.json`:
@@ -901,13 +938,13 @@ Validates the `String` constructor and prototype methods such as `charAt`, `inde
 
 The following failing Test262 cases have been reviewed:
 
-- **built-ins/Array/S15.4.5.1_A2.1_T1**  
+- **built-ins/Array/S15.4.5.1_A2.1_T1**	 
   Assigns values to keys 4294967295, -1 and true on an empty array. ES3 §15.4.5.1 treats these as ordinary properties, leaving `length` at 0. NuXJS increments `length`, indicating incorrect Array index handling.
 
 - **built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-to-string-throws**  
   A spreadable object with a `length` property whose `toString` throws is concatenated. This relies on `Symbol.isConcatSpreadable` and property accessors added in ES2015; ES3 has no symbols or spreadable concatenation. Marked `not_es3`.
 
-- **built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-value-of-throws**  
+- **built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-value-of-throws**	 
   Similar to above but the `length` property's `valueOf` throws. Depends on `Symbol.isConcatSpreadable`; not an ES3 feature. Marked `not_es3`.
 
 - **built-ins/Array/prototype/concat/Array.prototype.concat_array-like-negative-length**  
@@ -916,7 +953,7 @@ The following failing Test262 cases have been reviewed:
 - **built-ins/Array/prototype/concat/Array.prototype.concat_array-like-primitive-non-number-length**  
   Verifies concatenation when `length` converts to a non-number via `toString`/`valueOf`. Requires `Symbol.isConcatSpreadable`; not ES3. Marked `not_es3`.
 
-- **built-ins/Array/prototype/concat/Array.prototype.concat_array-like-string-length**  
+- **built-ins/Array/prototype/concat/Array.prototype.concat_array-like-string-length**	
   Concatenates a spreadable object with string `length`. Uses `Symbol.isConcatSpreadable` and `ToLength` from later editions. Marked `not_es3`.
 
 - **built-ins/Array/prototype/concat/Array.prototype.concat_array-like-to-length-throws**  
@@ -931,10 +968,10 @@ The following failing Test262 cases have been reviewed:
 - **built-ins/Array/prototype/concat/Array.prototype.concat_holey-sloppy-arguments**  
   Uses an `arguments` object marked with `Symbol.isConcatSpreadable`. Depends on post-ES3 symbols. Marked `not_es3`.
 
-- **built-ins/Array/prototype/concat/Array.prototype.concat_large-typed-array**  
+- **built-ins/Array/prototype/concat/Array.prototype.concat_large-typed-array**	 
   Concatenates typed arrays and uses `Symbol.isConcatSpreadable`. Typed arrays and symbols are post-ES3; marked `not_es3`.
 
-- **built-ins/Array/prototype/concat/Array.prototype.concat_length-throws**  
+- **built-ins/Array/prototype/concat/Array.prototype.concat_length-throws**	 
   Spreads an object with an accessor `length` that throws. Uses `Symbol.isConcatSpreadable` and `Object.defineProperty` (ES5+). Marked `not_es3`.
 
 - **built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-throws**  
@@ -943,19 +980,19 @@ The following failing Test262 cases have been reviewed:
 - **built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-with-dupes**  
   Spreadable `arguments` object with duplicate parameters; relies on symbols and `Object.defineProperty`. Marked `not_es3`.
 
-- **built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments**  
+- **built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments**	
   Spreadable `arguments` object with manual `length` override via `Object.defineProperty`. Uses symbols and descriptors, so not ES3. Marked `not_es3`.
 
-- **built-ins/Array/prototype/concat/Array.prototype.concat_small-typed-array**  
+- **built-ins/Array/prototype/concat/Array.prototype.concat_small-typed-array**	 
   Uses typed arrays and `Symbol.isConcatSpreadable`. Typed arrays are ES2015 features; marked `not_es3`.
 
-- **built-ins/Array/prototype/concat/Array.prototype.concat_strict-arguments**  
+- **built-ins/Array/prototype/concat/Array.prototype.concat_strict-arguments**	
   Operates on a strict-mode `arguments` object tagged with `Symbol.isConcatSpreadable`. Strict mode and symbols are post-ES3; marked `not_es3`.
 
-- **built-ins/Array/prototype/concat/name**  
+- **built-ins/Array/prototype/concat/name**	 
   Verifies the `name` property of `Array.prototype.concat`. Built-in function `name` properties were standardized after ES3. Marked `not_es3`.
 
-- **built-ins/Array/prototype/pop/S15.4.4.6_A2_T2**  
+- **built-ins/Array/prototype/pop/S15.4.4.6_A2_T2**	 
   Tests generic `pop` on objects with non-integer lengths (`NaN`, `±Infinity`, `-0`, etc.). ES3 §15.4.4.6 mandates `ToUint32` conversion and returning `undefined` while setting `length` to 0. NuXJS does not implement this conversion correctly.
 
 - **built-ins/Array/prototype/push/S15.4.4.7_A2_T2**

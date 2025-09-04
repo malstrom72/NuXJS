@@ -410,10 +410,52 @@
     "built-ins/Array/prototype/Symbol.unscopables/value": {
         "category": "not_es3"
     },
+    "built-ins/Array/prototype/concat/Array.prototype.concat_array-like": {
+        "category": "not_es3"
+    },
+    "built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-to-string-throws": {
+        "category": "not_es3"
+    },
+    "built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-value-of-throws": {
+        "category": "not_es3"
+    },
+    "built-ins/Array/prototype/concat/Array.prototype.concat_array-like-negative-length": {
+        "category": "not_es3"
+    },
+    "built-ins/Array/prototype/concat/Array.prototype.concat_array-like-primitive-non-number-length": {
+        "category": "not_es3"
+    },
+    "built-ins/Array/prototype/concat/Array.prototype.concat_array-like-string-length": {
+        "category": "not_es3"
+    },
+    "built-ins/Array/prototype/concat/Array.prototype.concat_array-like-to-length-throws": {
+        "category": "not_es3"
+    },
     "built-ins/Array/prototype/concat/Array.prototype.concat_descriptor": {
         "category": "not_es3"
     },
+    "built-ins/Array/prototype/concat/Array.prototype.concat_holey-sloppy-arguments": {
+        "category": "not_es3"
+    },
+    "built-ins/Array/prototype/concat/Array.prototype.concat_large-typed-array": {
+        "category": "not_es3"
+    },
+    "built-ins/Array/prototype/concat/Array.prototype.concat_length-throws": {
+        "category": "not_es3"
+    },
     "built-ins/Array/prototype/concat/Array.prototype.concat_non-array": {
+        "category": "not_es3"
+    },
+    "built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments": {
+        "category": "not_es3"
+    },
+    "built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-throws": {
+        "category": "not_es3"
+    },
+    "built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-with-dupes": {
+        "category": "not_es3"
+    },
+    "built-ins/Array/prototype/concat/Array.prototype.concat_small-typed-array": {
         "category": "not_es3"
     },
     "built-ins/Array/prototype/concat/Array.prototype.concat_spreadable-boolean-wrapper": {
@@ -435,6 +477,9 @@
         "category": "not_es3"
     },
     "built-ins/Array/prototype/concat/Array.prototype.concat_spreadable-string-wrapper": {
+        "category": "not_es3"
+    },
+    "built-ins/Array/prototype/concat/Array.prototype.concat_strict-arguments": {
         "category": "not_es3"
     },
     "built-ins/Array/prototype/concat/S15.4.4.4_A4.2": {
@@ -5636,6 +5681,9 @@
     "built-ins/Array/prototype/reverse/S15.4.4.8_A5.3": {
         "category": "not_es3"
     },
+    "built-ins/Array/prototype/reverse/get_if_present_with_delete": {
+        "category": "not_es3"
+    },
     "built-ins/Array/prototype/reverse/name": {
         "category": "not_es3"
     },
@@ -6287,6 +6335,9 @@
     "built-ins/Array/prototype/sort/S15.4.4.11_A4_T3": {
         "category": "not_es3"
     },
+    "built-ins/Array/prototype/sort/S15.4.4.11_A7.3": {
+        "category": "not_es3"
+    },
     "built-ins/Array/prototype/sort/S15.4.4.11_A8": {
         "category": "not_es3"
     },
@@ -6305,6 +6356,9 @@
     "built-ins/Array/prototype/splice/S15.4.4.12_A5.3": {
         "category": "not_es3"
     },
+    "built-ins/Array/prototype/splice/S15.4.4.12_A6.1_T2": {
+        "category": "not_es3"
+    },
     "built-ins/Array/prototype/splice/S15.4.4.12_A6.1_T3": {
         "category": "not_es3"
     },
@@ -6314,7 +6368,13 @@
     "built-ins/Array/prototype/splice/set_length_no_args": {
         "category": "not_es3"
     },
+    "built-ins/Array/prototype/toLocaleString/S15.4.4.3_A4.3": {
+        "category": "not_es3"
+    },
     "built-ins/Array/prototype/toLocaleString/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Array/prototype/toString/S15.4.4.2_A4.3": {
         "category": "not_es3"
     },
     "built-ins/Array/prototype/toString/name": {
@@ -6578,6 +6638,12 @@
     "built-ins/ArrayIteratorPrototype/next/property-descriptor": {
         "category": "not_es3"
     },
+    "built-ins/Boolean/prototype/S15.6.3.1_A2": {
+        "category": "not_es3"
+    },
+    "built-ins/Boolean/prototype/S15.6.3.1_A3": {
+        "category": "not_es3"
+    },
     "built-ins/Boolean/prototype/toString/length": {
         "category": "not_es3"
     },
@@ -6782,7 +6848,37 @@
     "built-ins/DataView/prototype/setUint8/range-check-after-value-conversion": {
         "category": "not_es3"
     },
+    "built-ins/Date/15.9.1.15-1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/S15.9.3.1_A5_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/S15.9.3.1_A5_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/S15.9.3.1_A5_T3": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/S15.9.3.1_A5_T4": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/S15.9.3.1_A5_T5": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/S15.9.3.1_A5_T6": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/UTC/S15.9.4.3_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/UTC/S15.9.4.3_A3_T2": {
+        "category": "not_es3"
+    },
     "built-ins/Date/UTC/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/construct_with_date": {
         "category": "not_es3"
     },
     "built-ins/Date/now/15.9.4.4-0-1": {
@@ -6800,7 +6896,19 @@
     "built-ins/Date/now/name": {
         "category": "not_es3"
     },
+    "built-ins/Date/parse/S15.9.4.2_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/parse/S15.9.4.2_A3_T2": {
+        "category": "not_es3"
+    },
     "built-ins/Date/parse/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/S15.9.4.1_A1_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/S15.9.4.1_A1_T2": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/Symbol.toPrimitive/hint-default-first-invalid": {
@@ -6854,28 +6962,88 @@
     "built-ins/Date/prototype/Symbol.toPrimitive/this-val-non-obj": {
         "category": "not_es3"
     },
+    "built-ins/Date/prototype/constructor/S15.9.5.1_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/constructor/S15.9.5.1_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getDate/S15.9.5.14_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getDate/S15.9.5.14_A3_T2": {
+        "category": "not_es3"
+    },
     "built-ins/Date/prototype/getDate/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getDay/S15.9.5.16_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getDay/S15.9.5.16_A3_T2": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/getDay/name": {
         "category": "not_es3"
     },
+    "built-ins/Date/prototype/getFullYear/S15.9.5.10_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getFullYear/S15.9.5.10_A3_T2": {
+        "category": "not_es3"
+    },
     "built-ins/Date/prototype/getFullYear/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getHours/S15.9.5.18_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getHours/S15.9.5.18_A3_T2": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/getHours/name": {
         "category": "not_es3"
     },
+    "built-ins/Date/prototype/getMilliseconds/S15.9.5.24_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getMilliseconds/S15.9.5.24_A3_T2": {
+        "category": "not_es3"
+    },
     "built-ins/Date/prototype/getMilliseconds/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getMinutes/S15.9.5.20_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getMinutes/S15.9.5.20_A3_T2": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/getMinutes/name": {
         "category": "not_es3"
     },
+    "built-ins/Date/prototype/getMonth/S15.9.5.12_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getMonth/S15.9.5.12_A3_T2": {
+        "category": "not_es3"
+    },
     "built-ins/Date/prototype/getMonth/name": {
         "category": "not_es3"
     },
+    "built-ins/Date/prototype/getSeconds/S15.9.5.22_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getSeconds/S15.9.5.22_A3_T2": {
+        "category": "not_es3"
+    },
     "built-ins/Date/prototype/getSeconds/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getTime/S15.9.5.9_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/getTime/S15.9.5.9_A3_T2": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/getTime/name": {
@@ -7002,6 +7170,24 @@
         "category": "not_es3"
     },
     "built-ins/Function/15.3.2.1-10-6gs": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.5.4_2-53gs": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.5.4_2-55gs": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.5.4_2-96gs": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/instance-name": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/length/15.3.3.2-1": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/S15.3.3.1_A4": {
         "category": "not_es3"
     },
     "built-ins/Function/prototype/Symbol.hasInstance/length": {
@@ -7485,6 +7671,9 @@
         "category": "not_es3"
     },
     "built-ins/GeneratorPrototype/throw/try-finally-within-try": {
+        "category": "not_es3"
+    },
+    "built-ins/Infinity/15.1.1.2-0": {
         "category": "not_es3"
     },
     "built-ins/IteratorPrototype/Symbol.iterator/length": {
@@ -8216,10 +8405,22 @@
     "built-ins/Math/trunc/trunc-specialVals": {
         "category": "not_es3"
     },
+    "built-ins/NaN/15.1.1.1-0": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/EvalError/proto": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/EvalError/prototype": {
+        "category": "not_es3"
+    },
     "built-ins/NativeErrors/EvalError/prototype/not-error-object": {
         "category": "not_es3"
     },
     "built-ins/NativeErrors/RangeError/proto": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/RangeError/prototype": {
         "category": "not_es3"
     },
     "built-ins/NativeErrors/RangeError/prototype/not-error-object": {
@@ -8228,10 +8429,16 @@
     "built-ins/NativeErrors/ReferenceError/proto": {
         "category": "not_es3"
     },
+    "built-ins/NativeErrors/ReferenceError/prototype": {
+        "category": "not_es3"
+    },
     "built-ins/NativeErrors/ReferenceError/prototype/not-error-object": {
         "category": "not_es3"
     },
     "built-ins/NativeErrors/SyntaxError/proto": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/SyntaxError/prototype": {
         "category": "not_es3"
     },
     "built-ins/NativeErrors/SyntaxError/prototype/not-error-object": {
@@ -8240,10 +8447,16 @@
     "built-ins/NativeErrors/TypeError/proto": {
         "category": "not_es3"
     },
+    "built-ins/NativeErrors/TypeError/prototype": {
+        "category": "not_es3"
+    },
     "built-ins/NativeErrors/TypeError/prototype/not-error-object": {
         "category": "not_es3"
     },
     "built-ins/NativeErrors/URIError/proto": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/URIError/prototype": {
         "category": "not_es3"
     },
     "built-ins/NativeErrors/URIError/prototype/not-error-object": {
@@ -8301,6 +8514,9 @@
         "category": "not_es3"
     },
     "built-ins/Number/isSafeInteger/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Number/prototype/15.7.3.1-1": {
         "category": "not_es3"
     },
     "built-ins/Number/string-binary-literal": {
@@ -15416,6 +15632,72 @@
     "built-ins/Object/preventExtensions/symbol-object-contains-symbol-properties-non-strict": {
         "category": "not_es3"
     },
+    "built-ins/Object/prototype/15.2.3.1": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/extensibility": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_12": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_13": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_14": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_15": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_16": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_17": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_18": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_19": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_38": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_39": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_40": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_41": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_42": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_43": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_44": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_45": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_46": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_47": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_48": {
+        "category": "not_es3"
+    },
+    "built-ins/Object/prototype/hasOwnProperty/8.12.1-1_49": {
+        "category": "not_es3"
+    },
     "built-ins/Object/prototype/hasOwnProperty/symbol_own_property": {
         "category": "not_es3"
     },
@@ -17510,6 +17792,30 @@
     "built-ins/RegExp/Symbol.species/symbol-species-name": {
         "category": "not_es3"
     },
+    "built-ins/RegExp/call_with_non_regexp_same_constructor": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/call_with_regexp_match_falsy": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/from-regexp-like": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/from-regexp-like-flag-override": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/from-regexp-like-get-ctor-err": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/from-regexp-like-get-flags-err": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/from-regexp-like-get-source-err": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/from-regexp-like-short-circuit": {
+        "category": "not_es3"
+    },
     "built-ins/RegExp/prototype/Symbol.match/builtin-coerce-global": {
         "category": "not_es3"
     },
@@ -18029,10 +18335,79 @@
     "built-ins/RegExp/prototype/Symbol.split/u-lastindex-adv-thru-match": {
         "category": "not_es3"
     },
+    "built-ins/RegExp/prototype/exec/S15.10.6.2_A5_T3": {
+        "category": "not_es3"
+    },
     "built-ins/RegExp/prototype/exec/get-sticky-coerce": {
         "category": "not_es3"
     },
     "built-ins/RegExp/prototype/exec/get-sticky-err": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/exec/u-lastindex-value": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/exec/y-fail-lastindex": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/exec/y-fail-lastindex-no-write": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/exec/y-set-lastindex": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/flags/length": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/flags/name": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/flags/u-attr-err": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/flags/u-coercion": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/flags/y-attr-err": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/global/15.10.7.2-2": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/global/length": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/global/name": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/ignoreCase/15.10.7.3-2": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/ignoreCase/length": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/ignoreCase/name": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/lastIndex/15.10.7.5-2": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/multiline/15.10.7.4-2": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/multiline/length": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/multiline/name": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/source/15.10.7.1-2": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/source/length": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/source/name": {
         "category": "not_es3"
     },
     "built-ins/RegExp/prototype/sticky/length": {
@@ -18053,7 +18428,19 @@
     "built-ins/RegExp/prototype/sticky/this-regexp": {
         "category": "not_es3"
     },
+    "built-ins/RegExp/prototype/test/S15.10.6.3_A1_T22": {
+        "category": "not_es3"
+    },
     "built-ins/RegExp/prototype/test/get-sticky-err": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/test/y-fail-lastindex": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/test/y-fail-lastindex-no-write": {
+        "category": "not_es3"
+    },
+    "built-ins/RegExp/prototype/test/y-set-lastindex": {
         "category": "not_es3"
     },
     "built-ins/RegExp/prototype/unicode/length": {
@@ -21410,13 +21797,61 @@
     "built-ins/WeakSet/weakset": {
         "category": "not_es3"
     },
+    "built-ins/decodeURI/S15.1.3.1_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/decodeURI/S15.1.3.1_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/decodeURI/S15.1.3.1_A3_T3": {
+        "category": "not_es3"
+    },
     "built-ins/decodeURI/name": {
+        "category": "not_es3"
+    },
+    "built-ins/decodeURIComponent/S15.1.3.2_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/decodeURIComponent/S15.1.3.2_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/decodeURIComponent/S15.1.3.2_A3_T3": {
         "category": "not_es3"
     },
     "built-ins/decodeURIComponent/name": {
         "category": "not_es3"
     },
+    "built-ins/encodeURI/S15.1.3.3_A3.1_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/encodeURI/S15.1.3.3_A3.2_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/encodeURI/S15.1.3.3_A3.2_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/encodeURI/S15.1.3.3_A3.2_T3": {
+        "category": "not_es3"
+    },
+    "built-ins/encodeURI/S15.1.3.3_A3.3_T1": {
+        "category": "not_es3"
+    },
     "built-ins/encodeURI/name": {
+        "category": "not_es3"
+    },
+    "built-ins/encodeURIComponent/S15.1.3.4_A3.1_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/encodeURIComponent/S15.1.3.4_A3.2_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/encodeURIComponent/S15.1.3.4_A3.2_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/encodeURIComponent/S15.1.3.4_A3.2_T3": {
+        "category": "not_es3"
+    },
+    "built-ins/encodeURIComponent/S15.1.3.4_A3.3_T1": {
         "category": "not_es3"
     },
     "built-ins/encodeURIComponent/name": {
@@ -21435,6 +21870,9 @@
         "category": "not_es3"
     },
     "built-ins/parseInt/name": {
+        "category": "not_es3"
+    },
+    "built-ins/undefined/15.1.1.3-0": {
         "category": "not_es3"
     },
     "language/arguments-object/10.6-11-b-1": {
@@ -23243,10 +23681,40 @@
     "language/expressions/new/S11.2.2_A1.2": {
         "category": ""
     },
+    "language/expressions/object/11.1.5-0-1": {
+        "category": "not_es3"
+    },
+    "language/expressions/object/11.1.5-0-2": {
+        "category": "not_es3"
+    },
     "language/expressions/object/11.1.5-3-s": {
         "category": "not_es3"
     },
     "language/expressions/object/11.1.5-4-s": {
+        "category": "not_es3"
+    },
+    "language/expressions/object/11.1.5_4-4-b-1": {
+        "category": "not_es3"
+    },
+    "language/expressions/object/11.1.5_4-4-b-2": {
+        "category": "not_es3"
+    },
+    "language/expressions/object/11.1.5_4-4-c-1": {
+        "category": "not_es3"
+    },
+    "language/expressions/object/11.1.5_4-4-c-2": {
+        "category": "not_es3"
+    },
+    "language/expressions/object/11.1.5_4-4-d-1": {
+        "category": "not_es3"
+    },
+    "language/expressions/object/11.1.5_4-4-d-2": {
+        "category": "not_es3"
+    },
+    "language/expressions/object/11.1.5_4-4-d-3": {
+        "category": "not_es3"
+    },
+    "language/expressions/object/11.1.5_4-4-d-4": {
         "category": "not_es3"
     },
     "language/expressions/object/11.1.5_5-4-1": {
@@ -23985,6 +24453,27 @@
         "category": "not_es3"
     },
     "language/function-code/10.4.3-1-54-s": {
+        "category": "not_es3"
+    },
+    "language/function-code/10.4.3-1-54gs": {
+        "category": "not_es3"
+    },
+    "language/function-code/10.4.3-1-55-s": {
+        "category": "not_es3"
+    },
+    "language/function-code/10.4.3-1-55gs": {
+        "category": "not_es3"
+    },
+    "language/function-code/10.4.3-1-56-s": {
+        "category": "not_es3"
+    },
+    "language/function-code/10.4.3-1-56gs": {
+        "category": "not_es3"
+    },
+    "language/function-code/10.4.3-1-57-s": {
+        "category": "not_es3"
+    },
+    "language/function-code/10.4.3-1-57gs": {
         "category": "not_es3"
     },
     "language/function-code/10.4.3-1-58-s": {
@@ -26135,210 +26624,4 @@
     "language/white-space/S7.2_A1.5_T1": {
         "category": ""
     }
-,
-    "built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-to-string-throws": {
-        "category": "not_es3"
-    },
-    "built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-value-of-throws": {
-        "category": "not_es3"
-    },
-    "built-ins/Array/prototype/concat/Array.prototype.concat_array-like-negative-length": {
-        "category": "not_es3"
-    },
-    "built-ins/Array/prototype/concat/Array.prototype.concat_array-like-primitive-non-number-length": {
-        "category": "not_es3"
-    },
-    "built-ins/Array/prototype/concat/Array.prototype.concat_array-like-string-length": {
-        "category": "not_es3"
-    },
-    "built-ins/Array/prototype/concat/Array.prototype.concat_array-like-to-length-throws": {
-        "category": "not_es3"
-    },
-    "built-ins/Array/prototype/concat/Array.prototype.concat_array-like": {
-        "category": "not_es3"
-    },
-    "built-ins/Array/prototype/concat/Array.prototype.concat_holey-sloppy-arguments": {
-        "category": "not_es3"
-    },
-    "built-ins/Array/prototype/concat/Array.prototype.concat_large-typed-array": {
-        "category": "not_es3"
-    },
-    "built-ins/Array/prototype/concat/Array.prototype.concat_length-throws": {
-        "category": "not_es3"
-    },
-    "built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-throws": {
-        "category": "not_es3"
-    },
-    "built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments-with-dupes": {
-        "category": "not_es3"
-    },
-    "built-ins/Array/prototype/concat/Array.prototype.concat_sloppy-arguments": {
-        "category": "not_es3"
-    },
-    "built-ins/Array/prototype/concat/Array.prototype.concat_small-typed-array": {
-        "category": "not_es3"
-    },
-    "built-ins/Array/prototype/concat/Array.prototype.concat_strict-arguments": {
-        "category": "not_es3"
-    },
-    "built-ins/Array/prototype/concat/name": {
-        "category": "not_es3"
-    }
-,
-	"language/expressions/object/11.1.5-0-1": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5-0-2": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-4-b-1": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-4-b-2": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-4-c-1": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-4-c-2": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-4-d-1": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-4-d-2": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-4-d-3": {
-		"category": "not_es3"
-	},
-	"language/expressions/object/11.1.5_4-4-d-4": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/reverse/get_if_present_with_delete": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-54gs": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-55-s": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-55gs": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-56-s": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-56gs": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-57-s": {
-		"category": "not_es3"
-	},
-	"language/function-code/10.4.3-1-57gs": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/sort/S15.4.4.11_A7.3": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/splice/S15.4.4.12_A6.1_T2": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/toLocaleString/S15.4.4.3_A4.3": {
-		"category": "not_es3"
-	},
-	"built-ins/Array/prototype/toString/S15.4.4.2_A4.3": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/15.9.1.15-1": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/construct_with_date": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/UTC/S15.9.4.3_A3_T1": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/UTC/S15.9.4.3_A3_T2": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/parse/S15.9.4.2_A3_T1": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/parse/S15.9.4.2_A3_T2": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/S15.9.4.1_A1_T1": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/S15.9.4.1_A1_T2": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/constructor/S15.9.5.1_A3_T1": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/constructor/S15.9.5.1_A3_T2": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getDate/S15.9.5.14_A3_T1": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getDate/S15.9.5.14_A3_T2": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getDay/S15.9.5.16_A3_T1": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getDay/S15.9.5.16_A3_T2": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getFullYear/S15.9.5.10_A3_T1": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getFullYear/S15.9.5.10_A3_T2": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getHours/S15.9.5.18_A3_T1": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getHours/S15.9.5.18_A3_T2": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getMilliseconds/S15.9.5.24_A3_T1": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getMilliseconds/S15.9.5.24_A3_T2": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getMinutes/S15.9.5.20_A3_T1": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getMinutes/S15.9.5.20_A3_T2": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getMonth/S15.9.5.12_A3_T1": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getMonth/S15.9.5.12_A3_T2": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getSeconds/S15.9.5.22_A3_T1": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getSeconds/S15.9.5.22_A3_T2": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getTime/S15.9.5.9_A3_T1": {
-		"category": "not_es3"
-	},
-	"built-ins/Date/prototype/getTime/S15.9.5.9_A3_T2": {
-		"category": "not_es3"
-	},
-	"built-ins/Boolean/prototype/S15.6.3.1_A2": {
-		"category": "not_es3"
-	},
-	"built-ins/Boolean/prototype/S15.6.3.1_A3": {
-		"category": "not_es3"
-	}
 }
