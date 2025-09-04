@@ -148,6 +148,7 @@ function runTests(callback, limit, jobs) {
 						currentTest = currentTests[idx] = tests[testName];
 						captureMode[idx] = m[4] === " ===";
 						count++;
+						if (count % 100 === 0) console.log("... " + count + " tests run");
 						if (limit && count >= limit) children.forEach((c) => c.kill("SIGKILL"));
 					} else if (line) {
 						if (/^Error:\s+No tests to run/i.test(line)) {
