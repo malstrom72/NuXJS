@@ -38,6 +38,7 @@ Current summary:
 | parseFloat |	| 4 | 0 | 4 |
 | parseInt |  | 6 | 0 | 6 |
 | undefined |  | 3 | 1 | 2 |
+Progress: 149/755 tests reviewed.
 
 ### Non-ES3 Features
 
@@ -53,17 +54,17 @@ A few failing entries rely on features added after the third edition and are tag
 
 Array construction and prototype methods like `concat`, `join`, `pop`, `push`, `reverse`, `shift`, `slice`, `sort`, `splice`, `toLocaleString`, `toString`, and `unshift` are part of ES3. Failures here indicate missing core array semantics.
 
-- built-ins/Array/S15.4.3_A2.2
-- built-ins/Array/S15.4.3_A2.3
-- built-ins/Array/S15.4.5.1_A2.1_T1
-- built-ins/Array/S15.4_A1.1_T1
-- built-ins/Array/prototype/S15.4.3.1_A3
-- built-ins/Array/prototype/S15.4.3.1_A4
+- built-ins/Array/S15.4.3_A2.2 — test expects `Array.length` to be deletable, but ES3 §15.3.5.1 marks function `length` as *DontDelete*; classify as `bad_test`.
+- built-ins/Array/S15.4.3_A2.3 — `Array.length` remains writable even though ES3 §15.3.5.1 requires this property to be read-only.
+- built-ins/Array/S15.4.5.1_A2.1_T1 — assigning to keys 4294967295, -1, or `true` should not grow the array (§15.4.5.1), yet NuXJS increments `length`.
+- built-ins/Array/S15.4_A1.1_T1 — boolean property names must not be treated as array indices (§15.4); the engine treats `true`/`false` as numeric indexes.
+- built-ins/Array/prototype/S15.4.3.1_A3 — `Array.prototype` should be non-configurable and non-deletable (§15.4.3.1), but NuXJS allows deletion.
+- built-ins/Array/prototype/S15.4.3.1_A4 — `Array.prototype` is writable although ES3 (§15.4.3.1) mandates a read-only binding.
 - built-ins/Array/prototype/concat/Array.prototype.concat_array-like
-- built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-to-string-throws
-- built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-value-of-throws
-- built-ins/Array/prototype/concat/Array.prototype.concat_array-like-negative-length
-- built-ins/Array/prototype/concat/Array.prototype.concat_array-like-primitive-non-number-length
+- built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-to-string-throws — uses `Symbol.isConcatSpreadable` (ES6); marked `not_es3`.
+- built-ins/Array/prototype/concat/Array.prototype.concat_array-like-length-value-of-throws — uses `Symbol.isConcatSpreadable` (ES6); marked `not_es3`.
+- built-ins/Array/prototype/concat/Array.prototype.concat_array-like-negative-length — uses `Symbol.isConcatSpreadable` (ES6); marked `not_es3`.
+- built-ins/Array/prototype/concat/Array.prototype.concat_array-like-primitive-non-number-length — uses `Symbol.isConcatSpreadable` (ES6); marked `not_es3`.
 - built-ins/Array/prototype/concat/Array.prototype.concat_array-like-string-length
 - built-ins/Array/prototype/concat/Array.prototype.concat_array-like-to-length-throws
 - built-ins/Array/prototype/concat/Array.prototype.concat_holey-sloppy-arguments

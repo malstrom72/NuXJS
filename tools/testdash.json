@@ -398,6 +398,9 @@
     "built-ins/Array/of/return-abrupt-from-setting-length": {
         "category": "not_es3"
     },
+    "built-ins/Array/S15.4.3_A2.2": {
+        "category": "bad_test"
+    },
     "built-ins/Array/of/sets-length": {
         "category": "not_es3"
     },
