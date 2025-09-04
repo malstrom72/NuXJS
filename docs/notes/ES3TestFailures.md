@@ -2,6 +2,14 @@
 
 This report enumerates the remaining Test262 failures that exercise ECMAScript 3 features. Tests for later ECMAScript editions (e.g. Set/Map iterators) are excluded. Each section lists failing tests and explains why their functionality is expected in an ES3-compliant engine.
 
+### Non-ES3 Features
+
+A few failing entries rely on features added after the third edition and are tagged "not_es3" in `tools/testdash.json`:
+
+- Accessor restrictions on `arguments` and `caller` from ES5 strict mode. ES3 defines only `length` and `prototype` for function instances (§15.3.5) and imposes no such restrictions.
+- `Object.getPrototypeOf` is not defined on the ES3 `Object` constructor (§15.2.2).
+- `Object.setPrototypeOf` likewise has no definition in ES3 (§15.2.2); it first appears in later editions.
+
 ## Array (43 tests)
 
 Array construction and prototype methods like `concat`, `join`, `pop`, `push`, `reverse`, `shift`, `slice`, `sort`, `splice`, `toLocaleString`, `toString`, and `unshift` are part of ES3. Failures here indicate missing core array semantics.
