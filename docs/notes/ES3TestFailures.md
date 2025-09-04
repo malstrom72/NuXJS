@@ -727,44 +727,11 @@ Tests core `Object` constructor and prototype behaviors present in ES3.
 - built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A9
 - built-ins/Object/prototype/isPrototypeOf/name
 - built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A10
-- built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A12
-- built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A13
-- built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A9
-- built-ins/Object/prototype/propertyIsEnumerable/name
-- built-ins/Object/prototype/toLocaleString/S15.2.4.3_A10
-- built-ins/Object/prototype/toLocaleString/S15.2.4.3_A12
-- built-ins/Object/prototype/toLocaleString/S15.2.4.3_A13
-- built-ins/Object/prototype/toLocaleString/S15.2.4.3_A9
-- built-ins/Object/prototype/toLocaleString/name
-- built-ins/Object/prototype/toString/15.2.4.2-1-1
-- built-ins/Object/prototype/toString/15.2.4.2-1-2
-- built-ins/Object/prototype/toString/15.2.4.2-2-1
-- built-ins/Object/prototype/toString/15.2.4.2-2-2
-- built-ins/Object/prototype/toString/S15.2.4.2_A10
-- built-ins/Object/prototype/toString/S15.2.4.2_A12
-- built-ins/Object/prototype/toString/S15.2.4.2_A13
-- built-ins/Object/prototype/toString/S15.2.4.2_A9
-- built-ins/Object/prototype/toString/name
-- built-ins/Object/prototype/valueOf/S15.2.4.4_A10
-- built-ins/Object/prototype/valueOf/S15.2.4.4_A12
-- built-ins/Object/prototype/valueOf/S15.2.4.4_A13
-- built-ins/Object/prototype/valueOf/S15.2.4.4_A14
-- built-ins/Object/prototype/valueOf/S15.2.4.4_A15
-- built-ins/Object/prototype/valueOf/S15.2.4.4_A9
-- built-ins/Object/prototype/valueOf/name
 
 ## RegExp (96 tests)
 
 Covers regular expression syntax and `RegExp.prototype.exec`; ES3 defines the full regexp language.
 
-- built-ins/RegExp/15.10.4.1-1
-- built-ins/RegExp/S15.10.2.12_A1_T1
-- built-ins/RegExp/S15.10.2.12_A2_T1
-- built-ins/RegExp/S15.10.2.8_A3_T15
-- built-ins/RegExp/S15.10.3.1_A2_T1
-- built-ins/RegExp/S15.10.3.1_A2_T2
-- built-ins/RegExp/S15.10.4.1_A2_T1
-- built-ins/RegExp/S15.10.4.1_A2_T2
 - built-ins/RegExp/call_with_non_regexp_same_constructor
 - built-ins/RegExp/call_with_regexp_match_falsy
 - built-ins/RegExp/call_with_regexp_not_same_constructor
@@ -1857,5 +1824,304 @@ ES3 requires trimming whitespace around numeric literals; static string case fai
 
 - **built-ins/Number/S9.3.1_A3_T2**
 ES3 requires trimming whitespace around numeric literals; dynamic string case fails.
-Progress: 397/755 tests reviewed.
+- **built-ins/Number/string-octal-literal**
+Uses ES6 0o prefix for octal literals not recognized by ES3. Marked `not_es3`.
 
+- **built-ins/Number/MAX_VALUE/S15.7.3.2_A2**
+Uses propertyHelper.js to examine attributes of MAX_VALUE via Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/MAX_VALUE/S15.7.3.2_A3**
+Uses propertyHelper.js to examine attributes of MAX_VALUE via Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/MIN_VALUE/S15.7.3.3_A2**
+Uses propertyHelper.js to examine attributes of MIN_VALUE via Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/MIN_VALUE/S15.7.3.3_A3**
+Uses propertyHelper.js to examine attributes of MIN_VALUE via Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/NEGATIVE_INFINITY/S15.7.3.5_A2**
+Uses propertyHelper.js to examine attributes of NEGATIVE_INFINITY via Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/NEGATIVE_INFINITY/S15.7.3.5_A3**
+Uses propertyHelper.js to examine attributes of NEGATIVE_INFINITY via Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/NaN/S15.7.3.4_A2**
+Uses propertyHelper.js to examine attributes of NaN via Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/NaN/S15.7.3.4_A3**
+Uses propertyHelper.js to examine attributes of NaN via Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/POSITIVE_INFINITY/S15.7.3.6_A2**
+Uses propertyHelper.js to examine attributes of POSITIVE_INFINITY via Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/POSITIVE_INFINITY/S15.7.3.6_A3**
+Uses propertyHelper.js to examine attributes of POSITIVE_INFINITY via Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/prototype/15.7.3.1-1**
+Reads property descriptor for Number.prototype using Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/prototype/S15.7.3.1_A1_T1**
+propertyHelper.js checks Number.prototype is read-only using ES5 descriptors. Marked `not_es3`.
+
+- **built-ins/Number/prototype/S15.7.3.1_A1_T2**
+propertyHelper.js verifies Number.prototype is not configurable using ES5 helpers. Marked `not_es3`.
+
+- **built-ins/Number/prototype/toExponential/length**
+propertyHelper.js inspects toExponential length attribute via Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/prototype/toExponential/name**
+Relies on Function.name for toExponential, which was added after ES3. Marked `not_es3`.
+
+- **built-ins/Number/prototype/toFixed/name**
+Relies on Function.name for toFixed, which was added after ES3. Marked `not_es3`.
+
+- **built-ins/Number/prototype/toLocaleString/length**
+propertyHelper.js inspects toLocaleString length attribute via Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/prototype/toLocaleString/name**
+Relies on Function.name for toLocaleString, which was added after ES3. Marked `not_es3`.
+
+- **built-ins/Number/prototype/toPrecision/length**
+propertyHelper.js inspects toPrecision length attribute via Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/prototype/toPrecision/name**
+Relies on Function.name for toPrecision, which was added after ES3. Marked `not_es3`.
+
+- **built-ins/Number/prototype/toString/length**
+propertyHelper.js inspects toString length attribute via Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/prototype/toString/name**
+Relies on Function.name for toString, which was added after ES3. Marked `not_es3`.
+
+- **built-ins/Number/prototype/valueOf/length**
+propertyHelper.js inspects valueOf length attribute via Object.getOwnPropertyDescriptor. Marked `not_es3`.
+
+- **built-ins/Number/prototype/valueOf/name**
+Relies on Function.name for valueOf, which was added after ES3. Marked `not_es3`.
+
+- **built-ins/Object/prototype/15.2.3.1**
+Uses Object.getOwnPropertyDescriptor on Object.prototype. Marked `not_es3`.
+
+- **built-ins/Object/prototype/S15.2.3.1_A1**
+propertyHelper.js checks Object.prototype is read-only using ES5 descriptors. Marked `not_es3`.
+
+- **built-ins/Object/prototype/S15.2.3.1_A3**
+propertyHelper.js verifies Object.prototype is non-configurable via ES5 descriptors. Marked `not_es3`.
+
+- **built-ins/Object/prototype/extensibility**
+Uses Object.isExtensible and Object.preventExtensions, both post‑ES3 APIs. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_12**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_13**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_14**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_15**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_16**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_17**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_18**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_19**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_20**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_21**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_22**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_23**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_24**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_25**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_3**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_38**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_39**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_40**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_41**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_42**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_43**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_44**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_45**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_46**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_47**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_48**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/8.12.1-1_49**
+Creates properties with Object.defineProperty and Object.create to test hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A10**
+propertyHelper.js verifies hasOwnProperty.length is read-only. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A12**
+Calling hasOwnProperty with undefined should throw TypeError per ES3; NuXJS fails.
+
+- **built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A13**
+Calling hasOwnProperty with null should throw TypeError per ES3; NuXJS fails.
+
+- **built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A9**
+Assumes hasOwnProperty.length is deletable, reflecting ES5 semantics. Marked `not_es3`.
+
+- **built-ins/Object/prototype/hasOwnProperty/name**
+Uses Function.name for hasOwnProperty. Marked `not_es3`.
+
+- **built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A10**
+propertyHelper.js checks isPrototypeOf.length is read-only via descriptors. Marked `not_es3`.
+
+- **built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A12**
+Object.prototype.isPrototypeOf.call(undefined) should throw TypeError in ES3; NuXJS does not.
+
+- **built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A13**
+Object.prototype.isPrototypeOf.call(null) should throw TypeError in ES3; NuXJS does not.
+
+- **built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A9**
+Assumes isPrototypeOf.length is deletable, an ES5 trait. Marked `not_es3`.
+
+- **built-ins/Object/prototype/isPrototypeOf/name**
+Uses Function.name for isPrototypeOf. Marked `not_es3`.
+
+- **built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A10**
+propertyHelper.js checks propertyIsEnumerable.length via descriptors. Marked `not_es3`.
+
+- **built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A12**
+Object.prototype.propertyIsEnumerable.call(undefined) should throw TypeError in ES3; NuXJS does not.
+
+- **built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A13**
+Object.prototype.propertyIsEnumerable.call(null) should throw TypeError in ES3; NuXJS does not.
+
+- **built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A9**
+Assumes propertyIsEnumerable.length deletable per ES5. Marked `not_es3`.
+
+- **built-ins/Object/prototype/propertyIsEnumerable/name**
+Uses Function.name for propertyIsEnumerable. Marked `not_es3`.
+
+- **built-ins/Object/prototype/toLocaleString/S15.2.4.3_A10**
+propertyHelper.js checks toLocaleString.length using descriptors. Marked `not_es3`.
+
+- **built-ins/Object/prototype/toLocaleString/S15.2.4.3_A12**
+Object.prototype.toLocaleString.call(undefined) should throw TypeError in ES3; NuXJS does not.
+
+- **built-ins/Object/prototype/toLocaleString/S15.2.4.3_A13**
+Object.prototype.toLocaleString.call(null) should throw TypeError in ES3; NuXJS does not.
+
+- **built-ins/Object/prototype/toLocaleString/S15.2.4.3_A9**
+Assumes toLocaleString.length is deletable, which is an ES5 change. Marked `not_es3`.
+
+- **built-ins/Object/prototype/toLocaleString/name**
+Uses Function.name for toLocaleString. Marked `not_es3`.
+
+- **built-ins/Object/prototype/toString/15.2.4.2-1-1**
+Object.prototype.toString.call(undefined) should yield '[object Undefined]' in ES3, but NuXJS gives a different result.
+
+- **built-ins/Object/prototype/toString/15.2.4.2-1-2**
+Object.prototype.toString.apply(undefined, []) should yield '[object Undefined]' in ES3; NuXJS does not.
+
+- **built-ins/Object/prototype/toString/15.2.4.2-2-1**
+Object.prototype.toString.call(null) must return '[object Null]' under ES3; NuXJS fails.
+
+- **built-ins/Object/prototype/toString/15.2.4.2-2-2**
+Object.prototype.toString.apply(null, []) must return '[object Null]' in ES3; NuXJS fails.
+
+- **built-ins/Object/prototype/toString/S15.2.4.2_A10**
+propertyHelper.js checks toString.length is read-only via descriptors. Marked `not_es3`.
+
+- **built-ins/Object/prototype/toString/S15.2.4.2_A12**
+propertyHelper.js checks toString.length is non-enumerable. Marked `not_es3`.
+
+- **built-ins/Object/prototype/toString/S15.2.4.2_A13**
+propertyHelper.js checks toString.length is non-configurable. Marked `not_es3`.
+
+- **built-ins/Object/prototype/toString/S15.2.4.2_A9**
+Assumes toString.length is deletable per ES5 semantics. Marked `not_es3`.
+
+- **built-ins/Object/prototype/toString/name**
+Uses Function.name for toString. Marked `not_es3`.
+
+- **built-ins/Object/prototype/valueOf/S15.2.4.4_A10**
+propertyHelper.js verifies valueOf.length attributes via descriptors. Marked `not_es3`.
+
+- **built-ins/Object/prototype/valueOf/S15.2.4.4_A12**
+Object.prototype.valueOf.call(undefined) should throw TypeError in ES3; NuXJS does not.
+
+- **built-ins/Object/prototype/valueOf/S15.2.4.4_A13**
+Object.prototype.valueOf.call(null) should throw TypeError in ES3; NuXJS does not.
+
+- **built-ins/Object/prototype/valueOf/S15.2.4.4_A14**
+Calling (1,Object.prototype.valueOf)() should throw TypeError in ES3; NuXJS fails.
+
+- **built-ins/Object/prototype/valueOf/S15.2.4.4_A15**
+Unbound reference to valueOf should throw TypeError in ES3; NuXJS fails.
+
+- **built-ins/Object/prototype/valueOf/S15.2.4.4_A9**
+Assumes valueOf.length is deletable, reflecting ES5 semantics. Marked `not_es3`.
+
+- **built-ins/Object/prototype/valueOf/name**
+Uses Function.name for valueOf. Marked `not_es3`.
+
+- **built-ins/RegExp/15.10.4.1-1**
+Constructing RegExp from another RegExp with new flags is a post‑ES3 behavior. Marked `not_es3`.
+
+- **built-ins/RegExp/S15.10.2.12_A1_T1**
+RegExp \s character class should include all whitespace per ES3; NuXJS misses some characters.
+
+- **built-ins/RegExp/S15.10.2.12_A2_T1**
+RegExp \S should exclude whitespace; NuXJS misclassifies some characters.
+
+- **built-ins/RegExp/S15.10.2.8_A3_T15**
+Engine fails to handle 200 nested capturing parentheses in a pattern; ES3 allows this.
+
+- **built-ins/RegExp/S15.10.3.1_A2_T1**
+Passing a RegExp object with invalid string flag should throw TypeError in ES3, but ES5 expects SyntaxError. Marked `not_es3`.
+
+- **built-ins/RegExp/S15.10.3.1_A2_T2**
+Passing RegExp with non-string flag should trigger TypeError in ES3; test expects SyntaxError. Marked `not_es3`.
+
+- **built-ins/RegExp/S15.10.4.1_A2_T1**
+new RegExp(/\u0042/i, 'i') depends on ES6 ability to clone with new flags. Marked `not_es3`.
+
+- **built-ins/RegExp/S15.10.4.1_A2_T2**
+new RegExp(/1?1/mig, {}) relies on ES5 flag parsing; ES3 would throw TypeError. Marked `not_es3`.
+
+Progress: 497/755 tests reviewed.
