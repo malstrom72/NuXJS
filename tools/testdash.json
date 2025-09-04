@@ -25472,40 +25472,88 @@
 	"language/types/string/S8.4_A7.4": {
 		"category": ""
 	},
-		"language/white-space/S7.2_A1.5_T1": {
-			"category": ""
-		},
-		"built-ins/Function/prototype/restricted-property-arguments": {
-			"category": "not_es3"
-		},
-		"built-ins/Function/prototype/restricted-property-caller": {
-			"category": "not_es3"
-		},
-		"built-ins/Function/15.3.2.1-10-6gs": {
-			"category": "not_es3"
-		},
-		"built-ins/Object/getPrototypeOf/15.2.3.2-1": {
-			"category": "not_es3"
-		},
-		"built-ins/Object/keys/15.2.3.14-0-1": {
-			"category": "not_es3"
-		},
-		"built-ins/Object/setPrototypeOf/length": {
-			"category": "not_es3"
-		},
-		"built-ins/Object/symbol_object-returns-fresh-symbol": {
-			"category": "not_es3"
-		},
-		"built-ins/Number/string-binary-literal": {
-			"category": "not_es3"
-		},
-		"built-ins/Object/prototype/hasOwnProperty/symbol_own_property": {
-			"category": "not_es3"
-		},
-		"language/function-code/10.4.3-1-54-s": {
-			"category": "not_es3"
-		},
-		"built-ins/Object/prototype/toString/symbol-tag-str": {
-			"category": "not_es3"
-		}
+	"language/white-space/S7.2_A1.5_T1": {
+		"category": ""
+	},
+	"built-ins/Function/prototype/restricted-property-arguments": {
+		"category": "not_es3"
+	},
+	"built-ins/Function/prototype/restricted-property-caller": {
+		"category": "not_es3"
+	},
+	"built-ins/Function/15.3.2.1-10-6gs": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/getPrototypeOf/15.2.3.2-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/keys/15.2.3.14-0-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/setPrototypeOf/length": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/symbol_object-returns-fresh-symbol": {
+		"category": "not_es3"
+	},
+	"built-ins/Number/string-binary-literal": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/prototype/hasOwnProperty/symbol_own_property": {
+		"category": "not_es3"
+	},
+	"language/function-code/10.4.3-1-54-s": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/prototype/toString/symbol-tag-str": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/concat/S15.4.4.4_A4.2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/join/S15.4.4.5_A4_T3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/pop/S15.4.4.6_A5.2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/pop/S15.4.4.6_A5.3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/push/S15.4.4.7_A6.2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/push/S15.4.4.7_A6.3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/reverse/S15.4.4.8_A5.2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/reverse/S15.4.4.8_A5.3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/shift/S15.4.4.9_A5.2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/shift/S15.4.4.9_A5.3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/slice/S15.4.4.10_A5.2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/slice/S15.4.4.10_A5.3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/splice/S15.4.4.12_A5.2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/splice/S15.4.4.12_A5.3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/unshift/S15.4.4.13_A5.2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/unshift/S15.4.4.13_A5.3": {
+		"category": "not_es3"
+	}
 }

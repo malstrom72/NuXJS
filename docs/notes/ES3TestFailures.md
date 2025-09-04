@@ -58,6 +58,14 @@ Array construction and prototype methods like `concat`, `join`, `pop`, `push`, `
 - built-ins/Array/prototype/unshift/S15.4.4.13_A5.2
 - built-ins/Array/prototype/unshift/S15.4.4.13_A5.3
 
+Many of these failures stem from ES5-era expectations that contradict ES3:
+
+- **Undeletable `length` properties** – ES3 specifies that the `length` property of built-in functions has the `DontDelete` attribute (§15), so tests like `S15.4.4.4_A4.2` expecting `Array.prototype.concat.length` to be deletable are non‑ES3.
+- **ES5 “ToLength” conversions** – Array methods in ES3 apply `ToUint32` when coercing `length` (§9.6), allowing negative values to wrap. ES5’s `ToLength` clamps negatives to zero, making tests such as `S15.4.4.5_A4_T3` inapplicable.
+- **Generic edge cases and infinities** – The ES3 algorithms for `push`, `pop`, and related methods (§15.4.4.6–§15.4.4.9) do not define behaviour for `NaN`, `±Infinity`, or non‑array receivers, so ES5 tests probing these cases fail.
+
+In short, our `Array.prototype` methods follow ES3, while the failing tests rely on ES5‑level property descriptors and edge‑case semantics.
+
 ## Boolean (2 tests)
 
 Verifies the `Boolean` constructor's prototype properties and their attributes, which must exist in ES3.
@@ -1037,4 +1045,8 @@ Examines function body semantics such as strict parameter handling and `argument
 - language/function-code/10.4.3-1-56gs
 - language/function-code/10.4.3-1-57-s
 - language/function-code/10.4.3-1-57gs
+
+## Recommended Test Exclusions
+
+Property descriptor checks for array methods that assume ES5 semantics—such as `built-ins/Array/prototype/concat/S15.4.4.4_A4.2` and `built-ins/Array/prototype/join/S15.4.4.5_A4_T3`—should be tagged "not_es3" in `tools/testdash.json` so the dashboard focuses on third‑edition compliance.
 
