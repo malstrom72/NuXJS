@@ -26737,5 +26737,257 @@
     },
     "built-ins/Date/prototype/setUTCFullYear/S15.9.5.41_A3_T2": {
         "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setUTCHours/S15.9.5.35_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setUTCHours/S15.9.5.35_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setUTCHours/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setUTCMilliseconds/S15.9.5.29_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setUTCMilliseconds/S15.9.5.29_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setUTCMilliseconds/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setUTCMinutes/S15.9.5.33_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setUTCMinutes/S15.9.5.33_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setUTCMinutes/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setUTCMonth/S15.9.5.39_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setUTCMonth/S15.9.5.39_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setUTCMonth/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setUTCSeconds/S15.9.5.31_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setUTCSeconds/S15.9.5.31_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/setUTCSeconds/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toDateString/S15.9.5.3_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toDateString/S15.9.5.3_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toDateString/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toLocaleDateString/S15.9.5.6_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toLocaleDateString/S15.9.5.6_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toLocaleDateString/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toLocaleString/S15.9.5.5_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toLocaleString/S15.9.5.5_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toLocaleString/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toLocaleTimeString/S15.9.5.7_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toLocaleTimeString/S15.9.5.7_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toLocaleTimeString/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toString/S15.9.5.2_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toString/S15.9.5.2_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toString/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toTimeString/S15.9.5.4_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toTimeString/S15.9.5.4_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toTimeString/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toUTCString/S15.9.5.42_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toUTCString/S15.9.5.42_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/toUTCString/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/valueOf/S15.9.5.8_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/valueOf/S15.9.5.8_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Date/prototype/valueOf/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Error/message_property": {
+        "category": "not_es3"
+    },
+    "built-ins/Error/prototype/S15.11.3.1_A1_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Error/prototype/S15.11.3.1_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Error/prototype/toString/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Error/prototype/toString/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.2.1-11-1-s": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.2.1-11-3-s": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.2.1-11-5-s": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.5.4_2-49gs": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.5.4_2-51gs": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.5.4_2-53gs": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.5.4_2-55gs": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.5.4_2-89gs": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.5.4_2-90gs": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.5.4_2-91gs": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.5.4_2-92gs": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.5.4_2-93gs": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.5.4_2-96gs": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/15.3.5.4_2-97gs": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/instance-name": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/length/15.3.3.2-1": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/length/S15.3.5.1_A2_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/length/S15.3.5.1_A2_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/length/S15.3.5.1_A2_T3": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/length/S15.3.5.1_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/length/S15.3.5.1_A3_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/length/S15.3.5.1_A3_T3": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/S15.3.3.1_A1": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/S15.3.3.1_A3": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/S15.3.3.1_A4": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/S15.3.5.2_A1_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/S15.3.5.2_A1_T2": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/apply/S15.3.4.3_A10": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/apply/S15.3.4.3_A9": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/apply/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/call/S15.3.4.4_A10": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/call/S15.3.4.4_A9": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/call/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/toString/S15.3.4.2_A10": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/toString/S15.3.4.2_A9": {
+        "category": "not_es3"
+    },
+    "built-ins/Function/prototype/toString/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Infinity/15.1.1.2-0": {
+        "category": "not_es3"
+    },
+    "built-ins/Infinity/S15.1.1.2_A2_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Infinity/S15.1.1.2_A3_T1": {
+        "category": "not_es3"
     }
 }

@@ -1357,5 +1357,206 @@ Test expects `setUTCFullYear.length` deletable; ES3 length properties are `DontD
 - **built-ins/Date/prototype/setUTCFullYear/name**
 Function `name` property is post-ES3; `not_es3`.
 
-Progress: 197/755 tests reviewed.
+- **built-ins/Date/prototype/setUTCHours/S15.9.5.35_A3_T1**
+Property helper verifies `setUTCHours.length` read-only via ES5 descriptors; `not_es3`.
+- **built-ins/Date/prototype/setUTCHours/S15.9.5.35_A3_T2**
+Deletion test for `setUTCHours.length` relies on ES5 helpers; `not_es3`.
+- **built-ins/Date/prototype/setUTCHours/name**
+Function `name` property was added after ES3; `not_es3`.
+- **built-ins/Date/prototype/setUTCMilliseconds/S15.9.5.29_A3_T1**
+Property helper checks `setUTCMilliseconds.length` via ES5 descriptors; `not_es3`.
+- **built-ins/Date/prototype/setUTCMilliseconds/S15.9.5.29_A3_T2**
+Deletion test for `setUTCMilliseconds.length` assumes configurability; `not_es3`.
+- **built-ins/Date/prototype/setUTCMilliseconds/name**
+Function `name` property not defined in ES3; `not_es3`.
+- **built-ins/Date/prototype/setUTCMinutes/S15.9.5.33_A3_T1**
+Read-only check for `setUTCMinutes.length` uses ES5 helpers; `not_es3`.
+- **built-ins/Date/prototype/setUTCMinutes/S15.9.5.33_A3_T2**
+Deletion test for `setUTCMinutes.length` conflicts with ES3 `DontDelete`; `not_es3`.
+- **built-ins/Date/prototype/setUTCMinutes/name**
+Function `name` property is post-ES3; `not_es3`.
+- **built-ins/Date/prototype/setUTCMonth/S15.9.5.39_A3_T1**
+Property helper verifies `setUTCMonth.length` read-only; `not_es3`.
+- **built-ins/Date/prototype/setUTCMonth/S15.9.5.39_A3_T2**
+Deletion test for `setUTCMonth.length` relies on ES5 features; `not_es3`.
+- **built-ins/Date/prototype/setUTCMonth/name**
+Function `name` property not part of ES3; `not_es3`.
+- **built-ins/Date/prototype/setUTCSeconds/S15.9.5.31_A3_T1**
+Property helper verifies `setUTCSeconds.length` immutability; `not_es3`.
+- **built-ins/Date/prototype/setUTCSeconds/S15.9.5.31_A3_T2**
+Deletion test for `setUTCSeconds.length` assumes configurability; `not_es3`.
+- **built-ins/Date/prototype/setUTCSeconds/name**
+Function `name` property introduced after ES3; `not_es3`.
+- **built-ins/Date/prototype/toDateString/S15.9.5.3_A3_T1**
+Read-only check uses ES5 property helper; `not_es3`.
+- **built-ins/Date/prototype/toDateString/S15.9.5.3_A3_T2**
+Deletion test for `toDateString.length` uses ES5 helpers; `not_es3`.
+- **built-ins/Date/prototype/toDateString/name**
+Function `name` property is post-ES3; `not_es3`.
+- **built-ins/Date/prototype/toLocaleDateString/S15.9.5.6_A3_T1**
+Property descriptor check for `toLocaleDateString.length` requires ES5; `not_es3`.
+- **built-ins/Date/prototype/toLocaleDateString/S15.9.5.6_A3_T2**
+Deletion of `toLocaleDateString.length` relies on ES5 helpers; `not_es3`.
+- **built-ins/Date/prototype/toLocaleDateString/name**
+Function `name` property introduced after ES3; `not_es3`.
+- **built-ins/Date/prototype/toLocaleString/S15.9.5.5_A3_T1**
+Property helper inspects `toLocaleString.length`; `not_es3`.
+- **built-ins/Date/prototype/toLocaleString/S15.9.5.5_A3_T2**
+Deletion check for `toLocaleString.length` uses ES5 features; `not_es3`.
+- **built-ins/Date/prototype/toLocaleString/name**
+Function `name` property not defined in ES3; `not_es3`.
+- **built-ins/Date/prototype/toLocaleTimeString/S15.9.5.7_A3_T1**
+Read-only check for `toLocaleTimeString.length` requires ES5 descriptors; `not_es3`.
+- **built-ins/Date/prototype/toLocaleTimeString/S15.9.5.7_A3_T2**
+Deletion test for `toLocaleTimeString.length` uses ES5 helpers; `not_es3`.
+- **built-ins/Date/prototype/toLocaleTimeString/name**
+Function `name` property introduced after ES3; `not_es3`.
+- **built-ins/Date/prototype/toString/S15.9.5.2_A3_T1**
+Read-only check for `toString.length` uses ES5 property helpers; `not_es3`.
+- **built-ins/Date/prototype/toString/S15.9.5.2_A3_T2**
+Deletion test for `toString.length` relies on ES5 features; `not_es3`.
+- **built-ins/Date/prototype/toString/name**
+Function `name` property not defined in ES3; `not_es3`.
+- **built-ins/Date/prototype/toTimeString/S15.9.5.4_A3_T1**
+Property helper verifies `toTimeString.length` read-only; `not_es3`.
+- **built-ins/Date/prototype/toTimeString/S15.9.5.4_A3_T2**
+Deletion test for `toTimeString.length` uses ES5 helpers; `not_es3`.
+- **built-ins/Date/prototype/toTimeString/name**
+Function `name` property added post-ES3; `not_es3`.
+- **built-ins/Date/prototype/toUTCString/S15.9.5.42_A3_T1**
+Property descriptor check for `toUTCString.length` requires ES5; `not_es3`.
+- **built-ins/Date/prototype/toUTCString/S15.9.5.42_A3_T2**
+Deletion test for `toUTCString.length` uses ES5 features; `not_es3`.
+- **built-ins/Date/prototype/toUTCString/name**
+Function `name` property is post-ES3; `not_es3`.
+- **built-ins/Date/prototype/valueOf/S15.9.5.8_A3_T1**
+Read-only check for `valueOf.length` uses ES5 property helper; `not_es3`.
+- **built-ins/Date/prototype/valueOf/S15.9.5.8_A3_T2**
+Deletion test for `valueOf.length` relies on ES5 helpers; `not_es3`.
+- **built-ins/Date/prototype/valueOf/name**
+Function `name` property not part of ES3; `not_es3`.
+- **built-ins/Error/S15.11.1.1_A1_T1**
+`Error(msg)` should create an object with own `message` string per ES3 §15.11.1.1, but NuXJS omits it.
+- **built-ins/Error/S15.11.2.1_A1_T1**
+`new Error(msg)` must set `message` to the provided string; current implementation loses it.
+- **built-ins/Error/message_property**
+Checks Error constructor defines own `message` property via ES5 descriptors; `not_es3`.
+- **built-ins/Error/prototype/S15.11.3.1_A1_T1**
+Deletion check for `Error.prototype` uses ES5 helper; `not_es3`.
+- **built-ins/Error/prototype/S15.11.3.1_A3_T1**
+Read-only test for `Error.prototype` relies on ES5 helpers; `not_es3`.
+- **built-ins/Error/prototype/S15.11.4_A2**
+`Error.prototype` should report `"[object Object]"` via `toString`; engine returns different tag.
+- **built-ins/Error/prototype/name/15.11.4.2-1**
+`Error.prototype.name` must be non-enumerable per ES3 §15.11.4.2; NuXJS exposes it in `for-in`.
+- **built-ins/Error/prototype/toString/15.11.4.4-8-1**
+`Error.prototype.toString` should return the message when `name` is empty; engine output differs.
+- **built-ins/Error/prototype/toString/length**
+Descriptor checks for `toString.length` rely on ES6 property helpers; `not_es3`.
+- **built-ins/Error/prototype/toString/name**
+Function `name` property is an ES6 addition; `not_es3`.
+- **built-ins/Function/15.3.2.1-11-1-s**
+Strict mode duplicate parameter rejection is an ES5 feature; `not_es3`.
+- **built-ins/Function/15.3.2.1-11-3-s**
+Strict mode forbids parameter named `eval`; ES5-only; `not_es3`.
+- **built-ins/Function/15.3.2.1-11-5-s**
+Strict mode disallows combined duplicate parameters; `not_es3`.
+- **built-ins/Function/15.3.5.4_2-49gs**
+Strict mode forbids accessing `caller` from a getter; `not_es3`.
+- **built-ins/Function/15.3.5.4_2-51gs**
+Strict mode caller access in getter; `not_es3`.
+- **built-ins/Function/15.3.5.4_2-53gs**
+Strict mode caller restriction in getter; `not_es3`.
+- **built-ins/Function/15.3.5.4_2-55gs**
+Strict mode caller restriction in getter; `not_es3`.
+- **built-ins/Function/15.3.5.4_2-89gs**
+Strict mode caller restriction via setter; `not_es3`.
+- **built-ins/Function/15.3.5.4_2-90gs**
+Strict mode caller access via setter; `not_es3`.
+- **built-ins/Function/15.3.5.4_2-91gs**
+Strict mode caller access via setter; `not_es3`.
+- **built-ins/Function/15.3.5.4_2-92gs**
+Strict mode caller access via setter; `not_es3`.
+- **built-ins/Function/15.3.5.4_2-93gs**
+Strict mode caller access via setter; `not_es3`.
+- **built-ins/Function/15.3.5.4_2-96gs**
+Strict mode caller access via method; `not_es3`.
+- **built-ins/Function/15.3.5.4_2-97gs**
+Strict mode caller access via method; `not_es3`.
+- **built-ins/Function/instance-name**
+Checks dynamic function `name` property introduced in ES6; `not_es3`.
+- **built-ins/Function/length/15.3.3.2-1**
+Uses `Object.getOwnPropertyDescriptor` to inspect `Function.length`; `not_es3`.
+- **built-ins/Function/length/S15.3.5.1_A2_T1**
+Expects user-defined function `length` deletable, contrary to ES3; `not_es3`.
+- **built-ins/Function/length/S15.3.5.1_A2_T2**
+Deletion of function `length` property expected; ES3 marks it `DontDelete`; `not_es3`.
+- **built-ins/Function/length/S15.3.5.1_A2_T3**
+Deletion of function `length` property expected; ES3 forbids; `not_es3`.
+- **built-ins/Function/length/S15.3.5.1_A3_T1**
+Property helper asserts `length` read-only using ES5 descriptors; `not_es3`.
+- **built-ins/Function/length/S15.3.5.1_A3_T2**
+Read-only check for `length` uses ES5 helpers; `not_es3`.
+- **built-ins/Function/length/S15.3.5.1_A3_T3**
+Read-only check for `length` uses ES5 helpers; `not_es3`.
+- **built-ins/Function/prototype/S15.3.3.1_A1**
+Property helper verifies `Function.prototype` read-only; `not_es3`.
+- **built-ins/Function/prototype/S15.3.3.1_A3**
+Deletion test for `Function.prototype` uses ES5 helpers; `not_es3`.
+- **built-ins/Function/prototype/S15.3.3.1_A4**
+Uses `Object.defineProperty` and descriptor APIs; `not_es3`.
+- **built-ins/Function/prototype/S15.3.4_A5**
+`Function.prototype` lacks [[Construct]] per ES3; NuXJS wrongly allows construction.
+- **built-ins/Function/prototype/S15.3.5.2_A1_T1**
+Prototype property non-configurable check uses ES5 helpers; `not_es3`.
+- **built-ins/Function/prototype/S15.3.5.2_A1_T2**
+Same non-configurable check with ES5 helpers; `not_es3`.
+- **built-ins/Function/prototype/name**
+`Function.prototype` `name` property is an ES6 addition; `not_es3`.
+- **built-ins/Function/prototype/apply/S15.3.4.3_A10**
+Read-only check for `apply.length` uses ES5 property helper; `not_es3`.
+- **built-ins/Function/prototype/apply/S15.3.4.3_A9**
+Deletion test for `apply.length` assumes configurability; `not_es3`.
+- **built-ins/Function/prototype/apply/name**
+Function `name` property added after ES3; `not_es3`.
+- **built-ins/Function/prototype/call/S15.3.4.4_A10**
+Read-only check for `call.length` uses ES5 descriptors; `not_es3`.
+- **built-ins/Function/prototype/call/S15.3.4.4_A9**
+Deletion test for `call.length` assumes configurability; `not_es3`.
+- **built-ins/Function/prototype/call/name**
+Function `name` property introduced post-ES3; `not_es3`.
+- **built-ins/Function/prototype/toString/S15.3.4.2_A10**
+Read-only check for `toString.length` uses ES5 helpers; `not_es3`.
+- **built-ins/Function/prototype/toString/S15.3.4.2_A9**
+Deletion test for `toString.length` assumes configurability; `not_es3`.
+- **built-ins/Function/prototype/toString/name**
+Function `name` property added in ES6; `not_es3`.
+- **built-ins/Infinity/15.1.1.2-0**
+Uses `Object.getOwnPropertyDescriptor` on global `Infinity`; `not_es3`.
+- **built-ins/Infinity/S15.1.1.2_A2_T1**
+Read-only check for `Infinity` via ES5 helper; `not_es3`.
+- **built-ins/Infinity/S15.1.1.2_A2_T2**
+Assignment should not change global `Infinity`, but NuXJS allows it.
+- **built-ins/Infinity/S15.1.1.2_A3_T1**
+Non-configurability of `Infinity` verified with ES5 helper; `not_es3`.
+- **built-ins/MapIteratorPrototype/next/does-not-have-mapiterator-internal-slots-map**
+Map iterators are an ES6 feature; `not_es3`.
+- **built-ins/MapIteratorPrototype/next/does-not-have-mapiterator-internal-slots**
+Map iterators are an ES6 feature; `not_es3`.
+- **built-ins/MapIteratorPrototype/next/iteration-mutable**
+Map iterators are an ES6 feature; `not_es3`.
+- **built-ins/MapIteratorPrototype/next/iteration**
+Map iterators are an ES6 feature; `not_es3`.
+- **built-ins/MapIteratorPrototype/next/length**
+Map iterator `.next.length` relies on ES6 features; `not_es3`.
+- **built-ins/MapIteratorPrototype/next/name**
+Function `name` property added in ES6; `not_es3`.
+- **built-ins/MapIteratorPrototype/next/this-not-object-throw-entries**
+Map iterators are an ES6 feature; `not_es3`.
+- **built-ins/MapIteratorPrototype/next/this-not-object-throw-keys**
+Map iterators are an ES6 feature; `not_es3`.
+- **built-ins/MapIteratorPrototype/next/this-not-object-throw-prototype-iterator**
+Map iterators are an ES6 feature; `not_es3`.
+
+Progress: 297/755 tests reviewed.
 
