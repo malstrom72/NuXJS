@@ -27910,5 +27910,152 @@
 	},
 	"built-ins/encodeURIComponent/S15.1.3.4_A6_T1": {
 		"category": "by_design"
+	},
+	"built-ins/Array/S15.4.3_A2.3": {
+		"category": "bad_test"
+	},
+	"built-ins/Array/prototype/S15.4.3.1_A3": {
+		"category": "bad_test"
+	},
+	"built-ins/Array/prototype/S15.4.3.1_A4": {
+		"category": "bad_test"
+	},
+	"built-ins/Array/prototype/concat/S15.4.4.4_A4.3": {
+		"category": "bad_test"
+	},
+	"built-ins/Array/prototype/join/S15.4.4.5_A6.3": {
+		"category": "bad_test"
+	},
+	"built-ins/String/fromCharCode/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/S15.5.3.1_A3": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/S15.5.3.1_A4": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/charAt/S15.5.4.4_A10": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/charAt/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/charCodeAt/S15.5.4.5_A10": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/charCodeAt/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/concat/S15.5.4.6_A10": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/concat/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/indexOf/S15.5.4.7_A10": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/indexOf/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/lastIndexOf/S15.5.4.8_A10": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/lastIndexOf/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/localeCompare/S15.5.4.9_A10": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/localeCompare/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/match/length": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/match/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/replace/S15.5.4.11_A10": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/replace/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/search/S15.5.4.12_A10": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/search/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/slice/S15.5.4.13_A10": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/slice/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/split/S15.5.4.14_A10": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/split/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/substring/S15.5.4.15_A10": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/substring/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/toLocaleLowerCase/S15.5.4.17_A10": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/toLocaleLowerCase/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/toLocaleUpperCase/S15.5.4.19_A10": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/toLocaleUpperCase/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/toLowerCase/S15.5.4.16_A10": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/toLowerCase/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/toString/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/toUpperCase/S15.5.4.18_A10": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/toUpperCase/name": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/valueOf/length": {
+		"category": "bad_test"
+	},
+	"built-ins/String/prototype/valueOf/name": {
+		"category": "bad_test"
+	},
+	"built-ins/eval/S15.1.2.1_A4.3": {
+		"category": "bad_test"
+	},
+	"built-ins/isFinite/S15.1.2.5_A2.3": {
+		"category": "bad_test"
+	},
+	"built-ins/isNaN/S15.1.2.4_A2.3": {
+		"category": "bad_test"
+	},
+	"built-ins/parseFloat/S15.1.2.3_A7.3": {
+		"category": "bad_test"
+	},
+	"built-ins/parseInt/S15.1.2.2_A9.3": {
+		"category": "bad_test"
+	},
+	"built-ins/undefined/S15.1.1.3_A3_T1": {
+		"category": "bad_test"
 	}
 }
