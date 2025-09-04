@@ -2125,4 +2125,304 @@ new RegExp(/\u0042/i, 'i') depends on ES6 ability to clone with new flags. Marke
 - **built-ins/RegExp/S15.10.4.1_A2_T2**
 new RegExp(/1?1/mig, {}) relies on ES5 flag parsing; ES3 would throw TypeError. Marked `not_es3`.
 
-Progress: 497/755 tests reviewed.
+- **built-ins/RegExp/call_with_non_regexp_same_constructor**
+Uses `Symbol.match` and ES6 RegExp constructor semantics that bypass object creation. ES3 has no symbol hooks; mark `not_es3`.
+
+- **built-ins/RegExp/call_with_regexp_match_falsy**
+Relies on overriding `Symbol.match` to force constructor behavior. ES3 lacks symbols, so this test is `not_es3`.
+
+- **built-ins/RegExp/call_with_regexp_not_same_constructor**
+ES6 specifies returning the input when constructors match; ES3 always allocates a new RegExp. Marked `not_es3`.
+
+- **built-ins/RegExp/from-regexp-like-flag-override**
+Initialization from RegExp-like objects uses `Symbol.match` and accessors. ES3 has no such mechanism; `not_es3`.
+
+- **built-ins/RegExp/from-regexp-like-get-ctor-err**
+Reads RegExp-like object's constructor via ES6 semantics and `Symbol.match`; not defined in ES3. Marked `not_es3`.
+
+- **built-ins/RegExp/from-regexp-like-get-flags-err**
+Depends on `Symbol.match` and property accessors for flags; outside ES3. Marked `not_es3`.
+
+- **built-ins/RegExp/from-regexp-like-get-source-err**
+Uses `Symbol.match` with getters for `source`; ES3 lacks these hooks. Marked `not_es3`.
+
+- **built-ins/RegExp/from-regexp-like-short-circuit**
+Short‑circuits using `Symbol.match` per ES6; ES3 has no such feature, so `not_es3`.
+
+- **built-ins/RegExp/from-regexp-like**
+Construction from RegExp-like objects with `Symbol.match` is ES6-only; `not_es3`.
+
+- **built-ins/RegExp/valid-flags-y**
+The sticky `y` flag was added in ES6. ES3 accepts only `gim`; mark `not_es3`.
+
+- **built-ins/RegExp/prototype/S15.10.5.1_A3**
+Checks `RegExp.prototype` configurability with `propertyHelper`, which requires ES5 descriptors. `not_es3`.
+
+- **built-ins/RegExp/prototype/S15.10.5.1_A4**
+Uses descriptor helpers to verify `RegExp.prototype` read‑only status. Depends on ES5 descriptors; `not_es3`.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A10**
+Verifies `exec.length` is read‑only using property helpers; ES3 lacks descriptor APIs. Marked `not_es3`.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T10**
+`/1|12/` executed on `1.01` should return `"1"` at index 0, but NuXJS gives the wrong match.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T11**
+`/2|12/` on `new Number(1.012)` should produce `"12"` at index 3; engine returns incorrect result.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T12**
+`/\.14/` against object with `toString` returning `Math.PI` must match `".14"` at index 1; NuXJS fails.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T13**
+`/t[a-b|q-s]/` on boolean `true` should yield `"tr"`; engine mismatch.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T14**
+`/AL|se/` on `new Boolean` should match `"se"` at index 3; NuXJS result differs.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T15**
+`/LS/i` against object whose `toString` returns `false` must match `"ls"`; engine fails.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T17**
+`/ll|l/` on `null` should find `"ll"` at index 2; NuXJS reports wrong match.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T18**
+`/nd|ne/` on `undefined` should match `"nd"` at index 0; NuXJS does not.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T19**
+`/e{1}/` on `void 0` must capture `"e"` at index 3; engine mismatch.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T2**
+`/((1)|(12))((3)|(23))/` on `new String("123")` should produce full capture array; NuXJS fails to match.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T20**
+`/[a-f]d/` on undefined variable `x` should return `"ed"` at index 7; engine error.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T21**
+`/[a-z]n/` on result of `function(){}()` ("undefined") should match `"un"`; NuXJS misses.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T3**
+`/a[a-z]{2,4}/` on `new Object("abcdefghi")` should yield `"abcde"`; engine mismatch.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T4**
+`/a[a-z]{2,4}?/` on object coerced to "abcdefghi" should return `"abc"`; NuXJS incorrect.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T5**
+`/(aa|aabaac|ba|b|c)*/` on object with custom `toString`/`valueOf` should match `"aaba"`; engine fails.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A5_T3**
+Negative `lastIndex` should be treated as 0 when using `/(?:ab|cd)\d?/g`; NuXJS mishandles starting index.
+
+- **built-ins/RegExp/prototype/exec/S15.10.6.2_A9**
+Deletes `exec.length` expecting success, contradicting ES3's `DontDelete`; mark `not_es3`.
+
+- **built-ins/RegExp/prototype/exec/name**
+Uses `propertyHelper` to inspect function `name`; ES3 lacks such descriptors. `not_es3`.
+
+- **built-ins/RegExp/prototype/exec/u-captured-value**
+Exercises ES6 `u` flag capturing semantics; not present in ES3. Marked `not_es3`.
+
+- **built-ins/RegExp/prototype/exec/u-lastindex-adv**
+Relies on Unicode flag advancing of `lastIndex`; ES3 has no `u` flag. `not_es3`.
+
+- **built-ins/RegExp/prototype/exec/u-lastindex-value**
+Uses Unicode-aware `lastIndex` handling; `u` flag is post‑ES3. Marked `not_es3`.
+
+- **built-ins/RegExp/prototype/exec/y-fail-lastindex-no-write**
+Sticky `y` flag expected to leave `lastIndex` unchanged on failure; flag absent in ES3. `not_es3`.
+
+- **built-ins/RegExp/prototype/exec/y-fail-lastindex**
+Checks sticky flag `lastIndex` semantics, which ES3 does not define. `not_es3`.
+
+- **built-ins/RegExp/prototype/exec/y-fail-return**
+Sticky mode short-circuits after first failure; ES3 has no `y` flag. `not_es3`.
+
+- **built-ins/RegExp/prototype/exec/y-init-lastindex**
+Requires sticky flag to honor initial `lastIndex`; not an ES3 feature. `not_es3`.
+
+- **built-ins/RegExp/prototype/exec/y-set-lastindex**
+Verifies `lastIndex` update under `y` flag; sticky behavior is post‑ES3. `not_es3`.
+
+- **built-ins/RegExp/prototype/flags/length**
+Uses descriptor helpers on `flags` accessor, which is ES6-only. `not_es3`.
+
+- **built-ins/RegExp/prototype/flags/name**
+Function `name` property check for `flags`; ES3 lacks `name`. `not_es3`.
+
+- **built-ins/RegExp/prototype/flags/u-attr-err**
+Unicode flag attribute handling is ES6; `not_es3`.
+
+- **built-ins/RegExp/prototype/flags/u-coercion**
+Coercion of Unicode flag is specified in ES6; ES3 has no `u`. `not_es3`.
+
+- **built-ins/RegExp/prototype/flags/u**
+Direct use of Unicode `u` flag; outside ES3. `not_es3`.
+
+- **built-ins/RegExp/prototype/flags/y-attr-err**
+Sticky flag attribute test; ES3 lacks sticky mode. `not_es3`.
+
+- **built-ins/RegExp/prototype/flags/y**
+Uses sticky `y` flag directly; `not_es3`.
+
+- **built-ins/RegExp/prototype/global/15.10.7.2-1**
+Accessor property for `global` throws when generic; ES3 defines a simple boolean. `not_es3`.
+
+- **built-ins/RegExp/prototype/global/15.10.7.2-2**
+Similar accessor generics test for `global`; relies on ES5 accessors. `not_es3`.
+
+- **built-ins/RegExp/prototype/global/S15.10.7.2_A10**
+Uses property helpers to verify lack of setter on `global`; needs ES5 descriptors. `not_es3`.
+
+- **built-ins/RegExp/prototype/global/S15.10.7.2_A8**
+Checks enumerability via `propertyHelper`; not ES3. Marked `not_es3`.
+
+- **built-ins/RegExp/prototype/global/S15.10.7.2_A9**
+Deletes `global` expecting success; ES3 marks it `DontDelete`. `not_es3`.
+
+- **built-ins/RegExp/prototype/global/length**
+`propertyHelper` examines `length` of accessor; depends on ES5. `not_es3`.
+
+- **built-ins/RegExp/prototype/global/name**
+Function `name` property for getter; ES3 has none. `not_es3`.
+
+- **built-ins/RegExp/prototype/ignoreCase/15.10.7.3-1**
+Non-generic accessor for `ignoreCase` depends on ES5 semantics; `not_es3`.
+
+- **built-ins/RegExp/prototype/ignoreCase/15.10.7.3-2**
+Another accessor check for `ignoreCase`; requires ES5 accessors. `not_es3`.
+
+- **built-ins/RegExp/prototype/ignoreCase/S15.10.7.3_A10**
+Descriptor helper verifies absent setter on `ignoreCase`; not ES3.
+
+- **built-ins/RegExp/prototype/ignoreCase/S15.10.7.3_A8**
+Checks enumerability with helpers; relies on ES5. `not_es3`.
+
+- **built-ins/RegExp/prototype/ignoreCase/S15.10.7.3_A9**
+Deletion test contradicts ES3 `DontDelete`; mark `not_es3`.
+
+- **built-ins/RegExp/prototype/ignoreCase/length**
+Uses descriptor helpers on accessor length; `not_es3`.
+
+- **built-ins/RegExp/prototype/ignoreCase/name**
+Function name inspection for accessor; ES3 lacks `name`. `not_es3`.
+
+- **built-ins/RegExp/prototype/lastIndex/15.10.7.5-2**
+Queries descriptor of `lastIndex` via `getOwnPropertyDescriptor`; ES3 has no such API. `not_es3`.
+
+- **built-ins/RegExp/prototype/lastIndex/S15.10.7.5_A9**
+Uses property helpers to confirm `DontDelete`; relies on ES5 descriptors. `not_es3`.
+
+- **built-ins/RegExp/prototype/multiline/15.10.7.4-1**
+Accessor property test for `multiline`; ES5 feature. `not_es3`.
+
+- **built-ins/RegExp/prototype/multiline/15.10.7.4-2**
+Generic accessor check for `multiline`; not in ES3. `not_es3`.
+
+- **built-ins/RegExp/prototype/multiline/S15.10.7.4_A10**
+Descriptor helper ensures no setter; requires ES5. `not_es3`.
+
+- **built-ins/RegExp/prototype/multiline/S15.10.7.4_A8**
+Enumerability test via helpers; `not_es3`.
+
+- **built-ins/RegExp/prototype/multiline/S15.10.7.4_A9**
+Deletion allowed per ES5 but not ES3; mark `not_es3`.
+
+- **built-ins/RegExp/prototype/multiline/length**
+Descriptor check on accessor `length`; ES5-only. `not_es3`.
+
+- **built-ins/RegExp/prototype/multiline/name**
+Function `name` property for accessor; `not_es3`.
+
+- **built-ins/RegExp/prototype/source/15.10.7.1-1**
+Accessor property for `source` tested against generic use; ES5 feature. `not_es3`.
+
+- **built-ins/RegExp/prototype/source/15.10.7.1-2**
+Another non-generic accessor check for `source`; not ES3.
+
+- **built-ins/RegExp/prototype/source/S15.10.7.1_A10**
+Uses property helpers to confirm absent setter; requires ES5. `not_es3`.
+
+- **built-ins/RegExp/prototype/source/S15.10.7.1_A8**
+Enumerability check via helpers; not ES3.
+
+- **built-ins/RegExp/prototype/source/S15.10.7.1_A9**
+Deletion test conflicts with ES3's `DontDelete`; `not_es3`.
+
+- **built-ins/RegExp/prototype/source/length**
+Descriptor helper on accessor length; ES5-only. `not_es3`.
+
+- **built-ins/RegExp/prototype/source/name**
+Function `name` property access; ES3 lacks. `not_es3`.
+
+- **built-ins/RegExp/prototype/test/S15.10.6.3_A10**
+Property helper verifies `test.length` read-only; ES5 feature. `not_es3`.
+
+- **built-ins/RegExp/prototype/test/S15.10.6.3_A1_T22**
+`/(?:ab|cd)\d?/g.test("aacd22 ")` with negative `lastIndex` should set index 5; NuXJS behavior diverges.
+
+- **built-ins/RegExp/prototype/test/S15.10.6.3_A9**
+Deletion of `exec.length` expected to succeed; ES3 specifies `DontDelete`. `not_es3`.
+
+- **built-ins/RegExp/prototype/test/name**
+Function name check on `test`; descriptor APIs are ES5. `not_es3`.
+
+- **built-ins/RegExp/prototype/test/y-fail-lastindex-no-write**
+Sticky `y` flag expected to keep `lastIndex` unchanged; `y` is post‑ES3. `not_es3`.
+
+- **built-ins/RegExp/prototype/test/y-fail-lastindex**
+Verifies `lastIndex` on sticky failure; ES3 lacks sticky flag. `not_es3`.
+
+- **built-ins/RegExp/prototype/test/y-fail-return**
+Sticky mode early exits on failure; `y` flag is non‑ES3. `not_es3`.
+
+- **built-ins/RegExp/prototype/test/y-init-lastindex**
+Initial `lastIndex` honored only with `y` flag; not in ES3. `not_es3`.
+
+- **built-ins/RegExp/prototype/test/y-set-lastindex**
+Sticky `y` flag semantics for `lastIndex` setting; ES3 lacks sticky behavior. `not_es3`.
+
+- **built-ins/RegExp/prototype/toString/S15.10.6.4_A10**
+Uses property helpers to ensure `toString.length` is read‑only; relies on ES5 descriptors. `not_es3`.
+
+- **built-ins/RegExp/prototype/toString/S15.10.6.4_A9**
+Deletes `toString.length` expecting success; ES3 marks it `DontDelete`. `not_es3`.
+
+- **built-ins/RegExp/prototype/toString/name**
+Function name property check for `toString`; ES3 has no `name`. `not_es3`.
+
+- **built-ins/SetIteratorPrototype/next/does-not-have-mapiterator-internal-slots-set**
+Set iterator prototype exists only in ES6; entire feature is outside ES3. `not_es3`.
+
+- **built-ins/SetIteratorPrototype/next/does-not-have-mapiterator-internal-slots**
+Requires ES6 Set iterator internals; `not_es3`.
+
+- **built-ins/SetIteratorPrototype/next/iteration-mutable**
+Mutation during iteration tested for ES6 Set iterators; no ES3 equivalent. `not_es3`.
+
+- **built-ins/SetIteratorPrototype/next/iteration**
+Basic Set iterator traversal is an ES6 feature; mark `not_es3`.
+
+- **built-ins/SetIteratorPrototype/next/length**
+Uses property descriptors on iterator `next.length`; ES6-only. `not_es3`.
+
+- **built-ins/SetIteratorPrototype/next/name**
+Checks function `name` of iterator `next`; both iterator and `name` are post‑ES3. `not_es3`.
+
+- **built-ins/SetIteratorPrototype/next/this-not-object-throw-entries**
+Iterator `next` with improper receiver should throw; Set iterators are not ES3. `not_es3`.
+
+- **built-ins/SetIteratorPrototype/next/this-not-object-throw-keys**
+Same as above for key iteration; `not_es3`.
+
+- **built-ins/SetIteratorPrototype/next/this-not-object-throw-prototype-iterator**
+Requires ES6 iterator protocol; `not_es3`.
+
+- **built-ins/SetIteratorPrototype/next/this-not-object-throw-values**
+Another receiver check for ES6 Set iterators; `not_es3`.
+
+- **built-ins/String/S15.5.5.1_A3**
+Uses property helpers to verify `String.prototype.length` is non-configurable; descriptor APIs are ES5, so `not_es3`.
+
+- **built-ins/String/S15.5.5.1_A4_T2**
+Checks read-only `length` via property helpers; relies on ES5 descriptors. `not_es3`.
+
+Progress: 597/755 tests reviewed.
