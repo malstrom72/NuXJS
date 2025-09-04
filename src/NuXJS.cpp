@@ -755,7 +755,7 @@ bool Value::toArrayIndex(UInt32& index) const {
 			if (p != e && *p == '0') {
 				index = 0;
 				++p;
-			} else {
+				} else {
 				p = parseUnsignedInt(p, e, index);
 			}
 			return p == e;
@@ -905,7 +905,7 @@ static void toUTF16Chars(const wchar_t* s, UInt32 n, Char* d) {
 			const UInt32 c = static_cast<UInt32>(*s++);
 			if ((c >> 16) == 0) {
 				*d++ = static_cast<Char>(c);
-			} else {
+				} else {
 				*d++ = static_cast<Char>(0xD800 | ((c - 0x10000) >> 10));
 				assert(d != e);
 				*d++ = static_cast<Char>(0xDC00 | ((c - 0x10000) & 0x3FF));
@@ -1338,7 +1338,7 @@ Flags Object::getProperty(Runtime &rt, Processor &processor, const Value &key, V
 				} else {
 					*v = UNDEFINED_VALUE;
 				}
-			} else {
+				} else {
 				*v = current;
 			}
 			return flags;
@@ -1497,7 +1497,7 @@ Table::Bucket* Table::find(const String* key, UInt32 hash) {
 				std::swap(buckets[i], buckets[(i - 1) & mask]);
 				i = (i - 1) & mask;
 			}
-			break;
+				break;
 		}
 		i = (i + 1) & mask;
 	}
@@ -1894,7 +1894,11 @@ Value JSFunction::invoke(Runtime&, Processor& processor, UInt32 argc, const Valu
 }
 
 void JSFunction::constructCompleteObject(Runtime& rt) const {
+#if (NUXJS_ES5)
+	createPrototypeObject(rt, completeObject, true);
+#else
 	createPrototypeObject(rt, completeObject, false);
+#endif
 	completeObject->setOwnProperty(rt, &NAME_STRING, code->getName(), DONT_ENUM_FLAG);
 	completeObject->setOwnProperty(rt, &LENGTH_STRING, code->getArgumentsCount(), HIDDEN_CONST_FLAGS);
 }
@@ -2384,7 +2388,7 @@ struct Processor::EvalScope : public Scope {
 					vars = new(heap) JSObject(heap.managed(), 0);
 				}
 				vars->setOwnProperty(rt, name, initValue.isUndefined() ? UNDEFINED_VALUE : initValue, dontDelete ? DONT_DELETE_FLAG : 0);
-			} else {
+				} else {
 #else
 	EvalScope(GCList& gcList, Scope* parentScope) : super(gcList, parentScope) { }
 	virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool) {
@@ -2668,7 +2672,7 @@ void Processor::innerRun() {
 					return;
 				}
 			}
-			break;
+				break;
 		#if (NUXJS_ES5)
 						case WRITE_NAMED_OP:
 						{
@@ -2703,7 +2707,7 @@ void Processor::innerRun() {
 
 		#endif
 			case GET_PROPERTY_OP: {
-				const Object* o = convertToObject(sp[-1], false);
+					const Object* o = convertToObject(sp[-1], false);
 				if (o == 0) {
 					return;
 				}
@@ -2997,11 +3001,17 @@ void Processor::innerRun() {
 			}
 			
 			case GET_ENUMERATOR_OP: {
-				const Object* o = convertToObject(sp[0], false);
-				if (o == 0) {
-					return;
+			#if (NUXJS_ES5)
+				if (sp[0].isNull() || sp[0].isUndefined()) {
+					sp[0] = &EMPTY_ENUMERATOR;
+				} else {
+					const Object* o = convertToObject(sp[0], false);
+					sp[0] = o->getPropertyEnumerator(rt);
 				}
+			#else
+				const Object* o = convertToObject(sp[0], false);
 				sp[0] = o->getPropertyEnumerator(rt);
+			#endif
 				break;
 			}
 			

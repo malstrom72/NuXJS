@@ -68,7 +68,7 @@ ES5‑specific regression tests live in `tests/es5`.
 ### Spec compliance fixes
 - Align ES5 semantics that differ from the current engine implementation.
 	- Permit `for...in` on `null` or `undefined` to yield an empty iteration instead of throwing.  *(see `docs/notes/ECMAScript Compatibility Notes.md`)*
-	- Make user-defined functions' `prototype` properties non-enumerable and adjust `name`/`length` attributes to match ES5.1.
+        - Make user-defined functions' `prototype` properties non-enumerable and adjust `name`/`length` attributes to match ES5.1. (`tests/es5/functionPrototypeNonEnum.io`)
 	- Update `Object.prototype.toString` so `arguments` objects report `[object Arguments]` and enumerate indexed slots during `for...in`.
 	- Add regression tests for each behaviour in `tests/es5`.
 
