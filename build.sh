@@ -28,3 +28,4 @@ done
 if [ -f "output/NuXJS_release_${model}" ]; then
 	mv -f "output/NuXJS_release_${model}" "output/NuXJS"
 fi
+echo "=== ALL BUILDS AND TESTS COMPLETED SUCCESSFULLY ==="
