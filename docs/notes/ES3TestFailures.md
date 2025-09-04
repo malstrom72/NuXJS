@@ -1558,5 +1558,304 @@ Map iterators are an ES6 feature; `not_es3`.
 - **built-ins/MapIteratorPrototype/next/this-not-object-throw-prototype-iterator**
 Map iterators are an ES6 feature; `not_es3`.
 
-Progress: 297/755 tests reviewed.
+- **built-ins/MapIteratorPrototype/next/this-not-object-throw-values**
+Map iterators are an ES6 feature; `not_es3`.
+
+- **built-ins/Math/E/S15.8.1.1_A3**
+Checks `Math.E` is non-deletable using ES5 helpers; `not_es3`.
+
+- **built-ins/Math/E/S15.8.1.1_A4**
+Checks `Math.E` is non-enumerable via ES5 helpers; `not_es3`.
+
+- **built-ins/Math/LN10/S15.8.1.2_A3**
+Checks `Math.LN10` is non-deletable using ES5 helpers; `not_es3`.
+
+- **built-ins/Math/LN10/S15.8.1.2_A4**
+Checks `Math.LN10` is non-enumerable via ES5 helpers; `not_es3`.
+
+- **built-ins/Math/LN2/S15.8.1.3_A3**
+Checks `Math.LN2` is non-deletable using ES5 helpers; `not_es3`.
+
+- **built-ins/Math/LN2/S15.8.1.3_A4**
+Checks `Math.LN2` is non-enumerable via ES5 helpers; `not_es3`.
+
+- **built-ins/Math/LOG10E/S15.8.1.5_A3**
+Checks `Math.LOG10E` is non-deletable using ES5 helpers; `not_es3`.
+
+- **built-ins/Math/LOG10E/S15.8.1.5_A4**
+Checks `Math.LOG10E` is non-enumerable via ES5 helpers; `not_es3`.
+
+- **built-ins/Math/LOG2E/S15.8.1.4_A3**
+Checks `Math.LOG2E` is non-deletable using ES5 helpers; `not_es3`.
+
+- **built-ins/Math/LOG2E/S15.8.1.4_A4**
+Checks `Math.LOG2E` is non-enumerable via ES5 helpers; `not_es3`.
+
+- **built-ins/Math/PI/S15.8.1.6_A3**
+Checks `Math.PI` is non-deletable using ES5 helpers; `not_es3`.
+
+- **built-ins/Math/PI/S15.8.1.6_A4**
+Checks `Math.PI` is non-enumerable via ES5 helpers; `not_es3`.
+
+- **built-ins/Math/SQRT1_2/S15.8.1.7_A3**
+Checks `Math.SQRT1_2` is non-deletable using ES5 helpers; `not_es3`.
+
+- **built-ins/Math/SQRT1_2/S15.8.1.7_A4**
+Checks `Math.SQRT1_2` is non-enumerable via ES5 helpers; `not_es3`.
+
+- **built-ins/Math/SQRT2/S15.8.1.8_A3**
+Checks `Math.SQRT2` is non-deletable using ES5 helpers; `not_es3`.
+
+- **built-ins/Math/SQRT2/S15.8.1.8_A4**
+Checks `Math.SQRT2` is non-enumerable via ES5 helpers; `not_es3`.
+
+- **built-ins/Math/abs/length**
+ES5 property helpers inspect `Math.abs.length`; `not_es3`.
+
+- **built-ins/Math/abs/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/acos/length**
+ES5 property helpers inspect `Math.acos.length`; `not_es3`.
+
+- **built-ins/Math/acos/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/asin/length**
+ES5 property helpers inspect `Math.asin.length`; `not_es3`.
+
+- **built-ins/Math/asin/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/atan/length**
+ES5 property helpers inspect `Math.atan.length`; `not_es3`.
+
+- **built-ins/Math/atan/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/atan2/length**
+ES5 property helpers inspect `Math.atan2.length`; `not_es3`.
+
+- **built-ins/Math/atan2/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/ceil/length**
+ES5 property helpers inspect `Math.ceil.length`; `not_es3`.
+
+- **built-ins/Math/ceil/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/cos/length**
+ES5 property helpers inspect `Math.cos.length`; `not_es3`.
+
+- **built-ins/Math/cos/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/exp/length**
+ES5 property helpers inspect `Math.exp.length`; `not_es3`.
+
+- **built-ins/Math/exp/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/floor/length**
+ES5 property helpers inspect `Math.floor.length`; `not_es3`.
+
+- **built-ins/Math/floor/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/log/length**
+ES5 property helpers inspect `Math.log.length`; `not_es3`.
+
+- **built-ins/Math/log/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/max/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/min/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/pow/applying-the-exp-operator_A7**
+ES3 specifies `Math.pow(±1, +Infinity)` is NaN; NuXJS returns a finite value.
+
+- **built-ins/Math/pow/applying-the-exp-operator_A8**
+ES3 specifies `Math.pow(±1, -Infinity)` is NaN; NuXJS returns a finite value.
+
+- **built-ins/Math/pow/length**
+ES5 helpers check `Math.pow.length` attributes; `not_es3`.
+
+- **built-ins/Math/pow/math.pow**
+Property descriptor tests for `Math.pow` require ES5; `not_es3`.
+
+- **built-ins/Math/pow/name**
+Function `name` property added in ES6; `not_es3`.
+
+- **built-ins/Math/random/length**
+ES5 helpers check `Math.random.length` attributes; `not_es3`.
+
+- **built-ins/Math/random/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/round/S15.8.2.15_A7**
+Uses ES6 `Number.EPSILON`; `not_es3`.
+
+- **built-ins/Math/round/length**
+ES5 helpers check `Math.round.length` attributes; `not_es3`.
+
+- **built-ins/Math/round/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/sin/length**
+ES5 property helpers inspect `Math.sin.length`; `not_es3`.
+
+- **built-ins/Math/sin/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/sqrt/length**
+ES5 property helpers inspect `Math.sqrt.length`; `not_es3`.
+
+- **built-ins/Math/sqrt/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/Math/tan/length**
+ES5 property helpers inspect `Math.tan.length`; `not_es3`.
+
+- **built-ins/Math/tan/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/NaN/15.1.1.1-0**
+Uses `Object.getOwnPropertyDescriptor` on global `NaN`; `not_es3`.
+
+- **built-ins/NaN/S15.1.1.1_A2_T1**
+ES5 helper verifies `NaN` is read-only; `not_es3`.
+
+- **built-ins/NaN/S15.1.1.1_A2_T2**
+Global `NaN` should be read-only in ES3, but NuXJS allows reassignment.
+
+- **built-ins/NaN/S15.1.1.1_A3_T1**
+Uses ES5 helper to confirm `NaN` is non-deletable; `not_es3`.
+
+- **built-ins/NativeErrors/message_property_native_error**
+Relies on ES5 property descriptors for `message`; `not_es3`.
+
+- **built-ins/NativeErrors/EvalError/length**
+ES5 helpers inspect constructor `length` property; `not_es3`.
+
+- **built-ins/NativeErrors/EvalError/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/NativeErrors/EvalError/proto**
+Uses `Object.getPrototypeOf` to inspect prototype chain; `not_es3`.
+
+- **built-ins/NativeErrors/EvalError/prototype**
+ES5 helpers inspect prototype property attributes; `not_es3`.
+
+- **built-ins/NativeErrors/EvalError/prototype/constructor**
+ES5 helpers check `constructor` property attributes; `not_es3`.
+
+- **built-ins/NativeErrors/EvalError/prototype/message**
+ES5 helpers inspect `message` property; `not_es3`.
+
+- **built-ins/NativeErrors/EvalError/prototype/name**
+ES5 helpers inspect `name` property; `not_es3`.
+
+- **built-ins/NativeErrors/RangeError/length**
+ES5 helpers inspect constructor `length` property; `not_es3`.
+
+- **built-ins/NativeErrors/RangeError/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/NativeErrors/RangeError/prototype**
+ES5 helpers inspect prototype property attributes; `not_es3`.
+
+- **built-ins/NativeErrors/RangeError/prototype/constructor**
+ES5 helpers check `constructor` property attributes; `not_es3`.
+
+- **built-ins/NativeErrors/RangeError/prototype/message**
+ES5 helpers inspect `message` property; `not_es3`.
+
+- **built-ins/NativeErrors/RangeError/prototype/name**
+ES5 helpers inspect `name` property; `not_es3`.
+
+- **built-ins/NativeErrors/ReferenceError/length**
+ES5 helpers inspect constructor `length` property; `not_es3`.
+
+- **built-ins/NativeErrors/ReferenceError/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/NativeErrors/ReferenceError/prototype**
+ES5 helpers inspect prototype property attributes; `not_es3`.
+
+- **built-ins/NativeErrors/ReferenceError/prototype/constructor**
+ES5 helpers check `constructor` property attributes; `not_es3`.
+
+- **built-ins/NativeErrors/ReferenceError/prototype/message**
+ES5 helpers inspect `message` property; `not_es3`.
+
+- **built-ins/NativeErrors/ReferenceError/prototype/name**
+ES5 helpers inspect `name` property; `not_es3`.
+
+- **built-ins/NativeErrors/SyntaxError/length**
+ES5 helpers inspect constructor `length` property; `not_es3`.
+
+- **built-ins/NativeErrors/SyntaxError/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/NativeErrors/SyntaxError/prototype**
+ES5 helpers inspect prototype property attributes; `not_es3`.
+
+- **built-ins/NativeErrors/SyntaxError/prototype/constructor**
+ES5 helpers check `constructor` property attributes; `not_es3`.
+
+- **built-ins/NativeErrors/SyntaxError/prototype/message**
+ES5 helpers inspect `message` property; `not_es3`.
+
+- **built-ins/NativeErrors/SyntaxError/prototype/name**
+ES5 helpers inspect `name` property; `not_es3`.
+
+- **built-ins/NativeErrors/TypeError/length**
+ES5 helpers inspect constructor `length` property; `not_es3`.
+
+- **built-ins/NativeErrors/TypeError/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/NativeErrors/TypeError/prototype**
+ES5 helpers inspect prototype property attributes; `not_es3`.
+
+- **built-ins/NativeErrors/TypeError/prototype/constructor**
+ES5 helpers check `constructor` property attributes; `not_es3`.
+
+- **built-ins/NativeErrors/TypeError/prototype/message**
+ES5 helpers inspect `message` property; `not_es3`.
+
+- **built-ins/NativeErrors/TypeError/prototype/name**
+ES5 helpers inspect `name` property; `not_es3`.
+
+- **built-ins/NativeErrors/URIError/length**
+ES5 helpers inspect constructor `length` property; `not_es3`.
+
+- **built-ins/NativeErrors/URIError/name**
+Function `name` property introduced after ES3; `not_es3`.
+
+- **built-ins/NativeErrors/URIError/prototype**
+ES5 helpers inspect prototype property attributes; `not_es3`.
+
+- **built-ins/NativeErrors/URIError/prototype/constructor**
+ES5 helpers check `constructor` property attributes; `not_es3`.
+
+- **built-ins/NativeErrors/URIError/prototype/message**
+ES5 helpers inspect `message` property; `not_es3`.
+
+- **built-ins/NativeErrors/URIError/prototype/name**
+ES5 helpers inspect `name` property; `not_es3`.
+
+- **built-ins/Number/S9.3.1_A2**
+Whitespace-only strings should convert to +0 in ES3, but NuXJS returns a different value.
+
+- **built-ins/Number/S9.3.1_A3_T1**
+ES3 requires trimming whitespace around numeric literals; static string case fails.
+
+- **built-ins/Number/S9.3.1_A3_T2**
+ES3 requires trimming whitespace around numeric literals; dynamic string case fails.
+Progress: 397/755 tests reviewed.
 

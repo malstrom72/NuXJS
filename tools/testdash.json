@@ -26744,16 +26744,10 @@
     "built-ins/Date/prototype/setUTCHours/S15.9.5.35_A3_T2": {
         "category": "not_es3"
     },
-    "built-ins/Date/prototype/setUTCHours/name": {
-        "category": "not_es3"
-    },
     "built-ins/Date/prototype/setUTCMilliseconds/S15.9.5.29_A3_T1": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/setUTCMilliseconds/S15.9.5.29_A3_T2": {
-        "category": "not_es3"
-    },
-    "built-ins/Date/prototype/setUTCMilliseconds/name": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/setUTCMinutes/S15.9.5.33_A3_T1": {
@@ -26762,16 +26756,10 @@
     "built-ins/Date/prototype/setUTCMinutes/S15.9.5.33_A3_T2": {
         "category": "not_es3"
     },
-    "built-ins/Date/prototype/setUTCMinutes/name": {
-        "category": "not_es3"
-    },
     "built-ins/Date/prototype/setUTCMonth/S15.9.5.39_A3_T1": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/setUTCMonth/S15.9.5.39_A3_T2": {
-        "category": "not_es3"
-    },
-    "built-ins/Date/prototype/setUTCMonth/name": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/setUTCSeconds/S15.9.5.31_A3_T1": {
@@ -26780,16 +26768,10 @@
     "built-ins/Date/prototype/setUTCSeconds/S15.9.5.31_A3_T2": {
         "category": "not_es3"
     },
-    "built-ins/Date/prototype/setUTCSeconds/name": {
-        "category": "not_es3"
-    },
     "built-ins/Date/prototype/toDateString/S15.9.5.3_A3_T1": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/toDateString/S15.9.5.3_A3_T2": {
-        "category": "not_es3"
-    },
-    "built-ins/Date/prototype/toDateString/name": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/toLocaleDateString/S15.9.5.6_A3_T1": {
@@ -26798,16 +26780,10 @@
     "built-ins/Date/prototype/toLocaleDateString/S15.9.5.6_A3_T2": {
         "category": "not_es3"
     },
-    "built-ins/Date/prototype/toLocaleDateString/name": {
-        "category": "not_es3"
-    },
     "built-ins/Date/prototype/toLocaleString/S15.9.5.5_A3_T1": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/toLocaleString/S15.9.5.5_A3_T2": {
-        "category": "not_es3"
-    },
-    "built-ins/Date/prototype/toLocaleString/name": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/toLocaleTimeString/S15.9.5.7_A3_T1": {
@@ -26816,16 +26792,10 @@
     "built-ins/Date/prototype/toLocaleTimeString/S15.9.5.7_A3_T2": {
         "category": "not_es3"
     },
-    "built-ins/Date/prototype/toLocaleTimeString/name": {
-        "category": "not_es3"
-    },
     "built-ins/Date/prototype/toString/S15.9.5.2_A3_T1": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/toString/S15.9.5.2_A3_T2": {
-        "category": "not_es3"
-    },
-    "built-ins/Date/prototype/toString/name": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/toTimeString/S15.9.5.4_A3_T1": {
@@ -26834,25 +26804,16 @@
     "built-ins/Date/prototype/toTimeString/S15.9.5.4_A3_T2": {
         "category": "not_es3"
     },
-    "built-ins/Date/prototype/toTimeString/name": {
-        "category": "not_es3"
-    },
     "built-ins/Date/prototype/toUTCString/S15.9.5.42_A3_T1": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/toUTCString/S15.9.5.42_A3_T2": {
         "category": "not_es3"
     },
-    "built-ins/Date/prototype/toUTCString/name": {
-        "category": "not_es3"
-    },
     "built-ins/Date/prototype/valueOf/S15.9.5.8_A3_T1": {
         "category": "not_es3"
     },
     "built-ins/Date/prototype/valueOf/S15.9.5.8_A3_T2": {
-        "category": "not_es3"
-    },
-    "built-ins/Date/prototype/valueOf/name": {
         "category": "not_es3"
     },
     "built-ins/Error/message_property": {
@@ -26865,9 +26826,6 @@
         "category": "not_es3"
     },
     "built-ins/Error/prototype/toString/length": {
-        "category": "not_es3"
-    },
-    "built-ins/Error/prototype/toString/name": {
         "category": "not_es3"
     },
     "built-ins/Function/15.3.2.1-11-1-s": {
@@ -26885,12 +26843,6 @@
     "built-ins/Function/15.3.5.4_2-51gs": {
         "category": "not_es3"
     },
-    "built-ins/Function/15.3.5.4_2-53gs": {
-        "category": "not_es3"
-    },
-    "built-ins/Function/15.3.5.4_2-55gs": {
-        "category": "not_es3"
-    },
     "built-ins/Function/15.3.5.4_2-89gs": {
         "category": "not_es3"
     },
@@ -26906,16 +26858,7 @@
     "built-ins/Function/15.3.5.4_2-93gs": {
         "category": "not_es3"
     },
-    "built-ins/Function/15.3.5.4_2-96gs": {
-        "category": "not_es3"
-    },
     "built-ins/Function/15.3.5.4_2-97gs": {
-        "category": "not_es3"
-    },
-    "built-ins/Function/instance-name": {
-        "category": "not_es3"
-    },
-    "built-ins/Function/length/15.3.3.2-1": {
         "category": "not_es3"
     },
     "built-ins/Function/length/S15.3.5.1_A2_T1": {
@@ -26940,9 +26883,6 @@
         "category": "not_es3"
     },
     "built-ins/Function/prototype/S15.3.3.1_A3": {
-        "category": "not_es3"
-    },
-    "built-ins/Function/prototype/S15.3.3.1_A4": {
         "category": "not_es3"
     },
     "built-ins/Function/prototype/S15.3.5.2_A1_T1": {
@@ -26981,13 +26921,265 @@
     "built-ins/Function/prototype/toString/name": {
         "category": "not_es3"
     },
-    "built-ins/Infinity/15.1.1.2-0": {
-        "category": "not_es3"
-    },
     "built-ins/Infinity/S15.1.1.2_A2_T1": {
         "category": "not_es3"
     },
     "built-ins/Infinity/S15.1.1.2_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/E/S15.8.1.1_A3": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/E/S15.8.1.1_A4": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/LN10/S15.8.1.2_A3": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/LN10/S15.8.1.2_A4": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/LN2/S15.8.1.3_A3": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/LN2/S15.8.1.3_A4": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/LOG10E/S15.8.1.5_A3": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/LOG10E/S15.8.1.5_A4": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/LOG2E/S15.8.1.4_A3": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/LOG2E/S15.8.1.4_A4": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/PI/S15.8.1.6_A3": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/PI/S15.8.1.6_A4": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/SQRT1_2/S15.8.1.7_A3": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/SQRT1_2/S15.8.1.7_A4": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/SQRT2/S15.8.1.8_A3": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/SQRT2/S15.8.1.8_A4": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/abs/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/abs/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/acos/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/acos/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/asin/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/asin/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/atan/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/atan/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/atan2/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/atan2/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/ceil/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/ceil/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/cos/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/cos/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/exp/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/exp/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/floor/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/floor/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/log/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/log/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/max/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/min/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/pow/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/pow/math.pow": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/pow/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/random/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/random/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/round/S15.8.2.15_A7": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/round/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/round/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/sin/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/sin/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/sqrt/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/sqrt/name": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/tan/length": {
+        "category": "not_es3"
+    },
+    "built-ins/Math/tan/name": {
+        "category": "not_es3"
+    },
+    "built-ins/NaN/S15.1.1.1_A2_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/NaN/S15.1.1.1_A3_T1": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/message_property_native_error": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/EvalError/length": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/EvalError/name": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/EvalError/prototype/constructor": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/EvalError/prototype/message": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/EvalError/prototype/name": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/RangeError/length": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/RangeError/name": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/RangeError/prototype/constructor": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/RangeError/prototype/message": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/RangeError/prototype/name": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/ReferenceError/length": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/ReferenceError/name": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/ReferenceError/prototype/constructor": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/ReferenceError/prototype/message": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/ReferenceError/prototype/name": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/SyntaxError/length": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/SyntaxError/name": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/SyntaxError/prototype/constructor": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/SyntaxError/prototype/message": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/SyntaxError/prototype/name": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/TypeError/length": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/TypeError/name": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/TypeError/prototype/constructor": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/TypeError/prototype/message": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/TypeError/prototype/name": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/URIError/length": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/URIError/name": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/URIError/prototype/constructor": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/URIError/prototype/message": {
+        "category": "not_es3"
+    },
+    "built-ins/NativeErrors/URIError/prototype/name": {
         "category": "not_es3"
     }
 }
