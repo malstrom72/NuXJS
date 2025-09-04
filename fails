@@ -1,303 +1,986 @@
-FAIL built-ins/Array/S15.4.3_A2.3
-FAIL built-ins/Array/S15.4.5.1_A2.1_T1
-FAIL built-ins/Array/S15.4_A1.1_T1
-FAIL built-ins/Array/prototype/S15.4.3.1_A3
-FAIL built-ins/Array/prototype/S15.4.3.1_A4
-FAIL built-ins/Array/prototype/concat/S15.4.4.4_A4.3
-FAIL built-ins/Array/prototype/join/S15.4.4.5_A6.3
-FAIL built-ins/Array/prototype/pop/S15.4.4.6_A2_T2
-FAIL built-ins/Array/prototype/pop/S15.4.4.6_A4_T2
-FAIL built-ins/Array/prototype/push/S15.4.4.7_A2_T2
-FAIL built-ins/Array/prototype/shift/S15.4.4.9_A3_T3
-FAIL built-ins/Array/prototype/shift/S15.4.4.9_A4_T2
-FAIL built-ins/Array/prototype/sort/S15.4.4.11_A7.2
-FAIL built-ins/Array/prototype/toLocaleString/S15.4.4.3_A1_T1
-FAIL built-ins/Array/prototype/toLocaleString/S15.4.4.3_A3_T1
-FAIL built-ins/Array/prototype/toLocaleString/S15.4.4.3_A4.2
-FAIL built-ins/Array/prototype/toString/S15.4.4.2_A4.2
-FAIL built-ins/Date/S15.9.3.1_A6_T1
-FAIL built-ins/Date/S15.9.3.1_A6_T2
-FAIL built-ins/Date/S15.9.3.1_A6_T3
-FAIL built-ins/Date/S15.9.3.1_A6_T4
-FAIL built-ins/Date/S15.9.3.1_A6_T5
-FAIL built-ins/Date/TimeClip_negative_zero
-FAIL built-ins/Date/prototype/setFullYear/15.9.5.40_1
-FAIL built-ins/Error/S15.11.1.1_A1_T1
-FAIL built-ins/Error/S15.11.2.1_A1_T1
-FAIL built-ins/Error/prototype/S15.11.4_A2
-FAIL built-ins/Error/prototype/name/15.11.4.2-1
-FAIL built-ins/Error/prototype/toString/15.11.4.4-8-1
-FAIL built-ins/Function/prototype/S15.3.4_A5
-FAIL built-ins/Infinity/S15.1.1.2_A2_T2
-FAIL built-ins/Math/pow/applying-the-exp-operator_A7
-FAIL built-ins/Math/pow/applying-the-exp-operator_A8
-FAIL built-ins/NaN/S15.1.1.1_A2_T2
-FAIL built-ins/Number/S9.3.1_A2
-FAIL built-ins/Number/S9.3.1_A3_T1
-FAIL built-ins/Number/S9.3.1_A3_T2
-FAIL built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A12
-FAIL built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A13
-FAIL built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A12
-FAIL built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A13
-FAIL built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A12
-FAIL built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A13
-FAIL built-ins/Object/prototype/toLocaleString/S15.2.4.3_A12
-FAIL built-ins/Object/prototype/toLocaleString/S15.2.4.3_A13
-FAIL built-ins/Object/prototype/toString/15.2.4.2-1-1
-FAIL built-ins/Object/prototype/toString/15.2.4.2-1-2
-FAIL built-ins/Object/prototype/toString/15.2.4.2-2-1
-FAIL built-ins/Object/prototype/toString/15.2.4.2-2-2
-FAIL built-ins/Object/prototype/valueOf/S15.2.4.4_A12
-FAIL built-ins/Object/prototype/valueOf/S15.2.4.4_A13
-FAIL built-ins/Object/prototype/valueOf/S15.2.4.4_A14
-FAIL built-ins/Object/prototype/valueOf/S15.2.4.4_A15
-FAIL built-ins/RegExp/S15.10.2.12_A1_T1
-FAIL built-ins/RegExp/S15.10.2.12_A2_T1
-FAIL built-ins/RegExp/S15.10.2.8_A3_T15
-FAIL built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T10
-FAIL built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T11
-FAIL built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T12
-FAIL built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T13
-FAIL built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T14
-FAIL built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T15
-FAIL built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T17
-FAIL built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T18
-FAIL built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T19
-FAIL built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T2
-FAIL built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T20
-FAIL built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T21
-FAIL built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T3
-FAIL built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T4
-FAIL built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T5
-FAIL built-ins/String/fromCharCode/name
-FAIL built-ins/String/prototype/S15.5.3.1_A3
-FAIL built-ins/String/prototype/S15.5.3.1_A4
-FAIL built-ins/String/prototype/charAt/S15.5.4.4_A10
-FAIL built-ins/String/prototype/charAt/S15.5.4.4_A9
-FAIL built-ins/String/prototype/charAt/name
-FAIL built-ins/String/prototype/charCodeAt/S15.5.4.5_A10
-FAIL built-ins/String/prototype/charCodeAt/S15.5.4.5_A9
-FAIL built-ins/String/prototype/charCodeAt/name
-FAIL built-ins/String/prototype/concat/S15.5.4.6_A10
-FAIL built-ins/String/prototype/concat/S15.5.4.6_A9
-FAIL built-ins/String/prototype/concat/name
-FAIL built-ins/String/prototype/indexOf/S15.5.4.7_A10
-FAIL built-ins/String/prototype/indexOf/S15.5.4.7_A1_T11
-FAIL built-ins/String/prototype/indexOf/S15.5.4.7_A9
-FAIL built-ins/String/prototype/indexOf/name
-FAIL built-ins/String/prototype/lastIndexOf/S15.5.4.8_A10
-FAIL built-ins/String/prototype/lastIndexOf/S15.5.4.8_A9
-FAIL built-ins/String/prototype/lastIndexOf/name
-FAIL built-ins/String/prototype/localeCompare/S15.5.4.9_A10
-FAIL built-ins/String/prototype/localeCompare/S15.5.4.9_A9
-FAIL built-ins/String/prototype/localeCompare/name
-FAIL built-ins/String/prototype/match/S15.5.4.10_A1_T3
-FAIL built-ins/String/prototype/match/S15.5.4.10_A9
-FAIL built-ins/String/prototype/match/length
-FAIL built-ins/String/prototype/match/name
-FAIL built-ins/String/prototype/replace/S15.5.4.11_A10
-FAIL built-ins/String/prototype/replace/S15.5.4.11_A12
-FAIL built-ins/String/prototype/replace/S15.5.4.11_A1_T11
-FAIL built-ins/String/prototype/replace/S15.5.4.11_A1_T12
-FAIL built-ins/String/prototype/replace/S15.5.4.11_A3_T1
-FAIL built-ins/String/prototype/replace/S15.5.4.11_A3_T2
-FAIL built-ins/String/prototype/replace/S15.5.4.11_A3_T3
-FAIL built-ins/String/prototype/replace/S15.5.4.11_A5_T1
-FAIL built-ins/String/prototype/replace/S15.5.4.11_A9
-FAIL built-ins/String/prototype/replace/name
-FAIL built-ins/String/prototype/search/S15.5.4.12_A10
-FAIL built-ins/String/prototype/search/S15.5.4.12_A9
-FAIL built-ins/String/prototype/search/name
-FAIL built-ins/String/prototype/slice/S15.5.4.13_A10
-FAIL built-ins/String/prototype/slice/S15.5.4.13_A9
-FAIL built-ins/String/prototype/slice/name
-FAIL built-ins/String/prototype/split/S15.5.4.14_A10
-FAIL built-ins/String/prototype/split/S15.5.4.14_A1_T3
-FAIL built-ins/String/prototype/split/S15.5.4.14_A9
-FAIL built-ins/String/prototype/split/name
-FAIL built-ins/String/prototype/substring/S15.5.4.15_A10
-FAIL built-ins/String/prototype/substring/S15.5.4.15_A9
-FAIL built-ins/String/prototype/substring/name
-FAIL built-ins/String/prototype/toLocaleLowerCase/S15.5.4.17_A10
-FAIL built-ins/String/prototype/toLocaleLowerCase/S15.5.4.17_A9
-FAIL built-ins/String/prototype/toLocaleLowerCase/name
-FAIL built-ins/String/prototype/toLocaleLowerCase/special_casing_conditional
-FAIL built-ins/String/prototype/toLocaleLowerCase/supplementary_plane
-FAIL built-ins/String/prototype/toLocaleUpperCase/S15.5.4.19_A10
-FAIL built-ins/String/prototype/toLocaleUpperCase/S15.5.4.19_A9
-FAIL built-ins/String/prototype/toLocaleUpperCase/name
-FAIL built-ins/String/prototype/toLocaleUpperCase/special_casing
-FAIL built-ins/String/prototype/toLocaleUpperCase/supplementary_plane
-FAIL built-ins/String/prototype/toLowerCase/S15.5.4.16_A10
-FAIL built-ins/String/prototype/toLowerCase/S15.5.4.16_A9
-FAIL built-ins/String/prototype/toLowerCase/name
-FAIL built-ins/String/prototype/toLowerCase/special_casing
-FAIL built-ins/String/prototype/toLowerCase/special_casing_conditional
-FAIL built-ins/String/prototype/toLowerCase/supplementary_plane
-FAIL built-ins/String/prototype/toString/name
-FAIL built-ins/String/prototype/toUpperCase/S15.5.4.18_A10
-FAIL built-ins/String/prototype/toUpperCase/S15.5.4.18_A9
-FAIL built-ins/String/prototype/toUpperCase/name
-FAIL built-ins/String/prototype/toUpperCase/special_casing
-FAIL built-ins/String/prototype/toUpperCase/supplementary_plane
-FAIL built-ins/String/prototype/valueOf/length
-FAIL built-ins/String/prototype/valueOf/name
-FAIL built-ins/decodeURI/S15.1.3.1_A1.10_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A1.11_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A1.11_T2
-FAIL built-ins/decodeURI/S15.1.3.1_A1.12_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A1.12_T2
-FAIL built-ins/decodeURI/S15.1.3.1_A1.12_T3
-FAIL built-ins/decodeURI/S15.1.3.1_A1.13_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A1.13_T2
-FAIL built-ins/decodeURI/S15.1.3.1_A1.14_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A1.14_T2
-FAIL built-ins/decodeURI/S15.1.3.1_A1.14_T3
-FAIL built-ins/decodeURI/S15.1.3.1_A1.14_T4
-FAIL built-ins/decodeURI/S15.1.3.1_A1.15_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A1.15_T2
-FAIL built-ins/decodeURI/S15.1.3.1_A1.15_T3
-FAIL built-ins/decodeURI/S15.1.3.1_A1.15_T4
-FAIL built-ins/decodeURI/S15.1.3.1_A1.15_T5
-FAIL built-ins/decodeURI/S15.1.3.1_A1.15_T6
-FAIL built-ins/decodeURI/S15.1.3.1_A1.1_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A1.2_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A1.2_T2
-FAIL built-ins/decodeURI/S15.1.3.1_A1.3_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A1.3_T2
-FAIL built-ins/decodeURI/S15.1.3.1_A1.4_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A1.5_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A1.6_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A1.7_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A1.8_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A1.8_T2
-FAIL built-ins/decodeURI/S15.1.3.1_A1.9_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A1.9_T2
-FAIL built-ins/decodeURI/S15.1.3.1_A1.9_T3
-FAIL built-ins/decodeURI/S15.1.3.1_A2.1_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A2.2_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A2.3_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A2.4_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A2.5_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A4_T1
-FAIL built-ins/decodeURI/S15.1.3.1_A4_T2
-FAIL built-ins/decodeURI/S15.1.3.1_A4_T3
-FAIL built-ins/decodeURI/S15.1.3.1_A4_T4
-FAIL built-ins/decodeURI/S15.1.3.1_A5.1
-FAIL built-ins/decodeURI/S15.1.3.1_A5.2
-FAIL built-ins/decodeURI/S15.1.3.1_A5.3
-FAIL built-ins/decodeURI/S15.1.3.1_A5.4
-FAIL built-ins/decodeURI/S15.1.3.1_A5.6
-FAIL built-ins/decodeURI/S15.1.3.1_A5.7
-FAIL built-ins/decodeURI/S15.1.3.1_A6_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.10_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.11_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.11_T2
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.12_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.12_T2
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.12_T3
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.13_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.13_T2
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.14_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.14_T2
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.14_T3
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.14_T4
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.15_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.15_T2
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.15_T3
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.15_T4
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.15_T5
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.15_T6
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.1_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.2_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.2_T2
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.3_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.3_T2
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.4_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.5_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.6_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.7_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.8_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.8_T2
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.9_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.9_T2
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A1.9_T3
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A2.1_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A2.2_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A2.3_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A2.4_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A2.5_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A4_T1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A4_T2
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A4_T3
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A4_T4
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A5.1
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A5.2
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A5.3
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A5.4
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A5.6
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A5.7
-FAIL built-ins/decodeURIComponent/S15.1.3.2_A6_T1
-FAIL built-ins/encodeURI/S15.1.3.3_A1.1_T1
-FAIL built-ins/encodeURI/S15.1.3.3_A1.1_T2
-FAIL built-ins/encodeURI/S15.1.3.3_A1.2_T1
-FAIL built-ins/encodeURI/S15.1.3.3_A1.2_T2
-FAIL built-ins/encodeURI/S15.1.3.3_A1.3_T1
-FAIL built-ins/encodeURI/S15.1.3.3_A2.1_T1
-FAIL built-ins/encodeURI/S15.1.3.3_A2.2_T1
-FAIL built-ins/encodeURI/S15.1.3.3_A2.3_T1
-FAIL built-ins/encodeURI/S15.1.3.3_A2.4_T1
-FAIL built-ins/encodeURI/S15.1.3.3_A2.4_T2
-FAIL built-ins/encodeURI/S15.1.3.3_A2.5_T1
-FAIL built-ins/encodeURI/S15.1.3.3_A4_T1
-FAIL built-ins/encodeURI/S15.1.3.3_A4_T2
-FAIL built-ins/encodeURI/S15.1.3.3_A4_T3
-FAIL built-ins/encodeURI/S15.1.3.3_A4_T4
-FAIL built-ins/encodeURI/S15.1.3.3_A5.1
-FAIL built-ins/encodeURI/S15.1.3.3_A5.2
-FAIL built-ins/encodeURI/S15.1.3.3_A5.3
-FAIL built-ins/encodeURI/S15.1.3.3_A5.4
-FAIL built-ins/encodeURI/S15.1.3.3_A5.6
-FAIL built-ins/encodeURI/S15.1.3.3_A5.7
-FAIL built-ins/encodeURI/S15.1.3.3_A6_T1
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A1.1_T1
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A1.1_T2
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A1.2_T1
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A1.2_T2
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A1.3_T1
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A2.1_T1
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A2.2_T1
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A2.3_T1
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A2.4_T1
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A2.4_T2
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A2.5_T1
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A4_T1
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A4_T2
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A4_T3
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A4_T4
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A5.1
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A5.2
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A5.3
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A5.4
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A5.6
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A5.7
-FAIL built-ins/encodeURIComponent/S15.1.3.4_A6_T1
-FAIL built-ins/eval/S15.1.2.1_A4.2
-FAIL built-ins/eval/S15.1.2.1_A4.3
-FAIL built-ins/global/S10.2.3_A1.1_T2
-FAIL built-ins/global/S10.2.3_A1.2_T2
-FAIL built-ins/global/S10.2.3_A1.3_T2
-FAIL built-ins/isFinite/S15.1.2.5_A2.2
-FAIL built-ins/isFinite/S15.1.2.5_A2.3
-FAIL built-ins/isNaN/S15.1.2.4_A2.2
-FAIL built-ins/isNaN/S15.1.2.4_A2.3
-FAIL built-ins/parseFloat/S15.1.2.3_A2_T10
-FAIL built-ins/parseFloat/S15.1.2.3_A7.2
-FAIL built-ins/parseFloat/S15.1.2.3_A7.3
-FAIL built-ins/parseInt/S15.1.2.2_A2_T10
-FAIL built-ins/parseInt/S15.1.2.2_A5.2_T2
-FAIL built-ins/parseInt/S15.1.2.2_A7.2_T3
-FAIL built-ins/parseInt/S15.1.2.2_A9.2
-FAIL built-ins/parseInt/S15.1.2.2_A9.3
-FAIL built-ins/undefined/15.1.1.3-1
-FAIL built-ins/undefined/S15.1.1.3_A3_T1
+built-ins/Array/S15.4.3_A2.3
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/Array/S15.4.5.1_A2.1_T1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Array/S15.4_A1.1_T1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Array/prototype/S15.4.3.1_A3
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/Array/prototype/S15.4.3.1_A4
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/Array/prototype/concat/S15.4.4.4_A4.3
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/Array/prototype/join/S15.4.4.5_A6.3
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/Array/prototype/pop/S15.4.4.6_A2_T2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Array/prototype/pop/S15.4.4.6_A4_T2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Array/prototype/push/S15.4.4.7_A2_T2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Array/prototype/shift/S15.4.4.9_A3_T3
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Array/prototype/shift/S15.4.4.9_A4_T2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Array/prototype/sort/S15.4.4.11_A7.2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Array/prototype/toLocaleString/S15.4.4.3_A1_T1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Array/prototype/toLocaleString/S15.4.4.3_A3_T1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Array/prototype/toLocaleString/S15.4.4.3_A4.2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Array/prototype/toString/S15.4.4.2_A4.2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Date/S15.9.3.1_A6_T1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Date/S15.9.3.1_A6_T2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Date/S15.9.3.1_A6_T3
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Date/S15.9.3.1_A6_T4
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Date/S15.9.3.1_A6_T5
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Date/TimeClip_negative_zero
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Date/prototype/setFullYear/15.9.5.40_1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Error/S15.11.1.1_A1_T1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Error/S15.11.2.1_A1_T1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Error/prototype/S15.11.4_A2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Error/prototype/name/15.11.4.2-1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Error/prototype/toString/15.11.4.4-8-1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Function/prototype/S15.3.4_A5
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Infinity/S15.1.1.2_A2_T2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Math/pow/applying-the-exp-operator_A7
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Math/pow/applying-the-exp-operator_A8
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/NaN/S15.1.1.1_A2_T2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Number/S9.3.1_A2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Number/S9.3.1_A3_T1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Number/S9.3.1_A3_T2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A12
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A13
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A12
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A13
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A12
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A13
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/toLocaleString/S15.2.4.3_A12
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/toLocaleString/S15.2.4.3_A13
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/toString/15.2.4.2-1-1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/toString/15.2.4.2-1-2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/toString/15.2.4.2-2-1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/toString/15.2.4.2-2-2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/valueOf/S15.2.4.4_A12
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/valueOf/S15.2.4.4_A13
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/valueOf/S15.2.4.4_A14
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/Object/prototype/valueOf/S15.2.4.4_A15
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/S15.10.2.12_A1_T1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/S15.10.2.12_A2_T1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/S15.10.2.8_A3_T15
+source
+--- output ---
+--- output --- 
+ !!!! RangeError: Internal compiler limitations reached. Reduce code complexity.
+
+built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T10
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T11
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T12
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T13
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T14
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T15
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T17
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T18
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T19
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T20
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T21
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T3
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T4
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T5
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/fromCharCode/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/S15.5.3.1_A3
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/S15.5.3.1_A4
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/charAt/S15.5.4.4_A10
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/charAt/S15.5.4.4_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/charAt/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/charCodeAt/S15.5.4.5_A10
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/charCodeAt/S15.5.4.5_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/charCodeAt/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/concat/S15.5.4.6_A10
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/concat/S15.5.4.6_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/concat/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/indexOf/S15.5.4.7_A10
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/indexOf/S15.5.4.7_A1_T11
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/indexOf/S15.5.4.7_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/indexOf/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/lastIndexOf/S15.5.4.8_A10
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/lastIndexOf/S15.5.4.8_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/lastIndexOf/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/localeCompare/S15.5.4.9_A10
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/localeCompare/S15.5.4.9_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/localeCompare/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/match/S15.5.4.10_A1_T3
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: bind is not a function
+
+built-ins/String/prototype/match/S15.5.4.10_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/match/length
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/match/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/replace/S15.5.4.11_A10
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/replace/S15.5.4.11_A12
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/replace/S15.5.4.11_A1_T11
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/replace/S15.5.4.11_A1_T12
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/replace/S15.5.4.11_A3_T1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/replace/S15.5.4.11_A3_T2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/replace/S15.5.4.11_A3_T3
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/replace/S15.5.4.11_A5_T1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/replace/S15.5.4.11_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/replace/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/search/S15.5.4.12_A10
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/search/S15.5.4.12_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/search/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/slice/S15.5.4.13_A10
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/slice/S15.5.4.13_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/slice/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/split/S15.5.4.14_A10
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/split/S15.5.4.14_A1_T3
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: bind is not a function
+
+built-ins/String/prototype/split/S15.5.4.14_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/split/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/substring/S15.5.4.15_A10
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/substring/S15.5.4.15_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/substring/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/toLocaleLowerCase/S15.5.4.17_A10
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/toLocaleLowerCase/S15.5.4.17_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/toLocaleLowerCase/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/toLocaleLowerCase/special_casing_conditional
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/toLocaleLowerCase/supplementary_plane
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/toLocaleUpperCase/S15.5.4.19_A10
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/toLocaleUpperCase/S15.5.4.19_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/toLocaleUpperCase/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/toLocaleUpperCase/special_casing
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/toLocaleUpperCase/supplementary_plane
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/toLowerCase/S15.5.4.16_A10
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/toLowerCase/S15.5.4.16_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/toLowerCase/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/toLowerCase/special_casing
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/toLowerCase/special_casing_conditional
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/toLowerCase/supplementary_plane
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/toString/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/toUpperCase/S15.5.4.18_A10
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/toUpperCase/S15.5.4.18_A9
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/toUpperCase/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/toUpperCase/special_casing
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/toUpperCase/supplementary_plane
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/valueOf/length
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/String/prototype/valueOf/name
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/eval/S15.1.2.1_A4.2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/eval/S15.1.2.1_A4.3
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/global/S10.2.3_A1.1_T2
+source
+--- output ---
+--- output --- 
+ !!!! ReferenceError: decodeURI is not defined
+
+built-ins/global/S10.2.3_A1.2_T2
+source
+--- output ---
+--- output --- 
+ !!!! ReferenceError: decodeURI is not defined
+
+built-ins/global/S10.2.3_A1.3_T2
+source
+--- output ---
+--- output --- 
+ !!!! ReferenceError: decodeURI is not defined
+
+built-ins/isFinite/S15.1.2.5_A2.2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/isFinite/S15.1.2.5_A2.3
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/isNaN/S15.1.2.4_A2.2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/isNaN/S15.1.2.4_A2.3
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/parseFloat/S15.1.2.3_A2_T10
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/parseFloat/S15.1.2.3_A7.2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/parseFloat/S15.1.2.3_A7.3
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/parseInt/S15.1.2.2_A2_T10
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/parseInt/S15.1.2.2_A5.2_T2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/parseInt/S15.1.2.2_A7.2_T3
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/parseInt/S15.1.2.2_A9.2
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/parseInt/S15.1.2.2_A9.3
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+built-ins/undefined/15.1.1.3-1
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/undefined/S15.1.1.3_A3_T1
+source
+--- output ---
+--- output --- 
+ !!!! TypeError: getOwnPropertyDescriptor is not a function
+
+Total: 15774
+  Passed: 6495
+  Failed: 163
+  Ignored: 9116
+	 ES >3: 8781
+	 TBD: 112
+	 BAD TEST: 41
+	 BY DESIGN: 182
