@@ -1,298 +1,154 @@
 # ES3 Test262 Failures Analysis
+109 Test262 tests that target ECMAScript 3 features still fail in NuXJS. The table summarizes the failing areas:
+| Feature | Spec Clause | Failures |
+| --- | --- | ---:|
+| Array | §15.4 | 12 |
+| Date | §15.9 | 7 |
+| Error | §15.11 | 5 |
+| Function | §15.3 | 1 |
+| Infinity |  | 1 |
+| Math | §15.8 | 2 |
+| NaN |  | 1 |
+| Number | §15.7 | 3 |
+| Object | §15.2 | 16 |
+| RegExp | §15.10 | 18 |
+| String | §15.5 | 33 |
+| eval |  | 1 |
+| isFinite |  | 1 |
+| isNaN |  | 1 |
+| parseFloat |  | 2 |
+| parseInt |  | 4 |
+| undefined |  | 1 |
 
-This report enumerates the remaining 114 Test262 failures that exercise ECMAScript 3 features. Tests for later ECMAScript editions (e.g. Map/Set iterators) are excluded. 140 failing tests for the optional URI encoding helpers (`decodeURI`, `decodeURIComponent`, `encodeURI`, `encodeURIComponent`) are intentionally omitted and listed separately as by design. Each section lists failing tests and explains why their functionality is expected in an ES3-compliant engine.
+Tests that rely on the optional URI helpers (`decodeURI`, `encodeURI`, and their component variants) are excluded: cases targeting these helpers are marked as by_design, while unrelated tests that require them are tagged bad_test.
 
-### Automated classification
+Each list below states the ES3 requirement that the corresponding test checks. NuXJS currently violates these behaviors.
 
-Run `python tools/es3_failure_analyzer.py` to group failures by feature area, flag obvious post-ES3 tests using ripgrep, update `tools/testdash.json`, and produce a progress table with ES3 spec clause references.
+### Array
+- built-ins/Array/S15.4.5.1_A2.1_T1 — P in [4294967295, -1, true]
+- built-ins/Array/S15.4_A1.1_T1 — Checking for boolean primitive
+- built-ins/Array/prototype/pop/S15.4.4.6_A2_T2 — If ToUint32(length) equal zero, call the [[Put]] method  of this object with arguments "length" and 0 and return undefined
+- built-ins/Array/prototype/pop/S15.4.4.6_A4_T2 — [[Prototype]] of Array instance is Array.prototype, [[Prototype] of Array.prototype is Object.prototype
+- built-ins/Array/prototype/push/S15.4.4.7_A2_T2 — The arguments are appended to the end of the array, in  the order in which they appear. The new length of the array is returned  as the result of the call
+- built-ins/Array/prototype/shift/S15.4.4.9_A3_T3 — length is arbitrarily
+- built-ins/Array/prototype/shift/S15.4.4.9_A4_T2 — [[Prototype]] of Array instance is Array.prototype, [[Prototype] of Array.prototype is Object.prototype
+- built-ins/Array/prototype/sort/S15.4.4.11_A7.2 — Checking use hasOwnProperty, delete
+- built-ins/Array/prototype/toLocaleString/S15.4.4.3_A1_T1 — it is the function that should be invoked
+- built-ins/Array/prototype/toLocaleString/S15.4.4.3_A3_T1 — "[[Prototype]] of Array instance is Array.prototype"
+- built-ins/Array/prototype/toLocaleString/S15.4.4.3_A4.2 — Checking use hasOwnProperty, delete
+- built-ins/Array/prototype/toString/S15.4.4.2_A4.2 — Checking use hasOwnProperty, delete
 
-Current summary:
+### Date
+- built-ins/Date/S15.9.3.1_A6_T1 — 2 arguments, (year, month)
+- built-ins/Date/S15.9.3.1_A6_T2 — 3 arguments, (year, month, date)
+- built-ins/Date/S15.9.3.1_A6_T3 — 4 arguments, (year, month, date, hours)
+- built-ins/Date/S15.9.3.1_A6_T4 — 5 arguments, (year, month, date, hours, minutes)
+- built-ins/Date/S15.9.3.1_A6_T5 — 6 arguments, (year, month, date, hours, minutes, seconds)
+- built-ins/Date/TimeClip_negative_zero — TimeClip converts negative zero to positive zero
+- built-ins/Date/prototype/setFullYear/15.9.5.40_1 — Date.prototype.setFullYear - Date.prototype is itself not an instance of Date
 
-| Feature | Spec Clause | Total | non_es3 | Remaining |
-| --- | --- | ---:| ---:| ---:|
-| Array | §15.4 | 12 | 0 | 12 |
-| Date | §15.9 | 7 | 0 | 7 |
-| Error |  | 5 | 0 | 5 |
-| Function |  | 1 | 0 | 1 |
-| Infinity |  | 1 | 0 | 1 |
-| Math | §15.8 | 2 | 0 | 2 |
-| NaN |  | 1 | 0 | 1 |
-| Number | §15.7 | 3 | 0 | 3 |
-| Object | §15.2 | 16 | 0 | 16 |
-| RegExp | §15.10 | 18 | 0 | 18 |
-| String | §15.5 | 35 | 0 | 35 |
-| eval |  | 1 | 0 | 1 |
-| global |  | 3 | 0 | 3 |
-| isFinite |  | 1 | 0 | 1 |
-| isNaN |  | 1 | 0 | 1 |
-| parseFloat |  | 2 | 0 | 2 |
-| parseInt |  | 4 | 0 | 4 |
-| undefined |  | 1 | 0 | 1 |
-Progress: 114/114 tests reviewed.
+### Error
+- built-ins/Error/S15.11.1.1_A1_T1 — Checking message property of different error objects
+- built-ins/Error/S15.11.2.1_A1_T1 — Checking message property of different error objects
+- built-ins/Error/prototype/S15.11.4_A2 — Getting the value of the internal [[Class]] property using Error.prototype.toString() function
+- built-ins/Error/prototype/name/15.11.4.2-1 — Error.prototype.name is not enumerable.
+- built-ins/Error/prototype/toString/15.11.4.4-8-1 — Error.prototype.toString return the value of 'msg' when 'name' is empty string and 'msg' isn't undefined
 
-### By design (optional URI helpers)
+### Function
+- built-ins/Function/prototype/S15.3.4_A5 — Checking if creating "new Function.prototype object" fails
 
-`decodeURI`, `decodeURIComponent`, `encodeURI`, and `encodeURIComponent` are optional in ES3 and intentionally unimplemented in NuXJS. Their 140 failing tests are excluded from the counts above:
+### Infinity
+- built-ins/Infinity/S15.1.1.2_A2_T2 — Checking typeof Functions
 
-- decodeURI – 48 tests
-- decodeURIComponent – 48 tests
-- encodeURI – 22 tests
-- encodeURIComponent – 22 tests
+### Math
+- built-ins/Math/pow/applying-the-exp-operator_A7 — If abs(base) is 1 and exponent is +∞, the result is NaN.
+- built-ins/Math/pow/applying-the-exp-operator_A8 — If abs(base) is 1 and exponent is −∞, the result is NaN.
 
-### Bad tests (ES5-only helper)
+### NaN
+- built-ins/NaN/S15.1.1.1_A2_T2 — Checking typeof Functions
 
-The following tests rely on the ES5 `Object.getOwnPropertyDescriptor` helper and are marked `bad_test`:
+### Number
+- built-ins/Number/S9.3.1_A2 — Strings with various WhiteSpaces convert to Number by explicit transformation
+- built-ins/Number/S9.3.1_A3_T1 — static string
+- built-ins/Number/S9.3.1_A3_T2 — dynamic string
 
-- built-ins/Array/S15.4.3_A2.3
-- built-ins/Array/prototype/S15.4.3.1_A3
-- built-ins/Array/prototype/S15.4.3.1_A4
-- built-ins/Array/prototype/concat/S15.4.4.4_A4.3
-- built-ins/Array/prototype/join/S15.4.4.5_A6.3
-- built-ins/String/fromCharCode/name
-- built-ins/String/prototype/S15.5.3.1_A3
-- built-ins/String/prototype/S15.5.3.1_A4
-- built-ins/String/prototype/charAt/S15.5.4.4_A10
-- built-ins/String/prototype/charAt/name
-- built-ins/String/prototype/charCodeAt/S15.5.4.5_A10
-- built-ins/String/prototype/charCodeAt/name
-- built-ins/String/prototype/concat/S15.5.4.6_A10
-- built-ins/String/prototype/concat/name
-- built-ins/String/prototype/indexOf/S15.5.4.7_A10
-- built-ins/String/prototype/indexOf/name
-- built-ins/String/prototype/lastIndexOf/S15.5.4.8_A10
-- built-ins/String/prototype/lastIndexOf/name
-- built-ins/String/prototype/localeCompare/S15.5.4.9_A10
-- built-ins/String/prototype/localeCompare/name
-- built-ins/String/prototype/match/length
-- built-ins/String/prototype/match/name
-- built-ins/String/prototype/replace/S15.5.4.11_A10
-- built-ins/String/prototype/replace/name
-- built-ins/String/prototype/search/S15.5.4.12_A10
-- built-ins/String/prototype/search/name
-- built-ins/String/prototype/slice/S15.5.4.13_A10
-- built-ins/String/prototype/slice/name
-- built-ins/String/prototype/split/S15.5.4.14_A10
-- built-ins/String/prototype/split/name
-- built-ins/String/prototype/substring/S15.5.4.15_A10
-- built-ins/String/prototype/substring/name
-- built-ins/String/prototype/toLocaleLowerCase/S15.5.4.17_A10
-- built-ins/String/prototype/toLocaleLowerCase/name
-- built-ins/String/prototype/toLocaleUpperCase/S15.5.4.19_A10
-- built-ins/String/prototype/toLocaleUpperCase/name
-- built-ins/String/prototype/toLowerCase/S15.5.4.16_A10
-- built-ins/String/prototype/toLowerCase/name
-- built-ins/String/prototype/toString/name
-- built-ins/String/prototype/toUpperCase/S15.5.4.18_A10
-- built-ins/String/prototype/toUpperCase/name
-- built-ins/String/prototype/valueOf/length
-- built-ins/String/prototype/valueOf/name
-- built-ins/eval/S15.1.2.1_A4.3
-- built-ins/isFinite/S15.1.2.5_A2.3
-- built-ins/isNaN/S15.1.2.4_A2.3
-- built-ins/parseFloat/S15.1.2.3_A7.3
-- built-ins/parseInt/S15.1.2.2_A9.3
-- built-ins/undefined/S15.1.1.3_A3_T1
+### Object
+- built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A12 — Let O be the result of calling ToObject passing the this value as the argument.
+- built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A13 — Let O be the result of calling ToObject passing the this value as the argument.
+- built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A12 — Let O be the result of calling ToObject passing the this value as the argument.
+- built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A13 — Let O be the result of calling ToObject passing the this value as the argument.
+- built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A12 — Let O be the result of calling ToObject passing the this value as the argument.
+- built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A13 — Let O be the result of calling ToObject passing the this value as the argument.
+- built-ins/Object/prototype/toLocaleString/S15.2.4.3_A12 — Let O be the result of calling ToObject passing the this value as the argument.
+- built-ins/Object/prototype/toLocaleString/S15.2.4.3_A13 — Let O be the result of calling ToObject passing the this value as the argument.
+- built-ins/Object/prototype/toString/15.2.4.2-1-1 — Object.prototype.toString - '[object Undefined]' will be returned when 'this' value is undefined
+- built-ins/Object/prototype/toString/15.2.4.2-1-2 — Object.prototype.toString - '[object Undefined]' will be returned when 'this' value is undefined
+- built-ins/Object/prototype/toString/15.2.4.2-2-1 — Object.prototype.toString - '[object Null]' will be returned when 'this' value is null
+- built-ins/Object/prototype/toString/15.2.4.2-2-2 — Object.prototype.toString - '[object Null]' will be returned when 'this' value is null
+- built-ins/Object/prototype/valueOf/S15.2.4.4_A12 — Checking Object.prototype.valueOf invoked by the 'call' property.
+- built-ins/Object/prototype/valueOf/S15.2.4.4_A13 — Checking Object.prototype.valueOf invoked by the 'call' property.
+- built-ins/Object/prototype/valueOf/S15.2.4.4_A14 — Checking Object.prototype.valueOf invoked by the 'call' property.
+- built-ins/Object/prototype/valueOf/S15.2.4.4_A15 — Checking Object.prototype.valueOf when called as a global function.
 
-These are excluded from the failure counts below.
+### RegExp
+- built-ins/RegExp/S15.10.2.12_A1_T1 — WhiteSpace
+- built-ins/RegExp/S15.10.2.12_A2_T1 — WhiteSpace
+- built-ins/RegExp/S15.10.2.8_A3_T15 — "see bug http:bugzilla.mozilla.org/show_bug.cgi?id=119909" — RangeError: Internal compiler limitations reached. Reduce code complexity.
+- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T10 — String is 1.01 and RegExp is /1|12/
+- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T11 — String is new Number(1.012) and RegExp is /2|12/
+- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T12 — String is {toString:function(){return Math.PI;}} and RegExp is /\.14/
+- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T13 — String is true and RegExp is /t[a-b|q-s]/
+- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T14 — String is new Boolean and RegExp is /AL|se/
+- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T15 — "String is {toString:function(){return false;}} and RegExp is /LS/i"
+- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T17 — String is null and RegExp is /ll|l/
+- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T18 — String is undefined and RegExp is /nd|ne/
+- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T19 — String is void 0 and RegExp is /e{1}/
+- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T2 — String is new String("123") and RegExp is /((1)|(12))((3)|(23))/
+- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T20 — String is x and RegExp is /[a-f]d/, where x is undefined variable
+- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T21 — String is function(){}() and RegExp is /[a-z]n/
+- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T3 — String is new Object("abcdefghi") and RegExp is /a[a-z]{2,4}/
+- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T4 — String is {toString:function(){return "abcdefghi";}} and RegExp is /a[a-z]{2,4}?/
+- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T5 — String is {toString:function(){return {};}, valueOf:function(){return "aabaac";}} and RegExp is /(aa|aabaac|ba|b|c)* /
 
-## Array (12 tests)
+### String
+- String.prototype method length property deletion tests (16 cases) —
+  Manual tests (`tests/conforming/functionLengthNotDeletable.io`) confirm NuXJS retains these non-configurable `length` properties; the earlier failure classification was incorrect
+- built-ins/String/prototype/indexOf/S15.5.4.7_A1_T11 — Instance is Date(0) object
+- built-ins/String/prototype/replace/S15.5.4.11_A12 — replaceValue tests that its this value is undefined
+- built-ins/String/prototype/replace/S15.5.4.11_A1_T11 — Call replace (searchValue, replaceValue) function with objects arguments of string object. Objects have overrided toString function, that throw exception
+- built-ins/String/prototype/replace/S15.5.4.11_A1_T12 — Call replace (searchValue, replaceValue) function with objects arguments of String object.  First objects have overrided toString and valueOf functions, valueOf throw exception.  Second objects have overrided toString function, that throw exception
+- built-ins/String/prototype/replace/S15.5.4.11_A3_T1 — replaceValue is "$11" + 15
+- built-ins/String/prototype/replace/S15.5.4.11_A3_T2 — replaceValue is "$11" + '15'
+- built-ins/String/prototype/replace/S15.5.4.11_A3_T3 — replaceValue is "$11" + 'A15'
+- built-ins/String/prototype/replace/S15.5.4.11_A5_T1 — searchValue is  regexp /^(a+)\1*,\1+$/ and replaceValue is "$1"
+- built-ins/String/prototype/toLocaleLowerCase/special_casing_conditional — Check if String.prototype.toLocaleLowerCase supports conditional mappings defined in SpecialCasings
+- built-ins/String/prototype/toLocaleLowerCase/supplementary_plane — String.prototype.toLocaleLowerCase() iterates over code points
+- built-ins/String/prototype/toLocaleUpperCase/special_casing — Check if String.prototype.toLocaleUpperCase supports mappings defined in SpecialCasings
+- built-ins/String/prototype/toLocaleUpperCase/supplementary_plane — String.prototype.toLocaleUpperCase() iterates over code points
+- built-ins/String/prototype/toLowerCase/special_casing — Check if String.prototype.toLowerCase supports mappings defined in SpecialCasings
+- built-ins/String/prototype/toLowerCase/special_casing_conditional — Check if String.prototype.toLowerCase supports conditional mappings defined in SpecialCasings
+- built-ins/String/prototype/toLowerCase/supplementary_plane — String.prototype.toLowerCase() iterates over code points
+- built-ins/String/prototype/toUpperCase/special_casing — Check if String.prototype.toUpperCase supports mappings defined in SpecialCasings
+- built-ins/String/prototype/toUpperCase/supplementary_plane — String.prototype.toUpperCase() iterates over code points
 
-Array construction and prototype methods like `concat`, `join`, `pop`, `push`, `reverse`, `shift`, `slice`, `sort`, `splice`, `toLocaleString`, `toString`, and `unshift` are part of ES3. Failures here indicate missing core array semantics.
-- built-ins/Array/S15.4.5.1_A2.1_T1 — assigning to keys 4294967295, -1, or `true` should not grow the array (§15.4.5.1), yet NuXJS increments `length`.
-- built-ins/Array/S15.4_A1.1_T1 — boolean property names must not be treated as array indices (§15.4); the engine treats `true`/`false` as numeric indexes.
-- built-ins/Array/prototype/pop/S15.4.4.6_A2_T2 — when `length` is NaN, ±Infinity, or non-integer, ES3 §15.4.4.6 should coerce to 0; NuXJS leaves other values.
-- built-ins/Array/prototype/pop/S15.4.4.6_A4_T2 — fails to delete own index when prototype defines same property (§15.4.4.6).
-- built-ins/Array/prototype/push/S15.4.4.7_A2_T2 — with NaN/Infinity `length`, push should coerce via ToUint32 (§15.4.4.7); NuXJS misbehaves.
-- built-ins/Array/prototype/shift/S15.4.4.9_A3_T3
-- built-ins/Array/prototype/shift/S15.4.4.9_A4_T2
-- built-ins/Array/prototype/sort/S15.4.4.11_A7.2
-- built-ins/Array/prototype/toLocaleString/S15.4.4.3_A1_T1
-- built-ins/Array/prototype/toLocaleString/S15.4.4.3_A3_T1
-- built-ins/Array/prototype/toLocaleString/S15.4.4.3_A4.2
-- built-ins/Array/prototype/toString/S15.4.4.2_A4.2
-## Date (7 tests)
+### eval
+- built-ins/eval/S15.1.2.1_A4.2 — Checking use hasOwnProperty, delete
 
-Covers the `Date` constructor, parsing, UTC calculations, and numerous getter/setter methods. Proper `Date` handling is essential to adhere to ES3 time semantics.
+### isFinite
+- built-ins/isFinite/S15.1.2.5_A2.2 — Checking use hasOwnProperty, delete
 
-- built-ins/Date/S15.9.3.1_A6_T1
-- built-ins/Date/S15.9.3.1_A6_T2
-- built-ins/Date/S15.9.3.1_A6_T3
-- built-ins/Date/S15.9.3.1_A6_T4
-- built-ins/Date/S15.9.3.1_A6_T5
-- built-ins/Date/TimeClip_negative_zero
-- built-ins/Date/prototype/setFullYear/15.9.5.40_1
+### isNaN
+- built-ins/isNaN/S15.1.2.4_A2.2 — Checking use hasOwnProperty, delete
 
-## eval (1 test)
+### parseFloat
+- built-ins/parseFloat/S15.1.2.3_A2_T10 — "StrWhiteSpaceChar :: USP"
+- built-ins/parseFloat/S15.1.2.3_A7.2 — Checking use hasOwnProperty, delete
 
-Validates global `eval` executes code in the current scope as specified by ES3.
+### parseInt
+- built-ins/parseInt/S15.1.2.2_A2_T10 — "StrWhiteSpaceChar :: USP"
+- built-ins/parseInt/S15.1.2.2_A5.2_T2 — ": 0X"
+- built-ins/parseInt/S15.1.2.2_A7.2_T3 — Checking algorithm for R = 16
+- built-ins/parseInt/S15.1.2.2_A9.2 — Checking use hasOwnProperty, delete
 
-- built-ins/eval/S15.1.2.1_A4.2
-
-## global (3 tests)
-
-Ensures global object properties such as `undefined` are configured per ES3.
-
-- built-ins/global/S10.2.3_A1.1_T2 — `NaN` should be non-enumerable on the global object, but NuXJS exposes it during enumeration.
-- built-ins/global/S10.2.3_A1.2_T2 — `Infinity` is likewise enumerable even though ES3 marks it as `DontEnum`.
-- built-ins/global/S10.2.3_A1.3_T2 — the global `undefined` property appears in `for...in` loops, contrary to ES3 attribute requirements.
-
-## isFinite (1 test)
-
-Validates the global `isFinite` converts arguments and determines finiteness per ES3.
-
-- built-ins/isFinite/S15.1.2.5_A2.2 — fails to apply `ToNumber` before testing, so string inputs yield wrong results.
-
-## isNaN (1 test)
-
-Validates the global `isNaN` function's ability to detect NaN values, a core numeric primitive in ES3.
-
-- built-ins/isNaN/S15.1.2.4_A2.2 — argument coercion via `ToNumber` is skipped, misclassifying numeric strings.
-
-## parseFloat (2 tests)
-
-Ensures `parseFloat` parses numeric strings according to ES3 grammar.
-
-- built-ins/parseFloat/S15.1.2.3_A2_T10 — fails to skip form-feed (`\u000C`) before digits.
-- built-ins/parseFloat/S15.1.2.3_A7.2 — does not recognize the `Infinity` literal.
-
-## parseInt (4 tests)
-
-Ensures `parseInt` parses integers with proper radix handling per ES3.
-
-- built-ins/parseInt/S15.1.2.2_A2_T10 — form-feed whitespace is not ignored.
-- built-ins/parseInt/S15.1.2.2_A5.2_T2 — mishandles hexadecimal `0x` prefixes.
-- built-ins/parseInt/S15.1.2.2_A7.2_T3 — signed hex strings are parsed incorrectly.
-- built-ins/parseInt/S15.1.2.2_A9.2 — default radix handling for leading zeros is wrong.
-
-## undefined (1 test)
-
-Checks that `undefined` is read-only and globally defined.
-
-- built-ins/undefined/15.1.1.3-1 — deleting `undefined` succeeds even though ES3 prohibits removal.
-
-## Function (1 test)
-
-Exercises the `Function` constructor and prototype methods such as `call`, `apply`, and `toString`. ES3 specifies these behaviors.
-
-- built-ins/Function/prototype/S15.3.4_A5
-- 
-## Error (5 tests)
-
-General `Error` object behavior including construction and message properties must conform to ES3 specifications.
-
-- built-ins/Error/S15.11.1.1_A1_T1
-- built-ins/Error/S15.11.2.1_A1_T1
-- built-ins/Error/prototype/S15.11.4_A2
-- built-ins/Error/prototype/name/15.11.4.2-1
-- built-ins/Error/prototype/toString/15.11.4.4-8-1
-- 
-## Infinity (1 test)
-
-Confirms the `Infinity` property behaves as a read-only global representing positive infinity per ES3.
-
-- built-ins/Infinity/S15.1.1.2_A2_T2
-- 
-## NaN (1 test)
-
-These verify that the `NaN` property is non-writable, non-enumerable, non-configurable, and retains its special value.
-
-- built-ins/NaN/S15.1.1.1_A2_T2
-- 
-## Math (2 tests)
-
-Verifies correctness of `Math` constants and functions such as `sin`, `cos`, `pow`, and rounding behavior, all defined in ES3.
-
-- built-ins/Math/pow/applying-the-exp-operator_A7
-- built-ins/Math/pow/applying-the-exp-operator_A8
-- 
-## Number (3 tests)
-
-Covers the `Number` constructor, its constants, and prototype methods that ES3 mandates.
-
-- built-ins/Number/S9.3.1_A2
-- built-ins/Number/S9.3.1_A3_T1
-- built-ins/Number/S9.3.1_A3_T2
-- 
-## Object (16 tests)
-
-Tests core `Object` constructor and prototype behaviors present in ES3.
-
-- built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A12
-- built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A13
-- built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A12
-- built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A13
-- built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A12
-- built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A13
-- built-ins/Object/prototype/toLocaleString/S15.2.4.3_A12
-- built-ins/Object/prototype/toLocaleString/S15.2.4.3_A13
-- built-ins/Object/prototype/toString/15.2.4.2-1-1
-- built-ins/Object/prototype/toString/15.2.4.2-1-2
-- built-ins/Object/prototype/toString/15.2.4.2-2-1
-- built-ins/Object/prototype/toString/15.2.4.2-2-2
-- built-ins/Object/prototype/valueOf/S15.2.4.4_A12
-- built-ins/Object/prototype/valueOf/S15.2.4.4_A13
-- built-ins/Object/prototype/valueOf/S15.2.4.4_A14
-- built-ins/Object/prototype/valueOf/S15.2.4.4_A15
-
-## RegExp (18 tests)
-
-Covers regular expression syntax and `RegExp.prototype.exec`; ES3 defines the full regexp language.
-- built-ins/RegExp/S15.10.2.12_A1_T1
-- built-ins/RegExp/S15.10.2.12_A2_T1
-- built-ins/RegExp/S15.10.2.8_A3_T15
-- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T10
-- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T11
-- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T12
-- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T13
-- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T14
-- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T15
-- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T17
-- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T18
-- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T19
-- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T2
-- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T20
-- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T21
-- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T3
-- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T4
-- built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T5
-
-
-## String (35 tests)
-
-Validates the `String` constructor and prototype methods such as `charAt`, `indexOf`, and `slice` per ES3.
-
-- built-ins/String/prototype/charAt/S15.5.4.4_A9
-- built-ins/String/prototype/charCodeAt/S15.5.4.5_A9
-- built-ins/String/prototype/concat/S15.5.4.6_A9
-- built-ins/String/prototype/indexOf/S15.5.4.7_A1_T11
-- built-ins/String/prototype/indexOf/S15.5.4.7_A9
-- built-ins/String/prototype/lastIndexOf/S15.5.4.8_A9
-- built-ins/String/prototype/localeCompare/S15.5.4.9_A9
-- built-ins/String/prototype/match/S15.5.4.10_A1_T3
-- built-ins/String/prototype/match/S15.5.4.10_A9
-- built-ins/String/prototype/replace/S15.5.4.11_A12
-- built-ins/String/prototype/replace/S15.5.4.11_A1_T11
-- built-ins/String/prototype/replace/S15.5.4.11_A1_T12
-- built-ins/String/prototype/replace/S15.5.4.11_A3_T1
-- built-ins/String/prototype/replace/S15.5.4.11_A3_T2
-- built-ins/String/prototype/replace/S15.5.4.11_A3_T3
-- built-ins/String/prototype/replace/S15.5.4.11_A5_T1
-- built-ins/String/prototype/replace/S15.5.4.11_A9
-- built-ins/String/prototype/search/S15.5.4.12_A9
-- built-ins/String/prototype/slice/S15.5.4.13_A9
-- built-ins/String/prototype/split/S15.5.4.14_A1_T3
-- built-ins/String/prototype/split/S15.5.4.14_A9
-- built-ins/String/prototype/substring/S15.5.4.15_A9
-- built-ins/String/prototype/toLocaleLowerCase/S15.5.4.17_A9
-- built-ins/String/prototype/toLocaleLowerCase/special_casing_conditional
-- built-ins/String/prototype/toLocaleLowerCase/supplementary_plane
-- built-ins/String/prototype/toLocaleUpperCase/S15.5.4.19_A9
-- built-ins/String/prototype/toLocaleUpperCase/special_casing
-- built-ins/String/prototype/toLocaleUpperCase/supplementary_plane
-- built-ins/String/prototype/toLowerCase/S15.5.4.16_A9
-- built-ins/String/prototype/toLowerCase/special_casing
-- built-ins/String/prototype/toLowerCase/special_casing_conditional
-- built-ins/String/prototype/toLowerCase/supplementary_plane
-- built-ins/String/prototype/toUpperCase/S15.5.4.18_A9
-- built-ins/String/prototype/toUpperCase/special_casing
-- built-ins/String/prototype/toUpperCase/supplementary_plane
+### undefined
+- built-ins/undefined/15.1.1.3-1 — undefined is not writable, should not throw in non-strict mode
