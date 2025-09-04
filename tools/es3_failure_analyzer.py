@@ -2,6 +2,7 @@
 import json
 import subprocess
 import tarfile
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -75,7 +76,27 @@ def feature_from_path(path: str) -> str:
 		return parts[1]
 	return parts[0]
 
+def extract_features(test_path: Path):
+	try:
+		text = test_path.read_text(encoding="utf-8")
+	except OSError:
+		return []
+	m = re.search(r"/\*---(.*?)---\*/", text, re.DOTALL)
+	if not m:
+		return []
+	block = m.group(1)
+	mfeat = re.search(r"features:\s*\[([^\]]*)\]", block, re.DOTALL)
+	if not mfeat:
+		return []
+	items = mfeat.group(1).replace("\n", " ").split(",")
+	return [i.strip().strip("'\"") for i in items if i.strip()]
+
 def uses_non_es3_feature(test_path: Path) -> bool:
+	features = extract_features(test_path)
+	for feat in features:
+		for kw in KEYWORDS:
+			if kw in feat:
+				return True
 	pattern = "|".join(KEYWORDS)
 	result = subprocess.run(["rg", pattern, str(test_path)], capture_output=True, text=True)
 	return result.stdout != ""
