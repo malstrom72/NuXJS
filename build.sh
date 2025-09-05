@@ -4,6 +4,7 @@ cd "$(dirname "$0")"
 
 variant=${1:-both}
 model=${2:-native}
+build_target=${3:-both}
 
 case "$variant" in
 	es3|ES3)
@@ -21,7 +22,19 @@ case "$variant" in
 		;;
 esac
 
-for target in beta release; do
+case "$build_target" in
+	beta|release)
+		targets="$build_target"
+		;;
+	both|BOTH)
+		targets="beta release"
+		;;
+	*)
+		targets="beta release"
+		;;
+esac
+
+for target in $targets; do
 	bash ./tools/buildAndTest.sh "$target" "$model"
 done
 
