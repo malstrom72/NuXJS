@@ -27,7 +27,7 @@
 		eval(code: string): any
 		asin(), atan() etc..
 		isNaN(), isFinite()
-		defineProperty(o: object, property: string, value: any, readOnly: boolean, dontEnum: boolean, dontDelete: boolean): boolean
+			   defineProperty(o: object, property: string, descriptor: object): boolean
 		compileFunction(sourceCode: string, name: string): function
 		createWrapper(className: string, internalValue: any, prototype: object): object
 		distinctConstructor(regularCall: function): function									// = exception on construction and no .prototype either
@@ -131,8 +131,8 @@ function uint32(v) { return int(v) >>> 0; }
 function str(o) { return '' + (isPrimitive(o) ? o : support.toPrimitiveString(o)) }
 
 function defProps(object, attribs, props) {
-	var ro = attribs.readOnly, de = attribs.dontEnum, dd = attribs.dontDelete;
-	for (var p in props) support.defineProperty(object, p, props[p], ro, de, dd);
+	var w = !attribs.readOnly, e = !attribs.dontEnum, c = !attribs.dontDelete;
+	for (var p in props) support.defineProperty(object, p, { value: props[p], writable: w, enumerable: e, configurable: c });
 	return object
 }
 
@@ -1609,8 +1609,8 @@ defProps(Math, { dontEnum: true }, {
 function createErrorConstructor(name, prototype) {
 	return function(message) {
 		var e;
-		support.defineProperty(e = support.createWrapper("Error", name, prototype), "message"
-				, (message !== void 0 ? str(message) : ''), false, true, false);
+			support.defineProperty(e = support.createWrapper("Error", name, prototype), "message",
+				{ value: (message !== void 0 ? str(message) : ''), writable: true, enumerable: false, configurable: true });
 		return e
 	}
 };
@@ -1620,9 +1620,10 @@ function createErrorConstructor(name, prototype) {
 
 	for (var i = ERROR_NAMES.length; --i >= 0;) {
 		var n, c, p;
-		support.defineProperty(globals, n = ERROR_NAMES[i], c = createErrorConstructor(n, p = support.prototypes[n])
-				, false, true, false);
-		c.name = n;	// Notice: from ES6 and upwards "name" is read-only (and you would have to delete it to modify here), but it isn't in this implementation
+		support.defineProperty(globals, n = ERROR_NAMES[i],
+			{ value: c = createErrorConstructor(n, p = support.prototypes[n]), writable: true, enumerable: false, configurable: true });
+		delete c.name;
+		support.defineProperty(c, "name", { value: n, writable: false, enumerable: false, configurable: true });
 		defProps(c, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: p });
 		defProps(p, { dontEnum: true }, { constructor: c });
 		p.name = n;
@@ -1837,8 +1838,8 @@ defProps(Array, { dontEnum: true }, {
 });
 
 defProps(Object, { dontEnum: true }, {
-	defineProperty: unconstructable(function defineProperty(o, p, d) {
-		support.defineProperty(o, str(p), d.value, !d.writable, !d.enumerable, !d.configurable);
+		   defineProperty: unconstructable(function defineProperty(o, p, d) {
+		support.defineProperty(o, str(p), d);
 	}),
 	getPrototypeOf: unconstructable(function getPrototypeOf(o) { return $getInternalProperty(o, "prototype"); })
 });

@@ -25,7 +25,7 @@ The engine injects a `support` object that provides utilities and constants used
 - `createWrapper(className, internalValue, prototype)` – wrap a primitive or host value.
 - `distinctConstructor(callImpl[, constructImpl])` – separate call vs `new` behaviour.
 - `callWithArgs(func[, thisArg[, args[, offset]]])` – invoke using an argument array.
-- `defineProperty(o, name, value, readOnly, dontEnum, dontDelete)` – define a data property.
+- `defineProperty(o, name, descriptor)` – define a property.
 - `getInternalProperty(o, "class"|"value"|"prototype")` – inspect internal slots.
 - `hasOwnProperty(o, name)`, `isPropertyEnumerable(o, name)` – property queries.
 - `toPrimitiveNumber(o)`, `toPrimitiveString(o)`, `toPrimitive(o)` – convert objects to primitives.
@@ -93,9 +93,9 @@ Follow these to keep the minifier happy and semantics correct:
 
    ```
    /*
-       @preserve: Array,Boolean,Date,E,Error,Function,Infinity,LN10,LN2,LOG10E,LOG2E,MAX_VALUE,MIN_VALUE,Math
-       @preserve: NEGATIVE_INFINITY,NaN,Number,Object,PI,POSITIVE_INFINITY,RangeError,RegExp,SQRT1_2,SQRT2,String
-       ...
+	   @preserve: Array,Boolean,Date,E,Error,Function,Infinity,LN10,LN2,LOG10E,LOG2E,MAX_VALUE,MIN_VALUE,Math
+	   @preserve: NEGATIVE_INFINITY,NaN,Number,Object,PI,POSITIVE_INFINITY,RangeError,RegExp,SQRT1_2,SQRT2,String
+	   ...
    */
    ```
 

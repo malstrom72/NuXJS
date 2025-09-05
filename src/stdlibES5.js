@@ -187,20 +187,9 @@ defProps(Number, { dontEnum: true }, {
 
 // Object helpers: defineProperty (accessors), defineProperties, create, getOwnPropertyDescriptor, keys, preventExtensions, isExtensible
 defProps(Object, { dontEnum: true }, {
-		defineProperty: unconstructable(function defineProperty(o, p, d) {
-				var k = str(p);
-		var ro = !d.writable, de = !d.enumerable, dd = !d.configurable;
-		if ("get" in d || "set" in d) {
-			if ("value" in d || "writable" in d) throw TypeError();
-			var g = d["get"]; var s = d["set"];
-			if (g !== undefined && typeof g !== "function") throw TypeError();
-			if (s !== undefined && typeof s !== "function") throw TypeError();
-			// Use host support to create accessor properties
-			support.defineProperty(o, k, undefined, ro, de, dd, g, s);
-		} else {
-			// Data descriptor
-			support.defineProperty(o, k, d.value, ro, de, dd);
-		}
+	defineProperty: unconstructable(function defineProperty(o, p, d) {
+		if (o === undefined || o === null) throw TypeError();
+		support.defineProperty(Object(o), str(p), d);
 	}),
 	defineProperties: unconstructable(function defineProperties(o, props) {
 		if (o === undefined || o === null) throw TypeError();
@@ -257,11 +246,22 @@ defProps(Object, { dontEnum: true }, {
 
 // Function.prototype.bind (minimal, declared with one formal parameter)
 defProps(Function.prototype, { dontEnum: true }, {
-	bind: function bind(thisArg) {
-		var target = this;
-		if (typeof target !== 'function') throw TypeError();
-		var args = [target, thisArg];
-		for (var i = 1; i < arguments.length; ++i) args[args.length] = arguments[i];
-		return support.bind.apply(null, args);
-	}
+        bind: function bind(thisArg) {
+                var target = this;
+                if (typeof target !== 'function') throw TypeError();
+                var args = [target, thisArg];
+                for (var i = 1; i < arguments.length; ++i) args[args.length] = arguments[i];
+                return support.bind.apply(null, args);
+        }
+});
+
+// Function.prototype.name accessor
+delete Function.prototype.name;
+support.defineProperty(Function.prototype, "name", {
+	get: unconstructable(function name() {
+		if (typeof this !== "function") throw TypeError();
+		var d = support.getOwnPropertyDescriptor(this, "name");
+		return d && "value" in d ? d.value : "";
+	}),
+	configurable: true
 });

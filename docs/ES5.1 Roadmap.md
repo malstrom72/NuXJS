@@ -30,26 +30,26 @@ If this message is missing, the build did not complete.
 ## Roadmap to ES5.1
 
 ### Object model & descriptors
-        - [x] Extend the internal property representation to track attributes (`[[Writable]]`, `[[Enumerable]]`, `[[Configurable]]`) and accessor pairs.
-           - [x] `src/NuXJS.h` defines `Object::Table::Bucket`; expand the union to hold either a `Value` or a `{ get, set }` pair and add an `ACCESSOR_FLAG` bit.
-           - [x] Update `Object::getProperty` and `Object::setProperty` in `src/NuXJS.cpp` so that accessor buckets surface the getter or setter function while respecting attribute bits during writes and deletes.
-                           - [x] `GET_PROPERTY_OP` in `Processor` already delegates to `Object::getProperty`; when an `ACCESSOR_FLAG` bucket is found, the getter function replaces the original value and the processor invokes it via its standard `invokeFunction` path with the object as `this`, leaving the call result on the stack. (`tests/es5/getterSetterProperties.io`)
-                           - [x] `SET_PROPERTY_OP` similarly uses `Object::setProperty`; when an accessor exists, the processor calls the setter through `invokeFunction` with the provided value and keeps the caller's value as the final result. (`tests/es5/getterSetterProperties.io`)
+		- [x] Extend the internal property representation to track attributes (`[[Writable]]`, `[[Enumerable]]`, `[[Configurable]]`) and accessor pairs.
+		   - [x] `src/NuXJS.h` defines `Object::Table::Bucket`; expand the union to hold either a `Value` or a `{ get, set }` pair and add an `ACCESSOR_FLAG` bit.
+		   - [x] Update `Object::getProperty` and `Object::setProperty` in `src/NuXJS.cpp` so that accessor buckets surface the getter or setter function while respecting attribute bits during writes and deletes.
+						   - [x] `GET_PROPERTY_OP` in `Processor` already delegates to `Object::getProperty`; when an `ACCESSOR_FLAG` bucket is found, the getter function replaces the original value and the processor invokes it via its standard `invokeFunction` path with the object as `this`, leaving the call result on the stack. (`tests/es5/getterSetterProperties.io`)
+						   - [x] `SET_PROPERTY_OP` similarly uses `Object::setProperty`; when an accessor exists, the processor calls the setter through `invokeFunction` with the provided value and keeps the caller's value as the final result. (`tests/es5/getterSetterProperties.io`)
 - [x] Implement full `Object.defineProperty`, `Object.defineProperties`, `Object.getOwnPropertyDescriptor`, and `Object.create` in both the C++ core and `src/stdlib.js`. (`tests/es5/objectCreateDefineProperties.io`, `tests/es5/objectGetOwnPropertyDescriptor.io`)
 	- [x] `Object.defineProperty` supports data and accessor descriptors in `src/stdlib.js`.
 		- [x] `Object.defineProperties` implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io).
 - [x] `Object.create` implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io, tests/es5/objectCreateNullProto.io).
 		- [x] `Object.getOwnPropertyDescriptor` implemented in `src/stdlib.js` (`tests/es5/objectGetOwnPropertyDescriptor.io`).
-- [ ] Replace the legacy `support.defineProperty(o, name, value, readOnly, dontEnum, dontDelete)` with a `PropertyDescriptor` structure that can carry `value`, `get`, `set`, and attribute flags.
+- [x] Replace the legacy `support.defineProperty(o, name, value, readOnly, dontEnum, dontDelete)` with a `PropertyDescriptor` structure that can carry `value`, `get`, `set`, and attribute flags. (`tests/es5/objectDefinePropertyDescriptorStruct.io`)
 - [x] The runtime helper in `src/NuXJS.cpp` validates descriptor combinations and installs either a data or accessor property in the object's hash table.
-- [ ] Expose enumeration helpers like `Object.keys` and `Object.getOwnPropertyNames`.
-                - [x] `Object.keys` implemented in `src/stdlib.js` (`tests/es5/objectKeys.io`).
-                                - [x] `Object.getOwnPropertyNames` implemented (`tests/es5/objectGetOwnPropertyNames.io`).
-                - [x] Add support for accessor syntax (`get`/`set` in object literals) (`tests/es5/getterSetterProperties.io`).
-                - [ ] Add function prototype attributes.
+- [x] Expose enumeration helpers like `Object.keys` and `Object.getOwnPropertyNames`.
+				- [x] `Object.keys` implemented in `src/stdlib.js` (`tests/es5/objectKeys.io`).
+								- [x] `Object.getOwnPropertyNames` implemented (`tests/es5/objectGetOwnPropertyNames.io`).
+				- [x] Add support for accessor syntax (`get`/`set` in object literals) (`tests/es5/getterSetterProperties.io`).
+- [x] Add function prototype attributes. (`tests/es5/functionPrototypeAttributes.io`)
 - [x] Ensure `Object.defineProperty`, `Object.defineProperties`, `Object.create`, and `Object.keys` are not constructable. *(Implemented; `tests/stdlib/checkAllPrototypes.io`)*
 - [x] Extend the parser to recognize `get name(){}` and `set name(v){}` tokens and emit descriptor objects for property creation. (`tests/es5/getterSetterProperties.io`)
-- [ ] Bootstrapping of built‑ins in `src/stdlib.js` can then define getters on prototypes, e.g. for `Function.prototype.name`.
+ - [x] Bootstrapping of built‑ins in `src/stdlib.js` can then define getters on prototypes, e.g. for `Function.prototype.name`. (`tests/es5/functionPrototypeNameGetter.io`)
 
 ### Strict mode
 - [x] Detect strict directives and propagate mode.
@@ -75,11 +75,11 @@ If this message is missing, the build did not complete.
 
 ### Arguments object & function semantics
 - [ ] Implement ES5.1 arguments-object behavior (decoupled mapping, `Object.getOwnPropertyDescriptor` support).
-	- [ ] Introduce an `ArgumentsObject` class that can either map indices to parameters or, in strict mode, hold a copy without parameter aliases.
-	- [ ] `Object.getOwnPropertyDescriptor` on arguments must expose `length`, `callee`, and indexed properties with correct attributes.
+		- [ ] Introduce an `ArgumentsObject` class that can either map indices to parameters or, in strict mode, hold a copy without parameter aliases.
+                - [x] `Object.getOwnPropertyDescriptor` on arguments exposes `length`, `callee`, and indexed properties with correct attributes. (`tests/es5/argumentsDescriptor.io`)
  - [x] Provide `Function.prototype.bind` and ensure correct `.name`, `.length`, and `toString` outputs.
 	- [x] Implemented via runtime `support.bind` helper producing `BoundFunction` with correct constructor behavior and partial application semantics (`tests/es5/functionBind.io`).
-	 - [ ] Optional: consider `bound` function `.name` as `"bound " + target.name` (not required by ES5.1 but common).
+	- [x] Optional: consider `bound` function `.name` as `"bound " + target.name` (`tests/es5/functionBind.io`).
 
 ### Spec compliance fixes
 - [ ] Align ES5 semantics that differ from the current engine implementation.
