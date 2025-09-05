@@ -4,8 +4,8 @@
 
 	@preserve: trim,trimLeft,trimRight,forEach,map,filter,reduce,reduceRight,every,some
 	@preserve: get,set
-	@preserve: now,create,keys,bind
-	@preserve: defineProperties
+@preserve: now,create,keys,bind
+@preserve: defineProperties
 */
 
 // Use helpers provided by the base stdlib: defProps, int, uint32, str
@@ -160,16 +160,22 @@ if (!$isFinite(t)) throw RangeError("Invalid time value");
 
 // Number.prototype.toJSON
 defProps(Number.prototype, { dontEnum: true }, {
-	toJSON: function toJSON() {
-		var n = support.toPrimitiveNumber(this);
-		return $isFinite(n) ? n : null;
-	}
+		toJSON: function toJSON() {
+				var n = support.toPrimitiveNumber(this);
+				return $isFinite(n) ? n : null;
+		}
+});
+
+// Number.isFinite/Number.isNaN
+defProps(Number, { dontEnum: true }, {
+	isFinite: unconstructable(function isFinite(n) { return typeof n === "number" && $isFinite(n); }),
+	isNaN: unconstructable(function isNaN(n) { return typeof n === "number" && $isNaN(n); })
 });
 
 // Object helpers: defineProperty (accessors), defineProperties, create, keys
 defProps(Object, { dontEnum: true }, {
-	defineProperty: unconstructable(function defineProperty(o, p, d) {
-		var k = str(p);
+		defineProperty: unconstructable(function defineProperty(o, p, d) {
+				var k = str(p);
 		var ro = !d.writable, de = !d.enumerable, dd = !d.configurable;
 		if ("get" in d || "set" in d) {
 			if ("value" in d || "writable" in d) throw TypeError();

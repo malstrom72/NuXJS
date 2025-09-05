@@ -393,6 +393,8 @@ interface NumberConstructor {
    * JavaScript displays POSITIVE_INFINITY values as infinity.
    */
   readonly POSITIVE_INFINITY: number;
+  isFinite(number: number): boolean;
+  isNaN(number: number): boolean;
 }
 
 /** An object that represents a number of any kind. All JavaScript numbers are 64-bit floating-point numbers. */
