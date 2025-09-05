@@ -1,3 +1,4 @@
+Completed
 built-ins/Array/S15.4.5.1_A2.1_T1
 source
 --- output ---
@@ -436,12 +437,6 @@ source
 --- output --- 
  !!!! [object Object]
 
-built-ins/String/prototype/match/S15.5.4.10_A1_T3
-source
---- output ---
---- output --- 
- !!!! TypeError: bind is not a function
-
 built-ins/String/prototype/match/S15.5.4.10_A9
 source
 --- output ---
@@ -507,12 +502,6 @@ source
 --- output ---
 --- output --- 
  !!!! [object Object]
-
-built-ins/String/prototype/split/S15.5.4.14_A1_T3
-source
---- output ---
---- output --- 
- !!!! TypeError: bind is not a function
 
 built-ins/String/prototype/split/S15.5.4.14_A9
 source
@@ -610,24 +599,6 @@ source
 --- output --- 
  !!!! [object Object]
 
-built-ins/global/S10.2.3_A1.1_T2
-source
---- output ---
---- output --- 
- !!!! ReferenceError: decodeURI is not defined
-
-built-ins/global/S10.2.3_A1.2_T2
-source
---- output ---
---- output --- 
- !!!! ReferenceError: decodeURI is not defined
-
-built-ins/global/S10.2.3_A1.3_T2
-source
---- output ---
---- output --- 
- !!!! ReferenceError: decodeURI is not defined
-
 built-ins/isFinite/S15.1.2.5_A2.2
 source
 --- output ---
@@ -682,11 +653,3 @@ source
 --- output --- 
  !!!! [object Object]
 
-Total: 15774
-  Passed: 6495
-  Failed: 114
-  Ignored: 9165
-	 ES >3: 8781
-	 TBD: 112
-	 BAD TEST: 90
-	 BY DESIGN: 182
