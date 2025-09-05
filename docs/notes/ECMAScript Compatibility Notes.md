@@ -43,6 +43,9 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 - `Object.isFrozen`
 - `Number.isFinite`
 - `Number.isNaN`
+- `Number.prototype.toJSON`
+- `String.prototype.toJSON`
+- `Boolean.prototype.toJSON`
 - `JSON.parse`
 - `JSON.stringify`
 

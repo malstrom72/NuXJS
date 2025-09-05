@@ -166,6 +166,19 @@ defProps(Number.prototype, { dontEnum: true }, {
 		}
 });
 
+// String.prototype.toJSON
+defProps(String.prototype, { dontEnum: true }, {
+		toJSON: function toJSON() {
+			return support.toPrimitiveString(this);
+		}
+});
+
+// Boolean.prototype.toJSON
+defProps(Boolean.prototype, { dontEnum: true }, {
+		toJSON: function toJSON() {
+			return !!support.toPrimitiveNumber(this);
+		}
+});
 // Number.isFinite/Number.isNaN
 defProps(Number, { dontEnum: true }, {
 	isFinite: unconstructable(function isFinite(n) { return typeof n === "number" && $isFinite(n); }),

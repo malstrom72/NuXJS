@@ -1282,6 +1282,7 @@ static struct EmptyEnumerator : public Enumerator { const String* nextPropertyNa
 Function* Object::asFunction() { return 0; }
 JSArray* Object::asArray() { return 0; }
 Error* Object::asError() { return 0; }
+JSObject* Object::toJSObject(Runtime&) { return 0; }
 const String* Object::typeOfString() const { return &OBJECT_STRING; }
 const String* Object::getClassName() const { return &O_BJECT_STRING; }
 Object* Object::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
@@ -1601,6 +1602,7 @@ Enumerator* JSObject::getOwnPropertyEnumerator(Runtime& rt) const {
 	}
 	return list;
 }
+JSObject* JSObject::toJSObject(Runtime&) { return this; }
 
 /* --- RangeEnumerator --- */
 
@@ -1872,6 +1874,7 @@ template<class SUPER> bool LazyJSObject<SUPER>::deleteOwnProperty(Runtime& rt, c
 template<class SUPER> Enumerator* LazyJSObject<SUPER>::getOwnPropertyEnumerator(Runtime& rt) const {
 	return getCompleteObject(rt)->getOwnPropertyEnumerator(rt);
 }
+template<class SUPER> JSObject* LazyJSObject<SUPER>::toJSObject(Runtime& rt) { return getCompleteObject(rt); }
 
 template<class SUPER> JSObject* LazyJSObject<SUPER>::getCompleteObject(Runtime& rt) const {
 	if (completeObject == 0) {
@@ -5432,50 +5435,43 @@ static Value isExtensible(Runtime& rt, Processor&, UInt32 argc, const Value* arg
 		return (object != 0 ? Value(object->isExtensible()) : FALSE_VALUE);
 }
 
-static JSObject* toJSObject(Runtime& rt, Object* object) {
-        if (object == 0) return 0;
-        if (JSObject* js = dynamic_cast<JSObject*>(object)) return js;
-        if (LazyJSObject<Object>* lo = dynamic_cast<LazyJSObject<Object>*>(object)) return lo->getCompleteObject(rt);
-        if (LazyJSObject<Function>* lf = dynamic_cast<LazyJSObject<Function>*>(object)) return lf->getCompleteObject(rt);
-        return 0;
-}
 
 static Value getOwnPropertyNames(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-       Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
-       if (object != 0) {
-               Heap& heap = rt.getHeap();
-               JSArray* result = rt.newJSArray(0);
-               UInt32 next = 0;
-               Value v;
-               UInt32 length = 0;
-               if (object->getOwnProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) {
-                       length = static_cast<UInt32>(v.toInt());
-                       for (UInt32 i = 0; i < length; ++i) {
-                               Value key(i);
-                               if (object->getOwnProperty(rt, key, &v) != NONEXISTENT) {
-                                       result->setElement(rt, next++, Value(String::fromInt(heap, i)));
-                               }
-                       }
-                       result->setElement(rt, next++, Value(&LENGTH_STRING));
-               }
-               if (JSObject* o = toJSObject(rt, object)) {
-                       for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
-                               const String* key = b->getKey();
-                               if (key == &LENGTH_STRING) continue;
-                               UInt32 idx;
-                               if (length > 0 && Value(key).toArrayIndex(idx) && idx < length) continue;
-                               result->setElement(rt, next++, Value(key));
-                       }
-               }
-               return result;
-       }
-       return UNDEFINED_VALUE;
+	   Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+	   if (object != 0) {
+			   Heap& heap = rt.getHeap();
+			   JSArray* result = rt.newJSArray(0);
+			   UInt32 next = 0;
+			   Value v;
+			   UInt32 length = 0;
+			   if (object->getOwnProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) {
+					   length = static_cast<UInt32>(v.toInt());
+					   for (UInt32 i = 0; i < length; ++i) {
+							   Value key(i);
+							   if (object->getOwnProperty(rt, key, &v) != NONEXISTENT) {
+									   result->setElement(rt, next++, Value(String::fromInt(heap, i)));
+							   }
+					   }
+					   result->setElement(rt, next++, Value(&LENGTH_STRING));
+			   }
+			   if (JSObject* o = object->toJSObject(rt)) {
+					   for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+							   const String* key = b->getKey();
+							   if (key == &LENGTH_STRING) continue;
+							   UInt32 idx;
+							   if (length > 0 && Value(key).toArrayIndex(idx) && idx < length) continue;
+							   result->setElement(rt, next++, Value(key));
+					   }
+			   }
+			   return result;
+	   }
+	   return UNDEFINED_VALUE;
 }
 
 static Value seal(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-        Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+		Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
 	if (object != 0) {
-	if (JSObject* o = toJSObject(rt, object)) {
+	if (JSObject* o = object->toJSObject(rt)) {
 	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
 	b->flags |= DONT_DELETE_FLAG;
 	}
@@ -5489,7 +5485,7 @@ static Value seal(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Objec
 	static Value freeze(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
 	if (object != 0) {
-	if (JSObject* o = toJSObject(rt, object)) {
+	if (JSObject* o = object->toJSObject(rt)) {
 	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
 	b->flags |= DONT_DELETE_FLAG | READ_ONLY_FLAG;
 	}
@@ -5503,7 +5499,7 @@ static Value seal(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Objec
 	static Value isSealed(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
 	if (object != 0 && !object->isExtensible()) {
-	if (JSObject* o = toJSObject(rt, object)) {
+	if (JSObject* o = object->toJSObject(rt)) {
 	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
 	if ((b->flags & DONT_DELETE_FLAG) == 0) return false;
 	}
@@ -5516,7 +5512,7 @@ static Value seal(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Objec
 	static Value isFrozen(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
 	if (object != 0 && !object->isExtensible()) {
-	if (JSObject* o = toJSObject(rt, object)) {
+	if (JSObject* o = object->toJSObject(rt)) {
 	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
 	Flags f = b->flags;
 	if ((f & DONT_DELETE_FLAG) == 0) return false;

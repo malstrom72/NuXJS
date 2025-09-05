@@ -355,6 +355,8 @@ interface String {
 
   /** Returns the primitive value of the specified object. */
   valueOf(): string;
+  /** Used by the JSON.stringify method to enable the transformation of an object's data for JSON serialization. */
+  toJSON(key?: any): string;
 
   readonly [index: number]: string;
 }
@@ -376,6 +378,8 @@ interface Boolean {
   valueOf(): boolean;
   /** Returns a string representation of the boolean. */
   toString(): string;
+  /** Used by the JSON.stringify method to enable the transformation of an object's data for JSON serialization. */
+  toJSON(key?: any): boolean;
 }
 
 interface BooleanConstructor {

@@ -30,7 +30,7 @@ ES5‑specific regression tests live in `tests/es5`.
 - [ ] The runtime helper in `src/NuXJS.cpp` should validate descriptor combinations and install either a data or accessor property in the object's hash table.
 - [ ] Expose enumeration helpers like `Object.keys` and `Object.getOwnPropertyNames`.
 		- [x] `Object.keys` implemented in `src/stdlib.js` (`tests/es5/objectKeys.io`).
-                - [x] `Object.getOwnPropertyNames` implemented (`tests/es5/objectGetOwnPropertyNames.io`).
+				- [x] `Object.getOwnPropertyNames` implemented (`tests/es5/objectGetOwnPropertyNames.io`).
 		- [ ] Add support for accessor syntax (`get`/`set` in object literals) and function prototype attributes.
 - [x] Ensure `Object.defineProperty`, `Object.defineProperties`, `Object.create`, and `Object.keys` are not constructable. *(Implemented; `tests/stdlib/checkAllPrototypes.io`)*
 - [ ] Extend the parser to recognize `get name(){}` and `set name(v){}` tokens and emit descriptor objects for property creation.
@@ -85,9 +85,11 @@ ES5‑specific regression tests live in `tests/es5`.
 	- [x] Extend the string section in `src/stdlib.js` with whitespace tables identical to the spec and expose `String.prototype.trim*` methods.
 	- [x] `String.prototype.trim` implemented (`tests/es5/stringTrim.io`).
 	- [x] `String.prototype.trimLeft` and `trimRight` implemented (`tests/es5/stringTrimLeftRight.io`).
-- [ ] Implement JSON-related `toJSON` helpers.
-	- [x] Add `Date.prototype.toJSON` wrapper that calls the internal `toISOString` path.
-	- [x] Add `Number.prototype.toJSON` wrapper that calls the internal conversion path (`tests/es5/numberToJSON.io`).
+- [x] Implement JSON-related `toJSON` helpers.
+	   - [x] Add `Date.prototype.toJSON` wrapper that calls the internal `toISOString` path.
+	   - [x] Add `Number.prototype.toJSON` wrapper that calls the internal conversion path (`tests/es5/numberToJSON.io`).
+	   - [x] Add `String.prototype.toJSON` wrapper returning the primitive string (`tests/es5/stringBooleanToJSON.io`).
+	   - [x] Add `Boolean.prototype.toJSON` wrapper returning the primitive boolean (`tests/es5/stringBooleanToJSON.io`).
 
 ### Object immutability controls
  - [x] Support `Object.preventExtensions`, `Object.seal`, `Object.freeze`, and related predicates (`isExtensible`, `isSealed`, `isFrozen`).
