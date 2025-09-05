@@ -71,7 +71,7 @@ var $isNaN = support.isNaN, $isFinite = support.isFinite, $floor = support.floor
 		, $getInternalProperty = support.getInternalProperty, $callWithArgs = support.callWithArgs
 		, $charCodeAt = support.charCodeAt, abs, syntaxError, rangeError, typeError
 		, ALPHA_DIGITS_LOWER = "0123456789abcdefghijklmnopqrstuvwxyz", ALPHA_DIGITS_UPPER = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		, WHITE_SPACES = " \f\n\r\t\v\xA0\u2028\u2029";
+, WHITE_SPACES = " \f\n\r\t\v\xA0\u1680\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF";
 
 var PARSE_INT_CHARS = (function() {
 	var pic = { }, ws = WHITE_SPACES;

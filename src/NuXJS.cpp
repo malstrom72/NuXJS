@@ -589,14 +589,19 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 }
 
 static const Char* eatStringWhite(const Char* p, const Char* e) {
-	while (p != e) {
-		switch (*p) {
-			case ' ': case '\f': case '\n': case '\r': case '\t': case '\v': case 0xA0: case 0x2028: case 0x2029: break;
-			default: return p;
-		}
-		++p;
-	}
-	return p;
+while (p != e) {
+switch (*p) {
+case ' ': case '\f': case '\n': case '\r': case '\t': case '\v':
+case 0x00A0: case 0x1680: case 0x180E:
+case 0x2000: case 0x2001: case 0x2002: case 0x2003: case 0x2004: case 0x2005: case 0x2006: case 0x2007: case 0x2008: case 0x2009: case 0x200A:
+case 0x2028: case 0x2029: case 0x202F: case 0x205F: case 0x3000: case 0xFEFF:
+break;
+default:
+return p;
+}
+++p;
+}
+return p;
 }
 
 static double stringToDouble(const String& s) {

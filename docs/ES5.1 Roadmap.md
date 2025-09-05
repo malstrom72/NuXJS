@@ -99,9 +99,9 @@ ES5‑specific regression tests live in `tests/es5`.
 - [x] Finish remaining ES5.1 Date features such as `toISOString`, `toJSON`, and `now`.
  - [x] `Date.now` implemented using `support.getCurrentTime` (`tests/es5/dateNow.io`).
  - [x] `Date.prototype.toISOString` and `Date.prototype.toJSON` implemented (`tests/es5/dateToISOStringJSON.io`).
-- [ ] Add Number and Math helpers (`isNaN`, `isFinite` refinements, `parseInt`/`parseFloat` alignment).
+- [x] Add Number and Math helpers (`isNaN`, `isFinite` refinements, `parseInt`/`parseFloat` alignment).
 - [x] Refine `support.isNaN`/`isFinite` semantics and expose `Number.isNaN` and `Number.isFinite` shims. *(tests/es5/numberIsFiniteIsNaN.io)*
-- [ ] Ensure `parseInt` and `parseFloat` follow ES5.1 whitespace trimming rules and radix handling; update the `Math` object with any missing constants.
+- [x] Ensure `parseInt` and `parseFloat` follow ES5.1 whitespace trimming rules and radix handling; update the `Math` object with any missing constants. (`tests/es5/parseIntFloatWhitespace.io`)
 
 ### Parser/VM robustness
 - [ ] Update grammar to allow reserved words as property keys and recognize accessor definitions.
