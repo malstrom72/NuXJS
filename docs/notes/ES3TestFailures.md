@@ -1,21 +1,18 @@
 # ES3 Test262 Failures Analysis
-81 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
+78 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
 | Array | §15.4 | 9 |
 | Date | §15.9 | 7 |
 | Error | §15.11 | 5 |
 | Function | §15.3 | 1 |
-| Infinity |  | 1 |
 | Math | §15.8 | 2 |
-| NaN |	 | 1 |
 | Number | §15.7 | 3 |
 | Object | §15.2 | 12 |
 | RegExp | §15.10 | 18 |
 | String | §15.5 | 17 |
 | parseFloat |	| 1 |
 | parseInt |  | 3 |
-| undefined |  | 1 |
 
 Tests that rely on the optional URI helpers (`decodeURI`, `encodeURI`, and their component variants) are excluded: cases targeting these helpers are marked as by_design, while unrelated tests that require them are tagged bad_test.
 
@@ -54,14 +51,14 @@ When an item is resolved, check it off and add a brief note citing the ES3 spec 
 - [ ] built-ins/Function/prototype/S15.3.4_A5 — Checking if creating "new Function.prototype object" fails
 
 ### Infinity
-- [ ] built-ins/Infinity/S15.1.1.2_A2_T2 — Checking typeof Functions
+- [x] built-ins/Infinity/S15.1.1.2_A2_T2 — `Infinity` is read-only (ES3 §15.1.1.2; regression: `tests/regression/globalConstantsReadOnly.io`)
 
 ### Math
 - [ ] built-ins/Math/pow/applying-the-exp-operator_A7 — If abs(base) is 1 and exponent is +∞, the result is NaN.
 - [ ] built-ins/Math/pow/applying-the-exp-operator_A8 — If abs(base) is 1 and exponent is −∞, the result is NaN.
 
 ### NaN
-- [ ] built-ins/NaN/S15.1.1.1_A2_T2 — Checking typeof Functions
+- [x] built-ins/NaN/S15.1.1.1_A2_T2 — `NaN` is read-only (ES3 §15.1.1.1; regression: `tests/regression/globalConstantsReadOnly.io`)
 
 ### Number
 - [ ] built-ins/Number/S9.3.1_A2 — Strings with various WhiteSpaces convert to Number by explicit transformation
@@ -131,4 +128,4 @@ When an item is resolved, check it off and add a brief note citing the ES3 spec 
 - [ ] built-ins/parseInt/S15.1.2.2_A7.2_T3 — Checking algorithm for R = 16
 
 ### undefined
-- [ ] built-ins/undefined/15.1.1.3-1 — undefined is not writable, should not throw in non-strict mode
+- [x] built-ins/undefined/15.1.1.3-1 — global `undefined` is immutable (ES3 §15.1.1.3; regression: `tests/regression/globalConstantsReadOnly.io`)
