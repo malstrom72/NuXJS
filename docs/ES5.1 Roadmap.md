@@ -76,7 +76,7 @@ If this message is missing, the build did not complete.
 ### Arguments object & function semantics
 - [ ] Implement ES5.1 arguments-object behavior (decoupled mapping, `Object.getOwnPropertyDescriptor` support).
 		- [ ] Introduce an `ArgumentsObject` class that can either map indices to parameters or, in strict mode, hold a copy without parameter aliases.
-                - [x] `Object.getOwnPropertyDescriptor` on arguments exposes `length`, `callee`, and indexed properties with correct attributes. (`tests/es5/argumentsDescriptor.io`)
+				- [x] `Object.getOwnPropertyDescriptor` on arguments exposes `length`, `callee`, and indexed properties with correct attributes. (`tests/es5/argumentsDescriptor.io`)
  - [x] Provide `Function.prototype.bind` and ensure correct `.name`, `.length`, and `toString` outputs.
 	- [x] Implemented via runtime `support.bind` helper producing `BoundFunction` with correct constructor behavior and partial application semantics (`tests/es5/functionBind.io`).
 	- [x] Optional: consider `bound` function `.name` as `"bound " + target.name` (`tests/es5/functionBind.io`).
@@ -121,10 +121,10 @@ If this message is missing, the build did not complete.
 - [x] Ensure `parseInt` and `parseFloat` follow ES5.1 whitespace trimming rules and radix handling; update the `Math` object with any missing constants. (`tests/es5/parseIntFloatWhitespace.io`)
 
 ### Parser/VM robustness
-- [ ] Update grammar to allow reserved words as property keys and recognize accessor definitions.
-	- [ ] Expand the lexical grammar in `src/Parser.cpp` to treat keywords as identifiers in object literals and hook into the new accessor creation path.
+- [x] Update grammar to allow reserved words as property keys and recognize accessor definitions. (`tests/es5/reservedWordProperties.io`)
+	   - [x] Expand the lexical grammar in `src/Parser.cpp` to treat keywords as identifiers in object literals and hook into the new accessor creation path.
 - [ ] Revisit bytecode generation for new features and enforce ES5.1 evaluation order.
-	- [ ] The compiler in `src/NuXJS.cpp` must emit bytecode for accessors, strict arguments, and `bind` calls while guaranteeing left‑to‑right evaluation as mandated by ES5.1.
+	   - [ ] The compiler in `src/NuXJS.cpp` must emit bytecode for accessors, strict arguments, and `bind` calls while guaranteeing left‑to‑right evaluation as mandated by ES5.1.
 
 ### Testing & conformance
 - [ ] Expand the existing `tests/from262` set with ES5.1 cases from Test262.
