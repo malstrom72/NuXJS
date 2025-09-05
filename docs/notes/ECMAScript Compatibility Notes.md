@@ -31,7 +31,9 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 - `Object.prototype.hasOwnProperty`
 - `Object.prototype.isPrototypeOf`
 - `Object.getPrototypeOf`
-- `Object.defineProperty` (data properties only)
+- `Object.defineProperty`
+- `Object.getOwnPropertyDescriptor`
+- `Object.keys`
 - `Number.isFinite`
 - `Number.isNaN`
 - `JSON.parse`

@@ -100,6 +100,13 @@ interface ObjectConstructor {
    * @param attributes Descriptor for the property. It can be for a data property or an accessor property.
    */
   defineProperty(o: any, p: PropertyKey, attributes: PropertyDescriptor & ThisType<any>): any;
+
+  /**
+   * Retrieves a property descriptor for a named property on an object.
+   * @param o The object in which to look for the property.
+   * @param p The property name.
+   */
+  getOwnPropertyDescriptor(o: any, p: PropertyKey): PropertyDescriptor | undefined;
 }
 
 /**

@@ -23,8 +23,9 @@ ES5‑specific regression tests live in `tests/es5`.
 			   - [ ] `SET_PROPERTY_OP` similarly uses `Object::setProperty`; when an accessor exists, the processor calls the setter through `invokeFunction` with the provided value and keeps the caller's value as the final result.
 - [ ] Implement full `Object.defineProperty`, `Object.defineProperties`, `Object.getOwnPropertyDescriptor`, and `Object.create` in both the C++ core and `src/stdlib.js`.
 	- [x] `Object.defineProperty` supports data and accessor descriptors in `src/stdlib.js`.
-	- [x] `Object.defineProperties` implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io).
-	- [x] `Object.create` (non-null prototype) implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io).
+		- [x] `Object.defineProperties` implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io).
+		- [x] `Object.create` (non-null prototype) implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io).
+		- [x] `Object.getOwnPropertyDescriptor` implemented in `src/stdlib.js` (`tests/es5/objectGetOwnPropertyDescriptor.io`).
 - [ ] Replace the legacy `support.defineProperty(o, name, value, readOnly, dontEnum, dontDelete)` with a `PropertyDescriptor` structure that can carry `value`, `get`, `set`, and attribute flags.
 - [ ] The runtime helper in `src/NuXJS.cpp` should validate descriptor combinations and install either a data or accessor property in the object's hash table.
 - [ ] Expose enumeration helpers like `Object.keys` and `Object.getOwnPropertyNames`.

@@ -4,7 +4,7 @@
 
 	@preserve: trim,trimLeft,trimRight,forEach,map,filter,reduce,reduceRight,every,some
 	@preserve: get,set
-@preserve: now,create,keys,bind
+@preserve: now,create,getOwnPropertyDescriptor,keys,bind
 @preserve: defineProperties
 */
 
@@ -172,7 +172,7 @@ defProps(Number, { dontEnum: true }, {
 	isNaN: unconstructable(function isNaN(n) { return typeof n === "number" && $isNaN(n); })
 });
 
-// Object helpers: defineProperty (accessors), defineProperties, create, keys
+// Object helpers: defineProperty (accessors), defineProperties, create, getOwnPropertyDescriptor, keys
 defProps(Object, { dontEnum: true }, {
 		defineProperty: unconstructable(function defineProperty(o, p, d) {
 				var k = str(p);
@@ -195,22 +195,26 @@ defProps(Object, { dontEnum: true }, {
 		for (var k in props) if (Object.prototype.hasOwnProperty.call(props, k)) Object.defineProperty(obj, k, props[k]);
 		return obj;
 	}),
-	create: unconstructable(function create(proto, properties) {
-		if (proto === null) throw TypeError();
-		var t = typeof proto;
-		if (t !== "object" && t !== "function") throw TypeError();
-		function F() {}
-		F.prototype = proto;
-		var o = new F();
-		if (properties !== void 0) Object.defineProperties(o, Object(properties));
-		return o;
-	}),
-	keys: unconstructable(function keys(o) {
-		if (o === undefined || o === null) throw TypeError();
-		var obj = Object(o), res = [], k;
-		for (k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) res[res.length] = k;
-		return res;
-	})
+		create: unconstructable(function create(proto, properties) {
+				if (proto === null) throw TypeError();
+				var t = typeof proto;
+				if (t !== "object" && t !== "function") throw TypeError();
+				function F() {}
+				F.prototype = proto;
+				var o = new F();
+				if (properties !== void 0) Object.defineProperties(o, Object(properties));
+				return o;
+		}),
+		getOwnPropertyDescriptor: unconstructable(function getOwnPropertyDescriptor(o, p) {
+				if (o === undefined || o === null) throw TypeError();
+				return support.getOwnPropertyDescriptor(Object(o), str(p));
+		}),
+		keys: unconstructable(function keys(o) {
+				if (o === undefined || o === null) throw TypeError();
+				var obj = Object(o), res = [], k;
+				for (k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) res[res.length] = k;
+				return res;
+		})
 });
 
 // Function.prototype.bind (minimal, declared with one formal parameter)

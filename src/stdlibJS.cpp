@@ -533,11 +533,12 @@ const char* STDLIB_ES5_JS =
 "n defineProperties(K,U){if(K===undefined||K===null)throw TypeError();var eR=Object(K);for(var cM in U)if(Object.protot"
 "ype.hasOwnProperty.call(U,cM))Object.defineProperty(eR,cM,U[cM]);return eR}),create:d(function create(eS,eT){if(eS===n"
 "ull)throw TypeError();var I=typeof eS;if(I!==\"object\"&&I!==\"function\")throw TypeError();function eU(){}eU.prototyp"
-"e=eS;var K=new eU();if(eT!==void 0)Object.defineProperties(K,Object(eT));return K}),keys:d(function keys(K){if(K===und"
-"efined||K===null)throw TypeError();var eR=Object(K),eV=[],cM;for(cM in eR)if(Object.prototype.hasOwnProperty.call(eR,c"
-"M))eV[eV.length]=cM;return eV})});R(Function.prototype,{dontEnum:true},{bind:function bind(an){var eW=this;if(typeof e"
-"W!=='function')throw TypeError();var aF=[eW,an];for(var v=1;v<arguments.length;++v)aF[aF.length]=arguments[v];return a"
-".bind.apply(null,aF)}});"
+"e=eS;var K=new eU();if(eT!==void 0)Object.defineProperties(K,Object(eT));return K}),getOwnPropertyDescriptor:d(functio"
+"n getOwnPropertyDescriptor(K,Y){if(K===undefined||K===null)throw TypeError();return a.getOwnPropertyDescriptor(Object("
+"K),Q(Y))}),keys:d(function keys(K){if(K===undefined||K===null)throw TypeError();var eR=Object(K),eV=[],cM;for(cM in eR"
+")if(Object.prototype.hasOwnProperty.call(eR,cM))eV[eV.length]=cM;return eV})});R(Function.prototype,{dontEnum:true},{b"
+"ind:function bind(an){var eW=this;if(typeof eW!=='function')throw TypeError();var aF=[eW,an];for(var v=1;v<arguments.l"
+"ength;++v)aF[aF.length]=arguments[v];return a.bind.apply(null,aF)}});"
 ;
 #endif
 }

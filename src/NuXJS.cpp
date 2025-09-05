@@ -192,8 +192,9 @@ static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 		, FUNCTION_SPACE("function "), INFINITY_STRING("Infinity"), IS_NOT_A_FUNCTION_STRING(" is not a function")
 		, IS_NOT_DEFINED_STRING(" is not defined"), MESSAGE_STRING("message"), MINUS_INFINITY_STRING("-Infinity")
 		, NAME_STRING("name"), NAN_STRING("NaN"), NATIVE_FUNCTION_STRING("function() { [native code] }")
-		, PROTOTYPE_CHAIN_TOO_LONG("Prototype chain too long"), PROTOTYPE_STRING("prototype")
-		, STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value");
+, PROTOTYPE_CHAIN_TOO_LONG("Prototype chain too long"), PROTOTYPE_STRING("prototype")
+, STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value")
+, ENUMERABLE_STRING("enumerable"), CONFIGURABLE_STRING("configurable"), WRITABLE_STRING("writable");
 
 static const String ERROR_NAMES[ERROR_TYPE_COUNT] = {
 	"Error", "EvalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError", "URIError"
@@ -5379,7 +5380,32 @@ static Value bind(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Objec
 		}
 	}
 	
-	static Value hasOwnProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+#if (NUXJS_ES5)
+	static Value getOwnPropertyDescriptor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	Object* object = (argc >= 2 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+	if (object != 0) {
+		Value v;
+		Flags flags = object->getOwnProperty(rt, argv[1], &v);
+		if (flags != NONEXISTENT) {
+			JSObject* desc = rt.newJSObject();
+			if ((flags & ACCESSOR_FLAG) != 0) {
+				Accessor* acc = static_cast<Accessor*>(v.asObject());
+				desc->setOwnProperty(rt, &GET_STRING, (acc->getter != 0 ? acc->getter : UNDEFINED_VALUE), DONT_ENUM_FLAG | EXISTS_FLAG);
+				desc->setOwnProperty(rt, &SET_STRING, (acc->setter != 0 ? acc->setter : UNDEFINED_VALUE), DONT_ENUM_FLAG | EXISTS_FLAG);
+			} else {
+				desc->setOwnProperty(rt, &VALUE_STRING, v, DONT_ENUM_FLAG | EXISTS_FLAG);
+				desc->setOwnProperty(rt, &WRITABLE_STRING, Value((flags & READ_ONLY_FLAG) == 0), DONT_ENUM_FLAG | EXISTS_FLAG);
+			}
+			desc->setOwnProperty(rt, &ENUMERABLE_STRING, Value((flags & DONT_ENUM_FLAG) == 0), DONT_ENUM_FLAG | EXISTS_FLAG);
+			desc->setOwnProperty(rt, &CONFIGURABLE_STRING, Value((flags & DONT_DELETE_FLAG) == 0), DONT_ENUM_FLAG | EXISTS_FLAG);
+			return desc;
+		}
+	}
+	return UNDEFINED_VALUE;
+}
+#endif
+
+static Value hasOwnProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		Object* object = (argc >= 2 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
 		return (object != 0 ? object->hasOwnProperty(rt, argv[1]) : false);
 	}
@@ -5506,8 +5532,9 @@ static struct {
 { "defineProperty", Support::defineProperty },
 { "bind", Support::bind },
 { "compileFunction", Support::compileFunction }, { "distinctConstructor", Support::distinctConstructor },
-	   { "callWithArgs", Support::callWithArgs }, { "hasOwnProperty", Support::hasOwnProperty },
-	   { "fromCharCode", Support::fromCharCode }, { "isPropertyEnumerable", Support::isPropertyEnumerable },
+{ "callWithArgs", Support::callWithArgs }, { "getOwnPropertyDescriptor", Support::getOwnPropertyDescriptor },
+{ "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
+{ "isPropertyEnumerable", Support::isPropertyEnumerable },
 	   { "atan2", Support::atan2 }, { "pow", Support::pow }, { "parseFloat", Support::parseFloat },
 	   { "charCodeAt", Support::charCodeAt }, { "substring", Support::substring }, { "submatch", Support::submatch },
 #else
