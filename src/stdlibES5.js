@@ -148,13 +148,21 @@ if (!$isFinite(t)) throw RangeError("Invalid time value");
 				+ pad(h, 2) + ':' + pad(min, 2) + ':' + pad(s, 2)
 				+ '.' + pad(ms, 3) + 'Z';
 	},
-	toJSON: function toJSON(key) {
-		var O = Object(this);
-		var tv = support.toPrimitiveNumber(O);
-		if (typeof tv === "number" && !$isFinite(tv)) return null;
-		var toISO = O.toISOString;
-		if (typeof toISO !== "function") throw TypeError();
-		return toISO.call(O);
+		toJSON: function toJSON(key) {
+				var O = Object(this);
+				var tv = support.toPrimitiveNumber(O);
+				if (typeof tv === "number" && !$isFinite(tv)) return null;
+				var toISO = O.toISOString;
+				if (typeof toISO !== "function") throw TypeError();
+				return toISO.call(O);
+		}
+});
+
+// Number.prototype.toJSON
+defProps(Number.prototype, { dontEnum: true }, {
+	toJSON: function toJSON() {
+		var n = support.toPrimitiveNumber(this);
+		return $isFinite(n) ? n : null;
 	}
 });
 

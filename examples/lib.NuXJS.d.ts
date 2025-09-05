@@ -361,6 +361,8 @@ interface Number {
 
   /** Returns the primitive value of the specified object. */
   valueOf(): number;
+  /** Used by the JSON.stringify method to enable the transformation of an object's data for JSON serialization. */
+  toJSON(key?: any): number | null;
 }
 
 interface NumberConstructor {

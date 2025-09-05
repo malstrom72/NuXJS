@@ -86,7 +86,7 @@ ES5‑specific regression tests live in `tests/es5`.
 	- [x] `String.prototype.trimLeft` and `trimRight` implemented (`tests/es5/stringTrimLeftRight.io`).
 - [ ] Implement JSON-related `toJSON` helpers.
 	- [x] Add `Date.prototype.toJSON` wrapper that calls the internal `toISOString` path.
-	- [ ] Add `Number.prototype.toJSON` wrapper that calls the internal conversion path.
+	- [x] Add `Number.prototype.toJSON` wrapper that calls the internal conversion path (`tests/es5/numberToJSON.io`).
 
 ### Object immutability controls
 - [ ] Support `Object.preventExtensions`, `Object.seal`, `Object.freeze`, and related predicates (`isExtensible`, `isSealed`, `isFrozen`).
