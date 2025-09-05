@@ -81,7 +81,7 @@ When an item is resolved, check it off and add a brief note citing the ES3 spec 
 - [x] built-ins/Object/prototype/toString/15.2.4.2-1-2 — Object.prototype.toString - '[object Undefined]' will be returned when 'this' value is undefined
 - [x] built-ins/Object/prototype/toString/15.2.4.2-2-1 — Object.prototype.toString - '[object Null]' will be returned when 'this' value is null
 - [x] built-ins/Object/prototype/toString/15.2.4.2-2-2 — Object.prototype.toString - '[object Null]' will be returned when 'this' value is null
-	- Fixed per ES3 §15.2.4.2; regression test: `tests/regression/objectPrototypeToStringUndefinedNull.io`
+        - ES3 §15.2.4.2 first obtains the value's internal `[[Class]]` (Step 1) and returns the string `"[object " + Result(1) + "]"` (Step 2). Because `undefined` and `null` have `[[Class]]` values `"Undefined"` and `"Null"`, respectively, `Object.prototype.toString` must yield `"[object Undefined]"` or `"[object Null]"` for these inputs. Regression test: `tests/regression/objectPrototypeToStringUndefinedNull.io`
 - [ ] built-ins/Object/prototype/valueOf/S15.2.4.4_A12 — Checking Object.prototype.valueOf invoked by the 'call' property.
 - [ ] built-ins/Object/prototype/valueOf/S15.2.4.4_A13 — Checking Object.prototype.valueOf invoked by the 'call' property.
 - [ ] built-ins/Object/prototype/valueOf/S15.2.4.4_A14 — Checking Object.prototype.valueOf invoked by the 'call' property.
