@@ -1,5 +1,5 @@
 # ES3 Test262 Failures Analysis
-78 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
+82 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
 | Array | §15.4 | 9 |
@@ -8,13 +8,14 @@
 | Function | §15.3 | 1 |
 | Math | §15.8 | 2 |
 | Number | §15.7 | 3 |
-| Object | §15.2 | 12 |
+| Object | §15.2 | 16 |
 | RegExp | §15.10 | 18 |
 | String | §15.5 | 17 |
 | parseFloat |	| 1 |
 | parseInt |  | 3 |
 
 Tests that rely on the optional URI helpers (`decodeURI`, `encodeURI`, and their component variants) are excluded: cases targeting these helpers are marked as by_design, while unrelated tests that require them are tagged bad_test.
+Tests expecting the global `NaN`, `Infinity`, or `undefined` properties to be immutable are tagged `not_es3`; ES3 only requires {DontEnum, DontDelete} (§15.1.1.1–15.1.1.3).
 
 Each list below states the ES3 requirement that the corresponding test checks. NuXJS currently violates these behaviors.
 
@@ -50,17 +51,9 @@ When an item is resolved, check it off and add a brief note citing the ES3 spec 
 ### Function
 - [ ] built-ins/Function/prototype/S15.3.4_A5 — Checking if creating "new Function.prototype object" fails
 
-### Infinity
-- [x] built-ins/Infinity/S15.1.1.2_A2_T2 — `Infinity` is read-only (ES3 §15.1.1.2; regression: `tests/regression/globalConstantsReadOnly.io`)
-
-### Math
 - [ ] built-ins/Math/pow/applying-the-exp-operator_A7 — If abs(base) is 1 and exponent is +∞, the result is NaN.
 - [ ] built-ins/Math/pow/applying-the-exp-operator_A8 — If abs(base) is 1 and exponent is −∞, the result is NaN.
 
-### NaN
-- [x] built-ins/NaN/S15.1.1.1_A2_T2 — `NaN` is read-only (ES3 §15.1.1.1; regression: `tests/regression/globalConstantsReadOnly.io`)
-
-### Number
 - [ ] built-ins/Number/S9.3.1_A2 — Strings with various WhiteSpaces convert to Number by explicit transformation
 - [ ] built-ins/Number/S9.3.1_A3_T1 — static string
 - [ ] built-ins/Number/S9.3.1_A3_T2 — dynamic string
@@ -74,12 +67,15 @@ When an item is resolved, check it off and add a brief note citing the ES3 spec 
 - [ ] built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A13 — Let O be the result of calling ToObject passing the this value as the argument.
 - [ ] built-ins/Object/prototype/toLocaleString/S15.2.4.3_A12 — Let O be the result of calling ToObject passing the this value as the argument.
 - [ ] built-ins/Object/prototype/toLocaleString/S15.2.4.3_A13 — Let O be the result of calling ToObject passing the this value as the argument.
+- [ ] built-ins/Object/prototype/toString/15.2.4.2-1-1 — Object.prototype.toString - '[object Undefined]' will be returned when 'this' value is undefined
+- [ ] built-ins/Object/prototype/toString/15.2.4.2-1-2 — Object.prototype.toString - '[object Undefined]' will be returned when 'this' value is undefined
+- [ ] built-ins/Object/prototype/toString/15.2.4.2-2-1 — Object.prototype.toString - '[object Null]' will be returned when 'this' value is null
+- [ ] built-ins/Object/prototype/toString/15.2.4.2-2-2 — Object.prototype.toString - '[object Null]' will be returned when 'this' value is null
 - [ ] built-ins/Object/prototype/valueOf/S15.2.4.4_A12 — Checking Object.prototype.valueOf invoked by the 'call' property.
 - [ ] built-ins/Object/prototype/valueOf/S15.2.4.4_A13 — Checking Object.prototype.valueOf invoked by the 'call' property.
 - [ ] built-ins/Object/prototype/valueOf/S15.2.4.4_A14 — Checking Object.prototype.valueOf invoked by the 'call' property.
 - [ ] built-ins/Object/prototype/valueOf/S15.2.4.4_A15 — Checking Object.prototype.valueOf when called as a global function.
 
-> Tests exercising `Object.prototype.toString` with `undefined` or `null` have been dropped: ES3 does not specify the method's behaviour for these values.
 
 ### RegExp
 - [ ] built-ins/RegExp/S15.10.2.12_A1_T1 — WhiteSpace
@@ -127,5 +123,3 @@ When an item is resolved, check it off and add a brief note citing the ES3 spec 
 - [ ] built-ins/parseInt/S15.1.2.2_A5.2_T2 — ": 0X"
 - [ ] built-ins/parseInt/S15.1.2.2_A7.2_T3 — Checking algorithm for R = 16
 
-### undefined
-- [x] built-ins/undefined/15.1.1.3-1 — global `undefined` is immutable (ES3 §15.1.1.3; regression: `tests/regression/globalConstantsReadOnly.io`)
