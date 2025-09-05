@@ -34,6 +34,7 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 - `Object.defineProperty`
 - `Object.getOwnPropertyDescriptor`
 - `Object.getOwnPropertyNames`
+- `Object.create`
 - `Object.keys`
 - `Object.preventExtensions`
 - `Object.isExtensible`

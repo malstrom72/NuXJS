@@ -128,7 +128,7 @@ defProps(Date, { dontEnum: true }, {
 // Date.prototype.toISOString/toJSON
 defProps(Date.prototype, { dontEnum: true }, {
 toISOString: function toISOString() {
-var t = this.getTime();
+			var t = this.getTime();
 if (!$isFinite(t)) throw RangeError("Invalid time value");
 		function pad(num, len) {
 			var s = '' + num;
@@ -209,14 +209,11 @@ defProps(Object, { dontEnum: true }, {
 		return obj;
 	}),
 		create: unconstructable(function create(proto, properties) {
-				if (proto === null) throw TypeError();
-				var t = typeof proto;
-				if (t !== "object" && t !== "function") throw TypeError();
-				function F() {}
-				F.prototype = proto;
-				var o = new F();
-				if (properties !== void 0) Object.defineProperties(o, Object(properties));
-				return o;
+			var t = typeof proto;
+			if (proto !== null && t !== "object" && t !== "function") throw TypeError();
+			var o = support.createObject(proto);
+			if (properties !== void 0) Object.defineProperties(o, Object(properties));
+			return o;
 		}),
 		getOwnPropertyDescriptor: unconstructable(function getOwnPropertyDescriptor(o, p) {
 				if (o === undefined || o === null) throw TypeError();

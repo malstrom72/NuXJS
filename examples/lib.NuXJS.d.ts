@@ -102,6 +102,13 @@ interface ObjectConstructor {
   defineProperty(o: any, p: PropertyKey, attributes: PropertyDescriptor & ThisType<any>): any;
 
   /**
+   * Creates an object that has the specified prototype or that has null prototype.
+   * @param o Object to use as prototype or null.
+   * @param properties Properties to add to the newly created object.
+   */
+  create(o: any, properties?: PropertyDescriptorMap & ThisType<any>): any;
+
+  /**
    * Retrieves a property descriptor for a named property on an object.
    * @param o The object in which to look for the property.
    * @param p The property name.

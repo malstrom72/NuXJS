@@ -5273,7 +5273,7 @@ struct Support {
 		return UNDEFINED_VALUE;
 	}
 
-	static Value createWrapper(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+static Value createWrapper(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 2) {
 			Heap& heap = rt.getHeap();
 			const String* const className = argv[0].toString(heap);
@@ -5295,9 +5295,18 @@ struct Support {
 			return new(heap) GenericWrapper(heap.managed(), className, internalValue, Runtime::ARBITRARY_PROTOTYPE, prototype);
 		}
 		return UNDEFINED_VALUE;
-	}
+}
 
-	static Value distinctConstructor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+		static Value createObject(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+			if (argc >= 1) {
+				Heap& heap = rt.getHeap();
+				Object* proto = argv[0].toObjectOrNull(heap, false);
+				return new(heap) JSObject(heap.managed(), proto);
+			}
+			return UNDEFINED_VALUE;
+		}
+
+		static Value distinctConstructor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 1) {
 			Function* regularFunction = argv[0].asFunction();
 			if (regularFunction != 0) {
@@ -5647,8 +5656,9 @@ static struct {
 	String name;
 	FunctorAdapter<NativeFunction> func;
 } SUPPORT_FUNCTIONS[] = {
-	{ "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
+{ "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
 #if (NUXJS_ES5)
+{ "createObject", Support::createObject },
 { "defineProperty", Support::defineProperty },
 { "bind", Support::bind },
 { "compileFunction", Support::compileFunction }, { "distinctConstructor", Support::distinctConstructor },
