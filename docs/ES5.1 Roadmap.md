@@ -1,10 +1,11 @@
 # ES5.1 Implementation Roadmap
 
 ## Overview
-NuXJS today is a portable C++03 engine that fully implements ECMAScript 3 with a few ES5 conveniences such as JSON support and indexed string access. Custom property getters and setters are not yet available and `Object.defineProperty` only handles data properties. Built‑in library objects are written directly in JavaScript and omit modern helpers like `Object.assign` or `Array.prototype.map`. The repository already contains a broad test suite, including `tests/from262` for conformance.
+NuXJS today is a portable C++03 engine that fully implements ECMAScript 3 while steadily growing ES5.1 support. JSON, indexed string access, custom property getters/setters, and full `Object.defineProperty` semantics are available. Built‑in library objects are written directly in JavaScript and still omit certain helpers such as `Object.assign`. The repository already contains a broad test suite, including `tests/from262` for conformance.
 
-All ES5.1 work should be driven by regression tests. Whenever a roadmap item lands, reference its verifying `.io` file in this document.
-ES5‑specific regression tests live in `tests/es5`.
+All ES5.1 work should be driven by regression tests. Whenever a roadmap item lands, reference its verifying `.io` file in this document. ES5‑specific regression tests live in `tests/es5`.
+
+For faster iteration during development you can build and test only the beta target by passing `beta` to `build.sh`/`build.cmd` (for example, `./build.sh es5 native beta`), but ensure the full build succeeds before committing.
 
 ## Current Status
 
@@ -16,24 +17,25 @@ ES5‑specific regression tests live in `tests/es5`.
 ## Roadmap to ES5.1
 
 ### Object model & descriptors
-	- [ ] Extend the internal property representation to track attributes (`[[Writable]]`, `[[Enumerable]]`, `[[Configurable]]`) and accessor pairs.
-	   - [ ] `src/NuXJS.h` defines `Object::Table::Bucket`; expand the union to hold either a `Value` or a `{ get, set }` pair and add an `ACCESSOR_FLAG` bit.
-	   - [ ] Update `Object::getProperty` and `Object::setProperty` in `src/NuXJS.cpp` so that accessor buckets surface the getter or setter function while respecting attribute bits during writes and deletes.
-			   - [ ] `GET_PROPERTY_OP` in `Processor` already delegates to `Object::getProperty`; when an `ACCESSOR_FLAG` bucket is found, the getter function replaces the original value and the processor invokes it via its standard `invokeFunction` path with the object as `this`, leaving the call result on the stack.
-			   - [ ] `SET_PROPERTY_OP` similarly uses `Object::setProperty`; when an accessor exists, the processor calls the setter through `invokeFunction` with the provided value and keeps the caller's value as the final result.
-- [ ] Implement full `Object.defineProperty`, `Object.defineProperties`, `Object.getOwnPropertyDescriptor`, and `Object.create` in both the C++ core and `src/stdlib.js`.
+        - [x] Extend the internal property representation to track attributes (`[[Writable]]`, `[[Enumerable]]`, `[[Configurable]]`) and accessor pairs.
+           - [x] `src/NuXJS.h` defines `Object::Table::Bucket`; expand the union to hold either a `Value` or a `{ get, set }` pair and add an `ACCESSOR_FLAG` bit.
+           - [x] Update `Object::getProperty` and `Object::setProperty` in `src/NuXJS.cpp` so that accessor buckets surface the getter or setter function while respecting attribute bits during writes and deletes.
+                           - [x] `GET_PROPERTY_OP` in `Processor` already delegates to `Object::getProperty`; when an `ACCESSOR_FLAG` bucket is found, the getter function replaces the original value and the processor invokes it via its standard `invokeFunction` path with the object as `this`, leaving the call result on the stack. (`tests/es5/getterSetterProperties.io`)
+                           - [x] `SET_PROPERTY_OP` similarly uses `Object::setProperty`; when an accessor exists, the processor calls the setter through `invokeFunction` with the provided value and keeps the caller's value as the final result. (`tests/es5/getterSetterProperties.io`)
+- [x] Implement full `Object.defineProperty`, `Object.defineProperties`, `Object.getOwnPropertyDescriptor`, and `Object.create` in both the C++ core and `src/stdlib.js`. (`tests/es5/objectCreateDefineProperties.io`, `tests/es5/objectGetOwnPropertyDescriptor.io`)
 	- [x] `Object.defineProperty` supports data and accessor descriptors in `src/stdlib.js`.
 		- [x] `Object.defineProperties` implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io).
 - [x] `Object.create` implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io, tests/es5/objectCreateNullProto.io).
 		- [x] `Object.getOwnPropertyDescriptor` implemented in `src/stdlib.js` (`tests/es5/objectGetOwnPropertyDescriptor.io`).
 - [ ] Replace the legacy `support.defineProperty(o, name, value, readOnly, dontEnum, dontDelete)` with a `PropertyDescriptor` structure that can carry `value`, `get`, `set`, and attribute flags.
-- [ ] The runtime helper in `src/NuXJS.cpp` should validate descriptor combinations and install either a data or accessor property in the object's hash table.
+- [x] The runtime helper in `src/NuXJS.cpp` validates descriptor combinations and installs either a data or accessor property in the object's hash table.
 - [ ] Expose enumeration helpers like `Object.keys` and `Object.getOwnPropertyNames`.
-		- [x] `Object.keys` implemented in `src/stdlib.js` (`tests/es5/objectKeys.io`).
-				- [x] `Object.getOwnPropertyNames` implemented (`tests/es5/objectGetOwnPropertyNames.io`).
-		- [ ] Add support for accessor syntax (`get`/`set` in object literals) and function prototype attributes.
+                - [x] `Object.keys` implemented in `src/stdlib.js` (`tests/es5/objectKeys.io`).
+                                - [x] `Object.getOwnPropertyNames` implemented (`tests/es5/objectGetOwnPropertyNames.io`).
+                - [x] Add support for accessor syntax (`get`/`set` in object literals) (`tests/es5/getterSetterProperties.io`).
+                - [ ] Add function prototype attributes.
 - [x] Ensure `Object.defineProperty`, `Object.defineProperties`, `Object.create`, and `Object.keys` are not constructable. *(Implemented; `tests/stdlib/checkAllPrototypes.io`)*
-- [ ] Extend the parser to recognize `get name(){}` and `set name(v){}` tokens and emit descriptor objects for property creation.
+- [x] Extend the parser to recognize `get name(){}` and `set name(v){}` tokens and emit descriptor objects for property creation. (`tests/es5/getterSetterProperties.io`)
 - [ ] Bootstrapping of built‑ins in `src/stdlib.js` can then define getters on prototypes, e.g. for `Function.prototype.name`.
 
 ### Strict mode
