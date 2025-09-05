@@ -1,11 +1,11 @@
 /*
-	ES5 additions to the standard library.
-	This file is "included" with an eval at the end of stdlib.js if ES5 support is enabled.
+ES5 additions to the standard library.
+This file is "included" with an eval at the end of stdlib.js if ES5 support is enabled.
 
-	@preserve: trim,trimLeft,trimRight,forEach,map,filter,reduce,reduceRight,every,some
-	@preserve: get,set
-	@preserve: now,create,keys,bind
-	@preserve: defineProperties
+@preserve: trim,trimLeft,trimRight,forEach,map,filter,reduce,reduceRight,every,some
+@preserve: get,set
+@preserve: now,create,getOwnPropertyDescriptor,getOwnPropertyNames,keys,preventExtensions,isExtensible,bind
+@preserve: defineProperties
 */
 
 // Use helpers provided by the base stdlib: defProps, int, uint32, str
@@ -125,10 +125,70 @@ defProps(Date, { dontEnum: true }, {
 	now: function now() { return new Date().getTime(); }
 });
 
-// Object helpers: defineProperty (accessors), defineProperties, create, keys
+// Date.prototype.toISOString/toJSON
+defProps(Date.prototype, { dontEnum: true }, {
+toISOString: function toISOString() {
+			var t = this.getTime();
+if (!$isFinite(t)) throw RangeError("Invalid time value");
+		function pad(num, len) {
+			var s = '' + num;
+			while (s.length < len) s = '0' + s;
+			return s;
+		}
+		var y = this.getUTCFullYear();
+		var m = this.getUTCMonth() + 1;
+		var d = this.getUTCDate();
+		var h = this.getUTCHours();
+		var min = this.getUTCMinutes();
+		var s = this.getUTCSeconds();
+		var ms = this.getUTCMilliseconds();
+		var year = (y >= 0 && y <= 9999 ? pad(y, 4)
+				: (y < 0 ? '-' : '+') + pad(Math.abs(y), 6));
+		return year + '-' + pad(m, 2) + '-' + pad(d, 2) + 'T'
+				+ pad(h, 2) + ':' + pad(min, 2) + ':' + pad(s, 2)
+				+ '.' + pad(ms, 3) + 'Z';
+	},
+		toJSON: function toJSON(key) {
+				var O = Object(this);
+				var tv = support.toPrimitiveNumber(O);
+				if (typeof tv === "number" && !$isFinite(tv)) return null;
+				var toISO = O.toISOString;
+				if (typeof toISO !== "function") throw TypeError();
+				return toISO.call(O);
+		}
+});
+
+// Number.prototype.toJSON
+defProps(Number.prototype, { dontEnum: true }, {
+		toJSON: function toJSON() {
+				var n = support.toPrimitiveNumber(this);
+				return $isFinite(n) ? n : null;
+		}
+});
+
+// String.prototype.toJSON
+defProps(String.prototype, { dontEnum: true }, {
+		toJSON: function toJSON() {
+			return support.toPrimitiveString(this);
+		}
+});
+
+// Boolean.prototype.toJSON
+defProps(Boolean.prototype, { dontEnum: true }, {
+		toJSON: function toJSON() {
+			return !!support.toPrimitiveNumber(this);
+		}
+});
+// Number.isFinite/Number.isNaN
+defProps(Number, { dontEnum: true }, {
+	isFinite: unconstructable(function isFinite(n) { return typeof n === "number" && $isFinite(n); }),
+	isNaN: unconstructable(function isNaN(n) { return typeof n === "number" && $isNaN(n); })
+});
+
+// Object helpers: defineProperty (accessors), defineProperties, create, getOwnPropertyDescriptor, keys, preventExtensions, isExtensible
 defProps(Object, { dontEnum: true }, {
-	defineProperty: unconstructable(function defineProperty(o, p, d) {
-		var k = str(p);
+		defineProperty: unconstructable(function defineProperty(o, p, d) {
+				var k = str(p);
 		var ro = !d.writable, de = !d.enumerable, dd = !d.configurable;
 		if ("get" in d || "set" in d) {
 			if ("value" in d || "writable" in d) throw TypeError();
@@ -148,22 +208,51 @@ defProps(Object, { dontEnum: true }, {
 		for (var k in props) if (Object.prototype.hasOwnProperty.call(props, k)) Object.defineProperty(obj, k, props[k]);
 		return obj;
 	}),
-	create: unconstructable(function create(proto, properties) {
-		if (proto === null) throw TypeError();
-		var t = typeof proto;
-		if (t !== "object" && t !== "function") throw TypeError();
-		function F() {}
-		F.prototype = proto;
-		var o = new F();
-		if (properties !== void 0) Object.defineProperties(o, Object(properties));
-		return o;
-	}),
-	keys: unconstructable(function keys(o) {
-		if (o === undefined || o === null) throw TypeError();
-		var obj = Object(o), res = [], k;
-		for (k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) res[res.length] = k;
-		return res;
-	})
+		create: unconstructable(function create(proto, properties) {
+			var t = typeof proto;
+			if (proto !== null && t !== "object" && t !== "function") throw TypeError();
+			var o = support.createObject(proto);
+			if (properties !== void 0) Object.defineProperties(o, Object(properties));
+			return o;
+		}),
+		getOwnPropertyDescriptor: unconstructable(function getOwnPropertyDescriptor(o, p) {
+				if (o === undefined || o === null) throw TypeError();
+				return support.getOwnPropertyDescriptor(Object(o), str(p));
+		}),
+		getOwnPropertyNames: unconstructable(function getOwnPropertyNames(o) {
+				if (o === undefined || o === null) throw TypeError();
+				return support.getOwnPropertyNames(Object(o));
+		}),
+			keys: unconstructable(function keys(o) {
+				if (o === undefined || o === null) throw TypeError();
+				var obj = Object(o), res = [], k;
+				for (k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) res[res.length] = k;
+				return res;
+}),
+			preventExtensions: unconstructable(function preventExtensions(o) {
+				if (o === undefined || o === null) throw TypeError();
+				return support.preventExtensions(Object(o));
+}),
+			isExtensible: unconstructable(function isExtensible(o) {
+				if (o === undefined || o === null) throw TypeError();
+				return support.isExtensible(Object(o));
+		}),
+		seal: unconstructable(function seal(o) {
+			if (o === undefined || o === null) throw TypeError();
+			return support.seal(Object(o));
+		}),
+		freeze: unconstructable(function freeze(o) {
+			if (o === undefined || o === null) throw TypeError();
+			return support.freeze(Object(o));
+		}),
+		isSealed: unconstructable(function isSealed(o) {
+			if (o === undefined || o === null) throw TypeError();
+			return support.isSealed(Object(o));
+		}),
+		isFrozen: unconstructable(function isFrozen(o) {
+			if (o === undefined || o === null) throw TypeError();
+			return support.isFrozen(Object(o));
+		})
 });
 
 // Function.prototype.bind (minimal, declared with one formal parameter)

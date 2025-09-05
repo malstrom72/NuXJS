@@ -366,6 +366,7 @@ class Object;
 class Function;
 class Error;
 class JSArray;
+class JSObject;
 
 /**
 	Value represents a generic JavaScript value. It can hold primitive types as well as object references and provides
@@ -554,6 +555,7 @@ class Object : public GCItem {
 		virtual Function* asFunction();							///< Default returns 0. (Functions return `this`.)
 		virtual JSArray* asArray();								///< Default returns 0. (Arrays return `this`.)
 		virtual Error* asError();								///< Default returns 0. (Errors return `this`.)
+		virtual JSObject* toJSObject(Runtime& rt);
 		virtual const String* typeOfString() const;				///< Default returns "object". (Strings and functions override.)
 		virtual const String* getClassName() const;				///< Default returns &O_BJECT_STRING ("Object"). Override if you implement custom native objects. Must return the same string pointer everytime.
 		virtual const String* toString(Heap& heap) const;		///< this toString() method does not run any script code, so it doesn't honor any user toString or valueOf implementations.
@@ -573,7 +575,11 @@ class Object : public GCItem {
 #if (NUXJS_ES5)
 		Flags getProperty(Runtime &rt, Processor &processor, const Value &key, Value *v) const;
 #endif
-		bool setProperty(Runtime &rt, const Value &key, const Value &v); ///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
+#if (NUXJS_ES5)
+bool isExtensible() const { return extensible; }
+void preventExtensions() { extensible = false; }
+#endif
+bool setProperty(Runtime &rt, const Value &key, const Value &v); ///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
 #if (NUXJS_ES5)
 		bool setProperty(Runtime &rt, Processor &processor, const Value &key, const Value &v);
 #endif
@@ -582,9 +588,10 @@ class Object : public GCItem {
 		bool hasProperty(Runtime& rt, const Value& key) const;				///< Checks via getProperty().
 		Enumerator* getPropertyEnumerator(Runtime& rt) const;				///< Unlike getOwnPropertyEnumerator() this one also enumerates all prototype properties.
 
-	protected:
-		Object() { }
-		Object(GCList& gcList) : super(gcList) { }
+protected:
+Object() : extensible(true) { }
+Object(GCList& gcList) : super(gcList), extensible(true) { }
+bool extensible;
 };
 
 inline Function* Value::asFunction() const { return (type == OBJECT_TYPE ? var.object->asFunction() : 0); }
@@ -746,6 +753,7 @@ virtual bool setOwnProperty(Runtime& rt, const String* key, const Value& v, Flag
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
+		virtual JSObject* toJSObject(Runtime& rt);
 	
 	protected:
 		Object* prototype;
@@ -786,6 +794,7 @@ template<class SUPER> class LazyJSObject : public SUPER {
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
+		virtual JSObject* toJSObject(Runtime& rt);
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const = 0;

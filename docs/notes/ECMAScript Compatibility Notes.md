@@ -31,7 +31,22 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 - `Object.prototype.hasOwnProperty`
 - `Object.prototype.isPrototypeOf`
 - `Object.getPrototypeOf`
-- `Object.defineProperty` (data properties only)
+- `Object.defineProperty`
+- `Object.getOwnPropertyDescriptor`
+- `Object.getOwnPropertyNames`
+- `Object.create`
+- `Object.keys`
+- `Object.preventExtensions`
+- `Object.isExtensible`
+- `Object.seal`
+- `Object.freeze`
+- `Object.isSealed`
+- `Object.isFrozen`
+- `Number.isFinite`
+- `Number.isNaN`
+- `Number.prototype.toJSON`
+- `String.prototype.toJSON`
+- `Boolean.prototype.toJSON`
 - `JSON.parse`
 - `JSON.stringify`
 

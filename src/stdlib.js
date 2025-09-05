@@ -16,7 +16,7 @@
 	@preserve: toFixed,toISOString,toLocaleDateString,toLocaleLowerCase,toLocaleString,toLocaleTimeString
 	@preserve: toLocaleUpperCase,toLowerCase,toPrecision,toString,toTimeString,toUTCString,toUpperCase,true,try,typeof
 	@preserve: undefined,upperToLower,value,valueOf,var,void,while,writable,pop,parse,toDateString,instanceof,test
-	@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,$match
+@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,createObject,$match
 	@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
 	@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
 
@@ -71,7 +71,7 @@ var $isNaN = support.isNaN, $isFinite = support.isFinite, $floor = support.floor
 		, $getInternalProperty = support.getInternalProperty, $callWithArgs = support.callWithArgs
 		, $charCodeAt = support.charCodeAt, abs, syntaxError, rangeError, typeError
 		, ALPHA_DIGITS_LOWER = "0123456789abcdefghijklmnopqrstuvwxyz", ALPHA_DIGITS_UPPER = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		, WHITE_SPACES = " \f\n\r\t\v\xA0\u2028\u2029";
+, WHITE_SPACES = " \f\n\r\t\v\xA0\u1680\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF";
 
 var PARSE_INT_CHARS = (function() {
 	var pic = { }, ws = WHITE_SPACES;
@@ -811,11 +811,11 @@ function dateFromEpoch(z) {
 	var doe = z - era * 146097;
 	var yoe = int( (doe - int(doe / 1460) + int(doe / 36524) - int(doe / 146096)) / 365 );
 	var y = yoe + era * 400;
-    var doy = doe - (365 * yoe + int(yoe / 4) - int(yoe/100) );
-    var mp = int( (5 * doy + 2) / 153);
-    var m = mp + (mp < 10 ? 2 : -10);
-    var d = doy - int( (153 * mp + 2) / 5 ) + 1;
-    return [ (y + (m <= 1)), m, d ];
+	var doy = doe - (365 * yoe + int(yoe / 4) - int(yoe/100) );
+	var mp = int( (5 * doy + 2) / 153);
+	var m = mp + (mp < 10 ? 2 : -10);
+	var d = doy - int( (153 * mp + 2) / 5 ) + 1;
+	return [ (y + (m <= 1)), m, d ];
 }
 
 function epochToDateString(z) {
@@ -899,7 +899,7 @@ defProps(Date, { dontEnum: true }, {
 			++i, tzh = readPart(2) * 36e5,
 			s[i] === ":" && ++i, tzh += $isNaN(tzm = readPart(2)) ? 0 : tzm * 6e4,
 			$isNaN(tzh) || (tz = ch === "-" ? -tzh : tzh);
-	    }
+		}
 		return (tz === void 0 ? fromLocalTime(z) : z - tz)
 	}),
 	UTC: unconstructable(function UTC(year, month, date, hours, minutes, seconds, ms) { 
@@ -1657,12 +1657,12 @@ defProps(JSON, { dontEnum: true }, {
 			for (var i = replacer.length; --i >= 0;) includeProps[replacer[i]] = true;
 		}
 
-        if (typeof space === "number" || (typeof space === "object" && $getInternalProperty(space, "class") === "Number")) {
-        	space = +space;
-            for (var i = (space > 10 ? 10 : space); --i >= 0;) gap += ' ';
-        } else if (typeof space === "string" || (typeof space === "object" && $getInternalProperty(space, "class") === "String")) {
-            gap = $sub(str(space), 0, 10);
-        }
+		if (typeof space === "number" || (typeof space === "object" && $getInternalProperty(space, "class") === "Number")) {
+			space = +space;
+			for (var i = (space > 10 ? 10 : space); --i >= 0;) gap += ' ';
+		} else if (typeof space === "string" || (typeof space === "object" && $getInternalProperty(space, "class") === "String")) {
+			gap = $sub(str(space), 0, 10);
+		}
 
 		function quote(s) {
 			var t = '"', len = s.length;
@@ -1677,17 +1677,17 @@ defProps(JSON, { dontEnum: true }, {
 
 		function string(key, holder, indent) {
 			var val;
-	        if ((val = holder[key]) && typeof val === "object" && typeof val.toJSON === "function") val = val.toJSON(key);
-	        if (replacerFunction) val = $callWithArgs(replacerFunction, holder, [ key, val ]);
+			if ((val = holder[key]) && typeof val === "object" && typeof val.toJSON === "function") val = val.toJSON(key);
+			if (replacerFunction) val = $callWithArgs(replacerFunction, holder, [ key, val ]);
 
-	        var lineEnd = (gap ? '\n' + indent : '');
-	        if (typeof val === "object") {
-	        	switch ($getInternalProperty(val, "class")) {
-	        		case "Number": val = +val; break;
-	        		case "String": val = str(val); break;
-	        		case "Boolean": val = $getInternalProperty(val, "value"); break;
-	        	}
-	        }
+			var lineEnd = (gap ? '\n' + indent : '');
+			if (typeof val === "object") {
+				switch ($getInternalProperty(val, "class")) {
+					case "Number": val = +val; break;
+					case "String": val = str(val); break;
+					case "Boolean": val = $getInternalProperty(val, "value"); break;
+				}
+			}
 			switch (typeof val) {
 				case "object": {
 					if (!val) return "null";
@@ -1811,19 +1811,19 @@ defProps(JSON, { dontEnum: true }, {
 		if ((parser = PARSERS[text[p = space(text, 0)]]) && (p = parser(text, p))
 				&& space(text, p) === text.length) {
 			var val = eval('(' + text + ')');
-            if (typeof reviver === "function") {
-            	function walk(holder, key) {
-	                var k, v, o;
-	                if (typeof (o = holder[key]) === "object" && o) {
-	                    for (k in o) {
-	                        if (support.hasOwnProperty(o, k)) {
-	                            if ((v = walk(o, k)) !== void 0) o[k] = v;
-	                            else delete o[k];
-	                        }
-	                    }
-	                }
-	                return $callWithArgs(reviver, holder, [ key, o ]);
-	            }
+			if (typeof reviver === "function") {
+				function walk(holder, key) {
+					var k, v, o;
+					if (typeof (o = holder[key]) === "object" && o) {
+						for (k in o) {
+							if (support.hasOwnProperty(o, k)) {
+								if ((v = walk(o, k)) !== void 0) o[k] = v;
+								else delete o[k];
+							}
+						}
+					}
+					return $callWithArgs(reviver, holder, [ key, o ]);
+				}
 				val = walk({ "": val }, "");
 			}
 			return val;

@@ -100,6 +100,68 @@ interface ObjectConstructor {
    * @param attributes Descriptor for the property. It can be for a data property or an accessor property.
    */
   defineProperty(o: any, p: PropertyKey, attributes: PropertyDescriptor & ThisType<any>): any;
+
+  /**
+   * Creates an object that has the specified prototype or that has null prototype.
+   * @param o Object to use as prototype or null.
+   * @param properties Properties to add to the newly created object.
+   */
+  create(o: any, properties?: PropertyDescriptorMap & ThisType<any>): any;
+
+  /**
+   * Retrieves a property descriptor for a named property on an object.
+   * @param o The object in which to look for the property.
+   * @param p The property name.
+   */
+  getOwnPropertyDescriptor(o: any, p: PropertyKey): PropertyDescriptor | undefined;
+
+  /**
+   * Returns the names of the properties of an object.
+   * @param o Object that contains the properties.
+   */
+  getOwnPropertyNames(o: any): string[];
+
+  /**
+   * Prevents the addition of new properties to an object.
+   * @param o Object to make non-extensible.
+   */
+  preventExtensions<T>(o: T): T;
+
+  /**
+   * Prevents modifications to property attributes and values.
+   * @param o Object to freeze.
+   */
+  freeze<T>(o: T): Readonly<T>;
+
+  /**
+   * Prevents the modification of attributes, and values of properties.
+   * @param o Object to seal.
+   */
+  seal<T>(o: T): T;
+
+  /**
+   * Determines whether an object is extensible.
+   * @param o The object to test.
+   */
+  isExtensible(o: any): boolean;
+
+  /**
+   * Determines whether an object is sealed.
+   * @param o The object to test.
+   */
+  isSealed(o: any): boolean;
+
+  /**
+   * Determines whether an object is frozen.
+   * @param o The object to test.
+   */
+  isFrozen(o: any): boolean;
+
+  /**
+   * Returns the names of the enumerable properties of an object.
+   * @param o Object that contains the properties.
+   */
+  keys(o: any): string[];
 }
 
 /**
@@ -300,6 +362,8 @@ interface String {
 
   /** Returns the primitive value of the specified object. */
   valueOf(): string;
+  /** Used by the JSON.stringify method to enable the transformation of an object's data for JSON serialization. */
+  toJSON(key?: any): string;
 
   readonly [index: number]: string;
 }
@@ -321,6 +385,8 @@ interface Boolean {
   valueOf(): boolean;
   /** Returns a string representation of the boolean. */
   toString(): string;
+  /** Used by the JSON.stringify method to enable the transformation of an object's data for JSON serialization. */
+  toJSON(key?: any): boolean;
 }
 
 interface BooleanConstructor {
@@ -361,6 +427,8 @@ interface Number {
 
   /** Returns the primitive value of the specified object. */
   valueOf(): number;
+  /** Used by the JSON.stringify method to enable the transformation of an object's data for JSON serialization. */
+  toJSON(key?: any): number | null;
 }
 
 interface NumberConstructor {
@@ -391,6 +459,8 @@ interface NumberConstructor {
    * JavaScript displays POSITIVE_INFINITY values as infinity.
    */
   readonly POSITIVE_INFINITY: number;
+  isFinite(number: number): boolean;
+  isNaN(number: number): boolean;
 }
 
 /** An object that represents a number of any kind. All JavaScript numbers are 64-bit floating-point numbers. */

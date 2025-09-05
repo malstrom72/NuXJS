@@ -192,8 +192,9 @@ static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 		, FUNCTION_SPACE("function "), INFINITY_STRING("Infinity"), IS_NOT_A_FUNCTION_STRING(" is not a function")
 		, IS_NOT_DEFINED_STRING(" is not defined"), MESSAGE_STRING("message"), MINUS_INFINITY_STRING("-Infinity")
 		, NAME_STRING("name"), NAN_STRING("NaN"), NATIVE_FUNCTION_STRING("function() { [native code] }")
-		, PROTOTYPE_CHAIN_TOO_LONG("Prototype chain too long"), PROTOTYPE_STRING("prototype")
-		, STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value");
+, PROTOTYPE_CHAIN_TOO_LONG("Prototype chain too long"), PROTOTYPE_STRING("prototype")
+, STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value")
+, ENUMERABLE_STRING("enumerable"), CONFIGURABLE_STRING("configurable"), WRITABLE_STRING("writable");
 
 static const String ERROR_NAMES[ERROR_TYPE_COUNT] = {
 	"Error", "EvalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError", "URIError"
@@ -588,14 +589,19 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 }
 
 static const Char* eatStringWhite(const Char* p, const Char* e) {
-	while (p != e) {
-		switch (*p) {
-			case ' ': case '\f': case '\n': case '\r': case '\t': case '\v': case 0xA0: case 0x2028: case 0x2029: break;
-			default: return p;
-		}
-		++p;
-	}
-	return p;
+while (p != e) {
+switch (*p) {
+case ' ': case '\f': case '\n': case '\r': case '\t': case '\v':
+case 0x00A0: case 0x1680: case 0x180E:
+case 0x2000: case 0x2001: case 0x2002: case 0x2003: case 0x2004: case 0x2005: case 0x2006: case 0x2007: case 0x2008: case 0x2009: case 0x200A:
+case 0x2028: case 0x2029: case 0x202F: case 0x205F: case 0x3000: case 0xFEFF:
+break;
+default:
+return p;
+}
+++p;
+}
+return p;
 }
 
 static double stringToDouble(const String& s) {
@@ -1276,6 +1282,7 @@ static struct EmptyEnumerator : public Enumerator { const String* nextPropertyNa
 Function* Object::asFunction() { return 0; }
 JSArray* Object::asArray() { return 0; }
 Error* Object::asError() { return 0; }
+JSObject* Object::toJSObject(Runtime&) { return 0; }
 const String* Object::typeOfString() const { return &OBJECT_STRING; }
 const String* Object::getClassName() const { return &O_BJECT_STRING; }
 Object* Object::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
@@ -1353,13 +1360,16 @@ bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 	if (updateOwnProperty(rt, key, v)) {
 		return true;
 	}
-	const Object* o = this;
-	while ((o = o->getPrototype(rt)) != 0) {
+const Object* o = this;
+while ((o = o->getPrototype(rt)) != 0) {
 		Value dummy;
 		if ((o->getOwnProperty(rt, key, &dummy) & READ_ONLY_FLAG) != 0) {
 			return false;
 		}
 	}
+	if (!extensible) {
+		return false;
+}
 	return setOwnProperty(rt, key, v);
 }
 #if (NUXJS_ES5)
@@ -1380,7 +1390,7 @@ bool Object::setProperty(Runtime &rt, Processor &processor, const Value &key, co
 	}
 	setProperty(rt, key, v);
 	return false;
-}
+	}
 #endif
 
 Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
@@ -1399,7 +1409,7 @@ Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
 UInt32 Table::calcMaxLoad(UInt32 bucketCount) { return (bucketCount - (bucketCount >> 4) - 1); }
 Table::Table(Heap* heap) : buckets(1U << TABLE_BUILT_IN_N, heap), loadCount(0) { }
 UInt32 Table::getLoadCount() const { return loadCount; }
-Table::Bucket* Table::getFirst() const { return getNext(buckets.begin() - 1); }
+	Table::Bucket* Table::getFirst() const { return getNext(buckets.begin() - 1); }
 const Table::Bucket* Table::lookup(const String* key) const { return const_cast<Table*>(this)->lookup(key); }	// OK because lookup does not modify, only exposes non-const pointer
 
 Table::Bucket* Table::getNext(Bucket* bucket) const {
@@ -1537,19 +1547,25 @@ bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Fla
 }
 
 bool JSObject::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-Table::Bucket* bucket = insert(key);
-if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
-Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
-Accessor* nv = static_cast<Accessor*>(v.getObject());
-if (nv->getter != 0) {
-acc->getter = nv->getter;
-}
-if (nv->setter != 0) {
-acc->setter = nv->setter;
-}
-return true;
-}
-return update(bucket, v, flags);
+	Table::Bucket* bucket = lookup(key);
+	if (bucket == 0 || !bucket->valueExists()) {
+		if (!extensible) {
+			return false;
+		}
+		bucket = insert(key);
+	}
+	if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
+		Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
+		Accessor* nv = static_cast<Accessor*>(v.getObject());
+		if (nv->getter != 0) {
+			acc->getter = nv->getter;
+		}
+		if (nv->setter != 0) {
+			acc->setter = nv->setter;
+		}
+		return true;
+	}
+	return update(bucket, v, flags);
 }
 
 #else
@@ -1586,6 +1602,7 @@ Enumerator* JSObject::getOwnPropertyEnumerator(Runtime& rt) const {
 	}
 	return list;
 }
+JSObject* JSObject::toJSObject(Runtime&) { return this; }
 
 /* --- RangeEnumerator --- */
 
@@ -1857,6 +1874,7 @@ template<class SUPER> bool LazyJSObject<SUPER>::deleteOwnProperty(Runtime& rt, c
 template<class SUPER> Enumerator* LazyJSObject<SUPER>::getOwnPropertyEnumerator(Runtime& rt) const {
 	return getCompleteObject(rt)->getOwnPropertyEnumerator(rt);
 }
+template<class SUPER> JSObject* LazyJSObject<SUPER>::toJSObject(Runtime& rt) { return getCompleteObject(rt); }
 
 template<class SUPER> JSObject* LazyJSObject<SUPER>::getCompleteObject(Runtime& rt) const {
 	if (completeObject == 0) {
@@ -5255,7 +5273,7 @@ struct Support {
 		return UNDEFINED_VALUE;
 	}
 
-	static Value createWrapper(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+static Value createWrapper(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 2) {
 			Heap& heap = rt.getHeap();
 			const String* const className = argv[0].toString(heap);
@@ -5277,9 +5295,18 @@ struct Support {
 			return new(heap) GenericWrapper(heap.managed(), className, internalValue, Runtime::ARBITRARY_PROTOTYPE, prototype);
 		}
 		return UNDEFINED_VALUE;
-	}
+}
 
-	static Value distinctConstructor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+		static Value createObject(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+			if (argc >= 1) {
+				Heap& heap = rt.getHeap();
+				Object* proto = argv[0].toObjectOrNull(heap, false);
+				return new(heap) JSObject(heap.managed(), proto);
+			}
+			return UNDEFINED_VALUE;
+		}
+
+		static Value distinctConstructor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 1) {
 			Function* regularFunction = argv[0].asFunction();
 			if (regularFunction != 0) {
@@ -5379,7 +5406,135 @@ static Value bind(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Objec
 		}
 	}
 	
-	static Value hasOwnProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+#if (NUXJS_ES5)
+static Value getOwnPropertyDescriptor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	Object* object = (argc >= 2 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+	if (object != 0) {
+		Value v;
+		Flags flags = object->getOwnProperty(rt, argv[1], &v);
+		if (flags != NONEXISTENT) {
+			JSObject* desc = rt.newJSObject();
+			if ((flags & ACCESSOR_FLAG) != 0) {
+				Accessor* acc = static_cast<Accessor*>(v.asObject());
+				desc->setOwnProperty(rt, &GET_STRING, (acc->getter != 0 ? acc->getter : UNDEFINED_VALUE), DONT_ENUM_FLAG | EXISTS_FLAG);
+				desc->setOwnProperty(rt, &SET_STRING, (acc->setter != 0 ? acc->setter : UNDEFINED_VALUE), DONT_ENUM_FLAG | EXISTS_FLAG);
+			} else {
+				desc->setOwnProperty(rt, &VALUE_STRING, v, DONT_ENUM_FLAG | EXISTS_FLAG);
+				desc->setOwnProperty(rt, &WRITABLE_STRING, Value((flags & READ_ONLY_FLAG) == 0), DONT_ENUM_FLAG | EXISTS_FLAG);
+			}
+			desc->setOwnProperty(rt, &ENUMERABLE_STRING, Value((flags & DONT_ENUM_FLAG) == 0), DONT_ENUM_FLAG | EXISTS_FLAG);
+			desc->setOwnProperty(rt, &CONFIGURABLE_STRING, Value((flags & DONT_DELETE_FLAG) == 0), DONT_ENUM_FLAG | EXISTS_FLAG);
+			return desc;
+		}
+	}
+	return UNDEFINED_VALUE;
+}
+
+static Value preventExtensions(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+		Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+		if (object != 0) {
+				object->preventExtensions();
+				return object;
+}
+		return UNDEFINED_VALUE;
+}
+
+static Value isExtensible(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+		Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+		return (object != 0 ? Value(object->isExtensible()) : FALSE_VALUE);
+}
+
+
+static Value getOwnPropertyNames(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	   Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+	   if (object != 0) {
+			   Heap& heap = rt.getHeap();
+			   JSArray* result = rt.newJSArray(0);
+			   UInt32 next = 0;
+			   Value v;
+			   UInt32 length = 0;
+			   if (object->getOwnProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) {
+					   length = static_cast<UInt32>(v.toInt());
+					   for (UInt32 i = 0; i < length; ++i) {
+							   Value key(i);
+							   if (object->getOwnProperty(rt, key, &v) != NONEXISTENT) {
+									   result->setElement(rt, next++, Value(String::fromInt(heap, i)));
+							   }
+					   }
+					   result->setElement(rt, next++, Value(&LENGTH_STRING));
+			   }
+			   if (JSObject* o = object->toJSObject(rt)) {
+					   for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+							   const String* key = b->getKey();
+							   if (key == &LENGTH_STRING) continue;
+							   UInt32 idx;
+							   if (length > 0 && Value(key).toArrayIndex(idx) && idx < length) continue;
+							   result->setElement(rt, next++, Value(key));
+					   }
+			   }
+			   return result;
+	   }
+	   return UNDEFINED_VALUE;
+}
+
+static Value seal(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+		Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+	if (object != 0) {
+	if (JSObject* o = object->toJSObject(rt)) {
+	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+	b->flags |= DONT_DELETE_FLAG;
+	}
+	}
+	object->preventExtensions();
+	return object;
+	}
+	return UNDEFINED_VALUE;
+	}
+
+	static Value freeze(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+	if (object != 0) {
+	if (JSObject* o = object->toJSObject(rt)) {
+	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+	b->flags |= DONT_DELETE_FLAG | READ_ONLY_FLAG;
+	}
+	}
+	object->preventExtensions();
+	return object;
+	}
+	return UNDEFINED_VALUE;
+	}
+
+	static Value isSealed(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+	if (object != 0 && !object->isExtensible()) {
+	if (JSObject* o = object->toJSObject(rt)) {
+	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+	if ((b->flags & DONT_DELETE_FLAG) == 0) return false;
+	}
+	}
+	return true;
+	}
+	return false;
+	}
+
+	static Value isFrozen(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+	if (object != 0 && !object->isExtensible()) {
+	if (JSObject* o = object->toJSObject(rt)) {
+	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+	Flags f = b->flags;
+	if ((f & DONT_DELETE_FLAG) == 0) return false;
+	if ((f & ACCESSOR_FLAG) == 0 && (f & READ_ONLY_FLAG) == 0) return false;
+	}
+	}
+	return true;
+	}
+	return false;
+	}
+#endif
+
+static Value hasOwnProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		Object* object = (argc >= 2 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
 		return (object != 0 ? object->hasOwnProperty(rt, argv[1]) : false);
 	}
@@ -5501,14 +5656,16 @@ static struct {
 	String name;
 	FunctorAdapter<NativeFunction> func;
 } SUPPORT_FUNCTIONS[] = {
-	{ "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
+{ "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
 #if (NUXJS_ES5)
+{ "createObject", Support::createObject },
 { "defineProperty", Support::defineProperty },
 { "bind", Support::bind },
 { "compileFunction", Support::compileFunction }, { "distinctConstructor", Support::distinctConstructor },
-	   { "callWithArgs", Support::callWithArgs }, { "hasOwnProperty", Support::hasOwnProperty },
-	   { "fromCharCode", Support::fromCharCode }, { "isPropertyEnumerable", Support::isPropertyEnumerable },
-	   { "atan2", Support::atan2 }, { "pow", Support::pow }, { "parseFloat", Support::parseFloat },
+{ "callWithArgs", Support::callWithArgs }, { "getOwnPropertyDescriptor", Support::getOwnPropertyDescriptor },
+{ "getOwnPropertyNames", Support::getOwnPropertyNames }, { "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
+{ "isPropertyEnumerable", Support::isPropertyEnumerable }, { "preventExtensions", Support::preventExtensions }, { "isExtensible", Support::isExtensible }, { "seal", Support::seal }, { "freeze", Support::freeze }, { "isSealed", Support::isSealed }, { "isFrozen", Support::isFrozen },
+{ "atan2", Support::atan2 }, { "pow", Support::pow }, { "parseFloat", Support::parseFloat },
 	   { "charCodeAt", Support::charCodeAt }, { "substring", Support::substring }, { "submatch", Support::submatch },
 #else
 	{ "defineProperty", Support::defineProperty }, { "compileFunction", Support::compileFunction },
