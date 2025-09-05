@@ -3,11 +3,16 @@
 > g = f.bind(ctx, 1);
 > print(g(2));
 < 5
+> print(g.name);
+< bound f
 -
 > function h(a,b,c){}
 > hb = h.bind(null, 1, 2);
 > print(hb.length);
 < 1
+-
+> print((function(){}).bind().name);
+< bound 
 -
 > function C(a){ this.y = a; }
 > C.prototype.m = function(){ return this.y * 2; };

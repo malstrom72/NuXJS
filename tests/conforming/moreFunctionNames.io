@@ -8,7 +8,7 @@
 > print(SyntaxError.name)
 // ES6:
 // < SyntaxError
-< 3
+< SyntaxError
 -
 > print(delete SyntaxError.name)
 < true
@@ -26,7 +26,7 @@
 > print(test.name)
 // ES6, maybe:
 // < test
-< 1345
+< test
 -
 > print(delete test.name)
 < true
@@ -34,8 +34,5 @@
 > print(test.name)
 > test.name=3
 > print(test.name)
-< 
-// ES6, maybe:
-// < 
-< 3
+<
 -

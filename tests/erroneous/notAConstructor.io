@@ -4,7 +4,7 @@
 > isNaN.name='xyzzy'
 -
 > print(isNaN.name)
-< xyzzy
+< isNaN
 -
 > new isNaN()
 ! !!!! TypeError: isNaN is not a constructor

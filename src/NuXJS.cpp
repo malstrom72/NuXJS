@@ -190,8 +190,8 @@ static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 		, CANNOT_USE_IN_OPERATOR_STRING("Cannot use 'in' operator on "), CLASS_STRING("class"), COLON_SPACE(": ")
 		, CONSTRUCTOR_STRING("constructor"), END_BRACKET_STRING("]"), EVAL_STRING("eval"), FALSE_STRING("false")
 		, FUNCTION_SPACE("function "), INFINITY_STRING("Infinity"), IS_NOT_A_FUNCTION_STRING(" is not a function")
-		, IS_NOT_DEFINED_STRING(" is not defined"), MESSAGE_STRING("message"), MINUS_INFINITY_STRING("-Infinity")
-		, NAME_STRING("name"), NAN_STRING("NaN"), NATIVE_FUNCTION_STRING("function() { [native code] }")
+, IS_NOT_DEFINED_STRING(" is not defined"), MESSAGE_STRING("message"), MINUS_INFINITY_STRING("-Infinity")
+, BOUND_STRING("bound "), NAME_STRING("name"), NAN_STRING("NaN"), NATIVE_FUNCTION_STRING("function() { [native code] }")
 , PROTOTYPE_CHAIN_TOO_LONG("Prototype chain too long"), PROTOTYPE_STRING("prototype")
 , STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value")
 , ENUMERABLE_STRING("enumerable"), CONFIGURABLE_STRING("configurable"), WRITABLE_STRING("writable");
@@ -1917,7 +1917,7 @@ void JSFunction::constructCompleteObject(Runtime& rt) const {
 #else
 	createPrototypeObject(rt, completeObject, false);
 #endif
-	completeObject->setOwnProperty(rt, &NAME_STRING, code->getName(), DONT_ENUM_FLAG);
+	completeObject->setOwnProperty(rt, &NAME_STRING, code->getName(), READ_ONLY_FLAG | DONT_ENUM_FLAG);
 	completeObject->setOwnProperty(rt, &LENGTH_STRING, code->getArgumentsCount(), HIDDEN_CONST_FLAGS);
 }
 
@@ -2014,15 +2014,19 @@ Value* Arguments::findProperty(const Value& key) const {
 }
 
 Flags Arguments::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
-	const Value* p = findProperty(key);
-	return (p == 0 ? super::getOwnProperty(rt, key, v) : ((void)(*v = *p), (DONT_ENUM_FLAG | EXISTS_FLAG)));
+		const Value* p = findProperty(key);
 #if (NUXJS_ES5)
-}
-
-bool Arguments::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-return setOwnProperty(rt, Value(key), v, flags);
+		return (p == 0 ? super::getOwnProperty(rt, key, v) : ((void)(*v = *p), EXISTS_FLAG));
+#else
+		return (p == 0 ? super::getOwnProperty(rt, key, v) : ((void)(*v = *p), (DONT_ENUM_FLAG | EXISTS_FLAG)));
 #endif
 }
+
+#if (NUXJS_ES5)
+bool Arguments::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
+return setOwnProperty(rt, Value(key), v, flags);
+}
+#endif
 
 bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	Value* p = findProperty(key);
@@ -5085,7 +5089,7 @@ Value Runtime::FunctionPrototypeFunction::invoke(Runtime&, Processor&, UInt32, c
 Object* Runtime::FunctionPrototypeFunction::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
 
 void Runtime::FunctionPrototypeFunction::constructCompleteObject(Runtime& rt) const {
-	completeObject->setOwnProperty(rt, &NAME_STRING, &EMPTY_STRING, DONT_ENUM_FLAG);
+	completeObject->setOwnProperty(rt, &NAME_STRING, &EMPTY_STRING, READ_ONLY_FLAG | DONT_ENUM_FLAG);
 	completeObject->setOwnProperty(rt, &LENGTH_STRING, Value(0.0), HIDDEN_CONST_FLAGS);
 }
 
@@ -5213,13 +5217,15 @@ Function* BoundFunction::getConstructTarget() {
 }
 
 void BoundFunction::constructCompleteObject(Runtime& rt) const {
-	Value v;
-	Flags flags = target->getProperty(rt, &NAME_STRING, &v);
-	if (flags != NONEXISTENT) {
-		completeObject->setOwnProperty(rt, &NAME_STRING, v, flags);
-	}
-	flags = target->getProperty(rt, &LENGTH_STRING, &v);
-	double l = 0;
+		Value v;
+		Flags flags = target->getProperty(rt, &NAME_STRING, &v);
+		if (flags != NONEXISTENT) {
+				Heap& heap = rt.getHeap();
+				const String* name = v.toString(heap);
+				completeObject->setOwnProperty(rt, &NAME_STRING, String::concatenate(heap, BOUND_STRING, *name), flags);
+		}
+		flags = target->getProperty(rt, &LENGTH_STRING, &v);
+		double l = 0;
 	if (flags != NONEXISTENT) {
 		l = v.toDouble() - boundArgc;
 		if (l < 0) l = 0;
@@ -5318,39 +5324,55 @@ static Value createWrapper(Runtime& rt, Processor&, UInt32 argc, const Value* ar
 		return UNDEFINED_VALUE;
 	}
 
-	static Value defineProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-		bool success = false;
-		if (argc >= 2) {
-			Object* o = argv[0].asObject();
-			if (o != 0) {
-			#if (NUXJS_ES5)
-						Flags flags = (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0)
-			#else
-				success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE)
-						, (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0)
-			#endif
-						| (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0)
-						| (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0)
-					#if (NUXJS_ES5)
-									 | EXISTS_FLAG;
-						if (argc >= 7) {
-								Heap& heap = rt.getHeap();
-								Accessor* acc = new(heap)
-										Accessor(heap.managed(), argv[6].asFunction(),
-														(argc >= 8 ? argv[7].asFunction() : 0));
-								success = o->setOwnProperty(rt, argv[1], acc, flags | ACCESSOR_FLAG);
-						} else {
-								success = o->setOwnProperty(rt, argv[1],
-												(argc >= 3 ? argv[2] : UNDEFINED_VALUE), flags);
-						}
-					#else
-						| EXISTS_FLAG);
-					#endif
-			}
-		}
-		return success;
+	   static Value defineProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+			   bool success = false;
+			   if (argc >= 3) {
+					   Object* o = argv[0].asObject();
+					   if (o != 0) {
+							   Heap& heap = rt.getHeap();
+							   const String* key = argv[1].toString(heap);
+							   Object* desc = argv[2].asObject();
+							   if (desc != 0) {
+									   Flags flags = EXISTS_FLAG;
+									   Value v;
+									   if (desc->getProperty(rt, &WRITABLE_STRING, &v) == NONEXISTENT || !v.toBool()) flags |= READ_ONLY_FLAG;
+									   if (desc->getProperty(rt, &ENUMERABLE_STRING, &v) == NONEXISTENT || !v.toBool()) flags |= DONT_ENUM_FLAG;
+									   if (desc->getProperty(rt, &CONFIGURABLE_STRING, &v) == NONEXISTENT || !v.toBool()) flags |= DONT_DELETE_FLAG;
 #if (NUXJS_ES5)
-}
+									   Value getterVal, setterVal, valueVal;
+									   bool hasGetter = desc->getProperty(rt, &GET_STRING, &getterVal) != NONEXISTENT && !getterVal.isUndefined();
+									   bool hasSetter = desc->getProperty(rt, &SET_STRING, &setterVal) != NONEXISTENT && !setterVal.isUndefined();
+									   bool hasValue = desc->getProperty(rt, &VALUE_STRING, &valueVal) != NONEXISTENT;
+									   if ((hasGetter || hasSetter) && (hasValue || desc->getProperty(rt, &WRITABLE_STRING, &v) != NONEXISTENT)) {
+											   ScriptException::throwError(heap, TYPE_ERROR, "Invalid property descriptor");
+											   return Value();
+									   }
+									   if (hasGetter && getterVal.asFunction() == 0) {
+											   ScriptException::throwError(heap, TYPE_ERROR, "Getter is not callable");
+											   return Value();
+									   }
+									   if (hasSetter && setterVal.asFunction() == 0) {
+											   ScriptException::throwError(heap, TYPE_ERROR, "Setter is not callable");
+											   return Value();
+									   }
+									   if (hasGetter || hasSetter) {
+											   flags &= ~READ_ONLY_FLAG;
+											   Accessor* acc = new(heap) Accessor(heap.managed(), getterVal.asFunction(), setterVal.asFunction());
+											   success = o->setOwnProperty(rt, key, acc, flags | ACCESSOR_FLAG);
+									   } else {
+											   success = o->setOwnProperty(rt, key, (hasValue ? valueVal : UNDEFINED_VALUE), flags);
+									   }
+#else
+									   Value valueVal;
+									   if (desc->getProperty(rt, &VALUE_STRING, &valueVal) == NONEXISTENT) valueVal = UNDEFINED_VALUE;
+									   success = o->setOwnProperty(rt, key, valueVal, flags);
+#endif
+							   }
+					   }
+			   }
+			   return success;
+#if (NUXJS_ES5)
+	   }
 
 static Value bind(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 	if (argc >= 2) {
