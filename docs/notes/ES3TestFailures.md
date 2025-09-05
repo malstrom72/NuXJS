@@ -1,23 +1,23 @@
 # ES3 Test262 Failures Analysis
-109 Test262 tests that target ECMAScript 3 features still fail in NuXJS. The table summarizes the failing areas:
+109 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. Twenty-four of these check that built-in function length properties are deletable—an ES5 feature—and are therefore tagged not_es3.
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
-| Array | §15.4 | 12 |
+| Array | §15.4 | 12 (3 not_es3) |
 | Date | §15.9 | 7 |
 | Error | §15.11 | 5 |
 | Function | §15.3 | 1 |
 | Infinity |  | 1 |
 | Math | §15.8 | 2 |
-| NaN |  | 1 |
+| NaN |	 | 1 |
 | Number | §15.7 | 3 |
 | Object | §15.2 | 16 |
 | RegExp | §15.10 | 18 |
-| String | §15.5 | 33 |
-| eval |  | 1 |
-| isFinite |  | 1 |
-| isNaN |  | 1 |
-| parseFloat |  | 2 |
-| parseInt |  | 4 |
+| String | §15.5 | 33 (16 not_es3) |
+| eval |  | 1 (not_es3) |
+| isFinite |  | 1 (not_es3) |
+| isNaN |  | 1 (not_es3) |
+| parseFloat |  | 2 (1 not_es3) |
+| parseInt |  | 4 (1 not_es3) |
 | undefined |  | 1 |
 
 Tests that rely on the optional URI helpers (`decodeURI`, `encodeURI`, and their component variants) are excluded: cases targeting these helpers are marked as by_design, while unrelated tests that require them are tagged bad_test.
@@ -27,16 +27,16 @@ Each list below states the ES3 requirement that the corresponding test checks. N
 ### Array
 - built-ins/Array/S15.4.5.1_A2.1_T1 — P in [4294967295, -1, true]
 - built-ins/Array/S15.4_A1.1_T1 — Checking for boolean primitive
-- built-ins/Array/prototype/pop/S15.4.4.6_A2_T2 — If ToUint32(length) equal zero, call the [[Put]] method  of this object with arguments "length" and 0 and return undefined
+- built-ins/Array/prototype/pop/S15.4.4.6_A2_T2 — If ToUint32(length) equal zero, call the [[Put]] method	 of this object with arguments "length" and 0 and return undefined
 - built-ins/Array/prototype/pop/S15.4.4.6_A4_T2 — [[Prototype]] of Array instance is Array.prototype, [[Prototype] of Array.prototype is Object.prototype
-- built-ins/Array/prototype/push/S15.4.4.7_A2_T2 — The arguments are appended to the end of the array, in  the order in which they appear. The new length of the array is returned  as the result of the call
+- built-ins/Array/prototype/push/S15.4.4.7_A2_T2 — The arguments are appended to the end of the array, in	 the order in which they appear. The new length of the array is returned  as the result of the call
 - built-ins/Array/prototype/shift/S15.4.4.9_A3_T3 — length is arbitrarily
 - built-ins/Array/prototype/shift/S15.4.4.9_A4_T2 — [[Prototype]] of Array instance is Array.prototype, [[Prototype] of Array.prototype is Object.prototype
-- built-ins/Array/prototype/sort/S15.4.4.11_A7.2 — Checking use hasOwnProperty, delete
+- built-ins/Array/prototype/sort/S15.4.4.11_A7.2 — verifies ES5-only deletable `Array.prototype.sort.length` (`not_es3`)
 - built-ins/Array/prototype/toLocaleString/S15.4.4.3_A1_T1 — it is the function that should be invoked
 - built-ins/Array/prototype/toLocaleString/S15.4.4.3_A3_T1 — "[[Prototype]] of Array instance is Array.prototype"
-- built-ins/Array/prototype/toLocaleString/S15.4.4.3_A4.2 — Checking use hasOwnProperty, delete
-- built-ins/Array/prototype/toString/S15.4.4.2_A4.2 — Checking use hasOwnProperty, delete
+- built-ins/Array/prototype/toLocaleString/S15.4.4.3_A4.2 — verifies ES5-only deletable `Array.prototype.toLocaleString.length` (`not_es3`)
+- built-ins/Array/prototype/toString/S15.4.4.2_A4.2 — verifies ES5-only deletable `Array.prototype.toString.length` (`not_es3`)
 
 ### Date
 - built-ins/Date/S15.9.3.1_A6_T1 — 2 arguments, (year, month)
@@ -111,44 +111,57 @@ Each list below states the ES3 requirement that the corresponding test checks. N
 - built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T5 — String is {toString:function(){return {};}, valueOf:function(){return "aabaac";}} and RegExp is /(aa|aabaac|ba|b|c)* /
 
 ### String
-- String.prototype method length property deletion tests (16 cases) —
-  Manual tests (`tests/conforming/functionLengthNotDeletable.io`) confirm NuXJS retains these non-configurable `length` properties; the earlier failure classification was incorrect
-- built-ins/String/prototype/indexOf/S15.5.4.7_A1_T11 — Instance is Date(0) object
-- built-ins/String/prototype/replace/S15.5.4.11_A12 — replaceValue tests that its this value is undefined
-- built-ins/String/prototype/replace/S15.5.4.11_A1_T11 — Call replace (searchValue, replaceValue) function with objects arguments of string object. Objects have overrided toString function, that throw exception
-- built-ins/String/prototype/replace/S15.5.4.11_A1_T12 — Call replace (searchValue, replaceValue) function with objects arguments of String object.  First objects have overrided toString and valueOf functions, valueOf throw exception.  Second objects have overrided toString function, that throw exception
-- built-ins/String/prototype/replace/S15.5.4.11_A3_T1 — replaceValue is "$11" + 15
-- built-ins/String/prototype/replace/S15.5.4.11_A3_T2 — replaceValue is "$11" + '15'
-- built-ins/String/prototype/replace/S15.5.4.11_A3_T3 — replaceValue is "$11" + 'A15'
-- built-ins/String/prototype/replace/S15.5.4.11_A5_T1 — searchValue is  regexp /^(a+)\1*,\1+$/ and replaceValue is "$1"
-- built-ins/String/prototype/toLocaleLowerCase/special_casing_conditional — Check if String.prototype.toLocaleLowerCase supports conditional mappings defined in SpecialCasings
-- built-ins/String/prototype/toLocaleLowerCase/supplementary_plane — String.prototype.toLocaleLowerCase() iterates over code points
-- built-ins/String/prototype/toLocaleUpperCase/special_casing — Check if String.prototype.toLocaleUpperCase supports mappings defined in SpecialCasings
-- built-ins/String/prototype/toLocaleUpperCase/supplementary_plane — String.prototype.toLocaleUpperCase() iterates over code points
-- built-ins/String/prototype/toLowerCase/special_casing — Check if String.prototype.toLowerCase supports mappings defined in SpecialCasings
-- built-ins/String/prototype/toLowerCase/special_casing_conditional — Check if String.prototype.toLowerCase supports conditional mappings defined in SpecialCasings
-- built-ins/String/prototype/toLowerCase/supplementary_plane — String.prototype.toLowerCase() iterates over code points
-- built-ins/String/prototype/toUpperCase/special_casing — Check if String.prototype.toUpperCase supports mappings defined in SpecialCasings
-- built-ins/String/prototype/toUpperCase/supplementary_plane — String.prototype.toUpperCase() iterates over code points
-
+- built-ins/String/prototype/charAt/S15.5.4.4_A9 — verifies ES5-only deletable `String.prototype.charAt.length` (`not_es3`)
+- built-ins/String/prototype/charCodeAt/S15.5.4.5_A9 — verifies ES5-only deletable `String.prototype.charCodeAt.length` (`not_es3`)
+- built-ins/String/prototype/concat/S15.5.4.6_A9 — verifies ES5-only deletable `String.prototype.concat.length` (`not_es3`)
+- built-ins/String/prototype/indexOf/S15.5.4.7_A9 — verifies ES5-only deletable `String.prototype.indexOf.length` (`not_es3`)
+- built-ins/String/prototype/lastIndexOf/S15.5.4.8_A9 — verifies ES5-only deletable `String.prototype.lastIndexOf.length` (`not_es3`)
+- built-ins/String/prototype/localeCompare/S15.5.4.9_A9 — verifies ES5-only deletable `String.prototype.localeCompare.length` (`not_es3`)
+- built-ins/String/prototype/match/S15.5.4.10_A9 — verifies ES5-only deletable `String.prototype.match.length` (`not_es3`)
+- built-ins/String/prototype/replace/S15.5.4.11_A9 — verifies ES5-only deletable `String.prototype.replace.length` (`not_es3`)
+- built-ins/String/prototype/search/S15.5.4.12_A9 — verifies ES5-only deletable `String.prototype.search.length` (`not_es3`)
+- built-ins/String/prototype/slice/S15.5.4.13_A9 — verifies ES5-only deletable `String.prototype.slice.length` (`not_es3`)
+- built-ins/String/prototype/split/S15.5.4.14_A9 — verifies ES5-only deletable `String.prototype.split.length` (`not_es3`)
+- built-ins/String/prototype/substring/S15.5.4.15_A9 — verifies ES5-only deletable `String.prototype.substring.length` (`not_es3`)
+- built-ins/String/prototype/toLowerCase/S15.5.4.16_A9 — verifies ES5-only deletable `String.prototype.toLowerCase.length` (`not_es3`)
+- built-ins/String/prototype/toLocaleLowerCase/S15.5.4.17_A9 — verifies ES5-only deletable `String.prototype.toLocaleLowerCase.length` (`not_es3`)
+- built-ins/String/prototype/toUpperCase/S15.5.4.18_A9 — verifies ES5-only deletable `String.prototype.toUpperCase.length` (`not_es3`)
+- built-ins/String/prototype/toLocaleUpperCase/S15.5.4.19_A9 — verifies ES5-only deletable `String.prototype.toLocaleUpperCase.length` (`not_es3`)
+- built-ins/String/prototype/indexOf/S15.5.4.7_A1_T11 — calling `indexOf` with Date object `this` yields wrong index
+- built-ins/String/prototype/replace/S15.5.4.11_A12 — `replace` should treat undefined `this` correctly
+- built-ins/String/prototype/replace/S15.5.4.11_A1_T11 — replacing with objects whose `toString` throws
+- built-ins/String/prototype/replace/S15.5.4.11_A1_T12 — replacing with object whose `valueOf` throws
+- built-ins/String/prototype/replace/S15.5.4.11_A3_T1 — `replaceValue` is "$11" + 15
+- built-ins/String/prototype/replace/S15.5.4.11_A3_T2 — `replaceValue` is "$11" + "15"
+- built-ins/String/prototype/replace/S15.5.4.11_A3_T3 — `replaceValue` is "$11" + "A15"
+- built-ins/String/prototype/replace/S15.5.4.11_A5_T1 — regex `/^(a+)\1*,\1+$/` with backreference
+- built-ins/String/prototype/toLocaleLowerCase/special_casing_conditional — missing conditional Unicode mappings
+- built-ins/String/prototype/toLocaleLowerCase/supplementary_plane — fails to iterate over supplementary-plane code points
+- built-ins/String/prototype/toLocaleUpperCase/special_casing — missing special Unicode casing mappings
+- built-ins/String/prototype/toLocaleUpperCase/supplementary_plane — fails to iterate over supplementary-plane code points
+- built-ins/String/prototype/toLowerCase/special_casing — missing special Unicode lowercase mappings
+- built-ins/String/prototype/toLowerCase/special_casing_conditional — missing conditional lowercase mappings
+- built-ins/String/prototype/toLowerCase/supplementary_plane — fails to iterate over supplementary-plane code points
+- built-ins/String/prototype/toUpperCase/special_casing — missing special Unicode uppercase mappings
+- built-ins/String/prototype/toUpperCase/supplementary_plane — fails to iterate over supplementary-plane code points
 ### eval
-- built-ins/eval/S15.1.2.1_A4.2 — Checking use hasOwnProperty, delete
+- built-ins/eval/S15.1.2.1_A4.2 — verifies ES5-only deletable `eval.length` (`not_es3`)
 
 ### isFinite
-- built-ins/isFinite/S15.1.2.5_A2.2 — Checking use hasOwnProperty, delete
+- built-ins/isFinite/S15.1.2.5_A2.2 — verifies ES5-only deletable `isFinite.length` (`not_es3`)
 
 ### isNaN
-- built-ins/isNaN/S15.1.2.4_A2.2 — Checking use hasOwnProperty, delete
+- built-ins/isNaN/S15.1.2.4_A2.2 — verifies ES5-only deletable `isNaN.length` (`not_es3`)
 
 ### parseFloat
 - built-ins/parseFloat/S15.1.2.3_A2_T10 — "StrWhiteSpaceChar :: USP"
-- built-ins/parseFloat/S15.1.2.3_A7.2 — Checking use hasOwnProperty, delete
+- built-ins/parseFloat/S15.1.2.3_A7.2 — verifies ES5-only deletable `parseFloat.length` (`not_es3`)
 
 ### parseInt
 - built-ins/parseInt/S15.1.2.2_A2_T10 — "StrWhiteSpaceChar :: USP"
 - built-ins/parseInt/S15.1.2.2_A5.2_T2 — ": 0X"
 - built-ins/parseInt/S15.1.2.2_A7.2_T3 — Checking algorithm for R = 16
-- built-ins/parseInt/S15.1.2.2_A9.2 — Checking use hasOwnProperty, delete
+- built-ins/parseInt/S15.1.2.2_A9.2 — verifies ES5-only deletable `parseInt.length` (`not_es3`)
 
 ### undefined
 - built-ins/undefined/15.1.1.3-1 — undefined is not writable, should not throw in non-strict mode
