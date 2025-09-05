@@ -4,7 +4,7 @@ This file is "included" with an eval at the end of stdlib.js if ES5 support is e
 
 @preserve: trim,trimLeft,trimRight,forEach,map,filter,reduce,reduceRight,every,some
 @preserve: get,set
-@preserve: now,create,getOwnPropertyDescriptor,keys,preventExtensions,isExtensible,bind
+@preserve: now,create,getOwnPropertyDescriptor,getOwnPropertyNames,keys,preventExtensions,isExtensible,bind
 @preserve: defineProperties
 */
 
@@ -208,6 +208,10 @@ defProps(Object, { dontEnum: true }, {
 		getOwnPropertyDescriptor: unconstructable(function getOwnPropertyDescriptor(o, p) {
 				if (o === undefined || o === null) throw TypeError();
 				return support.getOwnPropertyDescriptor(Object(o), str(p));
+		}),
+		getOwnPropertyNames: unconstructable(function getOwnPropertyNames(o) {
+				if (o === undefined || o === null) throw TypeError();
+				return support.getOwnPropertyNames(Object(o));
 		}),
 			keys: unconstructable(function keys(o) {
 				if (o === undefined || o === null) throw TypeError();

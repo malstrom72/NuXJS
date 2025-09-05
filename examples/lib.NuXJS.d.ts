@@ -109,6 +109,12 @@ interface ObjectConstructor {
   getOwnPropertyDescriptor(o: any, p: PropertyKey): PropertyDescriptor | undefined;
 
   /**
+   * Returns the names of the properties of an object.
+   * @param o Object that contains the properties.
+   */
+  getOwnPropertyNames(o: any): string[];
+
+  /**
    * Prevents the addition of new properties to an object.
    * @param o Object to make non-extensible.
    */

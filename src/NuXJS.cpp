@@ -5432,16 +5432,48 @@ static Value isExtensible(Runtime& rt, Processor&, UInt32 argc, const Value* arg
 		return (object != 0 ? Value(object->isExtensible()) : FALSE_VALUE);
 }
 
-	static JSObject* toJSObject(Runtime& rt, Object* object) {
-	if (object == 0) return 0;
-	if (JSObject* js = dynamic_cast<JSObject*>(object)) return js;
-	if (LazyJSObject<Object>* lo = dynamic_cast<LazyJSObject<Object>*>(object)) return lo->getCompleteObject(rt);
-	if (LazyJSObject<Function>* lf = dynamic_cast<LazyJSObject<Function>*>(object)) return lf->getCompleteObject(rt);
-	return 0;
-	}
+static JSObject* toJSObject(Runtime& rt, Object* object) {
+        if (object == 0) return 0;
+        if (JSObject* js = dynamic_cast<JSObject*>(object)) return js;
+        if (LazyJSObject<Object>* lo = dynamic_cast<LazyJSObject<Object>*>(object)) return lo->getCompleteObject(rt);
+        if (LazyJSObject<Function>* lf = dynamic_cast<LazyJSObject<Function>*>(object)) return lf->getCompleteObject(rt);
+        return 0;
+}
 
-	static Value seal(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+static Value getOwnPropertyNames(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+       Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+       if (object != 0) {
+               Heap& heap = rt.getHeap();
+               JSArray* result = rt.newJSArray(0);
+               UInt32 next = 0;
+               Value v;
+               UInt32 length = 0;
+               if (object->getOwnProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) {
+                       length = static_cast<UInt32>(v.toInt());
+                       for (UInt32 i = 0; i < length; ++i) {
+                               Value key(i);
+                               if (object->getOwnProperty(rt, key, &v) != NONEXISTENT) {
+                                       result->setElement(rt, next++, Value(String::fromInt(heap, i)));
+                               }
+                       }
+                       result->setElement(rt, next++, Value(&LENGTH_STRING));
+               }
+               if (JSObject* o = toJSObject(rt, object)) {
+                       for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+                               const String* key = b->getKey();
+                               if (key == &LENGTH_STRING) continue;
+                               UInt32 idx;
+                               if (length > 0 && Value(key).toArrayIndex(idx) && idx < length) continue;
+                               result->setElement(rt, next++, Value(key));
+                       }
+               }
+               return result;
+       }
+       return UNDEFINED_VALUE;
+}
+
+static Value seal(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+        Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
 	if (object != 0) {
 	if (JSObject* o = toJSObject(rt, object)) {
 	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
@@ -5625,7 +5657,7 @@ static struct {
 { "bind", Support::bind },
 { "compileFunction", Support::compileFunction }, { "distinctConstructor", Support::distinctConstructor },
 { "callWithArgs", Support::callWithArgs }, { "getOwnPropertyDescriptor", Support::getOwnPropertyDescriptor },
-{ "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
+{ "getOwnPropertyNames", Support::getOwnPropertyNames }, { "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
 { "isPropertyEnumerable", Support::isPropertyEnumerable }, { "preventExtensions", Support::preventExtensions }, { "isExtensible", Support::isExtensible }, { "seal", Support::seal }, { "freeze", Support::freeze }, { "isSealed", Support::isSealed }, { "isFrozen", Support::isFrozen },
 { "atan2", Support::atan2 }, { "pow", Support::pow }, { "parseFloat", Support::parseFloat },
 	   { "charCodeAt", Support::charCodeAt }, { "substring", Support::substring }, { "submatch", Support::submatch },
