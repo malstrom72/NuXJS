@@ -107,6 +107,24 @@ interface ObjectConstructor {
    * @param p The property name.
    */
   getOwnPropertyDescriptor(o: any, p: PropertyKey): PropertyDescriptor | undefined;
+
+  /**
+   * Prevents the addition of new properties to an object.
+   * @param o Object to make non-extensible.
+   */
+  preventExtensions<T>(o: T): T;
+
+  /**
+   * Determines whether an object is extensible.
+   * @param o The object to test.
+   */
+  isExtensible(o: any): boolean;
+
+  /**
+   * Returns the names of the enumerable properties of an object.
+   * @param o Object that contains the properties.
+   */
+  keys(o: any): string[];
 }
 
 /**

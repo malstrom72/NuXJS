@@ -91,8 +91,9 @@ ES5‑specific regression tests live in `tests/es5`.
 
 ### Object immutability controls
 - [ ] Support `Object.preventExtensions`, `Object.seal`, `Object.freeze`, and related predicates (`isExtensible`, `isSealed`, `isFrozen`).
-	- [ ] Add an `extensible` flag to the base `Object` class and teach `setProperty`/`setOwnProperty` to honor it, returning false when extensions are blocked.
-	- [ ] Implement helpers in `src/stdlib.js` that iterate over `Object.getOwnPropertyNames` descriptors and toggle `[[Configurable]]`/`[[Writable]]` bits as required by `seal` and `freeze`.
+- [x] Add an `extensible` flag to the base `Object` class and teach `setProperty`/`setOwnProperty` to honor it, returning false when extensions are blocked.
+- [x] Implement `Object.preventExtensions` and `Object.isExtensible` helpers (`tests/es5/objectPreventExtensions.io`).
+- [ ] Implement helpers in `src/stdlib.js` that iterate over `Object.getOwnPropertyNames` descriptors and toggle `[[Configurable]]`/`[[Writable]]` bits as required by `seal` and `freeze`.
 
 ### Date and Number extras
 - [x] Finish remaining ES5.1 Date features such as `toISOString`, `toJSON`, and `now`.

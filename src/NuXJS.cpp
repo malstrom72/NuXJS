@@ -1354,13 +1354,16 @@ bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 	if (updateOwnProperty(rt, key, v)) {
 		return true;
 	}
-	const Object* o = this;
-	while ((o = o->getPrototype(rt)) != 0) {
+const Object* o = this;
+while ((o = o->getPrototype(rt)) != 0) {
 		Value dummy;
 		if ((o->getOwnProperty(rt, key, &dummy) & READ_ONLY_FLAG) != 0) {
 			return false;
 		}
 	}
+	if (!extensible) {
+		return false;
+}
 	return setOwnProperty(rt, key, v);
 }
 #if (NUXJS_ES5)
@@ -1381,7 +1384,7 @@ bool Object::setProperty(Runtime &rt, Processor &processor, const Value &key, co
 	}
 	setProperty(rt, key, v);
 	return false;
-}
+	}
 #endif
 
 Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
@@ -1400,7 +1403,7 @@ Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
 UInt32 Table::calcMaxLoad(UInt32 bucketCount) { return (bucketCount - (bucketCount >> 4) - 1); }
 Table::Table(Heap* heap) : buckets(1U << TABLE_BUILT_IN_N, heap), loadCount(0) { }
 UInt32 Table::getLoadCount() const { return loadCount; }
-Table::Bucket* Table::getFirst() const { return getNext(buckets.begin() - 1); }
+	Table::Bucket* Table::getFirst() const { return getNext(buckets.begin() - 1); }
 const Table::Bucket* Table::lookup(const String* key) const { return const_cast<Table*>(this)->lookup(key); }	// OK because lookup does not modify, only exposes non-const pointer
 
 Table::Bucket* Table::getNext(Bucket* bucket) const {
@@ -1538,19 +1541,25 @@ bool JSObject::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Fla
 }
 
 bool JSObject::setOwnProperty(Runtime& rt, const String* key, const Value& v, Flags flags) {
-Table::Bucket* bucket = insert(key);
-if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
-Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
-Accessor* nv = static_cast<Accessor*>(v.getObject());
-if (nv->getter != 0) {
-acc->getter = nv->getter;
-}
-if (nv->setter != 0) {
-acc->setter = nv->setter;
-}
-return true;
-}
-return update(bucket, v, flags);
+	Table::Bucket* bucket = lookup(key);
+	if (bucket == 0 || !bucket->valueExists()) {
+		if (!extensible) {
+			return false;
+		}
+		bucket = insert(key);
+	}
+	if ((flags & ACCESSOR_FLAG) != 0 && bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
+		Accessor* acc = static_cast<Accessor*>(bucket->getValue().getObject());
+		Accessor* nv = static_cast<Accessor*>(v.getObject());
+		if (nv->getter != 0) {
+			acc->getter = nv->getter;
+		}
+		if (nv->setter != 0) {
+			acc->setter = nv->setter;
+		}
+		return true;
+	}
+	return update(bucket, v, flags);
 }
 
 #else
@@ -5381,7 +5390,7 @@ static Value bind(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Objec
 	}
 	
 #if (NUXJS_ES5)
-	static Value getOwnPropertyDescriptor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+static Value getOwnPropertyDescriptor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 	Object* object = (argc >= 2 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
 	if (object != 0) {
 		Value v;
@@ -5402,6 +5411,20 @@ static Value bind(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Objec
 		}
 	}
 	return UNDEFINED_VALUE;
+}
+
+	static Value preventExtensions(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+	if (object != 0) {
+		object->preventExtensions();
+		return object;
+}
+	return UNDEFINED_VALUE;
+}
+
+	static Value isExtensible(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+	return (object != 0 ? Value(object->isExtensible()) : FALSE_VALUE);
 }
 #endif
 
@@ -5534,8 +5557,8 @@ static struct {
 { "compileFunction", Support::compileFunction }, { "distinctConstructor", Support::distinctConstructor },
 { "callWithArgs", Support::callWithArgs }, { "getOwnPropertyDescriptor", Support::getOwnPropertyDescriptor },
 { "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
-{ "isPropertyEnumerable", Support::isPropertyEnumerable },
-	   { "atan2", Support::atan2 }, { "pow", Support::pow }, { "parseFloat", Support::parseFloat },
+{ "isPropertyEnumerable", Support::isPropertyEnumerable }, { "preventExtensions", Support::preventExtensions }, { "isExtensible", Support::isExtensible },
+           { "atan2", Support::atan2 }, { "pow", Support::pow }, { "parseFloat", Support::parseFloat },
 	   { "charCodeAt", Support::charCodeAt }, { "substring", Support::substring }, { "submatch", Support::submatch },
 #else
 	{ "defineProperty", Support::defineProperty }, { "compileFunction", Support::compileFunction },

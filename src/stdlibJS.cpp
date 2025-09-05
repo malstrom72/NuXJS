@@ -536,9 +536,11 @@ const char* STDLIB_ES5_JS =
 "e=eS;var K=new eU();if(eT!==void 0)Object.defineProperties(K,Object(eT));return K}),getOwnPropertyDescriptor:d(functio"
 "n getOwnPropertyDescriptor(K,Y){if(K===undefined||K===null)throw TypeError();return a.getOwnPropertyDescriptor(Object("
 "K),Q(Y))}),keys:d(function keys(K){if(K===undefined||K===null)throw TypeError();var eR=Object(K),eV=[],cM;for(cM in eR"
-")if(Object.prototype.hasOwnProperty.call(eR,cM))eV[eV.length]=cM;return eV})});R(Function.prototype,{dontEnum:true},{b"
-"ind:function bind(an){var eW=this;if(typeof eW!=='function')throw TypeError();var aF=[eW,an];for(var v=1;v<arguments.l"
-"ength;++v)aF[aF.length]=arguments[v];return a.bind.apply(null,aF)}});"
+")if(Object.prototype.hasOwnProperty.call(eR,cM))eV[eV.length]=cM;return eV}),preventExtensions:d(function preventExten"
+"sions(K){if(K===undefined||K===null)throw TypeError();return a.preventExtensions(Object(K))}),isExtensible:d(function "
+"isExtensible(K){if(K===undefined||K===null)throw TypeError();return a.isExtensible(Object(K))})});R(Function.prototype"
+",{dontEnum:true},{bind:function bind(an){var eW=this;if(typeof eW!=='function')throw TypeError();var aF=[eW,an];for(va"
+"r v=1;v<arguments.length;++v)aF[aF.length]=arguments[v];return a.bind.apply(null,aF)}});"
 ;
 #endif
 }

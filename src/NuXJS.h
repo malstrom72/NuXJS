@@ -573,7 +573,11 @@ class Object : public GCItem {
 #if (NUXJS_ES5)
 		Flags getProperty(Runtime &rt, Processor &processor, const Value &key, Value *v) const;
 #endif
-		bool setProperty(Runtime &rt, const Value &key, const Value &v); ///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
+#if (NUXJS_ES5)
+bool isExtensible() const { return extensible; }
+void preventExtensions() { extensible = false; }
+#endif
+bool setProperty(Runtime &rt, const Value &key, const Value &v); ///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
 #if (NUXJS_ES5)
 		bool setProperty(Runtime &rt, Processor &processor, const Value &key, const Value &v);
 #endif
@@ -582,9 +586,10 @@ class Object : public GCItem {
 		bool hasProperty(Runtime& rt, const Value& key) const;				///< Checks via getProperty().
 		Enumerator* getPropertyEnumerator(Runtime& rt) const;				///< Unlike getOwnPropertyEnumerator() this one also enumerates all prototype properties.
 
-	protected:
-		Object() { }
-		Object(GCList& gcList) : super(gcList) { }
+protected:
+Object() : extensible(true) { }
+Object(GCList& gcList) : super(gcList), extensible(true) { }
+bool extensible;
 };
 
 inline Function* Value::asFunction() const { return (type == OBJECT_TYPE ? var.object->asFunction() : 0); }

@@ -1,10 +1,10 @@
 /*
-	ES5 additions to the standard library.
-	This file is "included" with an eval at the end of stdlib.js if ES5 support is enabled.
+ES5 additions to the standard library.
+This file is "included" with an eval at the end of stdlib.js if ES5 support is enabled.
 
-	@preserve: trim,trimLeft,trimRight,forEach,map,filter,reduce,reduceRight,every,some
-	@preserve: get,set
-@preserve: now,create,getOwnPropertyDescriptor,keys,bind
+@preserve: trim,trimLeft,trimRight,forEach,map,filter,reduce,reduceRight,every,some
+@preserve: get,set
+@preserve: now,create,getOwnPropertyDescriptor,keys,preventExtensions,isExtensible,bind
 @preserve: defineProperties
 */
 
@@ -172,7 +172,7 @@ defProps(Number, { dontEnum: true }, {
 	isNaN: unconstructable(function isNaN(n) { return typeof n === "number" && $isNaN(n); })
 });
 
-// Object helpers: defineProperty (accessors), defineProperties, create, getOwnPropertyDescriptor, keys
+// Object helpers: defineProperty (accessors), defineProperties, create, getOwnPropertyDescriptor, keys, preventExtensions, isExtensible
 defProps(Object, { dontEnum: true }, {
 		defineProperty: unconstructable(function defineProperty(o, p, d) {
 				var k = str(p);
@@ -209,12 +209,20 @@ defProps(Object, { dontEnum: true }, {
 				if (o === undefined || o === null) throw TypeError();
 				return support.getOwnPropertyDescriptor(Object(o), str(p));
 		}),
-		keys: unconstructable(function keys(o) {
+			keys: unconstructable(function keys(o) {
 				if (o === undefined || o === null) throw TypeError();
 				var obj = Object(o), res = [], k;
 				for (k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) res[res.length] = k;
 				return res;
-		})
+}),
+			preventExtensions: unconstructable(function preventExtensions(o) {
+				if (o === undefined || o === null) throw TypeError();
+				return support.preventExtensions(Object(o));
+}),
+			isExtensible: unconstructable(function isExtensible(o) {
+				if (o === undefined || o === null) throw TypeError();
+				return support.isExtensible(Object(o));
+})
 });
 
 // Function.prototype.bind (minimal, declared with one formal parameter)
