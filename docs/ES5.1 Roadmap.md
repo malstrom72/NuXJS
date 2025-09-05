@@ -11,7 +11,7 @@ ES5‑specific regression tests live in `tests/es5`.
 - Build toggle: ES5.1 features are guarded by the `NUXJS_ES5` macro. Select the variant by passing
   `es5`, `es3`, or `both` to `build.sh`/`build.cmd` (`both` is the default). The build scripts set
   `NUXJS_ES5` accordingly.
- - Test suite (with ES5.1 enabled): all ES5.1 tests pass (`tests/es5/functionBind.io`).
+- Test suite (with ES5.1 enabled): all ES5.1 tests pass (`tests/es5/functionBind.io`).
 
 ## Roadmap to ES5.1
 
