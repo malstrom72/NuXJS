@@ -6,6 +6,19 @@ NuXJS today is a portable C++03 engine that fully implements ECMAScript 3 whil
 All ES5.1 work should be driven by regression tests. Whenever a roadmap item lands, reference its verifying `.io` file in this document. ES5‑specific regression tests live in `tests/es5`.
 
 For faster iteration during development you can build and test only the beta target by passing `beta` to `build.sh`/`build.cmd` (for example, `./build.sh es5 native beta`), but ensure the full build succeeds before committing.
+Always run the complete build and test sequence before committing:
+
+```
+timeout 600 ./build.sh
+```
+
+The build is finished only when the output includes the line:
+
+```
+=== ALL BUILDS AND TESTS COMPLETED SUCCESSFULLY ===
+```
+
+If this message is missing, the build did not complete.
 
 ## Current Status
 
