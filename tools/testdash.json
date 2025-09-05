@@ -16460,6 +16460,18 @@
 	"built-ins/Object/prototype/toLocaleString/name": {
 		"category": "not_es3"
 	},
+	"built-ins/Object/prototype/toString/15.2.4.2-1-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/prototype/toString/15.2.4.2-1-2": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/prototype/toString/15.2.4.2-2-1": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/prototype/toString/15.2.4.2-2-2": {
+		"category": "not_es3"
+	},
 	"built-ins/Object/prototype/toString/S15.2.4.2_A10": {
 		"category": "not_es3"
 	},
