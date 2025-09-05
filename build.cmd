@@ -4,6 +4,7 @@ PUSHD %~dp0
 
 SET variant=%1
 SET model=%2
+SET target=%3
 
 IF /I "%variant%"=="es3" (
 	SET CPP_OPTIONS=%CPP_OPTIONS% /DNUXJS_ES5=0
@@ -16,13 +17,21 @@ IF /I "%variant%"=="es3" (
 )
 
 IF "%model%"=="" SET model=x64
+IF "%target%"=="" SET target=both
 
-CALL tools\buildAndTest.cmd beta %model% || GOTO error
-CALL tools\buildAndTest.cmd release %model% || GOTO error
+IF /I "%target%"=="beta" (
+		CALL tools\buildAndTest.cmd beta %model% || GOTO error
+) ELSE IF /I "%target%"=="release" (
+		CALL tools\buildAndTest.cmd release %model% || GOTO error
+) ELSE (
+		CALL tools\buildAndTest.cmd beta %model% || GOTO error
+		CALL tools\buildAndTest.cmd release %model% || GOTO error
+)
 
 IF EXIST output\NuXJS_release_%model%.exe (
 	MOVE /Y output\NuXJS_release_%model%.exe output\NuXJS.exe >NUL
 )
+ECHO === ALL BUILDS AND TESTS COMPLETED SUCCESSFULLY ===
 POPD
 EXIT /b 0
 
