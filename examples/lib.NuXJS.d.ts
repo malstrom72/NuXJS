@@ -115,10 +115,34 @@ interface ObjectConstructor {
   preventExtensions<T>(o: T): T;
 
   /**
+   * Prevents modifications to property attributes and values.
+   * @param o Object to freeze.
+   */
+  freeze<T>(o: T): Readonly<T>;
+
+  /**
+   * Prevents the modification of attributes, and values of properties.
+   * @param o Object to seal.
+   */
+  seal<T>(o: T): T;
+
+  /**
    * Determines whether an object is extensible.
    * @param o The object to test.
    */
   isExtensible(o: any): boolean;
+
+  /**
+   * Determines whether an object is sealed.
+   * @param o The object to test.
+   */
+  isSealed(o: any): boolean;
+
+  /**
+   * Determines whether an object is frozen.
+   * @param o The object to test.
+   */
+  isFrozen(o: any): boolean;
 
   /**
    * Returns the names of the enumerable properties of an object.

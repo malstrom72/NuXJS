@@ -5418,19 +5418,83 @@ static Value getOwnPropertyDescriptor(Runtime& rt, Processor&, UInt32 argc, cons
 	return UNDEFINED_VALUE;
 }
 
-	static Value preventExtensions(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
-	if (object != 0) {
-		object->preventExtensions();
-		return object;
+static Value preventExtensions(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+		Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+		if (object != 0) {
+				object->preventExtensions();
+				return object;
 }
-	return UNDEFINED_VALUE;
+		return UNDEFINED_VALUE;
 }
 
-	static Value isExtensible(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
-	return (object != 0 ? Value(object->isExtensible()) : FALSE_VALUE);
+static Value isExtensible(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+		Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+		return (object != 0 ? Value(object->isExtensible()) : FALSE_VALUE);
 }
+
+	static JSObject* toJSObject(Runtime& rt, Object* object) {
+	if (object == 0) return 0;
+	if (JSObject* js = dynamic_cast<JSObject*>(object)) return js;
+	if (LazyJSObject<Object>* lo = dynamic_cast<LazyJSObject<Object>*>(object)) return lo->getCompleteObject(rt);
+	if (LazyJSObject<Function>* lf = dynamic_cast<LazyJSObject<Function>*>(object)) return lf->getCompleteObject(rt);
+	return 0;
+	}
+
+	static Value seal(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+	if (object != 0) {
+	if (JSObject* o = toJSObject(rt, object)) {
+	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+	b->flags |= DONT_DELETE_FLAG;
+	}
+	}
+	object->preventExtensions();
+	return object;
+	}
+	return UNDEFINED_VALUE;
+	}
+
+	static Value freeze(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+	if (object != 0) {
+	if (JSObject* o = toJSObject(rt, object)) {
+	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+	b->flags |= DONT_DELETE_FLAG | READ_ONLY_FLAG;
+	}
+	}
+	object->preventExtensions();
+	return object;
+	}
+	return UNDEFINED_VALUE;
+	}
+
+	static Value isSealed(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+	if (object != 0 && !object->isExtensible()) {
+	if (JSObject* o = toJSObject(rt, object)) {
+	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+	if ((b->flags & DONT_DELETE_FLAG) == 0) return false;
+	}
+	}
+	return true;
+	}
+	return false;
+	}
+
+	static Value isFrozen(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+	if (object != 0 && !object->isExtensible()) {
+	if (JSObject* o = toJSObject(rt, object)) {
+	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+	Flags f = b->flags;
+	if ((f & DONT_DELETE_FLAG) == 0) return false;
+	if ((f & ACCESSOR_FLAG) == 0 && (f & READ_ONLY_FLAG) == 0) return false;
+	}
+	}
+	return true;
+	}
+	return false;
+	}
 #endif
 
 static Value hasOwnProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
@@ -5562,8 +5626,8 @@ static struct {
 { "compileFunction", Support::compileFunction }, { "distinctConstructor", Support::distinctConstructor },
 { "callWithArgs", Support::callWithArgs }, { "getOwnPropertyDescriptor", Support::getOwnPropertyDescriptor },
 { "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
-{ "isPropertyEnumerable", Support::isPropertyEnumerable }, { "preventExtensions", Support::preventExtensions }, { "isExtensible", Support::isExtensible },
-           { "atan2", Support::atan2 }, { "pow", Support::pow }, { "parseFloat", Support::parseFloat },
+{ "isPropertyEnumerable", Support::isPropertyEnumerable }, { "preventExtensions", Support::preventExtensions }, { "isExtensible", Support::isExtensible }, { "seal", Support::seal }, { "freeze", Support::freeze }, { "isSealed", Support::isSealed }, { "isFrozen", Support::isFrozen },
+{ "atan2", Support::atan2 }, { "pow", Support::pow }, { "parseFloat", Support::parseFloat },
 	   { "charCodeAt", Support::charCodeAt }, { "substring", Support::substring }, { "submatch", Support::submatch },
 #else
 	{ "defineProperty", Support::defineProperty }, { "compileFunction", Support::compileFunction },

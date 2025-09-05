@@ -1,0 +1,14 @@
+> var o = {a:1};
+> print(Object.isSealed(o));
+> Object.seal(o);
+> print(Object.isSealed(o));
+> o.b = 2;
+> print("b" in o);
+> delete o.a;
+> print("a" in o);
+> Object.freeze(o);
+> print(Object.isFrozen(o));
+> o.a = 3;
+> print(o.a);
+> delete o.a;
+> print("a" in o);

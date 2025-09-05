@@ -222,7 +222,23 @@ defProps(Object, { dontEnum: true }, {
 			isExtensible: unconstructable(function isExtensible(o) {
 				if (o === undefined || o === null) throw TypeError();
 				return support.isExtensible(Object(o));
-})
+		}),
+		seal: unconstructable(function seal(o) {
+			if (o === undefined || o === null) throw TypeError();
+			return support.seal(Object(o));
+		}),
+		freeze: unconstructable(function freeze(o) {
+			if (o === undefined || o === null) throw TypeError();
+			return support.freeze(Object(o));
+		}),
+		isSealed: unconstructable(function isSealed(o) {
+			if (o === undefined || o === null) throw TypeError();
+			return support.isSealed(Object(o));
+		}),
+		isFrozen: unconstructable(function isFrozen(o) {
+			if (o === undefined || o === null) throw TypeError();
+			return support.isFrozen(Object(o));
+		})
 });
 
 // Function.prototype.bind (minimal, declared with one formal parameter)

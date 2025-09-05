@@ -36,6 +36,10 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 - `Object.keys`
 - `Object.preventExtensions`
 - `Object.isExtensible`
+- `Object.seal`
+- `Object.freeze`
+- `Object.isSealed`
+- `Object.isFrozen`
 - `Number.isFinite`
 - `Number.isNaN`
 - `JSON.parse`
