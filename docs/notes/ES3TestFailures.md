@@ -24,10 +24,30 @@ For spec references, consult the Markdown edition of the ES3 spec at `docs/specs
 When an item is resolved, check it off and add a brief note citing the ES3 spec section and the regression `.io` test that verifies the fix.
 
 ### Array
+- [ ] built-ins/Array/arrayIndexTooLarge — property "4294967296" wraps to index 0
+> #### **15.4 Array Objects**
+>
+> Array objects give special treatment to a certain class of property names. A property name *P* (in the form of a string value) is an *array index* if and only if ToString(ToUint32(*P*)) is equal to *P* and ToUint32(*P*) is not equal to 2<sup>32</sup>−1.
+>
+NuXJS result: assigning `a["4294967296"]=1` sets `a.length` to `1` and stores the value at index `0`.
+Expected: property names ≥2<sup>32</sup> should create ordinary properties, leaving `length` at `0` and `a[0]` undefined.
+```io
+> a=[]
+> a["4294967296"]=1
+> print(a.length)
+< 0
+-
+> print(a[0])
+< undefined
+-
+> print(a["4294967296"])
+< 1
+-
+```
 - [ ] built-ins/Array/S15.4.5.1_A2.1_T1 — P in [4294967295, -1, true]
-		> ## **15.4.5.1 [[Put]] (P, V)**
-		>
-		> Array objects use a variation of the [[Put]] method used for other native ECMAScript objects (8.6.2.2).
+> ## **15.4.5.1 [[Put]] (P, V)**
+>
+> Array objects use a variation of the [[Put]] method used for other native ECMAScript objects (8.6.2.2).
 		>
 		> Assume *A* is an Array object and *P* is a string.
 		>
