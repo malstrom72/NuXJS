@@ -57,6 +57,7 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 - Unicode format control characters are preserved in source text.
 - ES5 builds expose `Function.prototype.caller` and `.arguments` as throwing accessors. In strict code, `arguments.callee`
   and `arguments.caller` also raise a `TypeError`.
+- Non-strict `arguments` objects omit the legacy `caller` property.
 
 ### Unsupported ES5 features
 
