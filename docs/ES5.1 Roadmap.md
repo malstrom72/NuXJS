@@ -154,3 +154,18 @@ If this message is missing, the build did not complete.
 - [x] Regenerate declaration files so that editors pick up getters/setters and newly added methods. (`examples/lib.NuXJS.d.ts`)
  - [x] Refresh `docs/NuXJS Documentation.md` once features land. (`docs/NuXJS Documentation.md`)
 - [x] The "Partial ES5 features" table currently lists the arguments object as ES3-mapped and `Object.defineProperty` as data-only; rewrite these notes after the new behavior ships. (`docs/NuXJS Documentation.md`, `tests/es5/argumentsMappingDetach.io`)
+
+### Additional ES5.1 coverage
+
+- [ ] Disallow octal integer literals and octal escape sequences in strict mode.
+- [ ] Align `Date.parse` with ISO 8601 parsing rules and return `NaN` for invalid inputs.
+- [ ] Ensure `Function.prototype.toString` returns source text and throws a `TypeError` for non-functions.
+- [ ] Confirm `Object.prototype.toString` reports `[object Math]` and `[object JSON]` for those singletons.
+- [ ] Recognize Unicode format-control characters, treat `\uFEFF` as whitespace, and allow line terminator escapes in string literals.
+- [ ] Ensure regular expression literals create unique objects, report pattern errors early, and permit unescaped `/` inside character classes.
+- [ ] Update regular expression internals: `\s` matches `\uFEFF`, `RegExp.prototype` is a `RegExp`, and `toString`/`source` derive from the original pattern.
+- [ ] Run indirect `eval` in the global environment and forbid host restrictions on non-direct calls.
+- [ ] Make global `NaN`, `Infinity`, and `undefined` properties read-only.
+- [ ] Allow `Function.prototype.apply` to accept generic array-like objects and pass the provided `this` value through `call`/`apply` without coercion.
+- [ ] Default `Error` objects' `message` to an empty string and implement the specified `Error.prototype.toString` behaviour.
+- [ ] When an exception parameter is invoked as a function inside `catch`, bind `this` to `undefined` rather than a scope object.
