@@ -142,7 +142,7 @@ If this message is missing, the build did not complete.
 - [x] Expand `docs/notes/ECMAScript Compatibility Notes.md` once features land and document any intentional deviations.
   (`docs/notes/ECMAScript Compatibility Notes.md`, `tests/es5/strictArgumentsCalleeCaller.io`,
   `tests/es5/functionPrototypeCallerArguments.io`)
-- [ ] Update examples and `lib.NuXJS.d.ts` to expose new APIs and maintain TypeScript type safety.
-- [ ] Regenerate declaration files so that editors pick up getters/setters and newly added methods.
+- [x] Update examples and `lib.NuXJS.d.ts` to expose new APIs and maintain TypeScript type safety. (`examples/lib.NuXJS.d.ts`)
+- [x] Regenerate declaration files so that editors pick up getters/setters and newly added methods. (`examples/lib.NuXJS.d.ts`)
 - [ ] Refresh `docs/NuXJS Documentation.md` once features land.
 - [x] The "Partial ES5 features" table currently lists the arguments object as ES3-mapped and `Object.defineProperty` as data-only; rewrite these notes after the new behavior ships. (`docs/NuXJS Documentation.md`, `tests/es5/argumentsMappingDetach.io`)

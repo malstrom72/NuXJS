@@ -96,10 +96,17 @@ interface ObjectConstructor {
   /**
    * Adds a property to an object, or modifies attributes of an existing property.
    * @param o Object on which to add or modify the property. This can be a native JavaScript object (that is, a user-defined object or a built in object) or a DOM object.
-   * @param p The property name.
-   * @param attributes Descriptor for the property. It can be for a data property or an accessor property.
-   */
+  * @param p The property name.
+  * @param attributes Descriptor for the property. It can be for a data property or an accessor property.
+  */
   defineProperty(o: any, p: PropertyKey, attributes: PropertyDescriptor & ThisType<any>): any;
+
+  /**
+   * Adds one or more properties to an object, and/or modifies attributes of existing properties.
+   * @param o Object on which to add or modify properties.
+   * @param properties An object that maps property names to descriptors.
+   */
+  defineProperties(o: any, properties: PropertyDescriptorMap & ThisType<any>): any;
 
   /**
    * Creates an object that has the specified prototype or that has null prototype.
@@ -187,6 +194,14 @@ interface Function {
    */
   call(this: Function, thisArg: any, ...argArray: any[]): any;
 
+  /**
+   * For a given function, creates a new function that, when called, has its `this` keyword set to the provided value,
+   * with a given sequence of arguments preceding any provided when the new function is called.
+   * @param thisArg The object to be used as the `this` object.
+   * @param argArray Arguments to prepend to arguments provided to the bound function when invoking the target function.
+   */
+  bind(this: Function, thisArg: any, ...argArray: any[]): any;
+
   /** Returns a string representation of a function. */
   toString(): string;
 
@@ -221,6 +236,13 @@ interface CallableFunction extends Function {
    * @param args Argument values to be passed to the function.
    */
   call<T, A extends any[], R>(this: (this: T, ...args: A) => R, thisArg: T, ...args: A): R;
+
+  /**
+   * For a given function, returns a new function with a bound `this` value and initial arguments.
+   * @param thisArg The value to be passed as the `this` parameter to the target function when the bound function is called.
+   * @param args Arguments to prepend to arguments provided to the bound function when invoking the target function.
+   */
+  bind<T, A extends any[], R>(this: (this: T, ...args: A) => R, thisArg: T, ...args: A): (this: T, ...args: A) => R;
 }
 
 interface NewableFunction extends Function {
@@ -238,6 +260,13 @@ interface NewableFunction extends Function {
    * @param args Argument values to be passed to the function.
    */
   call<T, A extends any[]>(this: new (...args: A) => T, thisArg: T, ...args: A): void;
+
+  /**
+   * For a given function, returns a new function with a bound `this` value and initial arguments.
+   * @param thisArg The value to be passed as the `this` parameter to the target function when the bound function is called.
+   * @param args Arguments to prepend to arguments provided to the bound function when invoking the target function.
+   */
+  bind<T, A extends any[], R>(this: new (...args: A) => R, thisArg: any, ...args: any[]): new (...args: A) => R;
 }
 
 interface IArguments {
@@ -348,6 +377,21 @@ interface String {
 
   /** Returns a string where all alphabetic characters have been converted to uppercase, taking into account the host environment's current locale. */
   toLocaleUpperCase(locales?: string | string[]): string;
+
+  /**
+   * Removes the leading and trailing white space and line terminator characters from a string.
+   */
+  trim(): string;
+
+  /**
+   * Removes the leading white space and line terminator characters from a string.
+   */
+  trimLeft(): string;
+
+  /**
+   * Removes the trailing white space and line terminator characters from a string.
+   */
+  trimRight(): string;
 
   /** Returns the length of a String object. */
   readonly length: number;
@@ -739,6 +783,10 @@ interface DateConstructor {
   (): string;
   readonly prototype: Date;
   /**
+   * Returns the number of milliseconds elapsed since midnight, January 1, 1970 Universal Coordinated Time (UTC).
+   */
+  now(): number;
+  /**
    * Parses a string containing a date, and returns the number of milliseconds between that date and midnight, January 1, 1970.
    * @param s A date string
    */
@@ -1039,10 +1087,81 @@ interface Array<T> {
    */
   splice(start: number, deleteCount: number, ...items: T[]): T[];
   /**
-   * Inserts new elements at the start of an array.
-   * @param items  Elements to insert at the start of the Array.
-   */
+  * Inserts new elements at the start of an array.
+  * @param items  Elements to insert at the start of the Array.
+  */
   unshift(...items: T[]): number;
+
+  /**
+   * Returns the index of the first occurrence of a value in an array.
+   * @param searchElement The value to locate in the array.
+   * @param fromIndex The array index at which to begin the search. If fromIndex is omitted, the search starts at index 0.
+   */
+  indexOf(searchElement: T, fromIndex?: number): number;
+
+  /**
+   * Returns the index of the last occurrence of a specified value in an array.
+   * @param searchElement The value to locate in the array.
+   * @param fromIndex The array index at which to start searching backward. If fromIndex is omitted, the search starts at the last index in the array.
+   */
+  lastIndexOf(searchElement: T, fromIndex?: number): number;
+
+  /**
+   * Performs the specified action for each element in an array.
+   * @param callbackfn A function that accepts up to three arguments. `forEach` calls the `callbackfn` function one time for each element in the array.
+   * @param thisArg An object to which the `this` keyword can refer in the `callbackfn` function. If `thisArg` is omitted, `undefined` is used as the `this` value.
+   */
+  forEach(callbackfn: (value: T, index: number, array: T[]) => void, thisArg?: any): void;
+
+  /**
+   * Calls a defined callback function on each element of an array, and returns an array that contains the results.
+   * @param callbackfn A function that accepts up to three arguments. The map method calls the `callbackfn` function one time for each element in the array.
+   * @param thisArg An object to which the `this` keyword can refer in the `callbackfn` function. If `thisArg` is omitted, `undefined` is used as the `this` value.
+   */
+  map<U>(callbackfn: (value: T, index: number, array: T[]) => U, thisArg?: any): U[];
+
+  /**
+   * Returns the elements of an array that meet the condition specified in a callback function.
+   * @param callbackfn A function that accepts up to three arguments. The `filter` method calls the `callbackfn` function one time for each element in the array.
+   * @param thisArg An object to which the `this` keyword can refer in the `callbackfn` function. If `thisArg` is omitted, `undefined` is used as the `this` value.
+   */
+  filter<S extends T>(callbackfn: (value: T, index: number, array: T[]) => value is S, thisArg?: any): S[];
+  filter(callbackfn: (value: T, index: number, array: T[]) => unknown, thisArg?: any): T[];
+
+  /**
+   * Determines whether all the members of an array satisfy the specified test.
+   * @param callbackfn A function that accepts up to three arguments. The `every` method calls the `callbackfn` function one time for each element in the array.
+   * @param thisArg An object to which the `this` keyword can refer in the `callbackfn` function. If `thisArg` is omitted, `undefined` is used as the `this` value.
+   */
+  every<S extends T>(callbackfn: (value: T, index: number, array: T[]) => value is S, thisArg?: any): this is S[];
+  every(callbackfn: (value: T, index: number, array: T[]) => unknown, thisArg?: any): boolean;
+
+  /**
+   * Determines whether the specified callback function returns true for any element of an array.
+   * @param callbackfn A function that accepts up to three arguments. The `some` method calls the `callbackfn` function one time for each element in the array.
+   * @param thisArg An object to which the `this` keyword can refer in the `callbackfn` function. If `thisArg` is omitted, `undefined` is used as the `this` value.
+   */
+  some(callbackfn: (value: T, index: number, array: T[]) => unknown, thisArg?: any): boolean;
+
+  /**
+   * Calls the specified callback function for all the elements in an array. The return value of the callback function is the accumulated result,
+   * and is provided as an argument in the next call to the callback function.
+   * @param callbackfn A function that accepts up to four arguments. The `reduce` method calls the `callbackfn` function one time for each element in the array.
+   * @param initialValue If the `initialValue` is specified, it is used as the initial value to start the accumulation. The first call to the `callbackfn` function provides this value as an argument instead of an array value.
+   */
+  reduce(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: T[]) => T): T;
+  reduce(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: T[]) => T, initialValue: T): T;
+  reduce<U>(callbackfn: (previousValue: U, currentValue: T, currentIndex: number, array: T[]) => U, initialValue: U): U;
+
+  /**
+   * Calls the specified callback function for all the elements in an array, in descending order.
+   * The return value of the callback function is the accumulated result, and is provided as an argument in the next call to the callback function.
+   * @param callbackfn A function that accepts up to four arguments. The `reduceRight` method calls the `callbackfn` function one time for each element in the array.
+   * @param initialValue If the `initialValue` is specified, it is used as the initial value to start the accumulation. The first call to the `callbackfn` function provides this value as an argument instead of an array value.
+   */
+  reduceRight(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: T[]) => T): T;
+  reduceRight(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: T[]) => T, initialValue: T): T;
+  reduceRight<U>(callbackfn: (previousValue: U, currentValue: T, currentIndex: number, array: T[]) => U, initialValue: U): U;
 
   [n: number]: T;
 }
