@@ -31,19 +31,7 @@ When an item is resolved, check it off and add a brief note citing the ES3 spec 
 >
 NuXJS result: assigning `a["4294967296"]=1` sets `a.length` to `1` and stores the value at index `0`.
 Expected: property names ≥2<sup>32</sup> should create ordinary properties, leaving `length` at `0` and `a[0]` undefined.
-```io
-> a=[]
-> a["4294967296"]=1
-> print(a.length)
-< 0
--
-> print(a[0])
-< undefined
--
-> print(a["4294967296"])
-< 1
--
-```
+See `tests/unconforming/arrayIndexTooLarge.io` for a regression test.
 - [ ] built-ins/Array/S15.4.5.1_A2.1_T1 — P in [4294967295, -1, true]
 > ## **15.4.5.1 [[Put]] (P, V)**
 >
@@ -60,19 +48,7 @@ Expected: property names ≥2<sup>32</sup> should create ordinary properties, le
 
 NuXJS result: assigning `true` as an index sets `x[1]` and increases length to `2`, leaving `x["true"]` undefined.
 Expected: non-array keys must not affect length and should create a plain property.
-```io
-> var x=[]
-> x[true]=1
-> print(x.length)
-< 0
--
-> print(x["true"])
-< 1
--
-> print(x[1])
-< undefined
--
-```
+See `tests/unconforming/booleanIndexCoercion.io` for a regression test.
 - [ ] built-ins/Array/S15.4_A1.1_T1 — Checking for boolean primitive
         > #### **15.4 Array Objects**
         >
@@ -80,19 +56,7 @@ Expected: non-array keys must not affect length and should create a plain proper
         
 NuXJS result: assigning `true` as an index sets `x[1]` and increases length to `2`, leaving `x["true"]` undefined.
 Expected: non-array keys must not affect length and should create a plain property.
-```io
-> var x=[]
-> x[true]=1
-> print(x.length)
-< 0
--
-> print(x["true"])
-< 1
--
-> print(x[1])
-< undefined
--
-```
+See `tests/unconforming/booleanIndexCoercion.io`.
 - [ ] built-ins/Array/prototype/pop/S15.4.4.6_A2_T2 — If ToUint32(length) equal zero, call the [[Put]] method	 of this object with arguments "length" and 0 and return undefined
 	> ## **15.4.4.6 Array.prototype.pop ( )**
 	> 
@@ -350,14 +314,7 @@ Expected: non-array keys must not affect length and should create a plain proper
 >
 NuXJS result: `print(0x100000000)` and `print(Number("0x100000000"))` both yield `0`.
 Expected: `4294967296`.
-```io
-> print(0x100000000)
-< 4294967296
--
-> print(Number("0x100000000"))
-< 4294967296
--
-```
+See `tests/unconforming/hexLiteralOverflow.io` for a regression test.
 - [ ] built-ins/Number/hugeDecimalExponent — extremely large exponents don't overflow
 > #### **7.8.3 Numeric Literals**
 >
@@ -366,14 +323,7 @@ Expected: `4294967296`.
 >
 NuXJS result: `print(1e4294967296)` and `print(Number("1e4294967296"))` both return `1`.
 Expected: `Infinity`.
-```io
-> print(1e4294967296)
-< Infinity
--
-> print(Number("1e4294967296"))
-< Infinity
--
-```
+See `tests/unconforming/hugeDecimalExponent.io` for a regression test.
 
 ### Object
 - [ ] built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A12 — Let O be the result of calling ToObject passing the this value as the argument.
@@ -763,11 +713,7 @@ Expected: `Infinity`.
         > *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
 NuXJS result: `print("\u0130".toLocaleLowerCase())` outputs `"i"`, omitting the required combining dot above.
 Expected: `"i̇"` (letter *i* followed by a combining dot).
-```io
-> print("\u0130".toLocaleLowerCase())
-< i̇
--
-```
+See `tests/unconforming/toLocaleLowerCaseSpecialCasing.io` for a regression test.
 - [ ] built-ins/String/prototype/toLocaleLowerCase/supplementary_plane — fails to iterate over supplementary-plane code points
         > ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
         >
@@ -782,11 +728,7 @@ Expected: `"i̇"` (letter *i* followed by a combining dot).
         > *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
 NuXJS result: `print("\uD835\uDD0A".toLocaleLowerCase())` collapses the surrogate pair to `"G"`.
 Expected: the original character `"𝔊"` should be preserved.
-```io
-> print("\uD835\uDD0A".toLocaleLowerCase())
-< 𝔊
--
-```
+See `tests/unconforming/toLocaleLowerCaseSupplementaryPlane.io` for a regression test.
 - [ ] built-ins/String/prototype/toLocaleUpperCase/special_casing — missing special Unicode casing mappings
 	> #### **15.5.4.19 String.prototype.toLocaleUpperCase ( )**
 	> 
@@ -801,11 +743,7 @@ Expected: the original character `"𝔊"` should be preserved.
 > *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
 NuXJS result: `print("i".toLocaleUpperCase())` outputs `"I"`, losing the required dot above.
 Expected: `"İ"`.
-```io
-> print("i".toLocaleUpperCase())
-< İ
--
-```
+See `tests/unconforming/toLocaleUpperCaseSpecialCasing.io` for a regression test.
 - [ ] built-ins/String/prototype/toLocaleUpperCase/supplementary_plane — fails to iterate over supplementary-plane code points
 	> #### **15.5.4.19 String.prototype.toLocaleUpperCase ( )**
 	> 
@@ -820,11 +758,7 @@ Expected: `"İ"`.
 > *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
 NuXJS result: `print("\uD835\uDD24".toLocaleUpperCase())` collapses the surrogate pair to `"g"`.
 Expected: `"𝔊"`.
-```io
-> print("\uD835\uDD24".toLocaleUpperCase())
-< 𝔊
--
-```
+See `tests/unconforming/toLocaleUpperCaseSupplementaryPlane.io` for a regression test.
 - [ ] built-ins/String/prototype/toLowerCase/special_casing — missing special Unicode lowercase mappings
 > ## **15.5.4.16 String.prototype.toLowerCase ( )**
 >
@@ -839,11 +773,7 @@ Expected: `"𝔊"`.
 > ## *NOTE 2*
 NuXJS result: `print("\u0130".toLowerCase())` outputs `"i"`, omitting the combining dot.
 Expected: `"i̇"` (letter *i* followed by a combining dot).
-```io
-> print("\u0130".toLowerCase())
-< i̇
--
-```
+See `tests/unconforming/toLowerCaseSpecialCasing.io` for a regression test.
 - [ ] built-ins/String/prototype/toLowerCase/special_casing_conditional — missing conditional lowercase mappings
 > ## **15.5.4.16 String.prototype.toLowerCase ( )**
 >
@@ -858,11 +788,7 @@ Expected: `"i̇"` (letter *i* followed by a combining dot).
 > ## *NOTE 2*
 NuXJS result: `print("ΟΣ".toLowerCase())` yields `"οσ"`, using the standard sigma.
 Expected: `"ος"` with the final sigma `ς`.
-```io
-> print("ΟΣ".toLowerCase())
-< ος
--
-```
+See `tests/unconforming/toLowerCaseSpecialCasingConditional.io` for a regression test.
 - [ ] built-ins/String/prototype/toLowerCase/supplementary_plane — fails to iterate over supplementary-plane code points
 > ## **15.5.4.16 String.prototype.toLowerCase ( )**
 >
@@ -877,11 +803,7 @@ Expected: `"ος"` with the final sigma `ς`.
 > ## *NOTE 2*
 NuXJS result: `print("\uD835\uDD0A".toLowerCase())` collapses the surrogate pair to `"G"`.
 Expected: `"𝔊"`.
-```io
-> print("\uD835\uDD0A".toLowerCase())
-< 𝔊
--
-```
+See `tests/unconforming/toLowerCaseSupplementaryPlane.io` for a regression test.
 - [ ] built-ins/String/prototype/toUpperCase/special_casing — missing special Unicode uppercase mappings
 	> #### **15.5.4.18 String.prototype.toUpperCase ( )**
 	> 
