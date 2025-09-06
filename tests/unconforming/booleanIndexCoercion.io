@@ -6,3 +6,6 @@
 > print(x["true"])
 < 1
 -
+> print(x[1])
+< undefined
+-

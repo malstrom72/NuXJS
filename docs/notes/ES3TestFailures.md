@@ -58,33 +58,41 @@ Expected: property names ≥2<sup>32</sup> should create ordinary properties, le
 		> - 3. If *A* doesn't have a property with name *P*, go to step 7.
 		> - 4. If P is **"length"**, go to step 12.
 
-	NuXJS result: assigning `true` as an index sets `x[1]` and increases length to `2`, leaving `x["true"]` undefined.
-	Expected: non-array keys must not affect length and should create a plain property.
-	```io
-	> var x=[]
-	> x[true]=1
-	> print(x.length)
-		< 0
-		> print(x["true"])
-		< 1
-	```
+NuXJS result: assigning `true` as an index sets `x[1]` and increases length to `2`, leaving `x["true"]` undefined.
+Expected: non-array keys must not affect length and should create a plain property.
+```io
+> var x=[]
+> x[true]=1
+> print(x.length)
+< 0
+-
+> print(x["true"])
+< 1
+-
+> print(x[1])
+< undefined
+-
+```
 - [ ] built-ins/Array/S15.4_A1.1_T1 — Checking for boolean primitive
         > #### **15.4 Array Objects**
         >
         > Array objects give special treatment to a certain class of property names. A property name *P* (in the form of a string value) is an *array index* if and only if ToString(ToUint32(*P*)) is equal to *P* and ToUint32(*P*) is not equal to 2<sup>32</sup>−1. Every Array object has a **length** property whose value is always a nonnegative integer less than 232. The value of the **length** property is numerically greater than the name of every property whose name is an array index; whenever a property of an Array object is created or changed, other properties are adjusted as necessary to maintain this invariant. Specifically, whenever a property is added whose name is an array index, the **length** property is changed, if necessary, to be one more than the numeric value of that array index; and whenever the **length** property is changed, every property whose name is an array index whose value is not smaller than the new length is automatically deleted. This constraint applies only to properties of the Array object itself and is unaffected by **length** or array index properties that may be inherited from its prototype.
         
-        NuXJS result: assigning `true` as an index sets `x[1]` and increases length to `2`, leaving `x["true"]` undefined.
-        Expected: non-array keys must not affect length and should create a plain property.
-        ```io
-        > var x=[]
-        > x[true]=1
-        > print(x.length)
-        < 0
-        -
-        > print(x["true"])
-        < 1
-        -
-        ```
+NuXJS result: assigning `true` as an index sets `x[1]` and increases length to `2`, leaving `x["true"]` undefined.
+Expected: non-array keys must not affect length and should create a plain property.
+```io
+> var x=[]
+> x[true]=1
+> print(x.length)
+< 0
+-
+> print(x["true"])
+< 1
+-
+> print(x[1])
+< undefined
+-
+```
 - [ ] built-ins/Array/prototype/pop/S15.4.4.6_A2_T2 — If ToUint32(length) equal zero, call the [[Put]] method	 of this object with arguments "length" and 0 and return undefined
 	> ## **15.4.4.6 Array.prototype.pop ( )**
 	> 
@@ -788,9 +796,16 @@ Expected: the original character `"𝔊"` should be preserved.
 	> 
 	> *The* **toLocaleUpperCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
 	> 
-	> *NOTE 2*
-	> 
-	> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
+> *NOTE 2*
+>
+> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
+NuXJS result: `print("i".toLocaleUpperCase())` outputs `"I"`, losing the required dot above.
+Expected: `"İ"`.
+```io
+> print("i".toLocaleUpperCase())
+< İ
+-
+```
 - [ ] built-ins/String/prototype/toLocaleUpperCase/supplementary_plane — fails to iterate over supplementary-plane code points
 	> #### **15.5.4.19 String.prototype.toLocaleUpperCase ( )**
 	> 
@@ -800,45 +815,73 @@ Expected: the original character `"𝔊"` should be preserved.
 	> 
 	> *The* **toLocaleUpperCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
 	> 
-	> *NOTE 2*
-	> 
-	> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
+> *NOTE 2*
+>
+> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
+NuXJS result: `print("\uD835\uDD24".toLocaleUpperCase())` collapses the surrogate pair to `"g"`.
+Expected: `"𝔊"`.
+```io
+> print("\uD835\uDD24".toLocaleUpperCase())
+< 𝔊
+-
+```
 - [ ] built-ins/String/prototype/toLowerCase/special_casing — missing special Unicode lowercase mappings
-	> ## **15.5.4.16 String.prototype.toLowerCase ( )**
-	> 
-	> If this object is not already a string, it is converted to a string. The characters in that string are converted one by one to lower case. The result is a string value, not a String object.
-	> 
-	> The characters are converted one by one. The result of each conversion is the original character, unless that character has a Unicode lowercase equivalent, in which case the lowercase equivalent is used instead.
-	> 
-	> #### *NOTE 1*
-	> 
-	> *The result should be derived according to the case mappings in the Unicode character database (this explicitly includes not only the UnicodeData.txt file, but also the SpecialCasings.txt file that accompanies it in Unicode 2.1.8 and later).*
-	> 
-	> ## *NOTE 2*
+> ## **15.5.4.16 String.prototype.toLowerCase ( )**
+>
+> If this object is not already a string, it is converted to a string. The characters in that string are converted one by one to lower case. The result is a string value, not a String object.
+>
+> The characters are converted one by one. The result of each conversion is the original character, unless that character has a Unicode lowercase equivalent, in which case the lowercase equivalent is used instead.
+>
+> #### *NOTE 1*
+>
+> *The result should be derived according to the case mappings in the Unicode character database (this explicitly includes not only the UnicodeData.txt file, but also the SpecialCasings.txt file that accompanies it in Unicode 2.1.8 and later).*
+>
+> ## *NOTE 2*
+NuXJS result: `print("\u0130".toLowerCase())` outputs `"i"`, omitting the combining dot.
+Expected: `"i̇"` (letter *i* followed by a combining dot).
+```io
+> print("\u0130".toLowerCase())
+< i̇
+-
+```
 - [ ] built-ins/String/prototype/toLowerCase/special_casing_conditional — missing conditional lowercase mappings
-	> ## **15.5.4.16 String.prototype.toLowerCase ( )**
-	> 
-	> If this object is not already a string, it is converted to a string. The characters in that string are converted one by one to lower case. The result is a string value, not a String object.
-	> 
-	> The characters are converted one by one. The result of each conversion is the original character, unless that character has a Unicode lowercase equivalent, in which case the lowercase equivalent is used instead.
-	> 
-	> #### *NOTE 1*
-	> 
-	> *The result should be derived according to the case mappings in the Unicode character database (this explicitly includes not only the UnicodeData.txt file, but also the SpecialCasings.txt file that accompanies it in Unicode 2.1.8 and later).*
-	> 
-	> ## *NOTE 2*
+> ## **15.5.4.16 String.prototype.toLowerCase ( )**
+>
+> If this object is not already a string, it is converted to a string. The characters in that string are converted one by one to lower case. The result is a string value, not a String object.
+>
+> The characters are converted one by one. The result of each conversion is the original character, unless that character has a Unicode lowercase equivalent, in which case the lowercase equivalent is used instead.
+>
+> #### *NOTE 1*
+>
+> *The result should be derived according to the case mappings in the Unicode character database (this explicitly includes not only the UnicodeData.txt file, but also the SpecialCasings.txt file that accompanies it in Unicode 2.1.8 and later).*
+>
+> ## *NOTE 2*
+NuXJS result: `print("ΟΣ".toLowerCase())` yields `"οσ"`, using the standard sigma.
+Expected: `"ος"` with the final sigma `ς`.
+```io
+> print("ΟΣ".toLowerCase())
+< ος
+-
+```
 - [ ] built-ins/String/prototype/toLowerCase/supplementary_plane — fails to iterate over supplementary-plane code points
-	> ## **15.5.4.16 String.prototype.toLowerCase ( )**
-	> 
-	> If this object is not already a string, it is converted to a string. The characters in that string are converted one by one to lower case. The result is a string value, not a String object.
-	> 
-	> The characters are converted one by one. The result of each conversion is the original character, unless that character has a Unicode lowercase equivalent, in which case the lowercase equivalent is used instead.
-	> 
-	> #### *NOTE 1*
-	> 
-	> *The result should be derived according to the case mappings in the Unicode character database (this explicitly includes not only the UnicodeData.txt file, but also the SpecialCasings.txt file that accompanies it in Unicode 2.1.8 and later).*
-	> 
-	> ## *NOTE 2*
+> ## **15.5.4.16 String.prototype.toLowerCase ( )**
+>
+> If this object is not already a string, it is converted to a string. The characters in that string are converted one by one to lower case. The result is a string value, not a String object.
+>
+> The characters are converted one by one. The result of each conversion is the original character, unless that character has a Unicode lowercase equivalent, in which case the lowercase equivalent is used instead.
+>
+> #### *NOTE 1*
+>
+> *The result should be derived according to the case mappings in the Unicode character database (this explicitly includes not only the UnicodeData.txt file, but also the SpecialCasings.txt file that accompanies it in Unicode 2.1.8 and later).*
+>
+> ## *NOTE 2*
+NuXJS result: `print("\uD835\uDD0A".toLowerCase())` collapses the surrogate pair to `"G"`.
+Expected: `"𝔊"`.
+```io
+> print("\uD835\uDD0A".toLowerCase())
+< 𝔊
+-
+```
 - [ ] built-ins/String/prototype/toUpperCase/special_casing — missing special Unicode uppercase mappings
 	> #### **15.5.4.18 String.prototype.toUpperCase ( )**
 	> 
