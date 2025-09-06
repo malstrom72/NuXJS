@@ -4,7 +4,7 @@ This file is "included" with an eval at the end of stdlib.js if ES5 support is e
 
 @preserve: trim,trimLeft,trimRight,forEach,map,filter,reduce,reduceRight,every,some
 @preserve: get,set
-@preserve: now,create,getOwnPropertyDescriptor,getOwnPropertyNames,keys,preventExtensions,isExtensible,bind
+@preserve: now,create,getOwnPropertyDescriptor,getOwnPropertyNames,keys,preventExtensions,isExtensible,bind,seal,freeze,isSealed,isFrozen
 @preserve: defineProperties
 */
 
@@ -246,13 +246,13 @@ defProps(Object, { dontEnum: true }, {
 
 // Function.prototype.bind (minimal, declared with one formal parameter)
 defProps(Function.prototype, { dontEnum: true }, {
-        bind: function bind(thisArg) {
-                var target = this;
-                if (typeof target !== 'function') throw TypeError();
-                var args = [target, thisArg];
-                for (var i = 1; i < arguments.length; ++i) args[args.length] = arguments[i];
-                return support.bind.apply(null, args);
-        }
+		bind: function bind(thisArg) {
+				var target = this;
+				if (typeof target !== 'function') throw TypeError();
+				var args = [target, thisArg];
+				for (var i = 1; i < arguments.length; ++i) args[args.length] = arguments[i];
+				return support.bind.apply(null, args);
+		}
 });
 
 // Function.prototype.name accessor

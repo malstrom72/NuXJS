@@ -540,14 +540,14 @@ const char* STDLIB_ES5_JS =
 "null)throw TypeError();var eO=Object(K),eR=[],cK;for(cK in eO)if(Object.prototype.hasOwnProperty.call(eO,cK))eR[eR.len"
 "gth]=cK;return eR}),preventExtensions:d(function preventExtensions(K){if(K===undefined||K===null)throw TypeError();ret"
 "urn a.preventExtensions(Object(K))}),isExtensible:d(function isExtensible(K){if(K===undefined||K===null)throw TypeErro"
-"r();return a.isExtensible(Object(K))}),eS:d(function eS(K){if(K===undefined||K===null)throw TypeError();return a.eS(Ob"
-"ject(K))}),eT:d(function eT(K){if(K===undefined||K===null)throw TypeError();return a.eT(Object(K))}),eU:d(function eU("
-"K){if(K===undefined||K===null)throw TypeError();return a.eU(Object(K))}),eV:d(function eV(K){if(K===undefined||K===nul"
-"l)throw TypeError();return a.eV(Object(K))})});R(Function.prototype,{dontEnum:true},{bind:function bind(an){var eW=thi"
-"s;if(typeof eW!=='function')throw TypeError();var aE=[eW,an];for(var v=1;v<arguments.length;++v)aE[aE.length]=argument"
-"s[v];return a.bind.apply(null,aE)}});delete Function.prototype.name;a.defineProperty(Function.prototype,\"name\",{get:"
-"d(function name(){if(typeof this!==\"function\")throw TypeError();var ca=a.getOwnPropertyDescriptor(this,\"name\");ret"
-"urn ca&&\"value\"in ca?ca.value:\"\"}),configurable:true});"
+"r();return a.isExtensible(Object(K))}),seal:d(function seal(K){if(K===undefined||K===null)throw TypeError();return a.s"
+"eal(Object(K))}),freeze:d(function freeze(K){if(K===undefined||K===null)throw TypeError();return a.freeze(Object(K))})"
+",isSealed:d(function isSealed(K){if(K===undefined||K===null)throw TypeError();return a.isSealed(Object(K))}),isFrozen:"
+"d(function isFrozen(K){if(K===undefined||K===null)throw TypeError();return a.isFrozen(Object(K))})});R(Function.protot"
+"ype,{dontEnum:true},{bind:function bind(an){var eS=this;if(typeof eS!=='function')throw TypeError();var aE=[eS,an];for"
+"(var v=1;v<arguments.length;++v)aE[aE.length]=arguments[v];return a.bind.apply(null,aE)}});delete Function.prototype.n"
+"ame;a.defineProperty(Function.prototype,\"name\",{get:d(function name(){if(typeof this!==\"function\")throw TypeError("
+");var ca=a.getOwnPropertyDescriptor(this,\"name\");return ca&&\"value\"in ca?ca.value:\"\"}),configurable:true});"
 ;
 #endif
 }
