@@ -69,9 +69,22 @@ Expected: property names ≥2<sup>32</sup> should create ordinary properties, le
 		< 1
 	```
 - [ ] built-ins/Array/S15.4_A1.1_T1 — Checking for boolean primitive
-	> #### **15.4 Array Objects**
-	> 
-	> Array objects give special treatment to a certain class of property names. A property name *P* (in the form of a string value) is an *array index* if and only if ToString(ToUint32(*P*)) is equal to *P* and ToUint32(*P*) is not equal to 2<sup>32</sup>−1. Every Array object has a **length** property whose value is always a nonnegative integer less than 232. The value of the **length** property is numerically greater than the name of every property whose name is an array index; whenever a property of an Array object is created or changed, other properties are adjusted as necessary to maintain this invariant. Specifically, whenever a property is added whose name is an array index, the **length** property is changed, if necessary, to be one more than the numeric value of that array index; and whenever the **length** property is changed, every property whose name is an array index whose value is not smaller than the new length is automatically deleted. This constraint applies only to properties of the Array object itself and is unaffected by **length** or array index properties that may be inherited from its prototype.
+        > #### **15.4 Array Objects**
+        >
+        > Array objects give special treatment to a certain class of property names. A property name *P* (in the form of a string value) is an *array index* if and only if ToString(ToUint32(*P*)) is equal to *P* and ToUint32(*P*) is not equal to 2<sup>32</sup>−1. Every Array object has a **length** property whose value is always a nonnegative integer less than 232. The value of the **length** property is numerically greater than the name of every property whose name is an array index; whenever a property of an Array object is created or changed, other properties are adjusted as necessary to maintain this invariant. Specifically, whenever a property is added whose name is an array index, the **length** property is changed, if necessary, to be one more than the numeric value of that array index; and whenever the **length** property is changed, every property whose name is an array index whose value is not smaller than the new length is automatically deleted. This constraint applies only to properties of the Array object itself and is unaffected by **length** or array index properties that may be inherited from its prototype.
+        
+        NuXJS result: assigning `true` as an index sets `x[1]` and increases length to `2`, leaving `x["true"]` undefined.
+        Expected: non-array keys must not affect length and should create a plain property.
+        ```io
+        > var x=[]
+        > x[true]=1
+        > print(x.length)
+        < 0
+        -
+        > print(x["true"])
+        < 1
+        -
+        ```
 - [ ] built-ins/Array/prototype/pop/S15.4.4.6_A2_T2 — If ToUint32(length) equal zero, call the [[Put]] method	 of this object with arguments "length" and 0 and return undefined
 	> ## **15.4.4.6 Array.prototype.pop ( )**
 	> 
@@ -729,29 +742,43 @@ Expected: `Infinity`.
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T3 — `replaceValue` is "$11" + "A15"
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A5_T1 — regex `/^(a+)\1*,\1+$/` with backreference
 - [ ] built-ins/String/prototype/toLocaleLowerCase/special_casing_conditional — missing conditional Unicode mappings
-	> ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
-	> 
-	> This function works exactly the same as **toLowerCase** except that its result is intended to yield the correct result for the host environment's current locale, rather than a locale-independent result. There will only be a difference in the few cases (such as Turkish) where the rules for that language conflict with the regular Unicode case mappings.
-	> 
-	> ## *NOTE 1*
-	> 
-	> *The* **toLocaleLowerCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
-	> 
-	> #### *NOTE 2*
-	> 
-	> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
+        > ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
+        >
+        > This function works exactly the same as **toLowerCase** except that its result is intended to yield the correct result for the host environment's current locale, rather than a locale-independent result. There will only be a difference in the few cases (such as Turkish) where the rules for that language conflict with the regular Unicode case mappings.
+        >
+        > ## *NOTE 1*
+        >
+        > *The* **toLocaleLowerCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
+        >
+        > #### *NOTE 2*
+        >
+        > *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
+NuXJS result: `print("\u0130".toLocaleLowerCase())` outputs `"i"`, omitting the required combining dot above.
+Expected: `"i̇"` (letter *i* followed by a combining dot).
+```io
+> print("\u0130".toLocaleLowerCase())
+< i̇
+-
+```
 - [ ] built-ins/String/prototype/toLocaleLowerCase/supplementary_plane — fails to iterate over supplementary-plane code points
-	> ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
-	> 
-	> This function works exactly the same as **toLowerCase** except that its result is intended to yield the correct result for the host environment's current locale, rather than a locale-independent result. There will only be a difference in the few cases (such as Turkish) where the rules for that language conflict with the regular Unicode case mappings.
-	> 
-	> ## *NOTE 1*
-	> 
-	> *The* **toLocaleLowerCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
-	> 
-	> #### *NOTE 2*
-	> 
-	> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
+        > ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
+        >
+        > This function works exactly the same as **toLowerCase** except that its result is intended to yield the correct result for the host environment's current locale, rather than a locale-independent result. There will only be a difference in the few cases (such as Turkish) where the rules for that language conflict with the regular Unicode case mappings.
+        >
+        > ## *NOTE 1*
+        >
+        > *The* **toLocaleLowerCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
+        >
+        > #### *NOTE 2*
+        >
+        > *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
+NuXJS result: `print("\uD835\uDD0A".toLocaleLowerCase())` collapses the surrogate pair to `"G"`.
+Expected: the original character `"𝔊"` should be preserved.
+```io
+> print("\uD835\uDD0A".toLocaleLowerCase())
+< 𝔊
+-
+```
 - [ ] built-ins/String/prototype/toLocaleUpperCase/special_casing — missing special Unicode casing mappings
 	> #### **15.5.4.19 String.prototype.toLocaleUpperCase ( )**
 	> 
