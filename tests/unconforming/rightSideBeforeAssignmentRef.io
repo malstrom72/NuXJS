@@ -6,11 +6,8 @@
 >   })();
 > print(typeof innerX);
 > print(x);
-// Strict ES conformance:
-// < undefined
-// < 1
-< number
-< 0
+< undefined
+< 1
 -
 > function testFunction() {
 >   var x = 0;
@@ -22,6 +19,6 @@
 >   print(x);
 > }
 > testFunction();
-< undefined
 < 2
+< 0
 -

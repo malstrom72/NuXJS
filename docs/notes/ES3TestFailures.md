@@ -2,6 +2,7 @@
 80 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
+| Expressions | §11 | 3 |
 | Array | §15.4 | 9 |
 | Date | §15.9 | 7 |
 | Error | §15.11 | 5 |
@@ -22,6 +23,38 @@ Each list below states the ES3 requirement that the corresponding test checks. N
 For spec references, consult the Markdown edition of the ES3 spec at `docs/specs/ECMA-262 3.md`.
 
 When an item is resolved, check it off and add a brief note citing the ES3 spec section and the regression `.io` test that verifies the fix.
+
+### Expressions
+- [ ] language/expressions/evalOrderOfBaseAndName — property name evaluated before null-base check
+> #### **11.2.1 Property Accessors**
+>
+> The production *MemberExpression* **:** *MemberExpression* **[** *Expression* **]** is evaluated as follows:
+> - 1. Evaluate *MemberExpression*.
+> - 3. Evaluate *Expression*.
+>
+NuXJS result: `invalidBase[objectPropertyName]` calls `objectPropertyName.toString()` before throwing `TypeError`.
+Expected: property names should not be evaluated when the base is `null`; the expression should immediately throw `TypeError`.
+See `tests/unconforming/evalOrderOfBaseAndName.io` for a regression test.
+- [ ] language/expressions/rightSideBeforeAssignmentRef — right-hand side evaluated before resolving assignment target
+> #### **11.13.1 Simple Assignment ( = )**
+>
+> The production *AssignmentExpression* **:** *LeftHandSideExpression* **=** *AssignmentExpression* is evaluated as follows:
+> - 1. Evaluate *LeftHandSideExpression*.
+> - 2. Evaluate *AssignmentExpression*.
+>
+NuXJS result: in `x = (eval("var x;"), 1)` the `eval` creates a local `x` before the assignment resolves, yielding `typeof innerX === "number"` and leaving the outer `x` unchanged.
+Expected: the assignment should resolve the outer `x` first, producing `typeof innerX === "undefined"` and updating the outer `x` to `1`.
+See `tests/unconforming/rightSideBeforeAssignmentRef.io` for a regression test.
+- [ ] language/expressions/funcCallEvalOrder — argument assignment changes callee
+> #### **11.2.3 Function Calls**
+>
+> The production *CallExpression* **:** *MemberExpression* *Arguments* is evaluated as follows:
+> - 1. Evaluate *MemberExpression*.
+> - 2. Evaluate *Arguments*, producing an internal list of argument values.
+>
+NuXJS result: `o.f(o.f=b)` invokes `b` because the argument assignment runs before the property reference.
+Expected: the property reference should be resolved first so the original `a` is called and `b` is merely passed as an argument.
+See `tests/unconforming/funcCallEvalOrder.io` for a regression test.
 
 ### Array
 - [ ] built-ins/Array/arrayIndexTooLarge — property "4294967296" wraps to index 0
@@ -57,6 +90,16 @@ See `tests/unconforming/booleanIndexCoercion.io` for a regression test.
 NuXJS result: assigning `true` as an index sets `x[1]` and increases length to `2`, leaving `x["true"]` undefined.
 Expected: non-array keys must not affect length and should create a plain property.
 See `tests/unconforming/booleanIndexCoercion.io`.
+- [ ] built-ins/Array/cantAssignObjectToArrayLength — assigning object to length throws
+	> #### **15.4.5.1 [[Put]] (P, V)**
+	>
+	> When the [[Put]] method of *A* is called with property "length" and value *V*, the following steps are taken:
+	> - 12. Compute ToUint32(*V*).
+	> - 13. If Result(12) is not equal to ToNumber(*V*), throw a **RangeError** exception.
+	>
+NuXJS result: assigning an object with `valueOf` returning `23` to `a.length` throws `RangeError` and leaves length `0`.
+Expected: the object should convert to `23` and set `a.length` to `23`.
+See `tests/unconforming/cantAssignObjectToArrayLength.io` for a regression test.
 - [ ] built-ins/Array/prototype/pop/S15.4.4.6_A2_T2 — If ToUint32(length) equal zero, call the [[Put]] method	 of this object with arguments "length" and 0 and return undefined
 	> ## **15.4.4.6 Array.prototype.pop ( )**
 	> 
