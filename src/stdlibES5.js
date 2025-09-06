@@ -218,30 +218,32 @@ defProps(Object, { dontEnum: true }, {
 				for (k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) res[res.length] = k;
 				return res;
 }),
-			preventExtensions: unconstructable(function preventExtensions(o) {
-				if (o === undefined || o === null) throw TypeError();
-				return support.preventExtensions(Object(o));
+					   preventExtensions: unconstructable(function preventExtensions(o) {
+							   var t = typeof o;
+							   return (o !== null && (t === "object" || t === "function")) ? support.preventExtensions(o) : o;
 }),
-			isExtensible: unconstructable(function isExtensible(o) {
-				if (o === undefined || o === null) throw TypeError();
-				return support.isExtensible(Object(o));
-		}),
-		seal: unconstructable(function seal(o) {
-			if (o === undefined || o === null) throw TypeError();
-			return support.seal(Object(o));
-		}),
-		freeze: unconstructable(function freeze(o) {
-			if (o === undefined || o === null) throw TypeError();
-			return support.freeze(Object(o));
-		}),
-		isSealed: unconstructable(function isSealed(o) {
-			if (o === undefined || o === null) throw TypeError();
-			return support.isSealed(Object(o));
-		}),
-		isFrozen: unconstructable(function isFrozen(o) {
-			if (o === undefined || o === null) throw TypeError();
-			return support.isFrozen(Object(o));
-		})
+					   isExtensible: unconstructable(function isExtensible(o) {
+							   var t = typeof o;
+							   return (o !== null && (t === "object" || t === "function")) ? support.isExtensible(o) : false;
+			   }),
+			   seal: unconstructable(function seal(o) {
+					   var t = typeof o;
+					   if (o === null || (t !== "object" && t !== "function")) throw TypeError();
+					   return support.seal(o);
+			   }),
+			   freeze: unconstructable(function freeze(o) {
+					   var t = typeof o;
+					   if (o === null || (t !== "object" && t !== "function")) throw TypeError();
+					   return support.freeze(o);
+			   }),
+			   isSealed: unconstructable(function isSealed(o) {
+					   var t = typeof o;
+					   return (o !== null && (t === "object" || t === "function")) ? support.isSealed(o) : true;
+			   }),
+			   isFrozen: unconstructable(function isFrozen(o) {
+					   var t = typeof o;
+					   return (o !== null && (t === "object" || t === "function")) ? support.isFrozen(o) : true;
+			   })
 });
 
 // Function.prototype.bind (minimal, declared with one formal parameter)
