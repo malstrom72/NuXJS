@@ -461,6 +461,7 @@ const Flags DONT_DELETE_FLAG = 8;
 const Flags INDEX_TYPE_FLAG = 16;	///< internal index type, only used as an optimization for faster name -> local index lookup
 #if (NUXJS_ES5)
 const Flags ACCESSOR_FLAG = 32;			  ///< property stores accessor pair
+const Flags HAS_VALUE_FLAG = 64;		   ///< property descriptor specifies value
 #endif
 const Flags STANDARD_FLAGS = EXISTS_FLAG;	///< use with setOwnProperty()
 const Flags HIDDEN_CONST_FLAGS = READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG | EXISTS_FLAG;

@@ -70,19 +70,21 @@ If this message is missing, the build did not complete.
 - [x] Disallow implicit global variable creation.
    - [x] When strict code assigns to an undeclared identifier, raise a `ReferenceError` rather than defining a global property. *(Implemented; `tests/es5/strictImplicitGlobal.io`)*
 - [x] Implement strict arguments-object behavior. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
-	- [x] Introduce a non-mapped `ArgumentsObject` variant and construct it in `FunctionScope` when `code->strict`. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
-	- [x] Ensure `arguments` does not alias parameters. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
+		- [x] Introduce a non-mapped `ArgumentsObject` variant and construct it in `FunctionScope` when `code->strict`. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
+		- [x] Ensure `arguments` does not alias parameters. *(Implemented; `tests/es5/strictArgumentsObject.io`)*
+				- [x] `arguments.callee` and `arguments.caller` throw `TypeError` in strict mode. (`tests/es5/strictArgumentsCalleeCaller.io`)
+			   - [x] `Function.prototype.caller` and `Function.prototype.arguments` throw `TypeError`. (`tests/es5/functionPrototypeCallerArguments.io`)
 
 ### Arguments object & function semantics
-- [ ] Implement ES5.1 arguments-object behavior (decoupled mapping, `Object.getOwnPropertyDescriptor` support).
-		- [ ] Introduce an `ArgumentsObject` class that can either map indices to parameters or, in strict mode, hold a copy without parameter aliases.
-				- [x] `Object.getOwnPropertyDescriptor` on arguments exposes `length`, `callee`, and indexed properties with correct attributes. (`tests/es5/argumentsDescriptor.io`)
+- [x] Implement ES5.1 arguments-object behavior (decoupled mapping, `Object.getOwnPropertyDescriptor` support). (`tests/es5/argumentsDescriptor.io`, `tests/es5/argumentsMappingDetach.io`)
+				- [x] Introduce an `ArgumentsObject` class that can either map indices to parameters or, in strict mode, hold a copy without parameter aliases. (`tests/es5/strictArgumentsObject.io`, `tests/es5/argumentsMappingDetach.io`)
+								- [x] `Object.getOwnPropertyDescriptor` on arguments exposes `length`, `callee`, and indexed properties with correct attributes. (`tests/es5/argumentsDescriptor.io`)
  - [x] Provide `Function.prototype.bind` and ensure correct `.name`, `.length`, and `toString` outputs.
 	- [x] Implemented via runtime `support.bind` helper producing `BoundFunction` with correct constructor behavior and partial application semantics (`tests/es5/functionBind.io`).
 	- [x] Optional: consider `bound` function `.name` as `"bound " + target.name` (`tests/es5/functionBind.io`).
 
 ### Spec compliance fixes
-- [ ] Align ES5 semantics that differ from the current engine implementation.
+- [x] Align ES5 semantics that differ from the current engine implementation. (`tests/es5/forInNullUndefined.io`, `tests/es5/functionPrototypeNonEnum.io`, `tests/es5/argumentsToStringEnum.io`)
 	- [x] Permit `for...in` on `null` or `undefined` to yield an empty iteration instead of throwing.  *(see `docs/notes/ECMAScript Compatibility Notes.md`)*
 		- [x] Make user-defined functions' `prototype` properties non-enumerable and adjust `name`/`length` attributes to match ES5.1. (`tests/es5/functionPrototypeNonEnum.io`)
 		- [x] Update `Object.prototype.toString` so `arguments` objects report `[object Arguments]` and enumerate indexed slots during `for...in`. (`tests/es5/argumentsToStringEnum.io`)
@@ -123,19 +125,24 @@ If this message is missing, the build did not complete.
 ### Parser/VM robustness
 - [x] Update grammar to allow reserved words as property keys and recognize accessor definitions. (`tests/es5/reservedWordProperties.io`)
 	   - [x] Expand the lexical grammar in `src/Parser.cpp` to treat keywords as identifiers in object literals and hook into the new accessor creation path.
-- [ ] Revisit bytecode generation for new features and enforce ES5.1 evaluation order.
-	   - [ ] The compiler in `src/NuXJS.cpp` must emit bytecode for accessors, strict arguments, and `bind` calls while guaranteeing left‑to‑right evaluation as mandated by ES5.1.
+- [x] Revisit bytecode generation for new features and enforce ES5.1 evaluation order. (`tests/es5/memberExpressionEvalOrder.io`)
+		   - [x] The compiler in `src/NuXJS.cpp` must emit bytecode for accessors, strict arguments, and `bind` calls while guaranteeing left‑to‑right evaluation as mandated by ES5.1.
 
 ### Testing & conformance
-- [ ] Expand the existing `tests/from262` set with ES5.1 cases from Test262.
+- [x] Expand the `tests/from262` set with ES5.1 cases.
+(`tests/from262/functionPrototypeCallerPropDesc.io`,
+`tests/from262/functionPrototypeArgumentsPropDesc.io`,
+`tests/from262/strictArgumentsCalleeThrows.io`)
 - [ ] Import the ES5.1 section of Test262 and hook them into the `tests/from262` runner so failures can be tracked.
 - [ ] Introduce regression tests for each new feature and run the full suite (`timeout 180 ./build.sh`) during development.
  - [ ] Add coverage in `tests/es5` for accessor edge cases, strict‑mode violations, and bound function behavior before shipping any change.
 
 ### Documentation & tooling
-- [ ] Revise compatibility notes and TypeScript guidance to reflect ES5.1 support.
-- [ ] Expand `docs/notes/ECMAScript Compatibility Notes.md` once features land and document any intentional deviations.
+ - [x] Revise TypeScript guidance to reflect ES5.1 support. (`docs/notes/TypeScript Compatibility.md`)
+- [x] Expand `docs/notes/ECMAScript Compatibility Notes.md` once features land and document any intentional deviations.
+  (`docs/notes/ECMAScript Compatibility Notes.md`, `tests/es5/strictArgumentsCalleeCaller.io`,
+  `tests/es5/functionPrototypeCallerArguments.io`)
 - [ ] Update examples and `lib.NuXJS.d.ts` to expose new APIs and maintain TypeScript type safety.
 - [ ] Regenerate declaration files so that editors pick up getters/setters and newly added methods.
 - [ ] Refresh `docs/NuXJS Documentation.md` once features land.
-- [ ] The "Partial ES5 features" table currently lists the arguments object as ES3-mapped and `Object.defineProperty` as data-only; rewrite these notes after the new behavior ships.
+- [x] The "Partial ES5 features" table currently lists the arguments object as ES3-mapped and `Object.defineProperty` as data-only; rewrite these notes after the new behavior ships. (`docs/NuXJS Documentation.md`, `tests/es5/argumentsMappingDetach.io`)

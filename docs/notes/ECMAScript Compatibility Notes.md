@@ -6,12 +6,8 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 
 - `\0` is interpreted as a null character even if digits follow (octal escapes are not supported).
 - Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The non‑breaking space (`\u00A0`) counts as white space, but the zero‑width no‑break space (`\uFEFF`) does not. No other Unicode "space separator" characters are recognised.
-- Custom property getters and setters are not implemented.
 - Implicit `valueOf` and `toString` conversions may happen earlier than specified. For example, `v[o]++` only calls `toString()` once.
 - Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers.
-- The `arguments` object follows ES3 mapping semantics; changing element attributes does not fully emulate the ES5 behaviour.
-- Every created function has a writable, enumerable, and configurable `name` property.
-- Evaluation order of member expressions follows the ES3 order (object and arguments are evaluated before selecting the member).
 - When the identifier of a `catch` clause is called as a function, its `this` value becomes the global object.
 - Assignments evaluate the right-hand side before resolving the reference on the left-hand side.
 - Property access may convert the property key before converting the base object.
@@ -59,6 +55,8 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 - Many `Date` object features from ES5 are implemented.
 - Regular expression flags cannot contain Unicode escape sequences.
 - Unicode format control characters are preserved in source text.
+- ES5 builds expose `Function.prototype.caller` and `.arguments` as throwing accessors. In strict code, `arguments.callee`
+  and `arguments.caller` also raise a `TypeError`.
 
 ### Unsupported ES5 features
 

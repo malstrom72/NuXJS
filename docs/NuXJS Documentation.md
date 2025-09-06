@@ -224,7 +224,8 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 | `Object.prototype.hasOwnProperty` | yes                  |
 | `Object.prototype.isPrototypeOf`  | yes                  |
 | `Object.getPrototypeOf`           | yes                  |
-| `Object.defineProperty`           | data properties only |
+| Arguments object mapping          | ES5.1 semantics      |
+| `Object.defineProperty`           | data & accessor descriptors |
 | `JSON.parse` / `JSON.stringify`   | yes                  |
 | String indexing                   | yes                  |
 | `eval()` direct vs indirect       | yes                  |
