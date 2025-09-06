@@ -34,6 +34,13 @@ When an item is resolved, check it off and add a brief note citing the ES3 spec 
 >
 NuXJS result: `invalidBase[objectPropertyName]` calls `objectPropertyName.toString()` before throwing `TypeError`.
 Expected: property names should not be evaluated when the base is `null`; the expression should immediately throw `TypeError`.
+```io
+> var invalidBase = null;
+> var objectPropertyName = { toString: function() { print("to string called!"); return 'x' } };
+> try { invalidBase[objectPropertyName] } catch (e) { print(e.name) }
+< TypeError
+-
+```
 See `tests/unconforming/evalOrderOfBaseAndName.io` for a regression test.
 - [ ] language/expressions/rightSideBeforeAssignmentRef — right-hand side evaluated before resolving assignment target
 > #### **11.13.1 Simple Assignment ( = )**
@@ -44,6 +51,32 @@ See `tests/unconforming/evalOrderOfBaseAndName.io` for a regression test.
 >
 NuXJS result: in `x = (eval("var x;"), 1)` the `eval` creates a local `x` before the assignment resolves, yielding `typeof innerX === "number"` and leaving the outer `x` unchanged.
 Expected: the assignment should resolve the outer `x` first, producing `typeof innerX === "undefined"` and updating the outer `x` to `1`.
+```io
+> var x = 0;
+>   var innerX = (function() {
+>     // If we were to conform strictly to ES spec, the left-hand side of th assigment is a reference to the outer x.
+>     x = (eval("var x;"), 1);
+>     return x;
+>   })();
+> print(typeof innerX);
+> print(x);
+< undefined
+< 1
+-
+> function testFunction() {
+>   var x = 0;
+>   var scope = {x: 1};
+>   with (scope) {
+>     x = (delete scope.x, 2);
+>   }
+>   print(scope.x);
+>   print(x);
+> }
+> testFunction();
+< 2
+< 0
+-
+```
 See `tests/unconforming/rightSideBeforeAssignmentRef.io` for a regression test.
 - [ ] language/expressions/funcCallEvalOrder — argument assignment changes callee
 > #### **11.2.3 Function Calls**
@@ -54,6 +87,14 @@ See `tests/unconforming/rightSideBeforeAssignmentRef.io` for a regression test.
 >
 NuXJS result: `o.f(o.f=b)` invokes `b` because the argument assignment runs before the property reference.
 Expected: the property reference should be resolved first so the original `a` is called and `b` is merely passed as an argument.
+```io
+> function a() { print("a") }
+> function b() { print("b") }
+> o = { f: a };
+> o.f(o.f=b)
+< a
+-
+```
 See `tests/unconforming/funcCallEvalOrder.io` for a regression test.
 
 ### Array
@@ -64,6 +105,19 @@ See `tests/unconforming/funcCallEvalOrder.io` for a regression test.
 >
 NuXJS result: assigning `a["4294967296"]=1` sets `a.length` to `1` and stores the value at index `0`.
 Expected: property names ≥2<sup>32</sup> should create ordinary properties, leaving `length` at `0` and `a[0]` undefined.
+```io
+> a=[]
+> a["4294967296"]=1
+> print(a.length)
+< 0
+-
+> print(a[0])
+< undefined
+-
+> print(a["4294967296"])
+< 1
+-
+```
 See `tests/unconforming/arrayIndexTooLarge.io` for a regression test.
 - [ ] built-ins/Array/S15.4.5.1_A2.1_T1 — P in [4294967295, -1, true]
 > ## **15.4.5.1 [[Put]] (P, V)**
@@ -81,6 +135,19 @@ See `tests/unconforming/arrayIndexTooLarge.io` for a regression test.
 
 NuXJS result: assigning `true` as an index sets `x[1]` and increases length to `2`, leaving `x["true"]` undefined.
 Expected: non-array keys must not affect length and should create a plain property.
+```io
+> var x=[]
+> x[true]=1
+> print(x.length)
+< 0
+-
+> print(x["true"])
+< 1
+-
+> print(x[1])
+< undefined
+-
+```
 See `tests/unconforming/booleanIndexCoercion.io` for a regression test.
 - [ ] built-ins/Array/S15.4_A1.1_T1 — Checking for boolean primitive
         > #### **15.4 Array Objects**
@@ -99,6 +166,23 @@ See `tests/unconforming/booleanIndexCoercion.io`.
 	>
 NuXJS result: assigning an object with `valueOf` returning `23` to `a.length` throws `RangeError` and leaves length `0`.
 Expected: the object should convert to `23` and set `a.length` to `23`.
+```io
+> a=[]
+> o={valueOf:function() { return 23 }}
+> print(o+10)
+< 33
+
+> a.length=o
+> print(a.length)
+< 23
+
+> o={valueOf:function() { return 47 }}
+> s='length';
+> a[s]=o
+> print(a.length)
+< 47
+-
+```
 See `tests/unconforming/cantAssignObjectToArrayLength.io` for a regression test.
 - [ ] built-ins/Array/prototype/pop/S15.4.4.6_A2_T2 — If ToUint32(length) equal zero, call the [[Put]] method	 of this object with arguments "length" and 0 and return undefined
 	> ## **15.4.4.6 Array.prototype.pop ( )**
@@ -357,6 +441,14 @@ See `tests/unconforming/cantAssignObjectToArrayLength.io` for a regression test.
 >
 NuXJS result: `print(0x100000000)` and `print(Number("0x100000000"))` both yield `0`.
 Expected: `4294967296`.
+```io
+> print(0x100000000)
+< 4294967296
+-
+> print(Number("0x100000000"))
+< 4294967296
+-
+```
 See `tests/unconforming/hexLiteralOverflow.io` for a regression test.
 - [ ] built-ins/Number/hugeDecimalExponent — extremely large exponents don't overflow
 > #### **7.8.3 Numeric Literals**
@@ -366,6 +458,14 @@ See `tests/unconforming/hexLiteralOverflow.io` for a regression test.
 >
 NuXJS result: `print(1e4294967296)` and `print(Number("1e4294967296"))` both return `1`.
 Expected: `Infinity`.
+```io
+> print(1e4294967296)
+< Infinity
+-
+> print(Number("1e4294967296"))
+< Infinity
+-
+```
 See `tests/unconforming/hugeDecimalExponent.io` for a regression test.
 
 ### Object
@@ -756,6 +856,11 @@ See `tests/unconforming/hugeDecimalExponent.io` for a regression test.
         > *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
 NuXJS result: `print("\u0130".toLocaleLowerCase())` outputs `"i"`, omitting the required combining dot above.
 Expected: `"i̇"` (letter *i* followed by a combining dot).
+```io
+> print("\u0130".toLocaleLowerCase())
+< i̇
+-
+```
 See `tests/unconforming/toLocaleLowerCaseSpecialCasing.io` for a regression test.
 - [ ] built-ins/String/prototype/toLocaleLowerCase/supplementary_plane — fails to iterate over supplementary-plane code points
         > ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
@@ -771,6 +876,11 @@ See `tests/unconforming/toLocaleLowerCaseSpecialCasing.io` for a regression test
         > *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
 NuXJS result: `print("\uD835\uDD0A".toLocaleLowerCase())` collapses the surrogate pair to `"G"`.
 Expected: the original character `"𝔊"` should be preserved.
+```io
+> print("\uD835\uDD0A".toLocaleLowerCase())
+< 𝔊
+-
+```
 See `tests/unconforming/toLocaleLowerCaseSupplementaryPlane.io` for a regression test.
 - [ ] built-ins/String/prototype/toLocaleUpperCase/special_casing — missing special Unicode casing mappings
 	> #### **15.5.4.19 String.prototype.toLocaleUpperCase ( )**
@@ -786,6 +896,11 @@ See `tests/unconforming/toLocaleLowerCaseSupplementaryPlane.io` for a regression
 > *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
 NuXJS result: `print("i".toLocaleUpperCase())` outputs `"I"`, losing the required dot above.
 Expected: `"İ"`.
+```io
+> print("i".toLocaleUpperCase())
+< İ
+-
+```
 See `tests/unconforming/toLocaleUpperCaseSpecialCasing.io` for a regression test.
 - [ ] built-ins/String/prototype/toLocaleUpperCase/supplementary_plane — fails to iterate over supplementary-plane code points
 	> #### **15.5.4.19 String.prototype.toLocaleUpperCase ( )**
@@ -801,6 +916,11 @@ See `tests/unconforming/toLocaleUpperCaseSpecialCasing.io` for a regression test
 > *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
 NuXJS result: `print("\uD835\uDD24".toLocaleUpperCase())` collapses the surrogate pair to `"g"`.
 Expected: `"𝔊"`.
+```io
+> print("\uD835\uDD24".toLocaleUpperCase())
+< 𝔊
+-
+```
 See `tests/unconforming/toLocaleUpperCaseSupplementaryPlane.io` for a regression test.
 - [ ] built-ins/String/prototype/toLowerCase/special_casing — missing special Unicode lowercase mappings
 > ## **15.5.4.16 String.prototype.toLowerCase ( )**
@@ -816,6 +936,11 @@ See `tests/unconforming/toLocaleUpperCaseSupplementaryPlane.io` for a regression
 > ## *NOTE 2*
 NuXJS result: `print("\u0130".toLowerCase())` outputs `"i"`, omitting the combining dot.
 Expected: `"i̇"` (letter *i* followed by a combining dot).
+```io
+> print("\u0130".toLowerCase())
+< i̇
+-
+```
 See `tests/unconforming/toLowerCaseSpecialCasing.io` for a regression test.
 - [ ] built-ins/String/prototype/toLowerCase/special_casing_conditional — missing conditional lowercase mappings
 > ## **15.5.4.16 String.prototype.toLowerCase ( )**
@@ -831,6 +956,11 @@ See `tests/unconforming/toLowerCaseSpecialCasing.io` for a regression test.
 > ## *NOTE 2*
 NuXJS result: `print("ΟΣ".toLowerCase())` yields `"οσ"`, using the standard sigma.
 Expected: `"ος"` with the final sigma `ς`.
+```io
+> print("ΟΣ".toLowerCase())
+< ος
+-
+```
 See `tests/unconforming/toLowerCaseSpecialCasingConditional.io` for a regression test.
 - [ ] built-ins/String/prototype/toLowerCase/supplementary_plane — fails to iterate over supplementary-plane code points
 > ## **15.5.4.16 String.prototype.toLowerCase ( )**
@@ -846,6 +976,11 @@ See `tests/unconforming/toLowerCaseSpecialCasingConditional.io` for a regression
 > ## *NOTE 2*
 NuXJS result: `print("\uD835\uDD0A".toLowerCase())` collapses the surrogate pair to `"G"`.
 Expected: `"𝔊"`.
+```io
+> print("\uD835\uDD0A".toLowerCase())
+< 𝔊
+-
+```
 See `tests/unconforming/toLowerCaseSupplementaryPlane.io` for a regression test.
 - [ ] built-ins/String/prototype/toUpperCase/special_casing — missing special Unicode uppercase mappings
 	> #### **15.5.4.18 String.prototype.toUpperCase ( )**
