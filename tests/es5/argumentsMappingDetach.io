@@ -10,3 +10,7 @@
 > print(h(1))
 < true
 -
+> function i(a){ var log = 0; Object.defineProperty(arguments, "0", { get: function(){ return 5; }, set: function(v){ log = v; } }); arguments[0] = 7; return a === 1 && log === 7 && arguments[0] === 5; }
+> print(i(1))
+< true
+-

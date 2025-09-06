@@ -135,7 +135,7 @@ If this message is missing, the build did not complete.
 `tests/from262/strictArgumentsCalleeThrows.io`)
 - [ ] Import the ES5.1 section of Test262 and hook them into the `tests/from262` runner so failures can be tracked.
 - [ ] Introduce regression tests for each new feature and run the full suite (`timeout 180 ./build.sh`) during development.
- - [ ] Add coverage in `tests/es5` for accessor edge cases, strict‑mode violations, and bound function behavior before shipping any change.
+- [x] Add coverage in `tests/es5` for accessor edge cases, strict‑mode violations, and bound function behavior before shipping any change. (`tests/es5/argumentsMappingDetach.io`, `tests/es5/strictArgumentsCalleeCaller.io`, `tests/es5/functionBind.io`)
 
 ### Documentation & tooling
  - [x] Revise TypeScript guidance to reflect ES5.1 support. (`docs/notes/TypeScript Compatibility.md`)
@@ -144,5 +144,5 @@ If this message is missing, the build did not complete.
   `tests/es5/functionPrototypeCallerArguments.io`)
 - [x] Update examples and `lib.NuXJS.d.ts` to expose new APIs and maintain TypeScript type safety. (`examples/lib.NuXJS.d.ts`)
 - [x] Regenerate declaration files so that editors pick up getters/setters and newly added methods. (`examples/lib.NuXJS.d.ts`)
-- [ ] Refresh `docs/NuXJS Documentation.md` once features land.
+ - [x] Refresh `docs/NuXJS Documentation.md` once features land. (`docs/NuXJS Documentation.md`)
 - [x] The "Partial ES5 features" table currently lists the arguments object as ES3-mapped and `Object.defineProperty` as data-only; rewrite these notes after the new behavior ships. (`docs/NuXJS Documentation.md`, `tests/es5/argumentsMappingDetach.io`)
