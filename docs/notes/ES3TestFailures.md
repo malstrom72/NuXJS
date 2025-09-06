@@ -1016,9 +1016,11 @@ See `tests/unconforming/toLowerCaseSupplementaryPlane.io` for a regression test.
 	> 
 	> - 1. Call ToString(*string*).
 	> - 2. Compute a substring of Result(1) consisting of the leftmost character that is not a *StrWhiteSpaceChar* and all characters to the right of that character.(In other words, remove leading white space.)
-	> - 3. If neither Result(2) nor any prefix of Result(2) satisfies the syntax of a *StrDecimalLiteral* (see 0), return **NaN**.
-	> - 4. Compute the longest prefix of Result(2), which might be Result(2) itself, which satisfies the syntax of a *StrDecimalLiteral*.
-	> - 5. Return the number value for the MV of Result(4).
+        > - 3. If neither Result(2) nor any prefix of Result(2) satisfies the syntax of a *StrDecimalLiteral* (see 0), return **NaN**.
+        > - 4. Compute the longest prefix of Result(2), which might be Result(2) itself, which satisfies the syntax of a *StrDecimalLiteral*.
+        > - 5. Return the number value for the MV of Result(4).
+        >
+        > *StrWhiteSpaceChar* **:::** <TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP>
 
 NuXJS result: `parseFloat("\u16801.5")` returns `NaN`.
 Expected: `1.5`.
@@ -1043,8 +1045,10 @@ See `tests/unconforming/parseFloatUSP.io` for a regression test.
 	> - 2. Let *S* be a newly created substring of Result(1) consisting of the first character that is not a *StrWhiteSpaceChar* and all characters following that character. (In other words, remove leading white space.)
 	> - 3. Let *sign* be 1.
 	> - 4. If *S* is not empty and the first character of *S* is a minus sign **-**, let *sign* be −1.
-	> - 5. If *S* is not empty and the first character of *S* is a plus sign **+** or a minus sign **-**, then remove the first character from *S*.
-	> - 6. Let *R* = ToInt32(*radix*).
+        > - 5. If *S* is not empty and the first character of *S* is a plus sign **+** or a minus sign **-**, then remove the first character from *S*.
+        > - 6. Let *R* = ToInt32(*radix*).
+        >
+        > *StrWhiteSpaceChar* **:::** <TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP>
 
 NuXJS result: `parseInt("\u1680123")` returns `NaN`.
 Expected: `123`.
