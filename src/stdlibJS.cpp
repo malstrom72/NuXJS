@@ -487,7 +487,8 @@ const char* STDLIB_JS =
 "){if(a.hasOwnProperty(K,cK)){if((H=eG(K,cK))!==void 0)K[cK]=H;else delete K[cK]}}}return k(ex,es,[ee,K])}af=eG({\"\":a"
 "f},\"\")}return af}throw m(\"Error parsing JSON\")})});R(Array,{dontEnum:true},{isArray:d(function isArray(K){return j"
 "(K,\"class\")===\"Array\"})});R(Object,{dontEnum:true},{defineProperty:d(function defineProperty(K,Y,ca){a.definePrope"
-"rty(K,Q(Y),ca)}),getPrototypeOf:d(function getPrototypeOf(K){return j(K,\"prototype\")})});if(b){eval=a.eval;eval(b);e"
+"rty(K,Q(Y),ca)}),getPrototypeOf:d(function getPrototypeOf(K){if(K===null||(typeof K!==\"object\"&&typeof K!==\"functio"
+"n\"))throw o(\"Object.getPrototypeOf called on non-object\");return j(K,\"prototype\")})});if(b){eval=a.eval;eval(b);e"
 "val=a.evalFunction}if(h.toString()!==\"NaN\")throw Error(\"Internal self test failed. Check C++ compiler options conce"
 "rning IEEE 754 compliance.\")})"
 ;
