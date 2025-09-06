@@ -2,7 +2,7 @@
 
 ## Introduction
 
-NuXJS is a sandboxed JavaScript engine implemented in portable C++03. It has been tested with GCC and Clang on x86-64 and ARM, as well as with MSVC on Windows. The core consists of a single `.cpp` file, a single `.h` file, and a `.js` standard library (also available as a `.cpp` array for embedding). It features a fast, stack-based virtual machine, is fully compatible with ECMAScript 3, and includes partial support for useful ECMAScript 5 features like JSON and indexed string access.
+NuXJS is a sandboxed JavaScript engine implemented in portable C++03. It has been tested with GCC and Clang on x86-64 and ARM, as well as with MSVC on Windows. The core consists of a single `.cpp` file, a single `.h` file, and a `.js` standard library (also available as a `.cpp` array for embedding). It features a fast, stack-based virtual machine, is fully compatible with ECMAScript 3, and includes extensive ECMAScript 5.1 support such as property descriptors, strict mode, array iteration helpers, and indexed string access.
 
 ## Building NuXJS
 
@@ -46,11 +46,11 @@ A minimal "hello world" program looks like this:
 using namespace NuXJS;
 
 int main() {
-    Heap heap;
-    Runtime rt(heap);
-    rt.setupStandardLibrary();
-    Var msg = rt.eval("'hello ' + 'world'");
-    std::wcout << msg << std::endl;
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
+	Var msg = rt.eval("'hello ' + 'world'");
+	std::wcout << msg << std::endl;
 }
 ```
 
@@ -68,39 +68,39 @@ using namespace NuXJS;
 
 // Native function used from JavaScript.
 static Var sum(Runtime& rt, const Var&, const VarList& args) {
-    double total = 0.0;
-    for (int i = 0; i < args.size(); ++i)
-        total += args[i];
-    return Var(rt, total);
+	double total = 0.0;
+	for (int i = 0; i < args.size(); ++i)
+		total += args[i];
+	return Var(rt, total);
 }
 
 int main() {
-    Heap heap;
-    Runtime rt(heap);
-    rt.setupStandardLibrary();
-    rt.setMemoryCap(1024 * 1024); // 1 MB cap
-    rt.resetTimeOut(10);          // 10‑second time limit
-    Var globals = rt.getGlobalsVar();
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
+	rt.setMemoryCap(1024 * 1024); // 1 MB cap
+	rt.resetTimeOut(10);		  // 10‑second time limit
+	Var globals = rt.getGlobalsVar();
 
-    globals["sum"] = sum;
-    rt.run("function demo(a,b,c){return 'a+b+c = ' + sum(a,b,c);}");
-    std::wcout << globals["demo"](7, 15, 20) << std::endl;
+	globals["sum"] = sum;
+	rt.run("function demo(a,b,c){return 'a+b+c = ' + sum(a,b,c);}");
+	std::wcout << globals["demo"](7, 15, 20) << std::endl;
 
-    Var silly = rt.eval("(function(){return arguments;})");
-    Var arg0(rt, "131");
-    const Value nums[10] = { arg0, 535, 236, 984, 456.5, 666, 626, 585, 382, 109.5 };
-    Var list = silly(VarList(rt, 10, nums));
-    std::wcout << globals["sum"]["apply"](Value::NUL, list) << std::endl;
+	Var silly = rt.eval("(function(){return arguments;})");
+	Var arg0(rt, "131");
+	const Value nums[10] = { arg0, 535, 236, 984, 456.5, 666, 626, 585, 382, 109.5 };
+	Var list = silly(VarList(rt, 10, nums));
+	std::wcout << globals["sum"]["apply"](Value::NUL, list) << std::endl;
 
-    const int y = 2008, m = 7, d = 20;
-    Var date = rt.eval("(function(y,m,d){return new Date(y,m,d)})")(y, m, d);
-    std::wcout << date << std::endl;
-    std::wcout << date["toString"]() << std::endl;
+	const int y = 2008, m = 7, d = 20;
+	Var date = rt.eval("(function(y,m,d){return new Date(y,m,d)})")(y, m, d);
+	std::wcout << date << std::endl;
+	std::wcout << date["toString"]() << std::endl;
 
-    Var arr = rt.eval("[4,8,15,16,23,42]");
-    for (Var::const_iterator it = arr.begin(); it != arr.end(); ++it)
-        std::wcout << arr[*it] << ' ';
-    std::wcout << std::endl;
+	Var arr = rt.eval("[4,8,15,16,23,42]");
+	for (Var::const_iterator it = arr.begin(); it != arr.end(); ++it)
+		std::wcout << arr[*it] << ' ';
+	std::wcout << std::endl;
 }
 ```
 
@@ -137,10 +137,10 @@ Note: `wchar_t` strings are converted based on the native size of `wchar_t` — 
 NuXJS provides several convenience routines for constructing managed strings:
 
 ```
-String::allocate(heap, "foo")            // copy from ISO-8859-1 literal
-String::concatenate(heap, left, right)   // join two existing strings
-String::fromInt(heap, 42)                // formatted integer (cached for -1000..1000)
-String::fromDouble(heap, 3.14)           // formatted double with special handling for NaN/Inf
+String::allocate(heap, "foo")			 // copy from ISO-8859-1 literal
+String::concatenate(heap, left, right)	 // join two existing strings
+String::fromInt(heap, 42)				 // formatted integer (cached for -1000..1000)
+String::fromDouble(heap, 3.14)			 // formatted double with special handling for NaN/Inf
 ```
 
 `String::fromInt` and `String::fromDouble` return pointers to static constant strings for small integers and special floating point values. For other values, a fresh heap string is created every call.
@@ -151,9 +151,9 @@ JavaScript code uses ordinary `throw` statements and `try`/`catch` blocks. When 
 
 ```cpp
 try {
-    rt.run("someScript();");
+	rt.run("someScript();");
 } catch (const ScriptException& ex) {
-    std::wcerr << ex.what() << std::endl;
+	std::wcerr << ex.what() << std::endl;
 }
 ```
 
@@ -161,7 +161,7 @@ Native functions can raise script errors using `ScriptException::throwError(heap
 
 ```cpp
 if (touchFunction.typeOf() != &FUNCTION_STRING) {
-    ScriptException::throwError(heap, GENERIC_ERROR, "cannot compile JS gui-variable (touch is not a function)");
+	ScriptException::throwError(heap, GENERIC_ERROR, "cannot compile JS gui-variable (touch is not a function)");
 }
 ```
 
@@ -169,21 +169,21 @@ When your native code may throw exceptions of its own, convert them to script er
 
 ```cpp
 Var loadFile(Runtime& rt, const Var&, const VarList& args) {
-    Heap& heap = rt.getHeap();
-    try {
+	Heap& heap = rt.getHeap();
+	try {
 		const String* filenameString = args[0];
 		const std::string filenameUTF8 = filenameString->toUTF8String();
-        std::ifstream f(filenameUTF8.c_str());
-        if (!f) {
-            ScriptException::throwError(heap, GENERIC_ERROR, "failed to open file");
-        }
-        // read file here
-    } catch (const std::exception& e) {
-        ScriptException::throwError(heap, GENERIC_ERROR, e.what());
-    } catch (...) {
-        ScriptException::throwError(heap, GENERIC_ERROR, "native exception");
-    }
-    return Var(rt);
+		std::ifstream f(filenameUTF8.c_str());
+		if (!f) {
+			ScriptException::throwError(heap, GENERIC_ERROR, "failed to open file");
+		}
+		// read file here
+	} catch (const std::exception& e) {
+		ScriptException::throwError(heap, GENERIC_ERROR, e.what());
+	} catch (...) {
+		ScriptException::throwError(heap, GENERIC_ERROR, "native exception");
+	}
+	return Var(rt);
 }
 ```
 
@@ -199,12 +199,8 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 
 - `\0` is interpreted as a null character even if digits follow (octal escapes are not supported).
 - Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The non‑breaking space (`\u00A0`) counts as white space, but the zero-width no‑break space (`\uFEFF`) does not. No other Unicode "space separator" characters are recognised.
-- Custom property getters and setters are not implemented.
 - Implicit `valueOf` and `toString` conversions may happen earlier than specified, for example, `v[o]++` only invokes `toString()` once.
 - Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers.
-- The `arguments` object follows ES3 mapping semantics; changing element attributes does not fully emulate the ES5 behaviour.
-- Every created function has a writable, enumerable, and configurable `name` property.
-- Evaluation order of member expressions follows the ES3 order (object and arguments evaluated before selecting the member).
 - When the identifier of a `catch` clause is called as a function, its `this` value is the global object.
 - Assignments evaluate the right-hand side before resolving the reference on the left-hand side.
 - Property access may convert the property key before converting the base object.
@@ -218,19 +214,20 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 
 ### Partial ES5 features
 
-| Feature                           | Support              |
+| Feature							| Support			   |
 | --------------------------------- | -------------------- |
-| `Array.isArray`                   | yes                  |
-| `Object.prototype.hasOwnProperty` | yes                  |
-| `Object.prototype.isPrototypeOf`  | yes                  |
-| `Object.getPrototypeOf`           | yes                  |
-| `Object.defineProperty`           | data properties only |
-| `JSON.parse` / `JSON.stringify`   | yes                  |
-| String indexing                   | yes                  |
-| `eval()` direct vs indirect       | yes                  |
-| `String.prototype.match`          | ES5 behaviour        |
-| `Date` object                     | most ES5 methods     |
-| Unicode format control            | preserved            |
+| `Array.isArray`					| yes				   |
+| `Object.prototype.hasOwnProperty` | yes				   |
+| `Object.prototype.isPrototypeOf`	| yes				   |
+| `Object.getPrototypeOf`			| yes				   |
+| Arguments object mapping			| ES5.1 semantics	   |
+| `Object.defineProperty`			| data & accessor descriptors |
+| `JSON.parse` / `JSON.stringify`	| yes				   |
+| String indexing					| yes				   |
+| `eval()` direct vs indirect		| yes				   |
+| `String.prototype.match`			| ES5 behaviour		   |
+| `Date` object						| most ES5 methods	   |
+| Unicode format control			| preserved			   |
 
 ### ES6-inspired extras
 

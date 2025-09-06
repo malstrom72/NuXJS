@@ -185,9 +185,9 @@ const String GET_STRING("get"), SET_STRING("set");
 #endif
 
 static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
-		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
-		, CANNOT_CONVERT_TO_OBJECT_STRING("Cannot convert undefined or null to object")
-		, CANNOT_USE_IN_OPERATOR_STRING("Cannot use 'in' operator on "), CLASS_STRING("class"), COLON_SPACE(": ")
+				, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee"), CALLER_STRING("caller")
+				, CANNOT_CONVERT_TO_OBJECT_STRING("Cannot convert undefined or null to object")
+				, CANNOT_USE_IN_OPERATOR_STRING("Cannot use 'in' operator on "), CLASS_STRING("class"), COLON_SPACE(": ")
 		, CONSTRUCTOR_STRING("constructor"), END_BRACKET_STRING("]"), EVAL_STRING("eval"), FALSE_STRING("false")
 		, FUNCTION_SPACE("function "), INFINITY_STRING("Infinity"), IS_NOT_A_FUNCTION_STRING(" is not a function")
 , IS_NOT_DEFINED_STRING(" is not defined"), MESSAGE_STRING("message"), MINUS_INFINITY_STRING("-Infinity")
@@ -2030,12 +2030,21 @@ return setOwnProperty(rt, Value(key), v, flags);
 
 bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	Value* p = findProperty(key);
-	if (p != 0 && (flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) != 0) {
-		const UInt32 index = static_cast<UInt32>(p - (scope != 0 ? scope->getLocalsPointer() : values.begin()));
-		deletedArguments[index] = true;
-		p = 0;
-	}
-	return (p == 0 ? super::setOwnProperty(rt, key, v, flags) : ((void)(*p = v), true));
+		#if (NUXJS_ES5)
+				if (p != 0 && (flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG | ACCESSOR_FLAG | HAS_VALUE_FLAG)) != 0) {
+						const UInt32 index = static_cast<UInt32>(p - (scope != 0 ? scope->getLocalsPointer() : values.begin()));
+						deletedArguments[index] = true;
+						p = 0;
+				}
+				return (p == 0 ? super::setOwnProperty(rt, key, v, flags & ~HAS_VALUE_FLAG) : ((void)(*p = v), true));
+		#else
+				if (p != 0 && (flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) != 0) {
+						const UInt32 index = static_cast<UInt32>(p - (scope != 0 ? scope->getLocalsPointer() : values.begin()));
+						deletedArguments[index] = true;
+						p = 0;
+				}
+				return (p == 0 ? super::setOwnProperty(rt, key, v, flags) : ((void)(*p = v), true));
+		#endif
 }
 
 bool Arguments::deleteOwnProperty(Runtime& rt, const Value& key) {
@@ -2073,9 +2082,31 @@ Enumerator* Arguments::getOwnPropertyEnumerator(Runtime& rt) const {
 #endif
 }
 
+#if (NUXJS_ES5)
+static Value callerCalleeThrower(Runtime& rt, Processor&, UInt32, const Value*, Object*) {
+		ScriptException::throwError(rt.getHeap(), TYPE_ERROR
+						, "Access to caller or callee in strict mode");
+		return Value();
+}
+#endif
+
 void Arguments::constructCompleteObject(Runtime& rt) const {
-	completeObject->setOwnProperty(rt, &LENGTH_STRING, argumentsCount, DONT_ENUM_FLAG);
-	completeObject->setOwnProperty(rt, &CALLEE_STRING, function, DONT_ENUM_FLAG);
+		completeObject->setOwnProperty(rt, &LENGTH_STRING, argumentsCount, DONT_ENUM_FLAG);
+#if (NUXJS_ES5)
+		Heap& heap = rt.getHeap();
+		if (function->getScriptCode()->isStrict()) {
+				Function* thrower = new(heap) FunctorAdapter<NativeFunction>(heap.managed(), callerCalleeThrower);
+				Accessor* acc = new(heap) Accessor(heap.managed(), thrower, thrower);
+				completeObject->setOwnProperty(rt, &CALLER_STRING, acc
+								, DONT_ENUM_FLAG | DONT_DELETE_FLAG | ACCESSOR_FLAG);
+				completeObject->setOwnProperty(rt, &CALLEE_STRING, acc
+								, DONT_ENUM_FLAG | DONT_DELETE_FLAG | ACCESSOR_FLAG);
+		} else {
+				completeObject->setOwnProperty(rt, &CALLEE_STRING, function, DONT_ENUM_FLAG);
+		}
+#else
+		completeObject->setOwnProperty(rt, &CALLEE_STRING, function, DONT_ENUM_FLAG);
+#endif
 }
 
 Arguments::~Arguments() {
@@ -5091,6 +5122,13 @@ Object* Runtime::FunctionPrototypeFunction::getPrototype(Runtime& rt) const { re
 void Runtime::FunctionPrototypeFunction::constructCompleteObject(Runtime& rt) const {
 	completeObject->setOwnProperty(rt, &NAME_STRING, &EMPTY_STRING, READ_ONLY_FLAG | DONT_ENUM_FLAG);
 	completeObject->setOwnProperty(rt, &LENGTH_STRING, Value(0.0), HIDDEN_CONST_FLAGS);
+#if (NUXJS_ES5)
+	Heap& heap = rt.getHeap();
+	Function* thrower = new(heap) FunctorAdapter<NativeFunction>(heap.managed(), callerCalleeThrower);
+	Accessor* acc = new(heap) Accessor(heap.managed(), thrower, thrower);
+completeObject->setOwnProperty(rt, &CALLER_STRING, acc, DONT_ENUM_FLAG | ACCESSOR_FLAG);
+completeObject->setOwnProperty(rt, &ARGUMENTS_STRING, acc, DONT_ENUM_FLAG | ACCESSOR_FLAG);
+#endif
 }
 
 struct SeparateConstructorFunction : public ExtensibleFunction {
@@ -5355,13 +5393,14 @@ static Value createWrapper(Runtime& rt, Processor&, UInt32 argc, const Value* ar
 											   ScriptException::throwError(heap, TYPE_ERROR, "Setter is not callable");
 											   return Value();
 									   }
-									   if (hasGetter || hasSetter) {
-											   flags &= ~READ_ONLY_FLAG;
-											   Accessor* acc = new(heap) Accessor(heap.managed(), getterVal.asFunction(), setterVal.asFunction());
-											   success = o->setOwnProperty(rt, key, acc, flags | ACCESSOR_FLAG);
-									   } else {
-											   success = o->setOwnProperty(rt, key, (hasValue ? valueVal : UNDEFINED_VALUE), flags);
-									   }
+																		   if (hasGetter || hasSetter) {
+																						   flags &= ~READ_ONLY_FLAG;
+																						   Accessor* acc = new(heap) Accessor(heap.managed(), getterVal.asFunction(), setterVal.asFunction());
+																						   success = o->setOwnProperty(rt, key, acc, flags | ACCESSOR_FLAG);
+																		   } else {
+																						   Flags extra = (hasValue && o->getClassName() == &A_RGUMENTS_STRING ? HAS_VALUE_FLAG : 0);
+																						   success = o->setOwnProperty(rt, key, (hasValue ? valueVal : UNDEFINED_VALUE), flags | extra);
+																		   }
 #else
 									   Value valueVal;
 									   if (desc->getProperty(rt, &VALUE_STRING, &valueVal) == NONEXISTENT) valueVal = UNDEFINED_VALUE;

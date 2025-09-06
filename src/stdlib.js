@@ -1841,7 +1841,11 @@ defProps(Object, { dontEnum: true }, {
 		   defineProperty: unconstructable(function defineProperty(o, p, d) {
 		support.defineProperty(o, str(p), d);
 	}),
-	getPrototypeOf: unconstructable(function getPrototypeOf(o) { return $getInternalProperty(o, "prototype"); })
+	getPrototypeOf: unconstructable(function getPrototypeOf(o) {
+		if (o === null || (typeof o !== "object" && typeof o !== "function"))
+			throw typeError("Object.getPrototypeOf called on non-object");
+		return $getInternalProperty(o, "prototype");
+	})
 });
 
 // Evaluate ES5 add-ons only when explicitly enabled; bracket form avoids minifier renaming
