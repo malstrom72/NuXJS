@@ -25,18 +25,18 @@ When an item is resolved, check it off and add a brief note citing the ES3 spec 
 
 ### Array
 - [ ] built-ins/Array/S15.4.5.1_A2.1_T1 — P in [4294967295, -1, true]
-        > ## **15.4.5.1 [[Put]] (P, V)**
-        >
-        > Array objects use a variation of the [[Put]] method used for other native ECMAScript objects (8.6.2.2).
-        >
-        > Assume *A* is an Array object and *P* is a string.
-        >
-        > When the [[Put]] method of *A* is called with property *P* and value *V*, the following steps are taken:
-        >
-        > - 1. Call the [[CanPut]] method of *A* with name P.
-        > - 2. If Result(1) is **false**, return.
-        > - 3. If *A* doesn't have a property with name *P*, go to step 7.
-        > - 4. If P is **"length"**, go to step 12.
+		> ## **15.4.5.1 [[Put]] (P, V)**
+		>
+		> Array objects use a variation of the [[Put]] method used for other native ECMAScript objects (8.6.2.2).
+		>
+		> Assume *A* is an Array object and *P* is a string.
+		>
+		> When the [[Put]] method of *A* is called with property *P* and value *V*, the following steps are taken:
+		>
+		> - 1. Call the [[CanPut]] method of *A* with name P.
+		> - 2. If Result(1) is **false**, return.
+		> - 3. If *A* doesn't have a property with name *P*, go to step 7.
+		> - 4. If P is **"length"**, go to step 12.
 
 	NuXJS result: assigning `true` as an index sets `x[1]` and increases length to `2`, leaving `x["true"]` undefined.
 	Expected: non-array keys must not affect length and should create a plain property.
@@ -44,9 +44,9 @@ When an item is resolved, check it off and add a brief note citing the ES3 spec 
 	> var x=[]
 	> x[true]=1
 	> print(x.length)
-        < 0
-        > print(x["true"])
-        < 1
+		< 0
+		> print(x["true"])
+		< 1
 	```
 - [ ] built-ins/Array/S15.4_A1.1_T1 — Checking for boolean primitive
 	> #### **15.4 Array Objects**
@@ -290,17 +290,49 @@ When an item is resolved, check it off and add a brief note citing the ES3 spec 
 	> 
 	> *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
 - [ ] built-ins/Number/S9.3.1_A3_T2 — dynamic string
-	> #### **9.3.1 ToNumber Applied to the String Type**
-	> 
-	> ToNumber applied to strings applies the following grammar to the input string. If the grammar cannot interpret the string as an expansion of *StringNumericLiteral*, then the result of ToNumber is **NaN**.
-	> 
-	> *StringNumericLiteral* **:::** *StrWhiteSpaceopt StrWhiteSpaceopt StrNumericLiteral StrWhiteSpaceopt*
-	> 
-	> *StrWhiteSpace* **:::** *StrWhiteSpaceChar StrWhiteSpaceopt*
-	> 
-	> *StrWhiteSpaceChar* **:::**
-	> 
-	> *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
+> #### **9.3.1 ToNumber Applied to the String Type**
+>
+> ToNumber applied to strings applies the following grammar to the input string. If the grammar cannot interpret the string as an expansion of *StringNumericLiteral*, then the result of ToNumber is **NaN**.
+>
+> *StringNumericLiteral* **:::** *StrWhiteSpaceopt StrWhiteSpaceopt StrNumericLiteral StrWhiteSpaceopt*
+>
+> *StrWhiteSpace* **:::** *StrWhiteSpaceChar StrWhiteSpaceopt*
+>
+> *StrWhiteSpaceChar* **:::**
+>
+> *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
+- [ ] built-ins/Number/hexLiteralOverflow — `0x100000000` wraps to `0`
+> #### **7.8.3 Numeric Literals**
+>
+> *NumericLiteral* **::** *DecimalLiteral HexIntegerLiteral*
+> - The MV of *HexIntegerLiteral* **::** *HexIntegerLiteral HexDigit* is (the MV of *HexIntegerLiteral* times 16) plus the MV of *HexDigit*.
+>
+NuXJS result: `print(0x100000000)` and `print(Number("0x100000000"))` both yield `0`.
+Expected: `4294967296`.
+```io
+> print(0x100000000)
+< 4294967296
+-
+> print(Number("0x100000000"))
+< 4294967296
+-
+```
+- [ ] built-ins/Number/hugeDecimalExponent — extremely large exponents don't overflow
+> #### **7.8.3 Numeric Literals**
+>
+> - The MV of *DecimalLiteral* **::** *DecimalIntegerLiteral* *ExponentPart* is the MV of *DecimalIntegerLiteral* times 10<sup>*e*</sup>, where *e* is the MV of *ExponentPart*.
+> - The MV of *StrUnsignedDecimalLiteral* **::: Infinity** is 10<sup>10000</sup> (a value so large that it will round to **+**∞).
+>
+NuXJS result: `print(1e4294967296)` and `print(Number("1e4294967296"))` both return `1`.
+Expected: `Infinity`.
+```io
+> print(1e4294967296)
+< Infinity
+-
+> print(Number("1e4294967296"))
+< Infinity
+-
+```
 
 ### Object
 - [ ] built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A12 — Let O be the result of calling ToObject passing the this value as the argument.
