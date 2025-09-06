@@ -133,9 +133,10 @@ If this message is missing, the build did not complete.
 (`tests/from262/functionPrototypeCallerPropDesc.io`,
 `tests/from262/functionPrototypeArgumentsPropDesc.io`,
 `tests/from262/strictArgumentsCalleeThrows.io`,
-`tests/from262/argumentsCallerMissing.io`)
+`tests/from262/argumentsCallerMissing.io`,
+`tests/from262/arrayIsArray.io`)
 - [ ] Import the ES5.1 section of Test262 and hook them into the `tests/from262` runner so failures can be tracked.
-- [ ] Introduce regression tests for each new feature and run the full suite (`timeout 180 ./build.sh`) during development.
+- [x] Introduce regression tests for each new feature and run the full suite (`timeout 180 ./build.sh`) during development. (`tests/from262/arrayIsArray.io`)
 - [x] Add coverage in `tests/es5` for accessor edge cases, strict‑mode violations, and bound function behavior before shipping any change. (`tests/es5/argumentsMappingDetach.io`, `tests/es5/strictArgumentsCalleeCaller.io`, `tests/es5/functionBind.io`)
 
 ### Documentation & tooling
