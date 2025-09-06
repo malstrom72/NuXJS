@@ -885,6 +885,17 @@ See `tests/unconforming/toLowerCaseSupplementaryPlane.io` for a regression test.
 	> - 4. Compute the longest prefix of Result(2), which might be Result(2) itself, which satisfies the syntax of a *StrDecimalLiteral*.
 	> - 5. Return the number value for the MV of Result(4).
 
+NuXJS result: `parseFloat("\u16801.5")` returns `NaN`.
+Expected: `1.5`.
+
+```io
+> print(parseFloat("\u16801.5"))
+< 1.5
+-
+```
+See `tests/unconforming/parseFloatUSP.io` for a regression test.
+
+
 ### parseInt
 - [ ] built-ins/parseInt/S15.1.2.2_A2_T10 — "StrWhiteSpaceChar :: USP"
 	> #### **15.1.2.2 parseInt (string , radix)**
@@ -899,6 +910,17 @@ See `tests/unconforming/toLowerCaseSupplementaryPlane.io` for a regression test.
 	> - 4. If *S* is not empty and the first character of *S* is a minus sign **-**, let *sign* be −1.
 	> - 5. If *S* is not empty and the first character of *S* is a plus sign **+** or a minus sign **-**, then remove the first character from *S*.
 	> - 6. Let *R* = ToInt32(*radix*).
+
+NuXJS result: `parseInt("\u1680123")` returns `NaN`.
+Expected: `123`.
+
+```io
+> print(parseInt("\u1680123"))
+< 123
+-
+```
+See `tests/unconforming/parseIntUSP.io` for a regression test.
+
 - [ ] built-ins/parseInt/S15.1.2.2_A5.2_T2 — ": 0X"
 	> #### **15.1.2.2 parseInt (string , radix)**
 	> 
