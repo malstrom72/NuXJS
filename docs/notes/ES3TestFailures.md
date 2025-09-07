@@ -566,7 +566,18 @@ See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression te
 	> 
 	> *StrWhiteSpaceChar* **:::**
 	> 
-	> *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
+        > *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
+
+       NuXJS result: `Number("\u16801")` returns `NaN` because `\u1680` isn’t treated as whitespace.
+       Expected: the OGHAM SPACE MARK is a valid `StrWhiteSpaceChar`, so the conversion should yield `1`.
+
+       ```io
+       > print(Number("\u16801"))
+       < 1
+       -
+       ```
+
+       See `tests/unconforming/numberExplicitUSP.io` for a regression test.
 - [ ] built-ins/Number/S9.3.1_A3_T1 — static string
 	> #### **9.3.1 ToNumber Applied to the String Type**
 	> 
@@ -578,7 +589,18 @@ See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression te
 	> 
 	> *StrWhiteSpaceChar* **:::**
 	> 
-	> *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
+        > *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
+
+       NuXJS result: unary `+"\u16801"` produces `NaN`.
+       Expected: `1` once `\u1680` is recognized as whitespace.
+
+       ```io
+       > print(+"\u16801")
+       < 1
+       -
+       ```
+
+       See `tests/unconforming/numberStaticUSP.io` for a regression test.
 - [ ] built-ins/Number/S9.3.1_A3_T2 — dynamic string
 > #### **9.3.1 ToNumber Applied to the String Type**
 >
@@ -590,7 +612,19 @@ See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression te
 >
 > *StrWhiteSpaceChar* **:::**
 >
-> *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
+        > *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
+
+       NuXJS result: `var s = "\u1680"; Number(s+"1")` yields `NaN`.
+       Expected: concatenating `\u1680` with digits should parse as `1`.
+
+       ```io
+       > var s="\u1680";
+       > print(Number(s+"1"))
+       < 1
+       -
+       ```
+
+       See `tests/unconforming/numberDynamicUSP.io` for a regression test.
 - [ ] built-ins/Number/hexLiteralOverflow — `0x100000000` wraps to `0`
 > #### **7.8.3 Numeric Literals**
 >
