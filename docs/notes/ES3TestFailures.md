@@ -1245,24 +1245,46 @@ Expected: `123`.
 See `tests/unconforming/parseIntUSP.io` for a regression test.
 
 - [ ] built-ins/parseInt/S15.1.2.2_A5.2_T2 — ": 0X"
-	> #### **15.1.2.2 parseInt (string , radix)**
-	> 
-	> The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
-	> 
-	> When the **parseInt** function is called, the following steps are taken:
-	> 
-	> - 1. Call ToString(*string*).
-	> - 2. Let *S* be a newly created substring of Result(1) consisting of the first character that is not a *StrWhiteSpaceChar* and all characters following that character. (In other words, remove leading white space.)
-	> - 3. Let *sign* be 1.
-	> - 4. If *S* is not empty and the first character of *S* is a minus sign **-**, let *sign* be −1.
-	> - 5. If *S* is not empty and the first character of *S* is a plus sign **+** or a minus sign **-**, then remove the first character from *S*.
-	> - 6. Let *R* = ToInt32(*radix*).
+        > #### **15.1.2.2 parseInt (string , radix)**
+        >
+        > The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
+        >
+        > When the **parseInt** function is called, the following steps are taken:
+        >
+        > - 1. Call ToString(*string*).
+        > - 2. Let *S* be a newly created substring of Result(1) consisting of the first character that is not a *StrWhiteSpaceChar* and all characters following that character. (In other words, remove leading white space.)
+        > - 3. Let *sign* be 1.
+        > - 4. If *S* is not empty and the first character of *S* is a minus sign **-**, let *sign* be −1.
+        > - 5. If *S* is not empty and the first character of *S* is a plus sign **+** or a minus sign **-**, then remove the first character from *S*.
+        > - 6. Let *R* = ToInt32(*radix*).
+NuXJS result: `parseInt("0X1")` returns `0`, ignoring the hexadecimal prefix.
+Expected: strings starting with `0x` or `0X` must parse as base 16 when the radix is undefined or 0, producing `1` for `"0X1"`.
+```io
+> print(parseInt("0X1"))
+< 1
+-
+> print(parseInt("0XA"))
+< 10
+-
+```
+See `tests/unconforming/parseInt0XPrefix.io` for a regression test.
 - [ ] built-ins/parseInt/S15.1.2.2_A7.2_T3 — Checking algorithm for R = 16
-	> #### **15.1.2.2 parseInt (string , radix)**
-	> 
-	> The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
-	> 
-	> When the **parseInt** function is called, the following steps are taken:
+        > #### **15.1.2.2 parseInt (string , radix)**
+        >
+        > The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
+        >
+        > When the **parseInt** function is called, the following steps are taken:
+NuXJS result: `parseInt("0X10", 16)` returns `0` instead of `16`.
+Expected: with radix 16, uppercase `0X` prefixes are valid hexadecimal literals, so `parseInt("0X10", 16)` should be `16`.
+```io
+> print(parseInt("0X10", 16))
+< 16
+-
+> print(parseInt("0XFF", 16))
+< 255
+-
+```
+See `tests/unconforming/parseIntRadix16Uppercase.io` for a regression test.
 	> 
 	> - 1. Call ToString(*string*).
 	> - 2. Let *S* be a newly created substring of Result(1) consisting of the first character that is not a *StrWhiteSpaceChar* and all characters following that character. (In other words, remove leading white space.)
