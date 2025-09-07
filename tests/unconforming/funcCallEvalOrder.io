@@ -2,5 +2,5 @@
 > function b() { print("b") }
 > o = { f: a };
 > o.f(o.f=b)
-< b
+< a
 -

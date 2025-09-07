@@ -1,0 +1,3 @@
+> print("ΟΣ".toLowerCase())
+< ος
+-
