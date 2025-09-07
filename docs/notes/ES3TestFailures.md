@@ -148,15 +148,27 @@ Expected: non-array keys must not affect length and should create a plain proper
 < undefined
 -
 ```
-See `tests/unconforming/booleanIndexCoercion.io` for a regression test.
 - [ ] built-ins/Array/S15.4_A1.1_T1 — Checking for boolean primitive
-		> #### **15.4 Array Objects**
-		>
-		> Array objects give special treatment to a certain class of property names. A property name *P* (in the form of a string value) is an *array index* if and only if ToString(ToUint32(*P*)) is equal to *P* and ToUint32(*P*) is not equal to 2<sup>32</sup>−1. Every Array object has a **length** property whose value is always a nonnegative integer less than 232. The value of the **length** property is numerically greater than the name of every property whose name is an array index; whenever a property of an Array object is created or changed, other properties are adjusted as necessary to maintain this invariant. Specifically, whenever a property is added whose name is an array index, the **length** property is changed, if necessary, to be one more than the numeric value of that array index; and whenever the **length** property is changed, every property whose name is an array index whose value is not smaller than the new length is automatically deleted. This constraint applies only to properties of the Array object itself and is unaffected by **length** or array index properties that may be inherited from its prototype.
-		
+                > #### **15.4 Array Objects**
+                >
+                > Array objects give special treatment to a certain class of property names. A property name *P* (in the form of a string value) is an *array index* if and only if ToString(ToUint32(*P*)) is equal to *P* and ToUint32(*P*) is not equal to 2<sup>32</sup>−1. Every Array object has a **length** property whose value is always a nonnegative integer less than 232. The value of the **length** property is numerically greater than the name of every property whose name is an array index; whenever a property of an Array object is created or changed, other properties are adjusted as necessary to maintain this invariant. Specifically, whenever a property is added whose name is an array index, the **length** property is changed, if necessary, to be one more than the numeric value of that array index; and whenever the **length** property is changed, every property whose name is an array index whose value is not smaller than the new length is automatically deleted. This constraint applies only to properties of the Array object itself and is unaffected by **length** or array index properties that may be inherited from its prototype.
+
 NuXJS result: assigning `true` as an index sets `x[1]` and increases length to `2`, leaving `x["true"]` undefined.
 Expected: non-array keys must not affect length and should create a plain property.
-See `tests/unconforming/booleanIndexCoercion.io`.
+```io
+> var x=[];
+> x[true]=1;
+> print(x.length);
+< 0
+-
+> print(x["true"]);
+< 1
+-
+> print(x[1]);
+< undefined
+-
+```
+See `tests/unconforming/booleanIndexCoercion.io` for a regression test.
 - [ ] built-ins/Array/cantAssignObjectToArrayLength — assigning object to length throws
 	> #### **15.4.5.1 [[Put]] (P, V)**
 	>
@@ -949,18 +961,6 @@ See `tests/unconforming/objectValueOfNullUndefinedThis.io` for a regression test
 	> The production *CharacterClassEscape* **:: S** evaluates by returning the set of all characters not included in the set returned by *CharacterClassEscape* **:: s**.
 	> 
 	> The production *CharacterClassEscape* **:: w** evaluates by returning the set of characters containing the sixty-three characters:
-NuXJS result: `/\s/.test("\u1680")` returns `false` and `/\S/.test("\u1680")` returns `true`.
-Expected: `\u1680` belongs to *WhiteSpace* so `\s` should match and `\S` should not.
-```io
-> print(/\s/.test("\u1680"))
-< true
--
-> print(/\S/.test("\u1680"))
-< false
--
-```
-See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
-
 - [ ] built-ins/RegExp/S15.10.2.12_A2_T1 — WhiteSpace
 		> #### **15.10.2.12 CharacterClassEscape**
 	> 
@@ -973,9 +973,15 @@ See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 		> The production *CharacterClassEscape* **:: S** evaluates by returning the set of all characters not included in the set returned by *CharacterClassEscape* **:: s**.
 		>
 		> The production *CharacterClassEscape* **:: w** evaluates by returning the set of characters containing the sixty-three characters:
-NuXJS result: `/\s/.test("\u2000")` returns `false` and `/\S/.test("\u2000")` returns `true`.
-Expected: `\u2000` is classified as *WhiteSpace*, so `\s` should match and `\S` should not.
+NuXJS result: `/\s/.test("\u1680")` and `/\s/.test("\u2000")` both yield `false`, while their `/\S/` counterparts return `true`.
+Expected: both `\u1680` (OGHAM SPACE MARK) and `\u2000` (EN QUAD) are listed in *WhiteSpace*, so `/\s/` should match and `/\S/` should not.
 ```io
+> print(/\s/.test("\u1680"))
+< true
+-
+> print(/\S/.test("\u1680"))
+< false
+-
 > print(/\s/.test("\u2000"))
 < true
 -
@@ -983,7 +989,7 @@ Expected: `\u2000` is classified as *WhiteSpace*, so `\s` should match and `\S` 
 < false
 -
 ```
-See `tests/unconforming/regExpWhiteSpace2000.io` for a regression test.
+See `tests/unconforming/regExpWhiteSpace.io` and `tests/unconforming/regExpWhiteSpace2000.io` for regression tests.
 	> #### **15.10.2.8 Atom**
 	> 
 	> The production *Atom* **::** *PatternCharacter* evaluates as follows:
@@ -997,7 +1003,6 @@ See `tests/unconforming/regExpWhiteSpace2000.io` for a regression test.
 	> - 1. Let *A* be the set of all characters except the four line terminator characters <LF>, <CR>, <LS>, or <PS>.
 	> - 2. Call *CharacterSetMatcher*(*A*, **false**) and return its Matcher result.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T10 — String is 1.01 and RegExp is /1|12/
-See `tests/unconforming/regExpExecNumberPrimitive.io` for a regression test.
 	> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -1010,6 +1015,18 @@ See `tests/unconforming/regExpExecNumberPrimitive.io` for a regression test.
 	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
 	> - 5. If the **global** property is **false**, let *i* = 0.
 	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+NuXJS result: `/1|12/.exec(1.01)` returns `null`.
+Expected: `ToString(1.01)` is `"1.01"`, so the pattern should match `"1"` at index `0`.
+```io
+> var r=/1|12/.exec(1.01)
+> print(r[0])
+< 1
+-
+> print(r.index)
+< 0
+-
+```
+See `tests/unconforming/regExpExecNumberPrimitive.io` for a regression test.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T11 — String is new Number(1.012) and RegExp is /2|12/
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
@@ -1061,7 +1078,6 @@ Expected: the string "3.141592653589793" should match `".14"` at index `1`.
 ```
 See `tests/unconforming/regExpExecToStringPi.io` for a regression test.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T13 — String is true and RegExp is /t[a-b|q-s]/
-See `tests/unconforming/regExpExecBooleanPrimitive.io` for a regression test.
 	> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -1074,6 +1090,18 @@ See `tests/unconforming/regExpExecBooleanPrimitive.io` for a regression test.
 	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
 	> - 5. If the **global** property is **false**, let *i* = 0.
 	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+NuXJS result: `/t[a-b|q-s]/.exec(true)` returns `null`.
+Expected: `ToString(true)` is `\"true\"`, so the pattern should match `\"tr\"` at index `0`.
+```io
+> var r=/t[a-b|q-s]/.exec(true)
+> print(r[0])
+< tr
+-
+> print(r.index)
+< 0
+-
+```
+See `tests/unconforming/regExpExecBooleanPrimitive.io` for a regression test.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T14 — String is new Boolean and RegExp is /AL|se/
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
@@ -1459,8 +1487,6 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
 	   ```
 	   See `tests/unconforming/stringReplaceUndefinedThis.io` for a regression test.
  - [ ] built-ins/String/prototype/replace/S15.5.4.11_A1_T11 — replacing with objects whose `toString` throws
-        See `tests/unconforming/stringReplaceThrowingToString.io` for a regression test.
- - [ ] built-ins/String/prototype/replace/S15.5.4.11_A1_T12 — replacing with object whose `valueOf` throws
         > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
         >
         > Otherwise, let *newstring* denote the result of converting *replaceValue* to a string.
@@ -1472,6 +1498,12 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
         < X
         -
         ```
+        See `tests/unconforming/stringReplaceThrowingToString.io` for a regression test.
+ - [ ] built-ins/String/prototype/replace/S15.5.4.11_A1_T12 — replacing with object whose `valueOf` throws
+        > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
+        >
+        > Otherwise, let *newstring* denote the result of converting *replaceValue* to a string.
+        >
         NuXJS result: if the replacement object's `valueOf` throws, the exception is swallowed.
         Expected: `ToString` first invokes `valueOf`; an error from `valueOf` must propagate.
         ```io
