@@ -600,6 +600,18 @@ See `tests/unconforming/hugeDecimalExponent.io` for a regression test.
 	> The production *CharacterClassEscape* **:: S** evaluates by returning the set of all characters not included in the set returned by *CharacterClassEscape* **:: s**.
 	> 
 	> The production *CharacterClassEscape* **:: w** evaluates by returning the set of characters containing the sixty-three characters:
+NuXJS result: `/\s/.test("\u1680")` returns `false` and `/\S/.test("\u1680")` returns `true`.
+Expected: `\u1680` belongs to *WhiteSpace* so `\s` should match and `\S` should not.
+```io
+> print(/\s/.test("\u1680"))
+< true
+-
+> print(/\S/.test("\u1680"))
+< false
+-
+```
+See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
+
 - [ ] built-ins/RegExp/S15.10.2.12_A2_T1 — WhiteSpace
 	> #### **15.10.2.12 CharacterClassEscape**
 	> 
