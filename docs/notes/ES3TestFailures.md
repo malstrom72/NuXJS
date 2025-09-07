@@ -53,24 +53,24 @@ NuXJS result: in `x = (eval("var x;"), 1)` the `eval` creates a local `x` before
 Expected: the assignment should resolve the outer `x` first, producing `typeof innerX === "undefined"` and updating the outer `x` to `1`.
 ```io
 > var x = 0;
->   var innerX = (function() {
->     // If we were to conform strictly to ES spec, the left-hand side of th assigment is a reference to the outer x.
->     x = (eval("var x;"), 1);
->     return x;
->   })();
+>	var innerX = (function() {
+>	  // If we were to conform strictly to ES spec, the left-hand side of th assigment is a reference to the outer x.
+>	  x = (eval("var x;"), 1);
+>	  return x;
+>	})();
 > print(typeof innerX);
 > print(x);
 < undefined
 < 1
 -
 > function testFunction() {
->   var x = 0;
->   var scope = {x: 1};
->   with (scope) {
->     x = (delete scope.x, 2);
->   }
->   print(scope.x);
->   print(x);
+>	var x = 0;
+>	var scope = {x: 1};
+>	with (scope) {
+>	  x = (delete scope.x, 2);
+>	}
+>	print(scope.x);
+>	print(x);
 > }
 > testFunction();
 < 2
@@ -150,10 +150,10 @@ Expected: non-array keys must not affect length and should create a plain proper
 ```
 See `tests/unconforming/booleanIndexCoercion.io` for a regression test.
 - [ ] built-ins/Array/S15.4_A1.1_T1 — Checking for boolean primitive
-        > #### **15.4 Array Objects**
-        >
-        > Array objects give special treatment to a certain class of property names. A property name *P* (in the form of a string value) is an *array index* if and only if ToString(ToUint32(*P*)) is equal to *P* and ToUint32(*P*) is not equal to 2<sup>32</sup>−1. Every Array object has a **length** property whose value is always a nonnegative integer less than 232. The value of the **length** property is numerically greater than the name of every property whose name is an array index; whenever a property of an Array object is created or changed, other properties are adjusted as necessary to maintain this invariant. Specifically, whenever a property is added whose name is an array index, the **length** property is changed, if necessary, to be one more than the numeric value of that array index; and whenever the **length** property is changed, every property whose name is an array index whose value is not smaller than the new length is automatically deleted. This constraint applies only to properties of the Array object itself and is unaffected by **length** or array index properties that may be inherited from its prototype.
-        
+		> #### **15.4 Array Objects**
+		>
+		> Array objects give special treatment to a certain class of property names. A property name *P* (in the form of a string value) is an *array index* if and only if ToString(ToUint32(*P*)) is equal to *P* and ToUint32(*P*) is not equal to 2<sup>32</sup>−1. Every Array object has a **length** property whose value is always a nonnegative integer less than 232. The value of the **length** property is numerically greater than the name of every property whose name is an array index; whenever a property of an Array object is created or changed, other properties are adjusted as necessary to maintain this invariant. Specifically, whenever a property is added whose name is an array index, the **length** property is changed, if necessary, to be one more than the numeric value of that array index; and whenever the **length** property is changed, every property whose name is an array index whose value is not smaller than the new length is automatically deleted. This constraint applies only to properties of the Array object itself and is unaffected by **length** or array index properties that may be inherited from its prototype.
+		
 NuXJS result: assigning `true` as an index sets `x[1]` and increases length to `2`, leaving `x["true"]` undefined.
 Expected: non-array keys must not affect length and should create a plain property.
 See `tests/unconforming/booleanIndexCoercion.io`.
@@ -195,8 +195,8 @@ See `tests/unconforming/cantAssignObjectToArrayLength.io` for a regression test.
 	> - 4. Call the [[Put]] method of this object with arguments "**length**" and Result(2).
 	> - 5. Return **undefined**.
 	> - 6. Call ToString(Result(2)–1).
-        > - 7. Call the [[Get]] method of this object with argument Result(6).
-        > - 8. Call the [[Delete]] method of this object with argument Result(6).
+		> - 7. Call the [[Get]] method of this object with argument Result(6).
+		> - 8. Call the [[Delete]] method of this object with argument Result(6).
 NuXJS result: `obj.length = Infinity` followed by `obj.pop()` returns `undefined` but sets `obj.length` to `0`.
 Expected: `obj.pop()` should leave `length` at `9007199254740990` (2^53−2).
 ```io
@@ -249,8 +249,8 @@ See `tests/unconforming/arrayPopPrototypeDelete.io` for a regression test.
 	> - 2. Let *n* be the result of calling ToUint32(Result(1)).
 	> - 3. Get the next argument in the argument list; if there are no more arguments, go to step 7.
 	> - 4. Call the [[Put]] method of this object with arguments ToString(*n*) and Result(3).
-        > - 5. Increase *n* by 1.
-        > - 6. Go to step 3.
+		> - 5. Increase *n* by 1.
+		> - 6. Go to step 3.
 NuXJS result: `obj.length = Infinity; obj.push(-4)` returns `1` and shrinks `length` to `1`.
 Expected: a `TypeError` and `length` remaining `Infinity`.
 ```io
@@ -275,7 +275,7 @@ Expected: `push` should throw a `TypeError` and keep `length` at `Infinity`.
 ```
 See `tests/unconforming/arrayPushLengthInfinity.io` for a regression test.
 - [ ] built-ins/Array/prototype/shift/S15.4.4.9_A3_T3 — length is arbitrarily
-        > ## **15.4.4.9 Array.prototype.shift ( )**
+		> ## **15.4.4.9 Array.prototype.shift ( )**
 	> 
 	> The first element of the array is removed from the array and returned.
 	> 
@@ -285,8 +285,8 @@ See `tests/unconforming/arrayPushLengthInfinity.io` for a regression test.
 	> - 4. Call the [[Put]] method of this object with arguments "**length**" and Result(2).
 	> - 5. Return **undefined**.
 	> - 6. Call the [[Get]] method of this object with argument **0**.
-        > - 7. Let *k* be 1.
-        > - 8. If *k* equals Result(2), go to step 18.
+		> - 7. Let *k* be 1.
+		> - 8. If *k* equals Result(2), go to step 18.
 NuXJS result: `obj.length = -4294967294; obj.shift()` returns `'x'` and sets `length` to `1`.
 Expected: the call should return `undefined`, leave `length` `0`, and keep elements unchanged.
 ```io
@@ -333,8 +333,8 @@ See `tests/unconforming/arrayShiftNegativeLength.io` for a regression test.
 	> - 2. Call ToUint32(Result(1)).
 	> - 3. Let *separator* be the list-separator string appropriate for the host environment's current locale (this is derived in an implementation-defined way).
 	> 
-        > - 4. Call ToString(*separator*).
-        > - 5. If Result(2) is zero, return the empty string.
+		> - 4. Call ToString(*separator*).
+		> - 5. If Result(2) is zero, return the empty string.
 NuXJS result: element `toLocaleString` methods are never invoked, leaving counters untouched.
 Expected: each defined element's `toLocaleString` should run.
 ```io
@@ -363,61 +363,61 @@ See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression te
 
 ### Date
 - [ ] built-ins/Date/S15.9.3.1_A6_T1 — 2 arguments, (year, month)
-        > ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
-        >
-        > When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
-        >
-        > The [[Prototype]] property of the newly constructed object is set to the original Date prototype object, the one that is the initial value of **Date.prototype** (15.9.4.1).
-        >
-        > The [[Class]] property of the newly constructed object is set to **"Date"**.
-        >
-        > The [[Value]] property of the newly constructed object is set as follows:
-        >
-        > - 1. Call ToNumber(*year*).
-        > - 2. Call ToNumber(*month*).
-        > - 3. If *date* is supplied use ToNumber(*date*); else use **1**.
-        > - 4. If *hours* is supplied use ToNumber(*hours*); else use **0**.
-        > - 5. If *minutes* is supplied use ToNumber(*minutes*); else use **0**.
-        > - 6. If *seconds* is supplied use ToNumber(*seconds*); else use **0**.
-        > - 7. If *ms* is supplied use ToNumber(*ms*); else use **0**.
+		> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
+		>
+		> When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
+		>
+		> The [[Prototype]] property of the newly constructed object is set to the original Date prototype object, the one that is the initial value of **Date.prototype** (15.9.4.1).
+		>
+		> The [[Class]] property of the newly constructed object is set to **"Date"**.
+		>
+		> The [[Value]] property of the newly constructed object is set as follows:
+		>
+		> - 1. Call ToNumber(*year*).
+		> - 2. Call ToNumber(*month*).
+		> - 3. If *date* is supplied use ToNumber(*date*); else use **1**.
+		> - 4. If *hours* is supplied use ToNumber(*hours*); else use **0**.
+		> - 5. If *minutes* is supplied use ToNumber(*minutes*); else use **0**.
+		> - 6. If *seconds* is supplied use ToNumber(*seconds*); else use **0**.
+		> - 7. If *ms* is supplied use ToNumber(*ms*); else use **0**.
 
-        NuXJS result: `new Date(1970, undefined)` yields `0` instead of `NaN`.
-        Expected: explicitly passing `undefined` for *month* should produce `NaN` because step 2 applies `ToNumber(undefined)`.
+		NuXJS result: `new Date(1970, undefined)` yields `0` instead of `NaN`.
+		Expected: explicitly passing `undefined` for *month* should produce `NaN` because step 2 applies `ToNumber(undefined)`.
 
-        ```io
-        > print(isNaN(new Date(1970, undefined)))
-        < true
-        -
-        ```
-        See `tests/unconforming/dateYearMonthUndefined.io` for a regression test.
+		```io
+		> print(isNaN(new Date(1970, undefined)))
+		< true
+		-
+		```
+		See `tests/unconforming/dateYearMonthUndefined.io` for a regression test.
 - [ ] built-ins/Date/S15.9.3.1_A6_T2 — 3 arguments, (year, month, date)
-        > ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
-        >
-        > When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
-        >
-        > The [[Prototype]] property of the newly constructed object is set to the original Date prototype object, the one that is the initial value of **Date.prototype** (15.9.4.1).
-        >
-        > The [[Class]] property of the newly constructed object is set to **"Date"**.
-        >
-        > The [[Value]] property of the newly constructed object is set as follows:
-        >
-        > - 1. Call ToNumber(*year*).
-        > - 2. Call ToNumber(*month*).
-        > - 3. If *date* is supplied use ToNumber(*date*); else use **1**.
-        > - 4. If *hours* is supplied use ToNumber(*hours*); else use **0**.
-        > - 5. If *minutes* is supplied use ToNumber(*minutes*); else use **0**.
-        > - 6. If *seconds* is supplied use ToNumber(*seconds*); else use **0**.
-        > - 7. If *ms* is supplied use ToNumber(*ms*); else use **0**.
+		> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
+		>
+		> When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
+		>
+		> The [[Prototype]] property of the newly constructed object is set to the original Date prototype object, the one that is the initial value of **Date.prototype** (15.9.4.1).
+		>
+		> The [[Class]] property of the newly constructed object is set to **"Date"**.
+		>
+		> The [[Value]] property of the newly constructed object is set as follows:
+		>
+		> - 1. Call ToNumber(*year*).
+		> - 2. Call ToNumber(*month*).
+		> - 3. If *date* is supplied use ToNumber(*date*); else use **1**.
+		> - 4. If *hours* is supplied use ToNumber(*hours*); else use **0**.
+		> - 5. If *minutes* is supplied use ToNumber(*minutes*); else use **0**.
+		> - 6. If *seconds* is supplied use ToNumber(*seconds*); else use **0**.
+		> - 7. If *ms* is supplied use ToNumber(*ms*); else use **0**.
 
-        NuXJS result: `new Date(1970,0,undefined)` returns a valid date instead of `NaN`.
-        Expected: providing `undefined` for *date* should invoke `ToNumber(undefined)` and yield `NaN`.
+		NuXJS result: `new Date(1970,0,undefined)` returns a valid date instead of `NaN`.
+		Expected: providing `undefined` for *date* should invoke `ToNumber(undefined)` and yield `NaN`.
 
-        ```io
-        > print(isNaN(new Date(1970, 0, undefined)))
-        < true
-        -
-        ```
-        See `tests/unconforming/dateYearMonthDateUndefined.io` for a regression test.
+		```io
+		> print(isNaN(new Date(1970, 0, undefined)))
+		< true
+		-
+		```
+		See `tests/unconforming/dateYearMonthDateUndefined.io` for a regression test.
 - [ ] built-ins/Date/S15.9.3.1_A6_T3 — 4 arguments, (year, month, date, hours)
 	> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
 	> 
@@ -458,28 +458,28 @@ See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression te
 	> - 1. Call ToNumber(*year*).
 	> - 2. Call ToNumber(*month*).
 - [ ] built-ins/Date/TimeClip_negative_zero — TimeClip converts negative zero to positive zero
-        > ## **15.9.1.14 TimeClip (time)**
-        >
-        > The operator TimeClip calculates a number of milliseconds from its argument, which must be an ECMAScript number value. This operator functions as follows:
-        >
-        > - 1. If *time* is not finite, return **NaN**.
-        > - 2. If abs(Result(1)) > **8.64 x 10<sup>15</sup>**, return **NaN**.
-        > - 3. Return an implementation-dependent choice of either ToInteger(Result(2)) or ToInteger(Result(2)) + (**+0**). (Adding a positive zero converts −**0** to **+0**.)
-        >
-        > ## *NOTE*
-        >
-        > *The point of step 3 is that an implementation is permitted a choice of internal representations of time values, for example as a 64-bit signed integer or as a 64-bit floating-point value. Depending on the implementation, this internal representation may or may not distinguish* <sup>−</sup>*0 and +0.*
-       
-       NuXJS result: `new Date(-0).getTime()` preserves −0, so `1/new Date(-0).getTime()` yields `-Infinity`.
-       Expected: TimeClip must convert −0 to +0, resulting in `Infinity`.
+		> ## **15.9.1.14 TimeClip (time)**
+		>
+		> The operator TimeClip calculates a number of milliseconds from its argument, which must be an ECMAScript number value. This operator functions as follows:
+		>
+		> - 1. If *time* is not finite, return **NaN**.
+		> - 2. If abs(Result(1)) > **8.64 x 10<sup>15</sup>**, return **NaN**.
+		> - 3. Return an implementation-dependent choice of either ToInteger(Result(2)) or ToInteger(Result(2)) + (**+0**). (Adding a positive zero converts −**0** to **+0**.)
+		>
+		> ## *NOTE*
+		>
+		> *The point of step 3 is that an implementation is permitted a choice of internal representations of time values, for example as a 64-bit signed integer or as a 64-bit floating-point value. Depending on the implementation, this internal representation may or may not distinguish* <sup>−</sup>*0 and +0.*
+	   
+	   NuXJS result: `new Date(-0).getTime()` preserves −0, so `1/new Date(-0).getTime()` yields `-Infinity`.
+	   Expected: TimeClip must convert −0 to +0, resulting in `Infinity`.
 
-       ```io
-       > print(1/new Date(-0).getTime())
-       < Infinity
-       -
-       ```
+	   ```io
+	   > print(1/new Date(-0).getTime())
+	   < Infinity
+	   -
+	   ```
 
-       See `tests/unconforming/dateTimeClipNegativeZero.io` for a regression test.
+	   See `tests/unconforming/dateTimeClipNegativeZero.io` for a regression test.
 - [ ] built-ins/Date/prototype/setFullYear/15.9.5.40_1 — Date.prototype.setFullYear - Date.prototype is itself not an instance of Date
 
 ### Error
@@ -506,39 +506,39 @@ See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression te
 	> 
 	> The value of the internal [[Prototype]] property of the Error prototype object is the Object prototype object (15.2.3.1).
 - [ ] built-ins/Error/prototype/name/15.11.4.2-1 — Error.prototype.name is not enumerable.
-       > #### **15.11.4.2 Error.prototype.name**
-       >
-       > The initial value of **Error.prototype.name** is "**Error**".
-       >
-       > In every case, the **length** property of a built-in Function object described in this section has the attributes { ReadOnly, DontDelete, DontEnum }. Every other property described in this section has the attribute { DontEnum } (and no others) unless otherwise specified.
+	   > #### **15.11.4.2 Error.prototype.name**
+	   >
+	   > The initial value of **Error.prototype.name** is "**Error**".
+	   >
+	   > In every case, the **length** property of a built-in Function object described in this section has the attributes { ReadOnly, DontDelete, DontEnum }. Every other property described in this section has the attribute { DontEnum } (and no others) unless otherwise specified.
 
-       NuXJS result: iterating an `Error` instance reveals the `name` property.
-       Expected: `name` should not be enumerated.
+	   NuXJS result: iterating an `Error` instance reveals the `name` property.
+	   Expected: `name` should not be enumerated.
 
-       ```io
-       > var e = new Error("msg")
-       > var seen = false
-       > for (var p in e) if (p === "name") seen = true
-       > print(seen)
-       < false
-       -
-       ```
-       See `tests/unconforming/errorPrototypeNameEnumerable.io` for a regression test.
+	   ```io
+	   > var e = new Error("msg")
+	   > var seen = false
+	   > for (var p in e) if (p === "name") seen = true
+	   > print(seen)
+	   < false
+	   -
+	   ```
+	   See `tests/unconforming/errorPrototypeNameEnumerable.io` for a regression test.
 - [ ] built-ins/Error/prototype/toString/15.11.4.4-8-1 — Error.prototype.toString return the value of 'msg' when 'name' is empty string and 'msg' isn't undefined
-       > #### **15.11.4.4 Error.prototype.toString ( )**
-       >
-       > Returns an implementation defined string.
+	   > #### **15.11.4.4 Error.prototype.toString ( )**
+	   >
+	   > Returns an implementation defined string.
 
-       NuXJS result: `{name:"", message:"foo", toString:Error.prototype.toString}.toString()` yields `": foo"`.
-       Expected: `"foo"` when `name` is empty and `message` is present (ES5 algorithm).
-       ES3 leaves the exact format implementation-defined, so this discrepancy is not mandated by the specification.
+	   NuXJS result: `{name:"", message:"foo", toString:Error.prototype.toString}.toString()` yields `": foo"`.
+	   Expected: `"foo"` when `name` is empty and `message` is present (ES5 algorithm).
+	   ES3 leaves the exact format implementation-defined, so this discrepancy is not mandated by the specification.
 
-       ```io
-       > var e = {name:"", message:"foo", toString:Error.prototype.toString}
-       > print(e.toString())
-       < foo
-       -
-       ```
+	   ```io
+	   > var e = {name:"", message:"foo", toString:Error.prototype.toString}
+	   > print(e.toString())
+	   < foo
+	   -
+	   ```
 
 ### Function
 - [ ] built-ins/Function/prototype/S15.3.4_A5 — Checking if creating "new Function.prototype object" fails
@@ -566,18 +566,18 @@ See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression te
 	> 
 	> *StrWhiteSpaceChar* **:::**
 	> 
-        > *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
+		> *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
 
-       NuXJS result: `Number("\u16801")` returns `NaN` because `\u1680` isn’t treated as whitespace.
-       Expected: the OGHAM SPACE MARK is a valid `StrWhiteSpaceChar`, so the conversion should yield `1`.
+	   NuXJS result: `Number("\u16801")` returns `NaN` because `\u1680` isn’t treated as whitespace.
+	   Expected: the OGHAM SPACE MARK is a valid `StrWhiteSpaceChar`, so the conversion should yield `1`.
 
-       ```io
-       > print(Number("\u16801"))
-       < 1
-       -
-       ```
+	   ```io
+	   > print(Number("\u16801"))
+	   < 1
+	   -
+	   ```
 
-       See `tests/unconforming/numberExplicitUSP.io` for a regression test.
+	   See `tests/unconforming/numberExplicitUSP.io` for a regression test.
 - [ ] built-ins/Number/S9.3.1_A3_T1 — static string
 	> #### **9.3.1 ToNumber Applied to the String Type**
 	> 
@@ -589,18 +589,18 @@ See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression te
 	> 
 	> *StrWhiteSpaceChar* **:::**
 	> 
-        > *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
+		> *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
 
-       NuXJS result: unary `+"\u16801"` produces `NaN`.
-       Expected: `1` once `\u1680` is recognized as whitespace.
+	   NuXJS result: unary `+"\u16801"` produces `NaN`.
+	   Expected: `1` once `\u1680` is recognized as whitespace.
 
-       ```io
-       > print(+"\u16801")
-       < 1
-       -
-       ```
+	   ```io
+	   > print(+"\u16801")
+	   < 1
+	   -
+	   ```
 
-       See `tests/unconforming/numberStaticUSP.io` for a regression test.
+	   See `tests/unconforming/numberStaticUSP.io` for a regression test.
 - [ ] built-ins/Number/S9.3.1_A3_T2 — dynamic string
 > #### **9.3.1 ToNumber Applied to the String Type**
 >
@@ -612,19 +612,19 @@ See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression te
 >
 > *StrWhiteSpaceChar* **:::**
 >
-        > *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
+		> *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
 
-       NuXJS result: `var s = "\u1680"; Number(s+"1")` yields `NaN`.
-       Expected: concatenating `\u1680` with digits should parse as `1`.
+	   NuXJS result: `var s = "\u1680"; Number(s+"1")` yields `NaN`.
+	   Expected: concatenating `\u1680` with digits should parse as `1`.
 
-       ```io
-       > var s="\u1680";
-       > print(Number(s+"1"))
-       < 1
-       -
-       ```
+	   ```io
+	   > var s="\u1680";
+	   > print(Number(s+"1"))
+	   < 1
+	   -
+	   ```
 
-       See `tests/unconforming/numberDynamicUSP.io` for a regression test.
+	   See `tests/unconforming/numberDynamicUSP.io` for a regression test.
 - [ ] built-ins/Number/hexLiteralOverflow — `0x100000000` wraps to `0`
 > #### **7.8.3 Numeric Literals**
 >
@@ -673,7 +673,7 @@ See `tests/unconforming/hugeDecimalExponent.io` for a regression test.
 	> 
 	> *NOTE*
 	> 
-        > *Unlike [[HasProperty]] (8.6.2.4), this method does not consider objects in the prototype chain.*
+		> *Unlike [[HasProperty]] (8.6.2.4), this method does not consider objects in the prototype chain.*
 NuXJS result: `Object.prototype.hasOwnProperty.call(null, "x")` returns `false` instead of throwing.
 Expected: `TypeError` because `null` cannot be converted to an object.
 ```io
@@ -694,7 +694,7 @@ See `tests/unconforming/hasOwnPropertyNullThis.io` for a regression test.
 	> 
 	> *NOTE*
 	> 
-        > *Unlike [[HasProperty]] (8.6.2.4), this method does not consider objects in the prototype chain.*
+		> *Unlike [[HasProperty]] (8.6.2.4), this method does not consider objects in the prototype chain.*
 NuXJS result: `Object.prototype.hasOwnProperty.call(undefined, "x")` returns `false`.
 Expected: `TypeError` because `undefined` cannot be converted to an object.
 ```io
@@ -713,7 +713,7 @@ See `tests/unconforming/hasOwnPropertyUndefinedThis.io` for a regression test.
 	> - 3. Let *V* be the value of the [[Prototype]] property of *V*.
 	> - 4. if *V* is **null**, return **false**
 	> - 5. If *O* and *V* refer to the same object or if they refer to objects joined to each other (13.1.2), return **true**.
-        > - 6. Go to step 3.
+		> - 6. Go to step 3.
 NuXJS result: `Object.prototype.isPrototypeOf.call(null, {})` returns `false`.
 Expected: `TypeError` because `null` is not an object.
 ```io
@@ -732,7 +732,7 @@ See `tests/unconforming/isPrototypeOfNullThis.io` for a regression test.
 	> - 3. Let *V* be the value of the [[Prototype]] property of *V*.
 	> - 4. if *V* is **null**, return **false**
 	> - 5. If *O* and *V* refer to the same object or if they refer to objects joined to each other (13.1.2), return **true**.
-        > - 6. Go to step 3.
+		> - 6. Go to step 3.
 NuXJS result: `Object.prototype.isPrototypeOf.call(undefined, {})` returns `false`.
 Expected: `TypeError` because `undefined` is not an object.
 ```io
@@ -750,9 +750,9 @@ See `tests/unconforming/isPrototypeOfUndefinedThis.io` for a regression test.
 	> - 2. Call ToString(*V*).
 	> - 3. If *O* doesn't have a property with the name given by Result(2), return **false**.
 	> - 4. If the property has the DontEnum attribute, return **false**.
-        > - 5. Return **true**.
-        >
-        > ## *NOTE*
+		> - 5. Return **true**.
+		>
+		> ## *NOTE*
 NuXJS result: `Object.prototype.propertyIsEnumerable.call(null, "x")` returns `false`.
 Expected: `TypeError` because `null` cannot be converted to an object.
 ```io
@@ -770,9 +770,9 @@ See `tests/unconforming/propertyIsEnumerableNullThis.io` for a regression test.
 	> - 2. Call ToString(*V*).
 	> - 3. If *O* doesn't have a property with the name given by Result(2), return **false**.
 	> - 4. If the property has the DontEnum attribute, return **false**.
-        > - 5. Return **true**.
-        >
-        > ## *NOTE*
+		> - 5. Return **true**.
+		>
+		> ## *NOTE*
 NuXJS result: `Object.prototype.propertyIsEnumerable.call(undefined, "x")` returns `false`.
 Expected: `TypeError` because `undefined` cannot be converted to an object.
 ```io
@@ -864,7 +864,7 @@ Expected: `\u1680` belongs to *WhiteSpace* so `\s` should match and `\S` should 
 See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 
 - [ ] built-ins/RegExp/S15.10.2.12_A2_T1 — WhiteSpace
-        > #### **15.10.2.12 CharacterClassEscape**
+		> #### **15.10.2.12 CharacterClassEscape**
 	> 
 	> The production *CharacterClassEscape* **:: d** evaluates by returning the ten-element set of characters containing the characters **0** through **9** inclusive.
 	> 
@@ -872,9 +872,9 @@ See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 	> 
 	> The production *CharacterClassEscape* **:: s** evaluates by returning the set of characters containing the characters that are on the right-hand side of the *WhiteSpace* (7.2) or *LineTerminator* (7.3) productions.
 	> 
-        > The production *CharacterClassEscape* **:: S** evaluates by returning the set of all characters not included in the set returned by *CharacterClassEscape* **:: s**.
-        >
-        > The production *CharacterClassEscape* **:: w** evaluates by returning the set of characters containing the sixty-three characters:
+		> The production *CharacterClassEscape* **:: S** evaluates by returning the set of all characters not included in the set returned by *CharacterClassEscape* **:: s**.
+		>
+		> The production *CharacterClassEscape* **:: w** evaluates by returning the set of characters containing the sixty-three characters:
 NuXJS result: `/\s/.test("\u2000")` returns `false` and `/\S/.test("\u2000")` returns `true`.
 Expected: `\u2000` is classified as *WhiteSpace*, so `\s` should match and `\S` should not.
 ```io
@@ -913,7 +913,7 @@ See `tests/unconforming/regExpWhiteSpace2000.io` for a regression test.
 	> - 5. If the **global** property is **false**, let *i* = 0.
 	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T11 — String is new Number(1.012) and RegExp is /2|12/
-        > #### **15.10.6.2 RegExp.prototype.exec(string)**
+		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
 	> 
@@ -923,8 +923,8 @@ See `tests/unconforming/regExpWhiteSpace2000.io` for a regression test.
 	> - 2. Let *length* be the length of *S*.
 	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
 	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-        > - 5. If the **global** property is **false**, let *i* = 0.
-        > - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+		> - 5. If the **global** property is **false**, let *i* = 0.
+		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
 NuXJS result: executing `/2|12/` on `new Number(1.012)` yields match `"je"` at index `3`.
 Expected: the string "1.012" should match `"12"` at index `3`.
 ```io
@@ -938,7 +938,7 @@ Expected: the string "1.012" should match `"12"` at index `3`.
 ```
 See `tests/unconforming/regExpExecNumberObject.io` for a regression test.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T12 — String is {toString:function(){return Math.PI;}} and RegExp is /\.14/
-        > #### **15.10.6.2 RegExp.prototype.exec(string)**
+		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
 	> 
@@ -948,8 +948,8 @@ See `tests/unconforming/regExpExecNumberObject.io` for a regression test.
 	> - 2. Let *length* be the length of *S*.
 	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
 	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-        > - 5. If the **global** property is **false**, let *i* = 0.
-        > - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+		> - 5. If the **global** property is **false**, let *i* = 0.
+		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
 NuXJS result: executing `/\.14/` on an object whose `toString` returns `Math.PI` produces match `"obj"` at index `1`.
 Expected: the string "3.141592653589793" should match `".14"` at index `1`.
 ```io
@@ -976,7 +976,7 @@ See `tests/unconforming/regExpExecToStringPi.io` for a regression test.
 	> - 5. If the **global** property is **false**, let *i* = 0.
 	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T14 — String is new Boolean and RegExp is /AL|se/
-        > #### **15.10.6.2 RegExp.prototype.exec(string)**
+		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
 	> 
@@ -986,8 +986,8 @@ See `tests/unconforming/regExpExecToStringPi.io` for a regression test.
 	> - 2. Let *length* be the length of *S*.
 	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
 	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-        > - 5. If the **global** property is **false**, let *i* = 0.
-        > - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+		> - 5. If the **global** property is **false**, let *i* = 0.
+		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
 NuXJS result: executing `/AL|se/` on `new Boolean(false)` yields match `"je"` at index `3`.
 Expected: the string "false" should match `"se"` at index `3`.
 ```io
@@ -1001,7 +1001,7 @@ Expected: the string "false" should match `"se"` at index `3`.
 ```
 See `tests/unconforming/regExpExecBooleanObject.io` for a regression test.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T15 — "String is {toString:function(){return false;}} and RegExp is /LS/i"
-        > #### **15.10.6.2 RegExp.prototype.exec(string)**
+		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
 	> 
@@ -1011,8 +1011,8 @@ See `tests/unconforming/regExpExecBooleanObject.io` for a regression test.
 	> - 2. Let *length* be the length of *S*.
 	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
 	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-        > - 5. If the **global** property is **false**, let *i* = 0.
-        > - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+		> - 5. If the **global** property is **false**, let *i* = 0.
+		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
 NuXJS result: executing `/LS/i` on an object whose `toString` returns `false` matches `"bj"` at index `2`.
 Expected: the string "false" should match `"ls"` at index `2`.
 ```io
@@ -1104,7 +1104,7 @@ See `tests/unconforming/regExpExecToStringFalse.io` for a regression test.
 	> - 5. If the **global** property is **false**, let *i* = 0.
 	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T3 — String is new Object("abcdefghi") and RegExp is /a[a-z]{2,4}/
-        > #### **15.10.6.2 RegExp.prototype.exec(string)**
+		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
 	> 
@@ -1113,9 +1113,9 @@ See `tests/unconforming/regExpExecToStringFalse.io` for a regression test.
 	> - 1. Let *S* be the value of ToString(*string*).
 	> - 2. Let *length* be the length of *S*.
 	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-        > - 4. Let *i* be the value of ToInteger(*lastIndex*).
-        > - 5. If the **global** property is **false**, let *i* = 0.
-        > - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+		> - 4. Let *i* be the value of ToInteger(*lastIndex*).
+		> - 5. If the **global** property is **false**, let *i* = 0.
+		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
 NuXJS result: executing `/a[a-z]{2,4}/` on `new Object("abcdefghi")` yields `[obje` instead of the substring.
 Expected: the string "abcdefghi" should match `"abcde"` at index `0`.
 ```io
@@ -1129,7 +1129,7 @@ Expected: the string "abcdefghi" should match `"abcde"` at index `0`.
 ```
 See `tests/unconforming/regExpExecObjectString.io` for a regression test.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T4 — String is {toString:function(){return "abcdefghi";}} and RegExp is /a[a-z]{2,4}?/
-        > #### **15.10.6.2 RegExp.prototype.exec(string)**
+		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
 	> 
@@ -1138,9 +1138,9 @@ See `tests/unconforming/regExpExecObjectString.io` for a regression test.
 	> - 1. Let *S* be the value of ToString(*string*).
 	> - 2. Let *length* be the length of *S*.
 	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-        > - 4. Let *i* be the value of ToInteger(*lastIndex*).
-        > - 5. If the **global** property is **false**, let *i* = 0.
-        > - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+		> - 4. Let *i* be the value of ToInteger(*lastIndex*).
+		> - 5. If the **global** property is **false**, let *i* = 0.
+		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
 NuXJS result: executing `/a[a-z]{2,4}?/` on an object with `toString` returning "abcdefghi" yields `[ob` instead of the expected substring.
 Expected: the string "abcdefghi" should match `"abc"` at index `0`.
 ```io
@@ -1190,89 +1190,89 @@ Expected: converting the Date to a string includes "GMT", so the index should be
 ```
 See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A12 — `replace` should treat undefined `this` correctly
-       > #### **15.5.4.11 String.prototype.replace (searchValue, replaceValue)**
-       >
-       > Let *string* denote the result of converting the **this** value to a string.
-       >
-       NuXJS result: `String.prototype.replace.call(undefined, "d", "D")` produces `[object Object]`.
-       Expected: the **this** value `undefined` should convert to the string "undefined", yielding `"unDefineD"` after replacement.
+	   > #### **15.5.4.11 String.prototype.replace (searchValue, replaceValue)**
+	   >
+	   > Let *string* denote the result of converting the **this** value to a string.
+	   >
+	   NuXJS result: `String.prototype.replace.call(undefined, "d", "D")` produces `[object Object]`.
+	   Expected: the **this** value `undefined` should convert to the string "undefined", yielding `"unDefineD"` after replacement.
 
-       ```io
-       > print(String.prototype.replace.call(undefined, "d", "D"))
-       < unDefineD
-       -
-       ```
-       See `tests/unconforming/stringReplaceUndefinedThis.io` for a regression test.
+	   ```io
+	   > print(String.prototype.replace.call(undefined, "d", "D"))
+	   < unDefineD
+	   -
+	   ```
+	   See `tests/unconforming/stringReplaceUndefinedThis.io` for a regression test.
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A1_T11 — replacing with objects whose `toString` throws
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A1_T12 — replacing with object whose `valueOf` throws
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T1 — `$11` sequences ignored in computed `replaceValue`
-       > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
-       >
-       > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.  The sequence `"$"` followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
-       >
-       NuXJS result: `var r = "$11" + 15; "xab".replace(/(x)/, r)` leaves the `$11` literal and returns `"$1115ab"`.
-       Expected: `$11` should expand to capture `1` followed by `"1"`, producing `"x115ab"`.
+	   > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
+	   >
+	   > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.	The sequence `"$"` followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
+	   >
+	   NuXJS result: `var r = "$11" + 15; "xab".replace(/(x)/, r)` leaves the `$11` literal and returns `"$1115ab"`.
+	   Expected: `$11` should expand to capture `1` followed by `"1"`, producing `"x115ab"`.
 
-       ```io
-       > var r = "$11" + 15
-       > print("xab".replace(/(x)/, r))
-       < x115ab
-       -
-       ```
-       See `tests/unconforming/stringReplace11Concat.io` for a regression test.
+	   ```io
+	   > var r = "$11" + 15
+	   > print("xab".replace(/(x)/, r))
+	   < x115ab
+	   -
+	   ```
+	   See `tests/unconforming/stringReplace11Concat.io` for a regression test.
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T2 — `replaceValue` is "$11" + "15"
-       > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
-       >
-       > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.  The sequence "\$" followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
-       >
-       NuXJS result: `var r = "$11" + "15"; "xab".replace(/(x)/, r)` yields `$1115ab`.
-       Expected: `$11` should expand to capture `1` followed by "1", producing "x115ab".
-       ```io
-       > var r = "$11" + "15"
-       > print("xab".replace(/(x)/, r))
-       < x115ab
-       -
-       ```
-       See `tests/unconforming/stringReplace11Plus15.io` for a regression test.
+	   > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
+	   >
+	   > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.	The sequence "\$" followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
+	   >
+	   NuXJS result: `var r = "$11" + "15"; "xab".replace(/(x)/, r)` yields `$1115ab`.
+	   Expected: `$11` should expand to capture `1` followed by "1", producing "x115ab".
+	   ```io
+	   > var r = "$11" + "15"
+	   > print("xab".replace(/(x)/, r))
+	   < x115ab
+	   -
+	   ```
+	   See `tests/unconforming/stringReplace11Plus15.io` for a regression test.
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T3 — `replaceValue` is "$11" + "A15"
-       > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
-       >
-       > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.  The sequence "\$" followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
-       >
-       NuXJS result: `var r = "$11" + "A15"; "xab".replace(/(x)/, r)` returns `$11A15ab`.
-       Expected: "x1A15ab" after expanding `$11` to capture `1` plus "1".
-       ```io
-       > var r = "$11" + "A15"
-       > print("xab".replace(/(x)/, r))
-       < x1A15ab
-       -
-       ```
-       See `tests/unconforming/stringReplace11PlusA15.io` for a regression test.
+	   > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
+	   >
+	   > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.	The sequence "\$" followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
+	   >
+	   NuXJS result: `var r = "$11" + "A15"; "xab".replace(/(x)/, r)` returns `$11A15ab`.
+	   Expected: "x1A15ab" after expanding `$11` to capture `1` plus "1".
+	   ```io
+	   > var r = "$11" + "A15"
+	   > print("xab".replace(/(x)/, r))
+	   < x1A15ab
+	   -
+	   ```
+	   See `tests/unconforming/stringReplace11PlusA15.io` for a regression test.
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A5_T1 — regex `/^(a+)\1*,\1+$/` with backreference
-       > #### **15.10.2.9 AtomEscape**
-       >
-       > An escape sequence of the form "\\" followed by a nonzero decimal number *n* matches the result of the *n*th set of capturing parentheses.
-       >
-       NuXJS result: "aa,a".replace(/^(a+)\1*,\1+$/, "$1") leaves the string unchanged.
-       Expected: backreference handling should collapse the match to "a".
-       ```io
-       > print("aa,a".replace(/^(a+)\1*,\1+$/, "$1"))
-       < a
-       -
-       ```
-       See `tests/unconforming/stringReplaceBackreference.io` for a regression test.
+	   > #### **15.10.2.9 AtomEscape**
+	   >
+	   > An escape sequence of the form "\\" followed by a nonzero decimal number *n* matches the result of the *n*th set of capturing parentheses.
+	   >
+	   NuXJS result: "aa,a".replace(/^(a+)\1*,\1+$/, "$1") leaves the string unchanged.
+	   Expected: backreference handling should collapse the match to "a".
+	   ```io
+	   > print("aa,a".replace(/^(a+)\1*,\1+$/, "$1"))
+	   < a
+	   -
+	   ```
+	   See `tests/unconforming/stringReplaceBackreference.io` for a regression test.
 - [ ] built-ins/String/prototype/toLocaleLowerCase/special_casing_conditional — missing conditional Unicode mappings
-        > ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
-        >
-        > This function works exactly the same as **toLowerCase** except that its result is intended to yield the correct result for the host environment's current locale, rather than a locale-independent result. There will only be a difference in the few cases (such as Turkish) where the rules for that language conflict with the regular Unicode case mappings.
-        >
-        > ## *NOTE 1*
-        >
-        > *The* **toLocaleLowerCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
-        >
-        > #### *NOTE 2*
-        >
-        > *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
+		> ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
+		>
+		> This function works exactly the same as **toLowerCase** except that its result is intended to yield the correct result for the host environment's current locale, rather than a locale-independent result. There will only be a difference in the few cases (such as Turkish) where the rules for that language conflict with the regular Unicode case mappings.
+		>
+		> ## *NOTE 1*
+		>
+		> *The* **toLocaleLowerCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
+		>
+		> #### *NOTE 2*
+		>
+		> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
 NuXJS result: `print("\u0130".toLocaleLowerCase())` outputs `"i"`, omitting the required combining dot above.
 Expected: `"i̇"` (letter *i* followed by a combining dot).
 ```io
@@ -1282,17 +1282,17 @@ Expected: `"i̇"` (letter *i* followed by a combining dot).
 ```
 See `tests/unconforming/toLocaleLowerCaseSpecialCasing.io` for a regression test.
 - [ ] built-ins/String/prototype/toLocaleLowerCase/supplementary_plane — fails to iterate over supplementary-plane code points
-        > ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
-        >
-        > This function works exactly the same as **toLowerCase** except that its result is intended to yield the correct result for the host environment's current locale, rather than a locale-independent result. There will only be a difference in the few cases (such as Turkish) where the rules for that language conflict with the regular Unicode case mappings.
-        >
-        > ## *NOTE 1*
-        >
-        > *The* **toLocaleLowerCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
-        >
-        > #### *NOTE 2*
-        >
-        > *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
+		> ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
+		>
+		> This function works exactly the same as **toLowerCase** except that its result is intended to yield the correct result for the host environment's current locale, rather than a locale-independent result. There will only be a difference in the few cases (such as Turkish) where the rules for that language conflict with the regular Unicode case mappings.
+		>
+		> ## *NOTE 1*
+		>
+		> *The* **toLocaleLowerCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
+		>
+		> #### *NOTE 2*
+		>
+		> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
 NuXJS result: `print("\uD835\uDD0A".toLocaleLowerCase())` collapses the surrogate pair to `"G"`.
 Expected: the original character `"𝔊"` should be preserved.
 ```io
@@ -1402,17 +1402,17 @@ Expected: `"𝔊"`.
 ```
 See `tests/unconforming/toLowerCaseSupplementaryPlane.io` for a regression test.
 - [ ] built-ins/String/prototype/toUpperCase/special_casing — missing special Unicode uppercase mappings
-        > #### **15.5.4.18 String.prototype.toUpperCase ( )**
-        >
-        > This function behaves in exactly the same way as **String.prototype.toLowerCase**, except that characters are mapped to their *uppercase* equivalents as specified in the Unicode Character Database.
-        >
-        > #### *NOTE 1*
-        >
-        > *Because both* **toUpperCase** *and* **toLowerCase** *have context-sensitive behaviour, the functions are not symmetrical. In other words,* **s.toUpperCase().toLowerCase()** *is not necessarily equal to* **s.toLowerCase()***.*
-        >
-        > #### *NOTE 2*
-        >
-        > *The* **toUpperCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
+		> #### **15.5.4.18 String.prototype.toUpperCase ( )**
+		>
+		> This function behaves in exactly the same way as **String.prototype.toLowerCase**, except that characters are mapped to their *uppercase* equivalents as specified in the Unicode Character Database.
+		>
+		> #### *NOTE 1*
+		>
+		> *Because both* **toUpperCase** *and* **toLowerCase** *have context-sensitive behaviour, the functions are not symmetrical. In other words,* **s.toUpperCase().toLowerCase()** *is not necessarily equal to* **s.toLowerCase()***.*
+		>
+		> #### *NOTE 2*
+		>
+		> *The* **toUpperCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
 NuXJS result: `print("\u03C2".toUpperCase())` outputs `"S"`.
 Expected: `"Σ"`.
 ```io
@@ -1422,17 +1422,17 @@ Expected: `"Σ"`.
 ```
 See `tests/unconforming/toUpperCaseSpecialCasing.io` for a regression test.
 - [ ] built-ins/String/prototype/toUpperCase/supplementary_plane — fails to iterate over supplementary-plane code points
-        > #### **15.5.4.18 String.prototype.toUpperCase ( )**
-        >
-        > This function behaves in exactly the same way as **String.prototype.toLowerCase**, except that characters are mapped to their *uppercase* equivalents as specified in the Unicode Character Database.
-        >
-        > #### *NOTE 1*
-        >
-        > *Because both* **toUpperCase** *and* **toLowerCase** *have context-sensitive behaviour, the functions are not symmetrical. In other words,* **s.toUpperCase().toLowerCase()** *is not necessarily equal to* **s.toLowerCase()***.*
-        >
-        > #### *NOTE 2*
-        >
-        > *The* **toUpperCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
+		> #### **15.5.4.18 String.prototype.toUpperCase ( )**
+		>
+		> This function behaves in exactly the same way as **String.prototype.toLowerCase**, except that characters are mapped to their *uppercase* equivalents as specified in the Unicode Character Database.
+		>
+		> #### *NOTE 1*
+		>
+		> *Because both* **toUpperCase** *and* **toLowerCase** *have context-sensitive behaviour, the functions are not symmetrical. In other words,* **s.toUpperCase().toLowerCase()** *is not necessarily equal to* **s.toLowerCase()***.*
+		>
+		> #### *NOTE 2*
+		>
+		> *The* **toUpperCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
 NuXJS result: `print("\uD835\uDD0A".toUpperCase())` collapses the surrogate pair to `"G"`.
 Expected: `"𝔊"`.
 ```io
@@ -1451,11 +1451,11 @@ See `tests/unconforming/toUpperCaseSupplementaryPlane.io` for a regression test.
 	> 
 	> - 1. Call ToString(*string*).
 	> - 2. Compute a substring of Result(1) consisting of the leftmost character that is not a *StrWhiteSpaceChar* and all characters to the right of that character.(In other words, remove leading white space.)
-        > - 3. If neither Result(2) nor any prefix of Result(2) satisfies the syntax of a *StrDecimalLiteral* (see 0), return **NaN**.
-        > - 4. Compute the longest prefix of Result(2), which might be Result(2) itself, which satisfies the syntax of a *StrDecimalLiteral*.
-        > - 5. Return the number value for the MV of Result(4).
-        >
-        > *StrWhiteSpaceChar* **:::** <TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP>
+		> - 3. If neither Result(2) nor any prefix of Result(2) satisfies the syntax of a *StrDecimalLiteral* (see 0), return **NaN**.
+		> - 4. Compute the longest prefix of Result(2), which might be Result(2) itself, which satisfies the syntax of a *StrDecimalLiteral*.
+		> - 5. Return the number value for the MV of Result(4).
+		>
+		> *StrWhiteSpaceChar* **:::** <TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP>
 
 NuXJS result: `parseFloat("\u16801.5")` returns `NaN`.
 Expected: `1.5`.
@@ -1474,16 +1474,8 @@ See `tests/unconforming/parseFloatUSP.io` for a regression test.
 	> 
 	> The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
 	> 
-	> When the **parseInt** function is called, the following steps are taken:
-	> 
-	> - 1. Call ToString(*string*).
-	> - 2. Let *S* be a newly created substring of Result(1) consisting of the first character that is not a *StrWhiteSpaceChar* and all characters following that character. (In other words, remove leading white space.)
-	> - 3. Let *sign* be 1.
-	> - 4. If *S* is not empty and the first character of *S* is a minus sign **-**, let *sign* be −1.
-        > - 5. If *S* is not empty and the first character of *S* is a plus sign **+** or a minus sign **-**, then remove the first character from *S*.
-        > - 6. Let *R* = ToInt32(*radix*).
-        >
-        > *StrWhiteSpaceChar* **:::** <TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP>
+		>
+		> *StrWhiteSpaceChar* **:::** <TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP>
 
 NuXJS result: `parseInt("\u1680123")` returns `NaN`.
 Expected: `123`.
@@ -1496,18 +1488,11 @@ Expected: `123`.
 See `tests/unconforming/parseIntUSP.io` for a regression test.
 
 - [ ] built-ins/parseInt/S15.1.2.2_A5.2_T2 — ": 0X"
-        > #### **15.1.2.2 parseInt (string , radix)**
-        >
-        > The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
-        >
-        > When the **parseInt** function is called, the following steps are taken:
-        >
-        > - 1. Call ToString(*string*).
-        > - 2. Let *S* be a newly created substring of Result(1) consisting of the first character that is not a *StrWhiteSpaceChar* and all characters following that character. (In other words, remove leading white space.)
-        > - 3. Let *sign* be 1.
-        > - 4. If *S* is not empty and the first character of *S* is a minus sign **-**, let *sign* be −1.
-        > - 5. If *S* is not empty and the first character of *S* is a plus sign **+** or a minus sign **-**, then remove the first character from *S*.
-        > - 6. Let *R* = ToInt32(*radix*).
+		> #### **15.1.2.2 parseInt (string , radix)**
+		>
+		> The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
+		>
+		> - 13. If the length of *S* is at least 2 and the first two characters of *S* are either "0x" or "0X", then remove the first two characters from *S* and let *R* = 16.
 NuXJS result: `parseInt("0X1")` returns `0`, ignoring the hexadecimal prefix.
 Expected: strings starting with `0x` or `0X` must parse as base 16 when the radix is undefined or 0, producing `1` for `"0X1"`.
 ```io
@@ -1520,11 +1505,11 @@ Expected: strings starting with `0x` or `0X` must parse as base 16 when the radi
 ```
 See `tests/unconforming/parseInt0XPrefix.io` for a regression test.
 - [ ] built-ins/parseInt/S15.1.2.2_A7.2_T3 — Checking algorithm for R = 16
-        > #### **15.1.2.2 parseInt (string , radix)**
-        >
-        > The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
-        >
-        > When the **parseInt** function is called, the following steps are taken:
+		> #### **15.1.2.2 parseInt (string , radix)**
+		>
+		> The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
+		>
+		> - 13. If the length of *S* is at least 2 and the first two characters of *S* are either "0x" or "0X", then remove the first two characters from *S* and let *R* = 16.
 NuXJS result: `parseInt("0X10", 16)` returns `0` instead of `16`.
 Expected: with radix 16, uppercase `0X` prefixes are valid hexadecimal literals, so `parseInt("0X10", 16)` should be `16`.
 ```io
@@ -1536,11 +1521,4 @@ Expected: with radix 16, uppercase `0X` prefixes are valid hexadecimal literals,
 -
 ```
 See `tests/unconforming/parseIntRadix16Uppercase.io` for a regression test.
-	> 
-	> - 1. Call ToString(*string*).
-	> - 2. Let *S* be a newly created substring of Result(1) consisting of the first character that is not a *StrWhiteSpaceChar* and all characters following that character. (In other words, remove leading white space.)
-	> - 3. Let *sign* be 1.
-	> - 4. If *S* is not empty and the first character of *S* is a minus sign **-**, let *sign* be −1.
-	> - 5. If *S* is not empty and the first character of *S* is a plus sign **+** or a minus sign **-**, then remove the first character from *S*.
-	> - 6. Let *R* = ToInt32(*radix*).
 
