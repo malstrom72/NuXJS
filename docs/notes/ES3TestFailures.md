@@ -584,7 +584,15 @@ See `tests/unconforming/hugeDecimalExponent.io` for a regression test.
 	> 
 	> *NOTE*
 	> 
-	> *Unlike [[HasProperty]] (8.6.2.4), this method does not consider objects in the prototype chain.*
+        > *Unlike [[HasProperty]] (8.6.2.4), this method does not consider objects in the prototype chain.*
+NuXJS result: `Object.prototype.hasOwnProperty.call(null, "x")` returns `false` instead of throwing.
+Expected: `TypeError` because `null` cannot be converted to an object.
+```io
+> try { Object.prototype.hasOwnProperty.call(null, "x"); } catch (e) { print(e.name); }
+< TypeError
+-
+```
+See `tests/unconforming/hasOwnPropertyNullThis.io` for a regression test.
 - [ ] built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A13 — Let O be the result of calling ToObject passing the this value as the argument.
 	> #### **15.2.4.5 Object.prototype.hasOwnProperty (V)**
 	> 
@@ -597,7 +605,15 @@ See `tests/unconforming/hugeDecimalExponent.io` for a regression test.
 	> 
 	> *NOTE*
 	> 
-	> *Unlike [[HasProperty]] (8.6.2.4), this method does not consider objects in the prototype chain.*
+        > *Unlike [[HasProperty]] (8.6.2.4), this method does not consider objects in the prototype chain.*
+NuXJS result: `Object.prototype.hasOwnProperty.call(undefined, "x")` returns `false`.
+Expected: `TypeError` because `undefined` cannot be converted to an object.
+```io
+> try { Object.prototype.hasOwnProperty.call(undefined, "x"); } catch (e) { print(e.name); }
+< TypeError
+-
+```
+See `tests/unconforming/hasOwnPropertyUndefinedThis.io` for a regression test.
 - [ ] built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A12 — Let O be the result of calling ToObject passing the this value as the argument.
 	> #### **15.2.4.6 Object.prototype.isPrototypeOf (V)**
 	> 
@@ -608,7 +624,15 @@ See `tests/unconforming/hugeDecimalExponent.io` for a regression test.
 	> - 3. Let *V* be the value of the [[Prototype]] property of *V*.
 	> - 4. if *V* is **null**, return **false**
 	> - 5. If *O* and *V* refer to the same object or if they refer to objects joined to each other (13.1.2), return **true**.
-	> - 6. Go to step 3.
+        > - 6. Go to step 3.
+NuXJS result: `Object.prototype.isPrototypeOf.call(null, {})` returns `false`.
+Expected: `TypeError` because `null` is not an object.
+```io
+> try { Object.prototype.isPrototypeOf.call(null, {}); } catch (e) { print(e.name); }
+< TypeError
+-
+```
+See `tests/unconforming/isPrototypeOfNullThis.io` for a regression test.
 - [ ] built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A13 — Let O be the result of calling ToObject passing the this value as the argument.
 	> #### **15.2.4.6 Object.prototype.isPrototypeOf (V)**
 	> 
@@ -619,7 +643,15 @@ See `tests/unconforming/hugeDecimalExponent.io` for a regression test.
 	> - 3. Let *V* be the value of the [[Prototype]] property of *V*.
 	> - 4. if *V* is **null**, return **false**
 	> - 5. If *O* and *V* refer to the same object or if they refer to objects joined to each other (13.1.2), return **true**.
-	> - 6. Go to step 3.
+        > - 6. Go to step 3.
+NuXJS result: `Object.prototype.isPrototypeOf.call(undefined, {})` returns `false`.
+Expected: `TypeError` because `undefined` is not an object.
+```io
+> try { Object.prototype.isPrototypeOf.call(undefined, {}); } catch (e) { print(e.name); }
+< TypeError
+-
+```
+See `tests/unconforming/isPrototypeOfUndefinedThis.io` for a regression test.
 - [ ] built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A12 — Let O be the result of calling ToObject passing the this value as the argument.
 	> #### **15.2.4.7 Object.prototype.propertyIsEnumerable (V)**
 	> 
@@ -629,9 +661,17 @@ See `tests/unconforming/hugeDecimalExponent.io` for a regression test.
 	> - 2. Call ToString(*V*).
 	> - 3. If *O* doesn't have a property with the name given by Result(2), return **false**.
 	> - 4. If the property has the DontEnum attribute, return **false**.
-	> - 5. Return **true**.
-	> 
-	> ## *NOTE*
+        > - 5. Return **true**.
+        >
+        > ## *NOTE*
+NuXJS result: `Object.prototype.propertyIsEnumerable.call(null, "x")` returns `false`.
+Expected: `TypeError` because `null` cannot be converted to an object.
+```io
+> try { Object.prototype.propertyIsEnumerable.call(null, "x"); } catch (e) { print(e.name); }
+< TypeError
+-
+```
+See `tests/unconforming/propertyIsEnumerableNullThis.io` for a regression test.
 - [ ] built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A13 — Let O be the result of calling ToObject passing the this value as the argument.
 	> #### **15.2.4.7 Object.prototype.propertyIsEnumerable (V)**
 	> 
@@ -641,9 +681,17 @@ See `tests/unconforming/hugeDecimalExponent.io` for a regression test.
 	> - 2. Call ToString(*V*).
 	> - 3. If *O* doesn't have a property with the name given by Result(2), return **false**.
 	> - 4. If the property has the DontEnum attribute, return **false**.
-	> - 5. Return **true**.
-	> 
-	> ## *NOTE*
+        > - 5. Return **true**.
+        >
+        > ## *NOTE*
+NuXJS result: `Object.prototype.propertyIsEnumerable.call(undefined, "x")` returns `false`.
+Expected: `TypeError` because `undefined` cannot be converted to an object.
+```io
+> try { Object.prototype.propertyIsEnumerable.call(undefined, "x"); } catch (e) { print(e.name); }
+< TypeError
+-
+```
+See `tests/unconforming/propertyIsEnumerableUndefinedThis.io` for a regression test.
 - [ ] built-ins/Object/prototype/toLocaleString/S15.2.4.3_A12 — Let O be the result of calling ToObject passing the this value as the argument.
 	> ## **15.2.4.3 Object.prototype.toLocaleString ( )**
 	> 
