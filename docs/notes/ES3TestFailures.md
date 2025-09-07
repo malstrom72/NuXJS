@@ -257,6 +257,12 @@ Expected: a `TypeError` and `length` remaining `Infinity`.
 > obj={}
 > obj.length=Number.POSITIVE_INFINITY
 > obj.push=Array.prototype.push
+NuXJS result: calling `push` on an object with `length` set to `Infinity` returns `1` and changes `length` to `1`.
+Expected: `push` should throw a `TypeError` and keep `length` at `Infinity`.
+```io
+> obj={}
+> obj.length=Number.POSITIVE_INFINITY
+> obj.push=Array.prototype.push
 > try{obj.push(-4)}catch(e){print(e.name)}
 < TypeError
 -
@@ -701,14 +707,25 @@ Expected: `TypeError` because `undefined` cannot be converted to an object.
 ```
 See `tests/unconforming/propertyIsEnumerableUndefinedThis.io` for a regression test.
 - [ ] built-ins/Object/prototype/toLocaleString/S15.2.4.3_A12 — Let O be the result of calling ToObject passing the this value as the argument.
-	> ## **15.2.4.3 Object.prototype.toLocaleString ( )**
+> ## **15.2.4.3 Object.prototype.toLocaleString ( )**
 	> 
 	> This function returns the result of calling **toString()**.
 	> 
-	> ## *NOTE 1*
-	> 
-	> *This function is provided to give all Objects a generic* **toLocaleString** *interface, even though not all may use it. Currently,* **Array***,* **Number***, and* **Date** *provide their own locale-sensitive* **toLocaleString** *methods.*
-	> 
+> ## *NOTE 1*
+>
+> *This function is provided to give all Objects a generic* **toLocaleString** *interface, even though not all may use it. Currently,* **Array***,* **Number***, and* **Date** *provide their own locale-sensitive* **toLocaleString** *methods.*
+>
+NuXJS result: `Object.prototype.toLocaleString.call(null)` and `call(undefined)` return `"[object Object]"`.
+Expected: both calls should throw a `TypeError` because `null` and `undefined` are not objects.
+```io
+> try { Object.prototype.toLocaleString.call(null); } catch (e) { print(e.name); }
+< TypeError
+-
+> try { Object.prototype.toLocaleString.call(undefined); } catch (e) { print(e.name); }
+< TypeError
+-
+```
+See `tests/unconforming/objectToLocaleStringNullThis.io` and `tests/unconforming/objectToLocaleStringUndefinedThis.io` for regression tests.
 	> ## *NOTE 2*
 	> 
 	> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
@@ -772,7 +789,7 @@ Expected: `\u1680` belongs to *WhiteSpace* so `\s` should match and `\S` should 
 See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 
 - [ ] built-ins/RegExp/S15.10.2.12_A2_T1 — WhiteSpace
-	> #### **15.10.2.12 CharacterClassEscape**
+        > #### **15.10.2.12 CharacterClassEscape**
 	> 
 	> The production *CharacterClassEscape* **:: d** evaluates by returning the ten-element set of characters containing the characters **0** through **9** inclusive.
 	> 
@@ -780,9 +797,20 @@ See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 	> 
 	> The production *CharacterClassEscape* **:: s** evaluates by returning the set of characters containing the characters that are on the right-hand side of the *WhiteSpace* (7.2) or *LineTerminator* (7.3) productions.
 	> 
-	> The production *CharacterClassEscape* **:: S** evaluates by returning the set of all characters not included in the set returned by *CharacterClassEscape* **:: s**.
-	> 
-	> The production *CharacterClassEscape* **:: w** evaluates by returning the set of characters containing the sixty-three characters:
+        > The production *CharacterClassEscape* **:: S** evaluates by returning the set of all characters not included in the set returned by *CharacterClassEscape* **:: s**.
+        >
+        > The production *CharacterClassEscape* **:: w** evaluates by returning the set of characters containing the sixty-three characters:
+NuXJS result: `/\s/.test("\u2000")` returns `false` and `/\S/.test("\u2000")` returns `true`.
+Expected: `\u2000` is classified as *WhiteSpace*, so `\s` should match and `\S` should not.
+```io
+> print(/\s/.test("\u2000"))
+< true
+-
+> print(/\S/.test("\u2000"))
+< false
+-
+```
+See `tests/unconforming/regExpWhiteSpace2000.io` for a regression test.
 - [ ] built-ins/RegExp/S15.10.2.8_A3_T15 — "see bug http:bugzilla.mozilla.org/show_bug.cgi?id=119909" — RangeError: Internal compiler limitations reached. Reduce code complexity.
 	> #### **15.10.2.8 Atom**
 	> 
@@ -810,7 +838,7 @@ See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 	> - 5. If the **global** property is **false**, let *i* = 0.
 	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T11 — String is new Number(1.012) and RegExp is /2|12/
-	> #### **15.10.6.2 RegExp.prototype.exec(string)**
+        > #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
 	> 
@@ -820,10 +848,22 @@ See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 	> - 2. Let *length* be the length of *S*.
 	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
 	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-	> - 5. If the **global** property is **false**, let *i* = 0.
-	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+        > - 5. If the **global** property is **false**, let *i* = 0.
+        > - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+NuXJS result: executing `/2|12/` on `new Number(1.012)` yields match `"je"` at index `3`.
+Expected: the string "1.012" should match `"12"` at index `3`.
+```io
+> var r=/2|12/.exec(new Number(1.012))
+> print(r[0])
+< 12
+-
+> print(r.index)
+< 3
+-
+```
+See `tests/unconforming/regExpExecNumberObject.io` for a regression test.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T12 — String is {toString:function(){return Math.PI;}} and RegExp is /\.14/
-	> #### **15.10.6.2 RegExp.prototype.exec(string)**
+        > #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
 	> 
@@ -833,8 +873,20 @@ See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 	> - 2. Let *length* be the length of *S*.
 	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
 	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-	> - 5. If the **global** property is **false**, let *i* = 0.
-	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+        > - 5. If the **global** property is **false**, let *i* = 0.
+        > - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+NuXJS result: executing `/\.14/` on an object whose `toString` returns `Math.PI` produces match `"obj"` at index `1`.
+Expected: the string "3.141592653589793" should match `".14"` at index `1`.
+```io
+> var r=/\.14/.exec({toString:function(){return Math.PI;}})
+> print(r[0])
+< .14
+-
+> print(r.index)
+< 1
+-
+```
+See `tests/unconforming/regExpExecToStringPi.io` for a regression test.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T13 — String is true and RegExp is /t[a-b|q-s]/
 	> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
@@ -849,7 +901,7 @@ See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 	> - 5. If the **global** property is **false**, let *i* = 0.
 	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T14 — String is new Boolean and RegExp is /AL|se/
-	> #### **15.10.6.2 RegExp.prototype.exec(string)**
+        > #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
 	> 
@@ -859,10 +911,22 @@ See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 	> - 2. Let *length* be the length of *S*.
 	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
 	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-	> - 5. If the **global** property is **false**, let *i* = 0.
-	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+        > - 5. If the **global** property is **false**, let *i* = 0.
+        > - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+NuXJS result: executing `/AL|se/` on `new Boolean(false)` yields match `"je"` at index `3`.
+Expected: the string "false" should match `"se"` at index `3`.
+```io
+> var r=/AL|se/.exec(new Boolean(false))
+> print(r[0])
+< se
+-
+> print(r.index)
+< 3
+-
+```
+See `tests/unconforming/regExpExecBooleanObject.io` for a regression test.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T15 — "String is {toString:function(){return false;}} and RegExp is /LS/i"
-	> #### **15.10.6.2 RegExp.prototype.exec(string)**
+        > #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
 	> 
@@ -872,8 +936,20 @@ See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 	> - 2. Let *length* be the length of *S*.
 	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
 	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-	> - 5. If the **global** property is **false**, let *i* = 0.
-	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+        > - 5. If the **global** property is **false**, let *i* = 0.
+        > - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+NuXJS result: executing `/LS/i` on an object whose `toString` returns `false` matches `"bj"` at index `2`.
+Expected: the string "false" should match `"ls"` at index `2`.
+```io
+> var r=/LS/i.exec({toString:function(){return false;}})
+> print(r[0])
+< ls
+-
+> print(r.index)
+< 2
+-
+```
+See `tests/unconforming/regExpExecToStringFalse.io` for a regression test.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T17 — String is null and RegExp is /ll|l/
 	> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
@@ -953,7 +1029,7 @@ See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 	> - 5. If the **global** property is **false**, let *i* = 0.
 	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T3 — String is new Object("abcdefghi") and RegExp is /a[a-z]{2,4}/
-	> #### **15.10.6.2 RegExp.prototype.exec(string)**
+        > #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
 	> 
@@ -962,11 +1038,23 @@ See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 	> - 1. Let *S* be the value of ToString(*string*).
 	> - 2. Let *length* be the length of *S*.
 	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-	> - 5. If the **global** property is **false**, let *i* = 0.
-	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+        > - 4. Let *i* be the value of ToInteger(*lastIndex*).
+        > - 5. If the **global** property is **false**, let *i* = 0.
+        > - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+NuXJS result: executing `/a[a-z]{2,4}/` on `new Object("abcdefghi")` yields `[obje` instead of the substring.
+Expected: the string "abcdefghi" should match `"abcde"` at index `0`.
+```io
+> var r=/a[a-z]{2,4}/.exec(new Object("abcdefghi"))
+> print(r[0])
+< abcde
+-
+> print(r.index)
+< 0
+-
+```
+See `tests/unconforming/regExpExecObjectString.io` for a regression test.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T4 — String is {toString:function(){return "abcdefghi";}} and RegExp is /a[a-z]{2,4}?/
-	> #### **15.10.6.2 RegExp.prototype.exec(string)**
+        > #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
 	> 
@@ -975,9 +1063,21 @@ See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 	> - 1. Let *S* be the value of ToString(*string*).
 	> - 2. Let *length* be the length of *S*.
 	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-	> - 5. If the **global** property is **false**, let *i* = 0.
-	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+        > - 4. Let *i* be the value of ToInteger(*lastIndex*).
+        > - 5. If the **global** property is **false**, let *i* = 0.
+        > - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+NuXJS result: executing `/a[a-z]{2,4}?/` on an object with `toString` returning "abcdefghi" yields `[ob` instead of the expected substring.
+Expected: the string "abcdefghi" should match `"abc"` at index `0`.
+```io
+> var r=/a[a-z]{2,4}?/.exec({toString:function(){return "abcdefghi";}})
+> print(r[0])
+< abc
+-
+> print(r.index)
+< 0
+-
+```
+See `tests/unconforming/regExpExecToStringObject.io` for a regression test.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T5 — String is {toString:function(){return {};}, valueOf:function(){return "aabaac";}} and RegExp is /(aa|aabaac|ba|b|c)* /
 	> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
@@ -994,18 +1094,26 @@ See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 
 ### String
 - [ ] built-ins/String/prototype/indexOf/S15.5.4.7_A1_T11 — calling `indexOf` with Date object `this` yields wrong index
-	> #### **15.5.4.7 String.prototype.indexOf (searchString, position)**
-	> 
-	> If *searchString* appears as a substring of the result of converting this object to a string, at one or more positions that are greater than or equal to *position*, then the index of the smallest such position is returned; otherwise, **-1** is returned. If *position* is **undefined**, 0 is assumed, so as to search all of the string.
-	> 
-	> The **indexOf** method takes two arguments, *searchString* and *position*, and performs the following steps:
-	> 
-	> - 1. Call ToString, giving it the **this** value as its argument.
-	> - 2. Call ToString(*searchString*).
-	> - 3. Call ToInteger(*position*). (If *position* is **undefined**, this step produces the value **0**).
-	> - 4. Compute the number of characters in Result(1).
-	> - 5. Compute min(max(Result(3), 0), Result(4)).
-	> - 6. Compute the number of characters in the string that is Result(2).
+> #### **15.5.4.7 String.prototype.indexOf (searchString, position)**
+>
+> If *searchString* appears as a substring of the result of converting this object to a string, at one or more positions that are greater than or equal to *position*, then the index of the smallest such position is returned; otherwise, **-1** is returned. If *position* is **undefined**, 0 is assumed, so as to search all of the string.
+>
+> The **indexOf** method takes two arguments, *searchString* and *position*, and performs the following steps:
+>
+> - 1. Call ToString, giving it the **this** value as its argument.
+> - 2. Call ToString(*searchString*).
+> - 3. Call ToInteger(*position*). (If *position* is **undefined**, this step produces the value **0**).
+> - 4. Compute the number of characters in Result(1).
+> - 5. Compute min(max(Result(3), 0), Result(4)).
+> - 6. Compute the number of characters in the string that is Result(2).
+NuXJS result: `String.prototype.indexOf.call(new Date(0), "GMT")` returns `-1`.
+Expected: converting the Date to a string includes "GMT", so the index should be `25`.
+```io
+> print(String.prototype.indexOf.call(new Date(0), "GMT"))
+< 25
+-
+```
+See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A12 — `replace` should treat undefined `this` correctly
        > #### **15.5.4.11 String.prototype.replace (searchValue, replaceValue)**
        >
