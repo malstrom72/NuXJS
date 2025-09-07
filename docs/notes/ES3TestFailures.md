@@ -481,6 +481,18 @@ See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression te
 
 	   See `tests/unconforming/dateTimeClipNegativeZero.io` for a regression test.
 - [ ] built-ins/Date/prototype/setFullYear/15.9.5.40_1 — Date.prototype.setFullYear - Date.prototype is itself not an instance of Date
+> #### **15.9.5 Properties of the Date Prototype Object**
+>
+> None of these functions are generic; a **TypeError** exception is thrown if the **this** value is not an object for which the value of the internal [[Class]] property is **"Date"**.
+>
+NuXJS result: `Date.prototype.setFullYear.call(Date.prototype, 1970)` returns `0` instead of throwing.
+Expected: non-Date receivers must raise a `TypeError`.
+```io
+> try { Date.prototype.setFullYear.call(Date.prototype, 1970); } catch (e) { print(e.name); }
+< TypeError
+-
+```
+See `tests/unconforming/datePrototypeSetFullYearInvalidThis.io` for a regression test.
 
 ### Error
 - [ ] built-ins/Error/S15.11.1.1_A1_T1 — Checking message property of different error objects
@@ -844,22 +856,54 @@ See `tests/unconforming/objectToLocaleStringNullThis.io` and `tests/unconforming
 - [ ] built-ins/Object/prototype/toString/15.2.4.2-1-2 — Object.prototype.toString - '[object Undefined]' will be returned when 'this' value is undefined
 - [ ] built-ins/Object/prototype/toString/15.2.4.2-2-1 — Object.prototype.toString - '[object Null]' will be returned when 'this' value is null
 - [ ] built-ins/Object/prototype/toString/15.2.4.2-2-2 — Object.prototype.toString - '[object Null]' will be returned when 'this' value is null
+> #### **15.2.4.2 Object.prototype.toString ( )**
+>
+> When the **toString** method is called, the following steps are taken:
+> - 1. Get the [[Class]] property of this object.
+> - 2. Compute a string value by concatenating the three strings "[object ", Result(1), and "]".
+>
+> #### **9.9 ToObject**
+>
+> | Input Type | Result |
+> | Undefined | Throw a **TypeError** exception. |
+> | Null | Throw a **TypeError** exception. |
+>
+NuXJS result: `Object.prototype.toString.call(undefined)` and `Object.prototype.toString.call(null)` each return `"[object Object]"` without throwing.
+Expected: both invocations must throw `TypeError`.
+```io
+> try { Object.prototype.toString.call(undefined); } catch (e) { print(e.name); }
+< TypeError
+-
+> try { Object.prototype.toString.call(null); } catch (e) { print(e.name); }
+< TypeError
+-
+```
+See `tests/unconforming/objectToStringNullUndefinedThis.io` for a regression test.
 - [ ] built-ins/Object/prototype/valueOf/S15.2.4.4_A12 — Checking Object.prototype.valueOf invoked by the 'call' property.
-	> #### **15.2.4.4 Object.prototype.valueOf ( )**
-	> 
-	> The **valueOf** method returns its **this** value. If the object is the result of calling the Object constructor with a host object (15.2.2.1), it is implementation-defined whether **valueOf** returns its **this** value or another value such as the host object originally passed to the constructor.
 - [ ] built-ins/Object/prototype/valueOf/S15.2.4.4_A13 — Checking Object.prototype.valueOf invoked by the 'call' property.
-	> #### **15.2.4.4 Object.prototype.valueOf ( )**
-	> 
-	> The **valueOf** method returns its **this** value. If the object is the result of calling the Object constructor with a host object (15.2.2.1), it is implementation-defined whether **valueOf** returns its **this** value or another value such as the host object originally passed to the constructor.
 - [ ] built-ins/Object/prototype/valueOf/S15.2.4.4_A14 — Checking Object.prototype.valueOf invoked by the 'call' property.
-	> #### **15.2.4.4 Object.prototype.valueOf ( )**
-	> 
-	> The **valueOf** method returns its **this** value. If the object is the result of calling the Object constructor with a host object (15.2.2.1), it is implementation-defined whether **valueOf** returns its **this** value or another value such as the host object originally passed to the constructor.
 - [ ] built-ins/Object/prototype/valueOf/S15.2.4.4_A15 — Checking Object.prototype.valueOf when called as a global function.
-	> #### **15.2.4.4 Object.prototype.valueOf ( )**
-	> 
-	> The **valueOf** method returns its **this** value. If the object is the result of calling the Object constructor with a host object (15.2.2.1), it is implementation-defined whether **valueOf** returns its **this** value or another value such as the host object originally passed to the constructor.
+> #### **15.2.4.4 Object.prototype.valueOf ( )**
+>
+> The **valueOf** method returns its **this** value.
+>
+> #### **9.9 ToObject**
+>
+> | Input Type | Result |
+> | Undefined | Throw a **TypeError** exception. |
+> | Null | Throw a **TypeError** exception. |
+>
+NuXJS result: `Object.prototype.valueOf.call(null)` returns the global object instead of throwing.
+Expected: calling `valueOf` with `null` or `undefined` must throw `TypeError`.
+```io
+> try { Object.prototype.valueOf.call(null); } catch (e) { print(e.name); }
+< TypeError
+-
+> try { Object.prototype.valueOf.call(undefined); } catch (e) { print(e.name); }
+< TypeError
+-
+```
+See `tests/unconforming/objectValueOfNullUndefinedThis.io` for a regression test.
 
 
 ### RegExp
