@@ -482,8 +482,16 @@ See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression te
        >
        > Returns an implementation defined string.
 
-       NuXJS result: `new Error("m").toString()` yields a different string than the Test262 expectation.
-       ES3 leaves the exact format implementation-defined, so this mismatch is not mandated by the specification.
+       NuXJS result: `{name:"", message:"foo", toString:Error.prototype.toString}.toString()` yields `": foo"`.
+       Expected: `"foo"` when `name` is empty and `message` is present (ES5 algorithm).
+       ES3 leaves the exact format implementation-defined, so this discrepancy is not mandated by the specification.
+
+       ```io
+       > var e = {name:"", message:"foo", toString:Error.prototype.toString}
+       > print(e.toString())
+       < foo
+       -
+       ```
 
 ### Function
 - [ ] built-ins/Function/prototype/S15.3.4_A5 — Checking if creating "new Function.prototype object" fails
