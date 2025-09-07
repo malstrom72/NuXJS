@@ -363,31 +363,61 @@ See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression te
 
 ### Date
 - [ ] built-ins/Date/S15.9.3.1_A6_T1 — 2 arguments, (year, month)
-	> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
-	> 
-	> When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
-	> 
-	> The [[Prototype]] property of the newly constructed object is set to the original Date prototype object, the one that is the initial value of **Date.prototype** (15.9.4.1).
-	> 
-	> The [[Class]] property of the newly constructed object is set to **"Date"**.
-	> 
-	> The [[Value]] property of the newly constructed object is set as follows:
-	> 
-	> - 1. Call ToNumber(*year*).
-	> - 2. Call ToNumber(*month*).
+        > ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
+        >
+        > When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
+        >
+        > The [[Prototype]] property of the newly constructed object is set to the original Date prototype object, the one that is the initial value of **Date.prototype** (15.9.4.1).
+        >
+        > The [[Class]] property of the newly constructed object is set to **"Date"**.
+        >
+        > The [[Value]] property of the newly constructed object is set as follows:
+        >
+        > - 1. Call ToNumber(*year*).
+        > - 2. Call ToNumber(*month*).
+        > - 3. If *date* is supplied use ToNumber(*date*); else use **1**.
+        > - 4. If *hours* is supplied use ToNumber(*hours*); else use **0**.
+        > - 5. If *minutes* is supplied use ToNumber(*minutes*); else use **0**.
+        > - 6. If *seconds* is supplied use ToNumber(*seconds*); else use **0**.
+        > - 7. If *ms* is supplied use ToNumber(*ms*); else use **0**.
+
+        NuXJS result: `new Date(1970, undefined)` yields `0` instead of `NaN`.
+        Expected: explicitly passing `undefined` for *month* should produce `NaN` because step 2 applies `ToNumber(undefined)`.
+
+        ```io
+        > print(isNaN(new Date(1970, undefined)))
+        < true
+        -
+        ```
+        See `tests/unconforming/dateYearMonthUndefined.io` for a regression test.
 - [ ] built-ins/Date/S15.9.3.1_A6_T2 — 3 arguments, (year, month, date)
-	> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
-	> 
-	> When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
-	> 
-	> The [[Prototype]] property of the newly constructed object is set to the original Date prototype object, the one that is the initial value of **Date.prototype** (15.9.4.1).
-	> 
-	> The [[Class]] property of the newly constructed object is set to **"Date"**.
-	> 
-	> The [[Value]] property of the newly constructed object is set as follows:
-	> 
-	> - 1. Call ToNumber(*year*).
-	> - 2. Call ToNumber(*month*).
+        > ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
+        >
+        > When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
+        >
+        > The [[Prototype]] property of the newly constructed object is set to the original Date prototype object, the one that is the initial value of **Date.prototype** (15.9.4.1).
+        >
+        > The [[Class]] property of the newly constructed object is set to **"Date"**.
+        >
+        > The [[Value]] property of the newly constructed object is set as follows:
+        >
+        > - 1. Call ToNumber(*year*).
+        > - 2. Call ToNumber(*month*).
+        > - 3. If *date* is supplied use ToNumber(*date*); else use **1**.
+        > - 4. If *hours* is supplied use ToNumber(*hours*); else use **0**.
+        > - 5. If *minutes* is supplied use ToNumber(*minutes*); else use **0**.
+        > - 6. If *seconds* is supplied use ToNumber(*seconds*); else use **0**.
+        > - 7. If *ms* is supplied use ToNumber(*ms*); else use **0**.
+
+        NuXJS result: `new Date(1970,0,undefined)` returns a valid date instead of `NaN`.
+        Expected: providing `undefined` for *date* should invoke `ToNumber(undefined)` and yield `NaN`.
+
+        ```io
+        > print(isNaN(new Date(1970, 0, undefined)))
+        < true
+        -
+        ```
+        See `tests/unconforming/dateYearMonthDateUndefined.io` for a regression test.
 - [ ] built-ins/Date/S15.9.3.1_A6_T3 — 4 arguments, (year, month, date, hours)
 	> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
 	> 
