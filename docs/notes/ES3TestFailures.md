@@ -1368,29 +1368,45 @@ Expected: `"𝔊"`.
 ```
 See `tests/unconforming/toLowerCaseSupplementaryPlane.io` for a regression test.
 - [ ] built-ins/String/prototype/toUpperCase/special_casing — missing special Unicode uppercase mappings
-	> #### **15.5.4.18 String.prototype.toUpperCase ( )**
-	> 
-	> This function behaves in exactly the same way as **String.prototype.toLowerCase**, except that characters are mapped to their *uppercase* equivalents as specified in the Unicode Character Database.
-	> 
-	> #### *NOTE 1*
-	> 
-	> *Because both* **toUpperCase** *and* **toLowerCase** *have context-sensitive behaviour, the functions are not symmetrical. In other words,* **s.toUpperCase().toLowerCase()** *is not necessarily equal to* **s.toLowerCase()***.*
-	> 
-	> #### *NOTE 2*
-	> 
-	> *The* **toUpperCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
+        > #### **15.5.4.18 String.prototype.toUpperCase ( )**
+        >
+        > This function behaves in exactly the same way as **String.prototype.toLowerCase**, except that characters are mapped to their *uppercase* equivalents as specified in the Unicode Character Database.
+        >
+        > #### *NOTE 1*
+        >
+        > *Because both* **toUpperCase** *and* **toLowerCase** *have context-sensitive behaviour, the functions are not symmetrical. In other words,* **s.toUpperCase().toLowerCase()** *is not necessarily equal to* **s.toLowerCase()***.*
+        >
+        > #### *NOTE 2*
+        >
+        > *The* **toUpperCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
+NuXJS result: `print("\u03C2".toUpperCase())` outputs `"S"`.
+Expected: `"Σ"`.
+```io
+> print("\u03C2".toUpperCase())
+< Σ
+-
+```
+See `tests/unconforming/toUpperCaseSpecialCasing.io` for a regression test.
 - [ ] built-ins/String/prototype/toUpperCase/supplementary_plane — fails to iterate over supplementary-plane code points
-	> #### **15.5.4.18 String.prototype.toUpperCase ( )**
-	> 
-	> This function behaves in exactly the same way as **String.prototype.toLowerCase**, except that characters are mapped to their *uppercase* equivalents as specified in the Unicode Character Database.
-	> 
-	> #### *NOTE 1*
-	> 
-	> *Because both* **toUpperCase** *and* **toLowerCase** *have context-sensitive behaviour, the functions are not symmetrical. In other words,* **s.toUpperCase().toLowerCase()** *is not necessarily equal to* **s.toLowerCase()***.*
-	> 
-	> #### *NOTE 2*
-	> 
-	> *The* **toUpperCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
+        > #### **15.5.4.18 String.prototype.toUpperCase ( )**
+        >
+        > This function behaves in exactly the same way as **String.prototype.toLowerCase**, except that characters are mapped to their *uppercase* equivalents as specified in the Unicode Character Database.
+        >
+        > #### *NOTE 1*
+        >
+        > *Because both* **toUpperCase** *and* **toLowerCase** *have context-sensitive behaviour, the functions are not symmetrical. In other words,* **s.toUpperCase().toLowerCase()** *is not necessarily equal to* **s.toLowerCase()***.*
+        >
+        > #### *NOTE 2*
+        >
+        > *The* **toUpperCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
+NuXJS result: `print("\uD835\uDD0A".toUpperCase())` collapses the surrogate pair to `"G"`.
+Expected: `"𝔊"`.
+```io
+> print("\uD835\uDD0A".toUpperCase())
+< 𝔊
+-
+```
+See `tests/unconforming/toUpperCaseSupplementaryPlane.io` for a regression test.
 ### parseFloat
 - [ ] built-ins/parseFloat/S15.1.2.3_A2_T10 — "StrWhiteSpaceChar :: USP"
 	> ## **15.1.2.3 parseFloat (string)**
