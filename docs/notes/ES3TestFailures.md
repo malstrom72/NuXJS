@@ -587,19 +587,13 @@ See `tests/unconforming/datePrototypeSetFullYearInvalidThis.io` for a regression
 	   Expected: absent a `message` argument, the instance should inherit the empty string from `Error.prototype` and report `hasOwnProperty("message") === false`.
 
 	   ```io
-	   > var e = new Error()
-	   > print(e.hasOwnProperty("message"))
-	   < false
-	   -
-	   ```
+           > var e = new Error()
+           > print(e.hasOwnProperty("message"))
+           < false
+           -
+           ```
+            See `tests/unconforming/errorConstructorUndefinedMessage.io` for a regression test.
 
-	   See `tests/unconforming/errorConstructorUndefinedMessage.io` for a regression test.
-- [ ] built-ins/Error/prototype/S15.11.4_A2 — Getting the value of the internal [[Class]] property using Error.prototype.toString() function
-		> ## **15.11.4 Properties of the Error Prototype Object**
-		>
-	> The Error prototype object is itself an Error object (its [[Class]] is **"Error"**).
-	> 
-	> The value of the internal [[Prototype]] property of the Error prototype object is the Object prototype object (15.2.3.1).
 - [ ] built-ins/Error/prototype/name/15.11.4.2-1 — Error.prototype.name is not enumerable.
 	   > #### **15.11.4.2 Error.prototype.name**
 	   >
@@ -613,27 +607,12 @@ See `tests/unconforming/datePrototypeSetFullYearInvalidThis.io` for a regression
 	   ```io
 	   > var e = new Error("msg")
 	   > var seen = false
-	   > for (var p in e) if (p === "name") seen = true
-	   > print(seen)
-	   < false
-	   -
-	   ```
-	   See `tests/unconforming/errorPrototypeNameEnumerable.io` for a regression test.
-- [ ] built-ins/Error/prototype/toString/15.11.4.4-8-1 — Error.prototype.toString return the value of 'msg' when 'name' is empty string and 'msg' isn't undefined
-	   > #### **15.11.4.4 Error.prototype.toString ( )**
-	   >
-	   > Returns an implementation defined string.
-
-	   NuXJS result: `{name:"", message:"foo", toString:Error.prototype.toString}.toString()` yields `": foo"`.
-	   Expected: `"foo"` when `name` is empty and `message` is present (ES5 algorithm).
-	   ES3 leaves the exact format implementation-defined, so this discrepancy is not mandated by the specification.
-
-	   ```io
-	   > var e = {name:"", message:"foo", toString:Error.prototype.toString}
-	   > print(e.toString())
-	   < foo
-	   -
-	   ```
+           > for (var p in e) if (p === "name") seen = true
+           > print(seen)
+           < false
+           -
+           ```
+            See `tests/unconforming/errorPrototypeNameEnumerable.io` for a regression test.
 
 ### Function
 - [ ] built-ins/Function/prototype/S15.3.4_A5 — Checking if creating "new Function.prototype object" fails
@@ -645,7 +624,18 @@ See `tests/unconforming/datePrototypeSetFullYearInvalidThis.io` for a regression
 	> 
 	> It is a function with an "empty body"; if it is invoked, it merely returns **undefined**.
 	> 
-	> The Function prototype object does not have a **valueOf** property of its own; however, it inherits the **valueOf** property from the Object prototype Object.
+        > #### **15.3**
+        >
+        > None of the built-in functions described in this section shall implement the internal [[Construct]] method unless otherwise specified in the description of a particular function.
+
+        NuXJS result: `new Function.prototype()` creates an object instead of throwing.
+        Expected: since `Function.prototype` lacks a [[Construct]] method, invoking it with `new` must throw `TypeError`.
+        ```io
+        > try { new Function.prototype(); } catch (e) { print(e.name); }
+        < TypeError
+        -
+        ```
+        See `tests/unconforming/functionPrototypeConstructible.io` for a regression test.
 
 - [x] built-ins/Math/pow/applying-the-exp-operator_A7 — |base| = 1 and exponent = +∞ ⇒ NaN (§15.8.2.13, regression/mathPowSpecialCases.io)
 - [x] built-ins/Math/pow/applying-the-exp-operator_A8 — |base| = 1 and exponent = −∞ ⇒ NaN (§15.8.2.13, regression/mathPowSpecialCases.io)
@@ -899,22 +889,9 @@ See `tests/unconforming/objectToLocaleStringNullThis.io` and `tests/unconforming
 	> ## *NOTE 2*
 	> 
 	> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
-- [ ] built-ins/Object/prototype/toLocaleString/S15.2.4.3_A13 — Let O be the result of calling ToObject passing the this value as the argument.
 	> ## **15.2.4.3 Object.prototype.toLocaleString ( )**
 	> 
-	> This function returns the result of calling **toString()**.
-	> 
-	> ## *NOTE 1*
-	> 
-	> *This function is provided to give all Objects a generic* **toLocaleString** *interface, even though not all may use it. Currently,* **Array***,* **Number***, and* **Date** *provide their own locale-sensitive* **toLocaleString** *methods.*
-	> 
-	> ## *NOTE 2*
-	> 
-	> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
-- [ ] built-ins/Object/prototype/toString/15.2.4.2-1-1 — Object.prototype.toString - '[object Undefined]' will be returned when 'this' value is undefined
-- [ ] built-ins/Object/prototype/toString/15.2.4.2-1-2 — Object.prototype.toString - '[object Undefined]' will be returned when 'this' value is undefined
-- [ ] built-ins/Object/prototype/toString/15.2.4.2-2-1 — Object.prototype.toString - '[object Null]' will be returned when 'this' value is null
-- [ ] built-ins/Object/prototype/toString/15.2.4.2-2-2 — Object.prototype.toString - '[object Null]' will be returned when 'this' value is null
+- [ ] built-ins/Object/prototype/toString/null_undefined — should throw on `null` or `undefined`
 > #### **15.2.4.2 Object.prototype.toString ( )**
 >
 > When the **toString** method is called, the following steps are taken:
@@ -938,10 +915,7 @@ Expected: both invocations must throw `TypeError`.
 -
 ```
 See `tests/unconforming/objectToStringNullUndefinedThis.io` for a regression test.
-- [ ] built-ins/Object/prototype/valueOf/S15.2.4.4_A12 — Checking Object.prototype.valueOf invoked by the 'call' property.
-- [ ] built-ins/Object/prototype/valueOf/S15.2.4.4_A13 — Checking Object.prototype.valueOf invoked by the 'call' property.
-- [ ] built-ins/Object/prototype/valueOf/S15.2.4.4_A14 — Checking Object.prototype.valueOf invoked by the 'call' property.
-- [ ] built-ins/Object/prototype/valueOf/S15.2.4.4_A15 — Checking Object.prototype.valueOf when called as a global function.
+- [ ] built-ins/Object/prototype/valueOf/null_undefined — should throw on non-objects
 > #### **15.2.4.4 Object.prototype.valueOf ( )**
 >
 > The **valueOf** method returns its **this** value.
@@ -952,13 +926,12 @@ See `tests/unconforming/objectToStringNullUndefinedThis.io` for a regression tes
 > | Undefined | Throw a **TypeError** exception. |
 > | Null | Throw a **TypeError** exception. |
 >
-NuXJS result: `Object.prototype.valueOf.call(null)` returns the global object instead of throwing.
-Expected: calling `valueOf` with `null` or `undefined` must throw `TypeError`.
+NuXJS result: `Object.prototype.valueOf.call(null)` and `Object.prototype.valueOf.call(undefined)` return primitive values instead of throwing.
+Expected: both calls must throw `TypeError` because `null` and `undefined` cannot be converted to objects.
 ```io
+> try { Object.prototype.valueOf.call(undefined); } catch (e) { print(e.name); }
 > try { Object.prototype.valueOf.call(null); } catch (e) { print(e.name); }
 < TypeError
--
-> try { Object.prototype.valueOf.call(undefined); } catch (e) { print(e.name); }
 < TypeError
 -
 ```
@@ -966,8 +939,6 @@ See `tests/unconforming/objectValueOfNullUndefinedThis.io` for a regression test
 
 
 ### RegExp
-- [ ] built-ins/RegExp/S15.10.2.12_A1_T1 — WhiteSpace
-	> #### **15.10.2.12 CharacterClassEscape**
 	> 
 	> The production *CharacterClassEscape* **:: d** evaluates by returning the ten-element set of characters containing the characters **0** through **9** inclusive.
 	> 
@@ -1013,7 +984,6 @@ Expected: `\u2000` is classified as *WhiteSpace*, so `\s` should match and `\S` 
 -
 ```
 See `tests/unconforming/regExpWhiteSpace2000.io` for a regression test.
-- [ ] built-ins/RegExp/S15.10.2.8_A3_T15 — "see bug http:bugzilla.mozilla.org/show_bug.cgi?id=119909" — RangeError: Internal compiler limitations reached. Reduce code complexity.
 	> #### **15.10.2.8 Atom**
 	> 
 	> The production *Atom* **::** *PatternCharacter* evaluates as follows:
@@ -1027,6 +997,7 @@ See `tests/unconforming/regExpWhiteSpace2000.io` for a regression test.
 	> - 1. Let *A* be the set of all characters except the four line terminator characters <LF>, <CR>, <LS>, or <PS>.
 	> - 2. Call *CharacterSetMatcher*(*A*, **false**) and return its Matcher result.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T10 — String is 1.01 and RegExp is /1|12/
+See `tests/unconforming/regExpExecNumberPrimitive.io` for a regression test.
 	> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -1090,6 +1061,7 @@ Expected: the string "3.141592653589793" should match `".14"` at index `1`.
 ```
 See `tests/unconforming/regExpExecToStringPi.io` for a regression test.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T13 — String is true and RegExp is /t[a-b|q-s]/
+See `tests/unconforming/regExpExecBooleanPrimitive.io` for a regression test.
 	> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -1165,6 +1137,50 @@ See `tests/unconforming/regExpExecToStringFalse.io` for a regression test.
         > - 4. Let *i* be the value of ToInteger(*lastIndex*).
         > - 5. If the **global** property is **false**, let *i* = 0.
         > - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+NuXJS result: `/t[a-b|q-s]/.exec(true)` returns `null`.
+Expected: `ToString(true)` is `"true"`, so the pattern should match `"tr"` at index `0`.
+```io
+> var r=/t[a-b|q-s]/.exec(true)
+> print(r[0])
+> print(r.index)
+< tr
+< 0
+-
+```
+See `tests/unconforming/regExpExecBooleanPrimitive.io` for a regression test.
+NuXJS result: `/1|12/.exec(1.01)` returns `null`.
+Expected: `ToString(1.01)` is `"1.01"`, so the pattern should match `"1"` at index `0`.
+```io
+> var r=/1|12/.exec(1.01)
+> print(r[0])
+> print(r.index)
+< 1
+< 0
+-
+```
+See `tests/unconforming/regExpExecNumberPrimitive.io` for a regression test.
+NuXJS result: `/t[a-b|q-s]/.exec(true)` returns `null`.
+Expected: `ToString(true)` is `"true"`, so the regexp should match `"tr"` at index `0`.
+```io
+> var r=/t[a-b|q-s]/.exec(true)
+> print(r[0])
+> print(r.index)
+< tr
+< 0
+-
+```
+See `tests/unconforming/regExpExecBooleanPrimitive.io` for a regression test.
+NuXJS result: `/1|12/.exec(1.01)` returns `null`.
+Expected: `ToString(1.01)` is `"1.01"`, so the pattern should match `"1"` at index `0`.
+```io
+> var r=/1|12/.exec(1.01)
+> print(r[0])
+> print(r.index)
+< 1
+< 0
+-
+```
+See `tests/unconforming/regExpExecNumberPrimitive.io` for a regression test.
         NuXJS result: `/ll|l/.exec(null)` returns `null`.
         Expected: coercing `null` to "null" should match `"ll"` at index `2`.
 
@@ -1249,9 +1265,28 @@ See `tests/unconforming/regExpExecToStringFalse.io` for a regression test.
 	> - 1. Let *S* be the value of ToString(*string*).
 	> - 2. Let *length* be the length of *S*.
 	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-	> - 5. If the **global** property is **false**, let *i* = 0.
-	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+        > - 4. Let *i* be the value of ToInteger(*lastIndex*).
+        > - 5. If the **global** property is **false**, let *i* = 0.
+        > - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+NuXJS result: executing the nested capture pattern on `new String("123")` returns incorrect capture groups.
+Expected: `r[0]` should be `"123"` with captures `1`, `1`, `undefined`, `3`, `undefined`.
+```io
+> var r=/((1)|(12))((3)|(23))/.exec(new String("123"))
+> print(r[0])
+> print(r[1])
+> print(r[2])
+> print(r[3])
+> print(r[4])
+> print(r[5])
+< 123
+< 1
+< 1
+< undefined
+< 3
+< undefined
+-
+```
+See `tests/unconforming/regExpExecNestedCaptures.io` for a regression test.
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T20 — String is x and RegExp is /[a-f]d/, where x is undefined variable
 	> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
@@ -1373,8 +1408,19 @@ See `tests/unconforming/regExpExecToStringObject.io` for a regression test.
 	> - 2. Let *length* be the length of *S*.
 	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
 	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-	> - 5. If the **global** property is **false**, let *i* = 0.
-	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+        > - 5. If the **global** property is **false**, let *i* = 0.
+        > - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
+NuXJS result: `/(aa|aabaac|ba|b|c)*/.exec(obj)` where `obj` defines both `valueOf` and `toString` does not consult `valueOf` first.
+Expected: `ToString` must invoke `valueOf` before `toString`, yielding a match for `"aabaac"` at index `0`.
+```io
+> var r=/(aa|aabaac|ba|b|c)*/.exec({toString:function(){return {};}, valueOf:function(){return "aabaac";}})
+> print(r[0])
+> print(r.index)
+< aabaac
+< 0
+-
+```
+See `tests/unconforming/regExpExecValueOfObject.io` for a regression test.
 
 ### String
 - [ ] built-ins/String/prototype/indexOf/S15.5.4.7_A1_T11 — calling `indexOf` with Date object `this` yields wrong index
@@ -1412,8 +1458,28 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
 	   -
 	   ```
 	   See `tests/unconforming/stringReplaceUndefinedThis.io` for a regression test.
-- [ ] built-ins/String/prototype/replace/S15.5.4.11_A1_T11 — replacing with objects whose `toString` throws
-- [ ] built-ins/String/prototype/replace/S15.5.4.11_A1_T12 — replacing with object whose `valueOf` throws
+ - [ ] built-ins/String/prototype/replace/S15.5.4.11_A1_T11 — replacing with objects whose `toString` throws
+        See `tests/unconforming/stringReplaceThrowingToString.io` for a regression test.
+ - [ ] built-ins/String/prototype/replace/S15.5.4.11_A1_T12 — replacing with object whose `valueOf` throws
+        > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
+        >
+        > Otherwise, let *newstring* denote the result of converting *replaceValue* to a string.
+        >
+        NuXJS result: replacing with an object whose `toString` throws does not propagate the exception.
+        Expected: the replacement value must be converted to a string; an error from `toString` should be thrown.
+        ```io
+        > try { "a".replace("a", { toString: function(){ throw new Error("X"); } }); } catch (e) { print(e.message); }
+        < X
+        -
+        ```
+        NuXJS result: if the replacement object's `valueOf` throws, the exception is swallowed.
+        Expected: `ToString` first invokes `valueOf`; an error from `valueOf` must propagate.
+        ```io
+        > try { "a".replace("a", { valueOf: function(){ throw new Error("Y"); } }); } catch (e) { print(e.message); }
+        < Y
+        -
+        ```
+        See `tests/unconforming/stringReplaceThrowingValueOf.io` for a regression test.
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T1 — `$11` sequences ignored in computed `replaceValue`
 	   > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
 	   >
