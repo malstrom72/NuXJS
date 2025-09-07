@@ -484,24 +484,48 @@ See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression te
 
 ### Error
 - [ ] built-ins/Error/S15.11.1.1_A1_T1 — Checking message property of different error objects
-	> #### **15.11.1.1 Error (message)**
-	> 
-	> The [[Prototype]] property of the newly constructed object is set to the original Error prototype object, the one that is the initial value of **Error.prototype** (15.11.3.1).
-	> 
-	> The [[Class]] property of the newly constructed object is set to **"Error"**.
-	> 
-	> If the argument *message* is not **undefined**, the **message** property of the newly constructed object is set to ToString(*message*).
+		> #### **15.11.1.1 Error (message)**
+		>
+		> The [[Prototype]] property of the newly constructed object is set to the original Error prototype object, the one that is the initial value of **Error.prototype** (15.11.3.1).
+		>
+		> The [[Class]] property of the newly constructed object is set to **"Error"**.
+		>
+		> If the argument *message* is not **undefined**, the **message** property of the newly constructed object is set to ToString(*message*).
+
+	   NuXJS result: calling `Error()` without an argument defines an own `message` property set to the empty string.
+	   Expected: when the `message` parameter is `undefined`, the constructor must leave `message` unset so that `hasOwnProperty("message")` is `false`.
+
+	   ```io
+	   > var e = Error()
+	   > print(e.hasOwnProperty("message"))
+	   < false
+	   -
+	   ```
+
+	   See `tests/unconforming/errorFunctionUndefinedMessage.io` for a regression test.
 - [ ] built-ins/Error/S15.11.2.1_A1_T1 — Checking message property of different error objects
-	> ## **15.11.2.1 new Error (message)**
-	> 
-	> The [[Prototype]] property of the newly constructed object is set to the original Error prototype object, the one that is the initial value of **Error.prototype** (15.11.3.1).
-	> 
-	> The [[Class]] property of the newly constructed Error object is set to **"Error"**.
-	> 
-	> If the argument *message* is not **undefined**, the **message** property of the newly constructed object is set to ToString(*message*).
+		> ## **15.11.2.1 new Error (message)**
+		>
+		> The [[Prototype]] property of the newly constructed object is set to the original Error prototype object, the one that is the initial value of **Error.prototype** (15.11.3.1).
+		>
+		> The [[Class]] property of the newly constructed Error object is set to **"Error"**.
+		>
+		> If the argument *message* is not **undefined**, the **message** property of the newly constructed object is set to ToString(*message*).
+
+	   NuXJS result: `new Error()` also creates an own `message` property with value `""` even when no argument is supplied.
+	   Expected: absent a `message` argument, the instance should inherit the empty string from `Error.prototype` and report `hasOwnProperty("message") === false`.
+
+	   ```io
+	   > var e = new Error()
+	   > print(e.hasOwnProperty("message"))
+	   < false
+	   -
+	   ```
+
+	   See `tests/unconforming/errorConstructorUndefinedMessage.io` for a regression test.
 - [ ] built-ins/Error/prototype/S15.11.4_A2 — Getting the value of the internal [[Class]] property using Error.prototype.toString() function
-	> ## **15.11.4 Properties of the Error Prototype Object**
-	> 
+		> ## **15.11.4 Properties of the Error Prototype Object**
+		>
 	> The Error prototype object is itself an Error object (its [[Class]] is **"Error"**).
 	> 
 	> The value of the internal [[Prototype]] property of the Error prototype object is the Object prototype object (15.2.3.1).
