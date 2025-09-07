@@ -1130,7 +1130,21 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
        See `tests/unconforming/stringReplaceUndefinedThis.io` for a regression test.
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A1_T11 — replacing with objects whose `toString` throws
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A1_T12 — replacing with object whose `valueOf` throws
-- [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T1 — `replaceValue` is "$11" + 15
+- [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T1 — `$11` sequences ignored in computed `replaceValue`
+       > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
+       >
+       > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.  The sequence `"$"` followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
+       >
+       NuXJS result: `var r = "$11" + 15; "xab".replace(/(x)/, r)` leaves the `$11` literal and returns `"$1115ab"`.
+       Expected: `$11` should expand to capture `1` followed by `"1"`, producing `"x115ab"`.
+
+       ```io
+       > var r = "$11" + 15
+       > print("xab".replace(/(x)/, r))
+       < x115ab
+       -
+       ```
+       See `tests/unconforming/stringReplace11Concat.io` for a regression test.
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T2 — `replaceValue` is "$11" + "15"
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T3 — `replaceValue` is "$11" + "A15"
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A5_T1 — regex `/^(a+)\1*,\1+$/` with backreference
