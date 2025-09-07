@@ -1157,8 +1157,46 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
        ```
        See `tests/unconforming/stringReplace11Concat.io` for a regression test.
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T2 — `replaceValue` is "$11" + "15"
+       > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
+       >
+       > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.  The sequence "\$" followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
+       >
+       NuXJS result: `var r = "$11" + "15"; "xab".replace(/(x)/, r)` yields `$1115ab`.
+       Expected: `$11` should expand to capture `1` followed by "1", producing "x115ab".
+       ```io
+       > var r = "$11" + "15"
+       > print("xab".replace(/(x)/, r))
+       < x115ab
+       -
+       ```
+       See `tests/unconforming/stringReplace11Plus15.io` for a regression test.
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T3 — `replaceValue` is "$11" + "A15"
+       > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
+       >
+       > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.  The sequence "\$" followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
+       >
+       NuXJS result: `var r = "$11" + "A15"; "xab".replace(/(x)/, r)` returns `$11A15ab`.
+       Expected: "x1A15ab" after expanding `$11` to capture `1` plus "1".
+       ```io
+       > var r = "$11" + "A15"
+       > print("xab".replace(/(x)/, r))
+       < x1A15ab
+       -
+       ```
+       See `tests/unconforming/stringReplace11PlusA15.io` for a regression test.
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A5_T1 — regex `/^(a+)\1*,\1+$/` with backreference
+       > #### **15.10.2.9 AtomEscape**
+       >
+       > An escape sequence of the form "\\" followed by a nonzero decimal number *n* matches the result of the *n*th set of capturing parentheses.
+       >
+       NuXJS result: "aa,a".replace(/^(a+)\1*,\1+$/, "$1") leaves the string unchanged.
+       Expected: backreference handling should collapse the match to "a".
+       ```io
+       > print("aa,a".replace(/^(a+)\1*,\1+$/, "$1"))
+       < a
+       -
+       ```
+       See `tests/unconforming/stringReplaceBackreference.io` for a regression test.
 - [ ] built-ins/String/prototype/toLocaleLowerCase/special_casing_conditional — missing conditional Unicode mappings
         > ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
         >
