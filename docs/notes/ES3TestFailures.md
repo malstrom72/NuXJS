@@ -380,7 +380,31 @@ See `tests/unconforming/cantAssignObjectToArrayLength.io` for a regression test.
 	> 
 	> The value of the internal [[Prototype]] property of the Error prototype object is the Object prototype object (15.2.3.1).
 - [ ] built-ins/Error/prototype/name/15.11.4.2-1 — Error.prototype.name is not enumerable.
+       > #### **15.11.4.2 Error.prototype.name**
+       >
+       > The initial value of **Error.prototype.name** is "**Error**".
+       >
+       > In every case, the **length** property of a built-in Function object described in this section has the attributes { ReadOnly, DontDelete, DontEnum }. Every other property described in this section has the attribute { DontEnum } (and no others) unless otherwise specified.
+
+       NuXJS result: iterating an `Error` instance reveals the `name` property.
+       Expected: `name` should not be enumerated.
+
+       ```io
+       > var e = new Error("msg")
+       > var seen = false
+       > for (var p in e) if (p === "name") seen = true
+       > print(seen)
+       < false
+       -
+       ```
+       See `tests/unconforming/errorPrototypeNameEnumerable.io` for a regression test.
 - [ ] built-ins/Error/prototype/toString/15.11.4.4-8-1 — Error.prototype.toString return the value of 'msg' when 'name' is empty string and 'msg' isn't undefined
+       > #### **15.11.4.4 Error.prototype.toString ( )**
+       >
+       > Returns an implementation defined string.
+
+       NuXJS result: `new Error("m").toString()` yields a different string than the Test262 expectation.
+       ES3 leaves the exact format implementation-defined, so this mismatch is not mandated by the specification.
 
 ### Function
 - [ ] built-ins/Function/prototype/S15.3.4_A5 — Checking if creating "new Function.prototype object" fails
@@ -848,6 +872,19 @@ See `tests/unconforming/regExpWhiteSpace.io` for a regression test.
 	> - 5. Compute min(max(Result(3), 0), Result(4)).
 	> - 6. Compute the number of characters in the string that is Result(2).
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A12 — `replace` should treat undefined `this` correctly
+       > #### **15.5.4.11 String.prototype.replace (searchValue, replaceValue)**
+       >
+       > Let *string* denote the result of converting the **this** value to a string.
+       >
+       NuXJS result: `String.prototype.replace.call(undefined, "d", "D")` produces `[object Object]`.
+       Expected: the **this** value `undefined` should convert to the string "undefined", yielding `"unDefineD"` after replacement.
+
+       ```io
+       > print(String.prototype.replace.call(undefined, "d", "D"))
+       < unDefineD
+       -
+       ```
+       See `tests/unconforming/stringReplaceUndefinedThis.io` for a regression test.
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A1_T11 — replacing with objects whose `toString` throws
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A1_T12 — replacing with object whose `valueOf` throws
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T1 — `replaceValue` is "$11" + 15
