@@ -428,17 +428,28 @@ See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression te
 	> - 1. Call ToNumber(*year*).
 	> - 2. Call ToNumber(*month*).
 - [ ] built-ins/Date/TimeClip_negative_zero — TimeClip converts negative zero to positive zero
-	> ## **15.9.1.14 TimeClip (time)**
-	> 
-	> The operator TimeClip calculates a number of milliseconds from its argument, which must be an ECMAScript number value. This operator functions as follows:
-	> 
-	> - 1. If *time* is not finite, return **NaN**.
-	> - 2. If abs(Result(1)) > **8.64 x 10<sup>15</sup>**, return **NaN**.
-	> - 3. Return an implementation-dependent choice of either ToInteger(Result(2)) or ToInteger(Result(2)) + (**+0**). (Adding a positive zero converts −**0** to **+0**.)
-	> 
-	> ## *NOTE*
-	> 
-	> *The point of step 3 is that an implementation is permitted a choice of internal representations of time values, for example as a 64-bit signed integer or as a 64-bit floating-point value. Depending on the implementation, this internal representation may or may not distinguish* <sup>−</sup>*0 and +0.*
+        > ## **15.9.1.14 TimeClip (time)**
+        >
+        > The operator TimeClip calculates a number of milliseconds from its argument, which must be an ECMAScript number value. This operator functions as follows:
+        >
+        > - 1. If *time* is not finite, return **NaN**.
+        > - 2. If abs(Result(1)) > **8.64 x 10<sup>15</sup>**, return **NaN**.
+        > - 3. Return an implementation-dependent choice of either ToInteger(Result(2)) or ToInteger(Result(2)) + (**+0**). (Adding a positive zero converts −**0** to **+0**.)
+        >
+        > ## *NOTE*
+        >
+        > *The point of step 3 is that an implementation is permitted a choice of internal representations of time values, for example as a 64-bit signed integer or as a 64-bit floating-point value. Depending on the implementation, this internal representation may or may not distinguish* <sup>−</sup>*0 and +0.*
+       
+       NuXJS result: `new Date(-0).getTime()` preserves −0, so `1/new Date(-0).getTime()` yields `-Infinity`.
+       Expected: TimeClip must convert −0 to +0, resulting in `Infinity`.
+
+       ```io
+       > print(1/new Date(-0).getTime())
+       < Infinity
+       -
+       ```
+
+       See `tests/unconforming/dateTimeClipNegativeZero.io` for a regression test.
 - [ ] built-ins/Date/prototype/setFullYear/15.9.5.40_1 — Date.prototype.setFullYear - Date.prototype is itself not an instance of Date
 
 ### Error
