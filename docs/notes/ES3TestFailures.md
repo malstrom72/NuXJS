@@ -195,8 +195,22 @@ See `tests/unconforming/cantAssignObjectToArrayLength.io` for a regression test.
 	> - 4. Call the [[Put]] method of this object with arguments "**length**" and Result(2).
 	> - 5. Return **undefined**.
 	> - 6. Call ToString(Result(2)–1).
-	> - 7. Call the [[Get]] method of this object with argument Result(6).
-	> - 8. Call the [[Delete]] method of this object with argument Result(6).
+        > - 7. Call the [[Get]] method of this object with argument Result(6).
+        > - 8. Call the [[Delete]] method of this object with argument Result(6).
+NuXJS result: `obj.length = Infinity` followed by `obj.pop()` returns `undefined` but sets `obj.length` to `0`.
+Expected: `obj.pop()` should leave `length` at `9007199254740990` (2^53−2).
+```io
+> obj={}
+> obj.length=Number.POSITIVE_INFINITY
+> obj.pop=Array.prototype.pop
+> print(obj.pop())
+< undefined
+-
+> print(obj.length)
+< 9007199254740990
+-
+```
+See `tests/unconforming/arrayPopLengthInfinity.io` for a regression test.
 - [ ] built-ins/Array/prototype/pop/S15.4.4.6_A4_T2 — [[Prototype]] of Array instance is Array.prototype, [[Prototype] of Array.prototype is Object.prototype
 	> ## **15.4.4.6 Array.prototype.pop ( )**
 	> 
@@ -210,6 +224,20 @@ See `tests/unconforming/cantAssignObjectToArrayLength.io` for a regression test.
 	> - 6. Call ToString(Result(2)–1).
 	> - 7. Call the [[Get]] method of this object with argument Result(6).
 	> - 8. Call the [[Delete]] method of this object with argument Result(6).
+NuXJS result: borrowing `pop` for a plain object leaves index `1` intact, so the own property masks the inherited `-1`.
+Expected: `pop` should delete index `1`, revealing the prototype value.
+```io
+> Object.prototype[1]=-1
+> Object.prototype.pop=Array.prototype.pop
+> var x={0:0,1:1,length:2}
+> print(x.pop())
+< 1
+-
+> print(x[1])
+< -1
+-
+```
+See `tests/unconforming/arrayPopPrototypeDelete.io` for a regression test.
 - [ ] built-ins/Array/prototype/push/S15.4.4.7_A2_T2 — The arguments are appended to the end of the array, in	 the order in which they appear. The new length of the array is returned  as the result of the call
 	> ## **15.4.4.7 Array.prototype.push ( [ item1 [ , item2 [ , … ] ] ] )**
 	> 
@@ -221,10 +249,27 @@ See `tests/unconforming/cantAssignObjectToArrayLength.io` for a regression test.
 	> - 2. Let *n* be the result of calling ToUint32(Result(1)).
 	> - 3. Get the next argument in the argument list; if there are no more arguments, go to step 7.
 	> - 4. Call the [[Put]] method of this object with arguments ToString(*n*) and Result(3).
-	> - 5. Increase *n* by 1.
-	> - 6. Go to step 3.
+        > - 5. Increase *n* by 1.
+        > - 6. Go to step 3.
+NuXJS result: `obj.length = Infinity; obj.push(-4)` returns `1` and shrinks `length` to `1`.
+Expected: a `TypeError` and `length` remaining `Infinity`.
+```io
+> obj={}
+> obj.length=Number.POSITIVE_INFINITY
+> obj.push=Array.prototype.push
+> try{obj.push(-4)}catch(e){print(e.name)}
+< TypeError
+-
+> print(obj.length)
+< Infinity
+-
+> print(obj[9007199254740991])
+< undefined
+-
+```
+See `tests/unconforming/arrayPushLengthInfinity.io` for a regression test.
 - [ ] built-ins/Array/prototype/shift/S15.4.4.9_A3_T3 — length is arbitrarily
-	> ## **15.4.4.9 Array.prototype.shift ( )**
+        > ## **15.4.4.9 Array.prototype.shift ( )**
 	> 
 	> The first element of the array is removed from the array and returned.
 	> 
@@ -234,8 +279,30 @@ See `tests/unconforming/cantAssignObjectToArrayLength.io` for a regression test.
 	> - 4. Call the [[Put]] method of this object with arguments "**length**" and Result(2).
 	> - 5. Return **undefined**.
 	> - 6. Call the [[Get]] method of this object with argument **0**.
-	> - 7. Let *k* be 1.
-	> - 8. If *k* equals Result(2), go to step 18.
+        > - 7. Let *k* be 1.
+        > - 8. If *k* equals Result(2), go to step 18.
+NuXJS result: `obj.length = -4294967294; obj.shift()` returns `'x'` and sets `length` to `1`.
+Expected: the call should return `undefined`, leave `length` `0`, and keep elements unchanged.
+```io
+> obj={}
+> obj.shift=Array.prototype.shift
+> obj[0]='x'
+> obj[1]='y'
+> obj.length=-4294967294
+> print(obj.shift())
+< undefined
+-
+> print(obj.length)
+< 0
+-
+> print(obj[0])
+< x
+-
+> print(obj[1])
+< y
+-
+```
+See `tests/unconforming/arrayShiftNegativeLength.io` for a regression test.
 - [ ] built-ins/Array/prototype/shift/S15.4.4.9_A4_T2 — [[Prototype]] of Array instance is Array.prototype, [[Prototype] of Array.prototype is Object.prototype
 	> ## **15.4.4.9 Array.prototype.shift ( )**
 	> 
@@ -260,8 +327,20 @@ See `tests/unconforming/cantAssignObjectToArrayLength.io` for a regression test.
 	> - 2. Call ToUint32(Result(1)).
 	> - 3. Let *separator* be the list-separator string appropriate for the host environment's current locale (this is derived in an implementation-defined way).
 	> 
-	> - 4. Call ToString(*separator*).
-	> - 5. If Result(2) is zero, return the empty string.
+        > - 4. Call ToString(*separator*).
+        > - 5. If Result(2) is zero, return the empty string.
+NuXJS result: element `toLocaleString` methods are never invoked, leaving counters untouched.
+Expected: each defined element's `toLocaleString` should run.
+```io
+> var n=0
+> var obj={toLocaleString:function(){n++;return 'obj'}}
+> var arr=[undefined,obj,null,obj,obj]
+> arr.toLocaleString()
+> print(n)
+< 3
+-
+```
+See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression test.
 - [ ] built-ins/Array/prototype/toLocaleString/S15.4.4.3_A3_T1 — "[[Prototype]] of Array instance is Array.prototype"
 	> #### **15.4.4.3 Array.prototype.toLocaleString ( )**
 	> 
