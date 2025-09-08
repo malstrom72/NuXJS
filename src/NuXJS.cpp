@@ -1913,12 +1913,12 @@ Value JSFunction::invoke(Runtime&, Processor& processor, UInt32 argc, const Valu
 
 void JSFunction::constructCompleteObject(Runtime& rt) const {
 #if (NUXJS_ES5)
-	createPrototypeObject(rt, completeObject, true);
+createPrototypeObject(rt, completeObject, true);
 #else
-	createPrototypeObject(rt, completeObject, false);
+createPrototypeObject(rt, completeObject, false);
 #endif
-	completeObject->setOwnProperty(rt, &NAME_STRING, code->getName(), READ_ONLY_FLAG | DONT_ENUM_FLAG);
-	completeObject->setOwnProperty(rt, &LENGTH_STRING, code->getArgumentsCount(), HIDDEN_CONST_FLAGS);
+completeObject->setOwnProperty(rt, &NAME_STRING, code->getName(), READ_ONLY_FLAG | DONT_ENUM_FLAG);
+completeObject->setOwnProperty(rt, &LENGTH_STRING, code->getArgumentsCount(), READ_ONLY_FLAG | DONT_ENUM_FLAG);
 }
 
 /* --- Error --- */
@@ -3439,7 +3439,8 @@ static bool lineTerminatorInRange(const Char* b, const Char* e) {
 void Compiler::white() {
 	while (!eof()) {
 		switch (*p) {
-			case ' ': case '\f': case '\n': case '\r': case '\t': case '\v': case 0xA0: case 0x2028: case 0x2029: ++p; break;
+case ' ': case '\f': case '\n': case '\r': case '\t': case '\v':
+case 0xA0: case 0x2028: case 0x2029: case 0xFEFF: case 0x200C: case 0x200D: ++p; break;
 			case '/':	if (p + 1 != e && p[1] == '/') {
 							p = std::find_first_of(p += 2, e, LINE_TERMINATORS, LINE_TERMINATORS + 4);
 							break;
@@ -3540,16 +3541,25 @@ const String* Compiler::identifier(bool required, bool allowKeywords) {
 }
 
 static UInt32 unescapedMaxLength(const Char* p, const Char* e) {
-	assert(p != e && (*p == '"' || *p == '\''));
-	Char endChar = *p;
-	UInt32 l = 0;
-	while (++p != e && *p != endChar && !isLineTerminator(*p)) {
-		if (*p == '\\' && p + 1 != e) {
-			++p;
-		}
-		++l;
-	}
-	return l;
+assert(p != e && (*p == '"' || *p == '\''));
+Char endChar = *p;
+UInt32 l = 0;
+while (++p != e && *p != endChar) {
+if (isLineTerminator(*p)) {
+break;
+}
+if (*p == '\\' && p + 1 != e) {
+++p;
+if (isLineTerminator(*p)) {
+if (*p == '\r' && p + 1 != e && p[1] == '\n') {
+++p;
+}
+continue;
+}
+}
+++l;
+}
+return l;
 }
 
 static const Char ESCAPE_CHARS[] = { '\\', '\"', '\'', 'b',	 'f',  'n',	 'r',  't',	 'v', '0' };
@@ -3562,31 +3572,50 @@ Char* Compiler::unescape(Char* buffer, const Char* e) {
 	++p;
 	const Char* b = p;
 	Char* d = buffer;
-	while (!eof() && *p != endChar && !isLineTerminator(*p)) {
-		if (*p == '\\' && p + 1 != e) {
-			UInt32 l = 0;
-			d = std::copy(b, p, d);
-			++p;
-			const Char* f = std::find(ESCAPE_CHARS, ESCAPE_CHARS + ESCAPE_CODE_COUNT, *p);
-			if (f != ESCAPE_CHARS + ESCAPE_CODE_COUNT) {
-				l = ESCAPE_CODES[f - ESCAPE_CHARS];
-			} else if (*p == 'x' || *p == 'u') {
-				const int n = (*p == 'x' ? 2 : 4);
-				if (e - (p + 1) < n || parseHex(p + 1, p + 1 + n, l) != p + 1 + n) {
-					error(SYNTAX_ERROR, "Invalid escape sequence");
-				}
-				p += n;
-			} else if (isLineTerminator(*p)) {
-				error(SYNTAX_ERROR, "\\ continuation is not supported");
-			} else {
-				l = *p;
-			}
-			b = ++p;
-			*d++ = Char(l);
-		} else {
-			++p;
-		}
-	}
+while (!eof() && *p != endChar && !isLineTerminator(*p)) {
+if (*p == '\\' && p + 1 != e) {
+UInt32 l = 0;
+d = std::copy(b, p, d);
+++p;
+if (isLineTerminator(*p)) {
+if (*p == '\r' && p + 1 != e && p[1] == '\n') {
+p += 2;
+} else {
+++p;
+}
+b = p;
+continue;
+}
+const Char* f = std::find(ESCAPE_CHARS, ESCAPE_CHARS + ESCAPE_CODE_COUNT, *p);
+if (f != ESCAPE_CHARS + ESCAPE_CODE_COUNT) {
+#if (NUXJS_ES5)
+if (code->strict && *p == '0' && p + 1 != e && p[1] >= '0' && p[1] <= '9') {
+error(SYNTAX_ERROR, "Octal escape sequences are not allowed in strict code");
+}
+#endif
+l = ESCAPE_CODES[f - ESCAPE_CHARS];
+} else if (*p >= '0' && *p <= '9') {
+#if (NUXJS_ES5)
+if (code->strict) {
+error(SYNTAX_ERROR, "Octal escape sequences are not allowed in strict code");
+}
+#endif
+l = *p;
+} else if (*p == 'x' || *p == 'u') {
+const int n = (*p == 'x' ? 2 : 4);
+if (e - (p + 1) < n || parseHex(p + 1, p + 1 + n, l) != p + 1 + n) {
+error(SYNTAX_ERROR, "Invalid escape sequence");
+}
+p += n;
+} else {
+l = *p;
+}
+b = ++p;
+*d++ = Char(l);
+} else {
+++p;
+}
+}
 	if (eof() || *p != endChar) {
 		error(SYNTAX_ERROR, "Unterminated string");
 	}
@@ -3694,23 +3723,33 @@ Compiler::ExpressionResult Compiler::functionCall(Processor::Opcode opcode) {
 Value Compiler::stringOrNumberConstant() {
 	if (!eof()) {
 		switch (*p) {
-			case '0': {
-				if (p + 1 == e || (p[1] != '.' && !testUnicodeChar(p[1], IDENTIFIER_START_OFFSETS))) {
-					++p;
-					return 0;
-				} else if (p[1] == 'x' || p[1] == 'X') {
-					UInt32 u;
-					const Char* q = parseHex(p + 2, e, u);
-					if (q != p + 2) {
-						p = q;
-						return u;
-					}
-					break;
-				} else if (p[1] != '.' && p[1] != 'e' && p[1] != 'E') {
-					break;
-				}
-				/* fall through */
-			}
+case '0': {
+if (p + 1 == e || (p[1] != '.' && !testUnicodeChar(p[1], IDENTIFIER_START_OFFSETS))) {
+#if (NUXJS_ES5)
+if (code->strict && p + 1 != e && p[1] >= '0' && p[1] <= '9') {
+error(SYNTAX_ERROR, "Octal literals are not allowed in strict code");
+}
+#endif
+++p;
+return 0;
+} else if (p[1] == 'x' || p[1] == 'X') {
+UInt32 u;
+const Char* q = parseHex(p + 2, e, u);
+if (q != p + 2) {
+p = q;
+return u;
+}
+break;
+} else if (p[1] != '.' && p[1] != 'e' && p[1] != 'E') {
+#if (NUXJS_ES5)
+if (code->strict && p[1] >= '0' && p[1] <= '9') {
+error(SYNTAX_ERROR, "Octal literals are not allowed in strict code");
+}
+#endif
+break;
+}
+/* fall through */
+}
 			case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': case '.': {
 				double d;
 				const Char* q = parseDouble(p, e, d);
@@ -5120,10 +5159,10 @@ Value Runtime::FunctionPrototypeFunction::invoke(Runtime&, Processor&, UInt32, c
 Object* Runtime::FunctionPrototypeFunction::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
 
 void Runtime::FunctionPrototypeFunction::constructCompleteObject(Runtime& rt) const {
-	completeObject->setOwnProperty(rt, &NAME_STRING, &EMPTY_STRING, READ_ONLY_FLAG | DONT_ENUM_FLAG);
-	completeObject->setOwnProperty(rt, &LENGTH_STRING, Value(0.0), HIDDEN_CONST_FLAGS);
+completeObject->setOwnProperty(rt, &NAME_STRING, &EMPTY_STRING, READ_ONLY_FLAG | DONT_ENUM_FLAG);
+completeObject->setOwnProperty(rt, &LENGTH_STRING, Value(0.0), READ_ONLY_FLAG | DONT_ENUM_FLAG);
 #if (NUXJS_ES5)
-	Heap& heap = rt.getHeap();
+Heap& heap = rt.getHeap();
 	Function* thrower = new(heap) FunctorAdapter<NativeFunction>(heap.managed(), callerCalleeThrower);
 	Accessor* acc = new(heap) Accessor(heap.managed(), thrower, thrower);
 completeObject->setOwnProperty(rt, &CALLER_STRING, acc, DONT_ENUM_FLAG | ACCESSOR_FLAG);
@@ -5268,7 +5307,7 @@ void BoundFunction::constructCompleteObject(Runtime& rt) const {
 		l = v.toDouble() - boundArgc;
 		if (l < 0) l = 0;
 	}
-	completeObject->setOwnProperty(rt, &LENGTH_STRING, Value(l), HIDDEN_CONST_FLAGS);
+completeObject->setOwnProperty(rt, &LENGTH_STRING, Value(l), READ_ONLY_FLAG | DONT_ENUM_FLAG);
 }
 
 void BoundFunction::gcMarkReferences(Heap& heap) const {
@@ -5492,12 +5531,12 @@ static Value getOwnPropertyDescriptor(Runtime& rt, Processor&, UInt32 argc, cons
 }
 
 static Value preventExtensions(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-		Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
-		if (object != 0) {
-				object->preventExtensions();
-				return object;
+Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+if (object == 0) {
+ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Object.preventExtensions called on non-object");
 }
-		return UNDEFINED_VALUE;
+object->preventExtensions();
+return object;
 }
 
 static Value isExtensible(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
@@ -5539,60 +5578,64 @@ static Value getOwnPropertyNames(Runtime& rt, Processor&, UInt32 argc, const Val
 }
 
 static Value seal(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-		Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
-	if (object != 0) {
-	if (JSObject* o = object->toJSObject(rt)) {
-	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
-	b->flags |= DONT_DELETE_FLAG;
-	}
-	}
-	object->preventExtensions();
-	return object;
-	}
-	return UNDEFINED_VALUE;
-	}
+Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+if (object == 0) {
+ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Object.seal called on non-object");
+}
+        if (object != 0) {
+        if (JSObject* o = object->toJSObject(rt)) {
+        for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+        b->flags |= DONT_DELETE_FLAG;
+        }
+        }
+        object->preventExtensions();
+        return object;
+        }
+        return UNDEFINED_VALUE;
+        }
 
-	static Value freeze(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
-	if (object != 0) {
-	if (JSObject* o = object->toJSObject(rt)) {
-	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
-	b->flags |= DONT_DELETE_FLAG | READ_ONLY_FLAG;
-	}
-	}
-	object->preventExtensions();
-	return object;
-	}
-	return UNDEFINED_VALUE;
-	}
+        static Value freeze(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+        Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+        if (object == 0) {
+        ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Object.freeze called on non-object");
+        }
+        if (object != 0) {
+        if (JSObject* o = object->toJSObject(rt)) {
+        for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+        b->flags |= DONT_DELETE_FLAG | READ_ONLY_FLAG;
+        }
+        }
+        object->preventExtensions();
+        return object;
+        }
+        return UNDEFINED_VALUE;
+        }
 
-	static Value isSealed(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
-	if (object != 0 && !object->isExtensible()) {
-	if (JSObject* o = object->toJSObject(rt)) {
-	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
-	if ((b->flags & DONT_DELETE_FLAG) == 0) return false;
-	}
-	}
-	return true;
-	}
-	return false;
-	}
+        static Value isSealed(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+        Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+        if (object == 0) return true;
+        if (object->isExtensible()) return false;
+        if (JSObject* o = object->toJSObject(rt)) {
+        for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+        if ((b->flags & DONT_DELETE_FLAG) == 0) return false;
+        }
+        }
+        return true;
+        }
 
-	static Value isFrozen(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
-	if (object != 0 && !object->isExtensible()) {
-	if (JSObject* o = object->toJSObject(rt)) {
-	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
-	Flags f = b->flags;
-	if ((f & DONT_DELETE_FLAG) == 0) return false;
-	if ((f & ACCESSOR_FLAG) == 0 && (f & READ_ONLY_FLAG) == 0) return false;
-	}
-	}
-	return true;
-	}
-	return false;
-	}
+        static Value isFrozen(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+        Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+        if (object == 0) return true;
+        if (object->isExtensible()) return false;
+        if (JSObject* o = object->toJSObject(rt)) {
+        for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+        Flags f = b->flags;
+        if ((f & DONT_DELETE_FLAG) == 0) return false;
+        if ((f & ACCESSOR_FLAG) == 0 && (f & READ_ONLY_FLAG) == 0) return false;
+        }
+        }
+        return true;
+        }
 #endif
 
 static Value hasOwnProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {

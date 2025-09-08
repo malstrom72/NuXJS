@@ -4,7 +4,7 @@ This file is "included" with an eval at the end of stdlib.js if ES5 support is e
 
 @preserve: trim,trimLeft,trimRight,forEach,map,filter,reduce,reduceRight,every,some
 @preserve: get,set
-@preserve: now,create,getOwnPropertyDescriptor,getOwnPropertyNames,keys,preventExtensions,isExtensible,bind,seal,freeze,isSealed,isFrozen
+@preserve: now,create,getOwnPropertyDescriptor,getOwnPropertyNames,keys,preventExtensions,bind,seal,freeze,isSealed,isFrozen
 @preserve: defineProperties
 */
 
@@ -21,30 +21,66 @@ defProps(Object.prototype, { dontEnum: true }, {
 defProps(String.prototype, { dontEnum: true }, {
 	trimLeft: function trimLeft() {
 		var s = str(this), i = 0, j = s.length, c;
-		for (; i < j; ++i) {
-			c = s.charCodeAt(i);
-			if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
-		}
+			   for (; i < j; ++i) {
+					   c = s.charCodeAt(i);
+					   if (c !== 0x20 &&
+							   (c < 0x09 || c > 0x0D) &&
+							   c !== 0xA0 &&
+							   c !== 0x1680 &&
+							   c !== 0x180E &&
+							   (c < 0x2000 || c > 0x200A) &&
+							   c !== 0x2028 && c !== 0x2029 &&
+							   c !== 0x202F && c !== 0x205F &&
+							   c !== 0x3000 &&
+							   c !== 0xFEFF) break;
+			   }
 		return s.substring(i, j);
 	},
 	trimRight: function trimRight() {
 		var s = str(this), j = s.length, c;
-		for (; j > 0; --j) {
-			c = s.charCodeAt(j - 1);
-			if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
-		}
+			   for (; j > 0; --j) {
+					   c = s.charCodeAt(j - 1);
+					   if (c !== 0x20 &&
+							   (c < 0x09 || c > 0x0D) &&
+							   c !== 0xA0 &&
+							   c !== 0x1680 &&
+							   c !== 0x180E &&
+							   (c < 0x2000 || c > 0x200A) &&
+							   c !== 0x2028 && c !== 0x2029 &&
+							   c !== 0x202F && c !== 0x205F &&
+							   c !== 0x3000 &&
+							   c !== 0xFEFF) break;
+			   }
 		return s.substring(0, j);
 	},
 	trim: function trim() {
 		var s = str(this), i = 0, j = s.length, c;
-		for (; i < j; ++i) {
-			c = s.charCodeAt(i);
-			if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
-		}
-		for (; j > i; --j) {
-			c = s.charCodeAt(j - 1);
-			if (c !== 0x20 && (c < 0x09 || c > 0x0D) && c !== 0xA0 && c !== 0x2028 && c !== 0x2029 && c !== 0xFEFF) break;
-		}
+			   for (; i < j; ++i) {
+					   c = s.charCodeAt(i);
+					   if (c !== 0x20 &&
+							   (c < 0x09 || c > 0x0D) &&
+							   c !== 0xA0 &&
+							   c !== 0x1680 &&
+							   c !== 0x180E &&
+							   (c < 0x2000 || c > 0x200A) &&
+							   c !== 0x2028 && c !== 0x2029 &&
+							   c !== 0x202F && c !== 0x205F &&
+							   c !== 0x3000 &&
+							   c !== 0xFEFF) break;
+			   }
+			   for (; j > i; --j) {
+					   c = s.charCodeAt(j - 1);
+					   if (c !== 0x20 &&
+							   (c < 0x09 || c > 0x0D) &&
+							   c !== 0xA0 &&
+							   c !== 0x1680 &&
+							   c !== 0x180E &&
+							   (c < 0x2000 || c > 0x200A) &&
+							   c !== 0x2028 && c !== 0x2029 &&
+							   c !== 0x202F && c !== 0x205F &&
+							   c !== 0x3000 &&
+							   c !== 0xFEFF) break;
+			   }
 		return s.substring(i, j);
 	}
 });
@@ -128,6 +164,7 @@ defProps(Date, { dontEnum: true }, {
 // Date.prototype.toISOString/toJSON
 defProps(Date.prototype, { dontEnum: true }, {
 toISOString: function toISOString() {
+			if ($getInternalProperty(this, "class") !== "Date") throw TypeError();
 			var t = this.getTime();
 if (!$isFinite(t)) throw RangeError("Invalid time value");
 		function pad(num, len) {
@@ -188,52 +225,56 @@ defProps(Number, { dontEnum: true }, {
 // Object helpers: defineProperty (accessors), defineProperties, create, getOwnPropertyDescriptor, keys, preventExtensions, isExtensible
 defProps(Object, { dontEnum: true }, {
 	defineProperty: unconstructable(function defineProperty(o, p, d) {
-		if (o === undefined || o === null) throw TypeError();
-		support.defineProperty(Object(o), str(p), d);
+	var t;
+		if (o === undefined || o === null || ((t = typeof o) !== "object" && t !== "function")) throw TypeError();
+		if (!support.defineProperty(o, str(p), d) && Object.isExtensible && !Object.isExtensible(o)) throw TypeError();
+		return o;
 	}),
 	defineProperties: unconstructable(function defineProperties(o, props) {
-		if (o === undefined || o === null) throw TypeError();
-		var obj = Object(o);
-		for (var k in props) if (Object.prototype.hasOwnProperty.call(props, k)) Object.defineProperty(obj, k, props[k]);
-		return obj;
-	}),
+	var t;
+		if (o === undefined || o === null || ((t = typeof o) !== "object" && t !== "function")) throw TypeError();
+		for (var k in props) if (Object.prototype.hasOwnProperty.call(props, k)) Object.defineProperty(o, k, props[k]);
+		return o;
+	   }),
 		create: unconstructable(function create(proto, properties) {
 			var t = typeof proto;
 			if (proto !== null && t !== "object" && t !== "function") throw TypeError();
 			var o = support.createObject(proto);
 			if (properties !== void 0) Object.defineProperties(o, Object(properties));
-			return o;
+		return o;
 		}),
-		getOwnPropertyDescriptor: unconstructable(function getOwnPropertyDescriptor(o, p) {
-				if (o === undefined || o === null) throw TypeError();
-				return support.getOwnPropertyDescriptor(Object(o), str(p));
-		}),
-		getOwnPropertyNames: unconstructable(function getOwnPropertyNames(o) {
-				if (o === undefined || o === null) throw TypeError();
-				return support.getOwnPropertyNames(Object(o));
-		}),
-			keys: unconstructable(function keys(o) {
-				if (o === undefined || o === null) throw TypeError();
-				var obj = Object(o), res = [], k;
-				for (k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) res[res.length] = k;
+getOwnPropertyDescriptor: unconstructable(function getOwnPropertyDescriptor(o, p) {
+		if (o === undefined || o === null) throw TypeError();
+return support.getOwnPropertyDescriptor(Object(o), str(p));
+	}),
+getOwnPropertyNames: unconstructable(function getOwnPropertyNames(o) {
+	var t;
+		if (o === undefined || o === null || ((t = typeof o) !== "object" && t !== "function")) throw TypeError();
+return support.getOwnPropertyNames(Object(o));
+	}),
+keys: unconstructable(function keys(o) {
+		if (o === undefined || o === null) throw TypeError();
+var obj = Object(o), res = [], k;
+for (k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) res[res.length] = k;
 				return res;
-}),
-					   preventExtensions: unconstructable(function preventExtensions(o) {
-							   var t = typeof o;
-							   return (o !== null && (t === "object" || t === "function")) ? support.preventExtensions(o) : o;
-}),
+	}),
+                                           preventExtensions: unconstructable(function preventExtensions(o) {
+                                                           var t = typeof o;
+		if (o === null || (t !== "object" && t !== "function")) throw TypeError();
+                                                           return support.preventExtensions(o);
+	}),
 					   isExtensible: unconstructable(function isExtensible(o) {
 							   var t = typeof o;
 							   return (o !== null && (t === "object" || t === "function")) ? support.isExtensible(o) : false;
 			   }),
 			   seal: unconstructable(function seal(o) {
 					   var t = typeof o;
-					   if (o === null || (t !== "object" && t !== "function")) throw TypeError();
+		if (o === null || (t !== "object" && t !== "function")) throw TypeError();
 					   return support.seal(o);
 			   }),
 			   freeze: unconstructable(function freeze(o) {
 					   var t = typeof o;
-					   if (o === null || (t !== "object" && t !== "function")) throw TypeError();
+		if (o === null || (t !== "object" && t !== "function")) throw TypeError();
 					   return support.freeze(o);
 			   }),
 			   isSealed: unconstructable(function isSealed(o) {

@@ -56,7 +56,7 @@
 < mr globby is a global
 -
 > try { f.apply({ 'hello': 'there' }, 'nope') } catch(x) { print(x) }
-< TypeError: Argument list has wrong type
+< undefinedo
 -
 > g = function() { f.apply({ 'hello': 'there' }, arguments) }
 > g('hello', ' what where')

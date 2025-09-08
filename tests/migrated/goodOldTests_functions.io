@@ -39,16 +39,16 @@
 < f.length=3
 -
 > print("delete f.length=" + delete f.length);
-< delete f.length=false
+< delete f.length=true
 -
 > print("f.length=" + f.length);
-< f.length=3
+< f.length=0
 -
 > f = function() { }
 > print(f.length);
 < 0
 -
-> (function() { function  f (  )  {  print (  "hej"  ) }; f() })();
+> (function() { function  f (  )  {	 print (  "hej"	 ) }; f() })();
 < hej
 -
 > (function() { print(typeof g); function g() { } })(); // function

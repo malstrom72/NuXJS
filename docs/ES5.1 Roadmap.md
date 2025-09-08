@@ -20,6 +20,14 @@ The build is finished only when the output includes the line:
 
 If this message is missing, the build did not complete.
 
+In constrained environments where the full build cannot finish, run the beta
+targets separately:
+
+```
+timeout 600 ./build.sh es3 native beta
+timeout 600 ./build.sh es5 native beta
+```
+
 ## Current Status
 
 - [x] Build toggle: ES5.1 features are guarded by the `NUXJS_ES5` macro. Select the variant by passing
@@ -35,7 +43,7 @@ If this message is missing, the build did not complete.
 		   - [x] Update `Object::getProperty` and `Object::setProperty` in `src/NuXJS.cpp` so that accessor buckets surface the getter or setter function while respecting attribute bits during writes and deletes.
 						   - [x] `GET_PROPERTY_OP` in `Processor` already delegates to `Object::getProperty`; when an `ACCESSOR_FLAG` bucket is found, the getter function replaces the original value and the processor invokes it via its standard `invokeFunction` path with the object as `this`, leaving the call result on the stack. (`tests/es5/getterSetterProperties.io`)
 						   - [x] `SET_PROPERTY_OP` similarly uses `Object::setProperty`; when an accessor exists, the processor calls the setter through `invokeFunction` with the provided value and keeps the caller's value as the final result. (`tests/es5/getterSetterProperties.io`)
-- [x] Implement full `Object.defineProperty`, `Object.defineProperties`, `Object.getOwnPropertyDescriptor`, and `Object.create` in both the C++ core and `src/stdlib.js`. (`tests/es5/objectCreateDefineProperties.io`, `tests/es5/objectGetOwnPropertyDescriptor.io`)
+- [x] Implement full `Object.defineProperty`, `Object.defineProperties`, `Object.getOwnPropertyDescriptor`, and `Object.create` in both the C++ core and `src/stdlib.js`. (`tests/es5/objectCreateDefineProperties.io`, `tests/es5/objectGetOwnPropertyDescriptor.io`, `tests/es5/objectDefinePropertyPrimitives.io`)
 	- [x] `Object.defineProperty` supports data and accessor descriptors in `src/stdlib.js`.
 		- [x] `Object.defineProperties` implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io).
 - [x] `Object.create` implemented in `src/stdlib.js` (tests/es5/objectCreateDefineProperties.io, tests/es5/objectCreateNullProto.io).
@@ -43,8 +51,8 @@ If this message is missing, the build did not complete.
 - [x] Replace the legacy `support.defineProperty(o, name, value, readOnly, dontEnum, dontDelete)` with a `PropertyDescriptor` structure that can carry `value`, `get`, `set`, and attribute flags. (`tests/es5/objectDefinePropertyDescriptorStruct.io`)
 - [x] The runtime helper in `src/NuXJS.cpp` validates descriptor combinations and installs either a data or accessor property in the object's hash table.
 - [x] Expose enumeration helpers like `Object.keys` and `Object.getOwnPropertyNames`.
-				- [x] `Object.keys` implemented in `src/stdlib.js` (`tests/es5/objectKeys.io`).
-								- [x] `Object.getOwnPropertyNames` implemented (`tests/es5/objectGetOwnPropertyNames.io`).
+- [x] `Object.keys` implemented in `src/stdlib.js` (`tests/es5/objectKeys.io`, `tests/es5/objectKeysPrimitives.io`).
+- [x] `Object.getOwnPropertyNames` implemented (`tests/es5/objectGetOwnPropertyNames.io`, `tests/es5/objectGetOwnPropertyNamesPrimitives.io`).
 				- [x] Add support for accessor syntax (`get`/`set` in object literals) (`tests/es5/getterSetterProperties.io`).
 - [x] Add function prototype attributes. (`tests/es5/functionPrototypeAttributes.io`)
 - [x] Ensure `Object.defineProperty`, `Object.defineProperties`, `Object.create`, and `Object.keys` are not constructable. *(Implemented; `tests/stdlib/checkAllPrototypes.io`)*
@@ -86,7 +94,7 @@ If this message is missing, the build did not complete.
 ### Spec compliance fixes
 - [x] Align ES5 semantics that differ from the current engine implementation. (`tests/es5/forInNullUndefined.io`, `tests/es5/functionPrototypeNonEnum.io`, `tests/es5/argumentsToStringEnum.io`)
 	- [x] Permit `for...in` on `null` or `undefined` to yield an empty iteration instead of throwing.  *(see `docs/notes/ECMAScript Compatibility Notes.md`)*
-		- [x] Make user-defined functions' `prototype` properties non-enumerable and adjust `name`/`length` attributes to match ES5.1. (`tests/es5/functionPrototypeNonEnum.io`)
+- [x] Make user-defined functions' `prototype` properties non-enumerable and adjust `name`/`length` attributes to match ES5.1. (`tests/es5/functionPrototypeNonEnum.io`, `tests/es5/functionLengthProperty.io`, `tests/es5/functionNameReadOnly.io`)
 		- [x] Update `Object.prototype.toString` so `arguments` objects report `[object Arguments]` and enumerate indexed slots during `for...in`. (`tests/es5/argumentsToStringEnum.io`)
 		- [x] Add regression tests for each behaviour in `tests/es5`.
 
@@ -100,24 +108,30 @@ If this message is missing, the build did not complete.
 - [x] `Array.prototype.reduce` and `Array.prototype.reduceRight` implemented (`tests/es5/arrayReduce.io`).
 - [x] Implement string utilities like `trim`, `trimLeft`, and `trimRight`.
 	- [x] Extend the string section in `src/stdlib.js` with whitespace tables identical to the spec and expose `String.prototype.trim*` methods.
-	- [x] `String.prototype.trim` implemented (`tests/es5/stringTrim.io`).
-	- [x] `String.prototype.trimLeft` and `trimRight` implemented (`tests/es5/stringTrimLeftRight.io`).
+- [x] `String.prototype.trim` implemented (`tests/es5/stringTrim.io`).
+- [x] `String.prototype.trimLeft` and `trimRight` implemented (`tests/es5/stringTrimLeftRight.io`).
+- [x] Trim helpers recognise the full ES5 WhiteSpace set, including
+  `\u1680`, `\u2000`–`\u200A`, `\u202F`, `\u205F`, and `\u3000`.
+  (`tests/es5/stringTrimUnicode.io`)
 - [x] Implement JSON-related `toJSON` helpers.
-	   - [x] Add `Date.prototype.toJSON` wrapper that calls the internal `toISOString` path.
-	   - [x] Add `Number.prototype.toJSON` wrapper that calls the internal conversion path (`tests/es5/numberToJSON.io`).
-	   - [x] Add `String.prototype.toJSON` wrapper returning the primitive string (`tests/es5/stringBooleanToJSON.io`).
-	   - [x] Add `Boolean.prototype.toJSON` wrapper returning the primitive boolean (`tests/es5/stringBooleanToJSON.io`).
+- [x] Add `Date.prototype.toJSON` with generic behaviour that invokes the object's own `toISOString` and returns `null` for non‑finite dates. (`tests/es5/dateToJSONGeneric.io`)
+		   - [x] Add `Number.prototype.toJSON` wrapper that calls the internal conversion path (`tests/es5/numberToJSON.io`).
+		   - [x] Add `String.prototype.toJSON` wrapper returning the primitive string (`tests/es5/stringBooleanToJSON.io`).
+		   - [x] Add `Boolean.prototype.toJSON` wrapper returning the primitive boolean (`tests/es5/stringBooleanToJSON.io`).
+- [x] Support `JSON.parse` revivers and `JSON.stringify` replacer/space arguments. (`tests/es5/jsonParseReviver.io`, `tests/es5/jsonStringifyReplacer.io`)
 
 ### Object immutability controls
  - [x] Support `Object.preventExtensions`, `Object.seal`, `Object.freeze`, and related predicates (`isExtensible`, `isSealed`, `isFrozen`).
 - [x] Add an `extensible` flag to the base `Object` class and teach `setProperty`/`setOwnProperty` to honor it, returning false when extensions are blocked.
 - [x] Implement `Object.preventExtensions` and `Object.isExtensible` helpers (`tests/es5/objectPreventExtensions.io`).
+- [x] Immutability helpers reject primitive targets and report sealed/frozen status for them (`tests/es5/objectImmutabilityPrimitives.io`).
+- [x] `Object.defineProperty` rejects new properties on non‑extensible objects. (`tests/es5/objectDefinePropertyNonExtensible.io`)
  - [x] Implement helpers in `src/stdlib.js` that iterate over `Object.getOwnPropertyNames` descriptors and toggle `[[Configurable]]`/`[[Writable]]` bits as required by `seal` and `freeze`. (`tests/es5/objectSealFreeze.io`)
 
 ### Date and Number extras
 - [x] Finish remaining ES5.1 Date features such as `toISOString`, `toJSON`, and `now`.
  - [x] `Date.now` implemented using `support.getCurrentTime` (`tests/es5/dateNow.io`).
- - [x] `Date.prototype.toISOString` and `Date.prototype.toJSON` implemented (`tests/es5/dateToISOStringJSON.io`).
+- [x] `Date.prototype.toISOString` and `Date.prototype.toJSON` implemented (`tests/es5/dateToISOString.io`, `tests/es5/dateToJSONGeneric.io`).
 - [x] Add Number and Math helpers (`isNaN`, `isFinite` refinements, `parseInt`/`parseFloat` alignment).
 - [x] Refine `support.isNaN`/`isFinite` semantics and expose `Number.isNaN` and `Number.isFinite` shims. *(tests/es5/numberIsFiniteIsNaN.io)*
 - [x] Ensure `parseInt` and `parseFloat` follow ES5.1 whitespace trimming rules and radix handling; update the `Math` object with any missing constants. (`tests/es5/parseIntFloatWhitespace.io`)
@@ -157,15 +171,15 @@ If this message is missing, the build did not complete.
 
 ### Additional ES5.1 coverage
 
-- [ ] Disallow octal integer literals and octal escape sequences in strict mode.
-- [ ] Align `Date.parse` with ISO 8601 parsing rules and return `NaN` for invalid inputs.
-- [ ] Ensure `Function.prototype.toString` returns source text and throws a `TypeError` for non-functions.
-- [ ] Confirm `Object.prototype.toString` reports `[object Math]` and `[object JSON]` for those singletons.
-- [ ] Recognize Unicode format-control characters, treat `\uFEFF` as whitespace, and allow line terminator escapes in string literals.
-- [ ] Ensure regular expression literals create unique objects, report pattern errors early, and permit unescaped `/` inside character classes.
-- [ ] Update regular expression internals: `\s` matches `\uFEFF`, `RegExp.prototype` is a `RegExp`, and `toString`/`source` derive from the original pattern.
-- [ ] Run indirect `eval` in the global environment and forbid host restrictions on non-direct calls.
-- [ ] Make global `NaN`, `Infinity`, and `undefined` properties read-only.
-- [ ] Allow `Function.prototype.apply` to accept generic array-like objects and pass the provided `this` value through `call`/`apply` without coercion.
-- [ ] Default `Error` objects' `message` to an empty string and implement the specified `Error.prototype.toString` behaviour.
-- [ ] When an exception parameter is invoked as a function inside `catch`, bind `this` to `undefined` rather than a scope object.
+- [x] Disallow octal integer literals and octal escape sequences in strict mode. (`tests/es5/strictOctalLiteral.io`)
+- [x] Align `Date.parse` with ISO 8601 parsing rules and return `NaN` for invalid inputs. (`tests/es5/dateParseISO8601.io`)
+ - [x] Ensure `Function.prototype.toString` returns source text and throws a `TypeError` for non-functions. (`tests/es5/functionPrototypeToString.io`)
+- [x] Confirm `Object.prototype.toString` reports `[object Math]` and `[object JSON]` for those singletons. (`tests/es5/objectToStringMathJSON.io`)
+- [x] Recognize Unicode format-control characters, treat `\uFEFF` as whitespace, and allow line terminator escapes in string literals. (`tests/es5/stringLineContinuation.io`, `tests/es5/unicodeFormatWhitespace.io`)
+ - [x] Ensure regular expression literals create unique objects, report pattern errors early, and permit unescaped `/` inside character classes. (`tests/es5/regexpLiteralUnique.io`, `tests/es5/regexpClassSlash.io`, `tests/es5/regexpLiteralSyntaxError.io`)
+- [x] Update regular expression internals: `\s` matches `\uFEFF`, `RegExp.prototype` is a `RegExp`, and `toString`/`source` derive from the original pattern. (`tests/es5/regexpWhitespaceFEFF.io`, `tests/es5/regexpPrototypeToString.io`)
+ - [x] Run indirect `eval` in the global environment and forbid host restrictions on non-direct calls. (`tests/es5/indirectEvalGlobalScope.io`)
+- [x] Make global `NaN`, `Infinity`, and `undefined` properties read-only. (`tests/es5/globalConstantsReadOnly.io`)
+- [x] Allow `Function.prototype.apply` to accept generic array-like objects. (`tests/es5/functionApplyArrayLike.io`)
+- [x] Default `Error` objects' `message` to an empty string and implement the specified `Error.prototype.toString` behaviour. (`tests/es5/errorPrototypeToString.io`)
+- [x] When an exception parameter is invoked as a function inside `catch`, bind `this` to `undefined` rather than a scope object. (`tests/es5/catchParameterThis.io`)
