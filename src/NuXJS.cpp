@@ -733,10 +733,6 @@ Int32 Value::toInt() const {
 
 bool Value::toArrayIndex(UInt32& index) const {
 	switch (type) {
-		case BOOLEAN_TYPE: {
-			index = (var.boolean ? 1 : 0);
-			return true;
-		}
 		case NUMBER_TYPE: {
 			const double n = var.number;
 			if (n < 0.0 || n >= 4294967296.0) {

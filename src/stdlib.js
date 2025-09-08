@@ -802,7 +802,7 @@ function hourFromTime(z) { return floorMod($floor(z / 36e5), 24) }
 function minFromTime(z) { return floorMod($floor(z / 6e4), 60) }
 function secFromTime(z) { return floorMod($floor(z / 1e3), 60) }
 function msFromTime(z) { return floorMod(z, 1e3) }
-function timeClip(z) { return (!$isFinite(z) || abs(z) > 8.64e15 ? $NaN : int(z)) }
+function timeClip(z) { return (!$isFinite(z) || abs(z) > 8.64e15 ? $NaN : int(z) + 0) }
 function timeClipLocal(z) { return fromLocalTime(timeClip(z)); }
 
 function dateFromEpoch(z) {
@@ -852,10 +852,20 @@ function setTimeParts(z, n, a) {
 }
 
 function makeDateTime(year, month, date, hours, minutes, seconds, ms) {
-	var argc = arguments.length;
-	return epochFromDate( (year = int(year)) + (0 <= year && year <= 99 ? 1900 : 0),
-			int(month), (argc > 2 ? int(date) : 1)) + epochFromTime( argc > 3 ? int(hours) : 0,
-			argc > 4 ? int(minutes) : 0, argc > 5 ? int(seconds) : 0, argc > 6 ? int(ms) : 0);
+	var argc = arguments.length, y = +year, m = +month, d, h, M, s, milli;
+	if ($isNaN(y) || !$isFinite(y) || $isNaN(m) || !$isFinite(m)) return $NaN;
+	d = (argc > 2 ? +date : 1);
+	if ($isNaN(d) || !$isFinite(d)) return $NaN;
+	h = (argc > 3 ? +hours : 0);
+	if ($isNaN(h) || !$isFinite(h)) return $NaN;
+	M = (argc > 4 ? +minutes : 0);
+	if ($isNaN(M) || !$isFinite(M)) return $NaN;
+	s = (argc > 5 ? +seconds : 0);
+	if ($isNaN(s) || !$isFinite(s)) return $NaN;
+	milli = (argc > 6 ? +ms : 0);
+	if ($isNaN(milli) || !$isFinite(milli)) return $NaN;
+	return epochFromDate(int(y) + (0 <= y && y <= 99 ? 1900 : 0), int(m), int(d))
+			+ epochFromTime(int(h), int(M), int(s), int(milli));
 }
 
 function isoDate(d) {
@@ -1479,6 +1489,7 @@ function execRegExp(re, string) {
 
 function regExpExecMethod(re, string) {
 	var m, a = null;
+	string = str(string);
 	if (m = execRegExp(re, string)) {
 		(a = [ ]).input = string;
 		a.index = m[0];
@@ -1626,8 +1637,7 @@ function createErrorConstructor(name, prototype) {
 				, false, true, false);
 		c.name = n; // Notice: from ES6 and upwards "name" is read-only (and you would have to delete it to modify here), but it isn't in this implementation
 		defineProperties(c, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: p });
-		defineProperties(p, { dontEnum: true }, { constructor: c });
-		p.name = n;
+		defineProperties(p, { dontEnum: true }, { constructor: c, name: n });
 	}
 
 	defineProperties(Error.prototype, { dontEnum: true }, {

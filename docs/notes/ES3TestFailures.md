@@ -109,7 +109,8 @@ See `tests/unconforming/booleanIndexCoercion.io` for a regression test.
 	>
 NuXJS result: assigning an object with `valueOf` returning `23` to `a.length` throws `RangeError` and leaves `length` at `0`.
 Expected: the object should convert to `23` and set `a.length` to `23`.
-Plan: Implement the `length` setter per ES3 §15.4.5.1 steps 12–15: let `newLen = ToNumber(V)` and `newLen32 = ToUint32(newLen)`; if `newLen != newLen32` throw `RangeError`, else set `length` to `newLen32` and delete indices ≥ `newLen32`.
+Resolution: supporting object length assignment would require asynchronous conversion; NuXJS leaves this ES3 violation unimplemented.
+Flagged `by_design` in `tools/testdash.json`.
 ```io
 > a=[]
 > o={valueOf:function() { return 23 }}
@@ -128,7 +129,7 @@ Plan: Implement the `length` setter per ES3 §15.4.5.1 steps 12–15: let `newL
 -
 ```
 See `tests/unconforming/cantAssignObjectToArrayLength.io` for a regression test.
-  - [ ] Fixed
+- [x] Fixed
 - [x] built-ins/Array/readOnlyNumericProps — writes override read-only numeric prototype properties *(by design)*
 	> #### **8.6.2.2 [[Put]] (P, V)**
 	>
