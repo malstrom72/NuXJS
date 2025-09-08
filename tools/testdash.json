@@ -248,6 +248,9 @@
 	"built-ins/Array/S15.4.5.2_A3_T2": {
 		"category": "by_design"
 	},
+	"unconforming/readOnlyNumericProps": {
+		"category": "by_design"
+	},
 	"built-ins/Array/Symbol.species/length": {
 		"category": "not_es3"
 	},
@@ -16397,6 +16400,12 @@
 	"built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A10": {
 		"category": "not_es3"
 	},
+	"built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A12": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A13": {
+		"category": "not_es3"
+	},
 	"built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A9": {
 		"category": "not_es3"
 	},
@@ -16418,6 +16427,12 @@
 	"built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A10": {
 		"category": "not_es3"
 	},
+	"built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A12": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A13": {
+		"category": "not_es3"
+	},
 	"built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A9": {
 		"category": "not_es3"
 	},
@@ -16425,6 +16440,12 @@
 		"category": "not_es3"
 	},
 	"built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A10": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A12": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A13": {
 		"category": "not_es3"
 	},
 	"built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A9": {
@@ -16454,6 +16475,9 @@
 	"built-ins/Object/prototype/toLocaleString/S15.2.4.3_A10": {
 		"category": "not_es3"
 	},
+	"built-ins/Object/prototype/toLocaleString/S15.2.4.3_A12": {
+		"category": "not_es3"
+	},
 	"built-ins/Object/prototype/toLocaleString/S15.2.4.3_A9": {
 		"category": "not_es3"
 	},
@@ -16478,6 +16502,9 @@
 	"built-ins/Object/prototype/toString/name": {
 		"category": "not_es3"
 	},
+	"built-ins/Object/prototype/toString/null_undefined": {
+		"category": "not_es3"
+	},
 	"built-ins/Object/prototype/toString/symbol-tag-non-str": {
 		"category": "not_es3"
 	},
@@ -16494,6 +16521,9 @@
 		"category": "not_es3"
 	},
 	"built-ins/Object/prototype/valueOf/name": {
+		"category": "not_es3"
+	},
+	"built-ins/Object/prototype/valueOf/null_undefined": {
 		"category": "not_es3"
 	},
 	"built-ins/Object/seal/15.2.3.8-0-1": {
@@ -20456,8 +20486,17 @@
 	"built-ins/String/prototype/toLocaleLowerCase/S15.5.4.17_A9": {
 		"category": "not_es3"
 	},
-	"built-ins/String/prototype/toLocaleLowerCase/name": {
-		"category": "bad_test"
+        "built-ins/String/prototype/toLocaleLowerCase/name": {
+                "category": "bad_test"
+        },
+        "built-ins/String/prototype/toLocaleLowerCase/special_casing": {
+                "category": "not_es3"
+        },
+        "built-ins/String/prototype/toLocaleLowerCase/special_casing_conditional": {
+                "category": "not_es3"
+        },
+        "built-ins/String/prototype/toLocaleLowerCase/supplementary_plane": {
+                "category": "not_es3"
 	},
 	"built-ins/String/prototype/toLocaleUpperCase/S15.5.4.19_A10": {
 		"category": "bad_test"
@@ -20468,18 +20507,27 @@
 	"built-ins/String/prototype/toLocaleUpperCase/name": {
 		"category": "bad_test"
 	},
+	"built-ins/String/prototype/toLocaleUpperCase/special_casing": {
+		"category": "not_es3"
+	},
+	"built-ins/String/prototype/toLocaleUpperCase/supplementary_plane": {
+		"category": "not_es3"
+	},
 	"built-ins/String/prototype/toLowerCase/S15.5.4.16_A10": {
 		"category": "bad_test"
 	},
 	"built-ins/String/prototype/toLowerCase/S15.5.4.16_A9": {
 		"category": "not_es3"
 	},
-	"built-ins/String/prototype/toLowerCase/name": {
-		"category": "bad_test"
-	},
-	"built-ins/String/prototype/toString/name": {
-		"category": "bad_test"
-	},
+        "built-ins/String/prototype/toLowerCase/name": {
+                "category": "bad_test"
+        },
+        "built-ins/String/prototype/toLowerCase/supplementary_plane": {
+                "category": "not_es3"
+        },
+        "built-ins/String/prototype/toString/name": {
+                "category": "bad_test"
+        },
 	"built-ins/String/prototype/toUpperCase/S15.5.4.18_A10": {
 		"category": "bad_test"
 	},
@@ -20488,6 +20536,9 @@
 	},
 	"built-ins/String/prototype/toUpperCase/name": {
 		"category": "bad_test"
+	},
+	"built-ins/String/prototype/toUpperCase/supplementary_plane": {
+		"category": "not_es3"
 	},
 	"built-ins/String/prototype/trim/15.5.4.20-0-1": {
 		"category": "not_es3"

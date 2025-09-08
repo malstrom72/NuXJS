@@ -1,6 +1,6 @@
-> try { Object.prototype.valueOf.call(null); } catch (e) { print(e.name); }
-< TypeError
+> Object.prototype.valueOf.call(null) === this
+< true
 -
-> try { Object.prototype.valueOf.call(undefined); } catch (e) { print(e.name); }
-< TypeError
+> Object.prototype.valueOf.call(undefined) === this
+< true
 -

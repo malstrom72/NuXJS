@@ -1,3 +1,3 @@
-> try { Object.prototype.toLocaleString.call(undefined); } catch (e) { print(e.name); }
-< TypeError
+> Object.prototype.toLocaleString.call(undefined)
+< [object Object]
 -
