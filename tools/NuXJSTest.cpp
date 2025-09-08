@@ -44,19 +44,19 @@ static void expectationFailed(const char* sourceCode, const char* file, int line
 
 static void unexpectedException(const char* expression, const char* file, int line, const char* s) {
 	expectationFailed(expression, file, line);
-	std::cout << "  Unexpected exception: " << s << std::endl << std::endl;
+	std::cout << "	Unexpected exception: " << s << std::endl << std::endl;
 }
 
 static void expectedException(const char* statement, const char* file, int line, const char* s) {
 	expectationFailed(statement, file, line);
-	std::cout << "  Expected exception: " << s << std::endl << std::endl;
+	std::cout << "	Expected exception: " << s << std::endl << std::endl;
 }
 
 static void checkException(const char* statement, const char* file, int line, const char* got, const char* expected) {
 	if (std::strcmp(got, expected) != 0) {
 		expectationFailed(statement, file, line);
-		std::cout << "  Unexpected exception: " << got << std::endl;
-		std::cout << "  Expected: " << expected << std::endl << std::endl;
+		std::cout << "	Unexpected exception: " << got << std::endl;
+		std::cout << "	Expected: " << expected << std::endl << std::endl;
 	}
 }
 
@@ -306,9 +306,9 @@ Value gcTest(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, 
 
 static void testVars() {
 	std::cout << std::endl << "***** Var *****" << std::endl << std::endl;
-	std::cout << "  - primitives and conversions" << std::endl;
-	std::cout << "  - numeric edge cases" << std::endl;
-	std::cout << "  - objects, arrays and functions" << std::endl;
+	std::cout << "	- primitives and conversions" << std::endl;
+	std::cout << "	- numeric edge cases" << std::endl;
+	std::cout << "	- objects, arrays and functions" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -637,9 +637,9 @@ static void testVars() {
 
 static void testArrayVars() {
 	std::cout << std::endl << "***** Array Vars *****" << std::endl << std::endl;
-	std::cout << "  - element access and insertion" << std::endl;
-	std::cout << "  - length updates" << std::endl;
-	std::cout << "  - iteration" << std::endl;
+	std::cout << "	- element access and insertion" << std::endl;
+	std::cout << "	- length updates" << std::endl;
+	std::cout << "	- iteration" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -694,8 +694,8 @@ static void testArrayVars() {
 
 static void testStandardLibrary() {
 	std::cout << std::endl << "***** Standard Library *****" << std::endl << std::endl;
-	std::cout << "  - array operations" << std::endl;
-	std::cout << "  - string utilities" << std::endl;
+	std::cout << "	- array operations" << std::endl;
+	std::cout << "	- string utilities" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -710,8 +710,8 @@ static void testStandardLibrary() {
 
 static void testJSON() {
 	std::cout << std::endl << "***** JSON *****" << std::endl << std::endl;
-	std::cout << "  - stringify objects" << std::endl;
-	std::cout << "  - parse JSON strings" << std::endl;
+	std::cout << "	- stringify objects" << std::endl;
+	std::cout << "	- parse JSON strings" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -729,9 +729,9 @@ static void testJSON() {
 
 static void testCompilation() {
 	std::cout << std::endl << "***** Compilation *****" << std::endl << std::endl;
-	std::cout << "  - eval compilation" << std::endl;
-	std::cout << "  - global code compilation" << std::endl;
-	std::cout << "  - global object setup" << std::endl;
+	std::cout << "	- eval compilation" << std::endl;
+	std::cout << "	- global code compilation" << std::endl;
+	std::cout << "	- global object setup" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -761,8 +761,8 @@ static void testCompilation() {
 
 static void testLimits() {
 	std::cout << std::endl << "***** Limits *****" << std::endl << std::endl;
-	std::cout << "  - memory limits" << std::endl;
-	std::cout << "  - execution timeouts" << std::endl;
+	std::cout << "	- memory limits" << std::endl;
+	std::cout << "	- execution timeouts" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -784,7 +784,7 @@ static Var sum(Runtime& rt, const Var& thisVar, const VarList& args) {
 	for (int i = 0; i < args.size(); ++i) {
 		sum += args[i];
 	}
-	return Var(rt, sum);    // A `Var` owns its `Value` (sum) and is tied to a `Runtime` (rt)
+	return Var(rt, sum);	// A `Var` owns its `Value` (sum) and is tied to a `Runtime` (rt)
 }
 
 static Var addFunction(Runtime& rt, const Var& thisVar, const VarList& args) {
@@ -806,9 +806,9 @@ static Value returnFortyTwo(Runtime&, Processor&, UInt32, const Value*, Object*)
 
 static void testHighLevelAPI() {
 	std::cout << std::endl << "***** High Level API *****" << std::endl << std::endl;
-	std::cout << "  - C++ to JS binding" << std::endl;
-	std::cout << "  - object and array helpers" << std::endl;
-	std::cout << "  - type conversions" << std::endl;
+	std::cout << "	- C++ to JS binding" << std::endl;
+	std::cout << "	- object and array helpers" << std::endl;
+	std::cout << "	- type conversions" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -896,10 +896,10 @@ static void testHighLevelAPI() {
 static void readMeSample1() {
 	std::wstringstream strout;
 
-	Heap heap;                                          // We use the standard heap.
-	Runtime rt(heap);                                   // Construct an empty engine.
-	rt.setupStandardLibrary();                          // Install the ES3 standard library.
-	Var helloWorld = rt.eval("'hello ' + 'world'");     // Evaluate a JS expression.
+	Heap heap;											// We use the standard heap.
+	Runtime rt(heap);									// Construct an empty engine.
+	rt.setupStandardLibrary();							// Install the ES3 standard library.
+	Var helloWorld = rt.eval("'hello ' + 'world'");		// Evaluate a JS expression.
 	strout << helloWorld << std::endl;
 
 	const std::wstring result = strout.str();
@@ -909,11 +909,11 @@ static void readMeSample1() {
 static void readMeSample2() {
 	std::wstringstream strout;
 
-	Heap heap;                                          // We use the standard heap.
-	Runtime rt(heap);                                   // Construct an empty engine.
-	rt.setupStandardLibrary();                          // Install the ES3 standard library.
-	rt.setMemoryCap(1024 * 1024);                       // Max 1MB of memory please.
-	rt.resetTimeOut(10);                                // Time-out JS code after 10 seconds.
+	Heap heap;											// We use the standard heap.
+	Runtime rt(heap);									// Construct an empty engine.
+	rt.setupStandardLibrary();							// Install the ES3 standard library.
+	rt.setMemoryCap(1024 * 1024);						// Max 1MB of memory please.
+	rt.resetTimeOut(10);								// Time-out JS code after 10 seconds.
 	Var globals = rt.getGlobalsVar();
 	
 	// Set up the native function and a JS demo function that calls it.
@@ -1195,7 +1195,7 @@ static void testHeap() {
 					for (int edgeIndex = 0; edgeIndex < EDGE_COUNT; ++edgeIndex) {
 						GraphNode* linkedNode = thisNode->edges[edgeIndex];
 						if (linkedNode != 0 && linkedNode->iteration != currentIteration) {
-							EXPECT(linkedNode->iteration >= 0);	// < 0 = already deleted by gc()
+							EXPECT(linkedNode->iteration >= 0); // < 0 = already deleted by gc()
 							EXPECT(heap.managed().owns(linkedNode));
 							linkedNode->iteration = currentIteration;
 							EXPECT(reachableCount < MAX_NODE_COUNT);
@@ -1470,7 +1470,7 @@ void testValues() {
 	{
 		EXPECT(Value::UNDEFINED.isUndefined());
 		EXPECT(Value::NUL.isNull());
-		EXPECT(Value::NOT_A_NUMBER.isNumber());	// lol
+		EXPECT(Value::NOT_A_NUMBER.isNumber()); // lol
 		EXPECT(Value::INFINITE_NUMBER.isNumber());
 		EXPECT_EQUAL(Value::UNDEFINED.toObjectOrNull(heap, false), (Object*)(0));
 		EXPECT_EXCEPTION(Value::UNDEFINED.toObject(heap, false), "TypeError: Cannot convert undefined or null to object");
@@ -1494,9 +1494,8 @@ void testValues() {
 		EXPECT_EQUAL(trueBoolValue.toInt(), 1);
 		EXPECT_EQUAL(falseBoolValue.toDouble(), 0.0);
 		EXPECT_EQUAL(trueBoolValue.toDouble(), 1.0);
-		UInt32 index;
-		EXPECT(trueBoolValue.toArrayIndex(index));
-		EXPECT_EQUAL(index, 1);
+UInt32 index;
+EXPECT(!trueBoolValue.toArrayIndex(index));
 		EXPECT_EXCEPTION(trueBoolValue.toFunction(heap), "TypeError: true is not a function");
 		static const String FALSE_STRING("false");
 		static const String TRUE_STRING("true");
@@ -1651,10 +1650,10 @@ void testValues() {
 
 void testStrings() {
 	std::cout << std::endl << "***** String *****" << std::endl << std::endl;
-	std::cout << "  - construction and comparison" << std::endl;
-	std::cout << "  - wide/UTF-8 conversions" << std::endl;
-	std::cout << "  - surrogate pair handling" << std::endl;
-	std::cout << "  - character arrays" << std::endl;
+	std::cout << "	- construction and comparison" << std::endl;
+	std::cout << "	- wide/UTF-8 conversions" << std::endl;
+	std::cout << "	- surrogate pair handling" << std::endl;
+	std::cout << "	- character arrays" << std::endl;
 
 	Heap heap;
 	
@@ -1723,9 +1722,9 @@ void testStrings() {
 
 void testTables() {
 	std::cout << std::endl << "***** Table *****" << std::endl << std::endl;
-	std::cout << "  - insertion and lookup" << std::endl;
-	std::cout << "  - flag handling" << std::endl;
-	std::cout << "  - iteration" << std::endl;
+	std::cout << "	- insertion and lookup" << std::endl;
+	std::cout << "	- flag handling" << std::endl;
+	std::cout << "	- iteration" << std::endl;
 
 	Heap heap;
 	{
@@ -1773,7 +1772,7 @@ void testTables() {
 		UInt32 count = 0;
 		for (Table::Bucket* it = table.getFirst(); it != 0; it = table.getNext(it)) {
 			if (it->valueExists()) {
-			        ++count;
+					++count;
 			}
 		}
 		EXPECT_EQUAL(count, 21);
