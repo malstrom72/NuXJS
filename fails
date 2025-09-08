@@ -107,19 +107,7 @@ source
 --- output --- 
  !!!! [object Object]
 
-built-ins/Error/prototype/S15.11.4_A2
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
 built-ins/Error/prototype/name/15.11.4.2-1
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Error/prototype/toString/15.11.4.4-8-1
 source
 --- output ---
 --- output --- 
@@ -131,97 +119,7 @@ source
 --- output --- 
  !!!! [object Object]
 
-built-ins/Infinity/S15.1.1.2_A2_T2
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/NaN/S15.1.1.1_A2_T2
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Number/S9.3.1_A2
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Number/S9.3.1_A3_T1
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Number/S9.3.1_A3_T2
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/toLocaleString/S15.2.4.3_A13
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/toString/15.2.4.2-1-1
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/toString/15.2.4.2-1-2
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/toString/15.2.4.2-2-1
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/toString/15.2.4.2-2-2
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/valueOf/S15.2.4.4_A12
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/valueOf/S15.2.4.4_A13
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/valueOf/S15.2.4.4_A14
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/valueOf/S15.2.4.4_A15
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
 built-ins/RegExp/S15.10.2.12_A1_T1
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/RegExp/S15.10.2.12_A2_T1
 source
 --- output ---
 --- output --- 
@@ -389,18 +287,6 @@ source
 --- output --- 
  !!!! [object Object]
 
-built-ins/parseFloat/S15.1.2.3_A2_T10
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/parseInt/S15.1.2.2_A2_T10
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
 built-ins/parseInt/S15.1.2.2_A5.2_T2
 source
 --- output ---
@@ -412,10 +298,3 @@ source
 --- output ---
 --- output --- 
  !!!! [object Object]
-
-built-ins/undefined/15.1.1.3-1
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
