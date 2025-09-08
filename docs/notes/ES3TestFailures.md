@@ -1,13 +1,13 @@
 # ES3 Test262 Failures Analysis
-48 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
+42 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
-| Array | §15.4 | 9 |
+| Array | §15.4 | 8 |
 | Date | §15.9 | 7 |
 | Error | §15.11 | 1 |
 | Function | §15.3 | 1 |
 | RegExp | §15.10 | 17 |
-| String | §15.5 | 11 |
+| String | §15.5 | 8 |
 
 The table counts only failing Test262 cases. One additional custom test,
 `unconforming/readOnlyNumericProps`, documents an intentional deviation and is
@@ -29,7 +29,7 @@ When an item is resolved, check it off and add a brief note citing the ES3 spec 
 > Array objects give special treatment to a certain class of property names. A property name *P* (in the form of a string value) is an *array index* if and only if ToString(ToUint32(*P*)) is equal to *P* and ToUint32(*P*) is not equal to 2<sup>32</sup>−1.
 >
 NuXJS result: assigning `a["4294967296"]=1` sets `a.length` to `1` and stores the value at index `0`.
-Expected: property names ≥2<sup>32</sup> should create ordinary properties, leaving `length` at `0` and `a[0]` undefined.
+Expected: property names ≥2<sup>32</sup> should create ordinary properties, leaving `a.length` at `0` and `a[0]` undefined.
 Plan: Reject property names whose ToUint32 value is ≥2<sup>32</sup>, treating them as normal properties without updating `length`.
 ```io
 > a=[]
@@ -100,14 +100,14 @@ Plan: Per ES3 §15.4, treat `P` as an index only when it is a string and `ToStri
 ```
 See `tests/unconforming/booleanIndexCoercion.io` for a regression test.
   - [ ] Fixed
-- [x] built-ins/Array/cantAssignObjectToArrayLength — assigning object to length throws *(by design)*
-> #### **15.4.5.1 [[Put]] (P, V)**
->
-> When the [[Put]] method of *A* is called with property "length" and value *V*, the following steps are taken:
-> - 12. Compute ToUint32(*V*).
-> - 13. If Result(12) is not equal to ToNumber(*V*), throw a **RangeError** exception.
->
-NuXJS result: assigning an object with `valueOf` returning `23` to `a.length` throws `RangeError` and leaves length `0`.
+- [x] built-ins/Array/cantAssignObjectToArrayLength — assigning object to length throws
+	> #### **15.4.5.1 [[Put]] (P, V)**
+	>
+	> When the [[Put]] method of *A* is called with property "length" and value *V*, the following steps are taken:
+	> - 12. Compute ToUint32(*V*).
+	> - 13. If Result(12) is not equal to ToNumber(*V*), throw a **RangeError** exception.
+	>
+NuXJS result: assigning an object with `valueOf` returning `23` to `a.length` throws `RangeError` and leaves `length` at `0`.
 Expected: the object should convert to `23` and set `a.length` to `23`.
 Resolution: supporting object length assignment would require asynchronous conversion; NuXJS leaves this ES3 violation unimplemented.
 Flagged `by_design` in `tools/testdash.json`.
@@ -146,35 +146,6 @@ Plan: Accepted deviation for performance — ES3 programs cannot observe read-on
 < 789
 ```
 See `tests/unconforming/readOnlyNumericProps.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/Array/prototype/pop/S15.4.4.6_A2_T2 — If ToUint32(length) equal zero, call the [[Put]] method	 of this object with arguments "length" and 0 and return undefined
-	> ## **15.4.4.6 Array.prototype.pop ( )**
-	> 
-	> The last element of the array is removed from the array and returned.
-	> 
-	> - 1. Call the [[Get]] method of this object with argument "**length**".
-	> - 2. Call ToUint32(Result(1)).
-	> - 3. If Result(2) is not zero, go to step 6.
-	> - 4. Call the [[Put]] method of this object with arguments "**length**" and Result(2).
-	> - 5. Return **undefined**.
-	> - 6. Call ToString(Result(2)–1).
-		> - 7. Call the [[Get]] method of this object with argument Result(6).
-		> - 8. Call the [[Delete]] method of this object with argument Result(6).
-NuXJS result: `obj.length = Infinity` followed by `obj.pop()` returns `undefined` but sets `obj.length` to `0`.
-Expected: `obj.pop()` should leave `length` at `9007199254740990` (2^53−2).
-Plan: Prior to ES3 §15.4.4.6 steps 1–8, normalize `length` by replacing non‑finite or ≥2^53 values with `2^53−2` so `[[Put]]('length', ToUint32(length))` doesn't reset it to zero.
-```io
-> obj={}
-> obj.length=Number.POSITIVE_INFINITY
-> obj.pop=Array.prototype.pop
-> print(obj.pop())
-< undefined
--
-> print(obj.length)
-< 9007199254740990
--
-```
-See `tests/unconforming/arrayPopLengthInfinity.io` for a regression test.
   - [ ] Fixed
 - [x] built-ins/Array/prototype/pop/S15.4.4.6_A4_T2 — [[Prototype]] of Array instance is Array.prototype, [[Prototype] of Array.prototype is Object.prototype
 	> ## **15.4.4.6 Array.prototype.pop ( )**

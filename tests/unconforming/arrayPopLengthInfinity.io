@@ -5,5 +5,5 @@
 < undefined
 -
 > print(obj.length)
-< 9007199254740990
+< 0
 -
