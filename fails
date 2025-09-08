@@ -95,18 +95,6 @@ source
 --- output --- 
  !!!! [object Object]
 
-built-ins/Error/S15.11.1.1_A1_T1
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Error/S15.11.2.1_A1_T1
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
 built-ins/Error/prototype/name/15.11.4.2-1
 source
 --- output ---
@@ -269,14 +257,3 @@ source
 --- output --- 
  !!!! [object Object]
 
-built-ins/parseInt/S15.1.2.2_A5.2_T2
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/parseInt/S15.1.2.2_A7.2_T3
-source
---- output ---
---- output --- 
- !!!! [object Object]
