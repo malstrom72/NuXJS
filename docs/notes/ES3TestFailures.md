@@ -1,5 +1,5 @@
 # ES3 Test262 Failures Analysis
-78 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
+80 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
 | Expressions | §11 | 3 |
@@ -10,7 +10,7 @@
 | Math | §15.8 | 2 |
 | Number | §15.7 | 5 |
 | Object | §15.2 | 9 |
-| RegExp | §15.10 | 16 |
+| RegExp | §15.10 | 18 |
 | String | §15.5 | 17 |
 | parseFloat |  | 1 |
 | parseInt |  | 3 |
@@ -1598,6 +1598,38 @@ Plan: Implement `ToPrimitive` with hint `String` so `valueOf` is tried when `toS
 -
 ```
 See `tests/unconforming/regExpExecValueOfObject.io` for a regression test.
+  - [ ] Fixed
+
+- [x] built-ins/RegExp/S15.10.2.12_A1_T1 — CharacterClassEscape `\s` misses ES3 white-space characters
+> #### **15.10.2.12 CharacterClassEscape**
+>
+> The production *CharacterClassEscape* **:: s** evaluates by returning the set of characters containing the characters that are on the right-hand side of the *WhiteSpace* (7.2) or *LineTerminator* (7.3) productions.
+NuXJS result: `/\s/.test("\u1680")` and `/\s/.test("\u2000")` both yield `false`.
+Expected: both `\u1680` (OGHAM SPACE MARK) and `\u2000` (EN QUAD) are listed in *WhiteSpace*, so `/\s/` should match them.
+```io
+> print(/\s/.test("\u1680"))
+< false
+-
+> print(/\s/.test("\u2000"))
+< false
+-
+```
+Plan: Expand the engine's white-space table to include all ES3 white-space code points.
+  - [ ] Fixed
+
+- [x] built-ins/RegExp/S15.10.2.8_A3_T15 — engine truncates deep capturing groups
+> #### **15.10.2.8 Atom**
+>
+> Parentheses of the form *( Disjunction )* serve both to group the components of the pattern together and to save the result of the match.
+NuXJS result: a pattern with 200 nested capturing groups returns an array of length `1`.
+Expected: the match result should contain one entry for each of the 200 capturing groups, for a total length of `201`.
+```io
+> var re = new RegExp(Array(201).join("(") + "hi" + Array(201).join(")"));
+> print(re.exec("hi").length);
+< 1
+-
+```
+Plan: Lift the limit on tracked capturing groups so all groups are reported.
   - [ ] Fixed
 
 ### String
