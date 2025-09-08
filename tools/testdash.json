@@ -4256,6 +4256,9 @@
   "built-ins/Array/prototype/map/name": {
 	"category": "not_es3"
   },
+  "built-ins/Array/prototype/pop/S15.4.4.6_A2_T2": {
+	"category": "not_es3"
+  },
   "built-ins/Array/prototype/pop/S15.4.4.6_A3_T1": {
 	"category": "not_es3"
   },
@@ -9195,7 +9198,7 @@
 	"category": "not_es3"
   },
   "built-ins/Number/prototype/valueOf/name": {
-        "category": "not_es3"
+		"category": "not_es3"
   },
   "built-ins/Number/S9.3.1_A2": {
 	"category": "by_design"
@@ -9207,7 +9210,7 @@
 	"category": "by_design"
   },
   "built-ins/Number/string-binary-literal": {
-        "category": "not_es3"
+		"category": "not_es3"
   },
   "built-ins/Number/string-octal-literal": {
 	"category": "not_es3"
@@ -18615,13 +18618,13 @@
 	"category": "not_es3"
   },
   "built-ins/RegExp/15.10.4.1-1": {
-        "category": "not_es3"
+		"category": "not_es3"
   },
   "built-ins/RegExp/S15.10.2.12_A2_T1": {
 	"category": "by_design"
   },
   "built-ins/RegExp/S15.10.3.1_A2_T1": {
-        "category": "not_es3"
+		"category": "not_es3"
   },
   "built-ins/RegExp/S15.10.3.1_A2_T2": {
 	"category": "not_es3"
@@ -23478,28 +23481,28 @@
 	"category": "bad_test"
   },
   "built-ins/isNaN/name": {
-        "category": "not_es3"
+		"category": "not_es3"
   },
   "built-ins/parseFloat/S15.1.2.3_A2_T10": {
 	"category": "by_design"
   },
   "built-ins/parseFloat/S15.1.2.3_A7.2": {
-        "category": "not_es3"
+		"category": "not_es3"
   },
   "built-ins/parseFloat/S15.1.2.3_A7.3": {
-        "category": "bad_test"
+		"category": "bad_test"
   },
   "built-ins/parseFloat/name": {
-        "category": "not_es3"
+		"category": "not_es3"
   },
   "built-ins/parseInt/S15.1.2.2_A2_T10": {
 	"category": "by_design"
   },
   "built-ins/parseInt/S15.1.2.2_A9.2": {
-        "category": "not_es3"
+		"category": "not_es3"
   },
   "built-ins/parseInt/S15.1.2.2_A9.3": {
-        "category": "bad_test"
+		"category": "bad_test"
   },
   "built-ins/parseInt/name": {
 	"category": "not_es3"
@@ -28260,18 +28263,18 @@
 	"category": ""
   },
   "language/white-space/S7.2_A1.5_T1": {
-        "category": ""
+		"category": ""
   },
   "unconforming/evalOrderOfBaseAndName": {
-        "category": "by_design"
+		"category": "by_design"
   },
   "unconforming/funcCallEvalOrder": {
-        "category": "by_design"
+		"category": "by_design"
   },
   "unconforming/readOnlyNumericProps": {
-        "category": "by_design"
+		"category": "by_design"
   },
   "unconforming/rightSideBeforeAssignmentRef": {
-        "category": "by_design"
+		"category": "by_design"
   }
 }
