@@ -1288,29 +1288,6 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
 	   ```
 	   See `tests/unconforming/stringReplaceBackreference.io` for a regression test.
 		 - [ ] Fixed
-- [x] built-ins/String/prototype/toLocaleLowerCase/special_casing — relies on locale-specific behavior
-		> ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
-		>
-		> This function works exactly the same as **toLowerCase** except that its result is intended to yield the correct result for the host environment's current locale, rather than a locale-independent result. There will only be a difference in the few cases (such as Turkish) where the rules for that language conflict with the regular Unicode case mappings.
-		>
-		> ## *NOTE 1*
-		>
-		> *The* **toLocaleLowerCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
-		>
-		> #### *NOTE 2*
-		>
-		> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
-NuXJS result: `print("\u0130".toLocaleLowerCase())` outputs `"i"`, omitting the required combining dot above.
-Expected: `"i̇"` (letter *i* followed by a combining dot).
-Resolution: ES3 leaves the result locale-dependent and does not mandate Turkish casing.
-Flagged `not_es3` in `tools/testdash.json`.
-```io
-> print("\u0130".toLocaleLowerCase())
-< i̇
--
-```
-See `tests/unconforming/toLocaleLowerCaseSpecialCasing.io` for a regression test.
-  - [ ] Fixed
 - [x] built-ins/String/prototype/toLocaleLowerCase/supplementary_plane — supplementary-plane mapping not defined in ES3
 		> ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
 		>
@@ -1333,29 +1310,6 @@ Flagged `not_es3` in `tools/testdash.json`.
 -
 ```
 See `tests/unconforming/toLocaleLowerCaseSupplementaryPlane.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/String/prototype/toLocaleUpperCase/special_casing — relies on locale-specific behavior
-	> #### **15.5.4.19 String.prototype.toLocaleUpperCase ( )**
-	> 
-	> This function works exactly the same as **toUpperCase** except that its result is intended to yield the correct result for the host environment's current locale, rather than a locale-independent result. There will only be a difference in the few cases (such as Turkish) where the rules for that language conflict with the regular Unicode case mappings.
-	> 
-	> #### *NOTE 1*
-	> 
-	> *The* **toLocaleUpperCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
-	> 
-> *NOTE 2*
->
-> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
-NuXJS result: `print("i".toLocaleUpperCase())` outputs `"I"`, losing the required dot above.
-Expected: `"İ"`.
-Resolution: ES3 does not require specific locale mappings; actual result is implementation-dependent.
-Flagged `not_es3` in `tools/testdash.json`.
-```io
-> print("i".toLocaleUpperCase())
-< İ
--
-```
-See `tests/unconforming/toLocaleUpperCaseSpecialCasing.io` for a regression test.
   - [ ] Fixed
 - [x] built-ins/String/prototype/toLocaleUpperCase/supplementary_plane — supplementary-plane mapping not defined in ES3
 	> #### **15.5.4.19 String.prototype.toLocaleUpperCase ( )**
@@ -1380,50 +1334,6 @@ Flagged `not_es3` in `tools/testdash.json`.
 ```
 See `tests/unconforming/toLocaleUpperCaseSupplementaryPlane.io` for a regression test.
   - [ ] Fixed
-- [x] built-ins/String/prototype/toLowerCase/special_casing — missing special Unicode lowercase mappings
-> ## **15.5.4.16 String.prototype.toLowerCase ( )**
->
-> If this object is not already a string, it is converted to a string. The characters in that string are converted one by one to lower case. The result is a string value, not a String object.
->
-> The characters are converted one by one. The result of each conversion is the original character, unless that character has a Unicode lowercase equivalent, in which case the lowercase equivalent is used instead.
->
-> #### *NOTE 1*
->
-> *The result should be derived according to the case mappings in the Unicode character database (this explicitly includes not only the UnicodeData.txt file, but also the SpecialCasings.txt file that accompanies it in Unicode 2.1.8 and later).*
->
-> ## *NOTE 2*
-NuXJS result: `print("\u0130".toLowerCase())` outputs `"i"`, omitting the combining dot.
-Expected: `"i̇"` (letter *i* followed by a combining dot).
-Plan: Integrate Unicode special casing data so `\u0130` lowercases to `i` plus a combining dot.
-```io
-> print("\u0130".toLowerCase())
-< i̇
--
-```
-See `tests/unconforming/toLowerCaseSpecialCasing.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/String/prototype/toLowerCase/special_casing_conditional — missing conditional lowercase mappings
-> ## **15.5.4.16 String.prototype.toLowerCase ( )**
->
-> If this object is not already a string, it is converted to a string. The characters in that string are converted one by one to lower case. The result is a string value, not a String object.
->
-> The characters are converted one by one. The result of each conversion is the original character, unless that character has a Unicode lowercase equivalent, in which case the lowercase equivalent is used instead.
->
-> #### *NOTE 1*
->
-> *The result should be derived according to the case mappings in the Unicode character database (this explicitly includes not only the UnicodeData.txt file, but also the SpecialCasings.txt file that accompanies it in Unicode 2.1.8 and later).*
->
-> ## *NOTE 2*
-NuXJS result: `print("ΟΣ".toLowerCase())` yields `"οσ"`, using the standard sigma.
-Expected: `"ος"` with the final sigma `ς`.
-Plan: Support context-sensitive mappings so a sigma at word end becomes `ς` instead of `σ`.
-```io
-> print("ΟΣ".toLowerCase())
-< ος
--
-```
-See `tests/unconforming/toLowerCaseSpecialCasingConditional.io` for a regression test.
-  - [ ] Fixed
 - [x] built-ins/String/prototype/toLowerCase/supplementary_plane — supplementary-plane mapping not defined in ES3
 > ## **15.5.4.16 String.prototype.toLowerCase ( )**
 >
@@ -1446,28 +1356,6 @@ Flagged `not_es3` in `tools/testdash.json`.
 -
 ```
 See `tests/unconforming/toLowerCaseSupplementaryPlane.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/String/prototype/toUpperCase/special_casing — missing special Unicode uppercase mappings
-		> #### **15.5.4.18 String.prototype.toUpperCase ( )**
-		>
-		> This function behaves in exactly the same way as **String.prototype.toLowerCase**, except that characters are mapped to their *uppercase* equivalents as specified in the Unicode Character Database.
-		>
-		> #### *NOTE 1*
-		>
-		> *Because both* **toUpperCase** *and* **toLowerCase** *have context-sensitive behaviour, the functions are not symmetrical. In other words,* **s.toUpperCase().toLowerCase()** *is not necessarily equal to* **s.toLowerCase()***.*
-		>
-		> #### *NOTE 2*
-		>
-		> *The* **toUpperCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
-NuXJS result: `print("\u03C2".toUpperCase())` outputs `"S"`.
-Expected: `"Σ"`.
-Plan: Apply Unicode special casing rules so characters like Greek sigma map to `Σ` during `toUpperCase`.
-```io
-> print("\u03C2".toUpperCase())
-< Σ
--
-```
-See `tests/unconforming/toUpperCaseSpecialCasing.io` for a regression test.
   - [ ] Fixed
 - [x] built-ins/String/prototype/toUpperCase/supplementary_plane — supplementary-plane mapping not defined in ES3
 		> #### **15.5.4.18 String.prototype.toUpperCase ( )**
