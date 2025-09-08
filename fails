@@ -269,21 +269,14 @@ source
 --- output --- 
  !!!! [object Object]
 
-built-ins/String/prototype/toLowerCase/special_casing
+built-ins/parseInt/S15.1.2.2_A5.2_T2
 source
 --- output ---
 --- output --- 
  !!!! [object Object]
 
-built-ins/String/prototype/toLowerCase/special_casing_conditional
+built-ins/parseInt/S15.1.2.2_A7.2_T3
 source
 --- output ---
 --- output --- 
  !!!! [object Object]
-
-built-ins/String/prototype/toUpperCase/special_casing
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
