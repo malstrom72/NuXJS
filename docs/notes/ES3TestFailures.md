@@ -1,19 +1,14 @@
 # ES3 Test262 Failures Analysis
-80 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
+50 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
-| Expressions | §11 | 3 |
-| Array | §15.4 | 11 |
+| Array | §15.4 | 9 |
 | Date | §15.9 | 7 |
 | Error | §15.11 | 3 |
 | Function | §15.3 | 1 |
-| Math | §15.8 | 2 |
-| Number | §15.7 | 5 |
-| Object | §15.2 | 9 |
-| RegExp | §15.10 | 18 |
-| String | §15.5 | 17 |
-| parseFloat |  | 1 |
-| parseInt |  | 3 |
+| RegExp | §15.10 | 17 |
+| String | §15.5 | 11 |
+| parseInt |  | 2 |
 
 The table counts only failing Test262 cases. One additional custom test,
 `unconforming/readOnlyNumericProps`, documents an intentional deviation and is
@@ -27,85 +22,6 @@ Each list below states the ES3 requirement that the corresponding test checks. N
 For spec references, consult the Markdown edition of the ES3 spec at `docs/specs/ECMA-262 3.md`.
 
 When an item is resolved, check it off and add a brief note citing the ES3 spec section and the regression `.io` test that verifies the fix.
-
-### Expressions
-- [x] language/expressions/evalOrderOfBaseAndName — property name evaluated before null-base check
-> #### **11.2.1 Property Accessors**
->
-> The production *MemberExpression* **:** *MemberExpression* **[** *Expression* **]** is evaluated as follows:
-> - 1. Evaluate *MemberExpression*.
-> - 3. Evaluate *Expression*.
->
-NuXJS result: `invalidBase[objectPropertyName]` calls `objectPropertyName.toString()` before throwing `TypeError`.
-Expected: property names should not be evaluated when the base is `null`; the expression should immediately throw `TypeError`.
-Plan: Adjust member-expression evaluation to check the base for `null` or `undefined` before evaluating the property expression.
-```io
-> var invalidBase = null;
-> var objectPropertyName = { toString: function() { print("to string called!"); return 'x' } };
-> try { invalidBase[objectPropertyName] } catch (e) { print(e.name) }
-< TypeError
--
-```
-See `tests/unconforming/evalOrderOfBaseAndName.io` for a regression test.
-  - [ ] Fixed
-- [x] language/expressions/rightSideBeforeAssignmentRef — right-hand side evaluated before resolving assignment target
-> #### **11.13.1 Simple Assignment ( = )**
->
-> The production *AssignmentExpression* **:** *LeftHandSideExpression* **=** *AssignmentExpression* is evaluated as follows:
-> - 1. Evaluate *LeftHandSideExpression*.
-> - 2. Evaluate *AssignmentExpression*.
->
-NuXJS result: in `x = (eval("var x;"), 1)` the `eval` creates a local `x` before the assignment resolves, yielding `typeof innerX === "number"` and leaving the outer `x` unchanged.
-Expected: the assignment should resolve the outer `x` first, producing `typeof innerX === "undefined"` and updating the outer `x` to `1`.
-Plan: Resolve the assignment target before evaluating the right-hand expression so side effects can't alter the reference.
-```io
-> var x = 0;
->	var innerX = (function() {
->	  // If we were to conform strictly to ES spec, the left-hand side of th assigment is a reference to the outer x.
->	  x = (eval("var x;"), 1);
->	  return x;
->	})();
-> print(typeof innerX);
-> print(x);
-< undefined
-< 1
--
-> function testFunction() {
->	var x = 0;
->	var scope = {x: 1};
->	with (scope) {
->	  x = (delete scope.x, 2);
->	}
->	print(scope.x);
->	print(x);
-> }
-> testFunction();
-< 2
-< 0
--
-```
-See `tests/unconforming/rightSideBeforeAssignmentRef.io` for a regression test.
-  - [ ] Fixed
-- [x] language/expressions/funcCallEvalOrder — argument assignment changes callee
-> #### **11.2.3 Function Calls**
->
-> The production *CallExpression* **:** *MemberExpression* *Arguments* is evaluated as follows:
-> - 1. Evaluate *MemberExpression*.
-> - 2. Evaluate *Arguments*, producing an internal list of argument values.
->
-NuXJS result: `o.f(o.f=b)` invokes `b` because the argument assignment runs before the property reference.
-Expected: the property reference should be resolved first so the original `a` is called and `b` is merely passed as an argument.
-Plan: Capture the callee reference prior to argument evaluation to prevent argument assignments from mutating the call target.
-```io
-> function a() { print("a") }
-> function b() { print("b") }
-> o = { f: a };
-> o.f(o.f=b)
-< a
--
-```
-See `tests/unconforming/funcCallEvalOrder.io` for a regression test.
-  - [ ] Fixed
 
 ### Array
 - [x] built-ins/Array/arrayIndexTooLarge — property "4294967296" wraps to index 0
@@ -435,7 +351,7 @@ See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression te
 	> - 4. Call ToString(*separator*).
 	> - 5. If Result(2) is zero, return the empty string.
 
-        NuXJS result: elements inherited from `Array.prototype` are skipped, leaving the invocation counter at `0`.
+		NuXJS result: elements inherited from `Array.prototype` are skipped, leaving the invocation counter at `0`.
 Expected: both the own and prototype elements should invoke their `toLocaleString` methods, producing `2`.
 Plan: Include inherited indices in the iteration so prototype-defined elements also run their `toLocaleString` methods.
 ```io
@@ -471,9 +387,9 @@ Plan: Include inherited indices in the iteration so prototype-defined elements a
 		> - 6. If *seconds* is supplied use ToNumber(*seconds*); else use **0**.
 		> - 7. If *ms* is supplied use ToNumber(*ms*); else use **0**.
 
-                NuXJS result: `new Date(1970, undefined)` yields `0` instead of `NaN`.
-                                Expected: explicitly passing `undefined` for *month* should produce `NaN` because step 2 applies `ToNumber(undefined)`.
-                                Plan: Always apply `ToNumber` to the `month` argument; if it is `undefined`, the resulting `NaN` causes the constructor to produce `NaN` rather than defaulting to `0`.
+				NuXJS result: `new Date(1970, undefined)` yields `0` instead of `NaN`.
+								Expected: explicitly passing `undefined` for *month* should produce `NaN` because step 2 applies `ToNumber(undefined)`.
+								Plan: Always apply `ToNumber` to the `month` argument; if it is `undefined`, the resulting `NaN` causes the constructor to produce `NaN` rather than defaulting to `0`.
 
 				```io
 		> print(isNaN(new Date(1970, undefined)))
@@ -606,7 +522,7 @@ Plan: Include inherited indices in the iteration so prototype-defined elements a
 
 	   See `tests/unconforming/dateTimeClipNegativeZero.io` for a regression test.
 
-	     - [ ] Fixed
+		 - [ ] Fixed
 - [x] built-ins/Date/prototype/setFullYear/15.9.5.40_1 — Date.prototype.setFullYear - Date.prototype is itself not an instance of Date
 > #### **15.9.5 Properties of the Date Prototype Object**
 >
@@ -646,7 +562,7 @@ See `tests/unconforming/datePrototypeSetFullYearInvalidThis.io` for a regression
 
 	   See `tests/unconforming/errorFunctionUndefinedMessage.io` for a regression test.
 
-	     - [ ] Fixed
+		 - [ ] Fixed
 - [x] built-ins/Error/S15.11.2.1_A1_T1 — Checking message property of different error objects
 		> ## **15.11.2.1 new Error (message)**
 		>
@@ -716,401 +632,8 @@ See `tests/unconforming/datePrototypeSetFullYearInvalidThis.io` for a regression
 		See `tests/unconforming/functionPrototypeConstructible.io` for a regression test.
 		  - [ ] Fixed
 
-### Math
-- [x] built-ins/Math/pow/applying-the-exp-operator_A7 — |base| = 1 and exponent = +∞ ⇒ NaN (§15.8.2.13, regression/mathPowSpecialCases.io)
-> #### **15.8.2.13 pow(x, y)**
->
-> - If |x| = 1 and y is +∞ or −∞, the result is **NaN**.
->
-NuXJS result: `Math.pow(1, Infinity)` returns `1`.
-Expected: `Math.pow(1, Infinity)` must yield **NaN**.
-Plan: Detect `abs(x) = 1` with an infinite exponent and return **NaN** instead of `1`.
-```io
-> print(Math.pow(1, Infinity))
-< NaN
--
-```
-See `tests/regression/mathPowSpecialCases.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/Math/pow/applying-the-exp-operator_A8 — |base| = 1 and exponent = −∞ ⇒ NaN (§15.8.2.13, regression/mathPowSpecialCases.io)
-> #### **15.8.2.13 pow(x, y)**
->
-> - If |x| = 1 and y is +∞ or −∞, the result is **NaN**.
->
-NuXJS result: `Math.pow(1, -Infinity)` returns `1`.
-Expected: `Math.pow(1, -Infinity)` must yield **NaN**.
-Plan: Reuse the same check so negative infinite exponents also return **NaN**.
-```io
-> print(Math.pow(1, -Infinity))
-< NaN
--
-```
-See `tests/regression/mathPowSpecialCases.io` for a regression test.
-  - [ ] Fixed
-
-### Number
-- [x] built-ins/Number/S9.3.1_A2 — Strings with various WhiteSpaces convert to Number by explicit transformation
-	> #### **9.3.1 ToNumber Applied to the String Type**
-	> 
-	> ToNumber applied to strings applies the following grammar to the input string. If the grammar cannot interpret the string as an expansion of *StringNumericLiteral*, then the result of ToNumber is **NaN**.
-	> 
-	> *StringNumericLiteral* **:::** *StrWhiteSpaceopt StrWhiteSpaceopt StrNumericLiteral StrWhiteSpaceopt*
-	> 
-	> *StrWhiteSpace* **:::** *StrWhiteSpaceChar StrWhiteSpaceopt*
-	> 
-	> *StrWhiteSpaceChar* **:::**
-	> 
-		> *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
-
-   NuXJS result: `Number("\u16801")` returns `NaN` because `\u1680` isn’t treated as whitespace.
-   By design, NuXJS excludes the OGHAM SPACE MARK from its whitespace set.
-
-	   ```io
-	   > print(Number("\u16801"))
-   < NaN
-	   -
-	   ```
-
-	   See `tests/unconforming/numberExplicitUSP.io` for a regression test.
-
-	     - [ ] Fixed
-- [x] built-ins/Number/S9.3.1_A3_T1 — static string
-	> #### **9.3.1 ToNumber Applied to the String Type**
-	> 
-	> ToNumber applied to strings applies the following grammar to the input string. If the grammar cannot interpret the string as an expansion of *StringNumericLiteral*, then the result of ToNumber is **NaN**.
-	> 
-	> *StringNumericLiteral* **:::** *StrWhiteSpaceopt StrWhiteSpaceopt StrNumericLiteral StrWhiteSpaceopt*
-	> 
-	> *StrWhiteSpace* **:::** *StrWhiteSpaceChar StrWhiteSpaceopt*
-	> 
-	> *StrWhiteSpaceChar* **:::**
-	> 
-		> *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
-
-   NuXJS result: unary `+"\u16801"` produces `NaN`.
-   By design, NuXJS excludes the OGHAM SPACE MARK from its whitespace set.
-
-	   ```io
-	   > print(+"\u16801")
-   < NaN
-	   -
-	   ```
-
-	   See `tests/unconforming/numberStaticUSP.io` for a regression test.
-
-	     - [ ] Fixed
-- [x] built-ins/Number/S9.3.1_A3_T2 — dynamic string
-> #### **9.3.1 ToNumber Applied to the String Type**
->
-> ToNumber applied to strings applies the following grammar to the input string. If the grammar cannot interpret the string as an expansion of *StringNumericLiteral*, then the result of ToNumber is **NaN**.
->
-> *StringNumericLiteral* **:::** *StrWhiteSpaceopt StrWhiteSpaceopt StrNumericLiteral StrWhiteSpaceopt*
->
-> *StrWhiteSpace* **:::** *StrWhiteSpaceChar StrWhiteSpaceopt*
->
-> *StrWhiteSpaceChar* **:::**
->
-		> *<TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP> StrNumericLiteral* **:::** *StrDecimalLiteral*
-
-   NuXJS result: `var s = "\u1680"; Number(s+"1")` yields `NaN`.
-   By design, NuXJS excludes the OGHAM SPACE MARK from its whitespace set.
-
-	   ```io
-	   > var s="\u1680";
-	   > print(Number(s+"1"))
-   < NaN
-	   -
-	   ```
-
-	   See `tests/unconforming/numberDynamicUSP.io` for a regression test.
-
-	     - [ ] Fixed
-- [x] built-ins/Number/hexLiteralOverflow — `0x100000000` wraps to `0`
-> #### **7.8.3 Numeric Literals**
->
-> *NumericLiteral* **::** *DecimalLiteral HexIntegerLiteral*
-> - The MV of *HexIntegerLiteral* **::** *HexIntegerLiteral HexDigit* is (the MV of *HexIntegerLiteral* times 16) plus the MV of *HexDigit*.
->
-NuXJS result: `print(0x100000000)` and `print(Number("0x100000000"))` both yield `0`.
-Expected: `4294967296`.
-Plan: Parse hexadecimal literals with at least 53 bits of precision so values ≥2^32 don't wrap to zero.
-```io
-> print(0x100000000)
-< 4294967296
--
-> print(Number("0x100000000"))
-< 4294967296
--
-```
-See `tests/unconforming/hexLiteralOverflow.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/Number/hugeDecimalExponent — extremely large exponents don't overflow
-> #### **7.8.3 Numeric Literals**
->
-> - The MV of *DecimalLiteral* **::** *DecimalIntegerLiteral* *ExponentPart* is the MV of *DecimalIntegerLiteral* times 10<sup>*e*</sup>, where *e* is the MV of *ExponentPart*.
-> - The MV of *StrUnsignedDecimalLiteral* **::: Infinity** is 10<sup>10000</sup> (a value so large that it will round to **+**∞).
->
-NuXJS result: `print(1e4294967296)` and `print(Number("1e4294967296"))` both return `1`.
-Expected: `Infinity`.
-Plan: Treat exponents beyond the IEEE‑754 range as overflow, returning `Infinity` during literal parsing.
-```io
-> print(1e4294967296)
-< Infinity
--
-> print(Number("1e4294967296"))
-< Infinity
--
-```
-See `tests/unconforming/hugeDecimalExponent.io` for a regression test.
-  - [ ] Fixed
-
-### Object
-- [x] built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A12 — Let O be the result of calling ToObject passing the this value as the argument.
-	> #### **15.2.4.5 Object.prototype.hasOwnProperty (V)**
-	> 
-	> When the **hasOwnProperty** method is called with argument *V*, the following steps are taken:
-	> 
-	> - 1. Let *O* be this object.
-	> - 2. Call ToString(*V*).
-	> - 3. If *O* doesn't have a property with the name given by Result(2), return **false**.
-	> - 4. Return **true**.
-	> 
-	> *NOTE*
-	> 
-> *Unlike [[HasProperty]] (8.6.2.4), this method does not consider objects in the prototype chain.*
->
-> #### **9.9 ToObject**
->
-> | Input Type | Result |
-> | Undefined | Throw a **TypeError** exception. |
-> | Null | Throw a **TypeError** exception. |
-NuXJS result: `Object.prototype.hasOwnProperty.call(null, "x")` throws `TypeError`.
-Expected: per ES3 §15.3.4.4, `Function.prototype.call` should substitute the global object, so the call returns `false`.
-Plan: Update `Function.prototype.call` to replace a `null` or `undefined` receiver with the global object before invoking the method.
-```io
-> Object.prototype.hasOwnProperty.call(null, "x")
-< false
--
-```
-See `tests/unconforming/hasOwnPropertyNullThis.io` for a regression test.
-Flagged `not_es3` in `tools/testdash.json`.
-  - [ ] Fixed
-- [x] built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A13 — Let O be the result of calling ToObject passing the this value as the argument.
-	> #### **15.2.4.5 Object.prototype.hasOwnProperty (V)**
-	> 
-	> When the **hasOwnProperty** method is called with argument *V*, the following steps are taken:
-	> 
-	> - 1. Let *O* be this object.
-	> - 2. Call ToString(*V*).
-	> - 3. If *O* doesn't have a property with the name given by Result(2), return **false**.
-	> - 4. Return **true**.
-	> 
-	> *NOTE*
-	> 
-> *Unlike [[HasProperty]] (8.6.2.4), this method does not consider objects in the prototype chain.*
->
-> #### **9.9 ToObject**
->
-> | Input Type | Result |
-> | Undefined | Throw a **TypeError** exception. |
-> | Null | Throw a **TypeError** exception. |
-NuXJS result: `Object.prototype.hasOwnProperty.call(undefined, "x")` throws `TypeError`.
-Expected: ES3 `Function.prototype.call` should supply the global object, so the call returns `false`.
-Plan: Update `Function.prototype.call` to coerce a `null` or `undefined` thisArg to the global object.
-```io
-> Object.prototype.hasOwnProperty.call(undefined, "x")
-< false
--
-```
-See `tests/unconforming/hasOwnPropertyUndefinedThis.io` for a regression test.
-Flagged `not_es3` in `tools/testdash.json`.
-  - [ ] Fixed
-- [x] built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A12 — Let O be the result of calling ToObject passing the this value as the argument.
-	> #### **15.2.4.6 Object.prototype.isPrototypeOf (V)**
-	> 
-	> When the **isPrototypeOf** method is called with argument *V*, the following steps are taken:
-	> 
-	> - 1. Let *O* be this object.
-	> - 2. If *V* is not an object, return **false**.
-	> - 3. Let *V* be the value of the [[Prototype]] property of *V*.
-	> - 4. if *V* is **null**, return **false**
-	> - 5. If *O* and *V* refer to the same object or if they refer to objects joined to each other (13.1.2), return **true**.
-> - 6. Go to step 3.
->
-> #### **9.9 ToObject**
->
-> | Input Type | Result |
-> | Undefined | Throw a **TypeError** exception. |
-> | Null | Throw a **TypeError** exception. |
-NuXJS result: `Object.prototype.isPrototypeOf.call(null, {})` throws `TypeError`.
-Expected: ES3 requires `Function.prototype.call` to substitute the global object, so the call should return `false`.
-Plan: Normalize `Function.prototype.call` so `null`/`undefined` receivers are replaced with the global object.
-```io
-> Object.prototype.isPrototypeOf.call(null, {})
-< false
--
-```
-See `tests/unconforming/isPrototypeOfNullThis.io` for a regression test.
-Flagged `not_es3` in `tools/testdash.json`.
-  - [ ] Fixed
-- [x] built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A13 — Let O be the result of calling ToObject passing the this value as the argument.
-	> #### **15.2.4.6 Object.prototype.isPrototypeOf (V)**
-	> 
-	> When the **isPrototypeOf** method is called with argument *V*, the following steps are taken:
-	> 
-	> - 1. Let *O* be this object.
-	> - 2. If *V* is not an object, return **false**.
-	> - 3. Let *V* be the value of the [[Prototype]] property of *V*.
-	> - 4. if *V* is **null**, return **false**
-	> - 5. If *O* and *V* refer to the same object or if they refer to objects joined to each other (13.1.2), return **true**.
-> - 6. Go to step 3.
->
-> #### **9.9 ToObject**
->
-> | Input Type | Result |
-> | Undefined | Throw a **TypeError** exception. |
-> | Null | Throw a **TypeError** exception. |
-NuXJS result: `Object.prototype.isPrototypeOf.call(undefined, {})` throws `TypeError`.
-Expected: ES3 `Function.prototype.call` should treat `undefined` like `null` and use the global object, producing `false`.
-Plan: Adjust `Function.prototype.call` to substitute the global object for `null`/`undefined` receivers.
-```io
-> Object.prototype.isPrototypeOf.call(undefined, {})
-< false
--
-```
-See `tests/unconforming/isPrototypeOfUndefinedThis.io` for a regression test.
-Flagged `not_es3` in `tools/testdash.json`.
-  - [ ] Fixed
-- [x] built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A12 — Let O be the result of calling ToObject passing the this value as the argument.
-	> #### **15.2.4.7 Object.prototype.propertyIsEnumerable (V)**
-	> 
-	> When the **propertyIsEnumerable** method is called with argument *V*, the following steps are taken:
-	> 
-	> - 1. Let *O* be this object.
-	> - 2. Call ToString(*V*).
-	> - 3. If *O* doesn't have a property with the name given by Result(2), return **false**.
-	> - 4. If the property has the DontEnum attribute, return **false**.
-		> - 5. Return **true**.
-		>
-> ## *NOTE*
->
-> #### **9.9 ToObject**
->
-> | Input Type | Result |
-> | Undefined | Throw a **TypeError** exception. |
-> | Null | Throw a **TypeError** exception. |
-NuXJS result: `Object.prototype.propertyIsEnumerable.call(null, "x")` throws `TypeError`.
-Expected: with ES3 `Function.prototype.call` substitution, the result should be `false`.
-Plan: Implement global-object substitution for `null`/`undefined` receivers in `Function.prototype.call`.
-```io
-> Object.prototype.propertyIsEnumerable.call(null, "x")
-< false
--
-```
-See `tests/unconforming/propertyIsEnumerableNullThis.io` for a regression test.
-Flagged `not_es3` in `tools/testdash.json`.
-  - [ ] Fixed
-- [x] built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A13 — Let O be the result of calling ToObject passing the this value as the argument.
-	> #### **15.2.4.7 Object.prototype.propertyIsEnumerable (V)**
-	> 
-	> When the **propertyIsEnumerable** method is called with argument *V*, the following steps are taken:
-	> 
-	> - 1. Let *O* be this object.
-	> - 2. Call ToString(*V*).
-	> - 3. If *O* doesn't have a property with the name given by Result(2), return **false**.
-	> - 4. If the property has the DontEnum attribute, return **false**.
-		> - 5. Return **true**.
-		>
-		> ## *NOTE*
-NuXJS result: `Object.prototype.propertyIsEnumerable.call(undefined, "x")` throws `TypeError`.
-Expected: with ES3 call semantics, the global object should be used and the result should be `false`.
-Plan: Adjust `Function.prototype.call` to replace `null`/`undefined` receivers with the global object.
-```io
-> Object.prototype.propertyIsEnumerable.call(undefined, "x")
-< false
--
-```
-See `tests/unconforming/propertyIsEnumerableUndefinedThis.io` for a regression test.
-Flagged `not_es3` in `tools/testdash.json`.
-  - [ ] Fixed
-- [x] built-ins/Object/prototype/toLocaleString/S15.2.4.3_A12 — Let O be the result of calling ToObject passing the this value as the argument.
-> ## **15.2.4.3 Object.prototype.toLocaleString ( )**
-	> 
-	> This function returns the result of calling **toString()**.
-	> 
-> ## *NOTE 1*
->
-> *This function is provided to give all Objects a generic* **toLocaleString** *interface, even though not all may use it. Currently,* **Array***,* **Number***, and* **Date** *provide their own locale-sensitive* **toLocaleString** *methods.*
->
-NuXJS result: `Object.prototype.toLocaleString.call(null)` and `.call(undefined)` throw `TypeError`.
-Expected: ES3 uses the global object for a `null`/`undefined` receiver and should yield `"[object Object]"`.
-Plan: Update `Function.prototype.call` to substitute the global object before invoking `toLocaleString`.
-```io
-> Object.prototype.toLocaleString.call(null)
-< [object Object]
--
-> Object.prototype.toLocaleString.call(undefined)
-< [object Object]
--
-```
-See `tests/unconforming/objectToLocaleStringNullThis.io` and `tests/unconforming/objectToLocaleStringUndefinedThis.io` for regression tests.
-Flagged `not_es3` in `tools/testdash.json`.
-  - [ ] Fixed
-	> ## *NOTE 2*
-	> 
-	> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
-	> ## **15.2.4.3 Object.prototype.toLocaleString ( )**
-	> 
-- [x] built-ins/Object/prototype/toString/null_undefined — should throw on `null` or `undefined`
-> #### **15.2.4.2 Object.prototype.toString ( )**
->
-> When the **toString** method is called, the following steps are taken:
-> - 1. Get the [[Class]] property of this object.
-> - 2. Compute a string value by concatenating the three strings "[object ", Result(1), and "]".
->
-> #### **9.9 ToObject**
->
-> | Input Type | Result |
-> | Undefined | Throw a **TypeError** exception. |
-> | Null | Throw a **TypeError** exception. |
->
-NuXJS result: `Object.prototype.toString.call(undefined)` and `.call(null)` throw `TypeError`.
-Expected: ES3's `Function.prototype.call` should substitute the global object so both calls yield `"[object Object]"`.
-Plan: Implement global-object substitution for `null`/`undefined` receivers.
-```io
-> Object.prototype.toString.call(undefined)
-< [object Object]
--
-> Object.prototype.toString.call(null)
-< [object Object]
--
-```
-See `tests/unconforming/objectToStringNullUndefinedThis.io` for a regression test.
-Flagged `not_es3` in `tools/testdash.json`.
-  - [ ] Fixed
-
-- [x] built-ins/Object/prototype/valueOf/null_undefined — should return the global object for null/undefined receivers
-> #### **15.3.4.4 Function.prototype.call (thisArg [ , arg1 [ , arg2, … ] ] )**
->
-> If *thisArg* is **null** or **undefined**, the called function is passed the global object as the **this** value. Otherwise, the called function is passed ToObject(*thisArg*) as the **this** value.
->
-NuXJS result: `Object.prototype.valueOf.call(null)` and `Object.prototype.valueOf.call(undefined)` return the primitive receiver.
-Expected: both calls should return the global object because `Function.prototype.call` must substitute `null`/`undefined` with it.
-Plan: Update `Function.prototype.call` to replace a `null` or `undefined` receiver with the global object before invoking the target function.
-```io
-> Object.prototype.valueOf.call(null) === this
-< true
--
-> Object.prototype.valueOf.call(undefined) === this
-< true
--
-```
-See `tests/unconforming/objectValueOfNullUndefinedThis.io` for a regression test.
-Flagged `not_es3` in `tools/testdash.json`.
-  - [ ] Fixed
-
 ### RegExp
-        >
+		>
 	> The production *CharacterClassEscape* **:: d** evaluates by returning the ten-element set of characters containing the characters **0** through **9** inclusive.
 	> 
 	> The production *CharacterClassEscape* **:: D** evaluates by returning the set of all characters not included in the set returned by *CharacterClassEscape* **:: d**.
@@ -1658,28 +1181,28 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
 	   >
 	   > Let *string* denote the result of converting the **this** value to a string.
 	   >
-           NuXJS result: `String.prototype.replace.call(undefined, "d", "D")` produces `[object Object]`.
-           Expected: the **this** value `undefined` should convert to the string "undefined", yielding `"unDefineD"` after replacement.
-           Plan: Coerce the **this** value via `ToString` so `undefined` becomes "undefined" before replacement.
+		   NuXJS result: `String.prototype.replace.call(undefined, "d", "D")` produces `[object Object]`.
+		   Expected: the **this** value `undefined` should convert to the string "undefined", yielding `"unDefineD"` after replacement.
+		   Plan: Coerce the **this** value via `ToString` so `undefined` becomes "undefined" before replacement.
 
-           ```io
-           > print(String.prototype.replace.call(undefined, "d", "D"))
-           < unDefineD
+		   ```io
+		   > print(String.prototype.replace.call(undefined, "d", "D"))
+		   < unDefineD
 	   -
 	   ```
 	   See `tests/unconforming/stringReplaceUndefinedThis.io` for a regression test.
-	     - [ ] Fixed
+		 - [ ] Fixed
 - [x] built-ins/String/prototype/replace/S15.5.4.11_A1_T11 — replacing with objects whose `toString` throws
 		> #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
 		>
 		> Otherwise, let *newstring* denote the result of converting *replaceValue* to a string.
 		>
-                NuXJS result: replacing with an object whose `toString` throws does not propagate the exception.
-                Expected: the replacement value must be converted to a string; an error from `toString` should be thrown.
-               Plan: Apply `ToString` to the replacement and propagate any exception from its `toString`.
-                ```io
-                > try { "a".replace("a", { toString: function(){ throw new Error("X"); } }); } catch (e) { print(e.message); }
-                < X
+				NuXJS result: replacing with an object whose `toString` throws does not propagate the exception.
+				Expected: the replacement value must be converted to a string; an error from `toString` should be thrown.
+			   Plan: Apply `ToString` to the replacement and propagate any exception from its `toString`.
+				```io
+				> try { "a".replace("a", { toString: function(){ throw new Error("X"); } }); } catch (e) { print(e.message); }
+				< X
 		-
 		```
 		See `tests/unconforming/stringReplaceThrowingToString.io` for a regression test.
@@ -1689,12 +1212,12 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
 		>
 		> Otherwise, let *newstring* denote the result of converting *replaceValue* to a string.
 		>
-                NuXJS result: if the replacement object's `valueOf` throws, the exception is swallowed.
-                Expected: `ToString` first invokes `valueOf`; an error from `valueOf` must propagate.
-               Plan: Invoke `valueOf` during `ToString` and propagate its errors before calling `toString`.
-                ```io
-                > try { "a".replace("a", { valueOf: function(){ throw new Error("Y"); } }); } catch (e) { print(e.message); }
-                < Y
+				NuXJS result: if the replacement object's `valueOf` throws, the exception is swallowed.
+				Expected: `ToString` first invokes `valueOf`; an error from `valueOf` must propagate.
+			   Plan: Invoke `valueOf` during `ToString` and propagate its errors before calling `toString`.
+				```io
+				> try { "a".replace("a", { valueOf: function(){ throw new Error("Y"); } }); } catch (e) { print(e.message); }
+				< Y
 		-
 		```
 		See `tests/unconforming/stringReplaceThrowingValueOf.io` for a regression test.
@@ -1704,65 +1227,65 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
 	   >
 	   > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.	The sequence `"$"` followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
 	   >
-           NuXJS result: `var r = "$11" + 15; "xab".replace(/(x)/, r)` leaves the `$11` literal and returns `"$1115ab"`.
-           Expected: `$11` should expand to capture `1` followed by `"1"`, producing `"x115ab"`.
-           Plan: After computing `replaceValue`, expand `$nn` sequences to the corresponding capture groups before insertion.
+		   NuXJS result: `var r = "$11" + 15; "xab".replace(/(x)/, r)` leaves the `$11` literal and returns `"$1115ab"`.
+		   Expected: `$11` should expand to capture `1` followed by `"1"`, producing `"x115ab"`.
+		   Plan: After computing `replaceValue`, expand `$nn` sequences to the corresponding capture groups before insertion.
 
-           ```io
-           > var r = "$11" + 15
-           > print("xab".replace(/(x)/, r))
+		   ```io
+		   > var r = "$11" + 15
+		   > print("xab".replace(/(x)/, r))
 	   < x115ab
 	   -
 	   ```
 	   See `tests/unconforming/stringReplace11Concat.io` for a regression test.
-	     - [ ] Fixed
+		 - [ ] Fixed
 - [x] built-ins/String/prototype/replace/S15.5.4.11_A3_T2 — `replaceValue` is "$11" + "15"
 	   > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
 	   >
 	   > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.	The sequence "\$" followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
 	   >
 	   NuXJS result: `var r = "$11" + "15"; "xab".replace(/(x)/, r)` yields `$1115ab`.
-           Expected: `$11` should expand to capture `1` followed by "1", producing "x115ab".
-           Plan: Scan two-digit `$nn` tokens and, when `nn` exceeds the capture count, treat `$n` as the capture and append the extra digit literally.
-           ```io
+		   Expected: `$11` should expand to capture `1` followed by "1", producing "x115ab".
+		   Plan: Scan two-digit `$nn` tokens and, when `nn` exceeds the capture count, treat `$n` as the capture and append the extra digit literally.
+		   ```io
 	   > var r = "$11" + "15"
 	   > print("xab".replace(/(x)/, r))
 	   < x115ab
 	   -
 	   ```
 	   See `tests/unconforming/stringReplace11Plus15.io` for a regression test.
-	     - [ ] Fixed
+		 - [ ] Fixed
 - [x] built-ins/String/prototype/replace/S15.5.4.11_A3_T3 — `replaceValue` is "$11" + "A15"
 	   > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
 	   >
 	   > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.	The sequence "\$" followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
 	   >
-           NuXJS result: `var r = "$11" + "A15"; "xab".replace(/(x)/, r)` returns `$11A15ab`.
-           Expected: "x1A15ab" after expanding `$11` to capture `1` plus "1".
-           Plan: When processing replacement text, prefer a two-digit capture only if it exists; otherwise use the first digit's capture and emit the remaining text unchanged.
-           ```io
+		   NuXJS result: `var r = "$11" + "A15"; "xab".replace(/(x)/, r)` returns `$11A15ab`.
+		   Expected: "x1A15ab" after expanding `$11` to capture `1` plus "1".
+		   Plan: When processing replacement text, prefer a two-digit capture only if it exists; otherwise use the first digit's capture and emit the remaining text unchanged.
+		   ```io
 	   > var r = "$11" + "A15"
 	   > print("xab".replace(/(x)/, r))
 	   < x1A15ab
 	   -
 	   ```
 	   See `tests/unconforming/stringReplace11PlusA15.io` for a regression test.
-	     - [ ] Fixed
+		 - [ ] Fixed
 - [x] built-ins/String/prototype/replace/S15.5.4.11_A5_T1 — regex `/^(a+)\1*,\1+$/` with backreference
 	   > #### **15.10.2.9 AtomEscape**
 	   >
 	   > An escape sequence of the form "\\" followed by a nonzero decimal number *n* matches the result of the *n*th set of capturing parentheses.
 	   >
-           NuXJS result: "aa,a".replace(/^(a+)\1*,\1+$/, "$1") leaves the string unchanged.
-           Expected: backreference handling should collapse the match to "a".
-           Plan: Implement backreference evaluation so `\1` and similar escapes compare against the previously captured text, even when quantified.
-           ```io
+		   NuXJS result: "aa,a".replace(/^(a+)\1*,\1+$/, "$1") leaves the string unchanged.
+		   Expected: backreference handling should collapse the match to "a".
+		   Plan: Implement backreference evaluation so `\1` and similar escapes compare against the previously captured text, even when quantified.
+		   ```io
 	   > print("aa,a".replace(/^(a+)\1*,\1+$/, "$1"))
 	   < a
 	   -
 	   ```
 	   See `tests/unconforming/stringReplaceBackreference.io` for a regression test.
-	     - [ ] Fixed
+		 - [ ] Fixed
 - [x] built-ins/String/prototype/toLocaleLowerCase/special_casing — relies on locale-specific behavior
 		> ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
 		>
@@ -1967,34 +1490,6 @@ Flagged `not_es3` in `tools/testdash.json`.
 ```
 See `tests/unconforming/toUpperCaseSupplementaryPlane.io` for a regression test.
   - [ ] Fixed
-### parseFloat
-- [x] built-ins/parseFloat/S15.1.2.3_A2_T10 — "StrWhiteSpaceChar :: USP"
-	> ## **15.1.2.3 parseFloat (string)**
-	> 
-	> The **parseFloat** function produces a number value dictated by interpretation of the contents of the *string* argument as a decimal literal.
-	> 
-	> When the **parseFloat** function is called, the following steps are taken:
-	> 
-	> - 1. Call ToString(*string*).
-	> - 2. Compute a substring of Result(1) consisting of the leftmost character that is not a *StrWhiteSpaceChar* and all characters to the right of that character.(In other words, remove leading white space.)
-		> - 3. If neither Result(2) nor any prefix of Result(2) satisfies the syntax of a *StrDecimalLiteral* (see 0), return **NaN**.
-		> - 4. Compute the longest prefix of Result(2), which might be Result(2) itself, which satisfies the syntax of a *StrDecimalLiteral*.
-		> - 5. Return the number value for the MV of Result(4).
-		>
-		> *StrWhiteSpaceChar* **:::** <TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP>
-
-NuXJS result: `parseFloat("\u16801.5")` returns `NaN`.
-By design, NuXJS excludes the OGHAM SPACE MARK from its whitespace set.
-
-```io
-> print(parseFloat("\u16801.5"))
-< NaN
--
-```
-See `tests/unconforming/parseFloatUSP.io` for a regression test.
-  - [ ] Fixed
-
-
 ### parseInt
 - [x] built-ins/parseInt/S15.1.2.2_A2_T10 — "StrWhiteSpaceChar :: USP"
 	> #### **15.1.2.2 parseInt (string , radix)**
