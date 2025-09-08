@@ -4,11 +4,10 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 
 ## ES3 Deviations
 
-- `\0` is interpreted as a null character even if digits follow (octal escapes are not supported).
-- Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The non‑breaking space (`\u00A0`) counts as white space, but the zero‑width no‑break space (`\uFEFF`) does not. No other Unicode "space separator" characters are recognised.
+- In non-strict code, `\0` is interpreted as a null character even if digits follow (octal escapes are not supported). In strict code, octal escape sequences such as `\1` or `\0` followed by digits are rejected.
+- Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The non‑breaking space (`\u00A0`) and zero‑width no‑break space (`\uFEFF`) count as white space, and the format-control characters (`\u200C`, `\u200D`) are discarded. No other Unicode "space separator" characters are recognised.
 - Implicit `valueOf` and `toString` conversions may happen earlier than specified. For example, `v[o]++` only calls `toString()` once.
 - Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers.
-- When the identifier of a `catch` clause is called as a function, its `this` value becomes the global object.
 - Assignments evaluate the right-hand side before resolving the reference on the left-hand side.
 - Property access may convert the property key before converting the base object.
 - The lookahead operators `?=` and `?!` in regular expressions behave like ES5 assertions and cannot be quantified as in ES3.
@@ -32,6 +31,7 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 - `Object.getOwnPropertyNames`
 - `Object.create`
 - `Object.keys`
+- `Object.keys` enumerates string indices and throws a `TypeError` for `null` or `undefined` inputs.
 - `Object.preventExtensions`
 - `Object.isExtensible`
 - `Object.seal`
@@ -42,29 +42,41 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 - `Number.isNaN`
 - `Number.prototype.toJSON`
 - `String.prototype.toJSON`
+- `String.prototype.trim`
+- `String.prototype.trimLeft`
+- `String.prototype.trimRight`
 - `Boolean.prototype.toJSON`
+- `Date.prototype.toJSON`
 - `JSON.parse`
 - `JSON.stringify`
 
 ### Additional behaviour
 
 - String objects allow indexed access to individual characters.
-- `eval()` distinguishes between direct and indirect calls.
+- `eval()` distinguishes between direct and indirect calls; indirect calls execute in the global scope.
+- `Object.preventExtensions`, `Object.seal`, and `Object.freeze` throw a `TypeError` when called on non-objects. `Object.isSealed` and `Object.isFrozen` return `true` for primitive arguments while `Object.isExtensible` returns `false`.
 - `String.prototype.match` returns `null` for global patterns with no match and always uses the built-in `RegExp.prototype.exec`.
 - `Array.prototype.splice` with a single argument deletes the rest of the array (ES6 behaviour).
 - Many `Date` object features from ES5 are implemented.
+- `Date.parse` validates ISO 8601 strings and returns `NaN` for invalid input.
+- `Date.prototype.toJSON` calls the object's own `toISOString` method and returns `null` for non‑finite time values.
+- `Date.prototype.toISOString` requires a `Date` receiver and throws a `RangeError` for non‑finite time values.
+- `JSON.parse` supports a reviver function to transform parsed values or prune properties.
+- `JSON.stringify` accepts replacer functions/arrays and a space argument for formatted output.
 - Regular expression flags cannot contain Unicode escape sequences.
+- `RegExp.prototype` is itself a `RegExp` instance, and the `\s` character class also matches the zero‑width no‑break space (`\uFEFF`).
 - Unicode format control characters are preserved in source text.
+- Regular expression literals produce distinct objects, reject invalid patterns during parsing, and allow unescaped `/` within character classes.
 - ES5 builds expose `Function.prototype.caller` and `.arguments` as throwing accessors. In strict code, `arguments.callee`
   and `arguments.caller` also raise a `TypeError`.
 - Non-strict `arguments` objects omit the legacy `caller` property.
 - `Object.getPrototypeOf` throws a `TypeError` when called on non-object values.
-
-### Unsupported ES5 features
-
-NuXJS still follows ES3 semantics for several constructs that changed in ES5:
-
-- Function `name` is writable and `length` cannot be deleted.
+- `Function.prototype.apply` accepts generic array-like objects.
+- Function `name` properties are read-only but configurable.
+- Global constants `NaN`, `Infinity`, and `undefined` are non-writable and non-configurable.
+ - `Object.defineProperty` and `Object.defineProperties` throw a `TypeError` when the target is not an object.
+ - `Object.defineProperty` throws a `TypeError` if the property cannot be defined, such as on non‑extensible objects.
+ - `Object.getOwnPropertyNames` throws a `TypeError` when called on non-object values.
 
 ### ECMAScript oddities
 

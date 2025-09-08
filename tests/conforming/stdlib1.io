@@ -1,55 +1,55 @@
->     function analyzeFlags(object, property, testValue) {
->         var origObject = Object; // In case it is Object we are testing
->         property = '' + property;
->         testValue = (testValue != null ? testValue : { });
->         if (!object.hasOwnProperty(property)) {
->             print(property + " : doesn't exist");
->         } else {
->             var dontEnum = true;
->             for (var p in object) {
->                 if (p === property) {
->                     dontEnum = false;
->                     break;
->                 }
->             }
->             var doEnum = object.propertyIsEnumerable(property);
->             if (doEnum === dontEnum) {
->                 print("Warning! object.propertyIsEnumerable() returned " + doEnum + " for property '" + property
->                         + "' although it " + (dontEnum ? "was not" : "was") + " listed by for-in");
->             }
->             var valueWas = object[property];
->             object[property] = testValue;
->             var valueIs = object[property];
->             var readOnly = (valueIs !== testValue);
->             var deleted = delete object[property];
->             var dontDelete = object.hasOwnProperty(property);
->             print(property + " : " + (dontEnum ? "dontEnum," : "") + (readOnly ? "readOnly," : "")
->                     + (dontDelete ? "dontDelete," : "") + " (deleted:" + deleted + ')');
->             if (origObject.defineProperty) {
->                 origObject.defineProperty(object, property, { value: valueWas, enumerable: !dontEnum, configurable: !dontDelete, writable: !readOnly });
->             } else {
->                 object[property] = valueWas;
->             }
->         }
->     }
--     
->     var constants = [
->         [ this, "NaN" ], [ this, "Infinity" ], [ this, "undefined" ]
->         , [ Number, "MAX_VALUE" ], [ Number, "MIN_VALUE" ], [ Number, "NaN" ], [ Number, "NEGATIVE_INFINITY" ], [ Number, "POSITIVE_INFINITY" ]
->     ];
->     for (var i = 0; i < constants.length; ++i) {
->         var base = constants[i][0];
->         var constant = constants[i][1];
->         print(constant + ": " + base[constant]);
->         analyzeFlags(base, constant);
->     };
+>	  function analyzeFlags(object, property, testValue) {
+>		  var origObject = Object; // In case it is Object we are testing
+>		  property = '' + property;
+>		  testValue = (testValue != null ? testValue : { });
+>		  if (!object.hasOwnProperty(property)) {
+>			  print(property + " : doesn't exist");
+>		  } else {
+>			  var dontEnum = true;
+>			  for (var p in object) {
+>				  if (p === property) {
+>					  dontEnum = false;
+>					  break;
+>				  }
+>			  }
+>			  var doEnum = object.propertyIsEnumerable(property);
+>			  if (doEnum === dontEnum) {
+>				  print("Warning! object.propertyIsEnumerable() returned " + doEnum + " for property '" + property
+>						  + "' although it " + (dontEnum ? "was not" : "was") + " listed by for-in");
+>			  }
+>			  var valueWas = object[property];
+>			  object[property] = testValue;
+>			  var valueIs = object[property];
+>			  var readOnly = (valueIs !== testValue);
+>			  var deleted = delete object[property];
+>			  var dontDelete = object.hasOwnProperty(property);
+>			  print(property + " : " + (dontEnum ? "dontEnum," : "") + (readOnly ? "readOnly," : "")
+>					  + (dontDelete ? "dontDelete," : "") + " (deleted:" + deleted + ')');
+>			  if (origObject.defineProperty) {
+>				  origObject.defineProperty(object, property, { value: valueWas, enumerable: !dontEnum, configurable: !dontDelete, writable: !readOnly });
+>			  } else {
+>				  object[property] = valueWas;
+>			  }
+>		  }
+>	  }
+-	  
+>	  var constants = [
+>		  [ this, "NaN" ], [ this, "Infinity" ], [ this, "undefined" ]
+>		  , [ Number, "MAX_VALUE" ], [ Number, "MIN_VALUE" ], [ Number, "NaN" ], [ Number, "NEGATIVE_INFINITY" ], [ Number, "POSITIVE_INFINITY" ]
+>	  ];
+>	  for (var i = 0; i < constants.length; ++i) {
+>		  var base = constants[i][0];
+>		  var constant = constants[i][1];
+>		  print(constant + ": " + base[constant]);
+>		  analyzeFlags(base, constant);
+>	  };
 // ES5.1: 15.1.1: The value properties NaN, Infinity, and undefined of the Global Object have been changed to be read-only properties.
 < NaN: NaN
-< NaN : dontEnum,dontDelete, (deleted:false)
+< NaN : dontEnum,readOnly,dontDelete, (deleted:false)
 < Infinity: Infinity
-< Infinity : dontEnum,dontDelete, (deleted:false)
+< Infinity : dontEnum,readOnly,dontDelete, (deleted:false)
 < undefined: undefined
-< undefined : dontEnum,dontDelete, (deleted:false)
+< undefined : dontEnum,readOnly,dontDelete, (deleted:false)
 < MAX_VALUE: 1.7976931348623157e+308
 < MAX_VALUE : dontEnum,readOnly,dontDelete, (deleted:false)
 < MIN_VALUE: 5e-324
@@ -60,18 +60,18 @@
 < NEGATIVE_INFINITY : dontEnum,readOnly,dontDelete, (deleted:false)
 < POSITIVE_INFINITY: Infinity
 < POSITIVE_INFINITY : dontEnum,readOnly,dontDelete, (deleted:false)
--    
+-	 
 >	  function testConstructor(constructor) {
->         print(constructor + ": " + typeof this[constructor]);
->         analyzeFlags(this, constructor);
->         print(constructor + ".prototype: " + this[constructor].prototype);
->         analyzeFlags(this[constructor], 'prototype');
->         print(constructor + ".prototype.constructor: " + typeof this[constructor].prototype.constructor);
->         analyzeFlags(this[constructor].prototype, 'constructor');
->         print(this[constructor].prototype.constructor === this[constructor]);
->         print(constructor + ".length: " + this[constructor].length);
->         analyzeFlags(this[constructor], 'length');
->     }
+>		  print(constructor + ": " + typeof this[constructor]);
+>		  analyzeFlags(this, constructor);
+>		  print(constructor + ".prototype: " + this[constructor].prototype);
+>		  analyzeFlags(this[constructor], 'prototype');
+>		  print(constructor + ".prototype.constructor: " + typeof this[constructor].prototype.constructor);
+>		  analyzeFlags(this[constructor].prototype, 'constructor');
+>		  print(this[constructor].prototype.constructor === this[constructor]);
+>		  print(constructor + ".length: " + this[constructor].length);
+>		  analyzeFlags(this[constructor], 'length');
+>	  }
 -
 // ES5.1: 15.3.5.2: In Edition 5, the prototype property of Function instances is not enumerable. In Edition 3, this property was enumerable.
 > testConstructor("Object");
@@ -83,7 +83,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < Object.length: 1
-< length : dontEnum,readOnly,dontDelete, (deleted:false)
+< length : dontEnum,readOnly, (deleted:true)
 -
 > testConstructor("Boolean");
 < Boolean: function
@@ -94,7 +94,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < Boolean.length: 1
-< length : dontEnum,readOnly,dontDelete, (deleted:false)
+< length : dontEnum,readOnly, (deleted:true)
 -
 > testConstructor("Number");
 < Number: function
@@ -105,7 +105,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < Number.length: 1
-< length : dontEnum,readOnly,dontDelete, (deleted:false)
+< length : dontEnum,readOnly, (deleted:true)
 -
 > testConstructor("String");
 < String: function
@@ -116,7 +116,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < String.length: 1
-< length : dontEnum,readOnly,dontDelete, (deleted:false)
+< length : dontEnum,readOnly, (deleted:true)
 -
 > testConstructor("Function");
 < Function: function
@@ -127,7 +127,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < Function.length: 1
-< length : dontEnum,readOnly,dontDelete, (deleted:false)
+< length : dontEnum,readOnly, (deleted:true)
 -
 > testConstructor("Error");
 < Error: function
@@ -138,7 +138,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < Error.length: 1
-< length : dontEnum,readOnly,dontDelete, (deleted:false)
+< length : dontEnum,readOnly, (deleted:true)
 -
 > testConstructor("EvalError");
 < EvalError: function
@@ -149,7 +149,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < EvalError.length: 1
-< length : dontEnum,readOnly,dontDelete, (deleted:false)
+< length : dontEnum,readOnly, (deleted:true)
 -
 > testConstructor("RangeError");
 < RangeError: function
@@ -160,7 +160,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < RangeError.length: 1
-< length : dontEnum,readOnly,dontDelete, (deleted:false)
+< length : dontEnum,readOnly, (deleted:true)
 -
 > testConstructor("ReferenceError");
 < ReferenceError: function
@@ -171,7 +171,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < ReferenceError.length: 1
-< length : dontEnum,readOnly,dontDelete, (deleted:false)
+< length : dontEnum,readOnly, (deleted:true)
 -
 > testConstructor("SyntaxError");
 < SyntaxError: function
@@ -182,7 +182,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < SyntaxError.length: 1
-< length : dontEnum,readOnly,dontDelete, (deleted:false)
+< length : dontEnum,readOnly, (deleted:true)
 -
 > testConstructor("TypeError"); 
 < TypeError: function
@@ -193,7 +193,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < TypeError.length: 1
-< length : dontEnum,readOnly,dontDelete, (deleted:false)
+< length : dontEnum,readOnly, (deleted:true)
 -
 > testConstructor("URIError");
 < URIError: function
@@ -204,77 +204,77 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < URIError.length: 1
-< length : dontEnum,readOnly,dontDelete, (deleted:false)
+< length : dontEnum,readOnly, (deleted:true)
 -
->     
->     // FIX : test that all functions in all standard library objects are not constructable and that they don't have prototype fields
+>	  
+>	  // FIX : test that all functions in all standard library objects are not constructable and that they don't have prototype fields
 > //  var globalObjects = [ "Object", "Boolean", "Number", "String", "Function", "Error", "Math" ]; <- rest of errors
->     
->         var x = Object(true);
->         print("x: " + x);
->         print("x instanceof Boolean: " + (x instanceof Boolean));
->         var realBoolean = Boolean;
->         Boolean = function(b) { print("custom Boolean call"); return realBoolean(!b) };
->         x = new Boolean(true);
->         print("x: " + x);
->         print("x instanceof Boolean: " + (x instanceof Boolean));
->         print("x instanceof realBoolean: " + (x instanceof realBoolean));
->         realBoolean.prototype.capture = function() { return this; };
->         Boolean.prototype.capture = function() { return this; };
->         x = (true).capture();
->         delete realBoolean.prototype.capture;
->         delete Boolean.prototype.capture;
->         print("x: " + x);
->         print("x instanceof Boolean: " + (x instanceof Boolean));
->         print("x instanceof realBoolean: " + (x instanceof realBoolean));
->         x = Object(true);
->         print("x: " + x);
->         print("x instanceof Boolean: " + (x instanceof Boolean));
->         print("x instanceof realBoolean: " + (x instanceof realBoolean));
->     
->         var x = Object(1.2345);
->         print("x: " + x);
->         print("x instanceof Number: " + (x instanceof Number));
->         var realNumber = Number;
->         Number = function(b) { print("custom Number call"); return realNumber(!b) };
->         x = new Number(1.2345);
->         print("x: " + x);
->         print("x instanceof Number: " + (x instanceof Number));
->         print("x instanceof realNumber: " + (x instanceof realNumber));
->         realNumber.prototype.capture = function() { return this; };
->         Number.prototype.capture = function() { return this; };
->         x = (1.2345).capture();
->         delete realNumber.prototype.capture;
->         delete Number.prototype.capture;
->         print("x: " + x);
->         print("x instanceof Number: " + (x instanceof Number));
->         print("x instanceof realNumber: " + (x instanceof realNumber));
->         x = Object(1.2345);
->         print("x: " + x);
->         print("x instanceof Number: " + (x instanceof Number));
->         print("x instanceof realNumber: " + (x instanceof realNumber));
->     
->         var x = Object("strongbad");
->         print("x: " + x);
->         print("x instanceof String: " + (x instanceof String));
->         var realString = String;
->         String = function(b) { print("custom String call"); return realString(!b) };
->         x = new String("strongbad");
->         print("x: " + x);
->         print("x instanceof String: " + (x instanceof String));
->         print("x instanceof realString: " + (x instanceof realString));
->         realString.prototype.capture = function() { return this; };
->         String.prototype.capture = function() { return this; };
->         x = ("strongbad").capture();
->         delete realString.prototype.capture;
->         delete String.prototype.capture;
->         print("x: " + x);
->         print("x instanceof String: " + (x instanceof String));
->         print("x instanceof realString: " + (x instanceof realString));
->         x = Object("strongbad");
->         print("x: " + x);
->         print("x instanceof String: " + (x instanceof String));
->         print("x instanceof realString: " + (x instanceof realString));
+>	  
+>		  var x = Object(true);
+>		  print("x: " + x);
+>		  print("x instanceof Boolean: " + (x instanceof Boolean));
+>		  var realBoolean = Boolean;
+>		  Boolean = function(b) { print("custom Boolean call"); return realBoolean(!b) };
+>		  x = new Boolean(true);
+>		  print("x: " + x);
+>		  print("x instanceof Boolean: " + (x instanceof Boolean));
+>		  print("x instanceof realBoolean: " + (x instanceof realBoolean));
+>		  realBoolean.prototype.capture = function() { return this; };
+>		  Boolean.prototype.capture = function() { return this; };
+>		  x = (true).capture();
+>		  delete realBoolean.prototype.capture;
+>		  delete Boolean.prototype.capture;
+>		  print("x: " + x);
+>		  print("x instanceof Boolean: " + (x instanceof Boolean));
+>		  print("x instanceof realBoolean: " + (x instanceof realBoolean));
+>		  x = Object(true);
+>		  print("x: " + x);
+>		  print("x instanceof Boolean: " + (x instanceof Boolean));
+>		  print("x instanceof realBoolean: " + (x instanceof realBoolean));
+>	  
+>		  var x = Object(1.2345);
+>		  print("x: " + x);
+>		  print("x instanceof Number: " + (x instanceof Number));
+>		  var realNumber = Number;
+>		  Number = function(b) { print("custom Number call"); return realNumber(!b) };
+>		  x = new Number(1.2345);
+>		  print("x: " + x);
+>		  print("x instanceof Number: " + (x instanceof Number));
+>		  print("x instanceof realNumber: " + (x instanceof realNumber));
+>		  realNumber.prototype.capture = function() { return this; };
+>		  Number.prototype.capture = function() { return this; };
+>		  x = (1.2345).capture();
+>		  delete realNumber.prototype.capture;
+>		  delete Number.prototype.capture;
+>		  print("x: " + x);
+>		  print("x instanceof Number: " + (x instanceof Number));
+>		  print("x instanceof realNumber: " + (x instanceof realNumber));
+>		  x = Object(1.2345);
+>		  print("x: " + x);
+>		  print("x instanceof Number: " + (x instanceof Number));
+>		  print("x instanceof realNumber: " + (x instanceof realNumber));
+>	  
+>		  var x = Object("strongbad");
+>		  print("x: " + x);
+>		  print("x instanceof String: " + (x instanceof String));
+>		  var realString = String;
+>		  String = function(b) { print("custom String call"); return realString(!b) };
+>		  x = new String("strongbad");
+>		  print("x: " + x);
+>		  print("x instanceof String: " + (x instanceof String));
+>		  print("x instanceof realString: " + (x instanceof realString));
+>		  realString.prototype.capture = function() { return this; };
+>		  String.prototype.capture = function() { return this; };
+>		  x = ("strongbad").capture();
+>		  delete realString.prototype.capture;
+>		  delete String.prototype.capture;
+>		  print("x: " + x);
+>		  print("x instanceof String: " + (x instanceof String));
+>		  print("x instanceof realString: " + (x instanceof realString));
+>		  x = Object("strongbad");
+>		  print("x: " + x);
+>		  print("x instanceof String: " + (x instanceof String));
+>		  print("x instanceof realString: " + (x instanceof realString));
 < x: true
 < x instanceof Boolean: true
 < custom Boolean call
@@ -311,29 +311,29 @@
 < x: strongbad
 < x instanceof String: false
 < x instanceof realString: true
->     
->     // FIX : test errors
->     
->     // FIX : test that all function's have names that matches their property names in their "owner objects"
->     
->         var global = this;
->         function test() { print(this.toString() + (this === global ? ' (global)' : '')); print('count: ' + arguments.length); for (i = 0; i < arguments.length; ++i) print(arguments[i].toString()); print('-') }
->         test(1,2,3,4,5);
->         var o = { toString: function() { return "me" }, test: test };
->         o.test(6,7,8);
->         test.call(null, 9,10,11,12);
->         test.call(o, 9,10,11,12);
->         test.apply(null, [ 13,14,15,16 ]);
->         test.apply(o, [ 13,14,15,16 ]);
->         test.call(o);
->         test.apply(o);
->         test.call();
->         test.apply();
->         test.call("snuttelisnutt");
->         test.apply("snuttelisnutt");
->         (function() { test.apply(o, arguments); })(17,18,19,20);
->         try { test.apply(o, "snuttelisnutt"); } catch (e) { print(e); }
->         try { test.apply(o, { 'wrong': 'type of object' }); } catch (e) { print(e); }
+>	  
+>	  // FIX : test errors
+>	  
+>	  // FIX : test that all function's have names that matches their property names in their "owner objects"
+>	  
+>		  var global = this;
+>		  function test() { print(this.toString() + (this === global ? ' (global)' : '')); print('count: ' + arguments.length); for (i = 0; i < arguments.length; ++i) print(arguments[i].toString()); print('-') }
+>		  test(1,2,3,4,5);
+>		  var o = { toString: function() { return "me" }, test: test };
+>		  o.test(6,7,8);
+>		  test.call(null, 9,10,11,12);
+>		  test.call(o, 9,10,11,12);
+>		  test.apply(null, [ 13,14,15,16 ]);
+>		  test.apply(o, [ 13,14,15,16 ]);
+>		  test.call(o);
+>		  test.apply(o);
+>		  test.call();
+>		  test.apply();
+>		  test.call("snuttelisnutt");
+>		  test.apply("snuttelisnutt");
+>		  (function() { test.apply(o, arguments); })(17,18,19,20);
+>		  try { test.apply(o, "snuttelisnutt"); } catch (e) { print(e); }
+>		  try { test.apply(o, { 'wrong': 'type of object' }); } catch (e) { print(e); }
 < [object Object] (global)
 < count: 5
 < 1
@@ -401,6 +401,23 @@
 < 19
 < 20
 < -
-< TypeError: Argument list has wrong type
-< TypeError: Argument list has wrong type
+< me
+< count: 13
+< s
+< n
+< u
+< t
+< t
+< e
+< l
+< i
+< s
+< n
+< u
+< t
+< t
+< -
+< me
+< count: 0
+< -
 -

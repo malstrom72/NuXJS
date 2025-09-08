@@ -198,7 +198,7 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 ### ES3 deviations
 
 - `\0` is interpreted as a null character even if digits follow (octal escapes are not supported).
-- Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The non‑breaking space (`\u00A0`) counts as white space, but the zero-width no‑break space (`\uFEFF`) does not. No other Unicode "space separator" characters are recognised.
+- Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The non‑breaking space (`\u00A0`) and zero-width no‑break space (`\uFEFF`) count as white space, and the format-control characters (`\u200C`, `\u200D`) are discarded. No other Unicode "space separator" characters are recognised.
 - Implicit `valueOf` and `toString` conversions may happen earlier than specified, for example, `v[o]++` only invokes `toString()` once.
 - Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers.
 - When the identifier of a `catch` clause is called as a function, its `this` value is the global object.

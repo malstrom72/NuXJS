@@ -1,9 +1,12 @@
-> var n = new Number(42); print(n.toJSON());
-< 42
+> print(new Number(5).toJSON());
+< 5
+-
+> print((5).toJSON());
+< 5
 -
 > print(new Number(NaN).toJSON());
 < null
 -
-> print((-Infinity).toJSON());
+> print(new Number(Infinity).toJSON());
 < null
 -

@@ -7,7 +7,7 @@
 	@preserve: getDate,getDay,getFullYear,getHours,getInternalProperty,getMilliseconds,getMinutes,getMonth
 	@preserve: getPrototypeOf,getSeconds,getTime,getTimezoneOffset,getUTCDate,getUTCDay,getUTCFullYear,getUTCHours
 	@preserve: getUTCMilliseconds,getUTCMinutes,getUTCMonth,getUTCSeconds,hasOwnProperty,if,ignoreCase,in,index,indexOf
-	@preserve: input,isArray,isFinite,isNaN,isPropertyEnumerable,join,lastIndex,lastIndexOf,length,localeCompare,log
+@preserve: input,isArray,isExtensible,isFinite,isNaN,isPropertyEnumerable,join,lastIndex,lastIndexOf,length,localeCompare,log
 	@preserve: match,max,maxNumber,message,min,minNumber,multiline,name,new,null,parseFloat,parseInt,pow
 	@preserve: propertyIsEnumerable,prototype,push,readOnly,regExpCanonicalize,return,reverse,round,setDate
 	@preserve: setFullYear,setHours,setMilliseconds,setMinutes,setMonth,setSeconds,setTime,setUTCDate
@@ -251,13 +251,16 @@ var Function = function Function(body) {
 defProps(Function, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Function });
 defProps(Function.prototype, { dontEnum: true }, {
 	constructor: Function,
-	apply: unconstructable(function apply(thisArg, argArray) { // FIX : <- 100% native version in the future I think
-		var theClass;
-		if (argArray == null) argArray = [ ];
-		else if ((theClass = $getInternalProperty(argArray, "class")) !== "Array" && theClass !== "Arguments") {
-			throw typeError("Argument list has wrong type");
-		};
-		return $callWithArgs(this, thisArg, argArray);
+	   apply: unconstructable(function apply(thisArg, argArray) { // FIX : <- 100% native version in the future I think
+			   var args, obj, len;
+			   if (argArray == null) args = [ ];
+			   else {
+					   obj = Object(argArray);
+					   len = obj.length >>> 0;
+					   args = new Array(len);
+					   for (var i = 0; i < len; ++i) args[i] = obj[i];
+			   };
+			   return $callWithArgs(this, thisArg, args);
 	}),
 	call: unconstructable(function call(thisArg) { // FIX : <- 100% native version in the future I think
 		return $callWithArgs(this, thisArg, arguments, 1);
@@ -892,15 +895,23 @@ defProps(Date, { dontEnum: true }, {
 				s[i] === ":" && (++i, readPart(2)) || 0,
 				s[i] === "." && (++i, readPart(3)) || 0);
 
-		while ((ch = s[i]) !== void 0 && ch !== "Z" && ch !== "z" && ch !== "+" && ch !== "-") ++i;
-
-		if (ch === "Z" || ch === "z") tz = 0;
-		else if (ch === "+" || ch === "-") {
-			++i, tzh = readPart(2) * 36e5,
-			s[i] === ":" && ++i, tzh += $isNaN(tzm = readPart(2)) ? 0 : tzm * 6e4,
-			$isNaN(tzh) || (tz = ch === "-" ? -tzh : tzh);
-		}
-		return (tz === void 0 ? fromLocalTime(z) : z - tz)
+var i0 = i;
+while ((ch = s[i]) !== void 0 && ch !== "Z" && ch !== "z" && ch !== "+" && ch !== "-") ++i;
+if (ch === void 0) {
+if (i !== i0) return $NaN;
+} else if (ch === "Z" || ch === "z") {
+++i; tz = 0;
+} else {
+++i;
+tzh = readPart(2) * 36e5;
+if ($isNaN(tzh)) return $NaN;
+if (s[i] === ":") ++i;
+tzm = readPart(2);
+tz = tzh + ($isNaN(tzm) ? 0 : tzm * 6e4);
+tz = ch === "-" ? -tz : tz;
+}
+if (i !== s.length) return $NaN;
+return (tz === void 0 ? fromLocalTime(z) : z - tz)
 	}),
 	UTC: unconstructable(function UTC(year, month, date, hours, minutes, seconds, ms) { 
 		return timeClip(makeDateTime(year, month, date, hours, minutes, seconds, ms))
@@ -967,8 +978,12 @@ defProps(Date.prototype, { dontEnum: true }, {
 	setUTCMonth: unconstructable(function setUTCMonth(month, date) { return setDateValue(this, timeClip(setDateParts(getDateValue(this), 1, arguments))) }),
 	setFullYear: unconstructable(function setFullYear(year, month, date) { var v; return setDateValue(this, timeClipLocal(setDateParts($isNaN(v = getDateValue(this)) ? 0 : toLocalTime(v), 0, arguments))) }),
 	setUTCFullYear: unconstructable(function setUTCFullYear(year, month, date) { var v; return setDateValue(this, timeClip(setDateParts($isNaN(v = getDateValue(this)) ? 0 : v, 0, arguments))) }),
-	// TODO: this isn't as generic as in the ES5 spec, e.g. not converting this to object, not going via the objects reassignable `toISOString`.
-	toJSON: unconstructable(function toJSON() { return isoDate(this); })
+	   toJSON: unconstructable(function toJSON() {
+			   var o = Object(this), tv = +o, toISO;
+			   if (!$isFinite(tv)) return null;
+			   if (typeof (toISO = o.toISOString) !== "function") throw TypeError();
+			   return toISO.call(o);
+	   })
 });
 
 /* --- RegExp --- */
@@ -986,7 +1001,7 @@ var CC = { }; // "CC" is used from within regexps, so the name has to be preserv
 	setupCharClass(HEX_CHAR | LETTER_CHAR | WORD_CHAR, "abcdefABCDEF");
 	setupCharClass(LETTER_CHAR | WORD_CHAR, "ghijklmnopqrstuvwxyzGHIJKLMNOPQRSTUVWXYZ");
 	setupCharClass(NEWLINE_CHAR | SPACE_CHAR, "\n\r\u2028\u2029");
-	setupCharClass(SPACE_CHAR, " \t\v\f\xA0");
+	   setupCharClass(SPACE_CHAR, " \t\v\f\xA0\uFEFF");
 	CC['_'] |= WORD_CHAR;
 	CC["undefined"] |= EMPTY_CHAR;
 	CC[''] |= EMPTY_CHAR;
@@ -1490,44 +1505,37 @@ function regExpExecMethod(re, string) {
 
 function convertFlagsToText(re) { return (re.global ? 'g' : '') + (re.ignoreCase ? 'i' : '') + (re.multiline ? 'm' : ''); }
 
-var RegExp = support.distinctConstructor(function RegExp(pattern, flags) {
-	return ($getInternalProperty(pattern, "class") === "RegExp" && flags === void 0 ? pattern : new support.createRegExp(pattern, flags));
-}, support.createRegExp = function RegExp(pattern, flags) {
-	if ($getInternalProperty(pattern, "class") === "RegExp") {
-		if (flags !== void 0) throw typeError("Cannot supply flags when constructing one RegExp from another");
-		flags = convertFlagsToText(pattern);
-		pattern = pattern.source;
-	}
-	
-	// TODO : short-cut most of this through cache instead of only the func def.
-	// TODO : limit number of entries in cache
-	pattern = (pattern === void 0 ? '' : str(pattern));
-	flags = (flags === void 0 ? '' : str(flags));
-	var template = { global: false, ignoreCase: false, multiline: false, source: pattern };
-	for (var i = flags.length - 1; i >= 0; --i) {
-		var p;
-		if (!(p = REG_EXP_FLAG_TO_PROPERTY[flags[i]]) || template[p])
-			throw syntaxError("Invalid regular expression flags");
-		template[p] = true;
-	}
-	var key, func;
-	if (!(func = regExpCache[key = pattern + ',' + template.ignoreCase + ',' + template.multiline]))
-		regExpCache[key] = func = evalThere(compileRegExp(pattern, template.ignoreCase, template.multiline));
-	var re = support.createWrapper("RegExp", func, regExpPrototype);
-	defProps(re, { dontEnum: true, readOnly: true, dontDelete: true }, template);
-	defProps(re, { dontEnum: true, dontDelete: true }, { lastIndex: 0 });
-	return re;
-});
+function constructRegExp(pattern, flags) {
+	   if ($getInternalProperty(pattern, "class") === "RegExp") {
+			   if (flags !== void 0) throw typeError("Cannot supply flags when constructing one RegExp from another");
+			   flags = convertFlagsToText(pattern);
+			   pattern = pattern.source;
+	   }
 
-defProps(RegExp, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: regExpPrototype = RegExp.prototype });
-defProps(RegExp.prototype, { dontEnum: true }, {
-	exec: unconstructable(function exec(string) { checkClass(this, "RegExp", "exec"); return regExpExecMethod(this, string); }),
-	test: unconstructable(function test(string) { checkClass(this, "RegExp", "test"); return execRegExp(this, string) !== void 0; }),
-	toString: unconstructable(function toString() {
-		checkClass(this, "RegExp", "toString");
-		return '/' + this.source + '/' + convertFlagsToText(this);
-	})
-});
+	   // TODO : short-cut most of this through cache instead of only the func def.
+	   // TODO : limit number of entries in cache
+	   pattern = (pattern === void 0 ? '' : str(pattern));
+	   flags = (flags === void 0 ? '' : str(flags));
+	   var template = { global: false, ignoreCase: false, multiline: false, source: pattern };
+	   for (var i = flags.length - 1; i >= 0; --i) {
+			   var p;
+			   if (!(p = REG_EXP_FLAG_TO_PROPERTY[flags[i]]) || template[p])
+					   throw syntaxError("Invalid regular expression flags");
+			   template[p] = true;
+	   }
+	   var key, func;
+	   if (!(func = regExpCache[key = pattern + ',' + template.ignoreCase + ',' + template.multiline]))
+			   regExpCache[key] = func = evalThere(compileRegExp(pattern, template.ignoreCase, template.multiline));
+	   var re = support.createWrapper("RegExp", func, regExpPrototype);
+	   defProps(re, { dontEnum: true, readOnly: true, dontDelete: true }, template);
+	   defProps(re, { dontEnum: true, dontDelete: true }, { lastIndex: 0 });
+	   return re;
+}
+support.createRegExp = constructRegExp;
+
+var RegExp = support.distinctConstructor(function RegExp(pattern, flags) {
+	   return ($getInternalProperty(pattern, "class") === "RegExp" && flags === void 0 ? pattern : constructRegExp(pattern, flags));
+}, function RegExp(pattern, flags) { return constructRegExp(pattern, flags); });
 
 /* --- Set up globals --- */
 
@@ -1566,8 +1574,21 @@ defProps(globals, { dontEnum: true }, {
 	})
 });
 
-defProps(globals, { dontEnum: true, dontDelete: true }, {
-	NaN: $NaN, Infinity: $Infinity, undefined: support.undefined
+defProps(globals, { readOnly: true, dontEnum: true, dontDelete: true }, {
+NaN: $NaN, Infinity: $Infinity, undefined: support.undefined
+});
+
+regExpPrototype = support.prototypes.object;
+regExpPrototype = constructRegExp("(?:)", "");
+defProps(RegExp, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: regExpPrototype });
+defProps(regExpPrototype, { dontEnum: true }, {
+constructor: RegExp,
+exec: unconstructable(function exec(string) { checkClass(this, "RegExp", "exec"); return regExpExecMethod(this, string); }),
+test: unconstructable(function test(string) { checkClass(this, "RegExp", "test"); return execRegExp(this, string) !== void 0; }),
+toString: unconstructable(function toString() {
+checkClass(this, "RegExp", "toString");
+return '/' + this.source + '/' + convertFlagsToText(this);
+})
 });
 
 /* --- Math --- */
@@ -1629,12 +1650,18 @@ function createErrorConstructor(name, prototype) {
 		p.name = n;
 	}
 
-	defProps(Error.prototype, { dontEnum: true }, {
-		message: '',
-		toString: unconstructable(function toString() {
-			return (this.name === void 0 ? "Error" : this.name) + (this.message ? (": " + this.message) : '');
-		})
-	});
+	   defProps(Error.prototype, { dontEnum: true }, {
+			   message: '',
+			   toString: unconstructable(function toString() {
+					   "use strict";
+					   if (isPrimitive(this)) throw typeError("Error.prototype.toString is not generic");
+					   var name = this.name;
+					   name = name === void 0 ? "Error" : str(name);
+					   var msg = this.message;
+					   msg = msg === void 0 ? "" : str(msg);
+					   return name === "" ? msg : (msg === "" ? name : name + ": " + msg);
+			   })
+	   });
 
 	syntaxError = SyntaxError;
 	rangeError = RangeError;
@@ -1838,8 +1865,12 @@ defProps(Array, { dontEnum: true }, {
 });
 
 defProps(Object, { dontEnum: true }, {
-		   defineProperty: unconstructable(function defineProperty(o, p, d) {
-		support.defineProperty(o, str(p), d);
+	defineProperty: unconstructable(function defineProperty(o, p, d) {
+		var t;
+		if (o === undefined || o === null || ((t = typeof o) !== "object" && t !== "function"))
+			throw typeError("Object.defineProperty called on non-object");
+		if (!support.defineProperty(o, str(p), d) && Object.isExtensible && !Object.isExtensible(o)) throw TypeError();
+		return o;
 	}),
 	getPrototypeOf: unconstructable(function getPrototypeOf(o) {
 		if (o === null || (typeof o !== "object" && typeof o !== "function"))
