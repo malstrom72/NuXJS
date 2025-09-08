@@ -28251,9 +28251,18 @@
 	"category": ""
   },
   "language/white-space/S7.2_A1.5_T1": {
-	"category": ""
+        "category": ""
+  },
+  "unconforming/evalOrderOfBaseAndName": {
+        "category": "by_design"
+  },
+  "unconforming/funcCallEvalOrder": {
+        "category": "by_design"
   },
   "unconforming/readOnlyNumericProps": {
-	"category": "by_design"
+        "category": "by_design"
+  },
+  "unconforming/rightSideBeforeAssignmentRef": {
+        "category": "by_design"
   }
 }
