@@ -20538,7 +20538,7 @@
 	"category": "bad_test"
   },
   "built-ins/String/prototype/toLocaleLowerCase/special_casing": {
-	"category": "not_es3"
+	"category": "by_design"
   },
   "built-ins/String/prototype/toLocaleLowerCase/special_casing_conditional": {
 	"category": "not_es3"
@@ -20556,7 +20556,7 @@
 	"category": "bad_test"
   },
   "built-ins/String/prototype/toLocaleUpperCase/special_casing": {
-	"category": "not_es3"
+	"category": "by_design"
   },
   "built-ins/String/prototype/toLocaleUpperCase/supplementary_plane": {
 	"category": "not_es3"
@@ -20569,6 +20569,12 @@
   },
   "built-ins/String/prototype/toLowerCase/name": {
 	"category": "bad_test"
+  },
+  "built-ins/String/prototype/toLowerCase/special_casing": {
+	"category": "by_design"
+  },
+  "built-ins/String/prototype/toLowerCase/special_casing_conditional": {
+	"category": "by_design"
   },
   "built-ins/String/prototype/toLowerCase/supplementary_plane": {
 	"category": "not_es3"
@@ -20584,6 +20590,9 @@
   },
   "built-ins/String/prototype/toUpperCase/name": {
 	"category": "bad_test"
+  },
+  "built-ins/String/prototype/toUpperCase/special_casing": {
+	"category": "by_design"
   },
   "built-ins/String/prototype/toUpperCase/supplementary_plane": {
 	"category": "not_es3"
