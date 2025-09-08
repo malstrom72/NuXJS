@@ -1626,8 +1626,7 @@ function createErrorConstructor(name, prototype) {
 				, false, true, false);
 		c.name = n; // Notice: from ES6 and upwards "name" is read-only (and you would have to delete it to modify here), but it isn't in this implementation
 		defineProperties(c, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: p });
-		defineProperties(p, { dontEnum: true }, { constructor: c });
-		p.name = n;
+		defineProperties(p, { dontEnum: true }, { constructor: c, name: n });
 	}
 
 	defineProperties(Error.prototype, { dontEnum: true }, {
