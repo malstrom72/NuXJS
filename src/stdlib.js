@@ -8,7 +8,7 @@
 	@preserve: getPrototypeOf,getSeconds,getTime,getTimezoneOffset,getUTCDate,getUTCDay,getUTCFullYear,getUTCHours
 	@preserve: getUTCMilliseconds,getUTCMinutes,getUTCMonth,getUTCSeconds,hasOwnProperty,if,ignoreCase,in,index,indexOf
 	@preserve: input,isArray,isFinite,isNaN,isPropertyEnumerable,join,lastIndex,lastIndexOf,length,localeCompare,log
-	   @preserve: match,max,maxNumber,message,min,minNumber,multiline,name,new,null,parseFloat,parseInt,pow,powNative
+@preserve: match,max,maxNumber,message,min,minNumber,multiline,name,new,null,parseFloat,parseInt,pow
 	@preserve: propertyIsEnumerable,prototype,push,readOnly,regExpCanonicalize,return,reverse,round,setDate
 	@preserve: setFullYear,setHours,setMilliseconds,setMinutes,setMonth,setSeconds,setTime,setUTCDate
 	@preserve: setUTCFullYear,setUTCHours,setUTCMilliseconds,setUTCMinutes,setUTCMonth,setUTCSeconds,shift,sin,slice
@@ -1596,40 +1596,8 @@ defineProperties(Math, { dontEnum: true }, {
 	log: unconstructable(function log(v) { return support.log(+v) }),
 	max: unconstructable(function max(x, y) { var m = -$Infinity, v, argv; for (var i = (argv = arguments).length - 1; i >= 0; --i) if ((v = +argv[i]) > m || $isNaN(v)) m = v; return m }),
 		min: unconstructable(function min(x, y) { var m = $Infinity, v, argv; for (var i = (argv = arguments).length - 1; i >= 0; --i) if ((v = +argv[i]) < m || $isNaN(v)) m = v; return m }),
-		pow: unconstructable(function pow(x, y) {
-				x = +x;
-				y = +y;
-				if ($isNaN(y)) return $NaN;
-				if (y === 0) return 1;
-				var yOddInteger = false;
-				if ($isFinite(y)) {
-								var ay = abs(y);
-								var fy = $floor(ay);
-								if (ay === fy && fy % 2 === 1) yOddInteger = true;
-				}
-				if ($isNaN(x)) return $NaN;
-				if (!$isFinite(y)) {
-								var ax = abs(x);
-								if (ax === 1) return $NaN;
-								return (ax > 1 ? (y > 0 ? $Infinity : 0) : (y > 0 ? 0 : $Infinity));
-				}
-				if (!$isFinite(x)) {
-								if (x > 0) return (y > 0 ? $Infinity : 0);
-								return (y > 0 ? (yOddInteger ? -$Infinity : $Infinity) : (yOddInteger ? -0 : 0));
-				}
-				if (x === 0) {
-								var negZero = 1 / x < 0;
-								return (negZero ?
-												(y > 0 ? (yOddInteger ? -0 : 0) : (yOddInteger ? -$Infinity : $Infinity)) :
-												(y > 0 ? 0 : $Infinity));
-				}
-				if (x < 0 && abs(y) % 1 !== 0) return $NaN;
-				return support.pow(x, y);
-		}),
-		powNative: unconstructable(function powNative(x, y) {
-				return support.pow(+x, +y);
-		}),
-		random: unconstructable(function random() { return support.random() }),
+	pow: unconstructable(function pow(x, y) { x = +x; y = +y; return (!$isFinite(y) && abs(x) === 1 ? $NaN : support.pow(x, y)) }),
+	random: unconstructable(function random() { return support.random() }),
 	round: unconstructable(function round(v) { return (v === 0.0 ? v : (v >= -0.5 && v < 0.0 ? -0.0 : $floor(v + 0.5))) }),
 	sin: unconstructable(function sin(v) { return support.sin(+v) }),
 	sqrt: unconstructable(function sqrt(v) { return support.sqrt(+v) }),
