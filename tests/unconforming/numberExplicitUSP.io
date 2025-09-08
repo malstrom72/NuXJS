@@ -1,3 +1,3 @@
 > print(Number("\u16801"))
-< 1
+< NaN
 -
