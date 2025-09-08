@@ -1608,9 +1608,10 @@ defineProperties(Math, { dontEnum: true }, {
 
 function createErrorConstructor(name, prototype) {
 	return function(message) {
-		var e;
-		support.defineProperty(e = support.createWrapper("Error", name, prototype), "message"
-				, (message !== void 0 ? str(message) : ''), false, true, false);
+		var e = support.createWrapper("Error", name, prototype);
+		if (message !== void 0) {
+			support.defineProperty(e, "message", str(message), false, true, false);
+		}
 		return e
 	}
 };

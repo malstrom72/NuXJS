@@ -1,10 +1,10 @@
 # ES3 Test262 Failures Analysis
-50 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
+48 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
 | Array | §15.4 | 9 |
 | Date | §15.9 | 7 |
-| Error | §15.11 | 3 |
+| Error | §15.11 | 1 |
 | Function | §15.3 | 1 |
 | RegExp | §15.10 | 17 |
 | String | §15.5 | 11 |
@@ -560,9 +560,10 @@ See `tests/unconforming/datePrototypeSetFullYearInvalidThis.io` for a regression
 	   -
 	   ```
 
-	   See `tests/unconforming/errorFunctionUndefinedMessage.io` for a regression test.
+	See `tests/unconforming/errorFunctionUndefinedMessage.io` for a regression test.
 
-		 - [ ] Fixed
+		- [x] Fixed in `src/stdlib.js`; omits own `message` when called without argument (§15.11.1.1).
+		Regression: `tests/unconforming/errorFunctionUndefinedMessage.io`.
 - [x] built-ins/Error/S15.11.2.1_A1_T1 — Checking message property of different error objects
 		> ## **15.11.2.1 new Error (message)**
 		>
@@ -583,7 +584,8 @@ See `tests/unconforming/datePrototypeSetFullYearInvalidThis.io` for a regression
 		   -
 		   ```
 			See `tests/unconforming/errorConstructorUndefinedMessage.io` for a regression test.
-			  - [ ] Fixed
+			  - [x] Fixed in `src/stdlib.js`; `new Error()` now inherits `message` when argument is absent (§15.11.2.1).
+				Regression: `tests/unconforming/errorConstructorUndefinedMessage.io`.
 
 - [x] built-ins/Error/prototype/name/15.11.4.2-1 — Error.prototype.name is not enumerable.
 	   > #### **15.11.4.2 Error.prototype.name**
