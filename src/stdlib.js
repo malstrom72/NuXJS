@@ -1554,10 +1554,11 @@ defineProperties(globals, { dontEnum: true }, {
 			case '-': sign = -1;
 			case '+': ++i;
 		}
-		if (((radix = int32(radix)) === 0 || radix === 16) && (string[i] === '0' && string[i + 1] === 'x')) {
-			i += 2;
-			radix = 16;
-		}
+				if (((radix = int32(radix)) === 0 || radix === 16) && string[i] === '0'
+						&& (string[i + 1] === 'x' || string[i + 1] === 'X')) {
+					i += 2;
+					radix = 16;
+				}
 		if (radix === 0) radix = 10;
 		else if (radix < 2 || radix > 36) return $NaN;
 		var v = 0, b, e = string.length, n;

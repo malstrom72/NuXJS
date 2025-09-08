@@ -432,7 +432,7 @@ const char* STDLIB_JS =
 ",isFinite:c(function isFinite(G){return e(+G)}),isNaN:c(function isNaN(G){return d(+G)}),JSON:a.createWrapper(\"JSON\""
 ",void 0),eval:a.evalFunction=c(function eval(bP){return a.eval(bP)}),parseFloat:c(function parseFloat(a7){return a.par"
 "seFloat(P(a7))}),parseInt:c(function parseInt(a7,af){a7=P(a7);var s=r,u=-1,ag=1;while(s[a7[++u]]===null);switch(a7[u])"
-"{case'-':ag=-1;case'+':++u}if(((af=N(af))===0||af===16)&&(a7[u]==='0'&&a7[u+1]==='x')){u+=2;af=16}if(af===0)af=10;else"
+"{case'-':ag=-1;case'+':++u}if(((af=N(af))===0||af===16)&&a7[u]==='0'&&(a7[u+1]==='x'||a7[u+1]==='X')){u+=2;af=16}if(af===0)af=10;else"
 " if(af<2||af>36)return g;var G=0,y,aG=a7.length,C;for(y=u;u<aG&&(C=s[a7[u]])!=null&&C<af;++u)G=G*af+C;return(y===u?g:G"
 "*ag)})});Q(b,{dontEnum:true,dontDelete:true},{NaN:g,Infinity:h,undefined:a.undefined});Q(Math,{readOnly:true,dontEnum:"
 "true,dontDelete:true},{E:2.718281828459045235360,LN10:2.302585092994045684018,LN2:0.6931471805599453094172,LOG10E:0.43"

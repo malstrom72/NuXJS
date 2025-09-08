@@ -8,7 +8,6 @@
 | Function | §15.3 | 1 |
 | RegExp | §15.10 | 17 |
 | String | §15.5 | 11 |
-| parseInt |  | 2 |
 
 The table counts only failing Test262 cases. One additional custom test,
 `unconforming/readOnlyNumericProps`, documents an intentional deviation and is
@@ -1518,9 +1517,9 @@ See `tests/unconforming/parseIntUSP.io` for a regression test.
 		> The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
 		>
 		> - 13. If the length of *S* is at least 2 and the first two characters of *S* are either "0x" or "0X", then remove the first two characters from *S* and let *R* = 16.
-NuXJS result: `parseInt("0X1")` returns `0`, ignoring the hexadecimal prefix.
-Expected: strings starting with `0x` or `0X` must parse as base 16 when the radix is undefined or 0, producing `1` for `"0X1"`.
-Plan: Accept an uppercase `0X` prefix when the radix is omitted or 0, mirroring the check for lowercase `0x`.
+Previously, `parseInt("0X1")` returned `0`, ignoring the hexadecimal prefix.
+Now strings starting with `0x` or `0X` parse as base 16 when the radix is undefined or 0, producing `1` for `"0X1"`.
+Resolution: Accept an uppercase `0X` prefix when the radix is omitted or 0, mirroring the check for lowercase `0x`.
 ```io
 > print(parseInt("0X1"))
 < 1
@@ -1530,16 +1529,16 @@ Plan: Accept an uppercase `0X` prefix when the radix is omitted or 0, mirroring 
 -
 ```
 See `tests/unconforming/parseInt0XPrefix.io` for a regression test.
-  - [ ] Fixed
+  - [x] Fixed
 - [x] built-ins/parseInt/S15.1.2.2_A7.2_T3 — Checking algorithm for R = 16
 		> #### **15.1.2.2 parseInt (string , radix)**
 		>
 		> The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
 		>
 		> - 13. If the length of *S* is at least 2 and the first two characters of *S* are either "0x" or "0X", then remove the first two characters from *S* and let *R* = 16.
-NuXJS result: `parseInt("0X10", 16)` returns `0` instead of `16`.
-Expected: with radix 16, uppercase `0X` prefixes are valid hexadecimal literals, so `parseInt("0X10", 16)` should be `16`.
-Plan: When radix is 16, strip an optional leading `0X` or `0x` before parsing digits.
+Previously, `parseInt("0X10", 16)` returned `0` instead of `16`.
+With radix 16, uppercase `0X` prefixes are now valid, so `parseInt("0X10", 16)` yields `16`.
+Resolution: When radix is 16, strip an optional leading `0X` or `0x` before parsing digits.
 ```io
 > print(parseInt("0X10", 16))
 < 16
@@ -1549,5 +1548,5 @@ Plan: When radix is 16, strip an optional leading `0X` or `0x` before parsing di
 -
 ```
 See `tests/unconforming/parseIntRadix16Uppercase.io` for a regression test.
-  - [ ] Fixed
+  - [x] Fixed
 
