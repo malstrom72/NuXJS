@@ -8,7 +8,7 @@
 	@preserve: getPrototypeOf,getSeconds,getTime,getTimezoneOffset,getUTCDate,getUTCDay,getUTCFullYear,getUTCHours
 	@preserve: getUTCMilliseconds,getUTCMinutes,getUTCMonth,getUTCSeconds,hasOwnProperty,if,ignoreCase,in,index,indexOf
 	@preserve: input,isArray,isFinite,isNaN,isPropertyEnumerable,join,lastIndex,lastIndexOf,length,localeCompare,log
-	@preserve: match,max,maxNumber,message,min,minNumber,multiline,name,new,null,parseFloat,parseInt,pow
+@preserve: match,max,maxNumber,message,min,minNumber,multiline,name,new,null,parseFloat,parseInt,pow
 	@preserve: propertyIsEnumerable,prototype,push,readOnly,regExpCanonicalize,return,reverse,round,setDate
 	@preserve: setFullYear,setHours,setMilliseconds,setMinutes,setMonth,setSeconds,setTime,setUTCDate
 	@preserve: setUTCFullYear,setUTCHours,setUTCMilliseconds,setUTCMinutes,setUTCMonth,setUTCSeconds,shift,sin,slice
@@ -811,11 +811,11 @@ function dateFromEpoch(z) {
 	var doe = z - era * 146097;
 	var yoe = int( (doe - int(doe / 1460) + int(doe / 36524) - int(doe / 146096)) / 365 );
 	var y = yoe + era * 400;
-    var doy = doe - (365 * yoe + int(yoe / 4) - int(yoe/100) );
-    var mp = int( (5 * doy + 2) / 153);
-    var m = mp + (mp < 10 ? 2 : -10);
-    var d = doy - int( (153 * mp + 2) / 5 ) + 1;
-    return [ (y + (m <= 1)), m, d ];
+	var doy = doe - (365 * yoe + int(yoe / 4) - int(yoe/100) );
+	var mp = int( (5 * doy + 2) / 153);
+	var m = mp + (mp < 10 ? 2 : -10);
+	var d = doy - int( (153 * mp + 2) / 5 ) + 1;
+	return [ (y + (m <= 1)), m, d ];
 }
 
 function epochToDateString(z) {
@@ -899,7 +899,7 @@ defineProperties(Date, { dontEnum: true }, {
 			++i, tzh = readPart(2) * 36e5,
 			s[i] === ":" && ++i, tzh += $isNaN(tzm = readPart(2)) ? 0 : tzm * 6e4,
 			$isNaN(tzh) || (tz = ch === "-" ? -tzh : tzh);
-	    }
+		}
 		return (tz === void 0 ? fromLocalTime(z) : z - tz)
 	}),
 	UTC: unconstructable(function UTC(year, month, date, hours, minutes, seconds, ms) { 
@@ -1595,8 +1595,8 @@ defineProperties(Math, { dontEnum: true }, {
 	floor: unconstructable(function floor(v) { return $floor(+v) }),
 	log: unconstructable(function log(v) { return support.log(+v) }),
 	max: unconstructable(function max(x, y) { var m = -$Infinity, v, argv; for (var i = (argv = arguments).length - 1; i >= 0; --i) if ((v = +argv[i]) > m || $isNaN(v)) m = v; return m }),
-	min: unconstructable(function min(x, y) { var m = $Infinity, v, argv; for (var i = (argv = arguments).length - 1; i >= 0; --i) if ((v = +argv[i]) < m || $isNaN(v)) m = v; return m }),
-	pow: unconstructable(function pow(x, y) { return support.pow(+x, +y) }),
+		min: unconstructable(function min(x, y) { var m = $Infinity, v, argv; for (var i = (argv = arguments).length - 1; i >= 0; --i) if ((v = +argv[i]) < m || $isNaN(v)) m = v; return m }),
+	pow: unconstructable(function pow(x, y) { x = +x; y = +y; return (!$isFinite(y) && abs(x) === 1 ? $NaN : support.pow(x, y)) }),
 	random: unconstructable(function random() { return support.random() }),
 	round: unconstructable(function round(v) { return (v === 0.0 ? v : (v >= -0.5 && v < 0.0 ? -0.0 : $floor(v + 0.5))) }),
 	sin: unconstructable(function sin(v) { return support.sin(+v) }),
@@ -1622,7 +1622,7 @@ function createErrorConstructor(name, prototype) {
 		var n, c, p;
 		support.defineProperty(globals, n = ERROR_NAMES[i], c = createErrorConstructor(n, p = support.prototypes[n])
 				, false, true, false);
-		c.name = n;	// Notice: from ES6 and upwards "name" is read-only (and you would have to delete it to modify here), but it isn't in this implementation
+		c.name = n; // Notice: from ES6 and upwards "name" is read-only (and you would have to delete it to modify here), but it isn't in this implementation
 		defineProperties(c, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: p });
 		defineProperties(p, { dontEnum: true }, { constructor: c });
 		p.name = n;
@@ -1657,12 +1657,12 @@ defineProperties(JSON, { dontEnum: true }, {
 			for (var i = replacer.length; --i >= 0;) includeProps[replacer[i]] = true;
 		}
 
-        if (typeof space === "number" || (typeof space === "object" && $getInternalProperty(space, "class") === "Number")) {
-        	space = +space;
-            for (var i = (space > 10 ? 10 : space); --i >= 0;) gap += ' ';
-        } else if (typeof space === "string" || (typeof space === "object" && $getInternalProperty(space, "class") === "String")) {
-            gap = $sub(str(space), 0, 10);
-        }
+		if (typeof space === "number" || (typeof space === "object" && $getInternalProperty(space, "class") === "Number")) {
+			space = +space;
+			for (var i = (space > 10 ? 10 : space); --i >= 0;) gap += ' ';
+		} else if (typeof space === "string" || (typeof space === "object" && $getInternalProperty(space, "class") === "String")) {
+			gap = $sub(str(space), 0, 10);
+		}
 
 		function quote(s) {
 			var t = '"', len = s.length;
@@ -1677,17 +1677,17 @@ defineProperties(JSON, { dontEnum: true }, {
 
 		function string(key, holder, indent) {
 			var val;
-	        if ((val = holder[key]) && typeof val === "object" && typeof val.toJSON === "function") val = val.toJSON(key);
-	        if (replacerFunction) val = $callWithArgs(replacerFunction, holder, [ key, val ]);
+			if ((val = holder[key]) && typeof val === "object" && typeof val.toJSON === "function") val = val.toJSON(key);
+			if (replacerFunction) val = $callWithArgs(replacerFunction, holder, [ key, val ]);
 
-	        var lineEnd = (gap ? '\n' + indent : '');
-	        if (typeof val === "object") {
-	        	switch ($getInternalProperty(val, "class")) {
-	        		case "Number": val = +val; break;
-	        		case "String": val = str(val); break;
-	        		case "Boolean": val = $getInternalProperty(val, "value"); break;
-	        	}
-	        }
+			var lineEnd = (gap ? '\n' + indent : '');
+			if (typeof val === "object") {
+				switch ($getInternalProperty(val, "class")) {
+					case "Number": val = +val; break;
+					case "String": val = str(val); break;
+					case "Boolean": val = $getInternalProperty(val, "value"); break;
+				}
+			}
 			switch (typeof val) {
 				case "object": {
 					if (!val) return "null";
@@ -1811,19 +1811,19 @@ defineProperties(JSON, { dontEnum: true }, {
 		if ((parser = PARSERS[text[p = space(text, 0)]]) && (p = parser(text, p))
 				&& space(text, p) === text.length) {
 			var val = eval('(' + text + ')');
-            if (typeof reviver === "function") {
-            	function walk(holder, key) {
-	                var k, v, o;
-	                if (typeof (o = holder[key]) === "object" && o) {
-	                    for (k in o) {
-	                        if (support.hasOwnProperty(o, k)) {
-	                            if ((v = walk(o, k)) !== void 0) o[k] = v;
-	                            else delete o[k];
-	                        }
-	                    }
-	                }
-	                return $callWithArgs(reviver, holder, [ key, o ]);
-	            }
+			if (typeof reviver === "function") {
+				function walk(holder, key) {
+					var k, v, o;
+					if (typeof (o = holder[key]) === "object" && o) {
+						for (k in o) {
+							if (support.hasOwnProperty(o, k)) {
+								if ((v = walk(o, k)) !== void 0) o[k] = v;
+								else delete o[k];
+							}
+						}
+					}
+					return $callWithArgs(reviver, holder, [ key, o ]);
+				}
 				val = walk({ "": val }, "");
 			}
 			return val;

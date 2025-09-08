@@ -4805,45 +4805,9 @@ struct Support {
 		return (argc >= 2 ? Value(std::atan2(argv[0].toDouble(), argv[1].toDouble())) : NAN_VALUE);
 	}
 
-	static Value pow(Runtime&, Processor&, UInt32 argc, const Value* argv, Object*) {
-		if (argc >= 2) {
-			double x = argv[0].toDouble();
-			double y = argv[1].toDouble();
-			if (isNaN(y)) return NAN_VALUE;
-			if (y == 0.0) return 1.0;
-			bool yOddInteger = false;
-			if (isFinite(y)) {
-				double ay = fabs(y);
-				double fy = floor(ay);
-				if (ay == fy && modulo(fy, 2.0) == 1.0) yOddInteger = true;
-			}
-			if (isNaN(x)) return NAN_VALUE;
-			if (!isFinite(y)) {
-				double ax = fabs(x);
-				if (ax == 1.0) return NAN_VALUE;
-				return (ax > 1.0 ?
-						(y > 0.0 ? std::numeric_limits<double>::infinity() : 0.0) :
-						(y > 0.0 ? 0.0 : std::numeric_limits<double>::infinity()));
-			}
-			if (!isFinite(x)) {
-				if (x > 0.0) return (y > 0.0 ? std::numeric_limits<double>::infinity() : 0.0);
-				return (y > 0.0 ?
-						(yOddInteger ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity()) :
-						(yOddInteger ? -0.0 : 0.0));
-			}
-			if (x == 0.0) {
-				bool negZero = (1.0 / x < 0.0);
-				return (negZero ?
-						(y > 0.0 ?
-								(yOddInteger ? -0.0 : 0.0) :
-								(yOddInteger ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity())) :
-						(y > 0.0 ? 0.0 : std::numeric_limits<double>::infinity()));
-			}
-			if (x < 0.0 && modulo(fabs(y), 1.0) != 0.0) return NAN_VALUE;
-			return Value(std::pow(x, y));
-		}
-		return NAN_VALUE;
-	}
+	   static Value pow(Runtime&, Processor&, UInt32 argc, const Value* argv, Object*) {
+			   return (argc >= 2 ? Value(std::pow(argv[0].toDouble(), argv[1].toDouble())) : NAN_VALUE);
+	   }
 
 	static Value parseFloat(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 1) {
