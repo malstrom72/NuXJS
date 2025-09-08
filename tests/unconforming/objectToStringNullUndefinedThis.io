@@ -1,6 +1,6 @@
-> try { Object.prototype.toString.call(undefined); } catch (e) { print(e.name); }
-< TypeError
+> Object.prototype.toString.call(undefined)
+< [object Object]
 -
-> try { Object.prototype.toString.call(null); } catch (e) { print(e.name); }
-< TypeError
+> Object.prototype.toString.call(null)
+< [object Object]
 -
