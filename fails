@@ -137,18 +137,6 @@ source
 --- output --- 
  !!!! [object Object]
 
-built-ins/Math/pow/applying-the-exp-operator_A7
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Math/pow/applying-the-exp-operator_A8
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
 built-ins/NaN/S15.1.1.1_A2_T2
 source
 --- output ---
@@ -168,48 +156,6 @@ source
  !!!! [object Object]
 
 built-ins/Number/S9.3.1_A3_T2
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A12
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A13
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A12
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A13
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A12
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A13
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Object/prototype/toLocaleString/S15.2.4.3_A12
 source
 --- output ---
 --- output --- 
@@ -425,30 +371,6 @@ source
 --- output --- 
  !!!! [object Object]
 
-built-ins/String/prototype/toLocaleLowerCase/special_casing_conditional
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/String/prototype/toLocaleLowerCase/supplementary_plane
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/String/prototype/toLocaleUpperCase/special_casing
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/String/prototype/toLocaleUpperCase/supplementary_plane
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
 built-ins/String/prototype/toLowerCase/special_casing
 source
 --- output ---
@@ -461,19 +383,7 @@ source
 --- output --- 
  !!!! [object Object]
 
-built-ins/String/prototype/toLowerCase/supplementary_plane
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
 built-ins/String/prototype/toUpperCase/special_casing
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/String/prototype/toUpperCase/supplementary_plane
 source
 --- output ---
 --- output --- 
@@ -508,3 +418,4 @@ source
 --- output ---
 --- output --- 
  !!!! [object Object]
+
