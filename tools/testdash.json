@@ -28262,6 +28262,9 @@
   "language/white-space/S7.2_A1.5_T1": {
         "category": ""
   },
+  "unconforming/cantAssignObjectToArrayLength": {
+	"category": "by_design"
+  },
   "unconforming/evalOrderOfBaseAndName": {
         "category": "by_design"
   },

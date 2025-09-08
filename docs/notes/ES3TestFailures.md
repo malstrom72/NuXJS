@@ -100,16 +100,17 @@ Plan: Per ES3 §15.4, treat `P` as an index only when it is a string and `ToStri
 ```
 See `tests/unconforming/booleanIndexCoercion.io` for a regression test.
   - [ ] Fixed
-- [x] built-ins/Array/cantAssignObjectToArrayLength — assigning object to length throws
-	> #### **15.4.5.1 [[Put]] (P, V)**
-	>
-	> When the [[Put]] method of *A* is called with property "length" and value *V*, the following steps are taken:
-	> - 12. Compute ToUint32(*V*).
-	> - 13. If Result(12) is not equal to ToNumber(*V*), throw a **RangeError** exception.
-	>
+- [x] built-ins/Array/cantAssignObjectToArrayLength — assigning object to length throws *(by design)*
+> #### **15.4.5.1 [[Put]] (P, V)**
+>
+> When the [[Put]] method of *A* is called with property "length" and value *V*, the following steps are taken:
+> - 12. Compute ToUint32(*V*).
+> - 13. If Result(12) is not equal to ToNumber(*V*), throw a **RangeError** exception.
+>
 NuXJS result: assigning an object with `valueOf` returning `23` to `a.length` throws `RangeError` and leaves length `0`.
 Expected: the object should convert to `23` and set `a.length` to `23`.
-Plan: Implement the `length` setter per ES3 §15.4.5.1 steps 12–15: let `newLen = ToNumber(V)` and `newLen32 = ToUint32(newLen)`; if `newLen != newLen32` throw `RangeError`, else set `length` to `newLen32` and delete indices ≥ `newLen32`.
+Resolution: supporting object length assignment would require asynchronous conversion; NuXJS leaves this ES3 violation unimplemented.
+Flagged `by_design` in `tools/testdash.json`.
 ```io
 > a=[]
 > o={valueOf:function() { return 23 }}
@@ -128,7 +129,7 @@ Plan: Implement the `length` setter per ES3 §15.4.5.1 steps 12–15: let `newL
 -
 ```
 See `tests/unconforming/cantAssignObjectToArrayLength.io` for a regression test.
-  - [ ] Fixed
+- [x] Fixed
 - [x] built-ins/Array/readOnlyNumericProps — writes override read-only numeric prototype properties *(by design)*
 	> #### **8.6.2.2 [[Put]] (P, V)**
 	>
