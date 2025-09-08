@@ -20,7 +20,7 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 - A semicolon is required after `do ... while` statements.
 - Creating a numeric property on an object can shadow a read-only numeric property in the prototype chain.
 - Additional corner cases are covered by the tests under `tests/unconforming`.
-- Assigning an object to an array's `length` property is unsupported.
+- Assigning an object to an array's `length` property is unsupported; attempts throw `RangeError` instead of converting the value.
 - Recursive grammar constructs such as deep object literals and nested functions are limited to 64 levels to avoid stack overflow.
 
 ## Later Features
