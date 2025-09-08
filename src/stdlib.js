@@ -1479,6 +1479,7 @@ function execRegExp(re, string) {
 
 function regExpExecMethod(re, string) {
 	var m, a = null;
+	string = str(string);
 	if (m = execRegExp(re, string)) {
 		(a = [ ]).input = string;
 		a.index = m[0];
