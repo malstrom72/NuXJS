@@ -4,10 +4,25 @@ This report investigates how NuXJS currently evaluates expressions and outlines 
 
 ## Background
 
-The ECMAScript 5.1 specification defines the precise order of side‑effect‑producing steps for each language construct. For example, simple assignment evaluates the left‑hand side reference before the right‑hand side expression, and property access first coerces the base value to an object before converting the property key to a string. The algorithms are specified in the following clauses:
+The ECMAScript 5.1 specification defines the precise order of side‑effect‑producing steps for each language construct. For example:
 
-* **Simple assignment** – The production `AssignmentExpression : LeftHandSideExpression = AssignmentExpression` evaluates the left reference first, then the right expression, before invoking `PutValue`【F:docs/specs/ECMA-262 5.1.md†L5719-L5732】.
-* **Property access** – The production `MemberExpression : MemberExpression [ Expression ]` evaluates the base expression, then the property expression, invokes `CheckObjectCoercible` on the base value, and only afterwards converts the property name to a string【F:docs/specs/ECMA-262 5.1.md†L4390-L4399】.
+> The production `AssignmentExpression : LeftHandSideExpression = AssignmentExpression` is evaluated as follows:
+> 1. Let *lref* be the result of evaluating *LeftHandSideExpression*.
+> 2. Let *rref* be the result of evaluating *AssignmentExpression*.
+> 3. Let *rval* be GetValue(*rref*).
+> 4. Throw a **SyntaxError** if certain conditions hold.
+> 5. Call PutValue(*lref*, *rval*).
+> 6. Return *rval*.【F:docs/specs/ECMA-262 5.1.txt†L4106】
+
+> The production `MemberExpression : MemberExpression [ Expression ]` is evaluated as follows:
+> 1. Let *baseReference* be the result of evaluating *MemberExpression*.
+> 2. Let *baseValue* be GetValue(*baseReference*).
+> 3. Let *propertyNameReference* be the result of evaluating *Expression*.
+> 4. Let *propertyNameValue* be GetValue(*propertyNameReference*).
+> 5. Call CheckObjectCoercible(*baseValue*).
+> 6. Let *propertyNameString* be ToString(*propertyNameValue*).
+> 7. If the production is contained in strict mode code, let *strict* be true; otherwise let *strict* be false.
+> 8. Return a value of type Reference whose base value is *baseValue* and whose referenced name is *propertyNameString*, and whose strict mode flag is *strict*.【F:docs/specs/ECMA-262 5.1.txt†L3165-L3175】
 
 NuXJS deliberately deviates from these algorithms, as documented in `docs/notes/ECMAScript Compatibility Notes.md`:
 
