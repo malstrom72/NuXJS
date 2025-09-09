@@ -2490,10 +2490,10 @@ void Processor::innerRun() {
 				break;
 			}
 
-                       case RESOLVE_PROPERTY_OP: {
-                               sp[-1] = convertToObject(sp[-1], true);
-                               break;
-                       }
+      case RESOLVE_PROPERTY_OP: {
+        sp[-1] = convertToObject(sp[-1], true);
+        break;
+      }
 
 			case OBJ_TO_PRIMITIVE_OP:
 			case OBJ_TO_NUMBER_OP:
