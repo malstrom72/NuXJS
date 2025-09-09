@@ -77,6 +77,33 @@ Flags f = o->getProperty(rt, *this, sp[0], sp - 1);
 
 This order causes `toString`/`valueOf` on the property expression to run before `CheckObjectCoercible` on the base value, allowing observable side effects that differ from ES3/ES5.
 
+### Accessor properties (getters and setters)
+
+> When a property reference resolves to an accessor, ES5.1 specifies the getter algorithm:
+> 1. Let O be ToObject(base).
+> 2. Let desc be the result of calling the [[GetProperty]] internal method of O with property name P.
+> 3. If desc is undefined, return undefined.
+> 4. If IsDataDescriptor(desc) is true, return desc.[[Value]].
+> 5. Otherwise, IsAccessorDescriptor(desc) must be true so, let getter be desc.[[Get]].
+> 6. If getter is undefined, return undefined.
+> 7. Return the result of calling getter with base as the this value and no arguments.【F:docs/specs/ECMA-262 5.1.txt†L1646-L1653】
+>
+> For writes, the corresponding [[Put]] algorithm invokes the setter only after the base is converted:
+> 1. Let O be ToObject(base).
+> 2. If the result of [[CanPut]](O, P) is false, handle the Throw flag.
+> 3. Let ownDesc be [[GetOwnProperty]](O, P).
+> 4. If IsDataDescriptor(ownDesc) is true, handle the Throw flag.
+> 5. Let desc be [[GetProperty]](O, P).
+> 6. If IsAccessorDescriptor(desc) is true,
+>	  1. Let setter be desc.[[Set]] which cannot be undefined.
+>	  2. Call setter with base as the this value and W as the sole argument.【F:docs/specs/ECMA-262 5.1.txt†L1674-L1685】
+
+NuXJS performs accessor invocation inside `GET_PROPERTY_OP` and `SET_PROPERTY_POP`. Because the
+compiler stringifies the property key before the base is checked and defers reference resolution
+until these opcodes execute, side effects in `toString` or in the right-hand side can occur even
+when the getter or setter is never reached. Fixing the evaluation order as described below would
+prevent these premature side effects.
+
 ### REPL disassembly examples
 
 Running the NuXJS REPL and disassembling compiled functions exposes the misplaced
