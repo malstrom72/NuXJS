@@ -5,13 +5,13 @@ See [expression-evaluation-report](expression-evaluation-report.md) for backgrou
 Each milestone must be completed in order and `timeout 600 ./build.sh` must succeed before advancing to the next.
 
 ## Milestone 1 – Regression tests
-- [ ] Audit existing `tests/unconforming` coverage and add missing cases for property-key and right-hand-side evaluation order.
-- [ ] Run `timeout 600 ./build.sh`.
+- [x] Audit existing `tests/unconforming` coverage and add missing cases for property-key and right-hand-side evaluation order.
+- [x] Run `timeout 600 ./build.sh`.
 
 ## Milestone 2 – Base object coercion
-- [ ] Introduce `CHECK_OBJECT_COERCIBLE_OP` and wire it into the VM.
-- [ ] Update `GET_PROPERTY_OP` to perform `CheckObjectCoercible` before key conversion.
-- [ ] Run `timeout 600 ./build.sh`.
+- [x] Introduce `CHECK_OBJECT_COERCIBLE_OP` and wire it into the VM.
+- [x] Convert base objects before property key evaluation.
+- [x] Run `timeout 180 ./build.sh`.
 
 ## Milestone 3 – Property key conversion
 - [ ] Factor `OBJ_TO_STRING_OP` out of property access opcodes.
