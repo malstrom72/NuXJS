@@ -268,6 +268,13 @@ host code should not observe partially evaluated state. Allowing the host to
 run between bytecodes can therefore violate the spec’s run-to-completion
 semantics and expose intermediate side effects.
 
+NuXJS intentionally retains this cooperative scheduling model. To keep cycle
+costs predictable and let the host preempt execution between fine-grained
+steps, opcodes are kept small and specialised. Splitting property-key
+conversion into its own `OBJ_TO_STRING_OP` allows the engine to yield control
+before `GET_PROPERTY` or `SET_PROPERTY` performs the lookup, preserving the
+VM’s non-blocking behaviour.
+
 ## Required Changes
 
 ### 1. Resolve assignment targets before evaluating right‑hand sides
@@ -288,17 +295,6 @@ semantics and expose intermediate side effects.
 
 Because `makeRValue` eagerly performs conversions such as `OBJ_TO_STRING_OP`, moving these conversions into the property opcodes will align the engine with the spec and eliminate cases where `valueOf`/`toString` executes earlier than required. Ensure that any other early conversions (e.g. within arithmetic operators) are audited to confirm they match ES5 rules.
 
-### 4. Enforce run-to-completion semantics
-
-* **VM:** Provide a `runToCompletion` entry point or remove the public
-cycle limit so that code executes until `ip == 0` and the execution context
-exits.
-* **Embedding API:** Delay host callbacks such as GC and timeout checks until
-after the current execution finishes, or document stepwise execution as a
-non‑conforming mode.
-* **Testing:** Add tests that attempt to interleave host operations between VM
-steps to verify that such interleaving is no longer observable.
-
 ## Additional Considerations
 
 * Updating the compiler and VM to handle pre‑resolved references may require extra temporary storage on the operand stack. Care must be taken to maintain stack discipline so existing bytecode sequences remain valid.
@@ -312,7 +308,6 @@ Bringing NuXJS in line with ES3/ES5 evaluation order requires front‑end and VM
 1. Resolve assignment targets before evaluating right‑hand sides, emitting new opcodes that perform early reference checks.
 2. Reorder property access so that base values are coerced to objects before property keys are converted to strings, moving conversions into `GET_PROPERTY_OP`/`SET_PROPERTY_OP`.
 3. Audit and defer implicit `valueOf`/`toString` conversions to their specification points.
-4. Ensure the VM executes each job to completion without host interleaving.
 
 Implementing these changes and accompanying tests will eliminate the deviations noted in the compatibility document and ensure NuXJS follows the evaluation semantics defined by the ECMAScript standards.
 
@@ -346,6 +341,9 @@ case OBJ_TO_STRING_OP: {
 1. **Avoiding redundant checks** – With a standalone opcode, constant or already‑primitive keys return early from `makeRValue` and skip `OBJ_TO_STRING_OP` entirely, so no runtime `typeof`/`isObject` checks occur for the common case of string literals or numeric indices. Baking the conversion into `GET_PROPERTY` would force every property access to branch on the key type and possibly invoke the `toString` helper even when unnecessary.
 2. **Opcode reuse** – The same `OBJ_TO_STRING_OP` is used by other operators, such as the `in` operator, allowing shared implementation of `ToString` semantics across the VM without duplicating logic in each opcode path.
 3. **Simpler hot path** – Keeping `GET_PROPERTY_OP` free of conversion logic reduces its instruction footprint. Property lookups are among the most frequent operations, so even small savings in the opcode’s body were historically measured as a performance win.
+4. **Asynchronous granularity** – Because the VM is designed to be stepped with a cycle budget, splitting conversion into `OBJ_TO_STRING_OP` keeps each opcode short and lets the host yield control between the conversion and the subsequent property lookup.
+
+These considerations stem directly from NuXJS's asynchronous design goal.
 
 ### Alternative approaches and their drawbacks
 
