@@ -204,13 +204,13 @@
 ! !!!! TypeError: not a function is not a function
 -
 > o.s = "also not a function"; o.s(1,2,3)
-! !!!! TypeError: s is not a function
+! !!!! TypeError: also not a function is not a function
 -
 > stillNoFunction = new(function() { }); stillNoFunction(1,2,3)
 ! !!!! TypeError: [object Object] is not a function
 -
 > o.b = stillNoFunction; o.b(1,2,3)
-! !!!! TypeError: b is not a function
+! !!!! TypeError: [object Object] is not a function
 -
 > andAgain = new s
 ! !!!! TypeError: not a function is not a function
