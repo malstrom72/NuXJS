@@ -213,6 +213,61 @@ value
 error:TypeError: Cannot convert undefined or null to object
 ```
 
+## Asynchronous Execution Model
+
+NuXJS exposes a cooperative VM that can be stepped for a limited number of
+cycles before returning to the host. The project README advertises this
+behaviour:
+
+> - Fully asynchronous, **non-blocking VM**; run as many cycles as you like
+> between host calls.【F:README.md†L7-L14】
+
+`Processor::run` accepts a cycle budget and yields while bytecode remains:
+
+```cpp
+bool Processor::run(Int32 maxCycles) {
+cyclesLeft = maxCycles;
+while (ip != 0 && cyclesLeft >= 0) {
+try {
+innerRun();
+}
+catch (const ScriptException& x) {
+throwVirtualException(x.value);
+}
+}
+return (ip != 0);
+}
+```【F:src/NuXJS.cpp†L3123-L3134】
+
+Higher-level APIs loop over `run`, interleaving host work between iterations:
+
+```cpp
+Var Runtime::runUntilReturn(Processor& processor) {
+while (processor.run(STANDARD_CYCLES_BETWEEN_AUTO_GC)) {
+autoGC(true);
+checkTimeOut();
+}
+return Var(*this, processor.getResult());
+}
+```【F:src/NuXJS.cpp†L5849-L5854】
+
+The ECMAScript specification, however, models execution as a single stack of
+contexts with exactly one running at a time:
+
+> When control is transferred to ECMAScript executable code, control is
+> entering an execution context. Active execution contexts logically form a
+> stack. The top execution context on this logical stack is the running
+> execution context. A new execution context is created whenever control is
+> transferred from the executable code associated with the currently running
+> execution context to executable code that is not associated with that
+> execution context. The newly created execution context is pushed onto the
+> stack and becomes the running execution context.【F:docs/specs/ECMA-262 5.1.txt†L2619-L2623】
+
+There is no provision for suspending an execution context mid-expression, so
+host code should not observe partially evaluated state. Allowing the host to
+run between bytecodes can therefore violate the spec’s run-to-completion
+semantics and expose intermediate side effects.
+
 ## Required Changes
 
 ### 1. Resolve assignment targets before evaluating right‑hand sides
@@ -233,6 +288,17 @@ error:TypeError: Cannot convert undefined or null to object
 
 Because `makeRValue` eagerly performs conversions such as `OBJ_TO_STRING_OP`, moving these conversions into the property opcodes will align the engine with the spec and eliminate cases where `valueOf`/`toString` executes earlier than required. Ensure that any other early conversions (e.g. within arithmetic operators) are audited to confirm they match ES5 rules.
 
+### 4. Enforce run-to-completion semantics
+
+* **VM:** Provide a `runToCompletion` entry point or remove the public
+cycle limit so that code executes until `ip == 0` and the execution context
+exits.
+* **Embedding API:** Delay host callbacks such as GC and timeout checks until
+after the current execution finishes, or document stepwise execution as a
+non‑conforming mode.
+* **Testing:** Add tests that attempt to interleave host operations between VM
+steps to verify that such interleaving is no longer observable.
+
 ## Additional Considerations
 
 * Updating the compiler and VM to handle pre‑resolved references may require extra temporary storage on the operand stack. Care must be taken to maintain stack discipline so existing bytecode sequences remain valid.
@@ -246,6 +312,7 @@ Bringing NuXJS in line with ES3/ES5 evaluation order requires front‑end and VM
 1. Resolve assignment targets before evaluating right‑hand sides, emitting new opcodes that perform early reference checks.
 2. Reorder property access so that base values are coerced to objects before property keys are converted to strings, moving conversions into `GET_PROPERTY_OP`/`SET_PROPERTY_OP`.
 3. Audit and defer implicit `valueOf`/`toString` conversions to their specification points.
+4. Ensure the VM executes each job to completion without host interleaving.
 
 Implementing these changes and accompanying tests will eliminate the deviations noted in the compatibility document and ensure NuXJS follows the evaluation semantics defined by the ECMAScript standards.
 
