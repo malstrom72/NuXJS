@@ -77,6 +77,85 @@ Flags f = o->getProperty(rt, *this, sp[0], sp - 1);
 
 This order causes `toString`/`valueOf` on the property expression to run before `CheckObjectCoercible` on the base value, allowing observable side effects that differ from ES3/ES5.
 
+### REPL disassembly examples
+
+Running the NuXJS REPL and disassembling compiled functions exposes the misplaced
+coercion steps.
+
+#### Property access
+
+Source:
+
+```javascript
+function prop(){ return null[side()]; }
+```
+
+Disassembly:
+
+```text
+1       @0:     CONST #null
+2       @1:     READ_NAMED side
+3       @2:     CALL *0
+3       @3:     OBJ_TO_STRING
+3       @4:     GET_PROPERTY
+2       @5:     PUSH_BACK *1
+1       @6:     RETURN
+```
+
+`side()` runs before `GET_PROPERTY` checks the `null` base:
+
+```javascript
+function side(){ print("side"); return "x"; }
+try { null[side()]; } catch (e) { print("error:" + e); }
+```
+
+Output:
+
+```text
+side
+error:TypeError: Cannot convert undefined or null to object
+```
+
+#### Assignment
+
+Source:
+
+```javascript
+function assign(){ null[key()] = value(); }
+```
+
+Disassembly:
+
+```text
+1       @0:     CONST #null
+2       @1:     READ_NAMED key
+3       @2:     CALL *0
+3       @3:     OBJ_TO_STRING
+3       @4:     READ_NAMED value
+4       @5:     CALL *0
+4       @6:     SET_PROPERTY_POP
+1       @7:     POP *1
+0       @8:     VOID
+1       @9:     RETURN
+```
+
+Because `SET_PROPERTY_POP` executes after `value()` finishes, the right-hand side
+observably runs even though the base is `null`:
+
+```javascript
+function key(){ print("key"); return "x"; }
+function value(){ print("value"); return 1; }
+try { null[key()] = value(); } catch (e) { print("error:" + e); }
+```
+
+Output:
+
+```text
+key
+value
+error:TypeError: Cannot convert undefined or null to object
+```
+
 ## Required Changes
 
 ### 1. Resolve assignment targets before evaluating right‑hand sides
