@@ -616,37 +616,6 @@ See `tests/todo/datePrototypeSetFullYearInvalidThis.io` for a regression test.
 	> The production *CharacterClassEscape* **:: S** evaluates by returning the set of all characters not included in the set returned by *CharacterClassEscape* **:: s**.
 	> 
 	> The production *CharacterClassEscape* **:: w** evaluates by returning the set of characters containing the sixty-three characters:
-- built-ins/RegExp/S15.10.2.12_A2_T1 — WhiteSpace
-		> #### **15.10.2.12 CharacterClassEscape**
-	> 
-	> The production *CharacterClassEscape* **:: d** evaluates by returning the ten-element set of characters containing the characters **0** through **9** inclusive.
-	> 
-	> The production *CharacterClassEscape* **:: D** evaluates by returning the set of all characters not included in the set returned by *CharacterClassEscape* **:: d**.
-	> 
-	> The production *CharacterClassEscape* **:: s** evaluates by returning the set of characters containing the characters that are on the right-hand side of the *WhiteSpace* (7.2) or *LineTerminator* (7.3) productions.
-	> 
-		> The production *CharacterClassEscape* **:: S** evaluates by returning the set of all characters not included in the set returned by *CharacterClassEscape* **:: s**.
-		>
-		> The production *CharacterClassEscape* **:: w** evaluates by returning the set of characters containing the sixty-three characters:
-NuXJS result: `/\s/.test("\u1680")` and `/\s/.test("\u2000")` both yield `false`, while their `/\S/` counterparts return `true`.
-Expected: both `\u1680` (OGHAM SPACE MARK) and `\u2000` (EN QUAD) are listed in *WhiteSpace*, so `/\s/` should match and `/\S/` should not.
-NuXJS deliberately omits certain Unicode space separators, including `\u1680`, so `\s` does not match them.
-```io
-> print(/\s/.test("\u1680"))
-< false
--
-> print(/\S/.test("\u1680"))
-< true
--
-> print(/\s/.test("\u2000"))
-< true
--
-> print(/\S/.test("\u2000"))
-< false
--
-```
-See `tests/todo/regExpWhiteSpace.io` and `tests/todo/regExpWhiteSpace2000.io` for regression tests.
-  - Fixed
 	> #### **15.10.2.8 Atom**
 	> 
 	> The production *Atom* **::** *PatternCharacter* evaluates as follows:
@@ -1093,22 +1062,6 @@ Plan: Implement `ToPrimitive` with hint `String` so `valueOf` is tried when `toS
 See `tests/todo/regExpExecValueOfObject.io` for a regression test.
   - Fixed
 
-- [ ] built-ins/RegExp/S15.10.2.12_A1_T1 — CharacterClassEscape `\s` misses ES3 white-space characters
-> #### **15.10.2.12 CharacterClassEscape**
->
-> The production *CharacterClassEscape* **:: s** evaluates by returning the set of characters containing the characters that are on the right-hand side of the *WhiteSpace* (7.2) or *LineTerminator* (7.3) productions.
-NuXJS result: `/\s/.test("\u1680")` and `/\s/.test("\u2000")` both yield `false`.
-Expected: both `\u1680` (OGHAM SPACE MARK) and `\u2000` (EN QUAD) are listed in *WhiteSpace*, so `/\s/` should match them.
-```io
-> print(/\s/.test("\u1680"))
-< false
--
-> print(/\s/.test("\u2000"))
-< false
--
-```
-Plan: Expand the engine's white-space table to include all ES3 white-space code points.
-  - Fixed
 
 - [ ] built-ins/RegExp/S15.10.2.8_A3_T15 — engine truncates deep capturing groups
 > #### **15.10.2.8 Atom**
@@ -1128,7 +1081,7 @@ Plan: Lift the limit on tracked capturing groups so all groups are reported.
   - Fixed
 
 ### String
-- [ ] built-ins/String/prototype/indexOf/S15.5.4.7_A1_T11 — calling `indexOf` with Date object `this` yields wrong index
+- [ ] built-ins/String/prototype/indexOf/S15.5.4.7_A1_T11 — calling `indexOf` with object `this` yields wrong index
 > #### **15.5.4.7 String.prototype.indexOf (searchString, position)**
 >
 > If *searchString* appears as a substring of the result of converting this object to a string, at one or more positions that are greater than or equal to *position*, then the index of the smallest such position is returned; otherwise, **-1** is returned. If *position* is **undefined**, 0 is assumed, so as to search all of the string.
@@ -1141,15 +1094,16 @@ Plan: Lift the limit on tracked capturing groups so all groups are reported.
 > - 4. Compute the number of characters in Result(1).
 > - 5. Compute min(max(Result(3), 0), Result(4)).
 > - 6. Compute the number of characters in the string that is Result(2).
-NuXJS result: `String.prototype.indexOf.call(new Date(0), "GMT")` returns `-1`.
-Expected: converting the Date to a string includes "GMT", so the index should be `25`.
-Plan: Convert the **this** value with `ToString` before searching so Date strings expose "GMT".
+NuXJS result: `String.prototype.indexOf.call({ toString: function() { return "xyz"; } }, "y")` returns `-1`.
+Expected: the receiver is coerced to "xyz", so "y" should be found at index `1`.
+Plan: Convert the **this** value with `ToString` before searching so object receivers expose their string value.
 ```io
-> print(String.prototype.indexOf.call(new Date(0), "GMT"))
-< 25
+> obj = { toString: function() { return "xyz"; } }
+> print(String.prototype.indexOf.call(obj, "y"))
+< 1
 -
 ```
-See `tests/todo/stringIndexOfDateThis.io` for a regression test.
+See `tests/regression/stringIndexOfCoercesThis.io` for a regression test.
   - Fixed
 - [ ] built-ins/String/prototype/replace/S15.5.4.11_A12 — `replace` should treat undefined `this` correctly
 	   > #### **15.5.4.11 String.prototype.replace (searchValue, replaceValue)**
@@ -1354,24 +1308,6 @@ Flagged `not_es3` in `tools/testdash.json`.
 Supplementary-plane casing is outside ES3; no regression test.
   - Fixed
 ### parseInt
-- built-ins/parseInt/S15.1.2.2_A2_T10 — "StrWhiteSpaceChar :: USP"
-	> #### **15.1.2.2 parseInt (string , radix)**
-	> 
-	> The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
-	> 
-		>
-		> *StrWhiteSpaceChar* **:::** <TAB> <SP> <NBSP> <FF> <VT> <CR> <LF> <LS> <PS> <USP>
-
-NuXJS result: `parseInt("\u1680123")` returns `NaN`.
-By design, NuXJS excludes the OGHAM SPACE MARK from its whitespace set.
-
-```io
-> print(parseInt("\u1680123"))
-< NaN
--
-```
-NuXJS intentionally excludes \u1680 from its whitespace set; no regression test.
-  - Fixed
 
 - built-ins/parseInt/S15.1.2.2_A5.2_T2 — ": 0X"
 		> #### **15.1.2.2 parseInt (string , radix)**
