@@ -240,10 +240,10 @@
 	"category": "bad_test"
   },
   "built-ins/Array/S15.4.5.1_A1.3_T1": {
-	"category": "by_design"
+"category": "not_es3"
   },
   "built-ins/Array/S15.4.5.1_A1.3_T2": {
-	"category": "by_design"
+"category": "not_es3"
   },
   "built-ins/Array/S15.4.5.2_A3_T2": {
 	"category": "by_design"
@@ -18620,8 +18620,11 @@
   "built-ins/RegExp/15.10.4.1-1": {
 		"category": "not_es3"
   },
+  "built-ins/RegExp/S15.10.2.12_A1_T1": {
+	"category": "not_es3"
+  },
   "built-ins/RegExp/S15.10.2.12_A2_T1": {
-	"category": "by_design"
+	"category": "not_es3"
   },
   "built-ins/RegExp/S15.10.3.1_A2_T1": {
 		"category": "not_es3"
@@ -20283,7 +20286,10 @@
 	"category": "not_es3"
   },
   "built-ins/String/prototype/indexOf/S15.5.4.7_A10": {
-	"category": "bad_test"
+		"category": "bad_test"
+  },
+  "built-ins/String/prototype/indexOf/S15.5.4.7_A1_T11": {
+		"category": "bad_test"
   },
   "built-ins/String/prototype/indexOf/S15.5.4.7_A1_T12": {
 	"category": "not_es3"
@@ -23496,7 +23502,7 @@
 		"category": "not_es3"
   },
   "built-ins/parseInt/S15.1.2.2_A2_T10": {
-	"category": "by_design"
+	"category": "not_es3"
   },
   "built-ins/parseInt/S15.1.2.2_A9.2": {
 		"category": "not_es3"
