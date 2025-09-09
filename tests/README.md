@@ -2,6 +2,8 @@
 
 This folder contains regression tests written in `.io` format. Each file lists commands and expected output for the NuXJS interpreter. The helper script `tools/test.pika` reads these files, generates a temporary `.js` input file and checks that the interpreter output matches.
 
+The `todo/` subdirectory holds known failing cases that are excluded from the standard build until they are fixed.
+
 ## Running the tests
 
 The top-level `build.sh` script builds both configurations and runs all tests by calling `tools/buildAndTest.sh`. That script invokes `tools/test.pika` under `PikaCmd` to execute every `.io` file.

@@ -1,13 +1,13 @@
 # ES3 Test262 Failures Analysis
-42 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
+40 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
 | Array | §15.4 | 8 |
 | Date | §15.9 | 7 |
-| Error | §15.11 | 1 |
+| Error | §15.11 | 0 |
 | Function | §15.3 | 1 |
 | RegExp | §15.10 | 17 |
-| String | §15.5 | 8 |
+| String | §15.5 | 7 |
 
 The table counts only failing Test262 cases. One additional custom test,
 `unconforming/readOnlyNumericProps`, documents an intentional deviation and is
@@ -23,7 +23,7 @@ For spec references, consult the Markdown edition of the ES3 spec at `docs/specs
 When an item is resolved, check it off and add a brief note citing the ES3 spec section and the regression `.io` test that verifies the fix.
 
 ### Array
-- [x] built-ins/Array/arrayIndexTooLarge — property "4294967296" wraps to index 0
+- built-ins/Array/arrayIndexTooLarge — property "4294967296" wraps to index 0
 > #### **15.4 Array Objects**
 >
 > Array objects give special treatment to a certain class of property names. A property name *P* (in the form of a string value) is an *array index* if and only if ToString(ToUint32(*P*)) is equal to *P* and ToUint32(*P*) is not equal to 2<sup>32</sup>−1.
@@ -44,9 +44,9 @@ Plan: Reject property names whose ToUint32 value is ≥2<sup>32</sup>, treating 
 < 1
 -
 ```
-See `tests/unconforming/arrayIndexTooLarge.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/Array/S15.4.5.1_A2.1_T1 — P in [4294967295, -1, true]
+See `tests/todo/arrayIndexTooLarge.io` for a regression test.
+  - Fixed
+- [ ] built-ins/Array/S15.4.5.1_A2.1_T1 — P in [4294967295, -1, true]
 > ## **15.4.5.1 [[Put]] (P, V)**
 >
 > Array objects use a variation of the [[Put]] method used for other native ECMAScript objects (8.6.2.2).
@@ -76,8 +76,8 @@ Plan: In the array `[[Put]]` implementation, only string keys matching the array
 < undefined
 -
 ```
-  - [ ] Fixed
-- [x] built-ins/Array/S15.4_A1.1_T1 — Checking for boolean primitive
+  - Fixed
+- [ ] built-ins/Array/S15.4_A1.1_T1 — Checking for boolean primitive
 				> #### **15.4 Array Objects**
 				>
 				> Array objects give special treatment to a certain class of property names. A property name *P* (in the form of a string value) is an *array index* if and only if ToString(ToUint32(*P*)) is equal to *P* and ToUint32(*P*) is not equal to 2<sup>32</sup>−1. Every Array object has a **length** property whose value is always a nonnegative integer less than 232. The value of the **length** property is numerically greater than the name of every property whose name is an array index; whenever a property of an Array object is created or changed, other properties are adjusted as necessary to maintain this invariant. Specifically, whenever a property is added whose name is an array index, the **length** property is changed, if necessary, to be one more than the numeric value of that array index; and whenever the **length** property is changed, every property whose name is an array index whose value is not smaller than the new length is automatically deleted. This constraint applies only to properties of the Array object itself and is unaffected by **length** or array index properties that may be inherited from its prototype.
@@ -98,9 +98,9 @@ Plan: Per ES3 §15.4, treat `P` as an index only when it is a string and `ToStri
 < undefined
 -
 ```
-See `tests/unconforming/booleanIndexCoercion.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/Array/cantAssignObjectToArrayLength — assigning object to length throws
+See `tests/todo/arrayNonIndexProperties.io` for a regression test.
+  - Fixed
+- built-ins/Array/cantAssignObjectToArrayLength — assigning object to length throws
 	> #### **15.4.5.1 [[Put]] (P, V)**
 	>
 	> When the [[Put]] method of *A* is called with property "length" and value *V*, the following steps are taken:
@@ -129,8 +129,8 @@ Flagged `by_design` in `tools/testdash.json`.
 -
 ```
 See `tests/unconforming/cantAssignObjectToArrayLength.io` for a regression test.
-- [x] Fixed
-- [x] built-ins/Array/readOnlyNumericProps — writes override read-only numeric prototype properties *(by design)*
+- Fixed
+- built-ins/Array/readOnlyNumericProps — writes override read-only numeric prototype properties *(by design)*
 	> #### **8.6.2.2 [[Put]] (P, V)**
 	>
 	> If a property with name *P* exists and is **ReadOnly**, return without doing anything.
@@ -146,8 +146,8 @@ Plan: Accepted deviation for performance — ES3 programs cannot observe read-on
 < 789
 ```
 See `tests/unconforming/readOnlyNumericProps.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/Array/prototype/pop/S15.4.4.6_A4_T2 — [[Prototype]] of Array instance is Array.prototype, [[Prototype] of Array.prototype is Object.prototype
+  - Fixed
+- [ ] built-ins/Array/prototype/pop/S15.4.4.6_A4_T2 — [[Prototype]] of Array instance is Array.prototype, [[Prototype] of Array.prototype is Object.prototype
 	> ## **15.4.4.6 Array.prototype.pop ( )**
 	> 
 	> The last element of the array is removed from the array and returned.
@@ -174,9 +174,9 @@ Plan: When `pop` is borrowed, after retrieving the element (steps 6–7), call 
 < -1
 -
 ```
-See `tests/unconforming/arrayPopPrototypeDelete.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/Array/prototype/push/S15.4.4.7_A2_T2 — The arguments are appended to the end of the array, in	 the order in which they appear. The new length of the array is returned  as the result of the call
+See `tests/todo/arrayPopPrototypeDelete.io` for a regression test.
+  - Fixed
+- [ ] built-ins/Array/prototype/push/S15.4.4.7_A2_T2 — The arguments are appended to the end of the array, in	 the order in which they appear. The new length of the array is returned  as the result of the call
 	> ## **15.4.4.7 Array.prototype.push ( [ item1 [ , item2 [ , … ] ] ] )**
 	> 
 	> The arguments are appended to the end of the array, in the order in which they appear. The new length of the array is returned as the result of the call.
@@ -206,9 +206,9 @@ Plan: Follow ES3 §15.4.4.7 steps 1–3: compute `n = ToUint32(length)` and com
 < undefined
 -
 ```
-See `tests/unconforming/arrayPushLengthInfinity.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/Array/prototype/shift/S15.4.4.9_A3_T3 — length is arbitrarily
+See `tests/todo/arrayPushLengthInfinity.io` for a regression test.
+  - Fixed
+- [ ] built-ins/Array/prototype/shift/S15.4.4.9_A3_T3 — length is arbitrarily
 		> ## **15.4.4.9 Array.prototype.shift ( )**
 	> 
 	> The first element of the array is removed from the array and returned.
@@ -243,9 +243,9 @@ Plan: If `ToUint32(length)` differs from the numeric value, clamp `length` to `0
 < y
 -
 ```
-See `tests/unconforming/arrayShiftNegativeLength.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/Array/prototype/shift/S15.4.4.9_A4_T2 — [[Prototype]] of Array instance is Array.prototype, [[Prototype] of Array.prototype is Object.prototype
+See `tests/todo/arrayShiftNegativeLength.io` for a regression test.
+  - Fixed
+- [ ] built-ins/Array/prototype/shift/S15.4.4.9_A4_T2 — [[Prototype]] of Array instance is Array.prototype, [[Prototype] of Array.prototype is Object.prototype
 	> ## **15.4.4.9 Array.prototype.shift ( )**
 	> 
 	> The first element of the array is removed from the array and returned.
@@ -279,9 +279,9 @@ Plan: When borrowed, `shift` must delete the property at `length - 1` and reinde
 < 1
 -
 ```
-See `tests/unconforming/arrayShiftPrototypeDelete.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/Array/prototype/toLocaleString/S15.4.4.3_A1_T1 — it is the function that should be invoked
+See `tests/todo/arrayShiftPrototypeDelete.io` for a regression test.
+  - Fixed
+- [ ] built-ins/Array/prototype/toLocaleString/S15.4.4.3_A1_T1 — it is the function that should be invoked
 	> #### **15.4.4.3 Array.prototype.toLocaleString ( )**
 	> 
 	> The elements of the array are converted to strings using their **toLocaleString** methods, and these strings are then concatenated, separated by occurrences of a separator string that has been derived in an implementation-defined locale-specific way. The result of calling this function is intended to be analogous to the result of **toString**, except that the result of this function is intended to be localespecific.
@@ -306,9 +306,9 @@ Plan: During concatenation, iterate over all own indices from `0` to `length - 1
 < 3
 -
 ```
-See `tests/unconforming/arrayToLocaleStringCallsElements.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/Array/prototype/toLocaleString/S15.4.4.3_A3_T1 — "[[Prototype]] of Array instance is Array.prototype"
+See `tests/todo/arrayToLocaleStringCallsElements.io` for a regression test.
+  - Fixed
+- [ ] built-ins/Array/prototype/toLocaleString/S15.4.4.3_A3_T1 — "[[Prototype]] of Array instance is Array.prototype"
 	> #### **15.4.4.3 Array.prototype.toLocaleString ( )**
 	> 
 	> The elements of the array are converted to strings using their **toLocaleString** methods, and these strings are then concatenated, separated by occurrences of a separator string that has been derived in an implementation-defined locale-specific way. The result of calling this function is intended to be analogous to the result of **toString**, except that the result of this function is intended to be localespecific.
@@ -336,10 +336,10 @@ Plan: Include inherited indices in the iteration so prototype-defined elements a
 	< 2
 	-
 	```
-	See `tests/unconforming/arrayToLocaleStringPrototypeElement.io` for a regression test.
-	  - [ ] Fixed
+	See `tests/todo/arrayToLocaleStringPrototypeElement.io` for a regression test.
+	  - Fixed
 ### Date
-- [x] built-ins/Date/S15.9.3.1_A6_T1 — 2 arguments, (year, month)
+- [ ] built-ins/Date/S15.9.3.1_A6_T1 — 2 arguments, (year, month)
 		> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
 		>
 		> When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
@@ -367,9 +367,9 @@ Plan: Include inherited indices in the iteration so prototype-defined elements a
 		< true
 		-
 		```
-		See `tests/unconforming/dateYearMonthUndefined.io` for a regression test.
-		  - [ ] Fixed
-- [x] built-ins/Date/S15.9.3.1_A6_T2 — 3 arguments, (year, month, date)
+		See `tests/todo/dateYearMonthUndefined.io` for a regression test.
+		  - Fixed
+- [ ] built-ins/Date/S15.9.3.1_A6_T2 — 3 arguments, (year, month, date)
 		> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
 		>
 		> When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
@@ -397,9 +397,9 @@ Plan: Include inherited indices in the iteration so prototype-defined elements a
 		< true
 		-
 		```
-		See `tests/unconforming/dateYearMonthDateUndefined.io` for a regression test.
-		  - [ ] Fixed
-- [x] built-ins/Date/S15.9.3.1_A6_T3 — 4 arguments, (year, month, date, hours)
+		See `tests/todo/dateYearMonthDateUndefined.io` for a regression test.
+		  - Fixed
+- [ ] built-ins/Date/S15.9.3.1_A6_T3 — 4 arguments, (year, month, date, hours)
 	> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
 	> 
 	> When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
@@ -420,9 +420,9 @@ Plan: Include inherited indices in the iteration so prototype-defined elements a
 	< true
 	-
 	```
-	See `tests/unconforming/dateYearMonthDateHoursUndefined.io` for a regression test.
-	  - [ ] Fixed
-- [x] built-ins/Date/S15.9.3.1_A6_T4 — 5 arguments, (year, month, date, hours, minutes)
+	See `tests/todo/dateYearMonthDateHoursUndefined.io` for a regression test.
+	  - Fixed
+- [ ] built-ins/Date/S15.9.3.1_A6_T4 — 5 arguments, (year, month, date, hours, minutes)
 	> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
 	> 
 	> When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
@@ -443,9 +443,9 @@ Plan: Include inherited indices in the iteration so prototype-defined elements a
 	< true
 	-
 	```
-	See `tests/unconforming/dateYearMonthDateHoursMinutesUndefined.io` for a regression test.
-	  - [ ] Fixed
-- [x] built-ins/Date/S15.9.3.1_A6_T5 — 6 arguments, (year, month, date, hours, minutes, seconds)
+	See `tests/todo/dateYearMonthDateHoursMinutesUndefined.io` for a regression test.
+	  - Fixed
+- [ ] built-ins/Date/S15.9.3.1_A6_T5 — 6 arguments, (year, month, date, hours, minutes, seconds)
 	> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
 	> 
 	> When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
@@ -466,9 +466,9 @@ Plan: Include inherited indices in the iteration so prototype-defined elements a
 	< true
 	-
 	```
-	See `tests/unconforming/dateYearMonthDateHoursMinutesSecondsUndefined.io` for a regression test.
-	  - [ ] Fixed
-- [x] built-ins/Date/TimeClip_negative_zero — TimeClip converts negative zero to positive zero
+	See `tests/todo/dateYearMonthDateHoursMinutesSecondsUndefined.io` for a regression test.
+	  - Fixed
+- [ ] built-ins/Date/TimeClip_negative_zero — TimeClip converts negative zero to positive zero
 		> ## **15.9.1.14 TimeClip (time)**
 		>
 		> The operator TimeClip calculates a number of milliseconds from its argument, which must be an ECMAScript number value. This operator functions as follows:
@@ -491,10 +491,10 @@ Plan: Include inherited indices in the iteration so prototype-defined elements a
 	   -
 	   ```
 
-	   See `tests/unconforming/dateTimeClipNegativeZero.io` for a regression test.
+	   See `tests/todo/dateTimeClipNegativeZero.io` for a regression test.
 
-		 - [ ] Fixed
-- [x] built-ins/Date/prototype/setFullYear/15.9.5.40_1 — Date.prototype.setFullYear - Date.prototype is itself not an instance of Date
+		 - Fixed
+- [ ] built-ins/Date/prototype/setFullYear/15.9.5.40_1 — Date.prototype.setFullYear - Date.prototype is itself not an instance of Date
 > #### **15.9.5 Properties of the Date Prototype Object**
 >
 > None of these functions are generic; a **TypeError** exception is thrown if the **this** value is not an object for which the value of the internal [[Class]] property is **"Date"**.
@@ -507,11 +507,11 @@ Plan: Verify that the `this` value has [[Class]] "Date" before proceeding and th
 < TypeError
 -
 ```
-See `tests/unconforming/datePrototypeSetFullYearInvalidThis.io` for a regression test.
-  - [ ] Fixed
+See `tests/todo/datePrototypeSetFullYearInvalidThis.io` for a regression test.
+  - Fixed
 
 ### Error
-- [x] built-ins/Error/S15.11.1.1_A1_T1 — Checking message property of different error objects
+- built-ins/Error/S15.11.1.1_A1_T1 — Checking message property of different error objects
 		> #### **15.11.1.1 Error (message)**
 		>
 		> The [[Prototype]] property of the newly constructed object is set to the original Error prototype object, the one that is the initial value of **Error.prototype** (15.11.3.1).
@@ -531,11 +531,11 @@ See `tests/unconforming/datePrototypeSetFullYearInvalidThis.io` for a regression
 	   -
 	   ```
 
-	See `tests/unconforming/errorFunctionUndefinedMessage.io` for a regression test.
+	See `tests/regression/errorFunctionUndefinedMessage.io` for a regression test.
 
-		- [x] Fixed in `src/stdlib.js`; omits own `message` when called without argument (§15.11.1.1).
-		Regression: `tests/unconforming/errorFunctionUndefinedMessage.io`.
-- [x] built-ins/Error/S15.11.2.1_A1_T1 — Checking message property of different error objects
+		- Fixed in `src/stdlib.js`; omits own `message` when called without argument (§15.11.1.1).
+		Regression: `tests/regression/errorFunctionUndefinedMessage.io`.
+- built-ins/Error/S15.11.2.1_A1_T1 — Checking message property of different error objects
 		> ## **15.11.2.1 new Error (message)**
 		>
 		> The [[Prototype]] property of the newly constructed object is set to the original Error prototype object, the one that is the initial value of **Error.prototype** (15.11.3.1).
@@ -554,9 +554,9 @@ See `tests/unconforming/datePrototypeSetFullYearInvalidThis.io` for a regression
 		   < false
 		   -
 		   ```
-			See `tests/unconforming/errorConstructorUndefinedMessage.io` for a regression test.
-			  - [x] Fixed in `src/stdlib.js`; `new Error()` now inherits `message` when argument is absent (§15.11.2.1).
-				Regression: `tests/unconforming/errorConstructorUndefinedMessage.io`.
+			See `tests/regression/errorConstructorUndefinedMessage.io` for a regression test.
+			  - Fixed in `src/stdlib.js`; `new Error()` now inherits `message` when argument is absent (§15.11.2.1).
+				Regression: `tests/regression/errorConstructorUndefinedMessage.io`.
 
 - [x] built-ins/Error/prototype/name/15.11.4.2-1 — Error.prototype.name is not enumerable.
 	   > #### **15.11.4.2 Error.prototype.name**
@@ -577,11 +577,11 @@ See `tests/unconforming/datePrototypeSetFullYearInvalidThis.io` for a regression
 		   < false
 		   -
 		   ```
-			See `tests/unconforming/errorPrototypeNameEnumerable.io` for a regression test.
-			  - [ ] Fixed
+			See `tests/regression/errorPrototypeNameEnumerable.io` for a regression test.
+			  - Fixed
 
 ### Function
-- [x] built-ins/Function/prototype/S15.3.4_A5 — Checking if creating "new Function.prototype object" fails
+- [ ] built-ins/Function/prototype/S15.3.4_A5 — Checking if creating "new Function.prototype object" fails
 	> ## **15.3.4 Properties of the Function Prototype Object**
 	> 
 	> The Function prototype object is itself a Function object (its [[Class]] is **"Function"**) that, when invoked, accepts any arguments and returns **undefined**.
@@ -602,8 +602,8 @@ See `tests/unconforming/datePrototypeSetFullYearInvalidThis.io` for a regression
 < TypeError
 		-
 		```
-		See `tests/unconforming/functionPrototypeConstructible.io` for a regression test.
-		  - [ ] Fixed
+		See `tests/todo/functionPrototypeConstructible.io` for a regression test.
+		  - Fixed
 
 ### RegExp
 		>
@@ -616,7 +616,7 @@ See `tests/unconforming/datePrototypeSetFullYearInvalidThis.io` for a regression
 	> The production *CharacterClassEscape* **:: S** evaluates by returning the set of all characters not included in the set returned by *CharacterClassEscape* **:: s**.
 	> 
 	> The production *CharacterClassEscape* **:: w** evaluates by returning the set of characters containing the sixty-three characters:
-- [x] built-ins/RegExp/S15.10.2.12_A2_T1 — WhiteSpace
+- built-ins/RegExp/S15.10.2.12_A2_T1 — WhiteSpace
 		> #### **15.10.2.12 CharacterClassEscape**
 	> 
 	> The production *CharacterClassEscape* **:: d** evaluates by returning the ten-element set of characters containing the characters **0** through **9** inclusive.
@@ -645,8 +645,8 @@ NuXJS deliberately omits certain Unicode space separators, including `\u1680`, s
 < false
 -
 ```
-See `tests/unconforming/regExpWhiteSpace.io` and `tests/unconforming/regExpWhiteSpace2000.io` for regression tests.
-  - [ ] Fixed
+See `tests/todo/regExpWhiteSpace.io` and `tests/todo/regExpWhiteSpace2000.io` for regression tests.
+  - Fixed
 	> #### **15.10.2.8 Atom**
 	> 
 	> The production *Atom* **::** *PatternCharacter* evaluates as follows:
@@ -659,7 +659,7 @@ See `tests/unconforming/regExpWhiteSpace.io` and `tests/unconforming/regExpWhite
 	> 
 	> - 1. Let *A* be the set of all characters except the four line terminator characters <LF>, <CR>, <LS>, or <PS>.
 	> - 2. Call *CharacterSetMatcher*(*A*, **false**) and return its Matcher result.
-- [x] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T10 — String is 1.01 and RegExp is /1|12/
+- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T10 — String is 1.01 and RegExp is /1|12/
 	> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -684,9 +684,9 @@ Plan: Coerce non-string inputs with `ToString` before executing the pattern so n
 < 0
 -
 ```
-See `tests/unconforming/regExpExecNumberPrimitive.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T11 — String is new Number(1.012) and RegExp is /2|12/
+See `tests/todo/regExpExecNumberPrimitive.io` for a regression test.
+  - Fixed
+- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T11 — String is new Number(1.012) and RegExp is /2|12/
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -711,9 +711,9 @@ Plan: Apply `ToString` to object-wrapped numbers so their string form participat
 < 3
 -
 ```
-See `tests/unconforming/regExpExecNumberObject.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T12 — String is {toString:function(){return Math.PI;}} and RegExp is /\.14/
+See `tests/todo/regExpExecNumberObject.io` for a regression test.
+  - Fixed
+- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T12 — String is {toString:function(){return Math.PI;}} and RegExp is /\.14/
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -738,9 +738,9 @@ Plan: Use `ToString` on arbitrary objects and coerce the result to a string even
 < 1
 -
 ```
-See `tests/unconforming/regExpExecToStringPi.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T13 — String is true and RegExp is /t[a-b|q-s]/
+See `tests/todo/regExpExecToStringPi.io` for a regression test.
+  - Fixed
+- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T13 — String is true and RegExp is /t[a-b|q-s]/
 	> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -765,9 +765,9 @@ Plan: Convert boolean primitives via `ToString` so their textual form is searche
 < 0
 -
 ```
-See `tests/unconforming/regExpExecBooleanPrimitive.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T14 — String is new Boolean and RegExp is /AL|se/
+See `tests/todo/regExpExecBooleanPrimitive.io` for a regression test.
+  - Fixed
+- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T14 — String is new Boolean and RegExp is /AL|se/
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -792,9 +792,9 @@ Plan: Coerce Boolean objects with `ToString` before matching.
 < 3
 -
 ```
-See `tests/unconforming/regExpExecBooleanObject.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T15 — "String is {toString:function(){return false;}} and RegExp is /LS/i"
+See `tests/todo/regExpExecBooleanObject.io` for a regression test.
+  - Fixed
+- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T15 — "String is {toString:function(){return false;}} and RegExp is /LS/i"
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -819,9 +819,9 @@ Plan: If `toString` yields a non-string primitive, run `ToString` on that value 
 < 2
 -
 ```
-See `tests/unconforming/regExpExecToStringFalse.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T17 — String is `null` and RegExp is `/ll|l/`
+See `tests/todo/regExpExecToStringFalse.io` for a regression test.
+  - Fixed
+- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T17 — String is `null` and RegExp is `/ll|l/`
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 		>
 		> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -850,9 +850,9 @@ See `tests/unconforming/regExpExecToStringFalse.io` for a regression test.
 		< null
 		-
 		```
-		See `tests/unconforming/regExpExecNullString.io` for a regression test.
-		  - [ ] Fixed
-- [x] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T18 — String is `undefined` and RegExp is `/nd|ne/`
+            See `tests/todo/regExpExecNullString.io` for a regression test.
+		  - Fixed
+- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T18 — String is `undefined` and RegExp is `/nd|ne/`
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 		>
 		> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -881,9 +881,9 @@ See `tests/unconforming/regExpExecToStringFalse.io` for a regression test.
 		< undefined
 		-
 		```
-		See `tests/unconforming/regExpExecUndefinedString.io` for a regression test.
-		  - [ ] Fixed
-- [x] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T19 — String is `void 0` and RegExp is `/e{1}/`
+            See `tests/todo/regExpExecUndefinedString.io` for a regression test.
+		  - Fixed
+- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T19 — String is `void 0` and RegExp is `/e{1}/`
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 		>
 		> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -912,9 +912,9 @@ See `tests/unconforming/regExpExecToStringFalse.io` for a regression test.
 		< undefined
 		-
 		```
-		See `tests/unconforming/regExpExecVoid0.io` for a regression test.
-		  - [ ] Fixed
-- [x] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T2 — String is new String("123") and RegExp is /((1)|(12))((3)|(23))/
+            See `tests/todo/regExpExecVoid0.io` for a regression test.
+		  - Fixed
+- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T2 — String is new String("123") and RegExp is /((1)|(12))((3)|(23))/
 	> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -946,9 +946,9 @@ Plan: Fix capture group bookkeeping so unmatched alternates yield `undefined` en
 < undefined
 -
 ```
-See `tests/unconforming/regExpExecNestedCaptures.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T20 — String is x and RegExp is /[a-f]d/, where x is undefined variable
+See `tests/todo/regExpExecNestedCaptures.io` for a regression test.
+  - Fixed
+- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T20 — String is x and RegExp is /[a-f]d/, where x is undefined variable
 	> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -979,9 +979,9 @@ See `tests/unconforming/regExpExecNestedCaptures.io` for a regression test.
 		> var x;
 		-
 		```
-		See `tests/unconforming/regExpExecUndefinedVariable.io` for a regression test.
-		  - [ ] Fixed
-- [x] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T21 — String is function(){}() and RegExp is /[a-z]n/
+		See `tests/todo/regExpExecUndefinedVariable.io` for a regression test.
+		  - Fixed
+- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T21 — String is function(){}() and RegExp is /[a-z]n/
 	> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -1010,9 +1010,9 @@ See `tests/unconforming/regExpExecNestedCaptures.io` for a regression test.
 		< undefined
 		-
 		```
-		See `tests/unconforming/regExpExecFunctionCallUndefined.io` for a regression test.
-		  - [ ] Fixed
-- [x] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T3 — String is new Object("abcdefghi") and RegExp is /a[a-z]{2,4}/
+           See `tests/todo/regExpExecFunctionCallUndefined.io` for a regression test.
+		  - Fixed
+- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T3 — String is new Object("abcdefghi") and RegExp is /a[a-z]{2,4}/
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -1037,9 +1037,9 @@ Plan: When `ToString` is applied to a `String` object, use its underlying primit
 < 0
 -
 ```
-See `tests/unconforming/regExpExecObjectString.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T4 — String is {toString:function(){return "abcdefghi";}} and RegExp is /a[a-z]{2,4}?/
+See `tests/todo/regExpExecObjectString.io` for a regression test.
+  - Fixed
+- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T4 — String is {toString:function(){return "abcdefghi";}} and RegExp is /a[a-z]{2,4}?/
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -1064,9 +1064,9 @@ Plan: Respect custom `toString` results by stringifying their primitive return v
 < 0
 -
 ```
-See `tests/unconforming/regExpExecToStringObject.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T5 — String is {toString:function(){return {};}, valueOf:function(){return "aabaac";}} and RegExp is /(aa|aabaac|ba|b|c)* /
+See `tests/todo/regExpExecToStringObject.io` for a regression test.
+  - Fixed
+- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T5 — String is {toString:function(){return {};}, valueOf:function(){return "aabaac";}} and RegExp is /(aa|aabaac|ba|b|c)* /
 	> #### **15.10.6.2 RegExp.prototype.exec(string)**
 	> 
 	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
@@ -1090,10 +1090,10 @@ Plan: Implement `ToPrimitive` with hint `String` so `valueOf` is tried when `toS
 < 0
 -
 ```
-See `tests/unconforming/regExpExecValueOfObject.io` for a regression test.
-  - [ ] Fixed
+See `tests/todo/regExpExecValueOfObject.io` for a regression test.
+  - Fixed
 
-- [x] built-ins/RegExp/S15.10.2.12_A1_T1 — CharacterClassEscape `\s` misses ES3 white-space characters
+- [ ] built-ins/RegExp/S15.10.2.12_A1_T1 — CharacterClassEscape `\s` misses ES3 white-space characters
 > #### **15.10.2.12 CharacterClassEscape**
 >
 > The production *CharacterClassEscape* **:: s** evaluates by returning the set of characters containing the characters that are on the right-hand side of the *WhiteSpace* (7.2) or *LineTerminator* (7.3) productions.
@@ -1108,9 +1108,9 @@ Expected: both `\u1680` (OGHAM SPACE MARK) and `\u2000` (EN QUAD) are listed in 
 -
 ```
 Plan: Expand the engine's white-space table to include all ES3 white-space code points.
-  - [ ] Fixed
+  - Fixed
 
-- [x] built-ins/RegExp/S15.10.2.8_A3_T15 — engine truncates deep capturing groups
+- [ ] built-ins/RegExp/S15.10.2.8_A3_T15 — engine truncates deep capturing groups
 > #### **15.10.2.8 Atom**
 >
 > Parentheses of the form *( Disjunction )* serve both to group the components of the pattern together and to save the result of the match.
@@ -1122,11 +1122,13 @@ Expected: the match result should contain one entry for each of the 200 capturin
 < 1
 -
 ```
+See `tests/todo/regExpDeepCaptures.io` for a regression test.
+
 Plan: Lift the limit on tracked capturing groups so all groups are reported.
-  - [ ] Fixed
+  - Fixed
 
 ### String
-- [x] built-ins/String/prototype/indexOf/S15.5.4.7_A1_T11 — calling `indexOf` with Date object `this` yields wrong index
+- [ ] built-ins/String/prototype/indexOf/S15.5.4.7_A1_T11 — calling `indexOf` with Date object `this` yields wrong index
 > #### **15.5.4.7 String.prototype.indexOf (searchString, position)**
 >
 > If *searchString* appears as a substring of the result of converting this object to a string, at one or more positions that are greater than or equal to *position*, then the index of the smallest such position is returned; otherwise, **-1** is returned. If *position* is **undefined**, 0 is assumed, so as to search all of the string.
@@ -1147,9 +1149,9 @@ Plan: Convert the **this** value with `ToString` before searching so Date string
 < 25
 -
 ```
-See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/String/prototype/replace/S15.5.4.11_A12 — `replace` should treat undefined `this` correctly
+See `tests/todo/stringIndexOfDateThis.io` for a regression test.
+  - Fixed
+- [ ] built-ins/String/prototype/replace/S15.5.4.11_A12 — `replace` should treat undefined `this` correctly
 	   > #### **15.5.4.11 String.prototype.replace (searchValue, replaceValue)**
 	   >
 	   > Let *string* denote the result of converting the **this** value to a string.
@@ -1163,8 +1165,8 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
 		   < unDefineD
 	   -
 	   ```
-	   See `tests/unconforming/stringReplaceUndefinedThis.io` for a regression test.
-		 - [ ] Fixed
+	   See `tests/todo/stringReplaceUndefinedThis.io` for a regression test.
+		 - Fixed
 - [x] built-ins/String/prototype/replace/S15.5.4.11_A1_T11 — replacing with objects whose `toString` throws
 		> #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
 		>
@@ -1178,9 +1180,9 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
 				< X
 		-
 		```
-		See `tests/unconforming/stringReplaceThrowingToString.io` for a regression test.
-		  - [ ] Fixed
-- [x] built-ins/String/prototype/replace/S15.5.4.11_A1_T12 — replacing with object whose `valueOf` throws
+		See `tests/regression/stringReplaceThrowingToString.io` for a regression test.
+		  - Fixed
+- [ ] built-ins/String/prototype/replace/S15.5.4.11_A1_T12 — replacing with object whose `valueOf` throws
 		> #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
 		>
 		> Otherwise, let *newstring* denote the result of converting *replaceValue* to a string.
@@ -1193,9 +1195,9 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
 				< Y
 		-
 		```
-		See `tests/unconforming/stringReplaceThrowingValueOf.io` for a regression test.
-		  - [ ] Fixed
-- [x] built-ins/String/prototype/replace/S15.5.4.11_A3_T1 — `$11` sequences ignored in computed `replaceValue`
+		See `tests/todo/stringReplaceThrowingValueOf.io` for a regression test.
+		  - Fixed
+- [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T1 — `$11` sequences ignored in computed `replaceValue`
 	   > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
 	   >
 	   > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.	The sequence `"$"` followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
@@ -1210,9 +1212,9 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
 	   < x115ab
 	   -
 	   ```
-	   See `tests/unconforming/stringReplace11Concat.io` for a regression test.
-		 - [ ] Fixed
-- [x] built-ins/String/prototype/replace/S15.5.4.11_A3_T2 — `replaceValue` is "$11" + "15"
+	   See `tests/todo/stringReplace11Concat.io` for a regression test.
+		 - Fixed
+- [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T2 — `replaceValue` is "$11" + "15"
 	   > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
 	   >
 	   > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.	The sequence "\$" followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
@@ -1226,9 +1228,9 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
 	   < x115ab
 	   -
 	   ```
-	   See `tests/unconforming/stringReplace11Plus15.io` for a regression test.
-		 - [ ] Fixed
-- [x] built-ins/String/prototype/replace/S15.5.4.11_A3_T3 — `replaceValue` is "$11" + "A15"
+	   See `tests/todo/stringReplace11Plus15.io` for a regression test.
+		 - Fixed
+- [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T3 — `replaceValue` is "$11" + "A15"
 	   > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
 	   >
 	   > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.	The sequence "\$" followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
@@ -1242,9 +1244,9 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
 	   < x1A15ab
 	   -
 	   ```
-	   See `tests/unconforming/stringReplace11PlusA15.io` for a regression test.
-		 - [ ] Fixed
-- [x] built-ins/String/prototype/replace/S15.5.4.11_A5_T1 — regex `/^(a+)\1*,\1+$/` with backreference
+	   See `tests/todo/stringReplace11PlusA15.io` for a regression test.
+		 - Fixed
+- [ ] built-ins/String/prototype/replace/S15.5.4.11_A5_T1 — regex `/^(a+)\1*,\1+$/` with backreference
 	   > #### **15.10.2.9 AtomEscape**
 	   >
 	   > An escape sequence of the form "\\" followed by a nonzero decimal number *n* matches the result of the *n*th set of capturing parentheses.
@@ -1257,9 +1259,9 @@ See `tests/unconforming/stringIndexOfDateThis.io` for a regression test.
 	   < a
 	   -
 	   ```
-	   See `tests/unconforming/stringReplaceBackreference.io` for a regression test.
-		 - [ ] Fixed
-- [x] built-ins/String/prototype/toLocaleLowerCase/supplementary_plane — supplementary-plane mapping not defined in ES3
+	   See `tests/todo/stringReplaceBackreference.io` for a regression test.
+		 - Fixed
+- built-ins/String/prototype/toLocaleLowerCase/supplementary_plane — supplementary-plane mapping not defined in ES3
 		> ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
 		>
 		> This function works exactly the same as **toLowerCase** except that its result is intended to yield the correct result for the host environment's current locale, rather than a locale-independent result. There will only be a difference in the few cases (such as Turkish) where the rules for that language conflict with the regular Unicode case mappings.
@@ -1280,9 +1282,9 @@ Flagged `not_es3` in `tools/testdash.json`.
 < 𝔊
 -
 ```
-See `tests/unconforming/toLocaleLowerCaseSupplementaryPlane.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/String/prototype/toLocaleUpperCase/supplementary_plane — supplementary-plane mapping not defined in ES3
+Supplementary-plane casing is outside ES3; no regression test.
+  - Fixed
+- built-ins/String/prototype/toLocaleUpperCase/supplementary_plane — supplementary-plane mapping not defined in ES3
 	> #### **15.5.4.19 String.prototype.toLocaleUpperCase ( )**
 	> 
 	> This function works exactly the same as **toUpperCase** except that its result is intended to yield the correct result for the host environment's current locale, rather than a locale-independent result. There will only be a difference in the few cases (such as Turkish) where the rules for that language conflict with the regular Unicode case mappings.
@@ -1303,9 +1305,9 @@ Flagged `not_es3` in `tools/testdash.json`.
 < 𝔊
 -
 ```
-See `tests/unconforming/toLocaleUpperCaseSupplementaryPlane.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/String/prototype/toLowerCase/supplementary_plane — supplementary-plane mapping not defined in ES3
+Supplementary-plane casing is outside ES3; no regression test.
+  - Fixed
+- built-ins/String/prototype/toLowerCase/supplementary_plane — supplementary-plane mapping not defined in ES3
 > ## **15.5.4.16 String.prototype.toLowerCase ( )**
 >
 > If this object is not already a string, it is converted to a string. The characters in that string are converted one by one to lower case. The result is a string value, not a String object.
@@ -1326,9 +1328,9 @@ Flagged `not_es3` in `tools/testdash.json`.
 < 𝔊
 -
 ```
-See `tests/unconforming/toLowerCaseSupplementaryPlane.io` for a regression test.
-  - [ ] Fixed
-- [x] built-ins/String/prototype/toUpperCase/supplementary_plane — supplementary-plane mapping not defined in ES3
+Supplementary-plane casing is outside ES3; no regression test.
+  - Fixed
+- built-ins/String/prototype/toUpperCase/supplementary_plane — supplementary-plane mapping not defined in ES3
 		> #### **15.5.4.18 String.prototype.toUpperCase ( )**
 		>
 		> This function behaves in exactly the same way as **String.prototype.toLowerCase**, except that characters are mapped to their *uppercase* equivalents as specified in the Unicode Character Database.
@@ -1349,10 +1351,10 @@ Flagged `not_es3` in `tools/testdash.json`.
 < 𝔊
 -
 ```
-See `tests/unconforming/toUpperCaseSupplementaryPlane.io` for a regression test.
-  - [ ] Fixed
+Supplementary-plane casing is outside ES3; no regression test.
+  - Fixed
 ### parseInt
-- [x] built-ins/parseInt/S15.1.2.2_A2_T10 — "StrWhiteSpaceChar :: USP"
+- built-ins/parseInt/S15.1.2.2_A2_T10 — "StrWhiteSpaceChar :: USP"
 	> #### **15.1.2.2 parseInt (string , radix)**
 	> 
 	> The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
@@ -1368,10 +1370,10 @@ By design, NuXJS excludes the OGHAM SPACE MARK from its whitespace set.
 < NaN
 -
 ```
-See `tests/unconforming/parseIntUSP.io` for a regression test.
-  - [ ] Fixed
+NuXJS intentionally excludes \u1680 from its whitespace set; no regression test.
+  - Fixed
 
-- [x] built-ins/parseInt/S15.1.2.2_A5.2_T2 — ": 0X"
+- built-ins/parseInt/S15.1.2.2_A5.2_T2 — ": 0X"
 		> #### **15.1.2.2 parseInt (string , radix)**
 		>
 		> The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
@@ -1388,9 +1390,9 @@ Resolution: Accept an uppercase `0X` prefix when the radix is omitted or 0, mirr
 < 10
 -
 ```
-See `tests/unconforming/parseInt0XPrefix.io` for a regression test.
-  - [x] Fixed
-- [x] built-ins/parseInt/S15.1.2.2_A7.2_T3 — Checking algorithm for R = 16
+See `tests/regression/parseInt0XPrefix.io` for a regression test.
+  - Fixed
+- built-ins/parseInt/S15.1.2.2_A7.2_T3 — Checking algorithm for R = 16
 		> #### **15.1.2.2 parseInt (string , radix)**
 		>
 		> The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
@@ -1407,6 +1409,6 @@ Resolution: When radix is 16, strip an optional leading `0X` or `0x` before pars
 < 255
 -
 ```
-See `tests/unconforming/parseIntRadix16Uppercase.io` for a regression test.
-  - [x] Fixed
+See `tests/regression/parseIntRadix16Uppercase.io` for a regression test.
+  - Fixed
 

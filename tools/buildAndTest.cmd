@@ -19,7 +19,9 @@ CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJSTest_%target%_%model%.exe .\
 ..\output\NuXJSTest_%target%_%model% -s >NUL 2>&1 || GOTO error
 ..\output\NuXJSTest_%target%_%model% || GOTO error
 CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJS_%target%_%model%.exe .\NuXJSREPL.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
-..\externals\PikaCmd\PikaCmd.exe .\test.pika -e -x ..\output\NuXJS_%target%_%model% ..\tests\ || GOTO error
+..\externals\PikaCmd\PikaCmd.exe .\test.pika -e -x ..\output\NuXJS_%target%_%model% \
+..\tests\conforming ..\tests\erroneous ..\tests\es3only ..\tests\extremes ..\tests\from262 \
+..\tests\migrated ..\tests\regression ..\tests\stdlib ..\tests\unsorted || GOTO error
 CALL runExamples.cmd %target% || GOTO error
 ECHO Success!
 POPD
