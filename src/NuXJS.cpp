@@ -2119,6 +2119,7 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ GET_PROPERTY_OP			 , "GET_PROPERTY"			 , -1	  , 0 },
 	{ SET_PROPERTY_OP			 , "SET_PROPERTY"			 , -2	  , 0 },
 	{ SET_PROPERTY_POP_OP		 , "SET_PROPERTY_POP"		 , -3	  , 0 },
+	{ RESOLVE_PROPERTY_OP		, "RESOLVE_PROPERTY"	   , 0		, 0 },
 	{ ADD_PROPERTY_OP			 , "ADD_PROPERTY"			 , -1	  , 0 },
 	{ PUSH_ELEMENTS_OP			 , "PUSH_ELEMENTS_OP"		 , 0	  , OpcodeInfo::POP_OPERAND },
 	{ OBJ_TO_PRIMITIVE_OP		 , "OBJ_TO_PRIMITIVE"		 , 0	  , 0 },
@@ -2475,10 +2476,7 @@ void Processor::innerRun() {
 			}
 			
 			case SET_PROPERTY_OP: {
-				Object* o = convertToObject(sp[-2], false);
-				if (o == 0) {
-					return;
-				}
+				Object* const o = sp[-2].getObject();
 				o->setProperty(rt, sp[-1], sp[0]);
 				sp[-2] = sp[0];
 				pop(2);
@@ -2486,12 +2484,14 @@ void Processor::innerRun() {
 			}
 			
 			case SET_PROPERTY_POP_OP: {
-				Object* o = convertToObject(sp[-2], false);
-				if (o == 0) {
-					return;
-				}
+				Object* const o = sp[-2].getObject();
 				o->setProperty(rt, sp[-1], sp[0]);
 				pop(3);
+				break;
+			}
+
+			case RESOLVE_PROPERTY_OP: {
+				sp[-1] = convertToObject(sp[-1], false);
 				break;
 			}
 
@@ -3630,30 +3630,34 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			break;
 		}
 		
-		case ASSIGNMENT: {
-			assert(!op.primitiveInput);
-			assert(!op.primitiveOutput);
-			const ExpressionResult rxr = makeRValue(operand(op), false);
-			makeAssignment(xr);
-			xr = rxr;
-			break;
-		}
+               case ASSIGNMENT: {
+                       assert(!op.primitiveInput);
+                       assert(!op.primitiveOutput);
+                       if (xr.t == ExpressionResult::PROPERTY) {
+                               emit(Processor::RESOLVE_PROPERTY_OP);
+                       }
+                       const ExpressionResult rxr = makeRValue(operand(op), false);
+                       makeAssignment(xr);
+                       xr = rxr;
+                       break;
+               }
 			
-		case COMPOUND_ASSIGNMENT: {
-			assert(op.primitiveInput);
-			assert(op.primitiveOutput);
-			const Processor::Opcode primitiveOp
-					= (op.vmOp == Processor::ADD_OP ? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
-			if (xr.t == ExpressionResult::PROPERTY) {
-				emit(Processor::REPUSH_2_OP);
-			}
-			makeRValue(xr, true, primitiveOp);
-			makeRValue(operand(op), true, primitiveOp);
-			emit(op.vmOp);
-			makeAssignment(xr);
-			xr = ExpressionResult::PUSHED_PRIMITIVE;
-			break;
-		}
+               case COMPOUND_ASSIGNMENT: {
+                       assert(op.primitiveInput);
+                       assert(op.primitiveOutput);
+                       const Processor::Opcode primitiveOp
+                                       = (op.vmOp == Processor::ADD_OP ? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
+                       if (xr.t == ExpressionResult::PROPERTY) {
+                               emit(Processor::RESOLVE_PROPERTY_OP);
+                               emit(Processor::REPUSH_2_OP);
+                       }
+                       makeRValue(xr, true, primitiveOp);
+                       makeRValue(operand(op), true, primitiveOp);
+                       emit(op.vmOp);
+                       makeAssignment(xr);
+                       xr = ExpressionResult::PUSHED_PRIMITIVE;
+                       break;
+               }
 			
 		case PROPERTY_BRACKETS: {
 			assert(!op.primitiveInput);

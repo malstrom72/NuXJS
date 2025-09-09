@@ -19,9 +19,9 @@ Each milestone must be completed in order and `timeout 600 ./build.sh` must succ
 - [x] Run `timeout 600 ./build.sh`.
 
 ## Milestone 4 – Reference resolution before RHS
-- [ ] Emit a `RESOLVE_PROPERTY` opcode ahead of right-hand evaluation for assignments.
-- [ ] Update `SET_PROPERTY_POP` to work with a resolved reference.
-- [ ] Run `timeout 600 ./build.sh`.
+- [x] Emit a `RESOLVE_PROPERTY` opcode ahead of right-hand evaluation for assignments.
+- [x] Update `SET_PROPERTY_POP` to work with a resolved reference.
+- [x] Run `timeout 600 ./build.sh`.
 
 ## Milestone 5 – Accessor ordering and tests
 - [ ] Ensure getters and setters execute after base and property-key coercion.
