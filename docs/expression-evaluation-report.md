@@ -363,3 +363,31 @@ Correct evaluation order is not merely a specification detail—it determines wh
 
 Given these risks, bringing NuXJS into alignment with ES3/ES5 evaluation order is a significant but important change. It touches fundamental bytecode generation and VM opcodes, yet it ensures that accessor side effects occur only when mandated by the specification and that property lookups behave predictably across engines.
 
+## Incremental Implementation Plan
+
+Implementing ES‑compliant ordering affects both compilation and runtime. The change can be staged to keep each patch reviewable:
+
+1. **Introduce `CHECK_OBJECT_COERCIBLE_OP`.**
+* Add a new opcode after `SET_PROPERTY_POP_OP` so the VM can perform `CheckObjectCoercible`/`ToObject` on the base value before any property lookup. This lives alongside the existing property opcodes in the enumeration【F:src/NuXJS.h†L1655-L1666】.
+* The handler replaces the `convertToObject` calls currently embedded in `GET_PROPERTY_OP` and `SET_PROPERTY_OP`, leaving those opcodes to assume a pre‑checked base【F:src/NuXJS.cpp†L2791-L2808】【F:src/NuXJS.cpp†L2820-L2834】.
+
+2. **Adjust property opcodes to accept raw keys.**
+* With base conversion factored out, `GET_PROPERTY_OP` and `SET_PROPERTY_OP` operate on an object and an uncoerced key, preserving their short critical paths and cooperative granularity.
+
+3. **Reorder compilation of bracket notation.**
+* In the `PROPERTY_BRACKETS` parser branch, evaluate the base and key expressions without conversions, then emit `CHECK_OBJECT_COERCIBLE_OP` followed by `OBJ_TO_STRING_OP`. This matches ES5.1’s steps of checking the base before converting the property name【F:docs/specs/ECMA-262 5.1.txt†L3165-L3175】【F:src/NuXJS.cpp†L4149-L4156】【F:src/NuXJS.cpp†L3627-L3642】.
+
+4. **Resolve left‑hand references before right‑hand sides.**
+* `makeAssignment` currently emits `SET_PROPERTY_OP` as soon as the right‑hand value is on the stack【F:src/NuXJS.cpp†L3670-L3676】. Modify assignment lowering so the reference resolution sequence (`CHECK_OBJECT_COERCIBLE_OP` + `OBJ_TO_STRING_OP`) runs before compiling the right‑hand side, then perform the store. This satisfies the spec’s requirement to obtain *lref* before evaluating the RHS【F:docs/specs/ECMA-262 5.1.txt†L4106】.
+
+5. **Extend the sequence to all property‑based constructs.**
+* Apply the new ordering to method calls, compound assignments, and operators like `in` or `delete` so every property reference observes the same semantics.
+
+6. **Add conformance tests.**
+* Create regression tests exercising getters, setters, and `toString`/`valueOf` hooks to verify that key conversion and right‑hand side effects occur only after the base object is validated.
+
+7. **Audit remaining early conversions.**
+* After property and assignment paths are updated, review other uses of `OBJ_TO_*` in `makeRValue` to ensure no opcode performs observable conversions earlier than the ES5.1 algorithms allow.
+
+By approaching the migration in these steps, NuXJS can move toward full ES3/ES5 ordering while preserving its cooperative, cycle‑based VM design.
+
