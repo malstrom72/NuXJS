@@ -98,7 +98,7 @@ Plan: Per ES3 §15.4, treat `P` as an index only when it is a string and `ToStri
 < undefined
 -
 ```
-See `tests/todo/arrayNonIndexProperties.io` for a regression test.
+See `tests/regression/arrayNonIndexProperties.io` for a regression test.
   - Fixed
 - built-ins/Array/cantAssignObjectToArrayLength — assigning object to length throws
 	> #### **15.4.5.1 [[Put]] (P, V)**
@@ -684,7 +684,7 @@ Plan: Coerce non-string inputs with `ToString` before executing the pattern so n
 < 0
 -
 ```
-See `tests/todo/regExpExecNumberPrimitive.io` for a regression test.
+See `tests/regression/regExpExecNumberPrimitive.io` for a regression test.
   - Fixed
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T11 — String is new Number(1.012) and RegExp is /2|12/
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
@@ -765,7 +765,7 @@ Plan: Convert boolean primitives via `ToString` so their textual form is searche
 < 0
 -
 ```
-See `tests/todo/regExpExecBooleanPrimitive.io` for a regression test.
+See `tests/regression/regExpExecBooleanPrimitive.io` for a regression test.
   - Fixed
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T14 — String is new Boolean and RegExp is /AL|se/
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
@@ -850,7 +850,7 @@ See `tests/todo/regExpExecToStringFalse.io` for a regression test.
 		< null
 		-
 		```
-            See `tests/todo/regExpExecNullString.io` for a regression test.
+			See `tests/regression/regExpExecNullString.io` for a regression test.
 		  - Fixed
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T18 — String is `undefined` and RegExp is `/nd|ne/`
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
@@ -881,7 +881,7 @@ See `tests/todo/regExpExecToStringFalse.io` for a regression test.
 		< undefined
 		-
 		```
-            See `tests/todo/regExpExecUndefinedString.io` for a regression test.
+			See `tests/regression/regExpExecUndefinedString.io` for a regression test.
 		  - Fixed
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T19 — String is `void 0` and RegExp is `/e{1}/`
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
@@ -912,7 +912,7 @@ See `tests/todo/regExpExecToStringFalse.io` for a regression test.
 		< undefined
 		-
 		```
-            See `tests/todo/regExpExecVoid0.io` for a regression test.
+			See `tests/regression/regExpExecVoid0.io` for a regression test.
 		  - Fixed
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T2 — String is new String("123") and RegExp is /((1)|(12))((3)|(23))/
 	> #### **15.10.6.2 RegExp.prototype.exec(string)**
@@ -1010,7 +1010,7 @@ See `tests/todo/regExpExecNestedCaptures.io` for a regression test.
 		< undefined
 		-
 		```
-           See `tests/todo/regExpExecFunctionCallUndefined.io` for a regression test.
+		   See `tests/regression/regExpExecFunctionCallUndefined.io` for a regression test.
 		  - Fixed
 - [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T3 — String is new Object("abcdefghi") and RegExp is /a[a-z]{2,4}/
 		> #### **15.10.6.2 RegExp.prototype.exec(string)**
