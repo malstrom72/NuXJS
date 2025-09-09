@@ -33,7 +33,7 @@ timeout 600 ./build.sh es5 native beta
 - [x] Build toggle: ES5.1 features are guarded by the `NUXJS_ES5` macro. Select the variant by passing
   `es5`, `es3`, or `both` to `build.sh`/`build.cmd` (`both` is the default). The build scripts set
   `NUXJS_ES5` accordingly.
- - [x] Test suite (with ES5.1 enabled): all ES5.1 tests pass (`tests/es5/functionBind.io`).
+	- [x] Test suite (with ES5.1 enabled): all ES5.1 tests pass (`tests/es5/functionBind.io`).
 
 ## Roadmap to ES5.1
 
@@ -53,11 +53,12 @@ timeout 600 ./build.sh es5 native beta
 - [x] Expose enumeration helpers like `Object.keys` and `Object.getOwnPropertyNames`.
 - [x] `Object.keys` implemented in `src/stdlib.js` (`tests/es5/objectKeys.io`, `tests/es5/objectKeysPrimitives.io`).
 - [x] `Object.getOwnPropertyNames` implemented (`tests/es5/objectGetOwnPropertyNames.io`, `tests/es5/objectGetOwnPropertyNamesPrimitives.io`).
-				- [x] Add support for accessor syntax (`get`/`set` in object literals) (`tests/es5/getterSetterProperties.io`).
+- [x] `Object.getPrototypeOf` implemented (`tests/from262/objectGetPrototypeOfPrimitive.io`).
+- [x] Add support for accessor syntax (`get`/`set` in object literals) (`tests/es5/getterSetterProperties.io`).
 - [x] Add function prototype attributes. (`tests/es5/functionPrototypeAttributes.io`)
 - [x] Ensure `Object.defineProperty`, `Object.defineProperties`, `Object.create`, and `Object.keys` are not constructable. *(Implemented; `tests/stdlib/checkAllPrototypes.io`)*
 - [x] Extend the parser to recognize `get name(){}` and `set name(v){}` tokens and emit descriptor objects for property creation. (`tests/es5/getterSetterProperties.io`)
- - [x] Bootstrapping of built‑ins in `src/stdlib.js` can then define getters on prototypes, e.g. for `Function.prototype.name`. (`tests/es5/functionPrototypeNameGetter.io`)
+	- [x] Bootstrapping of built‑ins in `src/stdlib.js` can then define getters on prototypes, e.g. for `Function.prototype.name`. (`tests/es5/functionPrototypeNameGetter.io`)
 
 ### Strict mode
 - [x] Detect strict directives and propagate mode.
@@ -87,18 +88,27 @@ timeout 600 ./build.sh es5 native beta
 - [x] Implement ES5.1 arguments-object behavior (decoupled mapping, `Object.getOwnPropertyDescriptor` support). (`tests/es5/argumentsDescriptor.io`, `tests/es5/argumentsMappingDetach.io`)
 				- [x] Introduce an `ArgumentsObject` class that can either map indices to parameters or, in strict mode, hold a copy without parameter aliases. (`tests/es5/strictArgumentsObject.io`, `tests/es5/argumentsMappingDetach.io`)
 								- [x] `Object.getOwnPropertyDescriptor` on arguments exposes `length`, `callee`, and indexed properties with correct attributes. (`tests/es5/argumentsDescriptor.io`)
- - [x] Provide `Function.prototype.bind` and ensure correct `.name`, `.length`, and `toString` outputs.
+	- [x] Provide `Function.prototype.bind` and ensure correct `.name`, `.length`, and `toString` outputs.
 	- [x] Implemented via runtime `support.bind` helper producing `BoundFunction` with correct constructor behavior and partial application semantics (`tests/es5/functionBind.io`).
 	- [x] Optional: consider `bound` function `.name` as `"bound " + target.name` (`tests/es5/functionBind.io`).
 
 ### Spec compliance fixes
-- [x] Align ES5 semantics that differ from the current engine implementation. (`tests/es5/forInNullUndefined.io`, `tests/es5/functionPrototypeNonEnum.io`, `tests/es5/argumentsToStringEnum.io`)
-	- [x] Permit `for...in` on `null` or `undefined` to yield an empty iteration instead of throwing.  *(see `docs/notes/ECMAScript Compatibility Notes.md`)*
+
+- [ ] Permit `for...in` on `null` or `undefined` to yield an empty iteration instead of throwing.
+- [ ] Make `Array.prototype.toString` generic so array-like objects reuse its logic.
+- [ ] Ensure `Function.prototype.call` and `Function.prototype.apply` pass the provided `thisArg` through unchanged so built-ins can reject `null` or `undefined` receivers.
+- [ ] `Object.prototype.toString` must return `[object Undefined]` or `[object Null]` when invoked on `undefined` or `null`.
+- [ ] Standard built-in methods should ignore excess arguments unless explicitly specified otherwise.
+- [ ] Relational operators `>` and `<=` must evaluate operands left-to-right to avoid side-effect discrepancies. (`tests/es5/relationalEvalOrder.io`)
+- [ ] Calls and `new` expressions must evaluate the target expression before argument expressions, preventing ES3's right-to-left side effects. (`tests/es5/memberExpressionEvalOrder.io`)
+- [ ] `eval` should return the completion value of the final expression in a script, matching ES5's corrected SourceElements semantics. (`tests/es5/evalCompletionValue.io`)
+- [ ] Named `FunctionExpression` bindings must use a declarative environment so `Object.prototype` properties remain hidden. (`tests/es5/namedFunctionExprScope.io`)
 - [x] Make user-defined functions' `prototype` properties non-enumerable and adjust `name`/`length` attributes to match ES5.1. (`tests/es5/functionPrototypeNonEnum.io`, `tests/es5/functionLengthProperty.io`, `tests/es5/functionNameReadOnly.io`)
-		- [x] Update `Object.prototype.toString` so `arguments` objects report `[object Arguments]` and enumerate indexed slots during `for...in`. (`tests/es5/argumentsToStringEnum.io`)
-		- [x] Add regression tests for each behaviour in `tests/es5`.
+- [x] Update `Object.prototype.toString` so `arguments` objects report `[object Arguments]` and enumerate indexed slots during `for...in`. (`tests/es5/argumentsToStringEnum.io`)
+- [x] Add regression tests for each behaviour in `tests/es5`.
 
 ### Array & string methods
+- [x] `Array.isArray` implemented (`tests/from262/arrayIsArray.io`).
 - [x] Add ES5.1 array iteration utilities: `forEach`, `map`, `filter`, `some`, `every`, `reduce`, `reduceRight`, `indexOf`, `lastIndexOf`.
 - [x] These are pure library additions to `src/stdlib.js`; each helper must follow the spec's callback invocation pattern and handle sparse arrays via `Object` property checks rather than simple loops.
 - [x] `Array.prototype.indexOf` and `Array.prototype.lastIndexOf` implemented (`tests/es5/arrayIndexOf.io`).
@@ -106,6 +116,11 @@ timeout 600 ./build.sh es5 native beta
 - [x] `Array.prototype.map` and `Array.prototype.filter` implemented (`tests/es5/arrayMapFilter.io`).
 - [x] `Array.prototype.some` and `Array.prototype.every` implemented (`tests/es5/arraySomeEvery.io`).
 - [x] `Array.prototype.reduce` and `Array.prototype.reduceRight` implemented (`tests/es5/arrayReduce.io`).
+- [ ] `Array.prototype.sort` should work without a comparator by string-converting elements and remain generic for array-like objects.
+- [ ] Implement `Array.prototype.toLocaleString` so each element's `toLocaleString` is invoked and the method stays generic.
+- [ ] Truncating `Array.prototype.length` must respect non-configurable elements, throwing or clamping per spec.
+- [ ] Array mutation helpers (`push`, `unshift`, `splice`) must refuse to extend arrays when `length` is non-writable or the object is non-extensible.
+- [ ] String character indices must be non-writable and non-configurable so they shadow inherited names.
 - [x] Implement string utilities like `trim`, `trimLeft`, and `trimRight`.
 	- [x] Extend the string section in `src/stdlib.js` with whitespace tables identical to the spec and expose `String.prototype.trim*` methods.
 - [x] `String.prototype.trim` implemented (`tests/es5/stringTrim.io`).
@@ -121,26 +136,33 @@ timeout 600 ./build.sh es5 native beta
 - [x] Support `JSON.parse` revivers and `JSON.stringify` replacer/space arguments. (`tests/es5/jsonParseReviver.io`, `tests/es5/jsonStringifyReplacer.io`)
 
 ### Object immutability controls
- - [x] Support `Object.preventExtensions`, `Object.seal`, `Object.freeze`, and related predicates (`isExtensible`, `isSealed`, `isFrozen`).
+	- [x] Support `Object.preventExtensions`, `Object.seal`, `Object.freeze`, and related predicates (`isExtensible`, `isSealed`, `isFrozen`).
 - [x] Add an `extensible` flag to the base `Object` class and teach `setProperty`/`setOwnProperty` to honor it, returning false when extensions are blocked.
 - [x] Implement `Object.preventExtensions` and `Object.isExtensible` helpers (`tests/es5/objectPreventExtensions.io`).
 - [x] Immutability helpers reject primitive targets and report sealed/frozen status for them (`tests/es5/objectImmutabilityPrimitives.io`).
 - [x] `Object.defineProperty` rejects new properties on non‑extensible objects. (`tests/es5/objectDefinePropertyNonExtensible.io`)
- - [x] Implement helpers in `src/stdlib.js` that iterate over `Object.getOwnPropertyNames` descriptors and toggle `[[Configurable]]`/`[[Writable]]` bits as required by `seal` and `freeze`. (`tests/es5/objectSealFreeze.io`)
+	- [x] Implement helpers in `src/stdlib.js` that iterate over `Object.getOwnPropertyNames` descriptors and toggle `[[Configurable]]`/`[[Writable]]` bits as required by `seal` and `freeze`. (`tests/es5/objectSealFreeze.io`)
 
 ### Date and Number extras
 - [x] Finish remaining ES5.1 Date features such as `toISOString`, `toJSON`, and `now`.
- - [x] `Date.now` implemented using `support.getCurrentTime` (`tests/es5/dateNow.io`).
+	- [x] `Date.now` implemented using `support.getCurrentTime` (`tests/es5/dateNow.io`).
 - [x] `Date.prototype.toISOString` and `Date.prototype.toJSON` implemented (`tests/es5/dateToISOString.io`, `tests/es5/dateToJSONGeneric.io`).
 - [x] Add Number and Math helpers (`isNaN`, `isFinite` refinements, `parseInt`/`parseFloat` alignment).
 - [x] Refine `support.isNaN`/`isFinite` semantics and expose `Number.isNaN` and `Number.isFinite` shims. *(tests/es5/numberIsFiniteIsNaN.io)*
 - [x] Ensure `parseInt` and `parseFloat` follow ES5.1 whitespace trimming rules and radix handling; update the `Math` object with any missing constants. (`tests/es5/parseIntFloatWhitespace.io`)
+- [ ] `Date.parse` must prioritise ISO 8601 formats before falling back to implementation-specific heuristics. (`tests/es5/dateParseISO.io`)
+- [ ] `Number.prototype.toFixed`, `toExponential`, and `toPrecision` need ES5-compliant range checks and rounding. (`tests/es5/numberFormatRange.io`)
 
 ### Parser/VM robustness
+- [ ] Treat `\uFEFF` as whitespace so a byte order mark can appear anywhere in source.
+- [ ] Preserve Unicode format control characters within string and RegExp literals instead of stripping them.
+- [ ] Allow escaped line terminators inside string literals for continuation lines.
+- [ ] Permit unescaped "/" characters within RegExp character classes.
+- [ ] Array initialisers must ignore trailing commas when determining length.
 - [x] Update grammar to allow reserved words as property keys and recognize accessor definitions. (`tests/es5/reservedWordProperties.io`)
-	   - [x] Expand the lexical grammar in `src/Parser.cpp` to treat keywords as identifiers in object literals and hook into the new accessor creation path.
+				   - [x] Expand the lexical grammar in `src/Parser.cpp` to treat keywords as identifiers in object literals and hook into the new accessor creation path.
 - [x] Revisit bytecode generation for new features and enforce ES5.1 evaluation order. (`tests/es5/memberExpressionEvalOrder.io`)
-		   - [x] The compiler in `src/NuXJS.cpp` must emit bytecode for accessors, strict arguments, and `bind` calls while guaranteeing left‑to‑right evaluation as mandated by ES5.1.
+								   - [x] The compiler in `src/NuXJS.cpp` must emit bytecode for accessors, strict arguments, and `bind` calls while guaranteeing left‑to‑right evaluation as mandated by ES5.1.
 
 ### Testing & conformance
 - [x] Expand the `tests/from262` set with ES5.1 cases.
@@ -160,25 +182,25 @@ timeout 600 ./build.sh es5 native beta
 - [x] Add coverage in `tests/es5` for accessor edge cases, strict‑mode violations, and bound function behavior before shipping any change. (`tests/es5/argumentsMappingDetach.io`, `tests/es5/strictArgumentsCalleeCaller.io`, `tests/es5/functionBind.io`)
 
 ### Documentation & tooling
- - [x] Revise TypeScript guidance to reflect ES5.1 support. (`docs/notes/TypeScript Compatibility.md`)
+	- [x] Revise TypeScript guidance to reflect ES5.1 support. (`docs/notes/TypeScript Compatibility.md`)
 - [x] Expand `docs/notes/ECMAScript Compatibility Notes.md` once features land and document any intentional deviations.
   (`docs/notes/ECMAScript Compatibility Notes.md`, `tests/es5/strictArgumentsCalleeCaller.io`,
   `tests/es5/functionPrototypeCallerArguments.io`)
 - [x] Update examples and `lib.NuXJS.d.ts` to expose new APIs and maintain TypeScript type safety. (`examples/lib.NuXJS.d.ts`)
 - [x] Regenerate declaration files so that editors pick up getters/setters and newly added methods. (`examples/lib.NuXJS.d.ts`)
- - [x] Refresh `docs/NuXJS Documentation.md` once features land. (`docs/NuXJS Documentation.md`)
+	- [x] Refresh `docs/NuXJS Documentation.md` once features land. (`docs/NuXJS Documentation.md`)
 - [x] The "Partial ES5 features" table currently lists the arguments object as ES3-mapped and `Object.defineProperty` as data-only; rewrite these notes after the new behavior ships. (`docs/NuXJS Documentation.md`, `tests/es5/argumentsMappingDetach.io`)
 
 ### Additional ES5.1 coverage
 
 - [x] Disallow octal integer literals and octal escape sequences in strict mode. (`tests/es5/strictOctalLiteral.io`)
 - [x] Align `Date.parse` with ISO 8601 parsing rules and return `NaN` for invalid inputs. (`tests/es5/dateParseISO8601.io`)
- - [x] Ensure `Function.prototype.toString` returns source text and throws a `TypeError` for non-functions. (`tests/es5/functionPrototypeToString.io`)
+	- [x] Ensure `Function.prototype.toString` returns source text and throws a `TypeError` for non-functions. (`tests/es5/functionPrototypeToString.io`)
 - [x] Confirm `Object.prototype.toString` reports `[object Math]` and `[object JSON]` for those singletons. (`tests/es5/objectToStringMathJSON.io`)
 - [x] Recognize Unicode format-control characters, treat `\uFEFF` as whitespace, and allow line terminator escapes in string literals. (`tests/es5/stringLineContinuation.io`, `tests/es5/unicodeFormatWhitespace.io`)
- - [x] Ensure regular expression literals create unique objects, report pattern errors early, and permit unescaped `/` inside character classes. (`tests/es5/regexpLiteralUnique.io`, `tests/es5/regexpClassSlash.io`, `tests/es5/regexpLiteralSyntaxError.io`)
+	- [x] Ensure regular expression literals create unique objects, report pattern errors early, and permit unescaped `/` inside character classes. (`tests/es5/regexpLiteralUnique.io`, `tests/es5/regexpClassSlash.io`, `tests/es5/regexpLiteralSyntaxError.io`)
 - [x] Update regular expression internals: `\s` matches `\uFEFF`, `RegExp.prototype` is a `RegExp`, and `toString`/`source` derive from the original pattern. (`tests/es5/regexpWhitespaceFEFF.io`, `tests/es5/regexpPrototypeToString.io`)
- - [x] Run indirect `eval` in the global environment and forbid host restrictions on non-direct calls. (`tests/es5/indirectEvalGlobalScope.io`)
+	- [x] Run indirect `eval` in the global environment and forbid host restrictions on non-direct calls. (`tests/es5/indirectEvalGlobalScope.io`)
 - [x] Make global `NaN`, `Infinity`, and `undefined` properties read-only. (`tests/es5/globalConstantsReadOnly.io`)
 - [x] Allow `Function.prototype.apply` to accept generic array-like objects. (`tests/es5/functionApplyArrayLike.io`)
 - [x] Default `Error` objects' `message` to an empty string and implement the specified `Error.prototype.toString` behaviour. (`tests/es5/errorPrototypeToString.io`)
