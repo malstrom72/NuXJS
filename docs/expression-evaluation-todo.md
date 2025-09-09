@@ -14,9 +14,9 @@ Each milestone must be completed in order and `timeout 600 ./build.sh` must succ
 - [x] Run `timeout 180 ./build.sh`.
 
 ## Milestone 3 – Property key conversion
-- [ ] Factor `OBJ_TO_STRING_OP` out of property access opcodes.
-- [ ] Reorder bracket compilation so key conversion occurs after base evaluation.
-- [ ] Run `timeout 600 ./build.sh`.
+- [x] Factor `OBJ_TO_STRING_OP` out of property access opcodes.
+- [x] Reorder bracket compilation so key conversion occurs after base evaluation.
+- [x] Run `timeout 600 ./build.sh`.
 
 ## Milestone 4 – Reference resolution before RHS
 - [ ] Emit a `RESOLVE_PROPERTY` opcode ahead of right-hand evaluation for assignments.

@@ -3660,12 +3660,13 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			makeRValue(xr, false);
 			emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
 			const bool didAcceptInOperator = acceptInOperator;
-			acceptInOperator = true;
-			makeRValue(operand(op), true, Processor::OBJ_TO_STRING_OP); // left doesn't need to be primitive, but right does (and preferred string!)
-			acceptInOperator = didAcceptInOperator;
-			xr = ExpressionResult(ExpressionResult::PROPERTY);
-			break;
-		}
+				acceptInOperator = true;
+				makeRValue(operand(op), false);
+				emit(Processor::OBJ_TO_STRING_OP);
+				acceptInOperator = didAcceptInOperator;
+				xr = ExpressionResult(ExpressionResult::PROPERTY);
+				break;
+}
 		
 		default: assert(0);
 	}
