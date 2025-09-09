@@ -353,3 +353,13 @@ These considerations stem directly from NuXJS's asynchronous design goal.
 
 The dedicated `OBJ_TO_STRING_OP` therefore represented a pragmatic compromise: it minimized work in the property opcodes and emitted the potentially expensive conversion only when the compiler could not prove the key was already a primitive.
 
+## Importance of Preserving Evaluation Order
+
+Correct evaluation order is not merely a specification detail—it determines when user code with observable side effects runs. NuXJS’s current deviations surface most clearly when accessor properties are involved:
+
+* **Premature side effects.** Because property keys and right‑hand sides are evaluated before the base object is coerced or the reference is resolved, `toString`/`valueOf` hooks and other side effects can occur even if the subsequent `CheckObjectCoercible` or reference resolution would have thrown a `TypeError`. Accessor getters or setters may never execute, yet their associated side effects have already run.
+* **Accessor semantics.** ES5.1 mandates that getters and setters are invoked only after the base is converted to an object and the property name is resolved【F:docs/specs/ECMA-262 5.1.txt†L1646-L1653】【F:docs/specs/ECMA-262 5.1.txt†L1674-L1685】. Reordering these steps alters observable behavior, potentially breaking libraries that rely on getters for validation or setters for enforcing invariants.
+* **Interoperability.** Code written for other engines expects ES‑compliant ordering. Divergent semantics complicate portability and make it harder to reason about control flow when integrating third‑party modules.
+
+Given these risks, bringing NuXJS into alignment with ES3/ES5 evaluation order is a significant but important change. It touches fundamental bytecode generation and VM opcodes, yet it ensures that accessor side effects occur only when mandated by the specification and that property lookups behave predictably across engines.
+
