@@ -2490,10 +2490,10 @@ void Processor::innerRun() {
 				break;
 			}
 
-			case RESOLVE_PROPERTY_OP: {
-				sp[-1] = convertToObject(sp[-1], false);
-				break;
-			}
+      case RESOLVE_PROPERTY_OP: {
+        sp[-1] = convertToObject(sp[-1], true);
+        break;
+      }
 
 			case OBJ_TO_PRIMITIVE_OP:
 			case OBJ_TO_NUMBER_OP:
@@ -2575,20 +2575,18 @@ void Processor::innerRun() {
 				return;
 			}
 			
-			case CALL_METHOD_OP: {
-				Object* const o = convertToObject(sp[-im - 1], true);
-				if (o != 0) {
-					Value v(UNDEFINED_VALUE);
-					Function* f;
-					const Value& name = sp[-im];
-					if (o->getProperty(rt, name, &v) == NONEXISTENT || (f = v.asFunction()) == 0) {
-						error(TYPE_ERROR, new(heap) String(heap.managed(), *name.toString(heap), IS_NOT_A_FUNCTION_STRING));
-					} else {
-						invokeFunction(f, im + 1, im, o);
-					}
-				}
-				return;
-			}
+                       case CALL_METHOD_OP: {
+                               Object* const o = convertToObject(sp[-im - 1], true);
+                               if (o != 0) {
+                                       Function* const f = sp[-im].asFunction();
+                                       if (f != 0) {
+                                               invokeFunction(f, im + 1, im, o);
+                                       } else {
+                                               error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[-im].toString(heap), IS_NOT_A_FUNCTION_STRING));
+                                       }
+                               }
+                               return;
+                       }
 			
 			case CALL_EVAL_OP: {
 				Function* f = asFunction(sp[-im]);
@@ -3613,22 +3611,26 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			break;
 		}
 		
-		case FUNCTION_CALL: {
-			assert(!op.primitiveInput);
-			assert(!op.primitiveOutput);
-			Processor::Opcode callOp = Processor::CALL_OP;
-			if (xr.t == ExpressionResult::NAMED && xr.v.equalsString(EVAL_STRING)) {
-				callOp = Processor::CALL_EVAL_OP;
-			}
-			if (xr.t == ExpressionResult::PROPERTY) {
-				callOp = Processor::CALL_METHOD_OP;
-			} else {
-				makeRValue(xr, false);
-			}
-			functionCall(callOp);
-			xr = ExpressionResult::PUSHED;
-			break;
-		}
+                case FUNCTION_CALL: {
+                        assert(!op.primitiveInput);
+                        assert(!op.primitiveOutput);
+                        Processor::Opcode callOp = Processor::CALL_OP;
+                        if (xr.t == ExpressionResult::NAMED && xr.v.equalsString(EVAL_STRING)) {
+                                callOp = Processor::CALL_EVAL_OP;
+                        }
+                       if (xr.t == ExpressionResult::PROPERTY) {
+                               emit(Processor::RESOLVE_PROPERTY_OP);
+                               emit(Processor::REPUSH_OP, -1);
+                               emit(Processor::SWAP_OP);
+                               emit(Processor::GET_PROPERTY_OP);
+                               callOp = Processor::CALL_METHOD_OP;
+                       } else {
+                               makeRValue(xr, false);
+                       }
+                        functionCall(callOp);
+                        xr = ExpressionResult::PUSHED;
+                        break;
+                }
 		
                case ASSIGNMENT: {
                        assert(!op.primitiveInput);

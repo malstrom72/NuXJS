@@ -15,7 +15,7 @@
 ! !!!! TypeError: abcd is not a function
 -
 > ({}).asdf()
-! !!!! TypeError: asdf is not a function
+! !!!! TypeError: undefined is not a function
 -
 > ({}) instanceof null
 ! !!!! TypeError: null is not a function

@@ -23,7 +23,11 @@ Each milestone must be completed in order and `timeout 600 ./build.sh` must succ
 - [x] Update `SET_PROPERTY_POP` to work with a resolved reference.
 - [x] Run `timeout 600 ./build.sh`.
 
-## Milestone 5 – Accessor ordering and tests
+## Milestone 5 – Call target resolution
+- [x] Resolve method targets before argument evaluation.
+- [x] Run `timeout 180 ./build.sh`.
+
+## Milestone 6 – Accessor ordering and tests
 - [ ] Ensure getters and setters execute after base and property-key coercion.
 - [x] Add regression tests covering getter/setter evaluation order.
 - [ ] Run `timeout 600 ./build.sh`.
