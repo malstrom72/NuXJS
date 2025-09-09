@@ -25,5 +25,5 @@ Each milestone must be completed in order and `timeout 600 ./build.sh` must succ
 
 ## Milestone 5 – Accessor ordering and tests
 - [ ] Ensure getters and setters execute after base and property-key coercion.
-- [ ] Add regression tests covering getter/setter evaluation order.
+- [x] Add regression tests covering getter/setter evaluation order.
 - [ ] Run `timeout 600 ./build.sh`.
