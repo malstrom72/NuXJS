@@ -249,3 +249,42 @@ Bringing NuXJS in line with ES3/ES5 evaluation order requires front‑end and VM
 
 Implementing these changes and accompanying tests will eliminate the deviations noted in the compatibility document and ensure NuXJS follows the evaluation semantics defined by the ECMAScript standards.
 
+## Appendix: Rationale for `OBJ_TO_STRING` Opcode
+
+NuXJS currently converts property keys to strings before issuing the property lookup opcodes. The compiler emits `OBJ_TO_STRING_OP` when compiling bracket notation so that the runtime `GET_PROPERTY_OP` can assume the key is already a primitive string and focus solely on object conversion and lookup:
+
+```
+makeRValue(operand(op), true, Processor::OBJ_TO_STRING_OP); // left doesn't need to be primitive, but right does (and preferred string!)
+```
+
+This call is generated inside the `PROPERTY_BRACKETS` case of the parser【F:src/NuXJS.cpp†L4149-L4155】 and funnels through `makeRValue`, which conditionally emits the conversion instruction only when the operand might still be an object【F:src/NuXJS.cpp†L3627-L3642】. The resulting bytecode executes the dedicated opcode:
+
+```
+case OBJ_TO_STRING_OP: {
+		const Object* o = sp[0].asObject();
+		if (o != 0) {
+				invokeFunction(rt.toPrimitiveFunctions[opcode - OBJ_TO_PRIMITIVE_OP], 0, 1);
+				return;
+		}
+		break;
+}
+```
+
+【F:src/NuXJS.cpp†L2869-L2878】.
+
+`GET_PROPERTY_OP` then performs only the object check and lookup, trusting that the key is already a string, which keeps the hottest path lean【F:src/NuXJS.cpp†L2791-L2808】.
+
+### Why not bake `ToString` into `GET_PROPERTY`?
+
+1. **Avoiding redundant checks** – With a standalone opcode, constant or already‑primitive keys return early from `makeRValue` and skip `OBJ_TO_STRING_OP` entirely, so no runtime `typeof`/`isObject` checks occur for the common case of string literals or numeric indices. Baking the conversion into `GET_PROPERTY` would force every property access to branch on the key type and possibly invoke the `toString` helper even when unnecessary.
+2. **Opcode reuse** – The same `OBJ_TO_STRING_OP` is used by other operators, such as the `in` operator, allowing shared implementation of `ToString` semantics across the VM without duplicating logic in each opcode path.
+3. **Simpler hot path** – Keeping `GET_PROPERTY_OP` free of conversion logic reduces its instruction footprint. Property lookups are among the most frequent operations, so even small savings in the opcode’s body were historically measured as a performance win.
+
+### Alternative approaches and their drawbacks
+
+* **Integrate `ToString` in `GET_PROPERTY`/`SET_PROPERTY`** – Would require extra branching and a call into the `toPrimitive` helper for every property access. Early experiments indicated this increased instruction count and reduced micro‑benchmark performance.
+* **Introduce multiple property opcodes** – Specialized variants (e.g., `GET_PROPERTY_GENERIC` vs. `GET_PROPERTY_STRING`) complicate bytecode generation and VM dispatch while still needing to embed conversion logic in at least one variant.
+* **Deferred resolution opcode** – A hypothetical `RESOLVE_PROPERTY` combining `CheckObjectCoercible` and `ToString` could match spec order, but it would also perform the string conversion unconditionally and extend the critical path.
+
+The dedicated `OBJ_TO_STRING_OP` therefore represented a pragmatic compromise: it minimized work in the property opcodes and emitted the potentially expensive conversion only when the compiler could not prove the key was already a primitive.
+
