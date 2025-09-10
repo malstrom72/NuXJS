@@ -2575,20 +2575,18 @@ void Processor::innerRun() {
 				return;
 			}
 			
-			case CALL_METHOD_OP: {
-				Object* const o = convertToObject(sp[-im - 1], true);
-				if (o != 0) {
-					Value v(UNDEFINED_VALUE);
-					Function* f;
-					const Value& name = sp[-im];
-					if (o->getProperty(rt, name, &v) == NONEXISTENT || (f = v.asFunction()) == 0) {
-						error(TYPE_ERROR, new(heap) String(heap.managed(), *name.toString(heap), IS_NOT_A_FUNCTION_STRING));
-					} else {
-						invokeFunction(f, im + 1, im, o);
-					}
-				}
-				return;
-			}
+                       case CALL_METHOD_OP: {
+                               Object* const o = convertToObject(sp[-im - 1], true);
+                               if (o != 0) {
+                                       Function* const f = sp[-im].asFunction();
+                                       if (f != 0) {
+                                               invokeFunction(f, im + 1, im, o);
+                                       } else {
+                                               error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[-im].toString(heap), IS_NOT_A_FUNCTION_STRING));
+                                       }
+                               }
+                               return;
+                       }
 			
 			case CALL_EVAL_OP: {
 				Function* f = asFunction(sp[-im]);
@@ -3658,7 +3656,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 					   xr = ExpressionResult::PUSHED_PRIMITIVE;
 					   break;
 			   }
-			
+
 		case PROPERTY_BRACKETS: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, false);
