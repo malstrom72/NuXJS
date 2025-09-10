@@ -1,0 +1,19 @@
+> o={a:"b",c:"d"}
+> print(o.hasOwnProperty('a'))
+< true
+> print(o.hasOwnProperty())
+< false
+> print(o.hasOwnProperty('x'))
+< false
+> print(o.propertyIsEnumerable('x'))
+< false
+> print(o.propertyIsEnumerable(new String('a')))
+< true
+> print(o.hasOwnProperty('valueOf'))
+< false
+> print(Object.hasOwnProperty('valueOf'))
+< false
+> print(Object.prototype.hasOwnProperty('valueOf'))
+< true
+> print(Object.prototype.propertyIsEnumerable('valueOf'))
+< false
