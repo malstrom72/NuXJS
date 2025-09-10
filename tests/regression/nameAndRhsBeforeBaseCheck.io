@@ -7,5 +7,5 @@
 > try { null[key] = rhs(); } catch (e) { print(e.name); }
 > print(log.join(","));
 < TypeError
-< key,rhs
+<
 -
