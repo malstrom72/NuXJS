@@ -1,28 +1,26 @@
 # Expression Evaluation Order in NuXJS
 
-This report investigates how NuXJS currently evaluates expressions and outlines the work required to align the engine with the evaluation order mandated by the ECMAScript 3 and ECMAScript 5.1 specifications.
+This report investigates how NuXJS currently evaluates expressions and outlines the work required to align the engine with the evaluation order mandated by the ECMAScript 3 specification. ES5.1 semantics are treated as future work; any mention of ES5.1 is explicitly labeled and does not reflect the current implementation.
 
 ## Background
 
-The ECMAScript 5.1 specification defines the precise order of side‑effect‑producing steps for each language construct. For example:
+The ECMAScript 3 specification defines the precise order of side‑effect‑producing steps for each language construct. For example:
 
 > The production `AssignmentExpression : LeftHandSideExpression = AssignmentExpression` is evaluated as follows:
-> 1. Let *lref* be the result of evaluating *LeftHandSideExpression*.
-> 2. Let *rref* be the result of evaluating *AssignmentExpression*.
-> 3. Let *rval* be GetValue(*rref*).
-> 4. Throw a **SyntaxError** if certain conditions hold.
-> 5. Call PutValue(*lref*, *rval*).
-> 6. Return *rval*.【F:docs/specs/ECMA-262 5.1.txt†L4106】
+> 1. Evaluate *LeftHandSideExpression*.
+> 2. Evaluate *AssignmentExpression*.
+> 3. Call GetValue(Result(2)).
+> 4. Call PutValue(Result(1), Result(3)).
+> 5. Return Result(3).【F:docs/specs/ECMA-262 3.md†L2879-L2888】
 
 > The production `MemberExpression : MemberExpression [ Expression ]` is evaluated as follows:
-> 1. Let *baseReference* be the result of evaluating *MemberExpression*.
-> 2. Let *baseValue* be GetValue(*baseReference*).
-> 3. Let *propertyNameReference* be the result of evaluating *Expression*.
-> 4. Let *propertyNameValue* be GetValue(*propertyNameReference*).
-> 5. Call CheckObjectCoercible(*baseValue*).
-> 6. Let *propertyNameString* be ToString(*propertyNameValue*).
-> 7. If the production is contained in strict mode code, let *strict* be true; otherwise let *strict* be false.
-> 8. Return a value of type Reference whose base value is *baseValue* and whose referenced name is *propertyNameString*, and whose strict mode flag is *strict*.【F:docs/specs/ECMA-262 5.1.txt†L3165-L3175】
+> 1. Evaluate *MemberExpression*.
+> 2. Call GetValue(Result(1)).
+> 3. Evaluate *Expression*.
+> 4. Call GetValue(Result(3)).
+> 5. Call ToObject(Result(2)).
+> 6. Call ToString(Result(4)).
+> 7. Return a value of type Reference whose base object is Result(5) and whose property name is Result(6).【F:docs/specs/ECMA-262 3.md†L2063-L2071】
 
 NuXJS deliberately deviates from these algorithms, as documented in `docs/notes/ECMAScript Compatibility Notes.md`:
 
@@ -30,7 +28,7 @@ NuXJS deliberately deviates from these algorithms, as documented in `docs/notes/
 * *Property access may convert the property key before converting the base object.*
 * *Implicit `valueOf` and `toString` conversions may happen earlier than specified.*【F:docs/notes/ECMAScript Compatibility Notes.md†L9-L12】
 
-The following sections analyse the relevant parts of the implementation and describe what would be required to conform to ES3/ES5.
+The following sections analyse the relevant parts of the implementation and describe what would be required to conform to ES3, noting ES5.1 details only for getters and setters.
 
 ## Current Implementation
 
@@ -75,9 +73,56 @@ const Object* o = convertToObject(sp[-1], false);
 Flags f = o->getProperty(rt, *this, sp[0], sp - 1);
 ```【F:src/NuXJS.cpp†L2791-L2798】
 
-This order causes `toString`/`valueOf` on the property expression to run before `CheckObjectCoercible` on the base value, allowing observable side effects that differ from ES3/ES5.
+This order causes `toString`/`valueOf` on the property expression to run before `CheckObjectCoercible` on the base value, allowing observable side effects that differ from ES3.
 
-### Accessor properties (getters and setters)
+### Method calls
+
+NuXJS currently follows the ES3 algorithm, where argument evaluation precedes resolving the call target:
+
+> The production `CallExpression : MemberExpression Arguments` is evaluated as follows:
+> 1. Evaluate *MemberExpression*.
+> 2. Evaluate *Arguments*, producing an internal list of argument values.
+> 3. Call GetValue(Result(1)).【F:docs/specs/ECMA-262 3.md†L2098-L2103】
+
+ES5.1 reversed steps 2 and 3 so the function is fetched before the arguments【F:docs/specs/ECMA-262 5.1.txt†L3199-L3205】. NuXJS retains the ES3 ordering: the member expression and arguments are compiled separately and the call target is resolved only after the arguments have finished evaluating.
+
+The virtual machine performs the lookup immediately before invocation:
+
+```cpp
+Object* const o = convertToObject(sp[-im - 1], true);
+if (o != 0) {
+Value v(UNDEFINED_VALUE);
+Function* f;
+const Value& name = sp[-im];
+if (o->getProperty(rt, name, &v) == NONEXISTENT || (f = v.asFunction()) == 0) {
+error(TYPE_ERROR, new(heap) String(heap.managed(), *name.toString(heap), IS_NOT_A_FUNCTION_STRING));
+} else {
+invokeFunction(f, im + 1, im, o);
+}
+}
+```【F:src/NuXJS.cpp†L2579-L2588】
+
+This allows side effects in argument expressions to change the method or `this` value before the call, matching ES3 behaviour without extra opcodes.
+
+To adopt ES5.1's target-first semantics, the compiler must fetch the method and base before running the arguments. One way is to resolve the property and stash the original pair on the stack:
+
+```
+emit(Processor::RESOLVE_PROPERTY_OP);
+emit(Processor::REPUSH_OP, -1);
+emit(Processor::SWAP_OP);
+emit(Processor::GET_PROPERTY_OP);
+```
+
+Here `RESOLVE_PROPERTY_OP` converts the base and captures the property name, `REPUSH_OP` duplicates the base for `this`, and `SWAP_OP` arranges the stack so `GET_PROPERTY_OP` can obtain the function ahead of argument evaluation. After the arguments execute, the VM invokes the pre‑resolved function.
+
+A dedicated `RESOLVE_METHOD_OP` could compress this sequence and avoid the temporary stack shuffling. NuXJS keeps ES3 ordering for now. Bringing the engine in line with ES5.1 would require this opcode sequence or an equivalent and is tracked as future Milestone 5 in `expression-evaluation-todo.md`.
+
+This method-call ordering oversight went unnoticed in earlier analyses because the report focused on property access and assignment. Surfacing the issue required re-examining how property references behave when used as call targets.
+
+### Accessor properties (getters and setters) — ES5.1 future work
+
+ES3 has no concept of property getters or setters. The rules below come from ES5.1 and are
+recorded here for planned future support:
 
 > When a property reference resolves to an accessor, ES5.1 specifies the getter algorithm:
 > 1. Let O be ToObject(base).
@@ -254,14 +299,7 @@ return Var(*this, processor.getResult());
 The ECMAScript specification, however, models execution as a single stack of
 contexts with exactly one running at a time:
 
-> When control is transferred to ECMAScript executable code, control is
-> entering an execution context. Active execution contexts logically form a
-> stack. The top execution context on this logical stack is the running
-> execution context. A new execution context is created whenever control is
-> transferred from the executable code associated with the currently running
-> execution context to executable code that is not associated with that
-> execution context. The newly created execution context is pushed onto the
-> stack and becomes the running execution context.【F:docs/specs/ECMA-262 5.1.txt†L2619-L2623】
+> When control is transferred to ECMAScript executable code, control is entering an *execution context*. Active execution contexts logically form a stack. The top execution context on this logical stack is the running execution context.【F:docs/specs/ECMA-262 3.md†L1738-L1738】
 
 There is no provision for suspending an execution context mid-expression, so
 host code should not observe partially evaluated state. Allowing the host to
@@ -287,13 +325,13 @@ VM’s non-blocking behaviour.
 ### 2. Reorder property access coercions
 
 * **Compiler:** Stop converting the property expression to a string in `PROPERTY_BRACKETS`. Instead, leave the raw property value on the stack.
-* **Runtime:** Modify `GET_PROPERTY_OP` and `SET_PROPERTY_OP` so that they first call `convertToObject` on the base value (`CheckObjectCoercible`), *then* convert the property value using a `ToString` helper. This change ensures the conversion order follows ES3/ES5 and also means each property access performs `ToString` exactly once as specified.
+* **Runtime:** Modify `GET_PROPERTY_OP` and `SET_PROPERTY_OP` so that they first call `convertToObject` on the base value (`CheckObjectCoercible`), *then* convert the property value using a `ToString` helper. This change ensures the conversion order follows ES3 and also means each property access performs `ToString` exactly once as specified.
 * **Increment and compound assignments:** Review `PRE_INC_DEC`, `POST_INC_DEC`, and compound assignment paths to ensure they still preserve the correct stack layout when the property key is no longer pre‑converted.
 * **Testing:** Create tests where the base value and property expression each have observable side effects (e.g. getters or `toString` methods) to confirm that the base coercion happens before property key conversion and that both occur exactly once.
 
 ### 3. Defer implicit conversions to spec points
 
-Because `makeRValue` eagerly performs conversions such as `OBJ_TO_STRING_OP`, moving these conversions into the property opcodes will align the engine with the spec and eliminate cases where `valueOf`/`toString` executes earlier than required. Ensure that any other early conversions (e.g. within arithmetic operators) are audited to confirm they match ES5 rules.
+Because `makeRValue` eagerly performs conversions such as `OBJ_TO_STRING_OP`, moving these conversions into the property opcodes will align the engine with the spec and eliminate cases where `valueOf`/`toString` executes earlier than required. Ensure that any other early conversions (e.g. within arithmetic operators) are audited to confirm they match ES3 rules.
 
 ## Additional Considerations
 
@@ -303,7 +341,7 @@ Because `makeRValue` eagerly performs conversions such as `OBJ_TO_STRING_OP`, mo
 
 ## Summary
 
-Bringing NuXJS in line with ES3/ES5 evaluation order requires front‑end and VM changes:
+Bringing NuXJS in line with ES3 evaluation order (with ES5.1 semantics for getters and setters) requires front‑end and VM changes:
 
 1. Resolve assignment targets before evaluating right‑hand sides, emitting new opcodes that perform early reference checks.
 2. Reorder property access so that base values are coerced to objects before property keys are converted to strings, moving conversions into `GET_PROPERTY_OP`/`SET_PROPERTY_OP`.
@@ -361,7 +399,7 @@ Correct evaluation order is not merely a specification detail—it determines wh
 * **Accessor semantics.** ES5.1 mandates that getters and setters are invoked only after the base is converted to an object and the property name is resolved【F:docs/specs/ECMA-262 5.1.txt†L1646-L1653】【F:docs/specs/ECMA-262 5.1.txt†L1674-L1685】. Reordering these steps alters observable behavior, potentially breaking libraries that rely on getters for validation or setters for enforcing invariants.
 * **Interoperability.** Code written for other engines expects ES‑compliant ordering. Divergent semantics complicate portability and make it harder to reason about control flow when integrating third‑party modules.
 
-Given these risks, bringing NuXJS into alignment with ES3/ES5 evaluation order is a significant but important change. It touches fundamental bytecode generation and VM opcodes, yet it ensures that accessor side effects occur only when mandated by the specification and that property lookups behave predictably across engines.
+Given these risks, bringing NuXJS into alignment with ES3 evaluation order is a significant but important change. It touches fundamental bytecode generation and VM opcodes, yet it ensures that accessor side effects occur only when mandated by the specification and that property lookups behave predictably across engines.
 
 ## Incremental Implementation Plan
 
@@ -375,10 +413,10 @@ Implementing ES‑compliant ordering affects both compilation and runtime. The c
 * With base conversion factored out, `GET_PROPERTY_OP` and `SET_PROPERTY_OP` operate on an object and an uncoerced key, preserving their short critical paths and cooperative granularity.
 
 3. **Reorder compilation of bracket notation.**
-* In the `PROPERTY_BRACKETS` parser branch, evaluate the base and key expressions without conversions, then emit `CHECK_OBJECT_COERCIBLE_OP` followed by `OBJ_TO_STRING_OP`. This matches ES5.1’s steps of checking the base before converting the property name【F:docs/specs/ECMA-262 5.1.txt†L3165-L3175】【F:src/NuXJS.cpp†L4149-L4156】【F:src/NuXJS.cpp†L3627-L3642】.
+* In the `PROPERTY_BRACKETS` parser branch, evaluate the base and key expressions without conversions, then emit `CHECK_OBJECT_COERCIBLE_OP` followed by `OBJ_TO_STRING_OP`. This mirrors ES3’s steps of checking the base before converting the property name【F:docs/specs/ECMA-262 3.md†L2063-L2071】【F:src/NuXJS.cpp†L4149-L4156】【F:src/NuXJS.cpp†L3627-L3642】.
 
 4. **Resolve left‑hand references before right‑hand sides.**
-* `makeAssignment` currently emits `SET_PROPERTY_OP` as soon as the right‑hand value is on the stack【F:src/NuXJS.cpp†L3670-L3676】. Modify assignment lowering so the reference resolution sequence (`CHECK_OBJECT_COERCIBLE_OP` + `OBJ_TO_STRING_OP`) runs before compiling the right‑hand side, then perform the store. This satisfies the spec’s requirement to obtain *lref* before evaluating the RHS【F:docs/specs/ECMA-262 5.1.txt†L4106】.
+* `makeAssignment` currently emits `SET_PROPERTY_OP` as soon as the right‑hand value is on the stack【F:src/NuXJS.cpp†L3670-L3676】. Modify assignment lowering so the reference resolution sequence (`CHECK_OBJECT_COERCIBLE_OP` + `OBJ_TO_STRING_OP`) runs before compiling the right‑hand side, then perform the store. This satisfies the spec’s requirement to obtain *lref* before evaluating the RHS【F:docs/specs/ECMA-262 3.md†L2879-L2888】.
 
 5. **Extend the sequence to all property‑based constructs.**
 * Apply the new ordering to method calls, compound assignments, and operators like `in` or `delete` so every property reference observes the same semantics.
@@ -387,7 +425,16 @@ Implementing ES‑compliant ordering affects both compilation and runtime. The c
 * Create regression tests exercising getters, setters, and `toString`/`valueOf` hooks to verify that key conversion and right‑hand side effects occur only after the base object is validated.
 
 7. **Audit remaining early conversions.**
-* After property and assignment paths are updated, review other uses of `OBJ_TO_*` in `makeRValue` to ensure no opcode performs observable conversions earlier than the ES5.1 algorithms allow.
+* After property and assignment paths are updated, review other uses of `OBJ_TO_*` in `makeRValue` to ensure no opcode performs observable conversions earlier than the ES3 algorithms allow.
 
-By approaching the migration in these steps, NuXJS can move toward full ES3/ES5 ordering while preserving its cooperative, cycle‑based VM design.
+By approaching the migration in these steps, NuXJS can move toward full ES3 ordering (with ES5.1 semantics for getters and setters) while preserving its cooperative, cycle‑based VM design.
+
+## Future ES5.1 work
+
+The current effort stops at ES3 conformance. Advancing to ES5.1 would require:
+
+* Resolving method-call targets before argument evaluation (see Milestone 5).
+* Executing getters and setters only after base and property-name coercion (see Milestone 6).
+
+These tasks remain open and are documented here so they are not lost.
 

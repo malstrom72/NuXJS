@@ -6,9 +6,6 @@
 > }
 > try { null[key] = rhs(); } catch (e) { print(e.name); }
 > print(log.join(","));
-// Strict ES conformance:
-// < TypeError
-// < 
 < TypeError
 < key,rhs
 -
