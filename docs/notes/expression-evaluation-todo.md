@@ -1,5 +1,8 @@
 # Expression Evaluation Order TODO
 
+*Reset after reverting ES5.1 call-order change.*
+
+
 See [expression-evaluation-report](expression-evaluation-report.md) for background and rationale.
 
 Each milestone must be completed in order and `timeout 600 ./build.sh` must succeed before advancing to the next.
