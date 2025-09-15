@@ -34,7 +34,7 @@ NuXJS documentation, compatibility notes, and standard-library guidelines consis
 •Early implicit conversions – in ES3, operands are fully evaluated before any `toString`/`valueOf` is invoked (for example, steps 1–6 of the addition operator). NuXJS may trigger these conversions sooner.
 •Member-expression calls – NuXJS evaluates the object and argument expressions before resolving the property, which matches ES3’s algorithm but differs from ES5’s later reversal.
 •Assignments – property references resolve before the right-hand side, but unqualified and variable assignments still evaluate the right-hand side before validating the target (ES3 deviation).
-•Property access – the base object is checked before converting the property key, matching ES3.
+•Property access – the property key expression runs before the base is validated, but the base object is checked before the key is coerced and before any right-hand evaluation, matching ES3.
 •Project guidelines explicitly warn contributors to avoid relying on these non-ES3 evaluation orders.
 
 ### Test262 coverage (externals/test262)

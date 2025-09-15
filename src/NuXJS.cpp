@@ -3662,15 +3662,17 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 
 		case PROPERTY_BRACKETS: {
 			assert(!op.primitiveInput);
-			makeRValue(xr, false);
+		makeRValue(xr, false);
+		const bool didAcceptInOperator = acceptInOperator;
+			acceptInOperator = true;
+			makeRValue(operand(op), false);
+			emit(Processor::SWAP_OP);
 			emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
-			const bool didAcceptInOperator = acceptInOperator;
-				acceptInOperator = true;
-				makeRValue(operand(op), false);
-				emit(Processor::OBJ_TO_STRING_OP);
-				acceptInOperator = didAcceptInOperator;
-				xr = ExpressionResult(ExpressionResult::PROPERTY);
-				break;
+			emit(Processor::SWAP_OP);
+			emit(Processor::OBJ_TO_STRING_OP);
+			acceptInOperator = didAcceptInOperator;
+			xr = ExpressionResult(ExpressionResult::PROPERTY);
+			break;
 }
 		
 		default: assert(0);
