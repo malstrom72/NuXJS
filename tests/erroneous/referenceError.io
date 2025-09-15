@@ -1,9 +1,9 @@
 > x = 3
-! !!!! ReferenceError: x is not defined
+3
 > x
-! !!!! ReferenceError: x is not defined
+3
 > x = y
-! !!!! ReferenceError: x is not defined
+! !!!! ReferenceError: y is not defined
 > aspdfokasdfpok
 ! !!!! ReferenceError: aspdfokasdfpok is not defined
 -

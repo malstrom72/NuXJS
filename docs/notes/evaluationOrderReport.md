@@ -33,7 +33,7 @@ The following sections analyse the relevant parts of the implementation and desc
 NuXJS documentation, compatibility notes, and standard-library guidelines consistently warn that the engine does not fully adhere to strict ES3 evaluation order. Comparison with the Edition 3 specification shows the following:
 •Early implicit conversions – in ES3, operands are fully evaluated before any `toString`/`valueOf` is invoked (for example, steps 1–6 of the addition operator). NuXJS may trigger these conversions sooner.
 •Member-expression calls – NuXJS evaluates the object and argument expressions before resolving the property, which matches ES3’s algorithm but differs from ES5’s later reversal.
-•Assignments – property and variable references resolve before the right-hand side, matching ES3 ordering.
+•Assignments – property references resolve before the right-hand side, but unqualified and variable assignments still evaluate the right-hand side before validating the target (ES3 deviation).
 •Property access – the base object is checked before converting the property key, matching ES3.
 •Project guidelines explicitly warn contributors to avoid relying on these non-ES3 evaluation orders.
 
@@ -95,22 +95,16 @@ These tests confirm NuXJS’s left-to-right operand evaluation for ES3 construct
 
 ### Assignment
 
-The compiler now resolves assignment targets before evaluating the right‑hand side. For property references a `RESOLVE_PROPERTY_OP` captures the base and key, while named and local assignments perform a preliminary read to ensure the reference exists:
+The compiler resolves property assignment targets before evaluating the right‑hand side by emitting a `RESOLVE_PROPERTY_OP` to capture the base object and property name. Variable and unqualified assignments still defer reference validation until after the right side executes, which diverges from ES3:
 
 ```cpp
 if (xr.t == ExpressionResult::PROPERTY) {
 emit(Processor::RESOLVE_PROPERTY_OP);
-} else if (xr.t == ExpressionResult::NAMED) {
-emitWithConstant(Processor::READ_NAMED_OP, xr.v);
-emit(Processor::POP_OP, 1);
-} else if (xr.t == ExpressionResult::LOCAL) {
-emit(Processor::READ_LOCAL_OP, xr.v.toInt());
-emit(Processor::POP_OP, 1);
 }
 const ExpressionResult rxr = makeRValue(operand(op), false);
 makeAssignment(xr);
 xr = rxr;
-```【F:src/NuXJS.cpp†L3635-L3655】
+```【F:src/NuXJS.cpp†L3635-L3645】
 
 `makeAssignment` then performs the write using the value currently on top of the stack:
 
@@ -123,7 +117,7 @@ switch (xr.t) {
 }
 ```【F:src/NuXJS.cpp†L3668-L3674】
 
-As a result, resolution of the left‑hand side reference (for example, verifying that a variable exists in strict mode) is deferred until the write opcode executes. If the reference turns out to be invalid, the right‑hand side has already been evaluated, contradicting the spec.
+Because named and local assignments skip the preliminary read, a missing variable triggers a `ReferenceError` only after the right‑hand side has executed. This remaining discrepancy is tracked in `evaluationOrderTodo.md`.
 
 ### Property access
 
