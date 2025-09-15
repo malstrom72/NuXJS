@@ -24,7 +24,6 @@ The ECMAScript 3 specification defines the precise order of side‑effect‑pro
 
 NuXJS deliberately deviates from these algorithms, as documented in `docs/notes/ECMAScript Compatibility Notes.md`:
 
-* *Assignments evaluate the right-hand side before resolving the reference on the left-hand side.*
 * *Property access may convert the property key before converting the base object.*
 * *Implicit `valueOf` and `toString` conversions may happen earlier than specified.*【F:docs/notes/ECMAScript Compatibility Notes.md†L9-L12】
 
@@ -34,7 +33,7 @@ The following sections analyse the relevant parts of the implementation and desc
 NuXJS documentation, compatibility notes, and standard-library guidelines consistently warn that the engine does not fully adhere to strict ES3 evaluation order. Comparison with the Edition 3 specification shows the following:
 •Early implicit conversions – in ES3, operands are fully evaluated before any `toString`/`valueOf` is invoked (for example, steps 1–6 of the addition operator). NuXJS may trigger these conversions sooner.
 •Member-expression calls – NuXJS evaluates the object and argument expressions before resolving the property, which matches ES3’s algorithm but differs from ES5’s later reversal.
-•Assignments – property references now resolve before the right-hand side, but variable references are still checked when the write occurs.
+•Assignments – property and variable references resolve before the right-hand side, matching ES3 ordering.
 •Property access – the base object is checked before converting the property key, matching ES3.
 •Project guidelines explicitly warn contributors to avoid relying on these non-ES3 evaluation orders.
 
@@ -90,21 +89,30 @@ The following tables list every referenced Test262 evaluation-order case. Paths 
 | language/expressions/exponentiation/exp-operator-evaluation-order.js | evaluation order for `**` operator (ES2016) | SyntaxError |
 | language/expressions/template-literal/evaluation-order.js | evaluation order for template literals (ES2015) | SyntaxError |
 
-These tests confirm NuXJS’s left-to-right operand evaluation for ES3 constructs, with assignment targets and property access remaining outliers.
+These tests confirm NuXJS’s left-to-right operand evaluation for ES3 constructs.
 
 ## Current Implementation
 
 ### Assignment
 
-During parsing, the left‑hand side expression is compiled first. When the compiler encounters the `=` operator, it emits code for the right‑hand side and only then emits the write operation:
+The compiler now resolves assignment targets before evaluating the right‑hand side. For property references a `RESOLVE_PROPERTY_OP` captures the base and key, while named and local assignments perform a preliminary read to ensure the reference exists:
 
 ```cpp
+if (xr.t == ExpressionResult::PROPERTY) {
+emit(Processor::RESOLVE_PROPERTY_OP);
+} else if (xr.t == ExpressionResult::NAMED) {
+emitWithConstant(Processor::READ_NAMED_OP, xr.v);
+emit(Processor::POP_OP, 1);
+} else if (xr.t == ExpressionResult::LOCAL) {
+emit(Processor::READ_LOCAL_OP, xr.v.toInt());
+emit(Processor::POP_OP, 1);
+}
 const ExpressionResult rxr = makeRValue(operand(op), false);
 makeAssignment(xr);
 xr = rxr;
-```【F:src/NuXJS.cpp†L4124-L4130】
+```【F:src/NuXJS.cpp†L3635-L3655】
 
-`makeAssignment` immediately performs the write using the value currently on top of the stack:
+`makeAssignment` then performs the write using the value currently on top of the stack:
 
 ```cpp
 switch (xr.t) {
