@@ -3632,11 +3632,17 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			break;
 		}
 		
-			   case ASSIGNMENT: {
-					   assert(!op.primitiveInput);
-					   assert(!op.primitiveOutput);
+                           case ASSIGNMENT: {
+                                           assert(!op.primitiveInput);
+                                           assert(!op.primitiveOutput);
                                            if (xr.t == ExpressionResult::PROPERTY) {
                                                         emit(Processor::RESOLVE_PROPERTY_OP);
+                                           } else if (xr.t == ExpressionResult::NAMED) {
+                                                        emitWithConstant(Processor::TYPEOF_NAMED_OP, xr.v);
+                                                        emit(Processor::POP_OP, 1);
+                                           } else if (xr.t == ExpressionResult::LOCAL) {
+                                                        emit(Processor::READ_LOCAL_OP, xr.v.toInt());
+                                                        emit(Processor::POP_OP, 1);
                                            }
                                            const ExpressionResult rxr = makeRValue(operand(op), false);
                                            makeAssignment(xr);

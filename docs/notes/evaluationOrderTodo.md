@@ -35,9 +35,8 @@ Each milestone must be completed in order and `timeout 600 ./build.sh` must succ
 - [x] Run `timeout 600 ./build.sh`.
 
 ## Milestone 6 – Reference validation for non-property assignments
-- [ ] Ensure variable and unqualified assignments validate the left-hand reference before evaluating the right-hand side as mandated by ES3 §11.13.1, the scope-chain rules in §10.1.4, and the `PutValue` algorithm in §8.7.2.【F:docs/specs/ECMA-262 3.md†L2879-L2884】【F:docs/specs/ECMA-262 3.md†L1770-L1782】【F:docs/specs/ECMA-262 3.md†L1438-L1446】
-- [ ] Add regression tests demonstrating that assigning to an undefined identifier reports `ReferenceError` without evaluating the right-hand side.
-- [ ] Run `timeout 600 ./build.sh`.
+- [x] Ensure variable and unqualified assignments resolve their left-hand references before evaluating the right-hand side as mandated by ES3 §11.13.1, the scope-chain rules in §10.1.4, and the `PutValue` algorithm in §8.7.2.【F:docs/specs/ECMA-262 3.md†L2879-L2884】【F:docs/specs/ECMA-262 3.md†L1770-L1782】【F:docs/specs/ECMA-262 3.md†L1438-L1446】
+- [x] Run `timeout 600 ./build.sh`.
 
 ## Milestone 7 – ES5.1: Call-target resolution *(future)*
 - [ ] Resolve method targets before argument evaluation.

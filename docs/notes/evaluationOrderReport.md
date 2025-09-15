@@ -33,7 +33,7 @@ The following sections analyse the relevant parts of the implementation and desc
 NuXJS documentation, compatibility notes, and standard-library guidelines consistently warn that the engine does not fully adhere to strict ES3 evaluation order. Comparison with the Edition 3 specification shows the following:
 •Early implicit conversions – in ES3, operands are fully evaluated before any `toString`/`valueOf` is invoked (for example, steps 1–6 of the addition operator). NuXJS may trigger these conversions sooner.
 •Member-expression calls – NuXJS evaluates the object and argument expressions before resolving the property, which matches ES3’s algorithm but differs from ES5’s later reversal.
-•Assignments – property references resolve before the right-hand side, but unqualified and variable assignments still evaluate the right-hand side before validating the target (ES3 deviation).
+•Assignments – property, variable, and unqualified assignments resolve the left-hand reference before the right-hand side, matching ES3.
 •Property access – the property key expression runs before the base is validated, but the base object is checked before the key is coerced and before any right-hand evaluation, matching ES3.
 •Project guidelines explicitly warn contributors to avoid relying on these non-ES3 evaluation orders.
 
@@ -95,23 +95,7 @@ These tests confirm NuXJS’s left-to-right operand evaluation for ES3 construct
 
 ### Assignment
 
-The compiler resolves property assignment targets before evaluating the right‑hand side by emitting a `RESOLVE_PROPERTY_OP` to capture the base object and property name. Variable and unqualified assignments still defer reference validation until after the right side executes, which diverges from ES3. The failing regression test [`assignmentUndefinedIdentifierLeftFirst.io`](../../testsBroken/regression/assignmentUndefinedIdentifierLeftFirst.io) demonstrates this behaviour:
-
-```cpp
-if (xr.t == ExpressionResult::PROPERTY) {
-emit(Processor::RESOLVE_PROPERTY_OP);
-}
-const ExpressionResult rxr = makeRValue(operand(op), false);
-makeAssignment(xr);
-xr = rxr;
-```【F:src/NuXJS.cpp†L3635-L3645】
-
-ES3 specifies that an identifier on the left of `=` must be resolved before the right‑hand expression runs. The assignment algorithm evaluates the *LeftHandSideExpression* before the *AssignmentExpression*【F:docs/specs/ECMA-262 3.md†L2879-L2884】.
-Resolving an identifier walks the scope chain and yields a reference—`null` base if no binding exists【F:docs/specs/ECMA-262 3.md†L1770-L1782】.
-`PutValue` then interprets a `null` base as a write to the global object rather than throwing【F:docs/specs/ECMA-262 3.md†L1438-L1446】.
-NuXJS instead evaluates `rhs()` first and only afterwards reports `ReferenceError` for the unresolved `undefVar`, so the side effect in `rhs` runs even though the left-hand reference is invalid.
-
-`PutValue` handles the write in step 4 of the assignment algorithm. If the identifier resolves to no binding (base object `null`), `PutValue` writes the property on the global object rather than throwing, but ES3 still requires the scope-chain search to occur before the right-hand side executes【F:docs/specs/ECMA-262 3.md†L1438-L1446】【F:docs/specs/ECMA-262 3.md†L2879-L2884】. NuXJS’s late resolution violates this ordering and remains an open task for [milestone 6](evaluationOrderTodo.md).
+The compiler now resolves every assignment target before the right‑hand side runs. For property targets, it emits `RESOLVE_PROPERTY_OP` to capture the base object and property name. For named and local variables, it performs a non‑throwing read (`TYPEOF_NAMED_OP` or `READ_LOCAL_OP`) and immediately discards the result so the scope chain is walked before compiling the right-hand expression. This mirrors the ES3 algorithm, which evaluates the *LeftHandSideExpression* prior to the *AssignmentExpression*【F:docs/specs/ECMA-262 3.md†L2879-L2884】【F:docs/specs/ECMA-262 3.md†L1770-L1782】.
 
 `makeAssignment` then performs the write using the value currently on top of the stack:
 
