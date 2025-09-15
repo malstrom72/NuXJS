@@ -3478,16 +3478,17 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 		case PRE_INC_DEC: {
 			assert(op.primitiveInput);
 			assert(op.primitiveOutput);
-			xr = operand(op);
-			if (xr.t == ExpressionResult::PROPERTY) {
-				emit(Processor::REPUSH_2_OP);
-			}
-			makeRValue(xr, true);
-			emit(op.vmOp);
-			makeAssignment(xr);
-			xr = ExpressionResult::PUSHED_PRIMITIVE;
-			break;
-		}
+					   xr = operand(op);
+					   if (xr.t == ExpressionResult::PROPERTY) {
+							   emit(Processor::RESOLVE_PROPERTY_OP);
+							   emit(Processor::REPUSH_2_OP);
+					   }
+					   makeRValue(xr, true);
+					   emit(op.vmOp);
+					   makeAssignment(xr);
+					   xr = ExpressionResult::PUSHED_PRIMITIVE;
+					   break;
+			   }
 		
 		case TYPE_OF: {
 			assert(!op.primitiveInput);
@@ -3565,13 +3566,14 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				p = b;
 				return false;
 			}
-			if (xr.t == ExpressionResult::PROPERTY) {
-				emit(Processor::REPUSH_2_OP);
-			}
-			makeRValue(xr, true);
-			emit(Processor::PLUS_OP);
-			emit(xr.t == ExpressionResult::PROPERTY ? Processor::POST_SHUFFLE_OP : Processor::REPUSH_OP);
-			emit(op.vmOp);
+					   if (xr.t == ExpressionResult::PROPERTY) {
+							   emit(Processor::RESOLVE_PROPERTY_OP);
+							   emit(Processor::REPUSH_2_OP);
+					   }
+					   makeRValue(xr, true);
+					   emit(Processor::PLUS_OP);
+					   emit(xr.t == ExpressionResult::PROPERTY ? Processor::POST_SHUFFLE_OP : Processor::REPUSH_OP);
+					   emit(op.vmOp);
 			makeAssignment(xr);
 			emit(Processor::POP_OP, 1);
 			xr = ExpressionResult::PUSHED_PRIMITIVE;
