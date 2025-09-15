@@ -111,16 +111,18 @@ Resolving an identifier walks the scope chain and yields a reference—`null` ba
 `PutValue` then interprets a `null` base as a write to the global object rather than throwing【F:docs/specs/ECMA-262 3.md†L1438-L1446】.
 NuXJS instead evaluates `rhs()` first and only afterwards reports `ReferenceError` for the unresolved `undefVar`, so the side effect in `rhs` runs even though the left-hand reference is invalid.
 
+`PutValue` handles the write in step 4 of the assignment algorithm. If the identifier resolves to no binding (base object `null`), `PutValue` writes the property on the global object rather than throwing, but ES3 still requires the scope-chain search to occur before the right-hand side executes【F:docs/specs/ECMA-262 3.md†L1438-L1446】【F:docs/specs/ECMA-262 3.md†L2879-L2884】. NuXJS’s late resolution violates this ordering and remains an open task for [milestone 6](evaluationOrderTodo.md).
+
 `makeAssignment` then performs the write using the value currently on top of the stack:
 
 ```cpp
 switch (xr.t) {
-		case ExpressionResult::LOCAL: emit(Processor::WRITE_LOCAL_OP, xr.v.toInt()); break;
-		case ExpressionResult::NAMED: emitWithConstant(Processor::WRITE_NAMED_OP, xr.v); break;
-		case ExpressionResult::PROPERTY: emit(Processor::SET_PROPERTY_OP); break;
-		...
+                case ExpressionResult::LOCAL: emit(Processor::WRITE_LOCAL_OP, xr.v.toInt()); break;
+                case ExpressionResult::NAMED: emitWithConstant(Processor::WRITE_NAMED_OP, xr.v); break;
+                case ExpressionResult::PROPERTY: emit(Processor::SET_PROPERTY_OP); break;
+                ...
 }
-```【F:src/NuXJS.cpp†L3668-L3674】
+```【F:src/NuXJS.cpp†L3237-L3242】
 
 Because named and local assignments skip the preliminary read, a missing variable triggers a `ReferenceError` only after the right‑hand side has executed. This remaining discrepancy is tracked in `evaluationOrderTodo.md`.
 
