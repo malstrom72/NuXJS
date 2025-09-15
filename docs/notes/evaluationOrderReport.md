@@ -95,7 +95,7 @@ These tests confirm NuXJS’s left-to-right operand evaluation for ES3 construct
 
 ### Assignment
 
-The compiler resolves property assignment targets before evaluating the right‑hand side by emitting a `RESOLVE_PROPERTY_OP` to capture the base object and property name. Variable and unqualified assignments still defer reference validation until after the right side executes, which diverges from ES3:
+The compiler resolves property assignment targets before evaluating the right‑hand side by emitting a `RESOLVE_PROPERTY_OP` to capture the base object and property name. Variable and unqualified assignments still defer reference validation until after the right side executes, which diverges from ES3. The failing regression test [`assignmentUndefinedIdentifierLeftFirst.io`](../../testsBroken/regression/assignmentUndefinedIdentifierLeftFirst.io) demonstrates this behaviour:
 
 ```cpp
 if (xr.t == ExpressionResult::PROPERTY) {
