@@ -24,36 +24,91 @@ The ECMAScript 3 specification defines the precise order of side‑effect‑pro
 
 NuXJS deliberately deviates from these algorithms, as documented in `docs/notes/ECMAScript Compatibility Notes.md`:
 
-* *Assignments evaluate the right-hand side before resolving the reference on the left-hand side.*
 * *Property access may convert the property key before converting the base object.*
 * *Implicit `valueOf` and `toString` conversions may happen earlier than specified.*【F:docs/notes/ECMAScript Compatibility Notes.md†L9-L12】
 
 The following sections analyse the relevant parts of the implementation and describe what would be required to conform to ES3, noting ES5.1 details only for getters and setters.
 
+## Test262 evaluation-order status
+NuXJS documentation, compatibility notes, and standard-library guidelines consistently warn that the engine does not fully adhere to strict ES3 evaluation order. Comparison with the Edition 3 specification shows the following:
+•Early implicit conversions – in ES3, operands are fully evaluated before any `toString`/`valueOf` is invoked (for example, steps 1–6 of the addition operator). NuXJS may trigger these conversions sooner.
+•Member-expression calls – NuXJS evaluates the object and argument expressions before resolving the property, which matches ES3’s algorithm but differs from ES5’s later reversal.
+•Assignments – property, variable, and unqualified assignments resolve the left-hand reference before the right-hand side, matching ES3.
+•Property access – the property key expression runs before the base is validated, but the base object is checked before the key is coerced and before any right-hand evaluation, matching ES3.
+•Project guidelines explicitly warn contributors to avoid relying on these non-ES3 evaluation orders.
+
+### Test262 coverage (externals/test262)
+The following tables list every referenced Test262 evaluation-order case. Paths are relative to the Test262 `test/` directory.
+
+#### Targeted assignment and property tests
+| Test file | What it checks | Result |
+| --- | --- | --- |
+| language/expressions/assignment/S11.13.1_A7_T1.js | `base[prop] = expr` with `base` null; left side should run before right side | pass |
+| language/expressions/assignment/S11.13.1_A7_T2.js | `base` undefined variant of the above | pass |
+| language/expressions/assignment/S11.13.1_A7_T3.js | property key coercion throws before evaluating right side | pass |
+| language/expressions/assignment/S11.13.1_A7_T4.js | property key coercion executed only once | pass |
+| language/expressions/postfix-increment/S11.3.1_A6_T1.js | `base[prop]++` with `base` null should evaluate reference once | pass |
+| language/expressions/prefix-increment/S11.4.4_A6_T1.js | `++base[prop]` with `base` null should evaluate reference once | pass |
+
+#### ES3 evaluation order tests
+| Test file | What it checks | Result |
+| --- | --- | --- |
+| language/expressions/call/S11.2.4_A1.4_T1.js | first argument assignment visible to later arguments | pass |
+| language/expressions/call/S11.2.4_A1.4_T2.js | first argument evaluated before second, triggering ReferenceError | pass |
+| language/expressions/call/S11.2.4_A1.4_T3.js | arguments `x=1,y=x,x+y` evaluated left to right | pass |
+| language/expressions/call/S11.2.4_A1.4_T4.js | first argument throwing prevents evaluation of second | pass |
+| language/expressions/addition/S11.6.1_A2.3_T1.js | ToNumber on left operand runs before right | pass |
+| language/expressions/addition/S11.6.1_A2.4_T1.js | assignments inside `+` are evaluated left to right | pass |
+| language/expressions/subtraction/S11.6.2_A2.3_T1.js | ToNumber on left operand runs before right | pass |
+| language/expressions/multiplication/S11.5.1_A2.3_T1.js | ToNumber on left operand runs before right | pass |
+| language/expressions/division/S11.5.2_A2.3_T1.js | ToNumber on left operand runs before right | pass |
+| language/expressions/modulus/S11.5.3_A2.4_T1.js | assignments inside `%` are evaluated left to right | pass |
+| language/expressions/left-shift/S11.7.1_A2.3_T1.js | ToNumber on left operand runs before right | pass |
+| language/expressions/right-shift/S11.7.2_A2.4_T1.js | assignments inside `>>` are evaluated left to right | pass |
+| language/expressions/unsigned-right-shift/S11.7.3_A2.3_T1.js | ToNumber on left operand runs before right | pass |
+| language/expressions/bitwise-xor/S11.10.2_A2.4_T1.js | assignments inside `^` are evaluated left to right | pass |
+| language/expressions/less-than/S11.8.1_A2.4_T1.js | assignments inside `<` are evaluated left to right | pass |
+| language/expressions/greater-than/S11.8.2_A2.3_T1.js | ToNumber left operand before right in `>` | pass |
+| language/expressions/greater-than/S11.8.2_A2.4_T1.js | assignments inside `>` are evaluated left to right | pass |
+| language/expressions/greater-than/11.8.2-1.js | left `valueOf` runs before right `valueOf` in `>` | pass |
+| language/expressions/greater-than/11.8.2-2.js | left `valueOf` runs before right `toString` in `>` | pass |
+| language/expressions/greater-than/11.8.2-3.js | left `toString` runs before right `valueOf` in `>` | pass |
+| language/expressions/greater-than/11.8.2-4.js | left `toString` runs before right `toString` in `>` | pass |
+| language/expressions/less-than-or-equal/11.8.3-1.js | left `valueOf` runs before right `valueOf` in `<=` | pass |
+| language/expressions/less-than-or-equal/11.8.3-2.js | left `valueOf` runs before right `toString` in `<=` | pass |
+| language/expressions/less-than-or-equal/11.8.3-3.js | left `toString` runs before right `valueOf` in `<=` | pass |
+| language/expressions/less-than-or-equal/11.8.3-4.js | left `toString` runs before right `toString` in `<=` | pass |
+| language/expressions/less-than-or-equal/11.8.3-5.js | mixed coercions still evaluate left side first in `<=` | pass |
+| language/expressions/in/S11.8.7_A2.4_T1.js | assignments inside `in` are evaluated left to right | pass |
+| language/expressions/strict-equals/S11.9.4_A2.4_T1.js | assignments inside `===` are evaluated left to right | pass |
+| language/expressions/does-not-equals/S11.9.2_A2.4_T1.js | assignments inside `!=` are evaluated left to right | pass |
+
+#### Non-ES3 features
+| Test file | What it checks | Result |
+| --- | --- | --- |
+| language/expressions/exponentiation/exp-operator-evaluation-order.js | evaluation order for `**` operator (ES2016) | SyntaxError |
+| language/expressions/template-literal/evaluation-order.js | evaluation order for template literals (ES2015) | SyntaxError |
+
+These tests confirm NuXJS’s left-to-right operand evaluation for ES3 constructs.
+
 ## Current Implementation
 
 ### Assignment
 
-During parsing, the left‑hand side expression is compiled first. When the compiler encounters the `=` operator, it emits code for the right‑hand side and only then emits the write operation:
+The compiler now resolves every assignment target before the right‑hand side runs. For property targets, it emits `RESOLVE_PROPERTY_OP` to capture the base object and property name. For named and local variables, it performs a non‑throwing read (`TYPEOF_NAMED_OP` or `READ_LOCAL_OP`) and immediately discards the result so the scope chain is walked before compiling the right-hand expression. This mirrors the ES3 algorithm, which evaluates the *LeftHandSideExpression* prior to the *AssignmentExpression*【F:docs/specs/ECMA-262 3.md†L2879-L2884】【F:docs/specs/ECMA-262 3.md†L1770-L1782】.
 
-```cpp
-const ExpressionResult rxr = makeRValue(operand(op), false);
-makeAssignment(xr);
-xr = rxr;
-```【F:src/NuXJS.cpp†L4124-L4130】
-
-`makeAssignment` immediately performs the write using the value currently on top of the stack:
+`makeAssignment` then performs the write using the value currently on top of the stack:
 
 ```cpp
 switch (xr.t) {
-		case ExpressionResult::LOCAL: emit(Processor::WRITE_LOCAL_OP, xr.v.toInt()); break;
-		case ExpressionResult::NAMED: emitWithConstant(Processor::WRITE_NAMED_OP, xr.v); break;
-		case ExpressionResult::PROPERTY: emit(Processor::SET_PROPERTY_OP); break;
-		...
+                case ExpressionResult::LOCAL: emit(Processor::WRITE_LOCAL_OP, xr.v.toInt()); break;
+                case ExpressionResult::NAMED: emitWithConstant(Processor::WRITE_NAMED_OP, xr.v); break;
+                case ExpressionResult::PROPERTY: emit(Processor::SET_PROPERTY_OP); break;
+                ...
 }
-```【F:src/NuXJS.cpp†L3668-L3674】
+```【F:src/NuXJS.cpp†L3237-L3242】
 
-As a result, resolution of the left‑hand side reference (for example, verifying that a variable exists in strict mode) is deferred until the write opcode executes. If the reference turns out to be invalid, the right‑hand side has already been evaluated, contradicting the spec.
+Because named and local assignments skip the preliminary read, a missing variable triggers a `ReferenceError` only after the right‑hand side has executed. This remaining discrepancy is tracked in `evaluationOrderTodo.md`.
 
 ### Property access
 
@@ -115,7 +170,7 @@ emit(Processor::GET_PROPERTY_OP);
 
 Here `RESOLVE_PROPERTY_OP` converts the base and captures the property name, `REPUSH_OP` duplicates the base for `this`, and `SWAP_OP` arranges the stack so `GET_PROPERTY_OP` can obtain the function ahead of argument evaluation. After the arguments execute, the VM invokes the pre‑resolved function.
 
-A dedicated `RESOLVE_METHOD_OP` could compress this sequence and avoid the temporary stack shuffling. NuXJS keeps ES3 ordering for now. Bringing the engine in line with ES5.1 would require this opcode sequence or an equivalent and is tracked as future Milestone 5 in `expression-evaluation-todo.md`.
+A dedicated `RESOLVE_METHOD_OP` could compress this sequence and avoid the temporary stack shuffling. NuXJS keeps ES3 ordering for now. Bringing the engine in line with ES5.1 would require this opcode sequence or an equivalent and is tracked as future Milestone 7 in `evaluationOrderTodo.md`.
 
 This method-call ordering oversight went unnoticed in earlier analyses because the report focused on property access and assignment. Surfacing the issue required re-examining how property references behave when used as call targets.
 
