@@ -106,6 +106,11 @@ makeAssignment(xr);
 xr = rxr;
 ```【F:src/NuXJS.cpp†L3635-L3645】
 
+ES3 specifies that an identifier on the left of `=` must be resolved before the right‑hand expression runs. The assignment algorithm evaluates the *LeftHandSideExpression* before the *AssignmentExpression*【F:docs/specs/ECMA-262 3.md†L2879-L2884】.
+Resolving an identifier walks the scope chain and yields a reference—`null` base if no binding exists【F:docs/specs/ECMA-262 3.md†L1770-L1782】.
+`PutValue` then interprets a `null` base as a write to the global object rather than throwing【F:docs/specs/ECMA-262 3.md†L1438-L1446】.
+NuXJS instead evaluates `rhs()` first and only afterwards reports `ReferenceError` for the unresolved `undefVar`, so the side effect in `rhs` runs even though the left-hand reference is invalid.
+
 `makeAssignment` then performs the write using the value currently on top of the stack:
 
 ```cpp
