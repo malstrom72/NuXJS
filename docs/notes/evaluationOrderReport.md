@@ -95,20 +95,26 @@ These tests confirm NuXJS’s left-to-right operand evaluation for ES3 construct
 
 ### Assignment
 
-The compiler now resolves every assignment target before the right‑hand side runs. For property targets, it emits `RESOLVE_PROPERTY_OP` to capture the base object and property name. For named and local variables, it performs a non‑throwing read (`TYPEOF_NAMED_OP` or `READ_LOCAL_OP`) and immediately discards the result so the scope chain is walked before compiling the right-hand expression. This mirrors the ES3 algorithm, which evaluates the *LeftHandSideExpression* prior to the *AssignmentExpression*【F:docs/specs/ECMA-262 3.md†L2879-L2884】【F:docs/specs/ECMA-262 3.md†L1770-L1782】.
+ECMA‑262 Edition 3 evaluated simple assignment targets before touching the right-hand side:
 
-`makeAssignment` then performs the write using the value currently on top of the stack:
+```text
+The production *AssignmentExpression* **:** *LeftHandSideExpression* **=** *AssignmentExpression* is evaluated as follows:
 
-```cpp
-switch (xr.t) {
-                case ExpressionResult::LOCAL: emit(Processor::WRITE_LOCAL_OP, xr.v.toInt()); break;
-                case ExpressionResult::NAMED: emitWithConstant(Processor::WRITE_NAMED_OP, xr.v); break;
-                case ExpressionResult::PROPERTY: emit(Processor::SET_PROPERTY_OP); break;
-                ...
-}
-```【F:src/NuXJS.cpp†L3237-L3242】
+- 1. Evaluate *LeftHandSideExpression*.
+- 2. Evaluate *AssignmentExpression*.
+- 3. Call GetValue(Result(2)).
+- 4. Call PutValue(Result(1), Result(3)).
 
-Because named and local assignments skip the preliminary read, a missing variable triggers a `ReferenceError` only after the right‑hand side has executed. This remaining discrepancy is tracked in `evaluationOrderTodo.md`.
+5. Return Result(3).
+```【F:docs/specs/ECMA-262 3.md†L2879-L2888】
+
+Edition 5.1 swapped the first two steps and added strict-mode checks:
+
+```text
+## Semantics The AssignmentExpressionNoIn productions are evaluated in the same manner as the AssignmentExpression productions except that the contained ConditionalExpressionNoIn and AssignmentExpressionNoIn are evaluated instead of the contained ConditionalExpression and AssignmentExpression, respectively. # 11.13.1 Simple Assignment ( = ) The production AssignmentExpression : LeftHandSideExpression `=` AssignmentExpression is evaluated as follows: 1. Let *lref* be the result of evaluating *LeftHandSideExpression*. 2. Let *rref* be the result of evaluating *AssignmentExpression*. 3. Let *rval* be [GetValue](#sec-8.7.1)(*rref*). 4. Throw a **SyntaxError** exception if the following conditions are all true: - [Type](#sec-8)(*lref*) is [Reference](#sec-8.7) is **true** - [IsStrictReference](#sec-8.7)(*lref*) is **true** - [Type](#sec-8)([GetBase](#sec-8.7)(*lref*)) is [Environment Record](#sec-10.2.1) - [GetReferencedName](#sec-8.7)(*lref*) is either `"eval"` or `"arguments"` 5. Call [PutValue](#sec-8.7.2)(*lref*, *rval*). 6. Return *rval*. NOTE When an assignment occurs within [strict mode code](#sec-10.1.1), its LeftHandSide must not evaluate to an unresolvable reference. If it does a **ReferenceError** exception is thrown upon assignment. The LeftHandSide also may not be a reference to a data property with the attribute value {[[Writable]]:**false**}, to an accessor property with the attribute value {[[Set]]:**undefined**}, nor to a non-existent property of an object whose [[Extensible]] internal property has the value **false**. In these cases a **TypeError** exception is thrown.
+```【F:docs/specs/ECMA-262 5.1.md†L5719-L5728】
+
+NuXJS continues to defer named assignments until after the right-hand side finishes evaluating. The compiler emits `TYPEOF_NAMED_OP`/`POP` for named references (or `READ_LOCAL_OP` for locals) before it compiles the RHS expression, then evaluates the RHS and finally writes the result through `makeAssignment`. Missing bindings therefore surface only during the write, matching the ES5.1 ordering where the right-hand side is processed before `PutValue`.【F:src/NuXJS.cpp†L3236-L3244】【F:src/NuXJS.cpp†L3641-L3658】 We accept this as a “good” deviation from ES3 because it aligns the engine with the later specification for this scenario.
 
 ### Property access
 
