@@ -349,6 +349,50 @@ static DoubleDouble multiplyAndAdd(const DoubleDouble& term, const DoubleDouble&
 	return DoubleDouble(factorA.high * factorB + term.high + overflow, fmaLow - overflow);
 }
 
+/**
+	If we just do (high + low) first, that sum is rounded to 53 bits once, possibly nudging the result slightly upward.
+	Then when we scale down into the subnormal range (right-shift the mantissa) we hit what looks like an exact halfway
+	case — and since the current mantissa is odd, IEEE-754 rounds up again. In reality, the exact (high+low) value was
+	just below that halfway point, so it should have rounded down to the even mantissa. This is a classic "double
+	rounding" problem.
+
+	scaleAndRound avoids this by combining high and low at full precision under the final exponent window and
+	performing a *single* correct round-to-nearest-even step. This matches the Decimal oracle and fixes all denormal
+	boundary mismatches.
+
+	Assumptions:
+	- 'factor' is an exact power-of-two (normal or subnormal) from the table.
+	- 'acc.high' is integral in [0, 2^53) and 'acc.low' ∈ [0,1).
+	- Table ensures factorExponent >= -1073 so T = factorExponent + 1073 >= 0.
+**/
+static double scaleAndRound(const DoubleDouble& acc, double factor) {
+    if (acc.high == 0.0 && acc.low == 0.0) {
+    	return 0.0;
+	}
+	
+	const double fastResult = (acc.high + acc.low) * factor;
+	if (fastResult >= 2.2250738585072014e-308) {
+		return fastResult;												// normal result; fast path is exact here
+	}
+	
+    int factorExponent, highExponent;									// slow path: denormal/transition region
+    frexp(factor, &factorExponent);										// assemble payload then single rounding
+    frexp(acc.high, &highExponent);										// unbiased exponent of acc.high
+    
+	const int t = factorExponent + 1073;								// guaranteed by table construction
+	assert(t >= 0);														// (no right-shift branch needed)	
+	const double bf = ldexp(acc.low, t);								// align (high, low) into the 52-bit subnormal payload scale
+	const double bi = floor(bf);
+	const double fraction = bf - bi;									// fractional contribution
+	
+	double ni = ldexp(acc.high, t) + bi;								// integer payload (exact in double)
+	if (fraction > 0.5 || (fraction == 0.5 && fmod(ni, 2.0) != 0.0)) {
+		ni += 1.0;														// round to nearest, ties-to-even
+	}
+	
+	return ldexp(ni, -1074);											// subnormal construction (or DBL_MIN when ni == 2^52)
+}
+
 const int QUICK_CONSTANTS_INTEGERS_RANGE = 1000;
 struct QuickConstants {
 	QuickConstants() {
@@ -467,9 +511,9 @@ static Char* doubleToString(Char buffer[32], const double value) {
 		assert(next >= normalized); // Correct behavior is to never reach higher than digit 9.
 
 		// Do we hit goal with digit or digit + 1? If so, is next digit >= 5 (magnitude / 2) then increment it.
-		reconstructed = static_cast<double>(accumulator) * factor;
+		reconstructed = scaleAndRound(accumulator, factor);
 		if (reconstructed != absValue) {
-			reconstructed = static_cast<double>(accumulator + magnitude) * factor;
+			reconstructed = scaleAndRound(accumulator + magnitude, factor);
 		}
 		if (reconstructed == absValue && accumulator + magnitude / 2 < normalized) {
 			++digit;
@@ -576,7 +620,7 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 				++p;
 			}
 			const double factor = QUICK_CONSTANTS.exp10Factors[exponent - MIN_EXPONENT];
-			value = static_cast<double>(accumulator) * factor;
+			value = scaleAndRound(accumulator, factor);
 		}
 	}
 	value *= sign;
