@@ -733,6 +733,10 @@ Int32 Value::toInt() const {
 
 bool Value::toArrayIndex(UInt32& index) const {
 	switch (type) {
+		case BOOLEAN_TYPE: {
+			index = (var.boolean ? 1 : 0);
+			return true;
+		}
 		case NUMBER_TYPE: {
 			const double n = var.number;
 			if (n < 0.0 || n >= 4294967296.0) {
@@ -2571,20 +2575,18 @@ void Processor::innerRun() {
 				return;
 			}
 			
-			case CALL_METHOD_OP: {
-				Object* const o = convertToObject(sp[-im - 1], true);
-				if (o != 0) {
-					Value v(UNDEFINED_VALUE);
-					Function* f;
-					const Value& name = sp[-im];
-					if (o->getProperty(rt, name, &v) == NONEXISTENT || (f = v.asFunction()) == 0) {
-						error(TYPE_ERROR, new(heap) String(heap.managed(), *name.toString(heap), IS_NOT_A_FUNCTION_STRING));
-					} else {
-						invokeFunction(f, im + 1, im, o);
-					}
-				}
-				return;
-			}
+                       case CALL_METHOD_OP: {
+                               Object* const o = convertToObject(sp[-im - 1], true);
+                               if (o != 0) {
+                                       Function* const f = sp[-im].asFunction();
+                                       if (f != 0) {
+                                               invokeFunction(f, im + 1, im, o);
+                                       } else {
+                                               error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[-im].toString(heap), IS_NOT_A_FUNCTION_STRING));
+                                       }
+                               }
+                               return;
+                       }
 			
 			case CALL_EVAL_OP: {
 				Function* f = asFunction(sp[-im]);
@@ -3474,20 +3476,16 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 		case PRE_INC_DEC: {
 			assert(op.primitiveInput);
 			assert(op.primitiveOutput);
-                        xr = operand(op);
-                        if (xr.t == ExpressionResult::PROPERTY) {
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::RESOLVE_PROPERTY_OP);
-                                emit(Processor::REPUSH_2_OP);
-                        }
-                        makeRValue(xr, true);
-                        emit(op.vmOp);
-                        makeAssignment(xr);
-                        xr = ExpressionResult::PUSHED_PRIMITIVE;
-                        break;
-                }
+			xr = operand(op);
+			if (xr.t == ExpressionResult::PROPERTY) {
+				emit(Processor::REPUSH_2_OP);
+			}
+			makeRValue(xr, true);
+			emit(op.vmOp);
+			makeAssignment(xr);
+			xr = ExpressionResult::PUSHED_PRIMITIVE;
+			break;
+		}
 		
 		case TYPE_OF: {
 			assert(!op.primitiveInput);
@@ -3565,17 +3563,13 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				p = b;
 				return false;
 			}
-                        if (xr.t == ExpressionResult::PROPERTY) {
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::RESOLVE_PROPERTY_OP);
-                                emit(Processor::REPUSH_2_OP);
-                        }
-                        makeRValue(xr, true);
-                        emit(Processor::PLUS_OP);
-                        emit(xr.t == ExpressionResult::PROPERTY ? Processor::POST_SHUFFLE_OP : Processor::REPUSH_OP);
-                        emit(op.vmOp);
+			if (xr.t == ExpressionResult::PROPERTY) {
+				emit(Processor::REPUSH_2_OP);
+			}
+			makeRValue(xr, true);
+			emit(Processor::PLUS_OP);
+			emit(xr.t == ExpressionResult::PROPERTY ? Processor::POST_SHUFFLE_OP : Processor::REPUSH_OP);
+			emit(op.vmOp);
 			makeAssignment(xr);
 			emit(Processor::POP_OP, 1);
 			xr = ExpressionResult::PUSHED_PRIMITIVE;
@@ -3634,58 +3628,47 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			break;
 		}
 		
-                case ASSIGNMENT: {
-                        assert(!op.primitiveInput);
-                        assert(!op.primitiveOutput);
-                        if (xr.t == ExpressionResult::PROPERTY) {
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::RESOLVE_PROPERTY_OP);
-                        } else if (xr.t == ExpressionResult::NAMED) {
-                                emitWithConstant(Processor::TYPEOF_NAMED_OP, xr.v);
-                                emit(Processor::POP_OP, 1);
-                        } else if (xr.t == ExpressionResult::LOCAL) {
-                                emit(Processor::READ_LOCAL_OP, xr.v.toInt());
-                                emit(Processor::POP_OP, 1);
-                        }
-                        const ExpressionResult rxr = makeRValue(operand(op), false);
-                        makeAssignment(xr);
-                        xr = rxr;
-                        break;
-                }
-                case COMPOUND_ASSIGNMENT: {
-                        assert(op.primitiveInput);
-                        assert(op.primitiveOutput);
-                        const Processor::Opcode primitiveOp
-                                        = (op.vmOp == Processor::ADD_OP ? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
-                        if (xr.t == ExpressionResult::PROPERTY) {
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::RESOLVE_PROPERTY_OP);
-                                emit(Processor::REPUSH_2_OP);
-                        }
-                        makeRValue(xr, true, primitiveOp);
-                        makeRValue(operand(op), true, primitiveOp);
-                        emit(op.vmOp);
-                        makeAssignment(xr);
-                        xr = ExpressionResult::PUSHED_PRIMITIVE;
-                        break;
-                }
+			   case ASSIGNMENT: {
+					   assert(!op.primitiveInput);
+					   assert(!op.primitiveOutput);
+					   if (xr.t == ExpressionResult::PROPERTY) {
+							   emit(Processor::RESOLVE_PROPERTY_OP);
+					   }
+					   const ExpressionResult rxr = makeRValue(operand(op), false);
+					   makeAssignment(xr);
+					   xr = rxr;
+					   break;
+			   }
+			
+			   case COMPOUND_ASSIGNMENT: {
+					   assert(op.primitiveInput);
+					   assert(op.primitiveOutput);
+					   const Processor::Opcode primitiveOp
+									   = (op.vmOp == Processor::ADD_OP ? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
+					   if (xr.t == ExpressionResult::PROPERTY) {
+							   emit(Processor::RESOLVE_PROPERTY_OP);
+							   emit(Processor::REPUSH_2_OP);
+					   }
+					   makeRValue(xr, true, primitiveOp);
+					   makeRValue(operand(op), true, primitiveOp);
+					   emit(op.vmOp);
+					   makeAssignment(xr);
+					   xr = ExpressionResult::PUSHED_PRIMITIVE;
+					   break;
+			   }
 
 		case PROPERTY_BRACKETS: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, false);
 			emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
 			const bool didAcceptInOperator = acceptInOperator;
-			acceptInOperator = true;
-			makeRValue(operand(op), false);
-			emit(Processor::OBJ_TO_STRING_OP);
-			acceptInOperator = didAcceptInOperator;
-			xr = ExpressionResult(ExpressionResult::PROPERTY);
-			break;
-		}
+				acceptInOperator = true;
+				makeRValue(operand(op), false);
+				emit(Processor::OBJ_TO_STRING_OP);
+				acceptInOperator = didAcceptInOperator;
+				xr = ExpressionResult(ExpressionResult::PROPERTY);
+				break;
+}
 		
 		default: assert(0);
 	}
@@ -4835,9 +4818,9 @@ struct Support {
 		return (argc >= 2 ? Value(std::atan2(argv[0].toDouble(), argv[1].toDouble())) : NAN_VALUE);
 	}
 
-	   static Value pow(Runtime&, Processor&, UInt32 argc, const Value* argv, Object*) {
-			   return (argc >= 2 ? Value(std::pow(argv[0].toDouble(), argv[1].toDouble())) : NAN_VALUE);
-	   }
+	static Value pow(Runtime&, Processor&, UInt32 argc, const Value* argv, Object*) {
+		return (argc >= 2 ? Value(std::pow(argv[0].toDouble(), argv[1].toDouble())) : NAN_VALUE);
+	}
 
 	static Value parseFloat(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 1) {

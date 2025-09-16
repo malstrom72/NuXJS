@@ -13,8 +13,6 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 - Every created function has a writable, enumerable, and configurable `name` property.
 - Evaluation order of member expressions follows the ES3 order (object and arguments are evaluated before selecting the member).
 - When the identifier of a `catch` clause is called as a function, its `this` value becomes the global object.
-- Assignments evaluate the right-hand side before resolving the reference on the left-hand side.
-- Property access may convert the property key before converting the base object.
 - The lookahead operators `?=` and `?!` in regular expressions behave like ES5 assertions and cannot be quantified as in ES3.
 - Case-insensitive ranges in regular expressions and zero-length captures inside repeats may not perfectly match other engines.
 - A semicolon is required after `do ... while` statements.
