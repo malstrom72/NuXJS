@@ -39,10 +39,8 @@ Each milestone must be completed in order and `timeout 600 ./build.sh` must succ
 - [x] Ensure regression scenarios (`assignmentNullBaseBracketLeftFirst.io`, `assignmentUndefinedBaseBracketLeftFirst.io`, `postfixIncrementNullBaseBracketLeftFirst.io`, etc.) observe the ES3 ordering and pass without key-side effects.
 - [x] Run `timeout 600 ./build.sh`.
 
-## Milestone 6 – Reference validation for non-property assignments
-- [ ] Ensure variable and unqualified assignments resolve their left-hand references before evaluating the right-hand side, as mandated by ES3 §11.13.1, the scope-chain rules in §10.1.4, and the `PutValue` algorithm in §8.7.2.【F:docs/specs/ECMA-262 3.md†L2879-L2884】【F:docs/specs/ECMA-262 3.md†L1770-L1782】【F:docs/specs/ECMA-262 3.md†L1438-L1446】
-- [ ] Update regression coverage (`tests/unconforming/rightSideBeforeAssignmentRef.io`, `testsBroken/unconforming/rightSideBeforeAssignmentRef.io`) to confirm the right-hand side no longer executes when the reference is unresolved.
-- [ ] Run `timeout 600 ./build.sh`.
+## Milestone 6 – Reference validation for non-property assignments *(intentionally retained ES5.1 order)*
+NuXJS intentionally keeps the ES5.1 simple-assignment ordering where the right-hand side executes before the target reference is validated. This matches the modern specification and is documented in the [Assignment](evaluationOrderReport.md#assignment) section of `evaluationOrderReport.md`. No additional engineering work is planned for this milestone.
 
 ## Milestone 7 – ES5.1: Call-target resolution *(future)*
 - [ ] Resolve method targets before argument evaluation.
