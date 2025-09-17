@@ -1702,11 +1702,15 @@ bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flag
 		}
 		sliceDenseVector(rt, key);
 	} else if (key.equalsString(LENGTH_STRING)) {
-		UInt32 newLength;
-		if (!v.toArrayIndex(newLength)) {
+		double rawLength = v.toDouble();
+		if (isNaN(rawLength) || rawLength < 0.0 || rawLength > 4294967295.0) {
 			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
 		}
-		return updateLength(newLength);
+		UInt32 coercedLength = static_cast<UInt32>(rawLength);
+		if (rawLength != static_cast<double>(coercedLength)) {
+			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
+		}
+		return updateLength(coercedLength);
 	}
 	return super::setOwnProperty(rt, key, v, flags);
 }
@@ -3699,7 +3703,7 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 }
 
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
-const Int32 MAX_NESTED_EXPRESSION_DEPTH = 64;
+const Int32 MAX_NESTED_EXPRESSION_DEPTH = 512;
 
 bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
 	if (nestCounter >= MAX_NESTED_EXPRESSION_DEPTH) {
