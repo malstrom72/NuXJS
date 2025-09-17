@@ -1,6 +1,6 @@
 # ES3 Test262 Failures Analysis
 
-_Updated after reviewing `fails` on September 17, 2024._
+_Updated after verifying `fails` on September 17, 2024._
 
 Running the ES3 portion of Test262 currently leaves 34 tests failing. Optional URI helpers (`decodeURI`, `encodeURI`, and their component variants) remain excluded, as do suites tagged `bad_test` or `not_es3`. The intentionally unconforming regression test `unconforming/readOnlyNumericProps` also stays out of these counts.
 
@@ -14,293 +14,153 @@ Running the ES3 portion of Test262 currently leaves 34 tests failing. Optional U
 | RegExp | §15.10 | 16 |
 | String | §15.5 | 7 |
 
-The lists below group the remaining failing Test262 cases by feature area, summarize the behavioural gap, and quote the ES3 semantics NuXJS still needs to implement.
+Each subsection below lists the outstanding failures, quotes the relevant ECMA-262 3rd edition clauses, and documents what the NuXJS sources are doing today. File paths refer to the checked-in sources in this repository so that fixes can be planned concretely.
 
 ### Array (6)
-* `built-ins/Array/prototype/pop/S15.4.4.6_A4_T2` — Borrowing `Array.prototype.pop` for a plain object does not delete the last own index, so inherited values stay hidden even though the algorithm requires removing the element before shrinking `length`.
 
-  **Spec excerpt (§15.4.4.6):**
-  > - 6. Call ToString(Result(2)–1).
-  > - 7. Call the [[Get]] method of this object with argument Result(6).
-  > - 8. Call the [[Delete]] method of this object with argument Result(6).
-  > - 9. Call the [[Put]] method of this object with arguments "**length**" and (Result(2)–1).
+1. **`built-ins/Array/prototype/pop/S15.4.4.6_A4_T2`**  
+   **Spec excerpt (ES3 §15.4.4.6):**
+   > 6. Call ToString(Result(2)–1).  
+   > 7. Call the [[Get]] method of this object with argument Result(6).  
+   > 8. Call the [[Delete]] method of this object with argument Result(6).  
+   > 9. Call the [[Put]] method of this object with arguments "length" and (Result(2)–1).
+   
+   **NuXJS diagnosis:** `Array.prototype.pop` lives in `src/stdlib.js` (around line 608). The implementation simply reads the element at `--len`, assigns it to `v`, and then writes `this.length = len`. When the method is borrowed for a plain object (the Test262 scenario) the write to `length` does not delete the numeric property, so the inherited value never reappears.  
+   **Implementation notes:** Update `pop` so that when `len > 0` it explicitly calls `delete this[len]` (or `if (len in this) { v = this[len]; delete this[len]; }`) before storing the shortened length. The change only needs to touch `src/stdlib.js`.
 
-  **NuXJS remediation:** Extend the generic branch in `ArrayPrototypePop` (see `src/StdArray.cpp`) so that when the receiver is not an Array instance it walks the property map and invokes `DeleteProperty` on the last key before writing the new `length` value.
+2. **`built-ins/Array/prototype/push/S15.4.4.7_A2_T2`**  
+   **Spec excerpt (ES3 §15.4.4.7 & §15.4.5.1):**
+   > 1. Call the [[Get]] method of this object with argument "length".  
+   > 2. Let *n* be the result of calling ToUint32(Result(1)).  
+   > 3. Get the next argument …; if there are no more arguments, go to step 7.  
+   > 4. Call the [[Put]] method … with arguments ToString(*n*) and Result(3).  
+   > …  
+   > §15.4.5.1 Step 13: If ToUint32(*V*) is not equal to ToNumber(*V*), throw a RangeError exception.
+   
+   **NuXJS diagnosis:** The implementation at `src/stdlib.js` line 618 computes `offset = uint32(this.length)` and never checks the original numeric value. When `length` is `Infinity` the helper returns `0`, the push writes at index `0`, and the array shrinks instead of throwing.  
+   **Implementation notes:** Capture the raw numeric length (`var raw = +this.length;`) before coercion, compute `offset = uint32(raw);`, and compare `offset` with `raw`. If they differ, throw a `RangeError` via the existing `rangeError` helper. This guard goes in `src/stdlib.js`.
 
-* `built-ins/Array/prototype/push/S15.4.4.7_A2_T2` — When the receiver's `length` is `Infinity`, `push` should throw `TypeError` after the [[Put]] check detects that `ToUint32(length)` differs from `ToNumber(length)`, but NuXJS truncates `length` and continues.
+3. **`built-ins/Array/prototype/shift/S15.4.4.9_A3_T3`**  
+   **Spec excerpt (ES3 §15.4.4.9):**
+   > 1. Call the [[Get]] method of this object with argument "length".  
+   > 2. Call ToUint32(Result(1)).  
+   > 3. If Result(2) is not zero, go to step 6.  
+   > 4. Call the [[Put]] method of this object with arguments "length" and Result(2).  
+   > 5. Return undefined.
+   
+   **NuXJS diagnosis:** In `src/stdlib.js` the current body reads `if (len = uint32(this.length)) { ... }` and therefore treats negative or non-integral lengths as large positive values. The Test262 case with `length = -4294967294` shifts elements instead of returning `undefined`.  
+   **Implementation notes:** Read `var raw = +this.length; var len = uint32(raw);` and, when `len === 0` or `raw <= 0` or the two values differ, immediately write `this.length = len; return undefined;`. The check belongs at the top of the function in `src/stdlib.js`.
 
-  **Spec excerpt (§15.4.5.1):**
-  > - 12. Compute ToUint32(*V*).
-  > - 13. If Result(12) is not equal to ToNumber(*V*), throw a **RangeError** exception.
-  > - 14. For every integer *k* that is less than the value of the **length** property of *A* but not less than Result(12), if *A* itself has a property (not an inherited property) named ToString(*k*), then delete that property.
-  > - 15. Set the value of property *P* of *A* to Result(12).
+4. **`built-ins/Array/prototype/shift/S15.4.4.9_A4_T2`**  
+   **Spec excerpt (ES3 §15.4.4.9 steps 15–19):**
+   > 15. Call the [[Delete]] method of this object with argument Result(10).  
+   > …  
+   > 18. Call the [[Delete]] method of this object with argument ToString(Result(2)–1).  
+   > 19. Call the [[Put]] method of this object with arguments "length" and (Result(2)–1).
+   
+   **NuXJS diagnosis:** The same `shift` implementation assumes setting `this.length = len` deletes trailing elements. That is true for actual arrays but not for borrowed invocations on generic objects, so property `1` survives and hides the prototype value.  
+   **Implementation notes:** After the element-moving loop, call `delete this[len];` (or delete inside the loop when a slot is moved). This ensures prototype values become visible. Edit `src/stdlib.js`.
 
-  **NuXJS remediation:** Guard `ArrayPrototypePush` with a length conversion helper that first calls `ToUint32` and compares the double result; if they differ return a `RangeError` using `ThrowRangeError` instead of silently clamping.
+5. **`built-ins/Array/prototype/toLocaleString/S15.4.4.3_A1_T1`**  
+   **Spec excerpt (ES3 §15.4.4.3):**
+   > 1. Call the [[Get]] method of this object with argument "length".  
+   > …  
+   > 6. Call the [[Get]] method of this object with argument "0".  
+   > 7. If Result(6) is undefined or null, use the empty string; otherwise, call ToObject(Result(6)).toLocaleString().
+   
+   **NuXJS diagnosis:** `Array.prototype.toLocaleString` in `src/stdlib.js` is currently aliased to `Object.prototype.toLocaleString`, so element-specific `toLocaleString` methods never run.  
+   **Implementation notes:** Replace the alias with the ES3 loop: iterate `k` from `0` to `length - 1`, fetch each element via `this[k]`, and when the value is neither `undefined` nor `null` call `ToObject(value).toLocaleString()` before concatenating. All of this work happens in `src/stdlib.js`.
 
-* `built-ins/Array/prototype/shift/S15.4.4.9_A3_T3` — Negative or non-integral `length` values should coerce to `0` before any element movement, but the current implementation reads the bogus length and shifts data.
-
-  **Spec excerpt (§15.4.4.9):**
-  > - 1. Call the [[Get]] method of this object with argument "**length**".
-  > - 2. Call ToUint32(Result(1)).
-  > - 3. If Result(2) is not zero, go to step 6.
-  > - 4. Call the [[Put]] method of this object with arguments "**length**" and Result(2).
-  > - 5. Return **undefined**.
-
-  **NuXJS remediation:** Before iterating indices in `ArrayPrototypeShift`, normalize the retrieved `length` with `ToUint32` and store it back when the conversion yields zero to avoid acting on the raw floating-point value.
-
-* `built-ins/Array/prototype/shift/S15.4.4.9_A4_T2` — Borrowed `shift` fails to delete the vacated slot, so prototype values remain shadowed instead of reappearing as required by the tail-cleanup steps.
-
-  **Spec excerpt (§15.4.4.9):**
-  > - 15. Call the [[Delete]] method of this object with argument Result(10).
-  > - 16. Increase *k* by 1.
-  > - 17. Go to step 8.
-  > - 18. Call the [[Delete]] method of this object with argument ToString(Result(2)–1).
-  > - 19. Call the [[Put]] method of this object with arguments "**length**" and (Result(2)–1).
-
-  **NuXJS remediation:** Mirror the spec's deletion loop for generic receivers by calling `DeleteProperty` on each shifted index and again on the final slot after the copy loop completes.
-
-* `built-ins/Array/prototype/toLocaleString/S15.4.4.3_A1_T1` — Element `toLocaleString` hooks are skipped entirely; ES3 requires calling each element's locale method while assembling the string.
-
-  **Spec excerpt (§15.4.4.3):**
-  > - 6. Call the [[Get]] method of this object with argument **"0"**.
-  > - 7. If Result(6) is **undefined** or **null**, use the empty string; otherwise, call ToObject(Result(6)).toLocaleString().
-  > - 12. Call the [[Get]] method of this object with argument ToString(*k*).
-  > - 13. If Result(12) is **undefined** or **null**, use the empty string; otherwise, call ToObject(Result(12)).toLocaleString().
-
-  **NuXJS remediation:** Update the array join helper used by `toLocaleString` to call `ToObject(element)` and then look up `toLocaleString` via the property cache so that custom element implementations execute.
-
-* `built-ins/Array/prototype/toLocaleString/S15.4.4.3_A3_T1` — When `toLocaleString` is borrowed, inherited indexed properties are ignored; the algorithm must iterate across all indices defined on the receiver.
-
-  **Spec excerpt (§15.4.4.3):**
-  > - 9. Let *k* be **1**.
-  > - 10. If *k* equals Result(2), return *R*.
-  > - 11. Let *S* be a string value produced by concatenating *R* and Result(4).
-  > - 12. Call the [[Get]] method of this object with argument ToString(*k*).
-  > - 13. If Result(12) is **undefined** or **null**, use the empty string; otherwise, call ToObject(Result(12)).toLocaleString().
-  > - 14. Let *R* be a string value produced by concatenating *S* and Result(13).
-
-  **NuXJS remediation:** Switch the index traversal to use `HasProperty`/`GetProperty` on the receiver object so inherited data properties contribute to the output the same way dense array slots do.
+6. **`built-ins/Array/prototype/toLocaleString/S15.4.4.3_A3_T1`**  
+   **Spec excerpt:** same as item 5, steps 9–14 emphasise using `[[Get]]` so inherited indices participate.  
+   **NuXJS diagnosis:** Because the implementation delegates to `Object.prototype.toLocaleString`, it neither iterates numeric indices nor consults inherited properties, so prototype elements never execute their locale hooks.  
+   **Implementation notes:** The fix from item 5 (explicit iteration with `HasProperty`/`[[Get]]`) simultaneously resolves this case.
 
 ### Date (2)
-* `built-ins/Date/TimeClip_negative_zero` — `TimeClip` must coerce −0 to +0 by adding `+0`, but NuXJS preserves −0 so dividing by the result still yields `-Infinity`.
 
-  **Spec excerpt (§15.9.1.14):**
-  > - 1. If *time* is not finite, return **NaN**.
-  > - 2. If abs(Result(1)) > **8.64 x 10<sup>15</sup>**, return **NaN**.
-  > - 3. Return an implementation-dependent choice of either ToInteger(Result(2)) or ToInteger(Result(2)) + (**+0**). (Adding a positive zero converts −**0** to **+0**.)
+7. **`built-ins/Date/TimeClip_negative_zero`**  
+   **Spec excerpt (ES3 §15.9.1.14):**
+   > Return an implementation-dependent choice of either ToInteger(Result(2)) or ToInteger(Result(2)) + (+0). (Adding a positive zero converts −0 to +0.)
+   
+   **NuXJS diagnosis:** `timeClip` in `src/stdlib.js` is currently `return (!$isFinite(z) || abs(z) > 8.64e15 ? $NaN : int(z) + 0);`. In practice `int(z)` returns `-0` and the `+ 0` is not normalising the sign, so `new Date(-0).getTime()` yields `-0`.  
+   **Implementation notes:** Store the truncated value in a local (for example `var clipped = int(z);`) and explicitly return `clipped === 0 ? 0 : clipped;`. This makes the positive-zero branch obvious and fixes the observable behaviour.
 
-  **NuXJS remediation:** In `TimeClip`, explicitly add `+0.0` before returning the clipped value so the sign bit is cleared when the integer round-trip produces negative zero.
-
-* `built-ins/Date/prototype/setFullYear/15.9.5.40_1` — `Date.prototype.setFullYear` should reject non-Date receivers; the current implementation accepts `Date.prototype` itself instead of throwing `TypeError`.
-
-  **Spec excerpt (§15.9.5):**
-  > None of these functions are generic; a **TypeError** exception is thrown if the **this** value is not an object for which the value of the internal [[Class]] property is **"Date"**.
-
-  **NuXJS remediation:** Add a guard at the top of `DatePrototypeSetFullYear` that checks `thisValue->IsDate()` (or the internal [[Class]] tag) and routes failures through `ThrowTypeError`.
+8. **`built-ins/Date/prototype/setFullYear/15.9.5.40_1`**  
+   **Spec excerpt (ES3 §15.9.5):**
+   > None of these functions are generic; a TypeError exception is thrown if the this value is not an object for which the value of the internal [[Class]] property is "Date".
+   
+   **NuXJS diagnosis:** `setFullYear` in `src/stdlib.js` ultimately calls `setDateValue(this, …)` which only checks `$getInternalProperty(this, "class") === "Date"`. The prototype object is a `GenericWrapper` tagged "Date", so the method happily mutates it instead of throwing.  
+   **Implementation notes:** Strengthen `setDateValue` (also in `src/stdlib.js`) to require that the receiver is an actual instance (e.g. reject when `this === support.prototypes.Date` or when `$getInternalProperty(this, "value")` is `undefined`). Throw `typeError("this is not a Date object")` in that branch.
 
 ### Function (1)
-* `built-ins/Function/prototype/S15.3.4_A5` — ES3 forbids `Function.prototype` from exposing [[Construct]], but NuXJS allows `new Function.prototype()` and returns an object instead of throwing `TypeError`.
 
-  **Spec excerpt (§15.3):**
-  > None of the built-in functions described in this section shall implement the internal [[Construct]] method unless otherwise specified in the description of a particular function.
-
-  **NuXJS remediation:** Ensure the shared `BuiltinFunctionObject` used for `Function.prototype` sets its `Construct` callback pointer to `nullptr` and that `DoConstruct` reports a `TypeError` when invoked on non-constructible builtins.
+9. **`built-ins/Function/prototype/S15.3.4_A5`**  
+   **Spec excerpt (ES3 §15.3):**
+   > None of the built-in functions described in this section shall implement the internal [[Construct]] method unless otherwise specified.
+   
+   **NuXJS diagnosis:** `Runtime::FunctionPrototypeFunction` (defined in `src/NuXJS.cpp` around line 4600) inherits the default `Function::construct`, so `new Function.prototype()` succeeds and returns an object.  
+   **Implementation notes:** Override `FunctionPrototypeFunction::construct` to throw a `TypeError` (mirroring the behaviour in `SeparateConstructorFunction`) so attempts to construct `Function.prototype` fail as required.
 
 ### Object (2)
-* `built-ins/Object/defineProperty/15.2.3.6-4-127` — Defining `length` with `value: false` should coerce to `0`, truncate the array, and succeed. NuXJS instead throws `RangeError: Invalid array length`.
-* `built-ins/Object/defineProperty/15.2.3.6-4-128` — Likewise, setting `length` to `true` should produce `1`; the engine raises the same `RangeError` instead of updating the array length.
 
-  **Spec excerpt (§15.4.5.1):**
-  > - 12. Compute ToUint32(*V*).
-  > - 13. If Result(12) is not equal to ToNumber(*V*), throw a **RangeError** exception.
-  > - 14. For every integer *k* that is less than the value of the **length** property of *A* but not less than Result(12), if *A* itself has a property (not an inherited property) named ToString(*k*), then delete that property.
-  > - 15. Set the value of property *P* of *A* to Result(12).
-
-  **NuXJS remediation (4-127):** Tweak the array `[[DefineOwnProperty]]` fast path to reuse the `ArraySetLength` helper so values are coerced through `ToUint32` before the RangeError check and the shrink loop runs when the coerced integer is smaller.
-  **NuXJS remediation (4-128):** The same change covers boolean `true`; add a regression asserting the coerced length becomes `1` instead of throwing.
+10. **`built-ins/Object/defineProperty/15.2.3.6-4-127`** and **`15.2.3.6-4-128`**  
+    **Spec excerpt (ES3 §15.4.5.1 steps 12–15):**
+    > 12. Compute ToUint32(*V*).  
+    > 13. If Result(12) is not equal to ToNumber(*V*), throw a RangeError exception.  
+    > 14. … delete own properties with indexes ≥ Result(12).  
+    > 15. Set the value of property *P* of *A* to Result(12).
+    
+    **NuXJS diagnosis:** In `JSArray::setOwnProperty` (`src/NuXJS.cpp` line ~1700) the fast path calls `v.toArrayIndex(newLength)`. That helper only accepts numeric and string inputs, so booleans (`false` and `true`) trigger the RangeError that Test262 observes.  
+    **Implementation notes:** Replace the `toArrayIndex` check with a call that performs ToNumber/ToUint32 faithfully: e.g. `double raw = v.toDouble(); UInt32 coerced; if (!Value(raw).toArrayIndex(coerced) || static_cast<double>(coerced) != raw) { ... }`. After coercion, reuse the existing shrink logic.
 
 ### RegExp (16)
-* `built-ins/RegExp/S15.10.2.8_A3_T15` — Deeply nested capturing groups are truncated; ES3 requires tracking every capture slot when matching.
 
-  **Spec excerpt (§15.10.2.1):**
-  > - *NCapturingParens* is the total number of left capturing parentheses (i.e. the total number of times the *Atom* :: **(** *Disjunction* **)** production is expanded) in the pattern.
-  > - A *State* is an ordered pair (*endIndex*, *captures*) where *endIndex* is an integer and *captures* is an internal array of *NCapturingParens* values. … The *n*th element of *captures* is either a string that represents the value obtained by the *n*th set of capturing parentheses or **undefined** if the *n*th set of capturing parentheses hasn't been reached yet.
+11. **`built-ins/RegExp/S15.10.2.8_A3_T15`**  
+    **Spec excerpt (ES3 §15.10.2.1):**
+    > A State is an ordered pair (*endIndex*, *captures*) where *captures* is an internal array of *NCapturingParens* values. … The *n*th element of *captures* is either a string … or undefined if the *n*th set … hasn't been reached yet.
+    
+    **NuXJS diagnosis:** Deeply nested capture groups exhaust the compiler limit in `Compiler::optionalExpression`. The constant `MAX_NESTED_EXPRESSION_DEPTH` (defined in `src/NuXJS.cpp` at line 3693) is 64, so compiling the 200-group pattern throws `RangeError: Internal compiler limitations reached…`.  
+    **Implementation notes:** Raise `MAX_NESTED_EXPRESSION_DEPTH` (and the associated safety checks) high enough to cover the Test262 input, or refactor the regex compiler so it counts parenthesis depth separately from general expression nesting.
 
-  **NuXJS remediation:** Resize the backtracking state object's capture vector to `NCapturingParens` when compiling the pattern so nested groups always have reserved slots and the matcher stores results without clipping.
-
-* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T2` — Alternation bookkeeping drops captures that should be `undefined`, yielding the wrong match array for `/((1)|(12))((3)|(23))/`.
-
-  **Spec excerpt (§15.10.6.2 & §15.10.2.1):**
-  > - 12. Let *n* be the length of *r*'s *captures* array. (This is the same value as 15.10.2.1's *NCapturingParens*.)
-  > - 13. Return a new array … For each integer *i* such that *I* > 0 and *I* ≤ *n*, set the property named ToString(*i*) to the *i*th element of *r*'s *captures* array.
-  > - A *State* … holds the results of capturing parentheses. The *n*th element of *captures* is either a string … or **undefined** if the *n*th set of capturing parentheses hasn't been reached yet.
-
-  **NuXJS remediation:** Audit the backtracking engine so that when an alternative fails it preserves the `captures` array length and explicitly writes `Value::Undefined` into skipped groups instead of truncating the vector.
-
-* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T3` — `ToString` mishandles `new Object("abcdefghi")`, producing `[object Object]` instead of the wrapped string.
-
-  **Spec excerpt (§15.10.6.2 & §9.8):**
-  > - 1. Let *S* be the value of ToString(*string*).
-  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
-
-  **NuXJS remediation:** Change the entry conversion in `RegExpExec` to call `ToString` on the `this` argument before handing it to the matcher, using `ToPrimitiveString` so wrapper objects unwrap properly.
-
-* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T4` — Objects whose `toString` returns a primitive are ignored; the engine matches against `[object Object]`.
-
-  **Spec excerpt (§15.10.6.2 & §9.8):**
-  > - 1. Let *S* be the value of ToString(*string*).
-  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
-
-  **NuXJS remediation:** After calling the object's `toString`, feed the result through the generic `ToString` helper so primitive return values are honoured instead of falling back to `[object Object]`.
-
-* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T5` — `ToPrimitive` with hint `String` is incomplete; if `toString` returns an object, `valueOf` should run next before failing.
-
-  **Spec excerpt (§9.8 & §8.6.2.6):**
-  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
-  > When the [[DefaultValue]] method of *O* is called with hint String, … Call the [[Get]] method … "**toString**" … If Result(3) is a primitive value, return Result(3). … Call the [[Get]] method … "**valueOf**" … If Result(7) is a primitive value, return Result(7). … Throw a **TypeError** exception.
-
-  **NuXJS remediation:** Implement the full `ToPrimitive(obj, StringHint)` algorithm so that when `toString` yields a non-primitive we look up and invoke `valueOf` before throwing.
-
-* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T10` — Number primitives such as `1.01` are not stringified, so `/1|12/` fails to match.
-
-  **Spec excerpt (§15.10.6.2 & §9.8.1):**
-  > - 1. Let *S* be the value of ToString(*string*).
-  > - 2. If *m* is **+0** or −**0**, return the string **"0"**. … (Rules for ToString applied to the Number type.)
-
-  **NuXJS remediation:** Call `ToString` on primitive number inputs before running the matcher instead of relying on implicit conversion.
-
-* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T11` — Number objects (e.g. `new Number(1.012)`) likewise skip `ToString`, preventing `/2|12/` from seeing "1.012".
-
-  **Spec excerpt (§15.10.6.2 & §9.8):**
-  > - 1. Let *S* be the value of ToString(*string*).
-  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
-
-  **NuXJS remediation:** Ensure wrapper numbers go through `ToPrimitive(obj, StringHint)` followed by `ToString`, matching the primitive path.
-
-* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T12` — Objects whose `toString` returns a number (e.g. `Math.PI`) need a second `ToString` to turn that result into text; NuXJS leaves the numeric value untouched.
-
-  **Spec excerpt (§9.8 & §9.8.1):**
-  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
-  > - 2. If *m* is **+0** or −**0**, return the string **"0"**. … (Rules for ToString applied to the Number type.)
-
-  **NuXJS remediation:** After `ToPrimitive`, run the intermediate value through `ToString` so numeric return values become strings before matching.
-
-* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T13` — Boolean primitives are not stringified, so `/t[a-b|q-s]/` misses the literal "true".
-
-  **Spec excerpt (§15.10.6.2 & §9.8):**
-  > - 1. Let *S* be the value of ToString(*string*).
-  > | Boolean | If the argument is true, then the result is "true".<br>If the argument is false, then the result is "false". |
-
-  **NuXJS remediation:** Apply `ToString` to primitive booleans before invoking the regex engine.
-
-* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T14` — Boolean objects also skip coercion, blocking `/AL|se/` from matching the wrapped "false".
-
-  **Spec excerpt (§15.10.6.2 & §9.8):**
-  > - 1. Let *S* be the value of ToString(*string*).
-  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
-
-  **NuXJS remediation:** Reuse the `ToPrimitive` + `ToString` pipeline for Boolean wrappers so the backing string is exposed.
-
-* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T15` — When `toString` returns the boolean `false`, NuXJS fails to coerce it to "false" before matching `/LS/i`.
-
-  **Spec excerpt (§8.6.2.6 & §9.8):**
-  > When the [[DefaultValue]] method of *O* is called with hint String, … Call the [[Get]] method … "**toString**" … If Result(3) is a primitive value, return Result(3). …
-  > | Boolean | If the argument is true, then the result is "true".<br>If the argument is false, then the result is "false". |
-
-  **NuXJS remediation:** After invoking the user-supplied `toString`, normalize the result with `ToString` so boolean primitives convert to their textual form.
-
-* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T17` — `null` inputs are not stringified; `/ll|l/` should match "null" at index 2.
-
-  **Spec excerpt (§15.10.6.2 & §9.8):**
-  > - 1. Let *S* be the value of ToString(*string*).
-  > | Null | "null" |
-
-  **NuXJS remediation:** Extend the entry coercion helper to detect `Null` and substitute the literal string "null" before matching.
-
-* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T18` — `undefined` inputs are not stringified; `/nd|ne/` should find "nd" in "undefined".
-
-  **Spec excerpt (§15.10.6.2 & §9.8):**
-  > - 1. Let *S* be the value of ToString(*string*).
-  > | Undefined | "undefined" |
-
-  **NuXJS remediation:** Same as above, map the `Undefined` type to the literal "undefined" before dispatching to the matcher.
-
-* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T19` — `void 0` hits the same coercion gap, preventing `/e{1}/` from matching.
-
-  **Spec excerpt (§15.10.6.2 & §9.8):**
-  > - 1. Let *S* be the value of ToString(*string*).
-  > | Undefined | "undefined" |
-
-  **NuXJS remediation:** The `undefined` path fix above also resolves `void 0`; add regression coverage once the coercion helper is shared.
-
-* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T20` — Referencing an undeclared identifier (which evaluates to `undefined` in the test harness) is not converted to "undefined", so `/[a-f]d/` fails to match "ed".
-
-  **Spec excerpt (§15.10.6.2 & §9.8):**
-  > - 1. Let *S* be the value of ToString(*string*).
-  > | Undefined | "undefined" |
-
-  **NuXJS remediation:** Once the argument coercion always produces a string, undeclared identifiers will reuse the same code path and succeed; no special handling beyond that is required.
-
-* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T21` — Results from function calls that evaluate to `undefined` are left as the primitive value rather than stringified prior to matching `/[a-z]n/`.
-
-  **Spec excerpt (§15.10.6.2 & §9.8):**
-  > - 1. Let *S* be the value of ToString(*string*).
-  > | Undefined | "undefined" |
-
-  **NuXJS remediation:** Same coercion helper fix as T18–T20 ensures return values of `undefined` become the literal string.
+12. **`built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T2` through `…_A1_T21`**  
+    **Spec excerpt (ES3 §15.10.6.2 & §9.8):**
+    > 1. Let *S* be the value of ToString(*string*).  
+    > …  
+    > For Boolean, Number, and String object arguments, the ToString conversion must unwrap the underlying primitive value.
+    
+    **NuXJS diagnosis:** All of the failing cases share the same root cause: the helper `str` in `src/stdlib.js` (`function str(o) { return '' + (isPrimitive(o) ? o : support.toPrimitiveString(o)) }`) does not actually unwrap wrapper objects. In practice `support.toPrimitiveString(o)` returns `'[object Number]'`, `'[object Boolean]'`, or `'[object String]'`. As a result, `/2|12/.exec(new Number(1.012))` searches the literal string `"[object Number]"` (producing match "je" at index 3), `/ll|l/.exec(null)` operates on `"[object Null]"`, and so on. The incorrect coercion also shows up in the capture array—for example `r.input` becomes `"[object String]"` in the nested capture test.  
+    **Implementation notes:** Rework `str` in `src/stdlib.js` to recognise NuXJS wrapper objects explicitly: fetch `$getInternalProperty(o, "class")` and, for known wrappers (`"String"`, `"Number"`, `"Boolean"`), read their internal `"value"` slot before producing the string. This ensures RegExp input, capture substrings, and `input`/`index` metadata line up with the ES3 expectations.
 
 ### String (7)
-* `built-ins/String/prototype/replace/S15.5.4.11_A12` — `String.prototype.replace.call(undefined, …)` should coerce the `this` value to "undefined" before applying the replacement.
 
-  **Spec excerpt (§15.5.4.11):**
-  > Let *string* denote the result of converting the **this** value to a string.
+13. **`built-ins/String/prototype/replace/S15.5.4.11_A12`**  
+    **Spec excerpt (ES3 §15.5.4.11):**
+    > Let *string* denote the result of converting the this value to a string.
+    
+    **NuXJS diagnosis:** `String.prototype.replace.call(undefined, 'd', 'D')` currently returns `[object Object]`. This comes from the same `str` helper—`str(this)` evaluates to `"[object Object]"` instead of `"undefined"`.  
+    **Implementation notes:** Fixing `str` (see item 12) resolves the receiver coercion. Once the helper is correct, the existing concatenation logic produces `"unDefineD"` as required.
 
-  **NuXJS remediation:** In `StringPrototypeReplace`, run `ToString(thisValue)` before dispatching to the shared replace routine so `undefined` and `null` receivers get converted per the spec.
+14. **`built-ins/String/prototype/replace/S15.5.4.11_A1_T12`**  
+    **Spec excerpt (§15.5.4.11 & §9.8):**
+    > Otherwise, let *newstring* denote the result of converting *replaceValue* to a string.
+    
+    **NuXJS diagnosis:** When the replacement object only defines `valueOf` (and it throws), the exception is swallowed and the method returns `[object Object]`. The current implementation only calls `toString` in `objectToPrimitive`, so `valueOf` is never consulted.  
+    **Implementation notes:** Update `objectToPrimitive` in `src/stdlib.js` so that when `toString` returns a non-primitive it falls back to `valueOf`. Propagate any exception instead of continuing.
 
-* `built-ins/String/prototype/replace/S15.5.4.11_A1_T11` — Replacement objects whose `toString` throws must propagate that exception; the engine currently swallows it.
+15. **`built-ins/String/prototype/replace/S15.5.4.11_A1_T11`**  
+    **NuXJS diagnosis:** This test verifies the `toString` path. Once `objectToPrimitive` propagates thrown exceptions (see item 14) the behaviour matches the spec.
 
-  **Spec excerpt (§15.5.4.11 & §9.8):**
-  > Otherwise, let *newstring* denote the result of converting *replaceValue* to a string.
-  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
+16. **`built-ins/String/prototype/replace/S15.5.4.11_A3_T1`**, **`…_A3_T2`**, **`…_A3_T3`**  
+    **Spec excerpt (§15.5.4.11 substitution patterns):**
+    > The sequence "$" followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*th captured substring.
+    
+    **NuXJS diagnosis:** The parser inside `replace` treats `$11` as a literal instead of capture 1 followed by `"1"`, so concatenated strings such as `"$11" + "15"` produce `$1115` instead of `x115`. The switch statement in the replacement helper only considers two digits when the resulting number fits within the capture count; otherwise it falls back to `$` + digit without pushing the extra literal character back into the output.  
+    **Implementation notes:** Adjust the replacement parser (in `src/stdlib.js` inside the `replace` closure) so that when a two-digit reference is too large it emits the first digit’s capture and then appends the second digit as literal text. Also ensure `$1A` and similar cases append the literal suffix.
 
-  **NuXJS remediation:** Remove the blanket try/catch around replacement coercion so exceptions from user hooks propagate; only rethrow as-is after releasing any temporary handles.
+17. **`built-ins/String/prototype/replace/S15.5.4.11_A5_T1`**  
+    **Spec excerpt (§15.10.2.1 & §15.10.2.10):**
+    > An escape sequence of the form "\" followed by a nonzero decimal number *n* matches the result of the *n*th set of capturing parentheses.
+    
+    **NuXJS diagnosis:** The backreference handling in the regex replacement path reads the raw capture slots produced by `regExpExecMethod`. Because those slots currently hold substrings from `"[object String]"` (see item 12) the replacement leaves the original text untouched. Once the `str` coercion is fixed, the correct captures (`"a"` for `\1`) become available and the replacement reduces `"aa,a"` to `"a"`.  
+    **Implementation notes:** No additional work beyond the `str` fix is required here.
 
-* `built-ins/String/prototype/replace/S15.5.4.11_A1_T12` — When `valueOf` throws during replacement value conversion, the error should bubble out, but it is ignored.
-
-  **Spec excerpt (§9.8 & §8.6.2.6):**
-  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
-  > When the [[DefaultValue]] method of *O* is called with hint String, … Call the [[Get]] method … "**toString**" … If Result(3) is a primitive value, return Result(3). … Call the [[Get]] method … "**valueOf**" … If Result(7) is a primitive value, return Result(7). … Throw a **TypeError** exception.
-
-  **NuXJS remediation:** Delegate to a shared `ToStringWithExceptionPropagation` helper so both `toString` and `valueOf` errors escape rather than being replaced with empty strings.
-
-* `built-ins/String/prototype/replace/S15.5.4.11_A3_T1` — `$11` sequences in replacement text must expand to capture 1 followed by the literal "1"; NuXJS keeps the literal `$11`.
-
-  **Spec excerpt (§15.5.4.11):**
-  > | \$ <i>n</i>  | The <i>n</i>th capture, where <i>n</i> is a single digit 1-9 and $\$n$ is not followed by a decimal digit. |
-  > | \$ <i>nn</i> | The $nn^{th}$ capture, where $nn$ is a two-digit decimal number 01-99. |
-
-  **NuXJS remediation:** Adjust the replacement parser to peek ahead for a second digit; when present, form the two-digit capture index, otherwise treat the second character as literal text.
-
-* `built-ins/String/prototype/replace/S15.5.4.11_A3_T2` — The same `$11` parsing bug appears when the suffix is "15".
-
-  **Spec excerpt (§15.5.4.11):**
-  > | \$ <i>n</i>  | The <i>n</i>th capture, where <i>n</i> is a single digit 1-9 and $\$n$ is not followed by a decimal digit. |
-  > | \$ <i>nn</i> | The $nn^{th}$ capture, where $nn$ is a two-digit decimal number 01-99. |
-
-  **NuXJS remediation:** Same parser change as above ensures `$15` resolves to capture 15 while `$1` followed by `5` stays capture 1 plus literal "5".
-
-* `built-ins/String/prototype/replace/S15.5.4.11_A3_T3` — `$11` followed by "A15" also fails to substitute capture 1 correctly.
-
-  **Spec excerpt (§15.5.4.11):**
-  > | \$ <i>n</i>  | The <i>n</i>th capture, where <i>n</i> is a single digit 1-9 and $\$n$ is not followed by a decimal digit. |
-  > | \$ <i>nn</i> | The $nn^{th}$ capture, where $nn$ is a two-digit decimal number 01-99. |
-
-  **NuXJS remediation:** After parsing a `$n` escape, append the next literal chunk even when it begins with an alphabetic character so `$1A` still substitutes capture 1.
-
-* `built-ins/String/prototype/replace/S15.5.4.11_A5_T1` — Backreference handling for `/^(a+)\1*,\1+$/` is incomplete, leaving the original string untouched instead of collapsing to the captured `"a"`.
-
-  **Spec excerpt (§15.10.2.1 & §15.10.2.10):**
-  > - *NCapturingParens* is the total number of left capturing parentheses … The *n*th element of *captures* is either a string … or **undefined** if the *n*th set of capturing parentheses hasn't been reached yet.
-  > An escape sequence of the form **\\** followed by a nonzero decimal number *n* matches the result of the *n*th set of capturing parentheses … If the regular expression has *n* or more capturing parentheses but the *n*th one is **undefined** because it hasn't captured anything, then the backreference always succeeds.
-
-  **NuXJS remediation:** Fix the regex replacement path to read capture groups from the match result's captures array, treating missing entries as empty strings before building the output.
