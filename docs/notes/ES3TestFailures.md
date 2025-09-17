@@ -2,13 +2,13 @@
 
 _Updated after re-running the targeted `fails` bucket on September 17, 2025._
 
-The `fails` manifest now lists ten ES3 Test262 cases across the Object, RegExp, and String built-ins.【F:fails†L1-L59】
+The `fails` manifest now lists five ES3 Test262 cases across the Object, RegExp, and String built-ins.【F:fails†L1-L47】
 
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
 | Object | §15.2, §15.4.5.1 | 2 |
 | RegExp | §15.10 | 1 |
-| String | §15.5.4.11 | 7 |
+| String | §15.5.4.11 | 2 |
 
 Each subsection quotes the relevant ECMA-262 3rd edition requirements and summarises the current NuXJS behaviour. Every fix should ship with a focused regression `.io` test alongside the code change.
 
@@ -17,8 +17,14 @@ Each subsection quotes the relevant ECMA-262 3rd edition requirements and summar
 1. **`built-ins/Array/prototype/push/S15.4.4.7_A3`** and **`…_A4_T2`**  
    `Array.prototype.push` now appends elements before revalidating `length`, allowing the setter to raise the mandated `RangeError` while leaving inserted data visible and permitting borrowed calls on plain objects to extend past `2^32−1`. Focused regressions capture both the array overflow and the generic-object growth scenarios.【F:src/stdlib.js†L655-L668】【F:tests/regression/arrayPushLengthRangeError.io†L1-L8】【F:tests/regression/arrayPushBorrowedLengthOverflow.io†L1-L8】
 
-2. **`built-ins/Function/prototype/S15.3.4_A5`**  
+2. **`built-ins/Function/prototype/S15.3.4_A5`**
    `Runtime::FunctionPrototypeFunction::construct` now raises a `TypeError`, preventing `new Function.prototype()` from creating objects and matching ES3's prohibition on a `[[Construct]]` hook. A regression script asserts the thrown error and message.【F:src/NuXJS.cpp†L4607-L4624】【F:tests/regression/functionPrototypeNotConstructable.io†L1-L9】
+
+3. **`built-ins/String/prototype/replace/S15.5.4.11_A1_T11`** and **`…_A1_T12`**
+   `String.prototype.replace` now coerces the search operand before stringifying `replaceValue`, so user-defined `toString` hooks fire in the ES3-mandated order and propagate search exceptions ahead of replacement coercion. A regression transcript records the evaluation order and verifies the thrown error message.【F:src/stdlib.js†L486-L541】【F:tests/regression/stringReplaceSearchToStringOrder.io†L1-L15】
+
+4. **`built-ins/String/prototype/replace/S15.5.4.11_A3_T1`**, **`…_A3_T2`**, and **`…_A3_T3`**
+   The replacement parser now keeps a two-digit backreference only when the combined index names an existing capture; otherwise the first digit falls back to the single-digit capture and the second digit becomes literal output. This preserves `$12` when a twelfth capture exists while producing `$1` plus `'2'` for patterns with a single group. A focused `.io` script locks in the `$11` and `$1A` behaviours alongside a 12-group sanity check.【F:src/stdlib.js†L500-L516】【F:src/stdlibJS.cpp†L236-L239】【F:tests/regression/stringReplaceTwoDigitBackreference.io†L1-L8】
 
 ### Object (2 remaining)
 
@@ -43,33 +49,17 @@ Each subsection quotes the relevant ECMA-262 3rd edition requirements and summar
 
    **Implementation notes:** Raise the recursion budget (and any matching guard) high enough for the ES3 suites, or refactor `compileRegExp` to track capturing-parenthesis depth independently from expression nesting so patterns with hundreds of groups compile. Ship an `.io` regression test that instantiates the 200-group pattern and verifies that `exec` returns the expected capture array.
 
-### String (7 remaining)
+### String (2 remaining)
 
 4. **`built-ins/String/prototype/replace/S15.5.4.11_A12`**
    **Spec excerpt (ES3 §15.5.4.11):**
    > Let string denote the result of converting the this value to a string.【docs/specs/ECMA-262 3.md†L5015-L5022】
 
-   **NuXJS diagnosis:** When `replace` is borrowed with `this` equal to `undefined`, the runtime has already substituted the global object for the receiver before `str(this)` executes. The conversion therefore yields `"[object Object]"` and the result becomes `"[object Object]"` instead of `"unDefineD"`.【src/stdlib.js†L486-L533】
+   **NuXJS diagnosis:** When `replace` is borrowed with `this` equal to `undefined`, the runtime has already substituted the global object for the receiver before `str(this)` executes. The conversion therefore yields `"[object Object]"` and the result becomes `"[object Object]"` instead of `"unDefineD"`.【F:src/stdlib.js†L486-L541】
 
    **Implementation notes:** Thread the original `this` value into built-ins so `String` methods can apply `ToString` to `undefined`/`null` directly. One approach is to extend the call machinery in `Function::call` to pass both the substituted object and the raw `Value`, adding a helper (e.g. `support.stringThis`) that mirrors ES3’s `ToString` semantics. Add an `.io` regression (`stringReplaceUndefinedReceiver.io`) that asserts `String.prototype.replace.call(undefined, 'd', 'D') === 'unDefineD'`.
 
-5. **`built-ins/String/prototype/replace/S15.5.4.11_A1_T11`** and **`…_A1_T12`**
-   **Spec excerpt (ES3 §15.5.4.11):**
-   > Otherwise, let newstring denote the result of converting replaceValue to a string.【docs/specs/ECMA-262 3.md†L5028-L5037】
-
-   **NuXJS diagnosis:** The implementation converts `replaceValue` to a string before coercing `searchValue`, so a throwing `searchValue.toString` never executes—the engine throws `"inreplaceValue"` instead of the required `"insearchValue"`.【src/stdlib.js†L487-L516】
-
-   **Implementation notes:** Reorder the coercion logic so `searchValue` undergoes `ToString` (or `RegExp` construction) before touching `replaceValue`. Preserve the existing closure cache but delay `str(replaceValue)` until after the search operand resolves. Capture the behaviour with an `.io` test that wires throwing `toString`/`valueOf` implementations onto both operands.
-
-6. **`built-ins/String/prototype/replace/S15.5.4.11_A3_T1`**, **`…_A3_T2`**, **`…_A3_T3`**
-   **Spec excerpt (ES3 §15.5.4.11, replacement table):**
-   > The sequence "$" followed by one or two decimal digits nn (0 < nn ≤ NCaptures) is replaced by the nnth captured substring. ... If nn > m, the result is implementation-defined.【docs/specs/ECMA-262 3.md†L5038-L5062】
-
-   **NuXJS diagnosis:** When encountering `$11`, `$12`, etc., the parser consumes both digits even when the two-digit capture index exceeds the available capture count, producing `$1115` instead of `x115`. The loop in `replaceFunction` never pushes the unused second digit back into the literal output.【src/stdlib.js†L500-L509】
-
-   **Implementation notes:** Adjust the `$`-sequence parser so an oversized two-digit index falls back to the single-digit capture followed by the literal second digit, and ensure cases like `$1A` append the trailing literal text. Add a regression (`stringReplaceTwoDigitBackreference.io`) covering `$11` concatenations and `$1A`.
-
-7. **`built-ins/String/prototype/replace/S15.5.4.11_A5_T1`**
+5. **`built-ins/String/prototype/replace/S15.5.4.11_A5_T1`**
    **Spec excerpt (ES3 §15.10.2.1 & §15.10.2.8):**
    > A State ... stores the start and end of each capturing parenthesis. The backreference \1 retrieves the substring captured by the first group for each iteration.【docs/specs/ECMA-262 3.md†L6835-L6840】【docs/specs/ECMA-262 3.md†L6875-L6904】
 
