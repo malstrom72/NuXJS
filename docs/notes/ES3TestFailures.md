@@ -1,17 +1,37 @@
 # ES3 Test262 Failures Analysis
 
-_Updated after re-running the targeted `fails` cases on September 18, 2025._
+_Updated after re-running the targeted `fails` bucket on September 17, 2025._
 
-After spot-checking the previously failing scripts with `./output/NuXJS`, the Array and Date suites now behave per specification. Eleven ES3 Test262 tests still fail, spanning the Function, Object, RegExp, and String feature areas.
+The `fails` manifest now lists thirteen ES3 Test262 cases spanning the Array, Function, Object, RegExp, and String built-ins.【F:fails†L1-L77】
 
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
+| Array | §15.4.4.7 | 2 |
 | Function | §15.3 | 1 |
 | Object | §15.2, §15.4.5.1 | 2 |
 | RegExp | §15.10 | 1 |
 | String | §15.5.4.11 | 7 |
 
 Each subsection quotes the relevant ECMA-262 3rd edition requirements and summarises the current NuXJS behaviour. Every fix should ship with a focused regression `.io` test alongside the code change.
+
+### Array (2 remaining)
+
+1. **`built-ins/Array/prototype/push/S15.4.4.7_A3`**
+   **Spec excerpt (ES3 §15.4.4.7 & §15.4.5.1):**
+   > When `push` is invoked, it appends each argument via `[[Put]]` on the numeric index, then assigns the new `length`. If updating `length` produces a value whose `ToUint32` differs from `ToNumber`, the algorithm throws a `RangeError`.
+   > The push function is intentionally generic; it does not require that its this value be an Array object.【F:docs/specs/ECMA-262 3.md†L4492-L4511】【F:docs/specs/ECMA-262 3.md†L4784-L4804】
+
+   **NuXJS diagnosis:** `Array.prototype.push` pre-computes `end = offset + argc` and throws a `TypeError` when `end > 4294967295`, so the "x" element is never assigned and the observable exception type is wrong when the `length` property is already `2^32−1`.【F:src/stdlib.js†L655-L668】
+
+   **Implementation notes:** Remove the eager overflow guard, append the arguments first, and then update the `length` property through the same `ToUint32`/`ToNumber` check used by `[[Put]]` so that the setter stores the element, preserves the old `length`, and raises a `RangeError`. Add a regression `.io` script that asserts `x[4294967295] === "x"` and that `push` reports a `RangeError` when the `length` starts at `4294967295`.
+
+2. **`built-ins/Array/prototype/push/S15.4.4.7_A4_T2`**
+   **Spec excerpt (ES3 §15.4.4.7):**
+   > The `push` algorithm simply walks the argument list, calling `[[Put]]` on each successive index and finally writing the numeric result into the `length` property; because the function is intentionally generic, these steps apply to non-Array receivers as well.【F:docs/specs/ECMA-262 3.md†L4492-L4511】
+
+   **NuXJS diagnosis:** The same overflow guard (`end > 4294967295`) rejects non-Array objects that carry a `length` near `2^32`, even though the spec allows `push` to create indices and extend `length` beyond that range on plain objects. The runtime therefore throws `TypeError: Invalid array length` instead of returning `4294967298` and writing the three new properties.【F:src/stdlib.js†L655-L668】
+
+   **Implementation notes:** Detect when the receiver is an actual array before enforcing the `2^32−1` limit, or compute the overflow condition through the array `[[Put]]` path. Ensure plain objects can grow past `2^32−1` while genuine arrays still raise `RangeError` as required. Add an `.io` regression that borrows `push` onto an object with `length = 0xFFFFFFFF` and verifies the returned `length` and the populated numeric keys.
 
 ### Function (1 remaining)
 
