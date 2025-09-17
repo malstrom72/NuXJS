@@ -2115,7 +2115,7 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ GET_PROPERTY_OP			 , "GET_PROPERTY"			 , -1	  , 0 },
 	{ SET_PROPERTY_OP			 , "SET_PROPERTY"			 , -2	  , 0 },
 	{ SET_PROPERTY_POP_OP		 , "SET_PROPERTY_POP"		 , -3	  , 0 },
-	{ RESOLVE_PROPERTY_OP		, "RESOLVE_PROPERTY"	   , 0		, 0 },
+			{ CHECK_RESOLVE_PROPERTY_OP	, "CHECK_RESOLVE_PROPERTY" , 0		, 0 },
 	{ ADD_PROPERTY_OP			 , "ADD_PROPERTY"			 , -1	  , 0 },
 	{ PUSH_ELEMENTS_OP			 , "PUSH_ELEMENTS_OP"		 , 0	  , OpcodeInfo::POP_OPERAND },
 	{ OBJ_TO_PRIMITIVE_OP		 , "OBJ_TO_PRIMITIVE"		 , 0	  , 0 },
@@ -2486,10 +2486,14 @@ void Processor::innerRun() {
 				break;
 			}
 
-			case RESOLVE_PROPERTY_OP: {
-				sp[-1] = convertToObject(sp[-1], false);
-				break;
-			}
+            case CHECK_RESOLVE_PROPERTY_OP: {
+                if (sp[-1].isUndefined() || sp[-1].isNull()) {
+                    error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
+                    return;
+                }
+                sp[-1] = convertToObject(sp[-1], false);
+                break;
+            }
 
 			case OBJ_TO_PRIMITIVE_OP:
 			case OBJ_TO_NUMBER_OP:
@@ -3476,10 +3480,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			assert(op.primitiveOutput);
                         xr = operand(op);
                         if (xr.t == ExpressionResult::PROPERTY) {
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::RESOLVE_PROPERTY_OP);
+								emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
                                 emit(Processor::REPUSH_2_OP);
                         }
                         makeRValue(xr, true);
@@ -3566,10 +3567,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				return false;
 			}
                         if (xr.t == ExpressionResult::PROPERTY) {
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::RESOLVE_PROPERTY_OP);
+								emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
                                 emit(Processor::REPUSH_2_OP);
                         }
                         makeRValue(xr, true);
@@ -3638,10 +3636,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
                         assert(!op.primitiveInput);
                         assert(!op.primitiveOutput);
                         if (xr.t == ExpressionResult::PROPERTY) {
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::RESOLVE_PROPERTY_OP);
+							emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
                         } else if (xr.t == ExpressionResult::NAMED) {
                                 emitWithConstant(Processor::TYPEOF_NAMED_OP, xr.v);
                                 emit(Processor::POP_OP, 1);
@@ -3660,10 +3655,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
                         const Processor::Opcode primitiveOp
                                         = (op.vmOp == Processor::ADD_OP ? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
                         if (xr.t == ExpressionResult::PROPERTY) {
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
-                                emit(Processor::SWAP_OP);
-                                emit(Processor::RESOLVE_PROPERTY_OP);
+							emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
                                 emit(Processor::REPUSH_2_OP);
                         }
                         makeRValue(xr, true, primitiveOp);
