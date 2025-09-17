@@ -1,1350 +1,239 @@
 # ES3 Test262 Failures Analysis
-40 Test262 tests from the ES3 portion of Test262 still fail in NuXJS. All of these tests target ES3 semantics that NuXJS does not yet implement correctly.
+
+_Updated after reviewing `fails` on September 17, 2024._
+
+Running the ES3 portion of Test262 currently leaves 34 tests failing. Optional URI helpers (`decodeURI`, `encodeURI`, and their component variants) remain excluded, as do suites tagged `bad_test` or `not_es3`. The intentionally unconforming regression test `unconforming/readOnlyNumericProps` also stays out of these counts.
+
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
-| Array | §15.4 | 8 |
-| Date | §15.9 | 7 |
+| Array | §15.4 | 6 |
+| Date | §15.9 | 2 |
 | Error | §15.11 | 0 |
 | Function | §15.3 | 1 |
-| RegExp | §15.10 | 17 |
+| Object | §15.2 | 2 |
+| RegExp | §15.10 | 16 |
 | String | §15.5 | 7 |
 
-The table counts only failing Test262 cases. One additional custom test,
-`unconforming/readOnlyNumericProps`, documents an intentional deviation and is
-excluded from these totals.
+The lists below group the remaining failing Test262 cases by feature area, summarize the behavioural gap, and quote the ES3 semantics NuXJS still needs to implement.
 
-Tests that rely on the optional URI helpers (`decodeURI`, `encodeURI`, and their component variants) are excluded: cases targeting these helpers are marked as by_design, while unrelated tests that require them are tagged bad_test.
-Tests expecting the global `NaN`, `Infinity`, or `undefined` properties to be immutable are tagged `not_es3`; ES3 only requires {DontEnum, DontDelete} (§15.1.1.1–15.1.1.3).
+### Array (6)
+* `built-ins/Array/prototype/pop/S15.4.4.6_A4_T2` — Borrowing `Array.prototype.pop` for a plain object does not delete the last own index, so inherited values stay hidden even though the algorithm requires removing the element before shrinking `length`.
 
-Each list below states the ES3 requirement that the corresponding test checks. NuXJS currently violates these behaviors.
+  **Spec excerpt (§15.4.4.6):**
+  > - 6. Call ToString(Result(2)–1).
+  > - 7. Call the [[Get]] method of this object with argument Result(6).
+  > - 8. Call the [[Delete]] method of this object with argument Result(6).
+  > - 9. Call the [[Put]] method of this object with arguments "**length**" and (Result(2)–1).
 
-For spec references, consult the Markdown edition of the ES3 spec at `docs/specs/ECMA-262 3.md`.
+* `built-ins/Array/prototype/push/S15.4.4.7_A2_T2` — When the receiver's `length` is `Infinity`, `push` should throw `TypeError` after the [[Put]] check detects that `ToUint32(length)` differs from `ToNumber(length)`, but NuXJS truncates `length` and continues.
 
-When an item is resolved, check it off and add a brief note citing the ES3 spec section and the regression `.io` test that verifies the fix.
+  **Spec excerpt (§15.4.5.1):**
+  > - 12. Compute ToUint32(*V*).
+  > - 13. If Result(12) is not equal to ToNumber(*V*), throw a **RangeError** exception.
+  > - 14. For every integer *k* that is less than the value of the **length** property of *A* but not less than Result(12), if *A* itself has a property (not an inherited property) named ToString(*k*), then delete that property.
+  > - 15. Set the value of property *P* of *A* to Result(12).
 
-### Array
-- built-ins/Array/arrayIndexTooLarge — property "4294967296" wraps to index 0
-> #### **15.4 Array Objects**
->
-> Array objects give special treatment to a certain class of property names. A property name *P* (in the form of a string value) is an *array index* if and only if ToString(ToUint32(*P*)) is equal to *P* and ToUint32(*P*) is not equal to 2<sup>32</sup>−1.
->
-NuXJS result: assigning `a["4294967296"]=1` sets `a.length` to `1` and stores the value at index `0`.
-Expected: property names ≥2<sup>32</sup> should create ordinary properties, leaving `a.length` at `0` and `a[0]` undefined.
-Plan: Reject property names whose ToUint32 value is ≥2<sup>32</sup>, treating them as normal properties without updating `length`.
-```io
-> a=[]
-> a["4294967296"]=1
-> print(a.length)
-< 0
--
-> print(a[0])
-< undefined
--
-> print(a["4294967296"])
-< 1
--
-```
-See `tests/todo/arrayIndexTooLarge.io` for a regression test.
-  - Fixed
-- [ ] built-ins/Array/S15.4.5.1_A2.1_T1 — P in [4294967295, -1, true]
-> ## **15.4.5.1 [[Put]] (P, V)**
->
-> Array objects use a variation of the [[Put]] method used for other native ECMAScript objects (8.6.2.2).
-		>
-		> Assume *A* is an Array object and *P* is a string.
-		>
-		> When the [[Put]] method of *A* is called with property *P* and value *V*, the following steps are taken:
-		>
-		> - 1. Call the [[CanPut]] method of *A* with name P.
-		> - 2. If Result(1) is **false**, return.
-		> - 3. If *A* doesn't have a property with name *P*, go to step 7.
-		> - 4. If P is **"length"**, go to step 12.
+* `built-ins/Array/prototype/shift/S15.4.4.9_A3_T3` — Negative or non-integral `length` values should coerce to `0` before any element movement, but the current implementation reads the bogus length and shifts data.
 
-NuXJS result: assigning `true` as an index sets `x[1]` and increases length to `2`, leaving `x["true"]` undefined.
-Expected: non-array keys must not affect length and should create a plain property.
-Plan: In the array `[[Put]]` implementation, only string keys matching the array-index definition should adjust `length`; booleans become ordinary properties.
-```io
-> var x=[]
-> x[true]=1
-> print(x.length)
-< 0
--
-> print(x["true"])
-< 1
--
-> print(x[1])
-< undefined
--
-```
-  - Fixed
-- [ ] built-ins/Array/S15.4_A1.1_T1 — Checking for boolean primitive
-				> #### **15.4 Array Objects**
-				>
-				> Array objects give special treatment to a certain class of property names. A property name *P* (in the form of a string value) is an *array index* if and only if ToString(ToUint32(*P*)) is equal to *P* and ToUint32(*P*) is not equal to 2<sup>32</sup>−1. Every Array object has a **length** property whose value is always a nonnegative integer less than 232. The value of the **length** property is numerically greater than the name of every property whose name is an array index; whenever a property of an Array object is created or changed, other properties are adjusted as necessary to maintain this invariant. Specifically, whenever a property is added whose name is an array index, the **length** property is changed, if necessary, to be one more than the numeric value of that array index; and whenever the **length** property is changed, every property whose name is an array index whose value is not smaller than the new length is automatically deleted. This constraint applies only to properties of the Array object itself and is unaffected by **length** or array index properties that may be inherited from its prototype.
+  **Spec excerpt (§15.4.4.9):**
+  > - 1. Call the [[Get]] method of this object with argument "**length**".
+  > - 2. Call ToUint32(Result(1)).
+  > - 3. If Result(2) is not zero, go to step 6.
+  > - 4. Call the [[Put]] method of this object with arguments "**length**" and Result(2).
+  > - 5. Return **undefined**.
 
-NuXJS result: assigning `true` as an index sets `x[1]` and increases length to `2`, leaving `x["true"]` undefined.
-Expected: non-array keys must not affect length and should create a plain property.
-Plan: Per ES3 §15.4, treat `P` as an index only when it is a string and `ToString(ToUint32(P)) === P` with `ToUint32(P) != 2^32−1`; otherwise create an ordinary property and leave `length` unchanged.
-```io
-> var x=[];
-> x[true]=1;
-> print(x.length);
-< 0
--
-> print(x["true"]);
-< 1
--
-> print(x[1]);
-< undefined
--
-```
-See `tests/regression/arrayNonIndexProperties.io` for a regression test.
-  - Fixed
-- built-ins/Array/cantAssignObjectToArrayLength — assigning object to length throws
-	> #### **15.4.5.1 [[Put]] (P, V)**
-	>
-	> When the [[Put]] method of *A* is called with property "length" and value *V*, the following steps are taken:
-	> - 12. Compute ToUint32(*V*).
-	> - 13. If Result(12) is not equal to ToNumber(*V*), throw a **RangeError** exception.
-	>
-NuXJS result: assigning an object with `valueOf` returning `23` to `a.length` throws `RangeError` and leaves `length` at `0`.
-Expected: the object should convert to `23` and set `a.length` to `23`.
-Resolution: supporting object length assignment would require asynchronous conversion; NuXJS leaves this ES3 violation unimplemented.
-Flagged `by_design` in `tools/testdash.json`.
-```io
-> a=[]
-> o={valueOf:function() { return 23 }}
-> print(o+10)
-< 33
+* `built-ins/Array/prototype/shift/S15.4.4.9_A4_T2` — Borrowed `shift` fails to delete the vacated slot, so prototype values remain shadowed instead of reappearing as required by the tail-cleanup steps.
 
-> a.length=o
-> print(a.length)
-< 23
+  **Spec excerpt (§15.4.4.9):**
+  > - 15. Call the [[Delete]] method of this object with argument Result(10).
+  > - 16. Increase *k* by 1.
+  > - 17. Go to step 8.
+  > - 18. Call the [[Delete]] method of this object with argument ToString(Result(2)–1).
+  > - 19. Call the [[Put]] method of this object with arguments "**length**" and (Result(2)–1).
 
-> o={valueOf:function() { return 47 }}
-> s='length';
-> a[s]=o
-> print(a.length)
-< 47
--
-```
-See `tests/unconforming/cantAssignObjectToArrayLength.io` for a regression test.
-- Fixed
-- built-ins/Array/readOnlyNumericProps — writes override read-only numeric prototype properties *(by design)*
-	> #### **8.6.2.2 [[Put]] (P, V)**
-	>
-	> If a property with name *P* exists and is **ReadOnly**, return without doing anything.
+* `built-ins/Array/prototype/toLocaleString/S15.4.4.3_A1_T1` — Element `toLocaleString` hooks are skipped entirely; ES3 requires calling each element's locale method while assembling the string.
 
-NuXJS result: assigning to `a[123]` creates an own property even when `Array.prototype` defines a read-only property "123".
-Expected: the write should be ignored and the inherited value remain.
-Plan: Accepted deviation for performance — ES3 programs cannot observe read-only numeric prototype indices. No change planned.
-```io
-> Object.defineProperty(Array.prototype, '123', { value: 456, writable: false })
-> a=[]
-> a[123]=789
-> print(a[123])
-< 789
-```
-See `tests/unconforming/readOnlyNumericProps.io` for a regression test.
-  - Fixed
-- [ ] built-ins/Array/prototype/pop/S15.4.4.6_A4_T2 — [[Prototype]] of Array instance is Array.prototype, [[Prototype] of Array.prototype is Object.prototype
-	> ## **15.4.4.6 Array.prototype.pop ( )**
-	> 
-	> The last element of the array is removed from the array and returned.
-	> 
-	> - 1. Call the [[Get]] method of this object with argument "**length**".
-	> - 2. Call ToUint32(Result(1)).
-	> - 3. If Result(2) is not zero, go to step 6.
-	> - 4. Call the [[Put]] method of this object with arguments "**length**" and Result(2).
-	> - 5. Return **undefined**.
-	> - 6. Call ToString(Result(2)–1).
-	> - 7. Call the [[Get]] method of this object with argument Result(6).
-	> - 8. Call the [[Delete]] method of this object with argument Result(6).
-NuXJS result: borrowing `pop` for a plain object leaves index `1` intact, so the own property masks the inherited `-1`.
-Expected: `pop` should delete index `1`, revealing the prototype value.
-Plan: When `pop` is borrowed, after retrieving the element (steps 6–7), call `[[Delete]](ToString(length−1))` per ES3 §15.4.4.6 step 8 so the last own index is removed and prototype values surface.
-```io
-> Object.prototype[1]=-1
-> Object.prototype.pop=Array.prototype.pop
-> var x={0:0,1:1,length:2}
-> print(x.pop())
-< 1
--
-> print(x[1])
-< -1
--
-```
-See `tests/todo/arrayPopPrototypeDelete.io` for a regression test.
-  - Fixed
-- [ ] built-ins/Array/prototype/push/S15.4.4.7_A2_T2 — The arguments are appended to the end of the array, in	 the order in which they appear. The new length of the array is returned  as the result of the call
-	> ## **15.4.4.7 Array.prototype.push ( [ item1 [ , item2 [ , … ] ] ] )**
-	> 
-	> The arguments are appended to the end of the array, in the order in which they appear. The new length of the array is returned as the result of the call.
-	> 
-	> When the **push** method is called with zero or more arguments *item1, item2*, etc., the following steps are taken:
-	> 
-	> - 1. Call the [[Get]] method of this object with argument "**length**".
-	> - 2. Let *n* be the result of calling ToUint32(Result(1)).
-	> - 3. Get the next argument in the argument list; if there are no more arguments, go to step 7.
-	> - 4. Call the [[Put]] method of this object with arguments ToString(*n*) and Result(3).
-		> - 5. Increase *n* by 1.
-		> - 6. Go to step 3.
-NuXJS result: `obj.length = Infinity; obj.push(-4)` returns `1` and shrinks `length` to `1`.
-Expected: a `TypeError` and `length` remaining `Infinity`.
-Plan: Follow ES3 §15.4.4.7 steps 1–3: compute `n = ToUint32(length)` and compare it to `ToNumber(length)`; if they differ (e.g., `Infinity` or >2^32−1), throw `TypeError` before any `[[Put]]` occurs.
-```io
-> obj={}
-> obj.length=Number.POSITIVE_INFINITY
-> obj.push=Array.prototype.push
-> try{obj.push(-4)}catch(e){print(e.name)}
-< TypeError
--
-> print(obj.length)
-< Infinity
--
-> print(obj[9007199254740991])
-< undefined
--
-```
-See `tests/todo/arrayPushLengthInfinity.io` for a regression test.
-  - Fixed
-- [ ] built-ins/Array/prototype/shift/S15.4.4.9_A3_T3 — length is arbitrarily
-		> ## **15.4.4.9 Array.prototype.shift ( )**
-	> 
-	> The first element of the array is removed from the array and returned.
-	> 
-	> - 1. Call the [[Get]] method of this object with argument "**length**".
-	> - 2. Call ToUint32(Result(1)).
-	> - 3. If Result(2) is not zero, go to step 6.
-	> - 4. Call the [[Put]] method of this object with arguments "**length**" and Result(2).
-	> - 5. Return **undefined**.
-	> - 6. Call the [[Get]] method of this object with argument **0**.
-		> - 7. Let *k* be 1.
-		> - 8. If *k* equals Result(2), go to step 18.
-NuXJS result: `obj.length = -4294967294; obj.shift()` returns `'x'` and sets `length` to `1`.
-Expected: the call should return `undefined`, leave `length` `0`, and keep elements unchanged.
-Plan: If `ToUint32(length)` differs from the numeric value, clamp `length` to `0` and return `undefined` without moving elements.
-```io
-> obj={}
-> obj.shift=Array.prototype.shift
-> obj[0]='x'
-> obj[1]='y'
-> obj.length=-4294967294
-> print(obj.shift())
-< undefined
--
-> print(obj.length)
-< 0
--
-> print(obj[0])
-< x
--
-> print(obj[1])
-< y
--
-```
-See `tests/todo/arrayShiftNegativeLength.io` for a regression test.
-  - Fixed
-- [ ] built-ins/Array/prototype/shift/S15.4.4.9_A4_T2 — [[Prototype]] of Array instance is Array.prototype, [[Prototype] of Array.prototype is Object.prototype
-	> ## **15.4.4.9 Array.prototype.shift ( )**
-	> 
-	> The first element of the array is removed from the array and returned.
-	> 
-	> - 1. Call the [[Get]] method of this object with argument "**length**".
-	> - 2. Call ToUint32(Result(1)).
-	> - 3. If Result(2) is not zero, go to step 6.
-	> - 4. Call the [[Put]] method of this object with arguments "**length**" and Result(2).
-	> - 5. Return **undefined**.
-	> - 6. Call the [[Get]] method of this object with argument **0**.
-	> - 7. Let *k* be 1.
-	> - 8. If *k* equals Result(2), go to step 18.
-NuXJS result: borrowing `shift` for a plain object leaves property `1` as `1` instead of exposing the prototype's `-1`.
-Expected: index `1` should be deleted and fall back to `-1`, with `length` decremented to `1`.
-Plan: When borrowed, `shift` must delete the property at `length - 1` and reindex remaining elements so inherited values surface and `length` decreases.
-```io
-> Object.prototype[1] = -1
-> Object.prototype.length = 2
-> Object.prototype.shift = Array.prototype.shift
-> var x = {0:0,1:1}
-> print(x.shift())
-< 0
--
-> print(x[0])
-< 1
--
-> print(x[1])
-< -1
--
-> print(x.length)
-< 1
--
-```
-See `tests/todo/arrayShiftPrototypeDelete.io` for a regression test.
-  - Fixed
-- [ ] built-ins/Array/prototype/toLocaleString/S15.4.4.3_A1_T1 — it is the function that should be invoked
-	> #### **15.4.4.3 Array.prototype.toLocaleString ( )**
-	> 
-	> The elements of the array are converted to strings using their **toLocaleString** methods, and these strings are then concatenated, separated by occurrences of a separator string that has been derived in an implementation-defined locale-specific way. The result of calling this function is intended to be analogous to the result of **toString**, except that the result of this function is intended to be localespecific.
-	> 
-	> The result is calculated as follows:
-	> 
-	> - 1. Call the [[Get]] method of this object with argument **"length"**.
-	> - 2. Call ToUint32(Result(1)).
-	> - 3. Let *separator* be the list-separator string appropriate for the host environment's current locale (this is derived in an implementation-defined way).
-	> 
-		> - 4. Call ToString(*separator*).
-		> - 5. If Result(2) is zero, return the empty string.
-NuXJS result: element `toLocaleString` methods are never invoked, leaving counters untouched.
-Expected: each defined element's `toLocaleString` should run.
-Plan: During concatenation, iterate over all own indices from `0` to `length - 1`, calling each element's `toLocaleString`.
-```io
-> var n=0
-> var obj={toLocaleString:function(){n++;return 'obj'}}
-> var arr=[undefined,obj,null,obj,obj]
-> arr.toLocaleString()
-> print(n)
-< 3
--
-```
-See `tests/todo/arrayToLocaleStringCallsElements.io` for a regression test.
-  - Fixed
-- [ ] built-ins/Array/prototype/toLocaleString/S15.4.4.3_A3_T1 — "[[Prototype]] of Array instance is Array.prototype"
-	> #### **15.4.4.3 Array.prototype.toLocaleString ( )**
-	> 
-	> The elements of the array are converted to strings using their **toLocaleString** methods, and these strings are then concatenated, separated by occurrences of a separator string that has been derived in an implementation-defined locale-specific way. The result of calling this function is intended to be analogous to the result of **toString**, except that the result of this function is intended to be localespecific.
-	> 
-	> The result is calculated as follows:
-	> 
-	> - 1. Call the [[Get]] method of this object with argument **"length"**.
-	> - 2. Call ToUint32(Result(1)).
-	> - 3. Let *separator* be the list-separator string appropriate for the host environment's current locale (this is derived in an implementation-defined way).
-	> 
-	> - 4. Call ToString(*separator*).
-	> - 5. If Result(2) is zero, return the empty string.
+  **Spec excerpt (§15.4.4.3):**
+  > - 6. Call the [[Get]] method of this object with argument **"0"**.
+  > - 7. If Result(6) is **undefined** or **null**, use the empty string; otherwise, call ToObject(Result(6)).toLocaleString().
+  > - 12. Call the [[Get]] method of this object with argument ToString(*k*).
+  > - 13. If Result(12) is **undefined** or **null**, use the empty string; otherwise, call ToObject(Result(12)).toLocaleString().
 
-		NuXJS result: elements inherited from `Array.prototype` are skipped, leaving the invocation counter at `0`.
-Expected: both the own and prototype elements should invoke their `toLocaleString` methods, producing `2`.
-Plan: Include inherited indices in the iteration so prototype-defined elements also run their `toLocaleString` methods.
-```io
-	> var n = 0;
-	> var obj = {toLocaleString:function(){n++;return 'obj';}};
-	> Array.prototype[1] = obj;
-	> var x = [obj];
-	> x.length = 2;
-	> x.toLocaleString();
-	> print(n);
-	< 2
-	-
-	```
-	See `tests/todo/arrayToLocaleStringPrototypeElement.io` for a regression test.
-	  - Fixed
-### Date
-- [ ] built-ins/Date/S15.9.3.1_A6_T1 — 2 arguments, (year, month)
-		> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
-		>
-		> When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
-		>
-		> The [[Prototype]] property of the newly constructed object is set to the original Date prototype object, the one that is the initial value of **Date.prototype** (15.9.4.1).
-		>
-		> The [[Class]] property of the newly constructed object is set to **"Date"**.
-		>
-		> The [[Value]] property of the newly constructed object is set as follows:
-		>
-		> - 1. Call ToNumber(*year*).
-		> - 2. Call ToNumber(*month*).
-		> - 3. If *date* is supplied use ToNumber(*date*); else use **1**.
-		> - 4. If *hours* is supplied use ToNumber(*hours*); else use **0**.
-		> - 5. If *minutes* is supplied use ToNumber(*minutes*); else use **0**.
-		> - 6. If *seconds* is supplied use ToNumber(*seconds*); else use **0**.
-		> - 7. If *ms* is supplied use ToNumber(*ms*); else use **0**.
+* `built-ins/Array/prototype/toLocaleString/S15.4.4.3_A3_T1` — When `toLocaleString` is borrowed, inherited indexed properties are ignored; the algorithm must iterate across all indices defined on the receiver.
 
-				NuXJS result: `new Date(1970, undefined)` yields `0` instead of `NaN`.
-								Expected: explicitly passing `undefined` for *month* should produce `NaN` because step 2 applies `ToNumber(undefined)`.
-								Plan: Always apply `ToNumber` to the `month` argument; if it is `undefined`, the resulting `NaN` causes the constructor to produce `NaN` rather than defaulting to `0`.
+  **Spec excerpt (§15.4.4.3):**
+  > - 9. Let *k* be **1**.
+  > - 10. If *k* equals Result(2), return *R*.
+  > - 11. Let *S* be a string value produced by concatenating *R* and Result(4).
+  > - 12. Call the [[Get]] method of this object with argument ToString(*k*).
+  > - 13. If Result(12) is **undefined** or **null**, use the empty string; otherwise, call ToObject(Result(12)).toLocaleString().
+  > - 14. Let *R* be a string value produced by concatenating *S* and Result(13).
 
-				```io
-		> print(isNaN(new Date(1970, undefined)))
-		< true
-		-
-		```
-		See `tests/todo/dateYearMonthUndefined.io` for a regression test.
-		  - Fixed
-- [ ] built-ins/Date/S15.9.3.1_A6_T2 — 3 arguments, (year, month, date)
-		> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
-		>
-		> When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
-		>
-		> The [[Prototype]] property of the newly constructed object is set to the original Date prototype object, the one that is the initial value of **Date.prototype** (15.9.4.1).
-		>
-		> The [[Class]] property of the newly constructed object is set to **"Date"**.
-		>
-		> The [[Value]] property of the newly constructed object is set as follows:
-		>
-		> - 1. Call ToNumber(*year*).
-		> - 2. Call ToNumber(*month*).
-		> - 3. If *date* is supplied use ToNumber(*date*); else use **1**.
-		> - 4. If *hours* is supplied use ToNumber(*hours*); else use **0**.
-		> - 5. If *minutes* is supplied use ToNumber(*minutes*); else use **0**.
-		> - 6. If *seconds* is supplied use ToNumber(*seconds*); else use **0**.
-		> - 7. If *ms* is supplied use ToNumber(*ms*); else use **0**.
+### Date (2)
+* `built-ins/Date/TimeClip_negative_zero` — `TimeClip` must coerce −0 to +0 by adding `+0`, but NuXJS preserves −0 so dividing by the result still yields `-Infinity`.
 
-				NuXJS result: `new Date(1970,0,undefined)` returns a valid date instead of `NaN`.
-				Expected: providing `undefined` for *date* should invoke `ToNumber(undefined)` and yield `NaN`.
-				Plan: Apply `ToNumber` to *date* before defaulting so an explicit `undefined` becomes `NaN`.
+  **Spec excerpt (§15.9.1.14):**
+  > - 1. If *time* is not finite, return **NaN**.
+  > - 2. If abs(Result(1)) > **8.64 x 10<sup>15</sup>**, return **NaN**.
+  > - 3. Return an implementation-dependent choice of either ToInteger(Result(2)) or ToInteger(Result(2)) + (**+0**). (Adding a positive zero converts −**0** to **+0**.)
 
-				```io
-				> print(isNaN(new Date(1970, 0, undefined)))
-		< true
-		-
-		```
-		See `tests/todo/dateYearMonthDateUndefined.io` for a regression test.
-		  - Fixed
-- [ ] built-ins/Date/S15.9.3.1_A6_T3 — 4 arguments, (year, month, date, hours)
-	> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
-	> 
-	> When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
-	> 
-	> The [[Prototype]] property of the newly constructed object is set to the original Date prototype object, the one that is the initial value of **Date.prototype** (15.9.4.1).
-	> 
-	> The [[Class]] property of the newly constructed object is set to **"Date"**.
-	> 
-	> The [[Value]] property of the newly constructed object is set as follows:
-	> 
-	> - 1. Call ToNumber(*year*).
-		> - 2. Call ToNumber(*month*).
-		NuXJS result: `new Date(1970, 0, 1, undefined)` yields `0` instead of `NaN`.
-		Expected: providing `undefined` for *hours* should produce `NaN`.
-		Plan: Coerce *hours* with `ToNumber` before defaulting so `undefined` results in `NaN`.
-		```io
-		> print(isNaN(new Date(1970, 0, 1, undefined)))
-	< true
-	-
-	```
-	See `tests/todo/dateYearMonthDateHoursUndefined.io` for a regression test.
-	  - Fixed
-- [ ] built-ins/Date/S15.9.3.1_A6_T4 — 5 arguments, (year, month, date, hours, minutes)
-	> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
-	> 
-	> When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
-	> 
-	> The [[Prototype]] property of the newly constructed object is set to the original Date prototype object, the one that is the initial value of **Date.prototype** (15.9.4.1).
-	> 
-	> The [[Class]] property of the newly constructed object is set to **"Date"**.
-	> 
-	> The [[Value]] property of the newly constructed object is set as follows:
-	> 
-	> - 1. Call ToNumber(*year*).
-		> - 2. Call ToNumber(*month*).
-		NuXJS result: `new Date(1970, 0, 1, 0, undefined)` produces `0` instead of `NaN`.
-		Expected: an explicit `undefined` *minutes* argument must yield `NaN`.
-		Plan: Convert *minutes* via `ToNumber` before applying the default `0` to ensure `undefined` produces `NaN`.
-		```io
-	> print(isNaN(new Date(1970, 0, 1, 0, undefined)))
-	< true
-	-
-	```
-	See `tests/todo/dateYearMonthDateHoursMinutesUndefined.io` for a regression test.
-	  - Fixed
-- [ ] built-ins/Date/S15.9.3.1_A6_T5 — 6 arguments, (year, month, date, hours, minutes, seconds)
-	> ## **15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )**
-	> 
-	> When **Date** is called with two to seven arguments, it computes the date from *year*, *month*, and (optionally) *date*, *hours*, *minutes*, *seconds* and *ms*.
-	> 
-	> The [[Prototype]] property of the newly constructed object is set to the original Date prototype object, the one that is the initial value of **Date.prototype** (15.9.4.1).
-	> 
-	> The [[Class]] property of the newly constructed object is set to **"Date"**.
-	> 
-	> The [[Value]] property of the newly constructed object is set as follows:
-	> 
-	> - 1. Call ToNumber(*year*).
-		> - 2. Call ToNumber(*month*).
-		NuXJS result: `new Date(1970, 0, 1, 0, 0, undefined)` returns `0` instead of `NaN`.
-		Expected: `undefined` for *seconds* should propagate to `NaN`.
-		Plan: Apply `ToNumber` to *seconds* prior to defaulting so explicit `undefined` yields `NaN`.
-		```io
-	> print(isNaN(new Date(1970, 0, 1, 0, 0, undefined)))
-	< true
-	-
-	```
-	See `tests/todo/dateYearMonthDateHoursMinutesSecondsUndefined.io` for a regression test.
-	  - Fixed
-- [ ] built-ins/Date/TimeClip_negative_zero — TimeClip converts negative zero to positive zero
-		> ## **15.9.1.14 TimeClip (time)**
-		>
-		> The operator TimeClip calculates a number of milliseconds from its argument, which must be an ECMAScript number value. This operator functions as follows:
-		>
-		> - 1. If *time* is not finite, return **NaN**.
-		> - 2. If abs(Result(1)) > **8.64 x 10<sup>15</sup>**, return **NaN**.
-		> - 3. Return an implementation-dependent choice of either ToInteger(Result(2)) or ToInteger(Result(2)) + (**+0**). (Adding a positive zero converts −**0** to **+0**.)
-		>
-		> ## *NOTE*
-		>
-		> *The point of step 3 is that an implementation is permitted a choice of internal representations of time values, for example as a 64-bit signed integer or as a 64-bit floating-point value. Depending on the implementation, this internal representation may or may not distinguish* <sup>−</sup>*0 and +0.*
-	   
-		   NuXJS result: `new Date(-0).getTime()` preserves −0, so `1/new Date(-0).getTime()` yields `-Infinity`.
-		   Expected: TimeClip must convert −0 to +0, resulting in `Infinity`.
-		   Plan: Add `+0` after `ToInteger(time)` in TimeClip to normalize −0 to +0.
+* `built-ins/Date/prototype/setFullYear/15.9.5.40_1` — `Date.prototype.setFullYear` should reject non-Date receivers; the current implementation accepts `Date.prototype` itself instead of throwing `TypeError`.
 
-		   ```io
-	   > print(1/new Date(-0).getTime())
-	   < Infinity
-	   -
-	   ```
+  **Spec excerpt (§15.9.5):**
+  > None of these functions are generic; a **TypeError** exception is thrown if the **this** value is not an object for which the value of the internal [[Class]] property is **"Date"**.
 
-	   See `tests/todo/dateTimeClipNegativeZero.io` for a regression test.
+### Function (1)
+* `built-ins/Function/prototype/S15.3.4_A5` — ES3 forbids `Function.prototype` from exposing [[Construct]], but NuXJS allows `new Function.prototype()` and returns an object instead of throwing `TypeError`.
 
-		 - Fixed
-- [ ] built-ins/Date/prototype/setFullYear/15.9.5.40_1 — Date.prototype.setFullYear - Date.prototype is itself not an instance of Date
-> #### **15.9.5 Properties of the Date Prototype Object**
->
-> None of these functions are generic; a **TypeError** exception is thrown if the **this** value is not an object for which the value of the internal [[Class]] property is **"Date"**.
->
-NuXJS result: `Date.prototype.setFullYear.call(Date.prototype, 1970)` returns `0` instead of throwing.
-Expected: non-Date receivers must raise a `TypeError`.
-Plan: Verify that the `this` value has [[Class]] "Date" before proceeding and throw `TypeError` otherwise.
-```io
-> try { Date.prototype.setFullYear.call(Date.prototype, 1970); } catch (e) { print(e.name); }
-< TypeError
--
-```
-See `tests/todo/datePrototypeSetFullYearInvalidThis.io` for a regression test.
-  - Fixed
+  **Spec excerpt (§15.3):**
+  > None of the built-in functions described in this section shall implement the internal [[Construct]] method unless otherwise specified in the description of a particular function.
 
-### Error
-- built-ins/Error/S15.11.1.1_A1_T1 — Checking message property of different error objects
-		> #### **15.11.1.1 Error (message)**
-		>
-		> The [[Prototype]] property of the newly constructed object is set to the original Error prototype object, the one that is the initial value of **Error.prototype** (15.11.3.1).
-		>
-		> The [[Class]] property of the newly constructed object is set to **"Error"**.
-		>
-		> If the argument *message* is not **undefined**, the **message** property of the newly constructed object is set to ToString(*message*).
+### Object (2)
+* `built-ins/Object/defineProperty/15.2.3.6-4-127` — Defining `length` with `value: false` should coerce to `0`, truncate the array, and succeed. NuXJS instead throws `RangeError: Invalid array length`.
+* `built-ins/Object/defineProperty/15.2.3.6-4-128` — Likewise, setting `length` to `true` should produce `1`; the engine raises the same `RangeError` instead of updating the array length.
 
-	   NuXJS result: calling `Error()` without an argument defines an own `message` property set to the empty string.
-	   Expected: when the `message` parameter is `undefined`, the constructor must leave `message` unset so that `hasOwnProperty("message")` is `false`.
-	   Plan: Only define an own `message` property when the argument is not `undefined`.
+  **Spec excerpt (§15.4.5.1):**
+  > - 12. Compute ToUint32(*V*).
+  > - 13. If Result(12) is not equal to ToNumber(*V*), throw a **RangeError** exception.
+  > - 14. For every integer *k* that is less than the value of the **length** property of *A* but not less than Result(12), if *A* itself has a property (not an inherited property) named ToString(*k*), then delete that property.
+  > - 15. Set the value of property *P* of *A* to Result(12).
 
-```io
-> var e = Error()
-	   > print(e.hasOwnProperty("message"))
-	   < false
-	   -
-	   ```
+### RegExp (16)
+* `built-ins/RegExp/S15.10.2.8_A3_T15` — Deeply nested capturing groups are truncated; ES3 requires tracking every capture slot when matching.
 
-	See `tests/regression/errorFunctionUndefinedMessage.io` for a regression test.
+  **Spec excerpt (§15.10.2.1):**
+  > - *NCapturingParens* is the total number of left capturing parentheses (i.e. the total number of times the *Atom* :: **(** *Disjunction* **)** production is expanded) in the pattern.
+  > - A *State* is an ordered pair (*endIndex*, *captures*) where *endIndex* is an integer and *captures* is an internal array of *NCapturingParens* values. … The *n*th element of *captures* is either a string that represents the value obtained by the *n*th set of capturing parentheses or **undefined** if the *n*th set of capturing parentheses hasn't been reached yet.
 
-		- Fixed in `src/stdlib.js`; omits own `message` when called without argument (§15.11.1.1).
-		Regression: `tests/regression/errorFunctionUndefinedMessage.io`.
-- built-ins/Error/S15.11.2.1_A1_T1 — Checking message property of different error objects
-		> ## **15.11.2.1 new Error (message)**
-		>
-		> The [[Prototype]] property of the newly constructed object is set to the original Error prototype object, the one that is the initial value of **Error.prototype** (15.11.3.1).
-		>
-		> The [[Class]] property of the newly constructed Error object is set to **"Error"**.
-		>
-		> If the argument *message* is not **undefined**, the **message** property of the newly constructed object is set to ToString(*message*).
+* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T2` — Alternation bookkeeping drops captures that should be `undefined`, yielding the wrong match array for `/((1)|(12))((3)|(23))/`.
 
-	   NuXJS result: `new Error()` also creates an own `message` property with value `""` even when no argument is supplied.
-	   Expected: absent a `message` argument, the instance should inherit the empty string from `Error.prototype` and report `hasOwnProperty("message") === false`.
-	   Plan: The constructor should omit defining `message` when the parameter is `undefined`, letting the prototype's value be inherited.
+  **Spec excerpt (§15.10.6.2 & §15.10.2.1):**
+  > - 12. Let *n* be the length of *r*'s *captures* array. (This is the same value as 15.10.2.1's *NCapturingParens*.)
+  > - 13. Return a new array … For each integer *i* such that *I* > 0 and *I* ≤ *n*, set the property named ToString(*i*) to the *i*th element of *r*'s *captures* array.
+  > - A *State* … holds the results of capturing parentheses. The *n*th element of *captures* is either a string … or **undefined** if the *n*th set of capturing parentheses hasn't been reached yet.
 
-```io
-> var e = new Error()
-		   > print(e.hasOwnProperty("message"))
-		   < false
-		   -
-		   ```
-			See `tests/regression/errorConstructorUndefinedMessage.io` for a regression test.
-			  - Fixed in `src/stdlib.js`; `new Error()` now inherits `message` when argument is absent (§15.11.2.1).
-				Regression: `tests/regression/errorConstructorUndefinedMessage.io`.
+* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T3` — `ToString` mishandles `new Object("abcdefghi")`, producing `[object Object]` instead of the wrapped string.
 
-- [x] built-ins/Error/prototype/name/15.11.4.2-1 — Error.prototype.name is not enumerable.
-	   > #### **15.11.4.2 Error.prototype.name**
-	   >
-	   > The initial value of **Error.prototype.name** is "**Error**".
-	   >
-	   > In every case, the **length** property of a built-in Function object described in this section has the attributes { ReadOnly, DontDelete, DontEnum }. Every other property described in this section has the attribute { DontEnum } (and no others) unless otherwise specified.
+  **Spec excerpt (§15.10.6.2 & §9.8):**
+  > - 1. Let *S* be the value of ToString(*string*).
+  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
 
-	   NuXJS result: iterating an `Error` instance reveals the `name` property.
-	   Expected: `name` should not be enumerated.
-	   Plan: Define `Error.prototype.name` with the {DontEnum} attribute so for-in loops skip it.
+* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T4` — Objects whose `toString` returns a primitive are ignored; the engine matches against `[object Object]`.
 
-```io
-> var e = new Error("msg")
-	   > var seen = false
-		   > for (var p in e) if (p === "name") seen = true
-		   > print(seen)
-		   < false
-		   -
-		   ```
-			See `tests/regression/errorPrototypeNameEnumerable.io` for a regression test.
-			  - Fixed
+  **Spec excerpt (§15.10.6.2 & §9.8):**
+  > - 1. Let *S* be the value of ToString(*string*).
+  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
 
-### Function
-- [ ] built-ins/Function/prototype/S15.3.4_A5 — Checking if creating "new Function.prototype object" fails
-	> ## **15.3.4 Properties of the Function Prototype Object**
-	> 
-	> The Function prototype object is itself a Function object (its [[Class]] is **"Function"**) that, when invoked, accepts any arguments and returns **undefined**.
-	> 
-	> The value of the internal [[Prototype]] property of the Function prototype object is the Object prototype object (15.3.2.1).
-	> 
-	> It is a function with an "empty body"; if it is invoked, it merely returns **undefined**.
-	> 
-		> #### **15.3**
-		>
-		> None of the built-in functions described in this section shall implement the internal [[Construct]] method unless otherwise specified in the description of a particular function.
+* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T5` — `ToPrimitive` with hint `String` is incomplete; if `toString` returns an object, `valueOf` should run next before failing.
 
-		NuXJS result: `new Function.prototype()` creates an object instead of throwing.
-		Expected: since `Function.prototype` lacks a [[Construct]] method, invoking it with `new` must throw `TypeError`.
-		Plan: Remove or override the [[Construct]] behavior of `Function.prototype` so attempts to instantiate it throw `TypeError`.
-```io
-> try { new Function.prototype(); } catch (e) { print(e.name); }
-< TypeError
-		-
-		```
-		See `tests/todo/functionPrototypeConstructible.io` for a regression test.
-		  - Fixed
+  **Spec excerpt (§9.8 & §8.6.2.6):**
+  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
+  > When the [[DefaultValue]] method of *O* is called with hint String, … Call the [[Get]] method … "**toString**" … If Result(3) is a primitive value, return Result(3). … Call the [[Get]] method … "**valueOf**" … If Result(7) is a primitive value, return Result(7). … Throw a **TypeError** exception.
 
-### RegExp
-		>
-	> The production *CharacterClassEscape* **:: d** evaluates by returning the ten-element set of characters containing the characters **0** through **9** inclusive.
-	> 
-	> The production *CharacterClassEscape* **:: D** evaluates by returning the set of all characters not included in the set returned by *CharacterClassEscape* **:: d**.
-	> 
-	> The production *CharacterClassEscape* **:: s** evaluates by returning the set of characters containing the characters that are on the right-hand side of the *WhiteSpace* (7.2) or *LineTerminator* (7.3) productions.
-	> 
-	> The production *CharacterClassEscape* **:: S** evaluates by returning the set of all characters not included in the set returned by *CharacterClassEscape* **:: s**.
-	> 
-	> The production *CharacterClassEscape* **:: w** evaluates by returning the set of characters containing the sixty-three characters:
-	> #### **15.10.2.8 Atom**
-	> 
-	> The production *Atom* **::** *PatternCharacter* evaluates as follows:
-	> 
-	> - 1. Let *ch* be the character represented by *PatternCharacter*.
-	> - 2. Let *A* be a one-element CharSet containing the character *ch*.
-	> - 3. Call *CharacterSetMatcher*(*A*, **false**) and return its Matcher result.
-	> 
-	> The production *Atom* **:: .** evaluates as follows:
-	> 
-	> - 1. Let *A* be the set of all characters except the four line terminator characters <LF>, <CR>, <LS>, or <PS>.
-	> - 2. Call *CharacterSetMatcher*(*A*, **false**) and return its Matcher result.
-- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T10 — String is 1.01 and RegExp is /1|12/
-	> #### **15.10.6.2 RegExp.prototype.exec(string)**
-	> 
-	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
-	> 
-	> The string ToString(*string*) is searched for an occurrence of the regular expression pattern as follows:
-	> 
-	> - 1. Let *S* be the value of ToString(*string*).
-	> - 2. Let *length* be the length of *S*.
-	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-	> - 5. If the **global** property is **false**, let *i* = 0.
-	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
-NuXJS result: `/1|12/.exec(1.01)` returns `null`.
-Expected: `ToString(1.01)` is `"1.01"`, so the pattern should match `"1"` at index `0`.
-Plan: Coerce non-string inputs with `ToString` before executing the pattern so number primitives are matched as strings.
-```io
-> var r=/1|12/.exec(1.01)
-> print(r[0])
-< 1
--
-> print(r.index)
-< 0
--
-```
-See `tests/regression/regExpExecNumberPrimitive.io` for a regression test.
-  - Fixed
-- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T11 — String is new Number(1.012) and RegExp is /2|12/
-		> #### **15.10.6.2 RegExp.prototype.exec(string)**
-	> 
-	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
-	> 
-	> The string ToString(*string*) is searched for an occurrence of the regular expression pattern as follows:
-	> 
-	> - 1. Let *S* be the value of ToString(*string*).
-	> - 2. Let *length* be the length of *S*.
-	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-		> - 5. If the **global** property is **false**, let *i* = 0.
-		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
-NuXJS result: executing `/2|12/` on `new Number(1.012)` yields match `"je"` at index `3`.
-Expected: the string "1.012" should match `"12"` at index `3`.
-Plan: Apply `ToString` to object-wrapped numbers so their string form participates in the match.
-```io
-> var r=/2|12/.exec(new Number(1.012))
-> print(r[0])
-< 12
--
-> print(r.index)
-< 3
--
-```
-See `tests/todo/regExpExecNumberObject.io` for a regression test.
-  - Fixed
-- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T12 — String is {toString:function(){return Math.PI;}} and RegExp is /\.14/
-		> #### **15.10.6.2 RegExp.prototype.exec(string)**
-	> 
-	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
-	> 
-	> The string ToString(*string*) is searched for an occurrence of the regular expression pattern as follows:
-	> 
-	> - 1. Let *S* be the value of ToString(*string*).
-	> - 2. Let *length* be the length of *S*.
-	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-		> - 5. If the **global** property is **false**, let *i* = 0.
-		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
-NuXJS result: executing `/\.14/` on an object whose `toString` returns `Math.PI` produces match `"obj"` at index `1`.
-Expected: the string "3.141592653589793" should match `".14"` at index `1`.
-Plan: Use `ToString` on arbitrary objects and coerce the result to a string even if `toString` returns a number.
-```io
-> var r=/\.14/.exec({toString:function(){return Math.PI;}})
-> print(r[0])
-< .14
--
-> print(r.index)
-< 1
--
-```
-See `tests/todo/regExpExecToStringPi.io` for a regression test.
-  - Fixed
-- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T13 — String is true and RegExp is /t[a-b|q-s]/
-	> #### **15.10.6.2 RegExp.prototype.exec(string)**
-	> 
-	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
-	> 
-	> The string ToString(*string*) is searched for an occurrence of the regular expression pattern as follows:
-	> 
-	> - 1. Let *S* be the value of ToString(*string*).
-	> - 2. Let *length* be the length of *S*.
-	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-	> - 5. If the **global** property is **false**, let *i* = 0.
-	> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
-NuXJS result: `/t[a-b|q-s]/.exec(true)` returns `null`.
-Expected: `ToString(true)` is `\"true\"`, so the pattern should match `\"tr\"` at index `0`.
-Plan: Convert boolean primitives via `ToString` so their textual form is searched.
-```io
-> var r=/t[a-b|q-s]/.exec(true)
-> print(r[0])
-< tr
--
-> print(r.index)
-< 0
--
-```
-See `tests/regression/regExpExecBooleanPrimitive.io` for a regression test.
-  - Fixed
-- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T14 — String is new Boolean and RegExp is /AL|se/
-		> #### **15.10.6.2 RegExp.prototype.exec(string)**
-	> 
-	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
-	> 
-	> The string ToString(*string*) is searched for an occurrence of the regular expression pattern as follows:
-	> 
-	> - 1. Let *S* be the value of ToString(*string*).
-	> - 2. Let *length* be the length of *S*.
-	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-		> - 5. If the **global** property is **false**, let *i* = 0.
-		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
-NuXJS result: executing `/AL|se/` on `new Boolean(false)` yields match `"je"` at index `3`.
-Expected: the string "false" should match `"se"` at index `3`.
-Plan: Coerce Boolean objects with `ToString` before matching.
-```io
-> var r=/AL|se/.exec(new Boolean(false))
-> print(r[0])
-< se
--
-> print(r.index)
-< 3
--
-```
-See `tests/todo/regExpExecBooleanObject.io` for a regression test.
-  - Fixed
-- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T15 — "String is {toString:function(){return false;}} and RegExp is /LS/i"
-		> #### **15.10.6.2 RegExp.prototype.exec(string)**
-	> 
-	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
-	> 
-	> The string ToString(*string*) is searched for an occurrence of the regular expression pattern as follows:
-	> 
-	> - 1. Let *S* be the value of ToString(*string*).
-	> - 2. Let *length* be the length of *S*.
-	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-		> - 5. If the **global** property is **false**, let *i* = 0.
-		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
-NuXJS result: executing `/LS/i` on an object whose `toString` returns `false` matches `"bj"` at index `2`.
-Expected: the string "false" should match `"ls"` at index `2`.
-Plan: If `toString` yields a non-string primitive, run `ToString` on that value so `false` becomes "false" before matching.
-```io
-> var r=/LS/i.exec({toString:function(){return false;}})
-> print(r[0])
-< ls
--
-> print(r.index)
-< 2
--
-```
-See `tests/todo/regExpExecToStringFalse.io` for a regression test.
-  - Fixed
-- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T17 — String is `null` and RegExp is `/ll|l/`
-		> #### **15.10.6.2 RegExp.prototype.exec(string)**
-		>
-		> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
-		>
-		> The string ToString(*string*) is searched for an occurrence of the regular expression pattern as follows:
-		>
-		> - 1. Let *S* be the value of ToString(*string*).
-		> - 2. Let *length* be the length of *S*.
-		> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-		> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-		> - 5. If the **global** property is **false**, let *i* = 0.
-		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
-		NuXJS result: `/ll|l/.exec(null)` returns `null`.
-		Expected: coercing `null` to "null" should match `"ll"` at index `2`.
-		Plan: Apply `ToString` to `null` so the regexp runs on "null" and finds "ll".
+* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T10` — Number primitives such as `1.01` are not stringified, so `/1|12/` fails to match.
 
-		```io
-		> var r = /ll|l/.exec(null)
-		> print(r[0])
-		< ll
-		-
-		> print(r.index)
-		< 2
-		-
-		> print(r.input)
-		< null
-		-
-		```
-			See `tests/regression/regExpExecNullString.io` for a regression test.
-		  - Fixed
-- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T18 — String is `undefined` and RegExp is `/nd|ne/`
-		> #### **15.10.6.2 RegExp.prototype.exec(string)**
-		>
-		> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
-		>
-		> The string ToString(*string*) is searched for an occurrence of the regular expression pattern as follows:
-		>
-		> - 1. Let *S* be the value of ToString(*string*).
-		> - 2. Let *length* be the length of *S*.
-		> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-		> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-		> - 5. If the **global** property is **false**, let *i* = 0.
-		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
-		NuXJS result: `/nd|ne/.exec(undefined)` returns `null`.
-		Expected: converting `undefined` to "undefined" should match `"nd"` at index `1`.
-		Plan: Convert `undefined` via `ToString` before executing the pattern.
+  **Spec excerpt (§15.10.6.2 & §9.8.1):**
+  > - 1. Let *S* be the value of ToString(*string*).
+  > - 2. If *m* is **+0** or −**0**, return the string **"0"**. … (Rules for ToString applied to the Number type.)
 
-		```io
-		> var r = /nd|ne/.exec(undefined)
-		> print(r[0])
-		< nd
-		-
-		> print(r.index)
-		< 1
-		-
-		> print(r.input)
-		< undefined
-		-
-		```
-			See `tests/regression/regExpExecUndefinedString.io` for a regression test.
-		  - Fixed
-- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T19 — String is `void 0` and RegExp is `/e{1}/`
-		> #### **15.10.6.2 RegExp.prototype.exec(string)**
-		>
-		> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
-		>
-		> The string ToString(*string*) is searched for an occurrence of the regular expression pattern as follows:
-		>
-		> - 1. Let *S* be the value of ToString(*string*).
-		> - 2. Let *length* be the length of *S*.
-		> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-		> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-		> - 5. If the **global** property is **false**, let *i* = 0.
-		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
-		NuXJS result: `/e{1}/.exec(void 0)` returns `null`.
-		Expected: the string "undefined" should match `"e"` at index `3`.
-		Plan: Ensure `void 0` is stringified to "undefined" prior to matching.
+* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T11` — Number objects (e.g. `new Number(1.012)`) likewise skip `ToString`, preventing `/2|12/` from seeing "1.012".
 
-		```io
-		> var r = /e{1}/.exec(void 0)
-		> print(r[0])
-		< e
-		-
-		> print(r.index)
-		< 3
-		-
-		> print(r.input)
-		< undefined
-		-
-		```
-			See `tests/regression/regExpExecVoid0.io` for a regression test.
-		  - Fixed
-- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T2 — String is new String("123") and RegExp is /((1)|(12))((3)|(23))/
-	> #### **15.10.6.2 RegExp.prototype.exec(string)**
-	> 
-	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
-	> 
-	> The string ToString(*string*) is searched for an occurrence of the regular expression pattern as follows:
-	> 
-	> - 1. Let *S* be the value of ToString(*string*).
-	> - 2. Let *length* be the length of *S*.
-	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-		> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-		> - 5. If the **global** property is **false**, let *i* = 0.
-		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
-NuXJS result: executing the nested capture pattern on `new String("123")` returns incorrect capture groups.
-Expected: `r[0]` should be `"123"` with captures `1`, `1`, `undefined`, `3`, `undefined`.
-Plan: Fix capture group bookkeeping so unmatched alternates yield `undefined` entries.
-```io
-> var r=/((1)|(12))((3)|(23))/.exec(new String("123"))
-> print(r[0])
-> print(r[1])
-> print(r[2])
-> print(r[3])
-> print(r[4])
-> print(r[5])
-< 123
-< 1
-< 1
-< undefined
-< 3
-< undefined
--
-```
-See `tests/todo/regExpExecNestedCaptures.io` for a regression test.
-  - Fixed
-- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T20 — String is x and RegExp is /[a-f]d/, where x is undefined variable
-	> #### **15.10.6.2 RegExp.prototype.exec(string)**
-	> 
-	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
-	> 
-	> The string ToString(*string*) is searched for an occurrence of the regular expression pattern as follows:
-	> 
-	> - 1. Let *S* be the value of ToString(*string*).
-	> - 2. Let *length* be the length of *S*.
-	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-		> - 5. If the **global** property is **false**, let *i* = 0.
-		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
-		NuXJS result: `/[a-f]d/.exec(x)` where `x` is an undefined variable returns `null`.
-		Expected: the string "undefined" should match `"ed"` at index `7`.
-		Plan: Evaluate the argument expression and run `ToString` on its value (`undefined`) before matching.
+  **Spec excerpt (§15.10.6.2 & §9.8):**
+  > - 1. Let *S* be the value of ToString(*string*).
+  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
 
-		```io
-		> var r = /[a-f]d/.exec(x)
-		> print(r[0])
-		< ed
-		-
-		> print(r.index)
-		< 7
-		-
-		> print(r.input)
-		< undefined
-		-
-		> var x;
-		-
-		```
-		See `tests/todo/regExpExecUndefinedVariable.io` for a regression test.
-		  - Fixed
-- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T21 — String is function(){}() and RegExp is /[a-z]n/
-	> #### **15.10.6.2 RegExp.prototype.exec(string)**
-	> 
-	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
-	> 
-	> The string ToString(*string*) is searched for an occurrence of the regular expression pattern as follows:
-	> 
-	> - 1. Let *S* be the value of ToString(*string*).
-	> - 2. Let *length* be the length of *S*.
-	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-		> - 5. If the **global** property is **false**, let *i* = 0.
-		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
-		NuXJS result: `/[a-z]n/.exec(function(){}())` returns `null`.
-		Expected: calling the function yields `undefined`, which should match `"un"` at index `0`.
-		Plan: Coerce the function call's result to "undefined" before executing the regexp.
+* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T12` — Objects whose `toString` returns a number (e.g. `Math.PI`) need a second `ToString` to turn that result into text; NuXJS leaves the numeric value untouched.
 
-		```io
-		> var r = /[a-z]n/.exec(function(){}())
-		> print(r[0])
-		< un
-		-
-		> print(r.index)
-		< 0
-		-
-		> print(r.input)
-		< undefined
-		-
-		```
-		   See `tests/regression/regExpExecFunctionCallUndefined.io` for a regression test.
-		  - Fixed
-- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T3 — String is new Object("abcdefghi") and RegExp is /a[a-z]{2,4}/
-		> #### **15.10.6.2 RegExp.prototype.exec(string)**
-	> 
-	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
-	> 
-	> The string ToString(*string*) is searched for an occurrence of the regular expression pattern as follows:
-	> 
-	> - 1. Let *S* be the value of ToString(*string*).
-	> - 2. Let *length* be the length of *S*.
-	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-		> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-		> - 5. If the **global** property is **false**, let *i* = 0.
-		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
-NuXJS result: executing `/a[a-z]{2,4}/` on `new Object("abcdefghi")` yields `[obje` instead of the substring.
-Expected: the string "abcdefghi" should match `"abcde"` at index `0`.
-Plan: When `ToString` is applied to a `String` object, use its underlying primitive string rather than `[object Object]`.
-```io
-> var r=/a[a-z]{2,4}/.exec(new Object("abcdefghi"))
-> print(r[0])
-< abcde
--
-> print(r.index)
-< 0
--
-```
-See `tests/todo/regExpExecObjectString.io` for a regression test.
-  - Fixed
-- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T4 — String is {toString:function(){return "abcdefghi";}} and RegExp is /a[a-z]{2,4}?/
-		> #### **15.10.6.2 RegExp.prototype.exec(string)**
-	> 
-	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
-	> 
-	> The string ToString(*string*) is searched for an occurrence of the regular expression pattern as follows:
-	> 
-	> - 1. Let *S* be the value of ToString(*string*).
-	> - 2. Let *length* be the length of *S*.
-	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-		> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-		> - 5. If the **global** property is **false**, let *i* = 0.
-		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
-NuXJS result: executing `/a[a-z]{2,4}?/` on an object with `toString` returning "abcdefghi" yields `[ob` instead of the expected substring.
-Expected: the string "abcdefghi" should match `"abc"` at index `0`.
-Plan: Respect custom `toString` results by stringifying their primitive return value.
-```io
-> var r=/a[a-z]{2,4}?/.exec({toString:function(){return "abcdefghi";}})
-> print(r[0])
-< abc
--
-> print(r.index)
-< 0
--
-```
-See `tests/todo/regExpExecToStringObject.io` for a regression test.
-  - Fixed
-- [ ] built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T5 — String is {toString:function(){return {};}, valueOf:function(){return "aabaac";}} and RegExp is /(aa|aabaac|ba|b|c)* /
-	> #### **15.10.6.2 RegExp.prototype.exec(string)**
-	> 
-	> Performs a regular expression match of *string* against the regular expression and returns an Array object containing the results of the match, or **null** if the string did not match
-	> 
-	> The string ToString(*string*) is searched for an occurrence of the regular expression pattern as follows:
-	> 
-	> - 1. Let *S* be the value of ToString(*string*).
-	> - 2. Let *length* be the length of *S*.
-	> - 3. Let *lastIndex* be the value of the **lastIndex** property.
-	> - 4. Let *i* be the value of ToInteger(*lastIndex*).
-		> - 5. If the **global** property is **false**, let *i* = 0.
-		> - 6. If *I* < 0 or *I* > *length* then set **lastIndex** to 0 and return **null**.
-NuXJS result: `/(aa|aabaac|ba|b|c)*/.exec(obj)` where `obj` defines both `valueOf` and `toString` does not consult `valueOf` first.
-Expected: `ToString` must invoke `valueOf` before `toString`, yielding a match for `"aabaac"` at index `0`.
-Plan: Implement `ToPrimitive` with hint `String` so `valueOf` is tried when `toString` returns an object.
-```io
-> var r=/(aa|aabaac|ba|b|c)*/.exec({toString:function(){return {};}, valueOf:function(){return "aabaac";}})
-> print(r[0])
-> print(r.index)
-< aabaac
-< 0
--
-```
-See `tests/todo/regExpExecValueOfObject.io` for a regression test.
-  - Fixed
+  **Spec excerpt (§9.8 & §9.8.1):**
+  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
+  > - 2. If *m* is **+0** or −**0**, return the string **"0"**. … (Rules for ToString applied to the Number type.)
 
+* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T13` — Boolean primitives are not stringified, so `/t[a-b|q-s]/` misses the literal "true".
 
-- [ ] built-ins/RegExp/S15.10.2.8_A3_T15 — engine truncates deep capturing groups
-> #### **15.10.2.8 Atom**
->
-> Parentheses of the form *( Disjunction )* serve both to group the components of the pattern together and to save the result of the match.
-NuXJS result: a pattern with 200 nested capturing groups returns an array of length `1`.
-Expected: the match result should contain one entry for each of the 200 capturing groups, for a total length of `201`.
-```io
-> var re = new RegExp(Array(201).join("(") + "hi" + Array(201).join(")"));
-> print(re.exec("hi").length);
-< 1
--
-```
-See `tests/todo/regExpDeepCaptures.io` for a regression test.
+  **Spec excerpt (§15.10.6.2 & §9.8):**
+  > - 1. Let *S* be the value of ToString(*string*).
+  > | Boolean | If the argument is true, then the result is "true".<br>If the argument is false, then the result is "false". |
 
-Plan: Lift the limit on tracked capturing groups so all groups are reported.
-  - Fixed
+* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T14` — Boolean objects also skip coercion, blocking `/AL|se/` from matching the wrapped "false".
 
-### String
-- [ ] built-ins/String/prototype/indexOf/S15.5.4.7_A1_T11 — calling `indexOf` with object `this` yields wrong index
-> #### **15.5.4.7 String.prototype.indexOf (searchString, position)**
->
-> If *searchString* appears as a substring of the result of converting this object to a string, at one or more positions that are greater than or equal to *position*, then the index of the smallest such position is returned; otherwise, **-1** is returned. If *position* is **undefined**, 0 is assumed, so as to search all of the string.
->
-> The **indexOf** method takes two arguments, *searchString* and *position*, and performs the following steps:
->
-> - 1. Call ToString, giving it the **this** value as its argument.
-> - 2. Call ToString(*searchString*).
-> - 3. Call ToInteger(*position*). (If *position* is **undefined**, this step produces the value **0**).
-> - 4. Compute the number of characters in Result(1).
-> - 5. Compute min(max(Result(3), 0), Result(4)).
-> - 6. Compute the number of characters in the string that is Result(2).
-NuXJS result: `String.prototype.indexOf.call({ toString: function() { return "xyz"; } }, "y")` returns `-1`.
-Expected: the receiver is coerced to "xyz", so "y" should be found at index `1`.
-Plan: Convert the **this** value with `ToString` before searching so object receivers expose their string value.
-```io
-> obj = { toString: function() { return "xyz"; } }
-> print(String.prototype.indexOf.call(obj, "y"))
-< 1
--
-```
-See `tests/regression/stringIndexOfCoercesThis.io` for a regression test.
-  - Fixed
-- [ ] built-ins/String/prototype/replace/S15.5.4.11_A12 — `replace` should treat undefined `this` correctly
-	   > #### **15.5.4.11 String.prototype.replace (searchValue, replaceValue)**
-	   >
-	   > Let *string* denote the result of converting the **this** value to a string.
-	   >
-		   NuXJS result: `String.prototype.replace.call(undefined, "d", "D")` produces `[object Object]`.
-		   Expected: the **this** value `undefined` should convert to the string "undefined", yielding `"unDefineD"` after replacement.
-		   Plan: Coerce the **this** value via `ToString` so `undefined` becomes "undefined" before replacement.
+  **Spec excerpt (§15.10.6.2 & §9.8):**
+  > - 1. Let *S* be the value of ToString(*string*).
+  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
 
-		   ```io
-		   > print(String.prototype.replace.call(undefined, "d", "D"))
-		   < unDefineD
-	   -
-	   ```
-	   See `tests/todo/stringReplaceUndefinedThis.io` for a regression test.
-		 - Fixed
-- [x] built-ins/String/prototype/replace/S15.5.4.11_A1_T11 — replacing with objects whose `toString` throws
-		> #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
-		>
-		> Otherwise, let *newstring* denote the result of converting *replaceValue* to a string.
-		>
-				NuXJS result: replacing with an object whose `toString` throws does not propagate the exception.
-				Expected: the replacement value must be converted to a string; an error from `toString` should be thrown.
-			   Plan: Apply `ToString` to the replacement and propagate any exception from its `toString`.
-				```io
-				> try { "a".replace("a", { toString: function(){ throw new Error("X"); } }); } catch (e) { print(e.message); }
-				< X
-		-
-		```
-		See `tests/regression/stringReplaceThrowingToString.io` for a regression test.
-		  - Fixed
-- [ ] built-ins/String/prototype/replace/S15.5.4.11_A1_T12 — replacing with object whose `valueOf` throws
-		> #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
-		>
-		> Otherwise, let *newstring* denote the result of converting *replaceValue* to a string.
-		>
-				NuXJS result: if the replacement object's `valueOf` throws, the exception is swallowed.
-				Expected: `ToString` first invokes `valueOf`; an error from `valueOf` must propagate.
-			   Plan: Invoke `valueOf` during `ToString` and propagate its errors before calling `toString`.
-				```io
-				> try { "a".replace("a", { valueOf: function(){ throw new Error("Y"); } }); } catch (e) { print(e.message); }
-				< Y
-		-
-		```
-		See `tests/todo/stringReplaceThrowingValueOf.io` for a regression test.
-		  - Fixed
-- [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T1 — `$11` sequences ignored in computed `replaceValue`
-	   > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
-	   >
-	   > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.	The sequence `"$"` followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
-	   >
-		   NuXJS result: `var r = "$11" + 15; "xab".replace(/(x)/, r)` leaves the `$11` literal and returns `"$1115ab"`.
-		   Expected: `$11` should expand to capture `1` followed by `"1"`, producing `"x115ab"`.
-		   Plan: After computing `replaceValue`, expand `$nn` sequences to the corresponding capture groups before insertion.
+* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T15` — When `toString` returns the boolean `false`, NuXJS fails to coerce it to "false" before matching `/LS/i`.
 
-		   ```io
-		   > var r = "$11" + 15
-		   > print("xab".replace(/(x)/, r))
-	   < x115ab
-	   -
-	   ```
-	   See `tests/todo/stringReplace11Concat.io` for a regression test.
-		 - Fixed
-- [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T2 — `replaceValue` is "$11" + "15"
-	   > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
-	   >
-	   > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.	The sequence "\$" followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
-	   >
-	   NuXJS result: `var r = "$11" + "15"; "xab".replace(/(x)/, r)` yields `$1115ab`.
-		   Expected: `$11` should expand to capture `1` followed by "1", producing "x115ab".
-		   Plan: Scan two-digit `$nn` tokens and, when `nn` exceeds the capture count, treat `$n` as the capture and append the extra digit literally.
-		   ```io
-	   > var r = "$11" + "15"
-	   > print("xab".replace(/(x)/, r))
-	   < x115ab
-	   -
-	   ```
-	   See `tests/todo/stringReplace11Plus15.io` for a regression test.
-		 - Fixed
-- [ ] built-ins/String/prototype/replace/S15.5.4.11_A3_T3 — `replaceValue` is "$11" + "A15"
-	   > #### **15.5.4.11 String.prototype.replace ( searchValue, replaceValue )**
-	   >
-	   > If *replaceValue* is not a function, ToString(*replaceValue*) is processed for substitution patterns.	The sequence "\$" followed by one or two decimal digits *nn* (0 < *nn* ≤ *NCaptures*) is replaced by the *nn*-th captured substring.
-	   >
-		   NuXJS result: `var r = "$11" + "A15"; "xab".replace(/(x)/, r)` returns `$11A15ab`.
-		   Expected: "x1A15ab" after expanding `$11` to capture `1` plus "1".
-		   Plan: When processing replacement text, prefer a two-digit capture only if it exists; otherwise use the first digit's capture and emit the remaining text unchanged.
-		   ```io
-	   > var r = "$11" + "A15"
-	   > print("xab".replace(/(x)/, r))
-	   < x1A15ab
-	   -
-	   ```
-	   See `tests/todo/stringReplace11PlusA15.io` for a regression test.
-		 - Fixed
-- [ ] built-ins/String/prototype/replace/S15.5.4.11_A5_T1 — regex `/^(a+)\1*,\1+$/` with backreference
-	   > #### **15.10.2.9 AtomEscape**
-	   >
-	   > An escape sequence of the form "\\" followed by a nonzero decimal number *n* matches the result of the *n*th set of capturing parentheses.
-	   >
-		   NuXJS result: "aa,a".replace(/^(a+)\1*,\1+$/, "$1") leaves the string unchanged.
-		   Expected: backreference handling should collapse the match to "a".
-		   Plan: Implement backreference evaluation so `\1` and similar escapes compare against the previously captured text, even when quantified.
-		   ```io
-	   > print("aa,a".replace(/^(a+)\1*,\1+$/, "$1"))
-	   < a
-	   -
-	   ```
-	   See `tests/todo/stringReplaceBackreference.io` for a regression test.
-		 - Fixed
-- built-ins/String/prototype/toLocaleLowerCase/supplementary_plane — supplementary-plane mapping not defined in ES3
-		> ## **15.5.4.17 String.prototype.toLocaleLowerCase ( )**
-		>
-		> This function works exactly the same as **toLowerCase** except that its result is intended to yield the correct result for the host environment's current locale, rather than a locale-independent result. There will only be a difference in the few cases (such as Turkish) where the rules for that language conflict with the regular Unicode case mappings.
-		>
-		> ## *NOTE 1*
-		>
-		> *The* **toLocaleLowerCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
-		>
-		> #### *NOTE 2*
-		>
-		> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
-NuXJS result: `print("\uD835\uDD0A".toLocaleLowerCase())` collapses the surrogate pair to `"G"`.
-Expected: the original character `"𝔊"` should be preserved.
-Resolution: ES3 strings are 16‑bit and provide no rules for characters outside the Basic Multilingual Plane.
-Flagged `not_es3` in `tools/testdash.json`.
-```io
-> print("\uD835\uDD0A".toLocaleLowerCase())
-< 𝔊
--
-```
-Supplementary-plane casing is outside ES3; no regression test.
-  - Fixed
-- built-ins/String/prototype/toLocaleUpperCase/supplementary_plane — supplementary-plane mapping not defined in ES3
-	> #### **15.5.4.19 String.prototype.toLocaleUpperCase ( )**
-	> 
-	> This function works exactly the same as **toUpperCase** except that its result is intended to yield the correct result for the host environment's current locale, rather than a locale-independent result. There will only be a difference in the few cases (such as Turkish) where the rules for that language conflict with the regular Unicode case mappings.
-	> 
-	> #### *NOTE 1*
-	> 
-	> *The* **toLocaleUpperCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
-	> 
-> *NOTE 2*
->
-> *The first parameter to this function is likely to be used in a future version of this standard; it is recommended that implementations do not use this parameter position for anything else.*
-NuXJS result: `print("\uD835\uDD24".toLocaleUpperCase())` collapses the surrogate pair to `"g"`.
-Expected: `"𝔊"`.
-Resolution: ES3 strings are 16‑bit and provide no rules for characters outside the Basic Multilingual Plane.
-Flagged `not_es3` in `tools/testdash.json`.
-```io
-> print("\uD835\uDD24".toLocaleUpperCase())
-< 𝔊
--
-```
-Supplementary-plane casing is outside ES3; no regression test.
-  - Fixed
-- built-ins/String/prototype/toLowerCase/supplementary_plane — supplementary-plane mapping not defined in ES3
-> ## **15.5.4.16 String.prototype.toLowerCase ( )**
->
-> If this object is not already a string, it is converted to a string. The characters in that string are converted one by one to lower case. The result is a string value, not a String object.
->
-> The characters are converted one by one. The result of each conversion is the original character, unless that character has a Unicode lowercase equivalent, in which case the lowercase equivalent is used instead.
->
-> #### *NOTE 1*
->
-> *The result should be derived according to the case mappings in the Unicode character database (this explicitly includes not only the UnicodeData.txt file, but also the SpecialCasings.txt file that accompanies it in Unicode 2.1.8 and later).*
->
-> ## *NOTE 2*
-NuXJS result: `print("\uD835\uDD0A".toLowerCase())` collapses the surrogate pair to `"G"`.
-Expected: `"𝔊"`.
-Resolution: ES3 strings are 16‑bit and provide no rules for characters outside the Basic Multilingual Plane.
-Flagged `not_es3` in `tools/testdash.json`.
-```io
-> print("\uD835\uDD0A".toLowerCase())
-< 𝔊
--
-```
-Supplementary-plane casing is outside ES3; no regression test.
-  - Fixed
-- built-ins/String/prototype/toUpperCase/supplementary_plane — supplementary-plane mapping not defined in ES3
-		> #### **15.5.4.18 String.prototype.toUpperCase ( )**
-		>
-		> This function behaves in exactly the same way as **String.prototype.toLowerCase**, except that characters are mapped to their *uppercase* equivalents as specified in the Unicode Character Database.
-		>
-		> #### *NOTE 1*
-		>
-		> *Because both* **toUpperCase** *and* **toLowerCase** *have context-sensitive behaviour, the functions are not symmetrical. In other words,* **s.toUpperCase().toLowerCase()** *is not necessarily equal to* **s.toLowerCase()***.*
-		>
-		> #### *NOTE 2*
-		>
-		> *The* **toUpperCase** *function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.*
-NuXJS result: `print("\uD835\uDD0A".toUpperCase())` collapses the surrogate pair to `"G"`.
-Expected: `"𝔊"`.
-Resolution: ES3 strings are 16‑bit and provide no rules for characters outside the Basic Multilingual Plane.
-Flagged `not_es3` in `tools/testdash.json`.
-```io
-> print("\uD835\uDD0A".toUpperCase())
-< 𝔊
--
-```
-Supplementary-plane casing is outside ES3; no regression test.
-  - Fixed
-### parseInt
+  **Spec excerpt (§8.6.2.6 & §9.8):**
+  > When the [[DefaultValue]] method of *O* is called with hint String, … Call the [[Get]] method … "**toString**" … If Result(3) is a primitive value, return Result(3). …
+  > | Boolean | If the argument is true, then the result is "true".<br>If the argument is false, then the result is "false". |
 
-- built-ins/parseInt/S15.1.2.2_A5.2_T2 — ": 0X"
-		> #### **15.1.2.2 parseInt (string , radix)**
-		>
-		> The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
-		>
-		> - 13. If the length of *S* is at least 2 and the first two characters of *S* are either "0x" or "0X", then remove the first two characters from *S* and let *R* = 16.
-Previously, `parseInt("0X1")` returned `0`, ignoring the hexadecimal prefix.
-Now strings starting with `0x` or `0X` parse as base 16 when the radix is undefined or 0, producing `1` for `"0X1"`.
-Resolution: Accept an uppercase `0X` prefix when the radix is omitted or 0, mirroring the check for lowercase `0x`.
-```io
-> print(parseInt("0X1"))
-< 1
--
-> print(parseInt("0XA"))
-< 10
--
-```
-See `tests/regression/parseInt0XPrefix.io` for a regression test.
-  - Fixed
-- built-ins/parseInt/S15.1.2.2_A7.2_T3 — Checking algorithm for R = 16
-		> #### **15.1.2.2 parseInt (string , radix)**
-		>
-		> The **parseInt** function produces an integer value dictated by interpretation of the contents of the *string* argument according to the specified *radix*. Leading whitespace in the string is ignored. If *radix* is **undefined** or 0, it is assumed to be 10 except when the number begins with the character pairs **0x** or **0X**, in which case a radix of 16 is assumed. Any radix-16 number may also optionally begin with the character pairs **0x** or **0X**.
-		>
-		> - 13. If the length of *S* is at least 2 and the first two characters of *S* are either "0x" or "0X", then remove the first two characters from *S* and let *R* = 16.
-Previously, `parseInt("0X10", 16)` returned `0` instead of `16`.
-With radix 16, uppercase `0X` prefixes are now valid, so `parseInt("0X10", 16)` yields `16`.
-Resolution: When radix is 16, strip an optional leading `0X` or `0x` before parsing digits.
-```io
-> print(parseInt("0X10", 16))
-< 16
--
-> print(parseInt("0XFF", 16))
-< 255
--
-```
-See `tests/regression/parseIntRadix16Uppercase.io` for a regression test.
-  - Fixed
+* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T17` — `null` inputs are not stringified; `/ll|l/` should match "null" at index 2.
 
+  **Spec excerpt (§15.10.6.2 & §9.8):**
+  > - 1. Let *S* be the value of ToString(*string*).
+  > | Null | "null" |
+
+* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T18` — `undefined` inputs are not stringified; `/nd|ne/` should find "nd" in "undefined".
+
+  **Spec excerpt (§15.10.6.2 & §9.8):**
+  > - 1. Let *S* be the value of ToString(*string*).
+  > | Undefined | "undefined" |
+
+* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T19` — `void 0` hits the same coercion gap, preventing `/e{1}/` from matching.
+
+  **Spec excerpt (§15.10.6.2 & §9.8):**
+  > - 1. Let *S* be the value of ToString(*string*).
+  > | Undefined | "undefined" |
+
+* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T20` — Referencing an undeclared identifier (which evaluates to `undefined` in the test harness) is not converted to "undefined", so `/[a-f]d/` fails to match "ed".
+
+  **Spec excerpt (§15.10.6.2 & §9.8):**
+  > - 1. Let *S* be the value of ToString(*string*).
+  > | Undefined | "undefined" |
+
+* `built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T21` — Results from function calls that evaluate to `undefined` are left as the primitive value rather than stringified prior to matching `/[a-z]n/`.
+
+  **Spec excerpt (§15.10.6.2 & §9.8):**
+  > - 1. Let *S* be the value of ToString(*string*).
+  > | Undefined | "undefined" |
+
+### String (7)
+* `built-ins/String/prototype/replace/S15.5.4.11_A12` — `String.prototype.replace.call(undefined, …)` should coerce the `this` value to "undefined" before applying the replacement.
+
+  **Spec excerpt (§15.5.4.11):**
+  > Let *string* denote the result of converting the **this** value to a string.
+
+* `built-ins/String/prototype/replace/S15.5.4.11_A1_T11` — Replacement objects whose `toString` throws must propagate that exception; the engine currently swallows it.
+
+  **Spec excerpt (§15.5.4.11 & §9.8):**
+  > Otherwise, let *newstring* denote the result of converting *replaceValue* to a string.
+  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
+
+* `built-ins/String/prototype/replace/S15.5.4.11_A1_T12` — When `valueOf` throws during replacement value conversion, the error should bubble out, but it is ignored.
+
+  **Spec excerpt (§9.8 & §8.6.2.6):**
+  > | Object | Apply the following steps:<br>Call ToPrimitive(input argument, hint String).<br>Call ToString(Result(1)).<br>Return Result(2). |
+  > When the [[DefaultValue]] method of *O* is called with hint String, … Call the [[Get]] method … "**toString**" … If Result(3) is a primitive value, return Result(3). … Call the [[Get]] method … "**valueOf**" … If Result(7) is a primitive value, return Result(7). … Throw a **TypeError** exception.
+
+* `built-ins/String/prototype/replace/S15.5.4.11_A3_T1` — `$11` sequences in replacement text must expand to capture 1 followed by the literal "1"; NuXJS keeps the literal `$11`.
+
+  **Spec excerpt (§15.5.4.11):**
+  > | \$ <i>n</i>  | The <i>n</i>th capture, where <i>n</i> is a single digit 1-9 and $\$n$ is not followed by a decimal digit. |
+  > | \$ <i>nn</i> | The $nn^{th}$ capture, where $nn$ is a two-digit decimal number 01-99. |
+
+* `built-ins/String/prototype/replace/S15.5.4.11_A3_T2` — The same `$11` parsing bug appears when the suffix is "15".
+
+  **Spec excerpt (§15.5.4.11):**
+  > | \$ <i>n</i>  | The <i>n</i>th capture, where <i>n</i> is a single digit 1-9 and $\$n$ is not followed by a decimal digit. |
+  > | \$ <i>nn</i> | The $nn^{th}$ capture, where $nn$ is a two-digit decimal number 01-99. |
+
+* `built-ins/String/prototype/replace/S15.5.4.11_A3_T3` — `$11` followed by "A15" also fails to substitute capture 1 correctly.
+
+  **Spec excerpt (§15.5.4.11):**
+  > | \$ <i>n</i>  | The <i>n</i>th capture, where <i>n</i> is a single digit 1-9 and $\$n$ is not followed by a decimal digit. |
+  > | \$ <i>nn</i> | The $nn^{th}$ capture, where $nn$ is a two-digit decimal number 01-99. |
+
+* `built-ins/String/prototype/replace/S15.5.4.11_A5_T1` — Backreference handling for `/^(a+)\1*,\1+$/` is incomplete, leaving the original string untouched instead of collapsing to the captured `"a"`.
+
+  **Spec excerpt (§15.10.2.1 & §15.10.2.10):**
+  > - *NCapturingParens* is the total number of left capturing parentheses … The *n*th element of *captures* is either a string … or **undefined** if the *n*th set of capturing parentheses hasn't been reached yet.
+  > An escape sequence of the form **\\** followed by a nonzero decimal number *n* matches the result of the *n*th set of capturing parentheses … If the regular expression has *n* or more capturing parentheses but the *n*th one is **undefined** because it hasn't captured anything, then the backreference always succeeds.
