@@ -1702,11 +1702,15 @@ bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flag
 		}
 		sliceDenseVector(rt, key);
 	} else if (key.equalsString(LENGTH_STRING)) {
-		UInt32 newLength;
-		if (!v.toArrayIndex(newLength)) {
+		double rawLength = v.toDouble();
+		if (isNaN(rawLength) || rawLength < 0.0 || rawLength > 4294967295.0) {
 			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
 		}
-		return updateLength(newLength);
+		UInt32 coercedLength = static_cast<UInt32>(rawLength);
+		if (rawLength != static_cast<double>(coercedLength)) {
+			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
+		}
+		return updateLength(coercedLength);
 	}
 	return super::setOwnProperty(rt, key, v, flags);
 }
@@ -2286,7 +2290,7 @@ struct Processor::WithScope : public Scope {
 };
 
 Processor::Processor(Runtime& rt) : super(rt.heap.roots()), rt(rt), heap(rt.heap), currentFrame(0), firstCatcher(0)
-		, stack(rt.stackSize, &heap) {
+, stack(rt.stackSize, &heap) {
 	stack[0] = UNDEFINED_VALUE;
 	reset();
 }
@@ -2397,8 +2401,8 @@ Function* Processor::asFunction(const Value& v) {
 }
 
 void Processor::invokeFunction(Function* f, Int32 popCount, Int32 argc, Object* thisObject) {
-	sp[-popCount] = f->invoke(rt, *this, argc, sp - argc + 1, thisObject);
-	pop(popCount);
+sp[-popCount] = f->invoke(rt, *this, argc, sp - argc + 1, thisObject);
+pop(popCount);
 }
 
 void Processor::newOperation(const Int32 argc) {
@@ -2652,7 +2656,7 @@ void Processor::innerRun() {
 			case WITH_SCOPE_OP: {
 				Object* o = convertToObject(sp[0], false);
 				if (o != 0) {
-					pushFrame(code, new(heap) WithScope(heap.managed(), scope, o), thisObject);
+				pushFrame(code, new(heap) WithScope(heap.managed(), scope, o), thisObject);
 					pop(1);
 				}
 				return;
@@ -3699,7 +3703,7 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 }
 
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
-const Int32 MAX_NESTED_EXPRESSION_DEPTH = 64;
+const Int32 MAX_NESTED_EXPRESSION_DEPTH = 512;
 
 bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
 	if (nestCounter >= MAX_NESTED_EXPRESSION_DEPTH) {
@@ -4809,7 +4813,7 @@ struct Support {
 			}
 			// FIX : we copy all arguments once to argv, and then chain will copy them again to a scope object, couldn't we short-cut that somehow?
 			// FIX : since only arrays and arguments are really valid here, perhaps even have a new virtual in object for implementing efficient apply with these?
-			return callFunction->invoke(rt, processor, args.size(), args.begin(), newThis);
+return callFunction->invoke(rt, processor, args.size(), args.begin(), newThis);
 		}
 	}
 	
@@ -4918,9 +4922,10 @@ struct Support {
 		return (newTime == -1 ? NAN_VALUE : Value(t * 1000.0 - newTime * 1000.0));
 	}
 	
-	static Value random(Runtime&, Processor&, UInt32, const Value*, Object*) {
-		return rand() / (RAND_MAX + 1.0);
-	}
+        static Value random(Runtime&, Processor&, UInt32, const Value*, Object*) {
+                return rand() / (RAND_MAX + 1.0);
+        }
+
 };
 
 static struct {
@@ -4943,7 +4948,7 @@ static struct {
 	{ "pow", Support::pow }, { "parseFloat", Support::parseFloat }, { "charCodeAt", Support::charCodeAt },
 	{ "substring", Support::substring }, { "submatch", Support::submatch },
 	{ "getCurrentTime", Support::getCurrentTime }, { "localTimeDifference", Support::localTimeDifference },
-	{ "random", Support::random }, { "updateDateValue", Support::updateDateValue }
+{ "random", Support::random }, { "updateDateValue", Support::updateDateValue }
 };
 
 static UnaryMathFunction<bool (double)> IS_NAN_FUNCTION(isNaN);
@@ -5068,7 +5073,7 @@ Var Runtime::call(Function* function, UInt32 argc, const Value* argv, Object* th
 		Runtime& rt;
 	} nestCounter(*this);
 	Processor processor(*this);
-	processor.invokeFunction(function, argc, argv, thisObject);
+processor.invokeFunction(function, argc, argv, thisObject);
 	return runUntilReturn(processor);
 }
 
