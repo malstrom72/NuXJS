@@ -17,7 +17,7 @@
 	@preserve: toLocaleUpperCase,toLowerCase,toPrecision,toString,toTimeString,toUTCString,toUpperCase,true,try,typeof
 	@preserve: undefined,upperToLower,value,valueOf,var,void,while,writable,pop,parse,toDateString,instanceof,test
 	@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,$match
-	@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
+	@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,stringThis,toJSON,unshift,compileFunction,localTimeDifference
 	@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
 
 	support: {
@@ -52,6 +52,7 @@
 		floor(x: number): number
 		log(x: number): number
 		random(): number
+		stringThis(): string
 		sin(x: number): number
 		sqrt(x: number): number
 		tan(x: number): number
@@ -484,7 +485,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		} while (true);
 	}),
 	replace: unconstructable(function replace(searchValue, replaceValue) {
-		var s, sLength = (s = str(this)).length, replaceFunction = replaceValue, matches, i, p, t, l, e;
+		var s, sLength = (s = support.stringThis()).length, replaceFunction = replaceValue, matches, i, p, t, l, e;
 		if (typeof replaceFunction !== "function") {
 			var r = str(replaceValue);
 			for (i = r.length; --i >= 0 && r[i] != '$';);

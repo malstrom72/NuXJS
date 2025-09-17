@@ -1599,8 +1599,9 @@ class Processor : public GCItem {
 		static const OpcodeInfo& getOpcodeInfo(const Opcode opcode);
 
 	public:
-		Processor(Runtime& rt);
-		void invokeFunction(Function* f, Int32 argc, const Value* argv, Object* thisObject = 0);
+Processor(Runtime& rt);
+Value callFunction(Function* f, UInt32 argc, const Value* argv, Object* thisObject = 0, const Value& thisValue = UNDEFINED_VALUE);
+void invokeFunction(Function* f, Int32 argc, const Value* argv, Object* thisObject = 0, const Value& thisValue = UNDEFINED_VALUE);
 		void enterGlobalCode(const Code* code);
 		void enterEvalCode(const Code* code, bool local = false);
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
@@ -1608,26 +1609,29 @@ class Processor : public GCItem {
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);
 		Value getResult() const;	// make sure you've called run() until it returns false before calling this
+		Value getThisValue() const { return (currentFrame != 0 ? currentFrame->thisValue : UNDEFINED_VALUE); }
 
 	protected:
-		struct Frame : public GCItem {
-			typedef GCItem super;
-			Frame(GCList& gcList, const CodeWord* returnIP, const Code* code, Scope* scope, Object* thisObject
-					, Frame* previousFrame) : super(gcList), returnIP(returnIP), code(code), scope(scope)
-					, thisObject(thisObject), previousFrame(previousFrame) { }
-			const CodeWord* const returnIP;
-			const Code* const code;
-			Scope* const scope;
-			Object* const thisObject;
-			Frame* const previousFrame;
-			virtual void gcMarkReferences(Heap& heap) const {
-				gcMark(heap, code);
-				gcMark(heap, scope);
-				gcMark(heap, thisObject);
-				gcMark(heap, previousFrame);
-				super::gcMarkReferences(heap);
-			}
-		};
+struct Frame : public GCItem {
+typedef GCItem super;
+Frame(GCList& gcList, const CodeWord* returnIP, const Code* code, Scope* scope, Object* thisObject
+, const Value& thisValue, Frame* previousFrame) : super(gcList), returnIP(returnIP), code(code)
+, scope(scope), thisObject(thisObject), thisValue(thisValue), previousFrame(previousFrame) { }
+const CodeWord* const returnIP;
+const Code* const code;
+Scope* const scope;
+Object* const thisObject;
+Value thisValue;
+Frame* const previousFrame;
+virtual void gcMarkReferences(Heap& heap) const {
+gcMark(heap, code);
+gcMark(heap, scope);
+gcMark(heap, thisObject);
+gcMark(heap, thisValue);
+gcMark(heap, previousFrame);
+super::gcMarkReferences(heap);
+}
+};
 
 		struct Catcher : public GCItem {
 			typedef GCItem super;
@@ -1648,17 +1652,18 @@ class Processor : public GCItem {
 		struct CatchScope;
 		struct WithScope;
 
-		void enter(const Code* code, Scope* scope, Object* thisObject);
+		void enter(const Code* code, Scope* scope, Object* thisObject, const Value& thisValue);
 		void push(const Value& v);
 		void pop(Int32 count);
 		void pop2push1(const Value& v);
 		void innerRun();
 		Object* convertToObject(const Value& v, bool requireExtensible);
 		Function* asFunction(const Value& v);
-		void invokeFunction(Function* f, Int32 popCount, Int32 argc, Object* thisObject = 0); // FIX : rename, unnecessary with the same name as the public method
+		void invokeFunction(Function* f, Int32 popCount, Int32 argc, Object* thisObject = 0, const Value& thisValue = UNDEFINED_VALUE); // FIX : rename, unnecessary with the same name as the public method
 		void newOperation(const Int32 argc);
 		void reset();
-		void pushFrame(const Code* code, Scope* scope, Object* thisObject);
+		Value takeNextThisValue();
+		void pushFrame(const Code* code, Scope* scope, Object* thisObject, const Value& thisValue);
 		void popFrame();
 		void popCatcher();
 
@@ -1672,11 +1677,13 @@ class Processor : public GCItem {
 		const CodeWord* ip;		// 0 = finished (or nothing invoked), run() will return false.
 		Value* sp;
 		Vector<Value> stack;
+		Value nextThisValue;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, currentFrame);
 			gcMark(heap, firstCatcher);
 			gcMark(heap, stack.begin(), sp + 1);
+			gcMark(heap, nextThisValue);
 			super::gcMarkReferences(heap);
 		}
 };

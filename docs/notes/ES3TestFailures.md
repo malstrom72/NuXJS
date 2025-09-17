@@ -2,7 +2,7 @@
 
 _Updated after re-running the targeted `fails` bucket on September 17, 2025._
 
-The `fails` manifest now lists seven ES3 Test262 cases across the String built-ins.【F:fails†L1-L41】
+The `fails` manifest now lists six ES3 Test262 cases across the String built-ins.【F:fails†L1-L41】
 
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
@@ -26,17 +26,12 @@ Each subsection quotes the relevant ECMA-262 3rd edition requirements and summar
 4. **`built-ins/RegExp/S15.10.2.8_A3_T15`**
    The parser's nesting budget has been lifted to 512 expressions, allowing 200-parenthesis patterns to compile and execute; a regression script confirms the capture array survives compilation and matching.【F:src/NuXJS.cpp†L3706-L3717】【F:tests/regression/regExpNestedCaptureCompilation.io†L1-L16】
 
-### String (7 remaining)
+5. **`built-ins/String/prototype/replace/S15.5.4.11_A12`**
+   `support.stringThis` now preserves the raw receiver when `Function.prototype.call` substitutes the global object, so `String.prototype.replace.call(undefined, 'd', 'D')` coerces `undefined` correctly and returns `"unDefineD"`; a regression script covers both `undefined` and `null` receivers.【F:src/NuXJS.cpp†L4792-L4863】【F:src/stdlib.js†L485-L520】【F:tests/regression/stringReplaceUndefinedReceiver.io†L1-L2】
 
-4. **`built-ins/String/prototype/replace/S15.5.4.11_A12`**
-   **Spec excerpt (ES3 §15.5.4.11):**
-   > Let string denote the result of converting the this value to a string.【docs/specs/ECMA-262 3.md†L5015-L5022】
+### String (6 remaining)
 
-   **NuXJS diagnosis:** When `replace` is borrowed with `this` equal to `undefined`, the runtime has already substituted the global object for the receiver before `str(this)` executes. The conversion therefore yields `"[object Object]"` and the result becomes `"[object Object]"` instead of `"unDefineD"`.【src/stdlib.js†L486-L533】
-
-   **Implementation notes:** Thread the original `this` value into built-ins so `String` methods can apply `ToString` to `undefined`/`null` directly. One approach is to extend the call machinery in `Function::call` to pass both the substituted object and the raw `Value`, adding a helper (e.g. `support.stringThis`) that mirrors ES3’s `ToString` semantics. Add an `.io` regression (`stringReplaceUndefinedReceiver.io`) that asserts `String.prototype.replace.call(undefined, 'd', 'D') === 'unDefineD'`.
-
-5. **`built-ins/String/prototype/replace/S15.5.4.11_A1_T11`** and **`…_A1_T12`**
+4. **`built-ins/String/prototype/replace/S15.5.4.11_A1_T11`** and **`…_A1_T12`**
    **Spec excerpt (ES3 §15.5.4.11):**
    > Otherwise, let newstring denote the result of converting replaceValue to a string.【docs/specs/ECMA-262 3.md†L5028-L5037】
 
@@ -44,7 +39,7 @@ Each subsection quotes the relevant ECMA-262 3rd edition requirements and summar
 
    **Implementation notes:** Reorder the coercion logic so `searchValue` undergoes `ToString` (or `RegExp` construction) before touching `replaceValue`. Preserve the existing closure cache but delay `str(replaceValue)` until after the search operand resolves. Capture the behaviour with an `.io` test that wires throwing `toString`/`valueOf` implementations onto both operands.
 
-6. **`built-ins/String/prototype/replace/S15.5.4.11_A3_T1`**, **`…_A3_T2`**, **`…_A3_T3`**
+5. **`built-ins/String/prototype/replace/S15.5.4.11_A3_T1`**, **`…_A3_T2`**, **`…_A3_T3`**
    **Spec excerpt (ES3 §15.5.4.11, replacement table):**
    > The sequence "$" followed by one or two decimal digits nn (0 < nn ≤ NCaptures) is replaced by the nnth captured substring. ... If nn > m, the result is implementation-defined.【docs/specs/ECMA-262 3.md†L5038-L5062】
 
@@ -52,7 +47,7 @@ Each subsection quotes the relevant ECMA-262 3rd edition requirements and summar
 
    **Implementation notes:** Adjust the `$`-sequence parser so an oversized two-digit index falls back to the single-digit capture followed by the literal second digit, and ensure cases like `$1A` append the trailing literal text. Add a regression (`stringReplaceTwoDigitBackreference.io`) covering `$11` concatenations and `$1A`.
 
-7. **`built-ins/String/prototype/replace/S15.5.4.11_A5_T1`**
+6. **`built-ins/String/prototype/replace/S15.5.4.11_A5_T1`**
    **Spec excerpt (ES3 §15.10.2.1 & §15.10.2.8):**
    > A State ... stores the start and end of each capturing parenthesis. The backreference \1 retrieves the substring captured by the first group for each iteration.【docs/specs/ECMA-262 3.md†L6835-L6840】【docs/specs/ECMA-262 3.md†L6875-L6904】
 
