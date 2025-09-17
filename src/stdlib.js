@@ -483,56 +483,63 @@ defineProperties(String.prototype, { dontEnum: true }, {
 			if (!(a[i++] = r[0])) ++regexp.lastIndex;
 		} while (true);
 	}),
-	replace: unconstructable(function replace(searchValue, replaceValue) {
-		var s, sLength = (s = str(this)).length, replaceFunction = replaceValue, matches, i, p, t, l, e;
-		if (typeof replaceFunction !== "function") {
-			var r = str(replaceValue);
-			for (i = r.length; --i >= 0 && r[i] != '$';);
-			replaceFunction = (i < 0 ? function() { return r; } : function(m) {
-				var t = '', p, ch, ch2, c, n;
-				for (p = 0; ch = r[p]; ++p) {
-					if (ch !== '$') t += ch;
-					else switch (ch = r[++p]) {
-						case (void 0): case '$': t += '$'; break;
-						case '&': t += m; break;
-						case '`': t += $sub(s, 0, arguments[arguments.length - 2]); break;
-						case "'": t += $sub(s, arguments[arguments.length - 2] + m.length, sLength); break;
-						default: {
-							if (ch >= '0' && ch <= '9') {
-								if (!(ch2 = r[p + 1]) || ch2 < '0' || ch2 > '9') ch2 = '';
-								if ((n = +(ch + ch2)) >= 1 && n < arguments.length - 2) {
-									t += ((c = arguments[n]) === void 0 ? '' : c);
-									p += ch2.length;
-									break;
+		replace: unconstructable(function replace(searchValue, replaceValue) {
+			var s, sLength = (s = str(this)).length, matches, i, p, t, l, e, replaceFunction = replaceValue, replacementValue;
+			function makeStringReplacer(r) {
+				var scan;
+				for (scan = r.length; --scan >= 0 && r[scan] != '$';);
+				return (scan < 0 ? function() { return r; } : function(m) {
+					var t = '', p, ch, ch2, c, n;
+					for (var p = 0; (ch = r[p]); ++p) {
+						if (ch !== '$') t += ch;
+						else switch (ch = r[++p]) {
+							case (void 0): case '$': t += '$'; break;
+							case '&': t += m; break;
+							case '`': t += $sub(s, 0, arguments[arguments.length - 2]); break;
+							case "'": t += $sub(s, arguments[arguments.length - 2] + m.length, sLength); break;
+							default: {
+								if (ch >= '0' && ch <= '9') {
+									if (!(ch2 = r[p + 1]) || ch2 < '0' || ch2 > '9') ch2 = '';
+									if ((n = +(ch + ch2)) >= 1 && n < arguments.length - 2) {
+										t += ((c = arguments[n]) === void 0 ? '' : c);
+										p += ch2.length;
+										break;
+									}
 								}
+								t += '$' + ch;
+								break;
 							}
-							t += '$' + ch;
-							break;
 						}
 					}
-				}
-				return t;
-			})
-		};
-		if ($getInternalProperty(searchValue, "class") === "RegExp") {
-			p = 0;
-			t = new StringBuilder;
-			if (searchValue.global) searchValue.lastIndex = 0;
-			while (matches = regExpExecMethod(searchValue, s)) {
-				matches[i = matches.length] = matches.index;
-				matches[i + 1] = s;
-				t.append($sub(s, p, matches.index) + str($callWithArgs(replaceFunction, null, matches)));
-				p = matches.index + (l = matches[0].length);
-				if (!searchValue.global) break;
-				if (l === 0) ++searchValue.lastIndex;
+					return t;
+				});
 			}
-			return (t.append($sub(s, p, sLength))).build();
-		} else {
-			e = sLength - (l = (t = str(searchValue)).length);
-			for (var p = 0; !$match(s, p, t); ++p) if (p >= e) return s;
-			return $sub(s, 0, p) + str($callWithArgs(replaceFunction, null, [ t, p, s ])) + $sub(s, p + l, sLength);
-		}
-	}),
+			if (typeof replaceFunction !== "function") {
+				replacementValue = replaceValue;
+				replaceFunction = null;
+			}
+			if ($getInternalProperty(searchValue, "class") === "RegExp") {
+				if (!replaceFunction) replaceFunction = makeStringReplacer(str(replacementValue));
+				p = 0;
+				t = new StringBuilder;
+				if (searchValue.global) searchValue.lastIndex = 0;
+				while (matches = regExpExecMethod(searchValue, s)) {
+					matches[i = matches.length] = matches.index;
+					matches[i + 1] = s;
+					t.append($sub(s, p, matches.index) + str($callWithArgs(replaceFunction, null, matches)));
+					p = matches.index + (l = matches[0].length);
+					if (!searchValue.global) break;
+					if (l === 0) ++searchValue.lastIndex;
+				}
+				return (t.append($sub(s, p, sLength))).build();
+			} else {
+				t = str(searchValue);
+				if (!replaceFunction) replaceFunction = makeStringReplacer(str(replacementValue));
+				e = sLength - (l = t.length);
+				for (var p = 0; !$match(s, p, t); ++p) if (p >= e) return s;
+				return $sub(s, 0, p) + str($callWithArgs(replaceFunction, null, [ t, p, s ])) + $sub(s, p + l, sLength);
+			}
+		}),
 	search: unconstructable(function search(regexp) {
 		if ($getInternalProperty(regexp, "class") !== "RegExp") regexp = new RegExp(regexp);
 		var s, len = (s = str(this)).length, f = $getInternalProperty(regexp, "value");

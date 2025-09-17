@@ -22,18 +22,6 @@ source
 --- output --- 
  !!!! [object Object]
 
-built-ins/String/prototype/replace/S15.5.4.11_A1_T11
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/String/prototype/replace/S15.5.4.11_A1_T12
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
 built-ins/String/prototype/replace/S15.5.4.11_A3_T1
 source
 --- output ---
