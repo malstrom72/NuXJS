@@ -2,13 +2,13 @@
 
 _Updated after re-running the targeted `fails` bucket on September 17, 2025._
 
-The `fails` manifest now lists six ES3 Test262 cases across the String built-ins.【F:fails†L1-L41】
+The `fails` manifest now lists four ES3 Test262 cases across the String built-ins.【F:fails†L1-L23】
 
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
 | Object | §15.2, §15.4.5.1 | 0 |
 | RegExp | §15.10 | 0 |
-| String | §15.5.4.11 | 7 |
+| String | §15.5.4.11 | 4 |
 
 Each subsection quotes the relevant ECMA-262 3rd edition requirements and summarises the current NuXJS behaviour. Every fix should ship with a focused regression `.io` test alongside the code change.
 
@@ -29,17 +29,12 @@ Each subsection quotes the relevant ECMA-262 3rd edition requirements and summar
 5. **`built-ins/String/prototype/replace/S15.5.4.11_A12`**
    `support.stringThis` now preserves the raw receiver when `Function.prototype.call` substitutes the global object, so `String.prototype.replace.call(undefined, 'd', 'D')` coerces `undefined` correctly and returns `"unDefineD"`; a regression script covers both `undefined` and `null` receivers.【F:src/NuXJS.cpp†L4792-L4863】【F:src/stdlib.js†L485-L520】【F:tests/regression/stringReplaceUndefinedReceiver.io†L1-L2】
 
-### String (6 remaining)
+6. **`built-ins/String/prototype/replace/S15.5.4.11_A1_T11`** and **`…_A1_T12`**
+   `String.prototype.replace` now coerces the search operand before touching the replacement value, so borrowed invocations observe the required `searchValue.toString` exceptions; regression coverage asserts the thrown message and call order for custom coercion hooks.【F:src/stdlib.js†L488-L536】【F:tests/regression/stringReplaceSearchCoercionOrder.io†L1-L10】
 
-4. **`built-ins/String/prototype/replace/S15.5.4.11_A1_T11`** and **`…_A1_T12`**
-   **Spec excerpt (ES3 §15.5.4.11):**
-   > Otherwise, let newstring denote the result of converting replaceValue to a string.【docs/specs/ECMA-262 3.md†L5028-L5037】
+### String (4 remaining)
 
-   **NuXJS diagnosis:** The implementation converts `replaceValue` to a string before coercing `searchValue`, so a throwing `searchValue.toString` never executes—the engine throws `"inreplaceValue"` instead of the required `"insearchValue"`.【src/stdlib.js†L487-L516】
-
-   **Implementation notes:** Reorder the coercion logic so `searchValue` undergoes `ToString` (or `RegExp` construction) before touching `replaceValue`. Preserve the existing closure cache but delay `str(replaceValue)` until after the search operand resolves. Capture the behaviour with an `.io` test that wires throwing `toString`/`valueOf` implementations onto both operands.
-
-5. **`built-ins/String/prototype/replace/S15.5.4.11_A3_T1`**, **`…_A3_T2`**, **`…_A3_T3`**
+1. **`built-ins/String/prototype/replace/S15.5.4.11_A3_T1`**, **`…_A3_T2`**, **`…_A3_T3`**
    **Spec excerpt (ES3 §15.5.4.11, replacement table):**
    > The sequence "$" followed by one or two decimal digits nn (0 < nn ≤ NCaptures) is replaced by the nnth captured substring. ... If nn > m, the result is implementation-defined.【docs/specs/ECMA-262 3.md†L5038-L5062】
 
@@ -47,7 +42,7 @@ Each subsection quotes the relevant ECMA-262 3rd edition requirements and summar
 
    **Implementation notes:** Adjust the `$`-sequence parser so an oversized two-digit index falls back to the single-digit capture followed by the literal second digit, and ensure cases like `$1A` append the trailing literal text. Add a regression (`stringReplaceTwoDigitBackreference.io`) covering `$11` concatenations and `$1A`.
 
-6. **`built-ins/String/prototype/replace/S15.5.4.11_A5_T1`**
+2. **`built-ins/String/prototype/replace/S15.5.4.11_A5_T1`**
    **Spec excerpt (ES3 §15.10.2.1 & §15.10.2.8):**
    > A State ... stores the start and end of each capturing parenthesis. The backreference \1 retrieves the substring captured by the first group for each iteration.【docs/specs/ECMA-262 3.md†L6835-L6840】【docs/specs/ECMA-262 3.md†L6875-L6904】
 

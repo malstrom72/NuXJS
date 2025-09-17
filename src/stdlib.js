@@ -485,7 +485,9 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		} while (true);
 	}),
 	replace: unconstructable(function replace(searchValue, replaceValue) {
-		var s, sLength = (s = support.stringThis()).length, replaceFunction = replaceValue, matches, i, p, t, l, e;
+		var s, sLength = (s = support.stringThis()).length, replaceFunction = replaceValue, matches, i, p, t, l, e, searchIsRegExp;
+		searchIsRegExp = ($getInternalProperty(searchValue, "class") === "RegExp");
+		if (!searchIsRegExp) t = str(searchValue);
 		if (typeof replaceFunction !== "function") {
 			var r = str(replaceValue);
 			for (i = r.length; --i >= 0 && r[i] != '$';);
@@ -513,9 +515,9 @@ defineProperties(String.prototype, { dontEnum: true }, {
 					}
 				}
 				return t;
-			})
-		};
-		if ($getInternalProperty(searchValue, "class") === "RegExp") {
+			});
+		}
+		if (searchIsRegExp) {
 			p = 0;
 			t = new StringBuilder;
 			if (searchValue.global) searchValue.lastIndex = 0;
@@ -529,8 +531,8 @@ defineProperties(String.prototype, { dontEnum: true }, {
 			}
 			return (t.append($sub(s, p, sLength))).build();
 		} else {
-			e = sLength - (l = (t = str(searchValue)).length);
-			for (var p = 0; !$match(s, p, t); ++p) if (p >= e) return s;
+			e = sLength - (l = t.length);
+			for (p = 0; !$match(s, p, t); ++p) if (p >= e) return s;
 			return $sub(s, 0, p) + str($callWithArgs(replaceFunction, null, [ t, p, s ])) + $sub(s, p + l, sLength);
 		}
 	}),
