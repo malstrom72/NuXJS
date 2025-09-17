@@ -636,15 +636,32 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return s.build();
 	}),
 	pop: unconstructable(function pop() {
-		var v = void 0, len;
-		if ((len = uint32(this.length)) > 0) v = this[--len];
+		var raw = +this.length;
+		var len = ($isNaN(raw) || raw <= 0 || !$isFinite(raw) ? 0 : uint32(raw));
+		var index, result = void 0;
+		if (len > 0) {
+			index = len - 1;
+			result = this[index];
+			delete this[index];
+			len = index;
+		}
 		this.length = len;
-		return v;
+		return result;
 	}),
 	push: unconstructable(function push(item) {
-		var argv, offset = uint32(this.length), end = (argv = arguments).length + offset;
-		for (var i = offset; i < end; ++i) this[i] = argv[i - offset];
-		return (this.length = end);
+		var argv = arguments, raw = +this.length, offset;
+		if ($isNaN(raw)) offset = 0;
+		else if (!$isFinite(raw)) {
+			if (raw > 0) throw typeError("Invalid array length");
+			offset = 0;
+		} else {
+			offset = uint32(raw);
+		}
+		var argc = argv.length, end = offset + argc;
+		if (end > 4294967295) throw typeError("Invalid array length");
+		for (var i = 0; i < argc; ++i) this[offset + i] = argv[i];
+		this.length = end;
+		return end;
 	}),
 	reverse: unconstructable(function reverse() {
 		var len, mid = $floor((len = uint32(this.length)) / 2);
@@ -658,15 +675,20 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return this;
 	}),
 	shift: unconstructable(function shift() {
-		var len, elementZero;
-		if (len = uint32(this.length)) {
-			elementZero = this[0];
-			for (var i = 1; i < len; ++i) {
-				if (i in this) this[i - 1] = this[i];
-				else delete this[i - 1];
-			}
-			--len;
-		};
+		var raw = +this.length;
+		var len = ($isNaN(raw) || raw <= 0 || !$isFinite(raw) ? 0 : uint32(raw));
+		var elementZero;
+		if (len === 0) {
+			this.length = 0;
+			return void 0;
+		}
+		elementZero = this[0];
+		for (var i = 1; i < len; ++i) {
+			if (i in this) this[i - 1] = this[i];
+			else delete this[i - 1];
+		}
+		delete this[len - 1];
+		--len;
 		this.length = len;
 		return elementZero;
 	}),

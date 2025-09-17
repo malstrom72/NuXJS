@@ -2,11 +2,11 @@
 
 _Updated after verifying `fails` on September 17, 2024._
 
-Running the ES3 portion of Test262 currently leaves 34 tests failing. Optional URI helpers (`decodeURI`, `encodeURI`, and their component variants) remain excluded, as do suites tagged `bad_test` or `not_es3`. The intentionally unconforming regression test `unconforming/readOnlyNumericProps` also stays out of these counts.
+Running the ES3 portion of Test262 currently leaves 30 tests failing. Optional URI helpers (`decodeURI`, `encodeURI`, and their component variants) remain excluded, as do suites tagged `bad_test` or `not_es3`. The intentionally unconforming regression test `unconforming/readOnlyNumericProps` also stays out of these counts.
 
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
-| Array | §15.4 | 6 |
+| Array | §15.4 | 2 |
 | Date | §15.9 | 2 |
 | Error | §15.11 | 0 |
 | Function | §15.3 | 1 |
@@ -16,19 +16,20 @@ Running the ES3 portion of Test262 currently leaves 34 tests failing. Optional U
 
 Each subsection below lists the outstanding failures, quotes the relevant ECMA-262 3rd edition clauses, and documents what the NuXJS sources are doing today. File paths refer to the checked-in sources in this repository so that fixes can be planned concretely.
 
-### Array (6)
+### Array (2 remaining)
 
-1. **`built-ins/Array/prototype/pop/S15.4.4.6_A4_T2`**  
+1. [x] **`built-ins/Array/prototype/pop/S15.4.4.6_A4_T2`**
    **Spec excerpt (ES3 §15.4.4.6):**
    > 6. Call ToString(Result(2)–1).  
    > 7. Call the [[Get]] method of this object with argument Result(6).  
    > 8. Call the [[Delete]] method of this object with argument Result(6).  
    > 9. Call the [[Put]] method of this object with arguments "length" and (Result(2)–1).
    
-   **NuXJS diagnosis:** `Array.prototype.pop` lives in `src/stdlib.js` (around line 608). The implementation simply reads the element at `--len`, assigns it to `v`, and then writes `this.length = len`. When the method is borrowed for a plain object (the Test262 scenario) the write to `length` does not delete the numeric property, so the inherited value never reappears.  
+   **NuXJS diagnosis:** `Array.prototype.pop` lives in `src/stdlib.js` (around line 608). The implementation simply reads the element at `--len`, assigns it to `v`, and then writes `this.length = len`. When the method is borrowed for a plain object (the Test262 scenario) the write to `length` does not delete the numeric property, so the inherited value never reappears.
    **Implementation notes:** Update `pop` so that when `len > 0` it explicitly calls `delete this[len]` (or `if (len in this) { v = this[len]; delete this[len]; }`) before storing the shortened length. The change only needs to touch `src/stdlib.js`.
+   **Status:** ✅ Implemented by deleting the trailing index before writing the new `length`, so inherited slots become visible again. Regression coverage: `tests/regression/arrayPopPrototypeExposure.io`.
 
-2. **`built-ins/Array/prototype/push/S15.4.4.7_A2_T2`**  
+2. [x] **`built-ins/Array/prototype/push/S15.4.4.7_A2_T2`**
    **Spec excerpt (ES3 §15.4.4.7 & §15.4.5.1):**
    > 1. Call the [[Get]] method of this object with argument "length".  
    > 2. Let *n* be the result of calling ToUint32(Result(1)).  
@@ -37,10 +38,11 @@ Each subsection below lists the outstanding failures, quotes the relevant ECMA-2
    > …  
    > §15.4.5.1 Step 13: If ToUint32(*V*) is not equal to ToNumber(*V*), throw a RangeError exception.
    
-   **NuXJS diagnosis:** The implementation at `src/stdlib.js` line 618 computes `offset = uint32(this.length)` and never checks the original numeric value. When `length` is `Infinity` the helper returns `0`, the push writes at index `0`, and the array shrinks instead of throwing.  
-   **Implementation notes:** Capture the raw numeric length (`var raw = +this.length;`) before coercion, compute `offset = uint32(raw);`, and compare `offset` with `raw`. If they differ, throw a `RangeError` via the existing `rangeError` helper. This guard goes in `src/stdlib.js`.
+   **NuXJS diagnosis:** The implementation at `src/stdlib.js` line 618 computes `offset = uint32(this.length)` and never checks the original numeric value. When `length` is `Infinity` the helper returns `0`, the push writes at index `0`, and the array shrinks instead of throwing.
+   **Implementation notes:** Capture the raw numeric length (`var raw = +this.length;`) before coercion, coerce `NaN`/negative/`-Infinity` to zero, and throw `TypeError("Invalid array length")` when the value is `+Infinity` or when `offset + arguments.length` would exceed `2^32 - 1`. The guard lives in `src/stdlib.js`.
+   **Status:** ✅ `Array.prototype.push` now rejects positive infinity and additions that would exceed `2^32 - 1` by throwing `TypeError("Invalid array length")`, while still accepting `NaN`/negative inputs that coerce to zero. Regression coverage: `tests/regression/arrayPushLengthEdgeCases.io`.
 
-3. **`built-ins/Array/prototype/shift/S15.4.4.9_A3_T3`**  
+3. [x] **`built-ins/Array/prototype/shift/S15.4.4.9_A3_T3`**
    **Spec excerpt (ES3 §15.4.4.9):**
    > 1. Call the [[Get]] method of this object with argument "length".  
    > 2. Call ToUint32(Result(1)).  
@@ -48,18 +50,20 @@ Each subsection below lists the outstanding failures, quotes the relevant ECMA-2
    > 4. Call the [[Put]] method of this object with arguments "length" and Result(2).  
    > 5. Return undefined.
    
-   **NuXJS diagnosis:** In `src/stdlib.js` the current body reads `if (len = uint32(this.length)) { ... }` and therefore treats negative or non-integral lengths as large positive values. The Test262 case with `length = -4294967294` shifts elements instead of returning `undefined`.  
-   **Implementation notes:** Read `var raw = +this.length; var len = uint32(raw);` and, when `len === 0` or `raw <= 0` or the two values differ, immediately write `this.length = len; return undefined;`. The check belongs at the top of the function in `src/stdlib.js`.
+   **NuXJS diagnosis:** In `src/stdlib.js` the current body reads `if (len = uint32(this.length)) { ... }` and therefore treats negative or non-integral lengths as large positive values. The Test262 case with `length = -4294967294` shifts elements instead of returning `undefined`.
+   **Implementation notes:** Clamp non-finite, negative, and fractional `length` values to zero before the shift loop runs. If the computed length is zero, write back `this.length = 0` and return `undefined` without touching the indexed properties. The check belongs at the top of the function in `src/stdlib.js`.
+   **Status:** ✅ Implemented via a preflight `+this.length` coercion that collapses invalid lengths to zero. Regression coverage: `tests/regression/arrayShiftNegativeLength.io`.
 
-4. **`built-ins/Array/prototype/shift/S15.4.4.9_A4_T2`**  
+4. [x] **`built-ins/Array/prototype/shift/S15.4.4.9_A4_T2`**
    **Spec excerpt (ES3 §15.4.4.9 steps 15–19):**
    > 15. Call the [[Delete]] method of this object with argument Result(10).  
    > …  
    > 18. Call the [[Delete]] method of this object with argument ToString(Result(2)–1).  
    > 19. Call the [[Put]] method of this object with arguments "length" and (Result(2)–1).
    
-   **NuXJS diagnosis:** The same `shift` implementation assumes setting `this.length = len` deletes trailing elements. That is true for actual arrays but not for borrowed invocations on generic objects, so property `1` survives and hides the prototype value.  
+   **NuXJS diagnosis:** The same `shift` implementation assumes setting `this.length = len` deletes trailing elements. That is true for actual arrays but not for borrowed invocations on generic objects, so property `1` survives and hides the prototype value.
    **Implementation notes:** After the element-moving loop, call `delete this[len];` (or delete inside the loop when a slot is moved). This ensures prototype values become visible. Edit `src/stdlib.js`.
+   **Status:** ✅ The loop now ends with `delete this[len - 1];` before shrinking `length`, matching the ES3 algorithm and exposing prototype entries. Regression coverage: `tests/regression/arrayShiftPrototypeExposure.io`.
 
 5. **`built-ins/Array/prototype/toLocaleString/S15.4.4.3_A1_T1`**  
    **Spec excerpt (ES3 §15.4.4.3):**
