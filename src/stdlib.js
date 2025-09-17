@@ -109,12 +109,16 @@ function isPrimitive(v) {
 }
 
 function objectToPrimitive(o, f1, f2) {
-	var v;
-	if ((typeof (o[f1]) !== "function" || !isPrimitive(v = o[f1]()))
-			&& (typeof (o[f2]) !== "function" || !isPrimitive(v = o[f2]()))) {
-		throw typeError("Error converting object to primitive type");
+	var m, v;
+	if (typeof (m = o[f1]) === "function") {
+		v = m.call(o);
+		if (isPrimitive(v)) return v;
 	}
-	return v
+	if (typeof (m = o[f2]) === "function") {
+		v = m.call(o);
+		if (isPrimitive(v)) return v;
+	}
+	throw typeError("Error converting object to primitive type");
 }
 
 support.toPrimitiveNumber = function(o) { return objectToPrimitive(o, "valueOf", "toString"); };
@@ -636,15 +640,32 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return s.build();
 	}),
 	pop: unconstructable(function pop() {
-		var v = void 0, len;
-		if ((len = uint32(this.length)) > 0) v = this[--len];
+		var raw = +this.length;
+		var len = ($isNaN(raw) || raw <= 0 || !$isFinite(raw) ? 0 : uint32(raw));
+		var index, result = void 0;
+		if (len > 0) {
+			index = len - 1;
+			result = this[index];
+			delete this[index];
+			len = index;
+		}
 		this.length = len;
-		return v;
+		return result;
 	}),
 	push: unconstructable(function push(item) {
-		var argv, offset = uint32(this.length), end = (argv = arguments).length + offset;
-		for (var i = offset; i < end; ++i) this[i] = argv[i - offset];
-		return (this.length = end);
+		var argv = arguments, raw = +this.length, offset;
+		if ($isNaN(raw)) offset = 0;
+		else if (!$isFinite(raw)) {
+			if (raw > 0) throw typeError("Invalid array length");
+			offset = 0;
+		} else {
+			offset = uint32(raw);
+		}
+		var argc = argv.length, end = offset + argc;
+		if (end > 4294967295) throw typeError("Invalid array length");
+		for (var i = 0; i < argc; ++i) this[offset + i] = argv[i];
+		this.length = end;
+		return end;
 	}),
 	reverse: unconstructable(function reverse() {
 		var len, mid = $floor((len = uint32(this.length)) / 2);
@@ -658,15 +679,20 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return this;
 	}),
 	shift: unconstructable(function shift() {
-		var len, elementZero;
-		if (len = uint32(this.length)) {
-			elementZero = this[0];
-			for (var i = 1; i < len; ++i) {
-				if (i in this) this[i - 1] = this[i];
-				else delete this[i - 1];
-			}
-			--len;
-		};
+		var raw = +this.length;
+		var len = ($isNaN(raw) || raw <= 0 || !$isFinite(raw) ? 0 : uint32(raw));
+		var elementZero;
+		if (len === 0) {
+			this.length = 0;
+			return void 0;
+		}
+		elementZero = this[0];
+		for (var i = 1; i < len; ++i) {
+			if (i in this) this[i - 1] = this[i];
+			else delete this[i - 1];
+		}
+		delete this[len - 1];
+		--len;
 		this.length = len;
 		return elementZero;
 	}),
@@ -749,7 +775,17 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		this.length = len + move;
 		return a;
 	}),
-	toLocaleString: Object.prototype.toLocaleString,
+	toLocaleString: unconstructable(function toLocaleString() {
+		var len = uint32(this.length), builder = new StringBuilder, element, elementObject;
+		for (var k = 0; k < len; ++k) {
+			if (k > 0) builder.append(',');
+			if ((element = this[k]) != null) {
+				elementObject = Object(element);
+				builder.append(str(elementObject.toLocaleString()));
+			}
+		}
+		return builder.build();
+	}),
 	toString: unconstructable(function toString() {
 		checkClass(this, "Array", "toString");
 		return this.join();
@@ -783,7 +819,11 @@ function localTimeDiff(z) { var l = support.localTimeDifference(z); return ($isN
 function toLocalTime(z) { return $isNaN(z) ? z : z + localTimeDiff(z) }
 
 function checkDateClass(object) {
-	if ($getInternalProperty(object, "class") !== "Date") throw typeError("this is not a Date object");
+	if ($getInternalProperty(object, "class") !== "Date"
+		|| object === support.prototypes.Date
+		|| $getInternalProperty(object, "value") === void 0) {
+		throw typeError("this is not a Date object");
+	}
 }
 
 function getDateValue(object) { checkDateClass(object); return $getInternalProperty(object, "value"); }
@@ -802,7 +842,11 @@ function hourFromTime(z) { return floorMod($floor(z / 36e5), 24) }
 function minFromTime(z) { return floorMod($floor(z / 6e4), 60) }
 function secFromTime(z) { return floorMod($floor(z / 1e3), 60) }
 function msFromTime(z) { return floorMod(z, 1e3) }
-function timeClip(z) { return (!$isFinite(z) || abs(z) > 8.64e15 ? $NaN : int(z) + 0) }
+function timeClip(z) {
+	if (!$isFinite(z) || abs(z) > 8.64e15) return $NaN;
+	var clipped = int(z);
+	return (clipped === 0 ? 0 : clipped);
+}
 function timeClipLocal(z) { return fromLocalTime(timeClip(z)); }
 
 function dateFromEpoch(z) {
