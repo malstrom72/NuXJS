@@ -2,46 +2,23 @@
 
 _Updated after re-running the targeted `fails` bucket on September 17, 2025._
 
-The `fails` manifest now lists thirteen ES3 Test262 cases spanning the Array, Function, Object, RegExp, and String built-ins.【F:fails†L1-L77】
+The `fails` manifest now lists ten ES3 Test262 cases across the Object, RegExp, and String built-ins.【F:fails†L1-L59】
 
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
-| Array | §15.4.4.7 | 2 |
-| Function | §15.3 | 1 |
 | Object | §15.2, §15.4.5.1 | 2 |
 | RegExp | §15.10 | 1 |
 | String | §15.5.4.11 | 7 |
 
 Each subsection quotes the relevant ECMA-262 3rd edition requirements and summarises the current NuXJS behaviour. Every fix should ship with a focused regression `.io` test alongside the code change.
 
-### Array (2 remaining)
+### Recently Resolved
 
-1. **`built-ins/Array/prototype/push/S15.4.4.7_A3`**
-   **Spec excerpt (ES3 §15.4.4.7 & §15.4.5.1):**
-   > When `push` is invoked, it appends each argument via `[[Put]]` on the numeric index, then assigns the new `length`. If updating `length` produces a value whose `ToUint32` differs from `ToNumber`, the algorithm throws a `RangeError`.
-   > The push function is intentionally generic; it does not require that its this value be an Array object.【F:docs/specs/ECMA-262 3.md†L4492-L4511】【F:docs/specs/ECMA-262 3.md†L4784-L4804】
+1. **`built-ins/Array/prototype/push/S15.4.4.7_A3`** and **`…_A4_T2`**  
+   `Array.prototype.push` now appends elements before revalidating `length`, allowing the setter to raise the mandated `RangeError` while leaving inserted data visible and permitting borrowed calls on plain objects to extend past `2^32−1`. Focused regressions capture both the array overflow and the generic-object growth scenarios.【F:src/stdlib.js†L655-L668】【F:tests/regression/arrayPushLengthRangeError.io†L1-L8】【F:tests/regression/arrayPushBorrowedLengthOverflow.io†L1-L8】
 
-   **NuXJS diagnosis:** `Array.prototype.push` pre-computes `end = offset + argc` and throws a `TypeError` when `end > 4294967295`, so the "x" element is never assigned and the observable exception type is wrong when the `length` property is already `2^32−1`.【F:src/stdlib.js†L655-L668】
-
-   **Implementation notes:** Remove the eager overflow guard, append the arguments first, and then update the `length` property through the same `ToUint32`/`ToNumber` check used by `[[Put]]` so that the setter stores the element, preserves the old `length`, and raises a `RangeError`. Add a regression `.io` script that asserts `x[4294967295] === "x"` and that `push` reports a `RangeError` when the `length` starts at `4294967295`.
-
-2. **`built-ins/Array/prototype/push/S15.4.4.7_A4_T2`**
-   **Spec excerpt (ES3 §15.4.4.7):**
-   > The `push` algorithm simply walks the argument list, calling `[[Put]]` on each successive index and finally writing the numeric result into the `length` property; because the function is intentionally generic, these steps apply to non-Array receivers as well.【F:docs/specs/ECMA-262 3.md†L4492-L4511】
-
-   **NuXJS diagnosis:** The same overflow guard (`end > 4294967295`) rejects non-Array objects that carry a `length` near `2^32`, even though the spec allows `push` to create indices and extend `length` beyond that range on plain objects. The runtime therefore throws `TypeError: Invalid array length` instead of returning `4294967298` and writing the three new properties.【F:src/stdlib.js†L655-L668】
-
-   **Implementation notes:** Detect when the receiver is an actual array before enforcing the `2^32−1` limit, or compute the overflow condition through the array `[[Put]]` path. Ensure plain objects can grow past `2^32−1` while genuine arrays still raise `RangeError` as required. Add an `.io` regression that borrows `push` onto an object with `length = 0xFFFFFFFF` and verifies the returned `length` and the populated numeric keys.
-
-### Function (1 remaining)
-
-1. **`built-ins/Function/prototype/S15.3.4_A5`**
-   **Spec excerpt (ES3 §15.3, §15.3.4):**
-   > None of the built-in functions described in this section shall implement the internal [[Construct]] method unless otherwise specified in the description of a particular function. ... The Function prototype object is itself a Function object (its [[Class]] is "Function") that, when invoked, accepts any arguments and returns undefined.【docs/specs/ECMA-262 3.md†L3718-L3723】【docs/specs/ECMA-262 3.md†L4241-L4248】
-
-   **NuXJS diagnosis:** `Runtime::FunctionPrototypeFunction` inherits `ExtensibleFunction::construct`, so `new Function.prototype()` currently succeeds and manufactures an empty object.【src/NuXJS.cpp†L4607-L4624】 The test expects a TypeError instead.
-
-   **Implementation notes:** Override `FunctionPrototypeFunction::construct` to throw a `TypeError` via `ScriptException::throwError`, mirroring the guard used by `SeparateConstructorFunction`. Add a regression `.io` test (for example `tests/regression/functionPrototypeNotConstructable.io`) that asserts `new Function.prototype()` throws.
+2. **`built-ins/Function/prototype/S15.3.4_A5`**  
+   `Runtime::FunctionPrototypeFunction::construct` now raises a `TypeError`, preventing `new Function.prototype()` from creating objects and matching ES3's prohibition on a `[[Construct]]` hook. A regression script asserts the thrown error and message.【F:src/NuXJS.cpp†L4607-L4624】【F:tests/regression/functionPrototypeNotConstructable.io†L1-L9】
 
 ### Object (2 remaining)
 

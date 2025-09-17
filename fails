@@ -1,25 +1,7 @@
-built-ins/Array/prototype/push/S15.4.4.7_A3
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
-built-ins/Array/prototype/push/S15.4.4.7_A4_T2
-source
---- output ---
---- output --- 
- !!!! TypeError: Invalid array length
-
-built-ins/Function/prototype/S15.3.4_A5
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
 built-ins/Object/defineProperty/15.2.3.6-4-127
 source
 --- output ---
---- output --- 
+--- output ---
  !!!! RangeError: Invalid array length
 
 built-ins/Object/defineProperty/15.2.3.6-4-128
