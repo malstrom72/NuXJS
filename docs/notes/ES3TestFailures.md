@@ -1,13 +1,13 @@
 # ES3 Test262 Failures Analysis
 
-_Updated after verifying `fails` on September 17, 2024._
+_Updated after verifying `fails` on September 17, 2025._
 
-Running the ES3 portion of Test262 currently leaves 30 tests failing. Optional URI helpers (`decodeURI`, `encodeURI`, and their component variants) remain excluded, as do suites tagged `bad_test` or `not_es3`. The intentionally unconforming regression test `unconforming/readOnlyNumericProps` also stays out of these counts.
+Running the ES3 portion of Test262 currently leaves 26 tests failing. Optional URI helpers (`decodeURI`, `encodeURI`, and their component variants) remain excluded, as do suites tagged `bad_test` or `not_es3`. The intentionally unconforming regression test `unconforming/readOnlyNumericProps` also stays out of these counts.
 
 | Feature | Spec Clause | Failures |
 | --- | --- | ---:|
-| Array | §15.4 | 2 |
-| Date | §15.9 | 2 |
+| Array | §15.4 | 0 |
+| Date | §15.9 | 0 |
 | Error | §15.11 | 0 |
 | Function | §15.3 | 1 |
 | Object | §15.2 | 2 |
@@ -16,7 +16,7 @@ Running the ES3 portion of Test262 currently leaves 30 tests failing. Optional U
 
 Each subsection below lists the outstanding failures, quotes the relevant ECMA-262 3rd edition clauses, and documents what the NuXJS sources are doing today. File paths refer to the checked-in sources in this repository so that fixes can be planned concretely.
 
-### Array (2 remaining)
+### Array (0 remaining)
 
 1. [x] **`built-ins/Array/prototype/pop/S15.4.4.6_A4_T2`**
    **Spec excerpt (ES3 §15.4.4.6):**
@@ -65,7 +65,7 @@ Each subsection below lists the outstanding failures, quotes the relevant ECMA-2
    **Implementation notes:** After the element-moving loop, call `delete this[len];` (or delete inside the loop when a slot is moved). This ensures prototype values become visible. Edit `src/stdlib.js`.
    **Status:** ✅ The loop now ends with `delete this[len - 1];` before shrinking `length`, matching the ES3 algorithm and exposing prototype entries. Regression coverage: `tests/regression/arrayShiftPrototypeExposure.io`.
 
-5. **`built-ins/Array/prototype/toLocaleString/S15.4.4.3_A1_T1`**  
+5. [x] **`built-ins/Array/prototype/toLocaleString/S15.4.4.3_A1_T1`**  
    **Spec excerpt (ES3 §15.4.4.3):**
    > 1. Call the [[Get]] method of this object with argument "length".  
    > …  
@@ -74,27 +74,31 @@ Each subsection below lists the outstanding failures, quotes the relevant ECMA-2
    
    **NuXJS diagnosis:** `Array.prototype.toLocaleString` in `src/stdlib.js` is currently aliased to `Object.prototype.toLocaleString`, so element-specific `toLocaleString` methods never run.  
    **Implementation notes:** Replace the alias with the ES3 loop: iterate `k` from `0` to `length - 1`, fetch each element via `this[k]`, and when the value is neither `undefined` nor `null` call `ToObject(value).toLocaleString()` before concatenating. All of this work happens in `src/stdlib.js`.
+   **Status:** ✅ Implemented the ES3 iteration that calls each element's `toLocaleString` hook before joining, so object elements contribute their locale-specific results. Regression coverage: `tests/regression/arrayToLocaleStringElementCall.io`.
 
-6. **`built-ins/Array/prototype/toLocaleString/S15.4.4.3_A3_T1`**  
+6. [x] **`built-ins/Array/prototype/toLocaleString/S15.4.4.3_A3_T1`**  
    **Spec excerpt:** same as item 5, steps 9–14 emphasise using `[[Get]]` so inherited indices participate.  
    **NuXJS diagnosis:** Because the implementation delegates to `Object.prototype.toLocaleString`, it neither iterates numeric indices nor consults inherited properties, so prototype elements never execute their locale hooks.  
    **Implementation notes:** The fix from item 5 (explicit iteration with `HasProperty`/`[[Get]]`) simultaneously resolves this case.
+   **Status:** ✅ Verified that inherited indices now surface prototype elements during concatenation. Regression coverage: `tests/regression/arrayToLocaleStringPrototypeLookup.io`.
 
-### Date (2)
+### Date (0)
 
-7. **`built-ins/Date/TimeClip_negative_zero`**  
+7. [x] **`built-ins/Date/TimeClip_negative_zero`**  
    **Spec excerpt (ES3 §15.9.1.14):**
    > Return an implementation-dependent choice of either ToInteger(Result(2)) or ToInteger(Result(2)) + (+0). (Adding a positive zero converts −0 to +0.)
    
    **NuXJS diagnosis:** `timeClip` in `src/stdlib.js` is currently `return (!$isFinite(z) || abs(z) > 8.64e15 ? $NaN : int(z) + 0);`. In practice `int(z)` returns `-0` and the `+ 0` is not normalising the sign, so `new Date(-0).getTime()` yields `-0`.  
    **Implementation notes:** Store the truncated value in a local (for example `var clipped = int(z);`) and explicitly return `clipped === 0 ? 0 : clipped;`. This makes the positive-zero branch obvious and fixes the observable behaviour.
+   **Status:** ✅ `timeClip` now normalises `-0` to `+0` before returning, aligning `Date` math with ES3. Regression coverage: `tests/regression/dateTimeClipNormalizesNegativeZero.io`.
 
-8. **`built-ins/Date/prototype/setFullYear/15.9.5.40_1`**  
+8. [x] **`built-ins/Date/prototype/setFullYear/15.9.5.40_1`**  
    **Spec excerpt (ES3 §15.9.5):**
    > None of these functions are generic; a TypeError exception is thrown if the this value is not an object for which the value of the internal [[Class]] property is "Date".
    
    **NuXJS diagnosis:** `setFullYear` in `src/stdlib.js` ultimately calls `setDateValue(this, …)` which only checks `$getInternalProperty(this, "class") === "Date"`. The prototype object is a `GenericWrapper` tagged "Date", so the method happily mutates it instead of throwing.  
    **Implementation notes:** Strengthen `setDateValue` (also in `src/stdlib.js`) to require that the receiver is an actual instance (e.g. reject when `this === support.prototypes.Date` or when `$getInternalProperty(this, "value")` is `undefined`). Throw `typeError("this is not a Date object")` in that branch.
+   **Status:** ✅ Hardened the internal class guard so prototype objects throw before mutation. Regression coverage: `tests/regression/dateSetFullYearPrototypeGuard.io`.
 
 ### Function (1)
 

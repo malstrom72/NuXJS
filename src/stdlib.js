@@ -109,12 +109,16 @@ function isPrimitive(v) {
 }
 
 function objectToPrimitive(o, f1, f2) {
-	var v;
-	if ((typeof (o[f1]) !== "function" || !isPrimitive(v = o[f1]()))
-			&& (typeof (o[f2]) !== "function" || !isPrimitive(v = o[f2]()))) {
-		throw typeError("Error converting object to primitive type");
+	var m, v;
+	if (typeof (m = o[f1]) === "function") {
+		v = m.call(o);
+		if (isPrimitive(v)) return v;
 	}
-	return v
+	if (typeof (m = o[f2]) === "function") {
+		v = m.call(o);
+		if (isPrimitive(v)) return v;
+	}
+	throw typeError("Error converting object to primitive type");
 }
 
 support.toPrimitiveNumber = function(o) { return objectToPrimitive(o, "valueOf", "toString"); };
@@ -771,7 +775,17 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		this.length = len + move;
 		return a;
 	}),
-	toLocaleString: Object.prototype.toLocaleString,
+	toLocaleString: unconstructable(function toLocaleString() {
+		var len = uint32(this.length), builder = new StringBuilder, element, elementObject;
+		for (var k = 0; k < len; ++k) {
+			if (k > 0) builder.append(',');
+			if ((element = this[k]) != null) {
+				elementObject = Object(element);
+				builder.append(str(elementObject.toLocaleString()));
+			}
+		}
+		return builder.build();
+	}),
 	toString: unconstructable(function toString() {
 		checkClass(this, "Array", "toString");
 		return this.join();
@@ -805,7 +819,11 @@ function localTimeDiff(z) { var l = support.localTimeDifference(z); return ($isN
 function toLocalTime(z) { return $isNaN(z) ? z : z + localTimeDiff(z) }
 
 function checkDateClass(object) {
-	if ($getInternalProperty(object, "class") !== "Date") throw typeError("this is not a Date object");
+	if ($getInternalProperty(object, "class") !== "Date"
+		|| object === support.prototypes.Date
+		|| $getInternalProperty(object, "value") === void 0) {
+		throw typeError("this is not a Date object");
+	}
 }
 
 function getDateValue(object) { checkDateClass(object); return $getInternalProperty(object, "value"); }
@@ -824,7 +842,11 @@ function hourFromTime(z) { return floorMod($floor(z / 36e5), 24) }
 function minFromTime(z) { return floorMod($floor(z / 6e4), 60) }
 function secFromTime(z) { return floorMod($floor(z / 1e3), 60) }
 function msFromTime(z) { return floorMod(z, 1e3) }
-function timeClip(z) { return (!$isFinite(z) || abs(z) > 8.64e15 ? $NaN : int(z) + 0) }
+function timeClip(z) {
+	if (!$isFinite(z) || abs(z) > 8.64e15) return $NaN;
+	var clipped = int(z);
+	return (clipped === 0 ? 0 : clipped);
+}
 function timeClipLocal(z) { return fromLocalTime(timeClip(z)); }
 
 function dateFromEpoch(z) {
