@@ -2290,7 +2290,7 @@ struct Processor::WithScope : public Scope {
 };
 
 Processor::Processor(Runtime& rt) : super(rt.heap.roots()), rt(rt), heap(rt.heap), currentFrame(0), firstCatcher(0)
-			, nextThisValue(UNDEFINED_VALUE), stack(rt.stackSize, &heap) {
+, stack(rt.stackSize, &heap) {
 	stack[0] = UNDEFINED_VALUE;
 	reset();
 }
@@ -2309,47 +2309,35 @@ void Processor::push(const Value& v) { assert(sp + 1 < stack.end()); *++sp = v; 
 void Processor::pop2push1(const Value& v) { assert(sp >= stack.begin()); *--sp = v; }
 void Processor::pop(Int32 count) { assert(count >= 0); assert(sp - count + 1 >= stack.begin()); sp -= count; }
 
-void Processor::enter(const Code* code, Scope* scope, Object* thisObject, const Value& thisValue) {
+void Processor::enter(const Code* code, Scope* scope, Object* thisObject) {
 	// We could grow stack here *but* then existing pointers into the stack might become invalid and we would need to
 	// copy arguments for native calls somewhere (e.g. to C++ stack).
 	if (sp + code->getMaxStackDepth() > stack.end()) {
 		ScriptException::throwError(heap, RANGE_ERROR, &STACK_OVERFLOW_STRING); // Notice: we can't use virtual throw here, cause we need to abort any sp changes etc that could happen if we continued execution beyond this point.
 	} else {
-		pushFrame(code, scope, (thisObject == 0 ? rt.getGlobalObject() : thisObject), thisValue);
+		pushFrame(code, scope, (thisObject == 0 ? rt.getGlobalObject() : thisObject));
 		ip = code->getCodeWords();
 	}
 }
 
-Value Processor::callFunction(Function* f, UInt32 argc, const Value* argv, Object* thisObject, const Value& thisValue) {
-	struct NextThisScope {
-		Processor& processor;
-		Value previous;
-		NextThisScope(Processor& p, const Value& next) : processor(p), previous(p.nextThisValue) {
-			processor.nextThisValue = next;
-		}
-		~NextThisScope() { processor.nextThisValue = previous; }
-	} scope(*this, thisValue);
-	return f->invoke(rt, *this, argc, argv, thisObject);
-}
-
-void Processor::invokeFunction(Function* f, Int32 argc, const Value* argv, Object* thisObject, const Value& thisValue) {
-	sp[0] = callFunction(f, argc, argv, thisObject, thisValue);
+void Processor::invokeFunction(Function* f, Int32 argc, const Value* argv, Object* thisObject) {
+	sp[0] = f->invoke(rt, *this, argc, argv, thisObject);
 }
 
 void Processor::enterGlobalCode(const Code* code) {
-	enter(code, rt.getGlobalScope(), rt.getGlobalObject(), Value(rt.getGlobalObject()));
+	enter(code, rt.getGlobalScope(), rt.getGlobalObject());
 }
 
 void Processor::enterEvalCode(const Code* code, bool local) {
 	if (local && currentFrame != 0) {
-		enter(code, new(heap) Processor::EvalScope(heap.managed(), currentFrame->scope), currentFrame->thisObject, currentFrame->thisValue);
+		enter(code, new(heap) Processor::EvalScope(heap.managed(), currentFrame->scope), currentFrame->thisObject);
 	} else {
-		enter(code, new(heap) Processor::EvalScope(heap.managed(), rt.getGlobalScope()), rt.getGlobalObject(), Value(rt.getGlobalObject()));
+		enter(code, new(heap) Processor::EvalScope(heap.managed(), rt.getGlobalScope()), rt.getGlobalObject());
 	}
 }
 
 void Processor::enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject) {
-	enter(func->code, new(heap) FunctionScope(heap.managed(), func, argc, argv), thisObject, takeNextThisValue());
+	enter(func->code, new(heap) FunctionScope(heap.managed(), func, argc, argv), thisObject);
 }
 
 void Processor::reset() {
@@ -2357,17 +2345,10 @@ void Processor::reset() {
 	firstCatcher = 0;
 	ip = 0;
 	sp = stack.begin();
-	nextThisValue = UNDEFINED_VALUE;
 }
 
-Value Processor::takeNextThisValue() {
-	Value value = nextThisValue;
-	nextThisValue = UNDEFINED_VALUE;
-	return value;
-}
-
-void Processor::pushFrame(const Code* code, Scope* scope, Object* thisObject, const Value& thisValue) {
-	currentFrame = new(heap) Frame(heap.managed(), ip, code, scope, thisObject, thisValue, currentFrame);
+void Processor::pushFrame(const Code* code, Scope* scope, Object* thisObject) {
+	currentFrame = new(heap) Frame(heap.managed(), ip, code, scope, thisObject, currentFrame);
 }
 
 void Processor::popFrame() {
@@ -2419,9 +2400,9 @@ Function* Processor::asFunction(const Value& v) {
 	return f;
 }
 
-void Processor::invokeFunction(Function* f, Int32 popCount, Int32 argc, Object* thisObject, const Value& thisValue) {
-	sp[-popCount] = callFunction(f, argc, sp - argc + 1, thisObject, thisValue);
-	pop(popCount);
+void Processor::invokeFunction(Function* f, Int32 popCount, Int32 argc, Object* thisObject) {
+sp[-popCount] = f->invoke(rt, *this, argc, sp - argc + 1, thisObject);
+pop(popCount);
 }
 
 void Processor::newOperation(const Int32 argc) {
@@ -2573,7 +2554,7 @@ void Processor::innerRun() {
 
 			case JSR_OP: {
 				scope->makeClosure(); // FIX : only to prevent popping it since it is shared by two frames, feels wrong
-				pushFrame(code, scope, thisObject, currentFrame->thisValue);
+				pushFrame(code, scope, thisObject);
 				ip += im;
 				return;
 			}
@@ -2607,7 +2588,7 @@ void Processor::innerRun() {
 					if (o->getProperty(rt, name, &v) == NONEXISTENT || (f = v.asFunction()) == 0) {
 						error(TYPE_ERROR, new(heap) String(heap.managed(), *name.toString(heap), IS_NOT_A_FUNCTION_STRING));
 					} else {
-						invokeFunction(f, im + 1, im, o, sp[-im - 1]);
+						invokeFunction(f, im + 1, im, o);
 					}
 				}
 				return;
@@ -2667,7 +2648,7 @@ void Processor::innerRun() {
 			}
 			
 			case CATCH_SCOPE_OP: {
-				pushFrame(code, new(heap) CatchScope(heap.managed(), scope, constants[im].getString(), sp[0]), thisObject, currentFrame->thisValue);
+				pushFrame(code, new(heap) CatchScope(heap.managed(), scope, constants[im].getString(), sp[0]), thisObject);
 				pop(1);
 				return;
 			}
@@ -2675,7 +2656,7 @@ void Processor::innerRun() {
 			case WITH_SCOPE_OP: {
 				Object* o = convertToObject(sp[0], false);
 				if (o != 0) {
-					pushFrame(code, new(heap) WithScope(heap.managed(), scope, o), thisObject, currentFrame->thisValue);
+				pushFrame(code, new(heap) WithScope(heap.managed(), scope, o), thisObject);
 					pop(1);
 				}
 				return;
@@ -4832,8 +4813,7 @@ struct Support {
 			}
 			// FIX : we copy all arguments once to argv, and then chain will copy them again to a scope object, couldn't we short-cut that somehow?
 			// FIX : since only arrays and arguments are really valid here, perhaps even have a new virtual in object for implementing efficient apply with these?
-			const Value& thisValue = (argc > 1 ? argv[1] : UNDEFINED_VALUE);
-			return processor.callFunction(callFunction, args.size(), args.begin(), newThis, thisValue);
+return callFunction->invoke(rt, processor, args.size(), args.begin(), newThis);
 		}
 	}
 	
@@ -4946,11 +4926,6 @@ struct Support {
                 return rand() / (RAND_MAX + 1.0);
         }
 
-        static Value stringThis(Runtime& rt, Processor& processor, UInt32, const Value*, Object*) {
-                Heap& heap = rt.getHeap();
-                Value thisValue = processor.getThisValue();
-                return thisValue.toString(heap);
-        }
 };
 
 static struct {
@@ -4973,7 +4948,7 @@ static struct {
 	{ "pow", Support::pow }, { "parseFloat", Support::parseFloat }, { "charCodeAt", Support::charCodeAt },
 	{ "substring", Support::substring }, { "submatch", Support::submatch },
 	{ "getCurrentTime", Support::getCurrentTime }, { "localTimeDifference", Support::localTimeDifference },
-	{ "random", Support::random }, { "stringThis", Support::stringThis }, { "updateDateValue", Support::updateDateValue }
+{ "random", Support::random }, { "updateDateValue", Support::updateDateValue }
 };
 
 static UnaryMathFunction<bool (double)> IS_NAN_FUNCTION(isNaN);
@@ -5098,7 +5073,7 @@ Var Runtime::call(Function* function, UInt32 argc, const Value* argv, Object* th
 		Runtime& rt;
 	} nestCounter(*this);
 	Processor processor(*this);
-	processor.invokeFunction(function, argc, argv, thisObject, (thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE));
+processor.invokeFunction(function, argc, argv, thisObject);
 	return runUntilReturn(processor);
 }
 

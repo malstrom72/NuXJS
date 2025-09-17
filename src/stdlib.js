@@ -17,7 +17,7 @@
 	@preserve: toLocaleUpperCase,toLowerCase,toPrecision,toString,toTimeString,toUTCString,toUpperCase,true,try,typeof
 	@preserve: undefined,upperToLower,value,valueOf,var,void,while,writable,pop,parse,toDateString,instanceof,test
 	@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,$match
-	@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,stringThis,toJSON,unshift,compileFunction,localTimeDifference
+	@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
 	@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
 
 	support: {
@@ -52,7 +52,6 @@
 		floor(x: number): number
 		log(x: number): number
 		random(): number
-		stringThis(): string
 		sin(x: number): number
 		sqrt(x: number): number
 		tan(x: number): number
@@ -485,9 +484,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		} while (true);
 	}),
 	replace: unconstructable(function replace(searchValue, replaceValue) {
-		var s, sLength = (s = support.stringThis()).length, replaceFunction = replaceValue, matches, i, p, t, l, e, searchIsRegExp;
-		searchIsRegExp = ($getInternalProperty(searchValue, "class") === "RegExp");
-		if (!searchIsRegExp) t = str(searchValue);
+		var s, sLength = (s = str(this)).length, replaceFunction = replaceValue, matches, i, p, t, l, e;
 		if (typeof replaceFunction !== "function") {
 			var r = str(replaceValue);
 			for (i = r.length; --i >= 0 && r[i] != '$';);
@@ -515,9 +512,9 @@ defineProperties(String.prototype, { dontEnum: true }, {
 					}
 				}
 				return t;
-			});
-		}
-		if (searchIsRegExp) {
+			})
+		};
+		if ($getInternalProperty(searchValue, "class") === "RegExp") {
 			p = 0;
 			t = new StringBuilder;
 			if (searchValue.global) searchValue.lastIndex = 0;
@@ -531,8 +528,8 @@ defineProperties(String.prototype, { dontEnum: true }, {
 			}
 			return (t.append($sub(s, p, sLength))).build();
 		} else {
-			e = sLength - (l = t.length);
-			for (p = 0; !$match(s, p, t); ++p) if (p >= e) return s;
+			e = sLength - (l = (t = str(searchValue)).length);
+			for (var p = 0; !$match(s, p, t); ++p) if (p >= e) return s;
 			return $sub(s, 0, p) + str($callWithArgs(replaceFunction, null, [ t, p, s ])) + $sub(s, p + l, sLength);
 		}
 	}),

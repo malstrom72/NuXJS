@@ -1,3 +1,39 @@
+built-ins/Object/defineProperty/15.2.3.6-4-127
+source
+--- output ---
+--- output ---
+ !!!! RangeError: Invalid array length
+
+built-ins/Object/defineProperty/15.2.3.6-4-128
+source
+--- output ---
+--- output --- 
+ !!!! RangeError: Invalid array length
+
+built-ins/RegExp/S15.10.2.8_A3_T15
+source
+--- output ---
+--- output --- 
+ !!!! RangeError: Internal compiler limitations reached. Reduce code complexity.
+
+built-ins/String/prototype/replace/S15.5.4.11_A12
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/replace/S15.5.4.11_A1_T11
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
+built-ins/String/prototype/replace/S15.5.4.11_A1_T12
+source
+--- output ---
+--- output --- 
+ !!!! [object Object]
+
 built-ins/String/prototype/replace/S15.5.4.11_A3_T1
 source
 --- output ---
