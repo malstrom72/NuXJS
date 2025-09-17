@@ -20414,6 +20414,9 @@
 	"built-ins/String/prototype/repeat/return-abrupt-from-this-as-symbol": {
 		"category": "not_es3"
 	},
+	"built-ins/String/prototype/replace/S15.5.4.11_A12": {
+		"category": "by_design"
+	},
 	"built-ins/String/prototype/replace/S15.5.4.11_A10": {
 		"category": "bad_test"
 	},
