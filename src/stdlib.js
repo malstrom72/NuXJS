@@ -654,15 +654,15 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 	}),
 	push: unconstructable(function push(item) {
 		var argv = arguments, raw = +this.length, offset;
-		if ($isNaN(raw)) offset = 0;
-		else if (!$isFinite(raw)) {
-			if (raw > 0) throw typeError("Invalid array length");
+		if ($isNaN(raw)) {
+			offset = 0;
+		} else if (!$isFinite(raw)) {
+			if (raw > 0) throw rangeError("Invalid array length");
 			offset = 0;
 		} else {
 			offset = uint32(raw);
 		}
 		var argc = argv.length, end = offset + argc;
-		if (end > 4294967295) throw typeError("Invalid array length");
 		for (var i = 0; i < argc; ++i) this[offset + i] = argv[i];
 		this.length = end;
 		return end;

@@ -11,7 +11,7 @@
 > obj = { push: Array.prototype.push }
 > obj.length = Number.POSITIVE_INFINITY
 > obj.push(-4)
-! !!!! TypeError: Invalid array length
+! !!!! RangeError: Invalid array length
 -
 > print(obj.length)
 < Infinity
@@ -29,10 +29,11 @@
 -
 > obj = { push: Array.prototype.push }
 > obj.length = 4294967295
-> obj.push(1, 2)
-! !!!! TypeError: Invalid array length
--
+> print(obj.push(1, 2))
+< 4294967297
 > print(obj.length)
-< 4294967295
-> print("4294967295" in obj)
-< false
+< 4294967297
+> print(obj[4294967295])
+< 1
+> print(obj[4294967296])
+< 2

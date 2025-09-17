@@ -4608,11 +4608,17 @@ struct Runtime::FunctionPrototypeFunction : public ExtensibleFunction {
 	typedef ExtensibleFunction super;
 	FunctionPrototypeFunction(GCList& gcList) : super(gcList) { }
 	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
+	virtual Value construct(Runtime& rt, Processor&, UInt32, const Value*, Object*);
 	virtual Object* getPrototype(Runtime& rt) const;
 	virtual void constructCompleteObject(Runtime& rt) const;
 };
 
 Value Runtime::FunctionPrototypeFunction::invoke(Runtime&, Processor&, UInt32, const Value*, Object*) {
+	return UNDEFINED_VALUE;
+}
+
+Value Runtime::FunctionPrototypeFunction::construct(Runtime& rt, Processor&, UInt32, const Value*, Object*) {
+	ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Function.prototype is not a constructor");
 	return UNDEFINED_VALUE;
 }
 
