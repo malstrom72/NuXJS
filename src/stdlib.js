@@ -667,15 +667,9 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return result;
 	}),
 	push: unconstructable(function push(item) {
-		var argv = arguments, raw = +this.length, offset;
-		if ($isNaN(raw)) {
-			offset = 0;
-		} else if (!$isFinite(raw)) {
-			if (raw > 0) throw rangeError("Invalid array length");
-			offset = 0;
-		} else {
-			offset = uint32(raw);
-		}
+		var argv = arguments, raw = +this.length;
+		if (raw === $Infinity) throw typeError("Invalid array length");
+		var offset = uint32(raw);
 		var argc = argv.length, end = offset + argc;
 		for (var i = 0; i < argc; ++i) this[offset + i] = argv[i];
 		this.length = end;
@@ -1392,10 +1386,10 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 							if (n > maxBackReference) maxBackReference = n;
 							n = (n - 1) * 2;
 				// TODO: $match should take two additional optional params: start, end in match-string, thus eliminating need for substring here
-							quantity = parseQuantifier();
-							var stepSize = 'c' + (n + 1) + "-c" + n
-									, backMatchCode = "$match(s,"
-									+ positionToCode(offset) + ",$sub(s, c" + n + ",c" + (n + 1) + "))";
+					quantity = parseQuantifier();
+					var stepSize = 'c' + (n + 1) + "-c" + n
+					, backMatchOffset = positionToCode(quantity ? 0 : offset)
+					, backMatchCode = "$match(s," + backMatchOffset + ",$sub(s, c" + n + ",c" + (n + 1) + "))";
 							tail = compileTerms(0, junction);
 							var tailName = 't' + (++functionCounter);
 							addFunction(tailName, "return " + tail);
