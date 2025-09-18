@@ -201,6 +201,9 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 - Implicit `valueOf` and `toString` conversions may happen earlier than specified, for example, `v[o]++` only invokes `toString()` once.
 - Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers.
 - The `arguments` object follows ES3 mapping semantics; changing element attributes does not fully emulate the ES5 behaviour.
+- `Object.defineProperty` only accepts plain data descriptors (`value`, `writable`, `enumerable`, `configurable`). Missing
+  fields default to `false`, accessors are ignored, failures return `false` instead of throwing, and descriptor invariant checks
+  are not performed.
 - Every created function has a writable, enumerable, and configurable `name` property.
 - Evaluation order of member expressions follows the ES3 order (object and arguments evaluated before selecting the member).
 - When the identifier of a `catch` clause is called as a function, its `this` value is the global object.
@@ -222,7 +225,7 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 | `Object.prototype.hasOwnProperty` | yes				   |
 | `Object.prototype.isPrototypeOf`	| yes				   |
 | `Object.getPrototypeOf`			| yes				   |
-| `Object.defineProperty`			| data properties only |
+| `Object.defineProperty`             | data descriptors only (no accessors or ES5 invariant checks) |
 | `JSON.parse` / `JSON.stringify`	| yes				   |
 | String indexing					| yes				   |
 | `eval()` direct vs indirect		| yes				   |
