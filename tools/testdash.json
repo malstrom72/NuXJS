@@ -23538,7 +23538,7 @@
 		"category": ""
 	},
 	"language/arguments-object/10.6-13-c-2-s": {
-		"category": "tbd"
+		"category": "bad_test"
 	},
 	"language/arguments-object/10.6-14-c-1-s": {
 		"category": ""
@@ -23547,10 +23547,10 @@
 		"category": ""
 	},
 	"language/arguments-object/10.6-6-1": {
-		"category": "tbd"
+		"category": "bad_test"
 	},
 	"language/arguments-object/10.6-6-2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/10.6-7-1": {
 		"category": ""
@@ -23571,67 +23571,67 @@
 		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-3": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-4": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-delete-1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-delete-2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-delete-3": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-delete-4": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-nonwritable-1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-nonwritable-2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-nonwritable-3": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-nonwritable-4": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-nonwritable-5": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-strict-delete-1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-strict-delete-2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-strict-delete-3": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonconfigurable-strict-delete-4": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonwritable-nonconfigurable-1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonwritable-nonconfigurable-2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonwritable-nonconfigurable-3": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/mapped/mapped-arguments-nonwritable-nonconfigurable-4": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/arguments-object/unmapped/Symbol.iterator": {
 		"category": "not_es3"
@@ -23727,13 +23727,13 @@
 		"category": "not_es3"
 	},
 	"language/block-scope/syntax/redeclaration-in-block/attempt-to-redeclare-function-declaration-with-function-declaration": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/block-scope/syntax/redeclaration-in-block/attempt-to-redeclare-function-declaration-with-var": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/block-scope/syntax/redeclaration-in-block/attempt-to-redeclare-var-with-function-declaration": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/comments/S7.4_A5": {
 		"category": ""
@@ -24075,13 +24075,13 @@
 		"category": "not_es3"
 	},
 	"language/eval-code/non-definable-function-with-function": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/eval-code/non-definable-function-with-variable": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/eval-code/non-definable-global-function": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/eval-code/non-definable-global-generator": {
 		"category": "not_es3"
@@ -24249,16 +24249,16 @@
 		"category": "not_es3"
 	},
 	"language/expressions/assignment/11.13.1-4-1": {
-		"category": "tbd"
+		"category": "bad_test"
 	},
 	"language/expressions/assignment/8.12.5-3-b_1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/assignment/8.12.5-3-b_2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/assignment/8.12.5-5-b_1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/assignment/S11.13.1_A1": {
 		"category": ""
@@ -24702,10 +24702,10 @@
 		"category": ""
 	},
 	"language/expressions/call/11.2.3-3_4": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/call/11.2.3-3_6": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/call/11.2.3-3_7": {
 		"category": "not_es3"
@@ -24921,103 +24921,103 @@
 		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A6.10_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A6.11_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A6.1_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A6.2_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A6.3_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A6.4_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A6.5_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A6.6_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A6.7_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A6.8_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A6.9_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.10_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.10_T2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.11_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.11_T2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.1_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.1_T2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.2_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.2_T2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.3_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.3_T2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.4_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.4_T2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.5_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.5_T2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.6_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.6_T2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.7_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.7_T2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.8_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.8_T2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.9_T1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/compound-assignment/S11.13.2_A7.9_T2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/conditional/S11.12_A1": {
 		"category": ""
@@ -25080,7 +25080,7 @@
 		"category": "not_es3"
 	},
 	"language/expressions/equals/get-symbol-to-prim-err": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/expressions/equals/symbol-abstract-equality-comparison": {
 		"category": "not_es3"
@@ -25362,7 +25362,7 @@
 		"category": "not_es3"
 	},
 	"language/expressions/object/11.1.5_5-4-1": {
-		"category": "tbd"
+		"category": "bad_test"
 	},
 	"language/expressions/object/11.1.5_6-2-2-s": {
 		"category": "not_es3"
@@ -25953,10 +25953,10 @@
 		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-103": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-105": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-10gs": {
 		"category": "not_es3"
@@ -26121,28 +26121,28 @@
 		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-58-s": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-58gs": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-59-s": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-59gs": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-60-s": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-60gs": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-61-s": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-61gs": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/function-code/10.4.3-1-62-s": {
 		"category": "not_es3"
@@ -26280,25 +26280,25 @@
 		"category": "not_es3"
 	},
 	"language/identifiers/part-digits-via-escape-hex": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/identifiers/val-dollar-sign-via-escape-hex": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/identifiers/val-underscore-via-escape-hex": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/identifiers/vals-eng-alpha-lower-via-escape-hex": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/identifiers/vals-eng-alpha-upper-via-escape-hex": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/identifiers/vals-rus-alpha-lower-via-escape-hex": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/identifiers/vals-rus-alpha-upper-via-escape-hex": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/line-terminators/7.3-1": {
 		"category": ""
@@ -26451,7 +26451,7 @@
 		"category": "not_es3"
 	},
 	"language/literals/string/7.8.4-1-s": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/module-code/strict-mode": {
 		"category": "not_es3"
@@ -27297,19 +27297,19 @@
 		"category": "not_es3"
 	},
 	"language/statements/do-while/cptn-abrupt-empty": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/do-while/cptn-normal": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/do-while/labeled-fn-stmt": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for-in/12.6.4-1": {
 		"category": ""
 	},
 	"language/statements/for-in/12.6.4-2": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for-in/S12.6.4_A1": {
 		"category": "not_es3"
@@ -27324,28 +27324,28 @@
 		"category": "not_es3"
 	},
 	"language/statements/for-in/cptn-decl-abrupt-empty": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for-in/cptn-decl-itr": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for-in/cptn-decl-skip-itr": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for-in/cptn-decl-zero-itr": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for-in/cptn-expr-abrupt-empty": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for-in/cptn-expr-itr": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for-in/cptn-expr-skip-itr": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for-in/cptn-expr-zero-itr": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for-in/head-const-bound-names-fordecl-tdz": {
 		"category": "not_es3"
@@ -27753,22 +27753,22 @@
 		"category": "not_es3"
 	},
 	"language/statements/for/S12.6.3_A9": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for/S12.6.3_A9.1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for/cptn-decl-expr-iter": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for/cptn-decl-expr-no-iter": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for/cptn-expr-expr-iter": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for/cptn-expr-expr-no-iter": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for/head-const-fresh-binding-per-iteration": {
 		"category": "not_es3"
@@ -27777,10 +27777,10 @@
 		"category": "not_es3"
 	},
 	"language/statements/for/labeled-fn-stmt-expr": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/for/labeled-fn-stmt-var": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/function/13.0-10-s": {
 		"category": "not_es3"
@@ -27897,10 +27897,10 @@
 		"category": "not_es3"
 	},
 	"language/statements/function/13.2-15-1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/function/13.2-17-1": {
-		"category": "tbd"
+		"category": "not_es3"
 	},
 	"language/statements/function/13.2-17-s": {
 		"category": "not_es3"
