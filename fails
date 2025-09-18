@@ -4,12 +4,6 @@ source
 --- output --- 
  !!!! [object Object]
 
-built-ins/String/prototype/replace/S15.5.4.11_A12
-source
---- output ---
---- output --- 
- !!!! [object Object]
-
 built-ins/String/prototype/replace/S15.5.4.11_A5_T1
 source
 --- output ---
