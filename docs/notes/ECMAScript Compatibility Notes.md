@@ -10,6 +10,10 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 - Implicit `valueOf` and `toString` conversions may happen earlier than specified. For example, `v[o]++` only calls `toString()` once.
 - Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers.
 - The `arguments` object follows ES3 mapping semantics; changing element attributes does not fully emulate the ES5 behaviour.
+- `Object.defineProperty` only recognises the `value`, `writable`, `enumerable`, and `configurable` fields. All are treated as
+  optional booleans that default to `false`, failures return `false` instead of throwing, and the engine does not enforce the
+  ES5 descriptor invariants (no accessor descriptors, no `ToPropertyDescriptor` processing, no checks for non-configurable
+  updates).
 - Every created function has a writable, enumerable, and configurable `name` property.
 - Evaluation order of member expressions follows the ES3 order (object and arguments are evaluated before selecting the member).
 - When the identifier of a `catch` clause is called as a function, its `this` value becomes the global object.
@@ -29,7 +33,7 @@ This document lists differences between NuXJS and the ECMAScript 3 standard alon
 - `Object.prototype.hasOwnProperty`
 - `Object.prototype.isPrototypeOf`
 - `Object.getPrototypeOf`
-- `Object.defineProperty` (data properties only)
+- `Object.defineProperty` (data descriptors only; no getters/setters, defaults, or ES5 invariant checks)
 - `JSON.parse`
 - `JSON.stringify`
 
