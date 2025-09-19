@@ -18620,6 +18620,9 @@
 	"built-ins/RegExp/15.10.4.1-1": {
 		"category": "not_es3"
 	},
+	"built-ins/RegExp/S15.10.2.8_A3_T15": {
+		"category": "by_design"
+	},
 	"built-ins/RegExp/S15.10.2.12_A1_T1": {
 		"category": "not_es3"
 	},
