@@ -75,11 +75,17 @@ err = try(>{
 		};
 		output = load(outPath);
 		output = replace(output, "\r\n", "\n");
+		for (; length(output) != 0 && right(output, 1) == LF; ) {
+			output = chop(output, 1);
+		};
 		goldenFile = bake('benchmarks{DIR_SLASH}golden{DIR_SLASH}{name}.txt');
 		if (makeGold) {
 			save(goldenFile, output);
 		} else if (ignoregold !== 'ignoregold') {
 			expected = load(goldenFile);
+			for (; length(expected) != 0 && right(expected, 1) == LF; ) {
+				expected = chop(expected, 1);
+			};
 			if (output !== expected) {
 				times = 'FAIL';
 				save("output" # DIR_SLASH # 'failed.txt', output);
