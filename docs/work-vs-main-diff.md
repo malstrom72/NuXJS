@@ -4,10 +4,6 @@ This report summarizes the behavioral and structural differences between the loc
 
 ## `src/NuXJS.cpp`
 
-### Floating-Point Formatting and Parsing
-* The helper `scaleAndRound` has been inlined into `doubleToString`, which now relies on direct `DoubleDouble` to `double` casts when reconstructing candidate values while formatting numbers, instead of performing a separate power-of-two scaling step.【F:src/NuXJS.cpp†L440-L476】
-* `parseDouble` now multiplies accumulated significands using the same direct conversion path, mirroring the formatting change.【F:src/NuXJS.cpp†L503-L613】
-
 ### Array Index and Length Semantics
 * `Value::toArrayIndex` no longer treats booleans as valid indices—only numeric strings and numbers within the 32-bit range remain eligible.【F:src/NuXJS.cpp†L740-L769】
 * `JSArray::setOwnProperty` validates assignments to `length` by coercing the incoming value to a number, rejecting NaN, negatives, or non-integer doubles before updating, and ensuring any fractional component triggers a `RangeError`.【F:src/NuXJS.cpp†L1669-L1698】
@@ -20,7 +16,6 @@ This report summarizes the behavioral and structural differences between the loc
 * Pre- and post-increment/decrement operations on properties emit `CHECK_RESOLVE_PROPERTY_OP` so the base object is validated and reused during compound assignments.【F:src/NuXJS.cpp†L3482-L3583】
 * Dot and bracket property expressions now emit `CHECK_OBJECT_COERCIBLE_OP` before generating property references, and bracket lookups explicitly coerce the key via `OBJ_TO_STRING_OP`.【F:src/NuXJS.cpp†L3612-L3683】
 * Assignment handling emits `TYPEOF_NAMED_OP` or `READ_LOCAL_OP` before performing a write, surfacing reference errors for unresolved identifiers and ensuring locals are initialized, and uses the new resolve opcode for property targets.【F:src/NuXJS.cpp†L3639-L3669】
-* The maximum supported expression nesting depth has been raised from 64 to 512 to accommodate deeper parse trees.【F:src/NuXJS.cpp†L3705-L3714】
 
 ### Runtime Behavior Adjustments
 * Property loads via `Processor::innerRun` still convert base values lazily, but setters now operate directly on already-resolved objects, relying on the compiler to emit the new guard opcodes first.【F:src/NuXJS.cpp†L2443-L2500】
