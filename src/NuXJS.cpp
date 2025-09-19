@@ -366,8 +366,8 @@ static DoubleDouble multiplyAndAdd(const DoubleDouble& term, const DoubleDouble&
 	- Table ensures factorExponent >= -1073 so T = factorExponent + 1073 >= 0.
 **/
 static double scaleAndRound(const DoubleDouble& acc, double factor) {
-    if (acc.high == 0.0 && acc.low == 0.0) {
-    	return 0.0;
+	if (acc.high == 0.0 && acc.low == 0.0) {
+		return 0.0;
 	}
 	
 	const double fastResult = (acc.high + acc.low) * factor;
@@ -375,9 +375,9 @@ static double scaleAndRound(const DoubleDouble& acc, double factor) {
 		return fastResult;												// normal result; fast path is exact here
 	}
 	
-    int factorExponent;													// slow path: denormal/transition region
-    frexp(factor, &factorExponent);										// assemble payload then single rounding
-    
+	int factorExponent;													// slow path: denormal/transition region
+	frexp(factor, &factorExponent);										// assemble payload then single rounding
+	
 	const int t = factorExponent + 1073;								// guaranteed by table construction
 	assert(t >= 0);														// (no right-shift branch needed)	
 	const double bf = ldexp(acc.low, t);								// align (high, low) into the 52-bit subnormal payload scale
@@ -1745,12 +1745,10 @@ bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flag
 		}
 		sliceDenseVector(rt, key);
 	} else if (key.equalsString(LENGTH_STRING)) {
-		double rawLength = v.toDouble();
-		if (isNaN(rawLength) || rawLength < 0.0 || rawLength > 4294967295.0) {
-			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
-		}
+		const double rawLength = v.toDouble();
 		UInt32 coercedLength = static_cast<UInt32>(rawLength);
-		if (rawLength != static_cast<double>(coercedLength)) {
+		if (isNaN(rawLength) || rawLength < 0.0 || rawLength > 4294967295.0
+				|| rawLength != static_cast<double>(coercedLength)) {
 			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
 		}
 		return updateLength(coercedLength);
@@ -2158,11 +2156,11 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ READ_NAMED_OP				 , "READ_NAMED"				 , 1	  , 0 },
 	{ WRITE_NAMED_OP			 , "WRITE_NAMED"			 , 0	  , 0 },
 	{ WRITE_NAMED_POP_OP		 , "WRITE_NAMED_POP"		 , -1	  , 0 },
-	{ CHECK_OBJECT_COERCIBLE_OP						  , "CHECK_OBJECT_COERCIBLE"			   , 0		, 0 },
+	{ CHECK_OBJECT_COERCIBLE_OP	 , "CHECK_OBJECT_COERCIBLE"  , 0	  , 0 },
 	{ GET_PROPERTY_OP			 , "GET_PROPERTY"			 , -1	  , 0 },
 	{ SET_PROPERTY_OP			 , "SET_PROPERTY"			 , -2	  , 0 },
 	{ SET_PROPERTY_POP_OP		 , "SET_PROPERTY_POP"		 , -3	  , 0 },
-			{ CHECK_RESOLVE_PROPERTY_OP	, "CHECK_RESOLVE_PROPERTY" , 0		, 0 },
+	{ CHECK_RESOLVE_PROPERTY_OP	 , "CHECK_RESOLVE_PROPERTY"	 , 0	  , 0 },
 	{ ADD_PROPERTY_OP			 , "ADD_PROPERTY"			 , -1	  , 0 },
 	{ PUSH_ELEMENTS_OP			 , "PUSH_ELEMENTS_OP"		 , 0	  , OpcodeInfo::POP_OPERAND },
 	{ OBJ_TO_PRIMITIVE_OP		 , "OBJ_TO_PRIMITIVE"		 , 0	  , 0 },
@@ -2488,6 +2486,7 @@ void Processor::innerRun() {
 			case READ_LOCAL_OP:			assert(locals != 0); push(locals[im]); break;
 			case WRITE_LOCAL_OP:		assert(locals != 0); locals[im] = sp[0]; break;
 			case WRITE_LOCAL_POP_OP:	assert(locals != 0); locals[im] = sp[0]; pop(1); break;
+			
 			case READ_NAMED_OP: {
 				const String* name = constants[im].getString();
 				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
@@ -2496,15 +2495,17 @@ void Processor::innerRun() {
 				}
 			}
 			break;
+			
 			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
 			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
-				case CHECK_OBJECT_COERCIBLE_OP: {
-					if (sp[0].isUndefined() || sp[0].isNull()) {
-						error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
-						return;
-					}
-					break;
+			
+			case CHECK_OBJECT_COERCIBLE_OP: {
+				if (sp[0].isUndefined() || sp[0].isNull()) {
+					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
+					return;
 				}
+				break;
+			}
 
 			case GET_PROPERTY_OP: {
 				const Object* o = convertToObject(sp[-1], false);
@@ -2533,14 +2534,14 @@ void Processor::innerRun() {
 				break;
 			}
 
-            case CHECK_RESOLVE_PROPERTY_OP: {
-                if (sp[-1].isUndefined() || sp[-1].isNull()) {
-                    error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
-                    return;
-                }
-                sp[-1] = convertToObject(sp[-1], false);
-                break;
-            }
+			case CHECK_RESOLVE_PROPERTY_OP: {
+				if (sp[-1].isUndefined() || sp[-1].isNull()) {
+					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
+					return;
+				}
+				sp[-1] = convertToObject(sp[-1], false);
+				break;
+			}
 
 			case OBJ_TO_PRIMITIVE_OP:
 			case OBJ_TO_NUMBER_OP:
@@ -3746,7 +3747,7 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 }
 
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
-const Int32 MAX_NESTED_EXPRESSION_DEPTH = 512;
+const Int32 MAX_NESTED_EXPRESSION_DEPTH = 64;
 
 bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
 	if (nestCounter >= MAX_NESTED_EXPRESSION_DEPTH) {
@@ -4965,9 +4966,9 @@ struct Support {
 		return (newTime == -1 ? NAN_VALUE : Value(t * 1000.0 - newTime * 1000.0));
 	}
 	
-        static Value random(Runtime&, Processor&, UInt32, const Value*, Object*) {
-                return rand() / (RAND_MAX + 1.0);
-        }
+		static Value random(Runtime&, Processor&, UInt32, const Value*, Object*) {
+				return rand() / (RAND_MAX + 1.0);
+		}
 
 };
 
