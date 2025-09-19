@@ -3525,17 +3525,17 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 		case PRE_INC_DEC: {
 			assert(op.primitiveInput);
 			assert(op.primitiveOutput);
-                        xr = operand(op);
-                        if (xr.t == ExpressionResult::PROPERTY) {
-								emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
-                                emit(Processor::REPUSH_2_OP);
-                        }
-                        makeRValue(xr, true);
-                        emit(op.vmOp);
-                        makeAssignment(xr);
-                        xr = ExpressionResult::PUSHED_PRIMITIVE;
-                        break;
-                }
+			xr = operand(op);
+			if (xr.t == ExpressionResult::PROPERTY) {
+				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
+				emit(Processor::REPUSH_2_OP);
+			}
+			makeRValue(xr, true);
+			emit(op.vmOp);
+			makeAssignment(xr);
+			xr = ExpressionResult::PUSHED_PRIMITIVE;
+			break;
+		}
 		
 		case TYPE_OF: {
 			assert(!op.primitiveInput);
@@ -3571,8 +3571,8 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		}
 			
 		case BINARY: {
-			const Processor::Opcode primitiveOp
-					= (op.vmOp == Processor::ADD_OP ? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
+			const Processor::Opcode primitiveOp = (op.vmOp == Processor::ADD_OP
+					? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
 			makeRValue(xr, op.primitiveInput, primitiveOp);
 			makeRValue(operand(op), op.primitiveInput, primitiveOp);
 			emit(op.vmOp);
@@ -3613,14 +3613,14 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				p = b;
 				return false;
 			}
-                        if (xr.t == ExpressionResult::PROPERTY) {
-								emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
-                                emit(Processor::REPUSH_2_OP);
-                        }
-                        makeRValue(xr, true);
-                        emit(Processor::PLUS_OP);
-                        emit(xr.t == ExpressionResult::PROPERTY ? Processor::POST_SHUFFLE_OP : Processor::REPUSH_OP);
-                        emit(op.vmOp);
+			if (xr.t == ExpressionResult::PROPERTY) {
+				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
+				emit(Processor::REPUSH_2_OP);
+			}
+			makeRValue(xr, true);
+			emit(Processor::PLUS_OP);
+			emit(xr.t == ExpressionResult::PROPERTY ? Processor::POST_SHUFFLE_OP : Processor::REPUSH_OP);
+			emit(op.vmOp);
 			makeAssignment(xr);
 			emit(Processor::POP_OP, 1);
 			xr = ExpressionResult::PUSHED_PRIMITIVE;
@@ -3679,39 +3679,39 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			break;
 		}
 		
-                case ASSIGNMENT: {
-                        assert(!op.primitiveInput);
-                        assert(!op.primitiveOutput);
-                        if (xr.t == ExpressionResult::PROPERTY) {
-							emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
-                        } else if (xr.t == ExpressionResult::NAMED) {
-                                emitWithConstant(Processor::TYPEOF_NAMED_OP, xr.v);
-                                emit(Processor::POP_OP, 1);
-                        } else if (xr.t == ExpressionResult::LOCAL) {
-                                emit(Processor::READ_LOCAL_OP, xr.v.toInt());
-                                emit(Processor::POP_OP, 1);
-                        }
-                        const ExpressionResult rxr = makeRValue(operand(op), false);
-                        makeAssignment(xr);
-                        xr = rxr;
-                        break;
-                }
-                case COMPOUND_ASSIGNMENT: {
-                        assert(op.primitiveInput);
-                        assert(op.primitiveOutput);
-                        const Processor::Opcode primitiveOp
-                                        = (op.vmOp == Processor::ADD_OP ? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
-                        if (xr.t == ExpressionResult::PROPERTY) {
-							emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
-                                emit(Processor::REPUSH_2_OP);
-                        }
-                        makeRValue(xr, true, primitiveOp);
-                        makeRValue(operand(op), true, primitiveOp);
-                        emit(op.vmOp);
-                        makeAssignment(xr);
-                        xr = ExpressionResult::PUSHED_PRIMITIVE;
-                        break;
-                }
+		case ASSIGNMENT: {
+			assert(!op.primitiveInput);
+			assert(!op.primitiveOutput);
+			if (xr.t == ExpressionResult::PROPERTY) {
+				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
+			} else if (xr.t == ExpressionResult::NAMED) {
+				emitWithConstant(Processor::TYPEOF_NAMED_OP, xr.v);
+				emit(Processor::POP_OP, 1);
+			} else if (xr.t == ExpressionResult::LOCAL) {
+				emit(Processor::READ_LOCAL_OP, xr.v.toInt());
+				emit(Processor::POP_OP, 1);
+			}
+			const ExpressionResult rxr = makeRValue(operand(op), false);
+			makeAssignment(xr);
+			xr = rxr;
+			break;
+		}
+		case COMPOUND_ASSIGNMENT: {
+			assert(op.primitiveInput);
+			assert(op.primitiveOutput);
+			const Processor::Opcode primitiveOp = (op.vmOp == Processor::ADD_OP
+					? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
+			if (xr.t == ExpressionResult::PROPERTY) {
+				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
+				emit(Processor::REPUSH_2_OP);
+			}
+			makeRValue(xr, true, primitiveOp);
+			makeRValue(operand(op), true, primitiveOp);
+			emit(op.vmOp);
+			makeAssignment(xr);
+			xr = ExpressionResult::PUSHED_PRIMITIVE;
+			break;
+		}
 
 		case PROPERTY_BRACKETS: {
 			assert(!op.primitiveInput);
@@ -4856,7 +4856,7 @@ struct Support {
 			}
 			// FIX : we copy all arguments once to argv, and then chain will copy them again to a scope object, couldn't we short-cut that somehow?
 			// FIX : since only arrays and arguments are really valid here, perhaps even have a new virtual in object for implementing efficient apply with these?
-return callFunction->invoke(rt, processor, args.size(), args.begin(), newThis);
+			return callFunction->invoke(rt, processor, args.size(), args.begin(), newThis);
 		}
 	}
 	
