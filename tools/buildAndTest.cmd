@@ -22,7 +22,18 @@ CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJS_%target%_%model%.exe .\NuXJ
 ..\externals\PikaCmd\PikaCmd.exe .\test.pika -e -x ..\output\NuXJS_%target%_%model% \
 ..\tests\conforming ..\tests\erroneous ..\tests\es3only ..\tests\extremes ..\tests\from262 \
 ..\tests\migrated ..\tests\regression ..\tests\stdlib ..\tests\unsorted || GOTO error
-CALL runExamples.cmd %target% || GOTO error
+IF NOT EXIST ..\output\examples MKDIR ..\output\examples
+SET "examplesExe=..\output\examples\examples.exe"
+
+ECHO Building examples
+CALL .\BuildCpp.cmd %target% "%examplesExe%" ..\examples\examples.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
+
+ECHO Running examples
+%examplesExe% > ..\output\examples\all.log 2>&1 || GOTO error
+
+IF EXIST ..\examples\expected_examples.txt (
+	FC ..\examples\expected_examples.txt ..\output\examples\all.log || GOTO error
+)
 ECHO Success!
 POPD
 EXIT /b 0
