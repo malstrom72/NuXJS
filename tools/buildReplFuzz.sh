@@ -10,9 +10,9 @@ fi
 CPP_COMPILER="${CPP_COMPILER:-clang++}"
 
 common_flags=(-std=c++17 -DLIBFUZZ -fsanitize=fuzzer,address)
-mac_compile_flags=()
-mac_link_flags=()
-user_flags=()
+declare -a mac_compile_flags=()
+declare -a mac_link_flags=()
+declare -a user_flags=()
 
 if [[ -n "$CPP_OPTIONS" ]]; then
 	eval "set -- $CPP_OPTIONS"
@@ -42,7 +42,17 @@ fi
 
 mkdir -p output
 
-compile_cmd=("$CPP_COMPILER" "${common_flags[@]}" "${mac_compile_flags[@]}" "${user_flags[@]}" \
-	tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp -o output/NuXJSFuzz "${mac_link_flags[@]}")
+compile_cmd=("$CPP_COMPILER")
+compile_cmd+=("${common_flags[@]}")
+if (( ${#mac_compile_flags[@]} )); then
+	compile_cmd+=("${mac_compile_flags[@]}")
+fi
+if (( ${#user_flags[@]} )); then
+	compile_cmd+=("${user_flags[@]}")
+fi
+compile_cmd+=(tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp -o output/NuXJSFuzz)
+if (( ${#mac_link_flags[@]} )); then
+	compile_cmd+=("${mac_link_flags[@]}")
+fi
 
 "${compile_cmd[@]}"
