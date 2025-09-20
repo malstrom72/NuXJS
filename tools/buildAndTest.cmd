@@ -24,7 +24,20 @@ FOR /D %%D IN ("..\tests\*") DO (
 	SET testDirs=!testDirs! %%D
 )
 ..\externals\PikaCmd\PikaCmd.exe .\test.pika -e -x ..\output\NuXJS_%target%_%model% !testDirs! || GOTO error
-CALL runExamples.cmd %target% || GOTO error
+
+IF NOT EXIST ..\output\examples MKDIR ..\output\examples
+SET "examplesExe=..\output\examples\examples.exe"
+
+ECHO Building examples
+CALL .\BuildCpp.cmd %target% "%examplesExe%" ..\examples\examples.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
+
+ECHO Running examples
+%examplesExe% > ..\output\examples\all.log 2>&1 || GOTO error
+
+IF EXIST ..\examples\expected_examples.txt (
+	FC ..\examples\expected_examples.txt ..\output\examples\all.log || GOTO error
+)
+
 ECHO Success!
 POPD
 EXIT /b 0

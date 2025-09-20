@@ -29,6 +29,18 @@ for dir in ../tests/*; do
 	fi
 done
 ../externals/PikaCmd/PikaCmd ./test.pika -e -x ../output/NuXJS_${target}_${model} "${test_dirs[@]}"
-bash ./runExamples.sh "$target"
+
+mkdir -p ../output/examples
+exe=../output/examples/examples
+
+echo "Building examples"
+bash ./BuildCpp.sh "$target" "$exe" ../examples/examples.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
+
+echo "Running examples"
+"$exe" > ../output/examples/all.log 2>&1
+
+if [ -f ../examples/expected_examples.txt ]; then
+	diff -u ../examples/expected_examples.txt ../output/examples/all.log
+fi
 
 echo Success!
