@@ -26,6 +26,7 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
 	fi
 	if [[ -n "$sdk_path" ]]; then
 		mac_compile_flags+=(-isysroot "$sdk_path" -stdlib=libc++)
+		mac_link_flags+=(-isysroot "$sdk_path" -stdlib=libc++)
 	fi
 	if command -v brew >/dev/null 2>&1; then
 		llvm_prefix="$(brew --prefix llvm 2>/dev/null || true)"
@@ -33,8 +34,8 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
 			if [[ $cpp_compiler_was_default -eq 1 && -x "$llvm_prefix/bin/clang++" ]]; then
 				CPP_COMPILER="$llvm_prefix/bin/clang++"
 			fi
-			mac_link_flags+=(-L"$llvm_prefix/lib/c++" -L"$llvm_prefix/lib/unwind" -L"$llvm_prefix/lib")
-			mac_link_flags+=(-Wl,-rpath,"$llvm_prefix/lib/c++" -Wl,-rpath,"$llvm_prefix/lib")
+			mac_link_flags+=(-L "$llvm_prefix/lib/c++" -L "$llvm_prefix/lib/unwind" -L "$llvm_prefix/lib")
+			mac_link_flags+=("-Wl,-rpath,$llvm_prefix/lib/c++" "-Wl,-rpath,$llvm_prefix/lib")
 			mac_link_flags+=(-lunwind -lc++ -lc++abi)
 		fi
 	fi
