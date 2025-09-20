@@ -32,6 +32,17 @@ bash ./BuildCpp.sh $target $model ../output/NuXJS_${target}_${model} ../tools/Nu
 ../tests/regression \
 ../tests/stdlib \
 ../tests/unsorted
-bash ./runExamples.sh "$target"
+mkdir -p ../output/examples
+exe=../output/examples/examples
+
+echo "Building examples"
+bash ./BuildCpp.sh "$target" "$exe" ../examples/examples.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
+
+echo "Running examples"
+"$exe" > ../output/examples/all.log 2>&1
+
+if [ -f ../examples/expected_examples.txt ]; then
+	diff -u ../examples/expected_examples.txt ../output/examples/all.log
+fi
 
 echo Success!
