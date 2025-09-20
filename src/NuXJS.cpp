@@ -785,15 +785,36 @@ bool Value::toArrayIndex(UInt32& index) const {
 			return index == n;
 		}
 		case STRING_TYPE: {
-			const Char* const e = var.string->end();
-			const Char* p = var.string->begin();
-			if (p != e && *p == '0') {
-				index = 0;
-				++p;
-			} else {
-				p = parseUnsignedInt(p, e, index);
+			const Char* const begin = var.string->begin();
+			const Char* const end = var.string->end();
+			if (begin == end) {
+				return false;
 			}
-			return p == e;
+			const Char* p = begin;
+			if (*p == '0') {
+				++p;
+				if (p == end) {
+					index = 0;
+					return true;
+				}
+				return false;
+			}
+			UInt32 candidate = 0;
+			UInt32 digits = 0;
+			while (p != end && *p >= '0' && *p <= '9') {
+				const UInt32 digit = static_cast<UInt32>(*p - '0');
+				if (candidate > 429496729U || (candidate == 429496729U && digit > 5U)) {
+					return false;
+				}
+				candidate = candidate * 10 + digit;
+				++digits;
+				++p;
+			}
+			if (p != end || digits == 0 || candidate == 0xFFFFFFFFU) {
+				return false;
+			}
+			index = candidate;
+			return true;
 		}
 		default: return false;
 	}
