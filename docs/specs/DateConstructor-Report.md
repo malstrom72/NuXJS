@@ -95,8 +95,12 @@
 > b. Return ToDateString (now).
 【F:docs/specs/ECMA-262 6.0 Date constructor excerpt.md†L3-L28】
 
+### Interpreting “supplied” arguments
+
+Both ES3 and ES5.1 state that when a caller omits a formal parameter the function receives the value `undefined` for that slot.【F:docs/specs/ECMA-262 3.md†L1763-L1767】 The Date constructor algorithms above then decide whether each argument was “supplied”. If an argument was supplied, the algorithms call `ToNumber` on it instead of using the default; the `ToNumber` conversion tables for both editions explicitly map `undefined` to `NaN`.【F:docs/specs/ECMA-262 3.md†L1498-L1503】【F:docs/specs/ECMA-262 5.1.md†L2833-L2842】 As a result, passing `undefined` for the `date`, `hours`, `minutes`, `seconds`, or `ms` arguments produces `NaN`, which then propagates through `MakeDay`, `MakeTime`, `MakeDate`, and `TimeClip` to yield a final `NaN` time value.
+
 ## Test262 S15.9.3.1_A6 expectations
-Each Sputnik-derived test constructs a `Date` with one of the optional arguments omitted and requires the resulting [[Value]] to be `NaN`. The source for each case is reproduced verbatim below so the exact behaviour under test is clear.
+Each Sputnik-derived test constructs a `Date` while propagating `undefined` for one of the optional arguments. Because the `DateValue` helper passes every formal parameter through to the constructor, the Date algorithm treats each slot as “supplied” and therefore converts the explicit `undefined` value to `NaN` via `ToNumber`. The source for each case is reproduced verbatim below so the exact behaviour under test is clear.
 
 ### S15.9.3.1_A6_T1 — two arguments `(year, month)`
 ```js
@@ -373,28 +377,45 @@ if (!isNaN(DateValue(2100, 0, 1, 0, 0, 0))) {
 }
 ```
 
-## NuXJS runtime results
-Running the same constructions against NuXJS after the 12ef18589e052800aaa82c24af81b692bed347a5 merge shows that each call returns a finite time value rather than `NaN`:
+## Observed runtime results
+
+### NuXJS
+Executing the Sputnik helper against NuXJS shows that the engine coerces `undefined` to the Date defaults instead of propagating `NaN`, so each call returns a finite time value:
 
 ```
-T1 new Date(1899,11): -2211667200000
-T2 new Date(1899,11,31): -2209075200000
-T3 new Date(1899,11,31,23): -2208992400000
-T4 new Date(1899,11,31,23,59): -2208988860000
-T5 new Date(1899,11,31,23,59,59): -2208988801000
+-2211667200000
+-2209075200000
+-2208992400000
+-2208988860000
+-2208988801000
 ```
-【cf6349†L14-L19】
+【ff284a†L10-L15】
 
-Running the same sequence on Node.js (v20.19.4) produces identical numeric time values, confirming NuXJS matches both the specifications and modern engines:
+Calling the constructor directly illustrates the discrepancy: NuXJS treats an explicit `undefined` third argument as if it were omitted and still returns `-2211667200000` instead of `NaN`.
 
 ```
-T1 -2211667200000
-T2 -2209075200000
-T3 -2208992400000
-T4 -2208988860000
-T5 -2208988801000
+print(new Date(1899, 11).valueOf());
+print(new Date(1899, 11, undefined).valueOf());
 ```
-【76fc30†L2-L6】
+【26504d†L5-L7】
+
+### Node.js
+Modern engines such as Node.js (v20.19.4) follow the specification: the helper returns `NaN` for each case, and the explicit `undefined` third argument differs from the two-argument call.
+
+```
+NaN
+NaN
+NaN
+NaN
+NaN
+```
+【d6cf07†L11-L15】
+
+```
+console.log(new Date(1899, 11).valueOf());
+console.log(new Date(1899, 11, undefined).valueOf());
+```
+【4c3bf0†L5-L6】
 
 ## Conclusion
-All three editions of ECMA-262 examined (ES3, ES5.1, and ES2015) explicitly require missing `date`, `hours`, `minutes`, `seconds`, and `ms` arguments in the Date constructor to default to `1` and `0` rather than yielding `NaN`. The five Sputnik `S15.9.3.1_A6_T*` tests therefore contradict every edition and fail on NuXJS because the engine follows the specifications while the tests insist on `NaN` results.
+All three editions of ECMA-262 examined (ES3, ES5.1, and ES2015) require arguments that are explicitly supplied as `undefined` to be converted with `ToNumber`, producing `NaN` and ultimately a `NaN` time value. The five Sputnik `S15.9.3.1_A6_T*` tests therefore match each specification and modern engines. NuXJS currently diverges by treating supplied `undefined` arguments as if they were omitted, so the failures legitimately reflect a specification incompatibility that needs to be fixed in the engine rather than dismissed as test issues.
