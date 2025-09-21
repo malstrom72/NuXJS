@@ -64,6 +64,7 @@ The expanded `test.pika` sweep currently stops on the following transcripts. Tic
   > "Let *string* denote the result of converting the **this** value to a string."【F:docs/specs/ECMA-262 3.md†L5015-L5022】
   > "The operator ToString converts its argument … If the input type is Undefined, result "undefined"."【F:docs/specs/ECMA-262 3.md†L1672-L1679】
   - **Observed behaviour:** This is the intentional behaviour documented in the ES3 failure log: `support.callWithArgs` swaps in the global object whenever the caller supplies `undefined`, so `String.prototype.replace` ends up stringifying `[object Object]` instead of `"undefined"`. The harness therefore observes `[object Object]` instead of the expected `unDefineD`.【F:tests/todo/stringReplaceUndefinedThis.io†L1-L3】【F:docs/notes/ES3TestFailures.md†L58-L62】【F:docs/specs/ECMA-262 3.md†L5015-L5022】【F:docs/specs/ECMA-262 3.md†L1672-L1679】
+  - **Status:** Accepted deviation. NuXJS intentionally substitutes the global object for `null`/`undefined` receivers to keep borrowed built-ins side-effect free; the ES3 failure log tracks this choice and we do not plan a behavioural change here.【F:docs/notes/ES3TestFailures.md†L55-L62】
 
 - [x] `tests/todo/validArrayLengths.io`
   > "If *P* is "length", … Compute ToUint32(*V*). If Result is not equal to ToNumber(*V*), throw a RangeError exception. For every integer *k* … delete that property. Set the value of property *P* of *A* to Result."【F:docs/specs/ECMA-262 3.md†L4789-L4805】
