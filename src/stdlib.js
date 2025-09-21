@@ -482,11 +482,10 @@ defineProperties(String.prototype, { dontEnum: true }, {
 	replace: unconstructable(function replace(searchValue, replaceValue) {
 		var s, sLength = (s = str(this)).length, matches, i, p, t, l, e, replaceFunction = replaceValue, replacementValue;
 		function makeStringReplacer(r) {
-			var scan;
-			for (scan = r.length; --scan >= 0 && r[scan] != '$';);
+			for (var scan = r.length; --scan >= 0 && r[scan] != '$';);
 			return (scan < 0 ? function() { return r; } : function(m) {
 				var t = '', p, ch, ch2, c, n;
-				for (p = 0; (ch = r[p]); ++p) {
+				for (p = 0; ch = r[p]; ++p) {
 					if (ch !== '$') t += ch;
 					else switch (ch = r[++p]) {
 						case (void 0): case '$': t += '$'; break;

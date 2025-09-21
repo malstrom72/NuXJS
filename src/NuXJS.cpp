@@ -778,36 +778,28 @@ bool Value::toArrayIndex(UInt32& index) const {
 	switch (type) {
 		case NUMBER_TYPE: {
 			const double n = var.number;
-			if (n < 0.0 || n >= 4294967296.0) {
+			if (n < 0.0 || n >= 4294967295.0) {
 				return false;
 			}
 			index = static_cast<UInt32>(n);
 			return index == n;
 		}
 		case STRING_TYPE: {
-			const Char* const begin = var.string->begin();
+			const Char* p = var.string->begin();
 			const Char* const end = var.string->end();
-			if (begin == end) {
+			index = 0;
+			if (p == end || (*p == '0' && p + 1 != end)) {
 				return false;
 			}
-			if (*begin == '0' && begin + 1 != end) {
-				return false;
-			}
-			UInt32 candidate = 0;
-			const Char* p = begin;
 			while (p != end && *p >= '0' && *p <= '9') {
 				const UInt32 digit = static_cast<UInt32>(*p - '0');
-				if (candidate > 429496729U || (candidate == 429496729U && digit > 5U)) {
+				if (index > 429496729U || (index == 429496729U && digit >= 5U)) {
 					return false;
 				}
-				candidate = candidate * 10 + digit;
+				index = index * 10 + digit;
 				++p;
 			}
-			if (p != end || p == begin || candidate == 0xFFFFFFFFU) {
-				return false;
-			}
-			index = candidate;
-			return true;
+			return (p == end);
 		}
 		default: return false;
 	}
@@ -1752,7 +1744,7 @@ bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 
 bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	UInt32 index;
-	if (key.toArrayIndex(index) && index != 0xFFFFFFFFU) {
+	if (key.toArrayIndex(index)) {
 		if ((flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) == 0) {
 			assert(flags == STANDARD_FLAGS);
 			return setElement(rt, index, v);
@@ -1772,8 +1764,7 @@ bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flag
 
 bool JSArray::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
 	UInt32 index;
-	return (key.toArrayIndex(index) && index != 0xFFFFFFFFU ? setOwnProperty(rt, key, v)
-			: super::updateOwnProperty(rt, key, v));
+	return (key.toArrayIndex(index) ? setOwnProperty(rt, key, v) : super::updateOwnProperty(rt, key, v));
 }
 
 bool JSArray::deleteOwnProperty(Runtime& rt, const Value& key) {
