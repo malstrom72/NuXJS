@@ -4265,9 +4265,6 @@
 	"built-ins/Array/prototype/pop/S15.4.4.6_A3_T2": {
 		"category": "not_es3"
 	},
-	"built-ins/Array/prototype/pop/S15.4.4.6_A3_T3": {
-		"category": "not_es3"
-	},
 	"built-ins/Array/prototype/pop/S15.4.4.6_A5.2": {
 		"category": "not_es3"
 	},
@@ -12392,22 +12389,10 @@
 	"built-ins/Object/defineProperty/15.2.3.6-4-124": {
 		"category": "not_es3"
 	},
-	"built-ins/Object/defineProperty/15.2.3.6-4-126": {
-		"category": "not_es3"
-	},
 	"built-ins/Object/defineProperty/15.2.3.6-4-13": {
 		"category": "not_es3"
 	},
 	"built-ins/Object/defineProperty/15.2.3.6-4-14": {
-		"category": "not_es3"
-	},
-	"built-ins/Object/defineProperty/15.2.3.6-4-142": {
-		"category": "not_es3"
-	},
-	"built-ins/Object/defineProperty/15.2.3.6-4-143": {
-		"category": "not_es3"
-	},
-	"built-ins/Object/defineProperty/15.2.3.6-4-144": {
 		"category": "not_es3"
 	},
 	"built-ins/Object/defineProperty/15.2.3.6-4-146": {
