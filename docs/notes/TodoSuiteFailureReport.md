@@ -54,11 +54,11 @@ The expanded `test.pika` sweep currently stops on the following transcripts. Tic
   - **Observed behaviour:** NuXJS already calls `ToString` on the subject, triggers the custom `valueOf`, and reports the spec-mandated prefix match `["aaba", "ba"]`. The todo transcript, however, expected the longer `"aabaac"` match, so the check failed even though the runtime obeyed the ES3 choice-point ordering for disjunctions.【F:tests/todo/regExpExecValueOfObject.io†L1-L11】【F:src/stdlib.js†L1502-L1522】【F:docs/specs/ECMA-262 3.md†L6738-L6755】
   - **Resolution:** Update the transcript to assert the `"aaba"` prefix, capture the coerced input via `r.input`, and flag that `valueOf` executed. The revised expectations now line up with ES3 while still demonstrating the object-to-string conversion path.【F:tests/todo/regExpExecValueOfObject.io†L1-L11】
 
-- [ ] `tests/todo/stringReplaceThrowingValueOf.io`
+- [x] `tests/todo/stringReplaceThrowingValueOf.io`
   > "Otherwise, let *newstring* denote the result of converting *replaceValue* to a string."【F:docs/specs/ECMA-262 3.md†L5030-L5034】
   > "When the [[DefaultValue]] method of *O* is called with hint String … Call the [[Get]] method … "toString" … If Result is a primitive value, return it. … Call … "valueOf" … If Result is a primitive value, return Result."【F:docs/specs/ECMA-262 3.md†L1384-L1397】
-  - **Observed behaviour:** `String.prototype.replace` calls `str(replacementValue)` once before building the replacement function. `str` in turn uses `support.toPrimitiveString`, which prefers `toString` and never reaches the custom `valueOf`, so the `Error("Y")` is swallowed and the `catch` block never runs.【F:tests/todo/stringReplaceThrowingValueOf.io†L1-L3】【F:src/stdlib.js†L111-L136】【F:src/stdlib.js†L486-L547】【F:docs/specs/ECMA-262 3.md†L5030-L5034】【F:docs/specs/ECMA-262 3.md†L1384-L1397】
-  - **Next steps:** Allow the replacer to be converted with the spec’s `ToString` (which falls back to `valueOf` only when `toString` returns a non-primitive) so the error surfaces.
+  - **Observed behaviour:** The original todo fed `replace` a plain object with only a throwing `valueOf`, so the spec’s `ToString` conversion stopped at the inherited `Object.prototype.toString` result `"[object Object]"` and never exercised the fallback path.【F:tests/todo/stringReplaceThrowingValueOf.io†L1-L9】【F:src/stdlib.js†L111-L136】【F:src/stdlib.js†L486-L547】【F:docs/specs/ECMA-262 3.md†L5030-L5034】【F:docs/specs/ECMA-262 3.md†L1384-L1397】
+  - **Resolution:** Adjust the todo script so `toString` returns a non-primitive object, forcing `ToString` to consult `valueOf` and propagate the thrown `Error("Y")`. The updated transcript now observes the expected failure and passes on NuXJS without engine changes.【F:tests/todo/stringReplaceThrowingValueOf.io†L1-L9】
 
 - [ ] `tests/todo/stringReplaceUndefinedThis.io`
   > "Let *string* denote the result of converting the **this** value to a string."【F:docs/specs/ECMA-262 3.md†L5015-L5022】
