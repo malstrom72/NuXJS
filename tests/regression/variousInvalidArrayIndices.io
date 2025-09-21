@@ -7,6 +7,14 @@
 > print(a.length)
 < 0
 -
+> a[NaN]=67
+> print(a.length)
+< 0
+-
+> a[Infinity]=12
+> print(a.length)
+< 0
+-
 > a["4294967295"]=45
 > print(a.length)
 < 0
@@ -62,5 +70,5 @@
 > for (var p in a) b.push(p)
 > b.sort();
 > print(b.join());
-< ,-1,0123,0x3f,12E,4294967294,4294967295,4294967296,5000000000
+< ,-1,0123,0x3f,12E,4294967294,4294967295,4294967296,5000000000,Infinity,NaN
 -
