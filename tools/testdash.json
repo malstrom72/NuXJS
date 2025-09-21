@@ -6911,6 +6911,21 @@
 	"built-ins/Date/S15.9.3.1_A5_T6": {
 		"category": "not_es3"
 	},
+	"built-ins/Date/S15.9.3.1_A6_T1": {
+		"category": "not_es3"
+	},
+	"built-ins/Date/S15.9.3.1_A6_T2": {
+		"category": "not_es3"
+	},
+	"built-ins/Date/S15.9.3.1_A6_T3": {
+		"category": "not_es3"
+	},
+	"built-ins/Date/S15.9.3.1_A6_T4": {
+		"category": "not_es3"
+	},
+	"built-ins/Date/S15.9.3.1_A6_T5": {
+		"category": "not_es3"
+	},
 	"built-ins/Date/UTC/S15.9.4.3_A3_T1": {
 		"category": "not_es3"
 	},
