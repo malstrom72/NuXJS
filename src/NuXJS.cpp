@@ -300,19 +300,11 @@ static const Char* parseHex(const Char* p, const Char* e, UInt32& i) {
 	return p;
 }
 
-static const Char* parseUnsignedInt(const Char* p, const Char* e, UInt32& i, bool* overflowed = 0) {
-	bool overflow = false;
-	for (i = 0; p != e && *p >= '0' && *p <= '9'; ++p) {
-		const UInt32 digit = static_cast<UInt32>(*p - '0');
-		if (!overflow && (i > 429496729U || (i == 429496729U && digit > 5U))) {
-			overflow = true;
-		}
-		i = i * 10 + digit;
-	}
-	if (overflowed != 0) {
-		*overflowed = overflow;
-	}
-	return p;
+static const Char* parseUnsignedInt(const Char* p, const Char* e, UInt32& i) {
+        for (i = 0; p != e && *p >= '0' && *p <= '9'; ++p) {
+                i = i * 10 + (*p - '0');
+        }
+        return p;
 }
 
 /*
@@ -801,10 +793,17 @@ bool Value::toArrayIndex(UInt32& index) const {
 			if (*begin == '0' && begin + 1 != end) {
 				return false;
 			}
-			bool overflow = false;
-			UInt32 candidate;
-			const Char* const consumed = parseUnsignedInt(begin, end, candidate, &overflow);
-			if (consumed != end || consumed == begin || overflow || candidate == 0xFFFFFFFFU) {
+			UInt32 candidate = 0;
+			const Char* p = begin;
+			while (p != end && *p >= '0' && *p <= '9') {
+				const UInt32 digit = static_cast<UInt32>(*p - '0');
+				if (candidate > 429496729U || (candidate == 429496729U && digit > 5U)) {
+					return false;
+				}
+				candidate = candidate * 10 + digit;
+				++p;
+			}
+			if (p != end || p == begin || candidate == 0xFFFFFFFFU) {
 				return false;
 			}
 			index = candidate;
