@@ -65,9 +65,10 @@ The expanded `test.pika` sweep currently stops on the following transcripts. Tic
   > "The operator ToString converts its argument … If the input type is Undefined, result "undefined"."【F:docs/specs/ECMA-262 3.md†L1672-L1679】
   - **Observed behaviour:** This is the intentional behaviour documented in the ES3 failure log: `support.callWithArgs` swaps in the global object whenever the caller supplies `undefined`, so `String.prototype.replace` ends up stringifying `[object Object]` instead of `"undefined"`. The harness therefore observes `[object Object]` instead of the expected `unDefineD`.【F:tests/todo/stringReplaceUndefinedThis.io†L1-L3】【F:docs/notes/ES3TestFailures.md†L58-L62】【F:docs/specs/ECMA-262 3.md†L5015-L5022】【F:docs/specs/ECMA-262 3.md†L1672-L1679】
 
-- [ ] `tests/todo/validArrayLengths.io`
+- [x] `tests/todo/validArrayLengths.io`
   > "If *P* is "length", … Compute ToUint32(*V*). If Result is not equal to ToNumber(*V*), throw a RangeError exception. For every integer *k* … delete that property. Set the value of property *P* of *A* to Result."【F:docs/specs/ECMA-262 3.md†L4789-L4805】
-  - **Observed behaviour:** The array setter coerces the right-hand side via `Value::toDouble` and rejects anything that fails a `rawLength != coercedLength` check. Objects, `null`, `undefined`, and non-integer strings therefore trigger `RangeError` instead of going through the ES3 `ToUint32` algorithm that would produce `0`, `0`, and truncated lengths.【F:tests/todo/validArrayLengths.io†L1-L16】【F:src/NuXJS.cpp†L748-L763】【F:src/NuXJS.cpp†L1748-L1754】【F:docs/specs/ECMA-262 3.md†L4789-L4805】
+  - **Observed behaviour:** The todo still expected a `RangeError` when writing `null` to `length`, even though ES3 maps `null` to the numeric `0` and NuXJS already stores that value without complaint. Only non-integer spellings and `undefined` should trip the guard.【F:tests/todo/validArrayLengths.io†L1-L18】【F:src/NuXJS.cpp†L748-L763】【F:docs/specs/ECMA-262 3.md†L4789-L4805】
+  - **Resolution:** Update the transcript to print the coerced `0`, demonstrating that assigning `null` truncates the array while the negative, fractional, and `undefined` branches continue to throw as required.【F:tests/todo/validArrayLengths.io†L1-L20】
 
 - [ ] `tests/unconforming/cantAssignObjectToArrayLength.io`
   > "If *P* is "length", … Compute ToUint32(*V*). If Result is not equal to ToNumber(*V*), throw a RangeError exception. For every integer *k* … delete that property. Set the value of property *P* of *A* to Result."【F:docs/specs/ECMA-262 3.md†L4789-L4805】
