@@ -25,7 +25,8 @@
 ! !!!! RangeError: Invalid array length
 -
 > a.length=null
-! !!!! RangeError: Invalid array length
+> print(a.length)
+< 0
 -
 > a.length=void 0
 ! !!!! RangeError: Invalid array length

@@ -22,13 +22,7 @@ bash ./BuildCpp.sh $target $model ../output/NuXJSTest_${target}_${model} ../tool
 ../output/NuXJSTest_${target}_${model} -s >/dev/null 2>&1
 ../output/NuXJSTest_${target}_${model}
 bash ./BuildCpp.sh $target $model ../output/NuXJS_${target}_${model} ../tools/NuXJSREPL.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
-test_dirs=()
-for dir in ../tests/*; do
-	if [ -d "$dir" ]; then
-		test_dirs+=("$dir")
-	fi
-done
-../externals/PikaCmd/PikaCmd ./test.pika -e -x ../output/NuXJS_${target}_${model} "${test_dirs[@]}"
+../externals/PikaCmd/PikaCmd ./test.pika -e -x ../output/NuXJS_${target}_${model} ../tests
 
 mkdir -p ../output/examples
 exe=../output/examples/examples

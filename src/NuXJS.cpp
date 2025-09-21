@@ -301,10 +301,10 @@ static const Char* parseHex(const Char* p, const Char* e, UInt32& i) {
 }
 
 static const Char* parseUnsignedInt(const Char* p, const Char* e, UInt32& i) {
-	for (i = 0; p != e && *p >= '0' && *p <= '9'; ++p) {
-		i = i * 10 + (*p - '0');
-	}
-	return p;
+        for (i = 0; p != e && *p >= '0' && *p <= '9'; ++p) {
+                i = i * 10 + (*p - '0');
+        }
+        return p;
 }
 
 /*
@@ -785,15 +785,29 @@ bool Value::toArrayIndex(UInt32& index) const {
 			return index == n;
 		}
 		case STRING_TYPE: {
-			const Char* const e = var.string->end();
-			const Char* p = var.string->begin();
-			if (p != e && *p == '0') {
-				index = 0;
-				++p;
-			} else {
-				p = parseUnsignedInt(p, e, index);
+			const Char* const begin = var.string->begin();
+			const Char* const end = var.string->end();
+			if (begin == end) {
+				return false;
 			}
-			return p == e;
+			if (*begin == '0' && begin + 1 != end) {
+				return false;
+			}
+			UInt32 candidate = 0;
+			const Char* p = begin;
+			while (p != end && *p >= '0' && *p <= '9') {
+				const UInt32 digit = static_cast<UInt32>(*p - '0');
+				if (candidate > 429496729U || (candidate == 429496729U && digit > 5U)) {
+					return false;
+				}
+				candidate = candidate * 10 + digit;
+				++p;
+			}
+			if (p != end || p == begin || candidate == 0xFFFFFFFFU) {
+				return false;
+			}
+			index = candidate;
+			return true;
 		}
 		default: return false;
 	}
@@ -1016,7 +1030,10 @@ Flags String::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 		return HIDDEN_CONST_FLAGS;
 	}
 	UInt32 index;
-	if (key.toArrayIndex(index) && index < size()) {
+	if (!key.toArrayIndex(index)) {
+		return NONEXISTENT;
+	}
+	if (index < size()) {
 		const Char* p = begin() + index;
 		Heap& heap = rt.getHeap();
 		*v = (*p < 127 ? QUICK_CONSTANTS.ascii[*p] : new(heap) String(heap.managed(), p, p + 1));
@@ -3747,7 +3764,7 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 }
 
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
-const Int32 MAX_NESTED_EXPRESSION_DEPTH = 64;
+const Int32 MAX_NESTED_EXPRESSION_DEPTH = 512;
 
 bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
 	if (nestCounter >= MAX_NESTED_EXPRESSION_DEPTH) {

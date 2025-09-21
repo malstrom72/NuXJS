@@ -904,17 +904,19 @@ function setTimeParts(z, n, a) {
 }
 
 function makeDateTime(year, month, date, hours, minutes, seconds, ms) {
-	var argc = arguments.length, y = +year, m = +month, d, h, M, s, milli;
-	if ($isNaN(y) || !$isFinite(y) || $isNaN(m) || !$isFinite(m)) return $NaN;
-	d = (argc > 2 ? +date : 1);
+	var argc = arguments.length, y = +year, m, d, h, M, s, milli;
+	if ($isNaN(y) || !$isFinite(y)) return $NaN;
+	m = (argc > 1 && month !== void 0 ? +month : 0);
+	if ($isNaN(m) || !$isFinite(m)) return $NaN;
+	d = (argc > 2 && date !== void 0 ? +date : 1);
 	if ($isNaN(d) || !$isFinite(d)) return $NaN;
-	h = (argc > 3 ? +hours : 0);
+	h = (argc > 3 && hours !== void 0 ? +hours : 0);
 	if ($isNaN(h) || !$isFinite(h)) return $NaN;
-	M = (argc > 4 ? +minutes : 0);
+	M = (argc > 4 && minutes !== void 0 ? +minutes : 0);
 	if ($isNaN(M) || !$isFinite(M)) return $NaN;
-	s = (argc > 5 ? +seconds : 0);
+	s = (argc > 5 && seconds !== void 0 ? +seconds : 0);
 	if ($isNaN(s) || !$isFinite(s)) return $NaN;
-	milli = (argc > 6 ? +ms : 0);
+	milli = (argc > 6 && ms !== void 0 ? +ms : 0);
 	if ($isNaN(milli) || !$isFinite(milli)) return $NaN;
 	return epochFromDate(int(y) + (0 <= y && y <= 99 ? 1900 : 0), int(m), int(d))
 			+ epochFromTime(int(h), int(M), int(s), int(milli));
@@ -1709,7 +1711,7 @@ function createErrorConstructor(name, prototype) {
 // These are not guaranteed to be 100% compatible
 
 var JSON_ESCAPE_SEQUENCES = { '\\': "\\\\", '"': "\\\"", '\b': "\\b", '\f': "\\f", '\n': "\\n", '\r': "\\r", '\t': "\\t" };
-var MAX_JSON_DEPTH = 61;	// compiler internal recursion limit is 64 (as of 20180610), we must stick under this for eval() to work and 61 gives us enough margin
+var MAX_JSON_DEPTH = 61;	// compiler internal recursion limit is 512 (as of 20240219); keeping this walker far below the ceiling ensures eval() stays safe
 
 // TODO : use StringBuilder?
 defineProperties(JSON, { dontEnum: true }, {
