@@ -109,19 +109,56 @@ else
 	fi
 fi
 
-# 4) Ensure ~/.local/bin is on PATH for future shells; also export for current
-for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+# Helper: append export to shell rc files if possible
+ensure_path_rc() {
+	local rc="$1"
+	local line='export PATH="$HOME/.local/bin:$PATH"'
 	if [ -e "$rc" ]; then
-		if ! grep -qs 'HOME/.local/bin' "$rc" 2>/dev/null; then
-			printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$rc"
+		if grep -qs 'HOME/.local/bin' "$rc" 2>/dev/null; then
+			return
+		fi
+		if [ -w "$rc" ]; then
+			printf '\n%s\n' "$line" >> "$rc"
+		else
+			echo "Warning: $rc is not writable. Add $HOME/.local/bin to PATH manually." >&2
+			echo "         For example: echo '$line' | sudo tee -a $rc" >&2
 		fi
 	else
-		printf 'export PATH="$HOME/.local/bin:$PATH"\n' > "$rc"
+		local rcdir
+		rcdir="$(dirname "$rc")"
+		if [ -w "$rcdir" ]; then
+			printf '%s\n' "$line" > "$rc"
+		else
+			echo "Warning: cannot create $rc. Add $HOME/.local/bin to PATH manually." >&2
+			echo "         Create it with elevated permissions if needed: echo '$line' | sudo tee $rc" >&2
+		fi
 	fi
-done
+}
+
+# 4) Ensure ~/.local/bin is on PATH for future shells; also export for current
+ensure_path_rc "$HOME/.bashrc"
+ensure_path_rc "$HOME/.zshrc"
 export PATH="$HOME/.local/bin:$PATH"
 
 # 5) Smoke test (non-fatal)
 set +e
 python2 -V || "$PY2SHIM" -V || true
+
+CONDA_BIN="$PREFIX/bin/conda"
+CONDA_PROFILE="$PREFIX/etc/profile.d/conda.sh"
+current_conda="$(command -v conda 2>/dev/null || true)"
+
+echo
+echo "Python 2 shim installed at: $PY2SHIM"
+if [ "$current_conda" != "$CONDA_BIN" ]; then
+	echo "Note: your current conda points to: ${current_conda:-<not found>}"
+	echo "To work with the py27 environment from this shell run:"
+	echo "  source \"$CONDA_PROFILE\""
+	echo "  conda activate \"$ENVNAME\""
+	echo "Or invoke commands without activating using:"
+	echo "  \"$CONDA_BIN\" run -n \"$ENVNAME\" <command>"
+else
+	echo "Activate the environment with: conda activate \"$ENVNAME\""
+fi
+echo "Run Python 2 via: python2 or $PY2SHIM"
 
