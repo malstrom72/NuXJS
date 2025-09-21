@@ -32,9 +32,10 @@ The expanded `test.pika` sweep currently stops on the following transcripts. Tic
   - **Observed behaviour:** The seconds argument also goes through the unconditional `+seconds` coercion, tripping the `NaN` guard and returning an invalid date where the transcript expects `false`.【F:tests/todo/dateYearMonthDateHoursMinutesSecondsUndefined.io†L1-L3】【F:docs/specs/ECMA-262 3.md†L6063-L6076】
   - **Resolution:** `makeDateTime` now preserves the default `0` when seconds (or later parameters) are `undefined`, so the constructor no longer returns `NaN`.【F:src/stdlib.js†L906-L920】
 
-- [ ] `tests/todo/regExpDeepCaptures.io`
+- [x] `tests/todo/regExpDeepCaptures.io`
   > "*NCapturingParens* is the total number of left capturing parentheses … in the pattern. … A *State* is an ordered pair (*endIndex*, *captures*) where *captures* is an internal array of *NCapturingParens* values."【F:docs/specs/ECMA-262 3.md†L6611-L6619】
   - **Observed behaviour:** The generated pattern nests 200 capturing parentheses. The compiler keeps a running `nestCounter` and aborts once it reaches the hard-coded `MAX_NESTED_EXPRESSION_DEPTH` of 64, so the run fails with “Internal compiler limitations reached” instead of returning 201 captures.【F:tests/todo/regExpDeepCaptures.io†L1-L5】【F:src/NuXJS.cpp†L3750-L3759】
+  - **Resolution:** Raised `MAX_NESTED_EXPRESSION_DEPTH` to 512 so the dynamically generated RegExp helpers can introduce hundreds of nested groups without tripping the compiler guard.【F:src/NuXJS.cpp†L3771-L3779】
 
 - [ ] `tests/todo/regExpExecNestedCaptures.io`
   > "The **|** regular expression operator separates two alternatives. The pattern first tries to match the left *Alternative* … If choices in the left *Alternative* are exhausted, the right *Disjunction* is tried instead of the left *Alternative*. Any capturing parentheses inside a portion of the pattern skipped by **|** produce **undefined** values instead of strings."【F:docs/specs/ECMA-262 3.md†L6654-L6662】

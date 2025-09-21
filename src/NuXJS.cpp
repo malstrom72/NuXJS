@@ -3768,7 +3768,7 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 }
 
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
-const Int32 MAX_NESTED_EXPRESSION_DEPTH = 64;
+const Int32 MAX_NESTED_EXPRESSION_DEPTH = 512;
 
 bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
 	if (nestCounter >= MAX_NESTED_EXPRESSION_DEPTH) {
