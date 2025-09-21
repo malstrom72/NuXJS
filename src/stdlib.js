@@ -8,7 +8,7 @@
 	@preserve: getPrototypeOf,getSeconds,getTime,getTimezoneOffset,getUTCDate,getUTCDay,getUTCFullYear,getUTCHours
 	@preserve: getUTCMilliseconds,getUTCMinutes,getUTCMonth,getUTCSeconds,hasOwnProperty,if,ignoreCase,in,index,indexOf
 	@preserve: input,isArray,isFinite,isNaN,isPropertyEnumerable,join,lastIndex,lastIndexOf,length,localeCompare,log
-	objectToPrimitive(o, f1, f2) {@preserve: match,max,maxNumber,message,min,minNumber,multiline,name,new,null,parseFloat,parseInt,pow
+	@preserve: match,max,maxNumber,message,min,minNumber,multiline,name,new,null,parseFloat,parseInt,pow
 	@preserve: propertyIsEnumerable,prototype,push,readOnly,regExpCanonicalize,return,reverse,round,setDate
 	@preserve: setFullYear,setHours,setMilliseconds,setMinutes,setMonth,setSeconds,setTime,setUTCDate
 	@preserve: setUTCFullYear,setUTCHours,setUTCMilliseconds,setUTCMinutes,setUTCMonth,setUTCSeconds,shift,sin,slice
@@ -486,7 +486,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 			for (scan = r.length; --scan >= 0 && r[scan] != '$';);
 			return (scan < 0 ? function() { return r; } : function(m) {
 				var t = '', p, ch, ch2, c, n;
-				for (var p = 0; (ch = r[p]); ++p) {
+				for (p = 0; (ch = r[p]); ++p) {
 					if (ch !== '$') t += ch;
 					else switch (ch = r[++p]) {
 						case (void 0): case '$': t += '$'; break;
@@ -495,19 +495,19 @@ defineProperties(String.prototype, { dontEnum: true }, {
 						case "'": t += $sub(s, arguments[arguments.length - 2] + m.length, sLength); break;
 						default: {
 							if (ch >= '0' && ch <= '9') {
-									n = ch - '0';
-									if ((ch2 = r[p + 1]) && ch2 >= '0' && ch2 <= '9') {
-										var twoDigit = n * 10 + (ch2 - '0');
-										if (twoDigit >= 1 && twoDigit < arguments.length - 2) {
-											t += ((c = arguments[twoDigit]) === void 0 ? '' : c);
-											++p;
-											break;
-										}
-									}
-									if (n >= 1 && n < arguments.length - 2) {
-										t += ((c = arguments[n]) === void 0 ? '' : c);
+								n = ch - '0';
+								if ((ch2 = r[p + 1]) && ch2 >= '0' && ch2 <= '9') {
+									var twoDigit = n * 10 + (ch2 - '0');
+									if (twoDigit >= 1 && twoDigit < arguments.length - 2) {
+										t += ((c = arguments[twoDigit]) === void 0 ? '' : c);
+										++p;
 										break;
 									}
+								}
+								if (n >= 1 && n < arguments.length - 2) {
+									t += ((c = arguments[n]) === void 0 ? '' : c);
+									break;
+								}
 							}
 							t += '$' + ch;
 							break;
@@ -896,21 +896,15 @@ function setTimeParts(z, n, a) {
 }
 
 function makeDateTime(year, month, date, hours, minutes, seconds, ms) {
-	var argc = arguments.length, y = +year, m, d, h, M, s, milli;
-	if ($isNaN(y) || !$isFinite(y)) return $NaN;
-	m = (argc > 1 ? +month : 0);
-	if ($isNaN(m) || !$isFinite(m)) return $NaN;
-	d = (argc > 2 ? +date : 1);
-	if ($isNaN(d) || !$isFinite(d)) return $NaN;
-	h = (argc > 3 ? +hours : 0);
-	if ($isNaN(h) || !$isFinite(h)) return $NaN;
-	M = (argc > 4 ? +minutes : 0);
-	if ($isNaN(M) || !$isFinite(M)) return $NaN;
-	s = (argc > 5 ? +seconds : 0);
-	if ($isNaN(s) || !$isFinite(s)) return $NaN;
-	milli = (argc > 6 ? +ms : 0);
-	if ($isNaN(milli) || !$isFinite(milli)) return $NaN;
-	return epochFromDate(int(y) + (0 <= y && y <= 99 ? 1900 : 0), int(m), int(d))
+	var argc = arguments.length, y, m, d, h, M, s, milli;
+	return (!$isFinite(y = +year)
+			|| !$isFinite(m = (argc > 1 ? +month : 0))
+			|| !$isFinite(d = (argc > 2 ? +date : 1))
+			|| !$isFinite(h = (argc > 3 ? +hours : 0))
+			|| !$isFinite(M = (argc > 4 ? +minutes : 0))
+			|| !$isFinite(s = (argc > 5 ? +seconds : 0))
+			|| !$isFinite(milli = (argc > 6 ? +ms : 0)))
+			? $NaN : epochFromDate(int(y) + (0 <= y && y <= 99 ? 1900 : 0), int(m), int(d))
 			+ epochFromTime(int(h), int(M), int(s), int(milli));
 }
 
@@ -1653,7 +1647,7 @@ defineProperties(Math, { dontEnum: true }, {
 	floor: unconstructable(function floor(v) { return $floor(+v) }),
 	log: unconstructable(function log(v) { return support.log(+v) }),
 	max: unconstructable(function max(x, y) { var m = -$Infinity, v, argv; for (var i = (argv = arguments).length - 1; i >= 0; --i) if ((v = +argv[i]) > m || $isNaN(v)) m = v; return m }),
-		min: unconstructable(function min(x, y) { var m = $Infinity, v, argv; for (var i = (argv = arguments).length - 1; i >= 0; --i) if ((v = +argv[i]) < m || $isNaN(v)) m = v; return m }),
+	min: unconstructable(function min(x, y) { var m = $Infinity, v, argv; for (var i = (argv = arguments).length - 1; i >= 0; --i) if ((v = +argv[i]) < m || $isNaN(v)) m = v; return m }),
 	pow: unconstructable(function pow(x, y) { x = +x; y = +y; return (!$isFinite(y) && abs(x) === 1 ? $NaN : support.pow(x, y)) }),
 	random: unconstructable(function random() { return support.random() }),
 	round: unconstructable(function round(v) { return (v === 0.0 ? v : (v >= -0.5 && v < 0.0 ? -0.0 : $floor(v + 0.5))) }),
