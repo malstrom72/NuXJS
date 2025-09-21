@@ -1030,7 +1030,12 @@ Flags String::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 		return HIDDEN_CONST_FLAGS;
 	}
 	UInt32 index;
-	if (key.toArrayIndex(index) && index < size()) {
+	if (key.isString() && key.getString()->empty()) {
+		index = 0;
+	} else if (!key.toArrayIndex(index)) {
+		return NONEXISTENT;
+	}
+	if (index < size()) {
 		const Char* p = begin() + index;
 		Heap& heap = rt.getHeap();
 		*v = (*p < 127 ? QUICK_CONSTANTS.ascii[*p] : new(heap) String(heap.managed(), p, p + 1));
