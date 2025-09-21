@@ -301,10 +301,10 @@ static const Char* parseHex(const Char* p, const Char* e, UInt32& i) {
 }
 
 static const Char* parseUnsignedInt(const Char* p, const Char* e, UInt32& i) {
-		for (i = 0; p != e && *p >= '0' && *p <= '9'; ++p) {
-				i = i * 10 + (*p - '0');
-		}
-		return p;
+	for (i = 0; p != e && *p >= '0' && *p <= '9'; ++p) {
+		i = i * 10 + (*p - '0');
+	}
+	return p;
 }
 
 /*
