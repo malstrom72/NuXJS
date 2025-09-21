@@ -1030,9 +1030,7 @@ Flags String::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 		return HIDDEN_CONST_FLAGS;
 	}
 	UInt32 index;
-	if (key.isString() && key.getString()->empty()) {
-		index = 0;
-	} else if (!key.toArrayIndex(index)) {
+	if (!key.toArrayIndex(index)) {
 		return NONEXISTENT;
 	}
 	if (index < size()) {
