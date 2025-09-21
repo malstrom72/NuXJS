@@ -45,6 +45,17 @@ Each subsection quotes the relevant ECMA-262 3rd edition requirements and summar
 
    **Implementation notes:** Skip the `!$isFinite(raw)` rejection (or degrade it to the ES3 ToUint32/RangeError path) when `this` is not a native Array. That allows borrowed calls to treat non-finite lengths the same way the spec’s step-by-step algorithm does, while preserving the strict array-length validation for actual Array instances.
 
+#### By design: `tests/unconforming/cantAssignObjectToArrayLength.io`
+
+The unconforming suite carries one extra array-length scenario that we intentionally leave unresolved so NuXJS can retain its synchronous, number-only `length` pipeline.
+
+- **Spec excerpt (ES3 §15.4.5.1):**
+  > If *P* is "length", … Compute ToUint32(*V*). If Result is not equal to ToNumber(*V*), throw a RangeError exception. For every integer *k* such that Result ≤ *k* < oldLen, if *k* is present in *A*, then delete the property at ToString(*k*). Set the value of property *P* of *A* to Result.【docs/specs/ECMA-262 3.md†L4789-L4805】
+
+- **NuXJS stance:** The ES3 steps require calling `ToUint32` on the incoming value, which in turn invokes `ToPrimitive` with a Number hint. That path demands synchronously consulting user-defined `valueOf` hooks whenever callers assign objects to `length`. NuXJS deliberately routes the setter through `Value::toDouble` and a fast integer clamp so `length` updates remain side-effect free and predictable; adding a re-entrant callback in the middle of the resize logic would violate that design choice and complicate the runtime's dense-element bookkeeping.【F:src/NuXJS.cpp†L748-L763】【F:src/NuXJS.cpp†L1748-L1754】
+
+- **Harness impact:** `tests/unconforming/cantAssignObjectToArrayLength.io` therefore observes a `RangeError` before the backing store has been allocated, leaving the later element write to fail because `a` stays uninitialised. We accept this divergence and continue treating the script as documentation of the deliberate trade-off.【F:tests/unconforming/cantAssignObjectToArrayLength.io†L1-L14】
+
 ### String (1 remaining + 1 by design)
 
 1. **`built-ins/String/prototype/replace/S15.5.4.11_A5_T1`**
