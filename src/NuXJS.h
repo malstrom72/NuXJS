@@ -1527,11 +1527,11 @@ class Processor : public GCItem {
 			, READ_NAMED_OP									// operand: const_index (name), stack: -> value
 			, WRITE_NAMED_OP								// operand: const_index (name), stack: value -> value
 			, WRITE_NAMED_POP_OP							// operand: const_index (name), stack: value ->
-			, CHECK_OBJECT_COERCIBLE_OP				// stack: value -> value
+			, CHECK_OBJECT_COERCIBLE_OP						// stack: value -> value
 			, GET_PROPERTY_OP								// stack: object, name -> value
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
 			, SET_PROPERTY_POP_OP							// stack: object, name, value ->
-				, CHECK_RESOLVE_PROPERTY_OP						// stack: object, name -> object, name	// check coercible, then resolve object
+			, CHECK_RESOLVE_PROPERTY_OP						// stack: object, name -> object, name	// check coercible, then resolve object
 			, ADD_PROPERTY_OP								// operand: const_index (name), stack: object, value -> object
 			, PUSH_ELEMENTS_OP								// operand: count, stack: object, count * elements ... -> object
 			, OBJ_TO_PRIMITIVE_OP							// stack: value -> primitive_value (no preference)	// these three must be in this exact order

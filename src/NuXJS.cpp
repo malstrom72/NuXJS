@@ -4983,10 +4983,9 @@ struct Support {
 		return (newTime == -1 ? NAN_VALUE : Value(t * 1000.0 - newTime * 1000.0));
 	}
 	
-		static Value random(Runtime&, Processor&, UInt32, const Value*, Object*) {
-				return rand() / (RAND_MAX + 1.0);
-		}
-
+	static Value random(Runtime&, Processor&, UInt32, const Value*, Object*) {
+			return rand() / (RAND_MAX + 1.0);
+	}
 };
 
 static struct {
