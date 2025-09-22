@@ -4,20 +4,54 @@ include('stdlib.pika');
 include('systools.pika');
 include('debug.pika');
 
-// benchmark.pika <test(s)> <exe>|makegold ignoregold
+// benchmark.pika <test(s)> <exe>|makegold ignoregold [--runs <count>]
 
-vargs(@me,, @tests, @exe, @ignoregold, @runs);
-defaults(@ignoregold, '');
-defaults(@runs, 5);
+tests = void;
+exe = void;
+ignoregold = '';
+runs = 5;
+makeGold = false;
+runsOverride = false;
 
-if (!exists(@tests) || tests === '-') tests = '*.js'
+assignRuns => {
+	args(@value);
+	if (value === void || value === '') throw('Value for --runs must be a positive integer.');
+	value = +value;
+	if (classify(value) !== 'number' || value < 1 || value !== floor(value)) throw('Value for --runs must be a positive integer.');
+	runs = value;
+	runsOverride = true;
+};
+
+for (i = 1; i < $n; ++i) {
+	arg = $[i];
+	if (arg === 'ignoregold') {
+		ignoregold = 'ignoregold';
+	} else if (arg === '--runs' || arg === '-r') {
+		if (++i >= $n) throw('Missing value for --runs.');
+		assignRuns($[i]);
+	} else if (length(arg) > 7 && arg{0:7} === '--runs=') {
+		assignRuns(arg{7:});
+	} else if (length(arg) > 3 && arg{0:3} === '-r=') {
+		assignRuns(arg{3:});
+	} else if (arg === 'makegold' && tests !== void && exe === void) {
+		makeGold = true;
+	} else if (tests === void) {
+		tests = arg;
+	} else if (exe === void) {
+		exe = arg;
+	} else if (!runsOverride && classify(arg) === 'number') {
+		assignRuns(arg);
+	} else {
+		throw('Unknown command line argument: ' # arg);
+	}
+};
+
+if (tests === void || tests === '-') tests = '*.js'
 else if (right(tests, 3) != '.js') tests #= '.js';
 
-makeGold = false;
-if (exists(@exe) && exe === 'makegold') {
-	makeGold = true;
-	delete(@exe);
-};
+if (makeGold) exe = void;
+
+if (exe === void) delete(@exe);
 
 if (PLATFORM === 'UNIX') {
 	defaults(@exe, './output/NuXJS -s -t');
