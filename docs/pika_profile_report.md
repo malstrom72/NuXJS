@@ -1,0 +1,56 @@
+# Pika Benchmark Sampling Profile
+
+## Benchmark setup
+- Built `output/NuXJS` in release mode with debug information and frame pointers (`CPP_OPTIONS="-g -fno-omit-frame-pointer"`).
+- Sampling command: `/usr/lib/linux-tools-6.8.0-83/perf record -F 99 --call-graph fp --all-user --output perf.data -- ./externals/PikaCmd/PikaCmd tools/benchmark.pika - --runs 1`.
+- The run produced 9 727 samples across the full benchmark suite (median of all tests 2.55 s with single execution per case).
+
+## Top self-time functions
+
+Self % | Function                                                                                  
+------ | ------------------------------------------------------------------------------------------
+26.05  | NuXJS::Processor::innerRun()                                                              
+7.64   | NuXJS::Processor::pop2push1(NuXJS::Value const&)                                          
+5.26   | NuXJS::Processor::push(NuXJS::Value const&)                                               
+4.19   | NuXJS::Table::find(NuXJS::String const*, unsigned int)                                    
+3.59   | 0x00000000000ac51a                                                                        
+3.55   | NuXJS::GCList::deleteAll()                                                                
+2.89   | NuXJS::Heap::allocate(unsigned long)                                                      
+2.19   | NuXJS::Heap::gc()                                                                         
+1.86   | NuXJS::Table::lookup(NuXJS::String const*)                                                
+1.86   | NuXJS::Value::toDouble() const                                                            
+1.78   | NuXJS::gcMark(NuXJS::Heap&, NuXJS::GCItem const*)                                         
+1.76   | NuXJS::FunctionScope::readVar(NuXJS::Runtime&, NuXJS::String const*, NuXJS::Value*) const 
+1.67   | NuXJS::JSObject::getOwnProperty(NuXJS::Runtime&, NuXJS::Value const&, NuXJS::Value*) const
+1.52   | NuXJS::Object::getProperty(NuXJS::Runtime&, NuXJS::Value const&, NuXJS::Value*) const     
+1.05   | NuXJS::JSArray::getOwnProperty(NuXJS::Runtime&, NuXJS::Value const&, NuXJS::Value*) const 
+
+## VM opcode sample distribution
+
+Self % | Line | Opcode(s)                                              
+------ | ---- | -------------------------------------------------------
+1.44   | 2491 | READ_LOCAL_OP                                          
+1.41   | 2493 | WRITE_LOCAL_POP_OP                                     
+0.68   | 2495 | READ_NAMED_OP                                          
+0.66   | 2492 | WRITE_LOCAL_OP                                         
+0.50   | 2612 | JF_OP                                                  
+0.39   | 2690 | DELETE_OP                                              
+0.36   | 2551 | OBJ_TO_PRIMITIVE_OP, OBJ_TO_NUMBER_OP, OBJ_TO_STRING_OP
+0.31   | 2579 | ADD_OP                                                 
+0.28   | 2577 | INC_OP                                                 
+0.27   | 2578 | DEC_OP                                                 
+0.25   | 2515 | GET_PROPERTY_OP                                        
+0.23   | 2490 | CONST_OP                                               
+0.16   | 2614 | JF_OR_POP_OP                                           
+0.16   | 2581 | MUL_OP                                                 
+0.15   | 2580 | SUB_OP                                                 
+0.14   | 2680 | PUSH_ELEMENTS_OP                                       
+0.14   | 2600 | GT_OP                                                  
+0.10   | 2507 | CHECK_OBJECT_COERCIBLE_OP                              
+0.10   | 2542 | CHECK_RESOLVE_PROPERTY_OP                              
+0.08   | 2617 | PUSH_BACK_OP                                           
+
+## Notes
+- Percentages above are based on sampled CPU time and indicate where execution spent time within the NuXJS binary during the one-pass benchmark suite.
+- Opcode entries represent groups where multiple opcodes share the same handler (e.g., object-to-primitive conversions). Lower-percentage opcodes (<0.01 %) are omitted for brevity but remain in `opcode_samples.tsv`.
+- Address-only entries (e.g., `0x00000000000ac51a`) correspond to unresolved libc allocation helpers that back `NuXJS::Heap::allocate`.
