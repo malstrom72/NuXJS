@@ -1522,6 +1522,7 @@ class Processor : public GCItem {
 			INVALID_OP = -1 // FIX : why?!
 			, CONST_OP										// operand: const_index, stack: -> constant
 			, READ_LOCAL_OP									// operand: local_index, stack: -> value
+			, READ_LOCAL_TO_NUMBER_OP									// operand: local_index, stack: -> value (+1)
 			, WRITE_LOCAL_OP								// operand: local_index, stack: value -> value
 			, WRITE_LOCAL_POP_OP							// operand: local_index, stack: value ->
 			, READ_NAMED_OP									// operand: const_index (name), stack: -> value

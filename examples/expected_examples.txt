@@ -20,8 +20,6 @@ tick
 tick
 tick
 tick
-tick
-tick
 result=45
 === callback_example ===
 C++ callback received: iteration 0

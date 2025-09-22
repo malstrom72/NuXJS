@@ -2154,6 +2154,7 @@ const Int32 MAX_OPERAND_VALUE = (1 << 23) - 1;
 const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ CONST_OP					 , "CONST"					 , +1	  , 0 },
 	{ READ_LOCAL_OP				 , "READ_LOCAL"				 , +1	  , 0 },
+	{ READ_LOCAL_TO_NUMBER_OP				, "READ_LOCAL_TO_NUMBER"				, +1	  , 0 },
 	{ WRITE_LOCAL_OP			 , "WRITE_LOCAL"			 , 0	  , 0 },
 	{ WRITE_LOCAL_POP_OP		 , "WRITE_LOCAL_POP"		 , -1	  , 0 },
 	{ READ_NAMED_OP				 , "READ_NAMED"				 , 1	  , 0 },
@@ -2487,6 +2488,16 @@ void Processor::innerRun() {
 		switch (opcode) {
 			case CONST_OP:				push(constants[im]); break;
 			case READ_LOCAL_OP:			assert(locals != 0); push(locals[im]); break;
+			case READ_LOCAL_TO_NUMBER_OP: {
+				assert(locals != 0);
+				const Value& value = locals[im];
+				push(value);
+				if (value.isObject()) {
+					invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_NUMBER_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
+					return;
+				}
+				break;
+			}
 			case WRITE_LOCAL_OP:		assert(locals != 0); locals[im] = sp[0]; break;
 			case WRITE_LOCAL_POP_OP:	assert(locals != 0); locals[im] = sp[0]; pop(1); break;
 			
@@ -3247,7 +3258,12 @@ Compiler::ExpressionResult Compiler::makeRValue(const ExpressionResult& xr, bool
 		case ExpressionResult::PUSHED_PRIMITIVE: return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
 		case ExpressionResult::NONE: emit(Processor::VOID_OP); return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
 		case ExpressionResult::CONSTANT: emitWithConstant(Processor::CONST_OP, xr.v); return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
-		case ExpressionResult::LOCAL: emit(Processor::READ_LOCAL_OP, xr.v.toInt()); break;
+		case ExpressionResult::LOCAL:
+			if (toPrimitive && toPrimitiveOp == Processor::OBJ_TO_NUMBER_OP) {
+				emit(Processor::READ_LOCAL_TO_NUMBER_OP, xr.v.toInt());
+				return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
+			}
+			emit(Processor::READ_LOCAL_OP, xr.v.toInt()); break;
 		case ExpressionResult::NAMED: emitWithConstant(Processor::READ_NAMED_OP, xr.v); break;
 		case ExpressionResult::PROPERTY: emit(Processor::GET_PROPERTY_OP); break;
 		case ExpressionResult::SAFEKEPT: emit(Processor::REPUSH_OP
