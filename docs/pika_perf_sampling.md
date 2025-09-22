@@ -54,3 +54,60 @@ Self % | Line | Opcode(s)
 - Percentages above are based on sampled CPU time and indicate where execution spent time within the NuXJS binary during the one-pass benchmark suite.
 - Opcode entries represent groups where multiple opcodes share the same handler (e.g., object-to-primitive conversions). Lower-percentage opcodes (<0.01 %) are omitted for brevity but remain in `opcode_samples.tsv`.
 - Address-only entries (e.g., `0x00000000000ac51a`) correspond to unresolved libc allocation helpers that back `NuXJS::Heap::allocate`.
+
+## O3 + symbols rerun
+
+### Benchmark setup
+- Rebuilt `output/NuXJS` with maximum optimization and symbols (`CPP_OPTIONS="-O3 -g -fno-omit-frame-pointer"`).
+- Sampling command: `/usr/lib/linux-tools-6.8.0-83/perf record -F 99 --call-graph fp --all-user --output perf-o3.data -- ./externals/PikaCmd/PikaCmd tools/benchmark.pika - --runs 1`.
+- The run produced 7 375 samples (median of all benchmark cases 1.68 s with single execution per case).
+
+### Top self-time functions (O3 build)
+
+Self % | Function
+------ | ------------------------------------------------------------------------------------------
+37.22  | NuXJS::Processor::innerRun()
+7.40   | NuXJS::Table::find(NuXJS::String const*, unsigned int)
+5.44   | NuXJS::Heap::gc()
+4.53   | 0x00000000000ac51a
+2.60   | operator new(unsigned long, NuXJS::Heap*)
+2.47   | NuXJS::FunctionScope::readVar(NuXJS::Runtime&, NuXJS::String const*, NuXJS::Value*) const
+2.39   | NuXJS::JSObject::getOwnProperty(NuXJS::Runtime&, NuXJS::Value const&, NuXJS::Value*) const
+2.06   | NuXJS::Table::gcMarkReferences(NuXJS::Heap&) const
+1.71   | NuXJS::Table::lookup(NuXJS::String const*)
+1.71   | NuXJS::Value::toDouble() const
+1.57   | NuXJS::Runtime::GlobalScope::readVar(NuXJS::Runtime&, NuXJS::String const*, NuXJS::Value*) const
+1.15   | NuXJS::Value::add(NuXJS::Heap&, NuXJS::Value const&) const
+1.15   | operator delete(void*, NuXJS::Heap*)
+0.92   | NuXJS::Table::rebuild(unsigned int)
+0.88   | NuXJS::Heap::~Heap()
+0.88   | NuXJS::Value::isLessThan(NuXJS::Value const&) const
+
+### VM opcode sample distribution (O3 build)
+
+Self % | Line | Opcode(s)
+------ | ---- | -------------------------------------------------------
+0.71   | 2497 | READ_NAMED_OP
+0.69   | 2492 | WRITE_LOCAL_OP
+0.66   | 2577 | INC_OP
+0.62   | 2554 | OBJ_TO_PRIMITIVE_OP, OBJ_TO_NUMBER_OP, OBJ_TO_STRING_OP
+0.58   | 2491 | READ_LOCAL_OP
+0.47   | 2581 | MUL_OP
+0.43   | 2612 | JF_OP
+0.38   | 2579 | ADD_OP
+0.31   | 2598 | LT_OP
+0.27   | 2516 | GET_PROPERTY_OP
+0.23   | 2580 | SUB_OP
+0.20   | 2493 | WRITE_LOCAL_POP_OP
+0.19   | 2614 | JF_OR_POP_OP
+0.16   | 2508 | CHECK_OBJECT_COERCIBLE_OP
+0.15   | 2586 | AND_OP
+0.12   | 2617 | PUSH_BACK_OP
+0.09   | 2624 | CALL_OP
+0.08   | 2649 | CALL_EVAL_OP
+0.08   | 2742 | TYPEOF_NAMED_OP
+
+### Notes
+- `NuXJS::Processor::pop2push1` no longer appears in the top sample list because the `-O3` build inlines it into the arithmetic opcodes.
+- Control-flow opcodes (`JF_OP`, `JF_OR_POP_OP`) grew relative to the size-optimized build because arithmetic helpers became cheaper after inlining.
+- Object property access (`READ_NAMED_OP`, `GET_PROPERTY_OP`, and the object-to-primitive conversion group) continue to dominate the interpreter’s dynamic instruction mix.
