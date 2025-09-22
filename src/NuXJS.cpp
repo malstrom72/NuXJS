@@ -920,6 +920,14 @@ void gcMark(Heap& heap, const Value& v) {
 
 /* --- String --- */
 
+static inline bool isHighSurrogate(Char c) {
+	return (c >= 0xD800 && c <= 0xDBFF);
+}
+
+static inline bool isLowSurrogate(Char c) {
+	return (c >= 0xDC00 && c <= 0xDFFF);
+}
+
 static UInt32 utf16Length(size_t l, const wchar_t* s) {
 	UInt32 n = static_cast<UInt32>(l);
 	assert(n == l);
@@ -952,6 +960,44 @@ static void toUTF16Chars(const wchar_t* s, UInt32 n, Char* d) {
 		}
 	}
 }
+
+static inline void appendThreeByteUTF8(std::string& s, UInt32 code) {
+	s.push_back(static_cast<char>(0xE0 | (code >> 12)));
+	s.push_back(static_cast<char>(0x80 | ((code >> 6) & 0x3F)));
+	s.push_back(static_cast<char>(0x80 | (code & 0x3F)));
+}
+
+static inline void appendFourByteUTF8(std::string& s, UInt32 codePoint) {
+	s.push_back(static_cast<char>(0xF0 | (codePoint >> 18)));
+	s.push_back(static_cast<char>(0x80 | ((codePoint >> 12) & 0x3F)));
+	s.push_back(static_cast<char>(0x80 | ((codePoint >> 6) & 0x3F)));
+	s.push_back(static_cast<char>(0x80 | (codePoint & 0x3F)));
+}
+
+static inline void appendCodeUnitAsWTF8(std::string& s, UInt32 code) {
+	appendThreeByteUTF8(s, code);
+}
+
+static UInt32 utf8LengthWTF8(const Char* b, const Char* e) {
+	UInt32 n = 0;
+	while (b != e) {
+		const Char c = *b++;
+		if (c < 0x80) {
+			++n;
+		} else if (c < 0x800) {
+			n += 2;
+		} else if (c < 0xD800 || c >= 0xE000) {
+			n += 3;
+		} else if (isHighSurrogate(c) && b != e && isLowSurrogate(*b)) {
+			n += 4;
+			++b;
+		} else {
+			n += 3;
+		}
+	}
+	return n;
+}
+
 
 String::String() : chars(0, 0), hash(2166136261U), bloom(0x10000020) {
 	assert(String("").calcHash() == hash && String("").createBloomCode() == bloom);
@@ -1097,25 +1143,30 @@ const String* String::fromDouble(Heap& heap, double d) {
 
 std::string String::toUTF8String() const {
 	std::string s;
-	s.reserve(size());
-	for (const Char* p = begin(); p != end(); ++p) {
-		if (*p < 0x80) {
-			s.push_back(static_cast<char>(*p));
-		} else if (*p < 0x800) {
-			s.push_back(static_cast<char>(0xC0 | (*p >> 6)));
-			s.push_back(static_cast<char>(0x80 | (*p & 0x3F)));
-		} else if (*p < 0xD800 || *p >= 0xE000) {
-			s.push_back(static_cast<char>(0xE0 | (*p >> 12)));
-			s.push_back(static_cast<char>(0x80 | ((*p >> 6) & 0x3F)));
-			s.push_back(static_cast<char>(0x80 | (*p & 0x3F)));
-		} else {
-			assert(p + 1 != end() && p[1] >= 0xDC00 && p[1] < 0xE000);
-			const UInt32 c = 0x10000 + ((*p - 0xD800) << 10) + (p[1] - 0xDC00);
-			s.push_back(static_cast<char>(0xF0 | (c >> 18)));
-			s.push_back(static_cast<char>(0x80 | ((c >> 12) & 0x3F)));
-			s.push_back(static_cast<char>(0x80 | ((c >> 6) & 0x3F)));
+	s.reserve(utf8LengthWTF8(begin(), end()));
+	for (const Char* p = begin(); p != end();) {
+		const Char c = *p++;
+		if (c < 0x80) {
+			s.push_back(static_cast<char>(c));
+		} else if (c < 0x800) {
+			s.push_back(static_cast<char>(0xC0 | (c >> 6)));
 			s.push_back(static_cast<char>(0x80 | (c & 0x3F)));
-			++p;
+		} else if (c < 0xD800 || c >= 0xE000) {
+			appendThreeByteUTF8(s, static_cast<UInt32>(c));
+		} else if (isHighSurrogate(c)) {
+			if (p != end() && isLowSurrogate(*p)) {
+				assert(p != end());
+				assert(isLowSurrogate(*p));
+				const UInt32 codePoint = 0x10000
+						+ ((static_cast<UInt32>(c) - 0xD800) << 10)
+						+ (static_cast<UInt32>(*p) - 0xDC00);
+				appendFourByteUTF8(s, codePoint);
+				++p;
+			} else {
+				appendCodeUnitAsWTF8(s, static_cast<UInt32>(c));
+			}
+		} else {
+			appendCodeUnitAsWTF8(s, static_cast<UInt32>(c));
 		}
 	}
 	return s;
@@ -1124,29 +1175,23 @@ std::string String::toUTF8String() const {
 std::wstring String::toWideString() const {
 	if (sizeof (std::wstring::value_type) != 2) {
 		assert(sizeof (std::wstring::value_type) == 4);
-		const Char* e = end();
-		UInt32 n = size();
-		for (const Char* p = begin(); p != e; ++p) {
-			assert(*p < 0xDC00 || *p >= 0xE000);	// Surrogate code points inside UTF32 string are not legal!
-			if (*p >= 0xD800 && *p <= 0xDBFF) {
-				assert(p + 1 != e && p[1] >= 0xDC00 && p[1] < 0xE000);  // Next should be low surrogate.
+		std::wstring s;
+		s.reserve(size());
+		for (const Char* p = begin(); p != end();) {
+			const Char c = *p++;
+			if (isHighSurrogate(c) && p != end() && isLowSurrogate(*p)) {
+				assert(p != end());
+				assert(isLowSurrogate(*p));
+				const UInt32 codePoint = 0x10000
+						+ ((static_cast<UInt32>(c) - 0xD800) << 10)
+						+ (static_cast<UInt32>(*p) - 0xDC00);
+				s.push_back(static_cast<std::wstring::value_type>(codePoint));
 				++p;
-				--n;
+			} else {
+				s.push_back(static_cast<std::wstring::value_type>(c));
 			}
 		}
-		if (n != size()) {
-			std::wstring s(n, L'\0');
-			const Char* p = begin();
-			for (std::wstring::iterator it = s.begin(); it != s.end(); ++it) {
-				*it = *p;
-				++p;
-				if (*it >= 0xD800 && *it <= 0xDBFF) {
-					*it = 0x10000 + ((*it - 0xD800) << 10) + (*p - 0xDC00);
-					++p;
-				}
-			}
-			return s;
-		}
+		return s;
 	}
 	return std::wstring(begin(), end());
 }

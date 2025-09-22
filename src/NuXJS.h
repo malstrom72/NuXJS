@@ -663,7 +663,7 @@ class String : public Object {
 			return (this == &o || (size() == o.size() && std::equal(begin(), end(), o.begin())));
 		}
 		bool isLessThan(const String& o) const;
-		std::string toUTF8String() const;												///< used for exception what()
+		std::string toUTF8String() const;												///< returns WTF-8 for host error/reporting paths
 		std::wstring toWideString() const;												///< If wchar_t is 32-bit, UTF16 will be decoded automatically.
 		UInt32 createBloomCode() const;
 
