@@ -664,7 +664,7 @@ class String : public Object {
 		}
 		bool isLessThan(const String& o) const;
 		std::string toUTF8String() const;												///< returns WTF-8 for host error/reporting paths
-		std::wstring toWideString() const;												///< If wchar_t is 32-bit, UTF16 will be decoded automatically.
+		std::wstring toWideString() const;												///< If wchar_t is 32-bit, UTF16 will be decoded automatically. Unmatched surrogate code units are copied through unchanged.
 		UInt32 createBloomCode() const;
 
 	protected:
