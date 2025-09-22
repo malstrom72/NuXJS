@@ -1705,7 +1705,7 @@ void testStrings() {
 		const String stringFromStdString(heap.managed(), std::wstring(L"surrogatePair: \U0001F600"));
 		EXPECT(stringFromStdString.isEqualTo(SURROGATE_PAIR_STRING));
 	}
-	if (sizeof (std::wstring::value_type) == 4) {
+	{
 		const std::wstring isolatedSurrogate(1, static_cast<std::wstring::value_type>(0xD83D));
 		const String isolatedSurrogateString(heap.managed(), isolatedSurrogate);
 		EXPECT_EQUAL(isolatedSurrogateString.size(), 1);
