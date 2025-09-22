@@ -929,8 +929,8 @@ static UInt32 utf16Length(size_t l, const wchar_t* s) {
 		const wchar_t* e = s + l;
 		for (const wchar_t* p = s; p != e; ++p) {
 			const UInt32 c = static_cast<UInt32>(*p);
-			assert(c < 0xD800 || c >= 0xE000);	// Surrogate code points inside UTF32 string are not legal!
-			n += ((c >> 16) != 0 ? 1 : 0);
+			assert(c <= 0x10FFFF);
+			n += (c >= 0x10000 ? 1 : 0);
 		}
 	}
 	return n;
@@ -1101,56 +1101,54 @@ std::string String::toUTF8String() const {
 	std::string s;
 	s.reserve(size());
 	for (const Char* p = begin(); p != end(); ++p) {
-		if (*p < 0x80) {
-			s.push_back(static_cast<char>(*p));
-		} else if (*p < 0x800) {
-			s.push_back(static_cast<char>(0xC0 | (*p >> 6)));
-			s.push_back(static_cast<char>(0x80 | (*p & 0x3F)));
-		} else if (*p < 0xD800 || *p >= 0xE000) {
-			s.push_back(static_cast<char>(0xE0 | (*p >> 12)));
-			s.push_back(static_cast<char>(0x80 | ((*p >> 6) & 0x3F)));
-			s.push_back(static_cast<char>(0x80 | (*p & 0x3F)));
+		const Char c = *p;
+		if (c < 0x80) {
+			s.push_back(static_cast<char>(c));
+		} else if (c < 0x800) {
+			s.push_back(static_cast<char>(0xC0 | (c >> 6)));
+			s.push_back(static_cast<char>(0x80 | (c & 0x3F)));
+		} else if (c >= 0xD800 && c <= 0xDBFF && p + 1 != end() && *(p + 1) >= 0xDC00 && *(p + 1) <= 0xDFFF) {
+			++p;
+			const UInt32 codePoint = 0x10000
+					+ ((static_cast<UInt32>(c) - 0xD800) << 10)
+					+ (static_cast<UInt32>(*p) - 0xDC00);
+			s.push_back(static_cast<char>(0xF0 | (codePoint >> 18)));
+			s.push_back(static_cast<char>(0x80 | ((codePoint >> 12) & 0x3F)));
+			s.push_back(static_cast<char>(0x80 | ((codePoint >> 6) & 0x3F)));
+			s.push_back(static_cast<char>(0x80 | (codePoint & 0x3F)));
 		} else {
-			assert(p + 1 != end() && p[1] >= 0xDC00 && p[1] < 0xE000);
-			const UInt32 c = 0x10000 + ((*p - 0xD800) << 10) + (p[1] - 0xDC00);
-			s.push_back(static_cast<char>(0xF0 | (c >> 18)));
-			s.push_back(static_cast<char>(0x80 | ((c >> 12) & 0x3F)));
+			s.push_back(static_cast<char>(0xE0 | (c >> 12)));
 			s.push_back(static_cast<char>(0x80 | ((c >> 6) & 0x3F)));
 			s.push_back(static_cast<char>(0x80 | (c & 0x3F)));
-			++p;
 		}
 	}
 	return s;
 }
 
 std::wstring String::toWideString() const {
+	const Char* b = begin();
+	const Char* e = end();
 	if (sizeof (std::wstring::value_type) != 2) {
-		assert(sizeof (std::wstring::value_type) == 4);
-		const Char* e = end();
-		UInt32 n = size();
-		for (const Char* p = begin(); p != e; ++p) {
-			assert(*p < 0xDC00 || *p >= 0xE000);	// Surrogate code points inside UTF32 string are not legal!
-			if (*p >= 0xD800 && *p <= 0xDBFF) {
-				assert(p + 1 != e && p[1] >= 0xDC00 && p[1] < 0xE000);	// Next should be low surrogate.
-				++p;
-				--n;
-			}
+		assert(sizeof (std::wstring::value_type) == 4); 
+		const Char* p = b;
+		while (p != e && (*p < 0xD800 || *p > 0xDFFF)) {
+			++p;
 		}
-		if (n != size()) {
-			std::wstring s(n, L'\0');
-			const Char* p = begin();
-			for (std::wstring::iterator it = s.begin(); it != s.end(); ++it) {
-				*it = *p;
-				++p;
-				if (*it >= 0xD800 && *it <= 0xDBFF) {
-					*it = 0x10000 + ((*it - 0xD800) << 10) + (*p - 0xDC00);
+		if (p != e) {
+			std::wstring s;
+			s.reserve(size());
+			for (p = b; p != e; ++p) {
+				UInt32 c = *p;
+				if (c >= 0xD800 && c <= 0xDBFF && p + 1 != e && *(p + 1) >= 0xDC00 && *(p + 1) <= 0xDFFF) {
 					++p;
+					c = 0x10000 + ((static_cast<UInt32>(c) - 0xD800) << 10) + (static_cast<UInt32>(*p) - 0xDC00);
 				}
+				s.push_back(static_cast<std::wstring::value_type>(c));
 			}
 			return s;
 		}
 	}
-	return std::wstring(begin(), end());
+	return std::wstring(b, e);
 }
 
 /* --- GCItem --- */
@@ -3718,7 +3716,6 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = ExpressionResult::PUSHED_PRIMITIVE;
 			break;
 		}
-
 		case PROPERTY_BRACKETS: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, false);
