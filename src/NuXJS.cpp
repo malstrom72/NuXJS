@@ -1098,15 +1098,15 @@ const String* String::fromDouble(Heap& heap, double d) {
 std::string String::toUTF8String() const {
 	std::string s;
 	s.reserve(size());
-	for (const Char* p = begin(); p != end();) {
+	for (const Char* p = begin(); p != end(); ++p) {
 		const Char c = *p;
-		++p;
 		if (c < 0x80) {
 			s.push_back(static_cast<char>(c));
 		} else if (c < 0x800) {
 			s.push_back(static_cast<char>(0xC0 | (c >> 6)));
 			s.push_back(static_cast<char>(0x80 | (c & 0x3F)));
-		} else if (c >= 0xD800 && c <= 0xDBFF && p != end() && *p >= 0xDC00 && *p <= 0xDFFF) {
+		} else if (c >= 0xD800 && c <= 0xDBFF && p + 1 != end() && *(p + 1) >= 0xDC00 && *(p + 1) <= 0xDFFF) {
+			++p;
 			const UInt32 codePoint = 0x10000
 					+ ((static_cast<UInt32>(c) - 0xD800) << 10)
 					+ (static_cast<UInt32>(*p) - 0xDC00);
@@ -1114,7 +1114,6 @@ std::string String::toUTF8String() const {
 			s.push_back(static_cast<char>(0x80 | ((codePoint >> 12) & 0x3F)));
 			s.push_back(static_cast<char>(0x80 | ((codePoint >> 6) & 0x3F)));
 			s.push_back(static_cast<char>(0x80 | (codePoint & 0x3F)));
-			++p;
 		} else {
 			s.push_back(static_cast<char>(0xE0 | (c >> 12)));
 			s.push_back(static_cast<char>(0x80 | ((c >> 6) & 0x3F)));
@@ -1129,22 +1128,22 @@ std::wstring String::toWideString() const {
 	const Char* e = end();
 	if (sizeof (std::wstring::value_type) != 2) {
 		assert(sizeof (std::wstring::value_type) == 4); 
-		for (const Char* p = b; p != e; ++p) {
-			if (*p >= 0xD800 && *p <= 0xDFFF) {
-				std::wstring s;
-				s.reserve(size());
-				for (; b != e; ++b) {
-					const Char c = *b;
-					if (c >= 0xD800 && c <= 0xDBFF && b + 1 != e && *(b + 1) >= 0xDC00 && *(b + 1) <= 0xDFFF) {
-						++b;
-						const UInt32 cp = 0x10000 + ((static_cast<UInt32>(c) - 0xD800) << 10) + (static_cast<UInt32>(*b) - 0xDC00);
-						s.push_back(static_cast<std::wstring::value_type>(cp));
-					} else {
-						s.push_back(static_cast<std::wstring::value_type>(c));
-					}
+		const Char* p = b;
+		while (p != e && (*p < 0xD800 || *p > 0xDFFF)) {
+			++p;
+		}
+		if (p != e) {
+			std::wstring s;
+			s.reserve(size());
+			for (p = b; p != e; ++p) {
+				UInt32 c = *p;
+				if (c >= 0xD800 && c <= 0xDBFF && p + 1 != e && *(p + 1) >= 0xDC00 && *(p + 1) <= 0xDFFF) {
+					++p;
+					c = 0x10000 + ((static_cast<UInt32>(c) - 0xD800) << 10) + (static_cast<UInt32>(*p) - 0xDC00);
 				}
-				return s;
+				s.push_back(static_cast<std::wstring::value_type>(c));
 			}
+			return s;
 		}
 	}
 	return std::wstring(b, e);
