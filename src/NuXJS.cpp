@@ -927,8 +927,8 @@ static UInt32 utf16Length(size_t l, const wchar_t* s) {
 		const wchar_t* e = s + l;
 		for (const wchar_t* p = s; p != e; ++p) {
 			const UInt32 c = static_cast<UInt32>(*p);
-			assert(c < 0xD800 || c >= 0xE000);	// Surrogate code points inside UTF32 string are not legal!
-			n += ((c >> 16) != 0 ? 1 : 0);
+			assert(c <= 0x10FFFF);
+			n += (c >= 0x10000 ? 1 : 0);
 		}
 	}
 	return n;
