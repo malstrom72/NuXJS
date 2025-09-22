@@ -185,6 +185,9 @@ Var loadFile(Runtime& rt, const Var&, const VarList& args) {
 }
 ```
 
+> **Note:** `String::toUTF8String()` preserves every ECMAScript code unit by returning WTF-8. Embedders that hand the
+> resulting buffer to strict-Unicode facilities should validate or sanitise before bridging across the boundary.
+
 ## Standard Library and JavaScript Features
 
 The engine ships with a standard library implemented in JavaScript, providing the objects described in ECMAScript&nbsp;3. It also offers selected ECMAScript&nbsp;5 functionality including JSON and string indexing.

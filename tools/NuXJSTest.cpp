@@ -1706,6 +1706,12 @@ void testStrings() {
 		EXPECT(stringFromStdString.isEqualTo(SURROGATE_PAIR_STRING));
 	}
 	{
+		const std::wstring isolatedSurrogate(1, static_cast<std::wstring::value_type>(0xD83D));
+		const String isolatedSurrogateString(heap.managed(), isolatedSurrogate);
+		EXPECT_EQUAL(isolatedSurrogateString.size(), 1);
+		EXPECT_EQUAL(isolatedSurrogateString.toWideString(), isolatedSurrogate);
+	}
+	{
 		static const Char CHARS[] = { 'A', 'b', 'C', 'd', 'e', 'F', 'g', 'H', 'I', 'j', 'k', 'l', 'm' };
 		static const String STRING_FROM_CHARS(CHARS + 0, CHARS + 13);
 		EXPECT_EQUAL(STRING_FROM_CHARS.size(), 13);
