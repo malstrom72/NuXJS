@@ -204,7 +204,7 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 - `Object.defineProperty` only accepts plain data descriptors (`value`, `writable`, `enumerable`, `configurable`). Missing
   fields default to `false`, accessors are ignored, failures return `false` instead of throwing, and descriptor invariant checks
   are not performed.
-- Every created function has a writable, enumerable, and configurable `name` property.
+- Every created function has a writable, enumerable, and configurable `name` property, and a function's `length` property cannot be deleted.
 - Evaluation order of member expressions follows the ES3 order (object and arguments evaluated before selecting the member).
 - When the identifier of a `catch` clause is called as a function, its `this` value is the global object.
 - Assignments evaluate the right-hand side before resolving the reference on the left-hand side.
@@ -219,24 +219,41 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 
 ### Partial ES5 features
 
-| Feature							| Support			   |
-| --------------------------------- | -------------------- |
-| `Array.isArray`					| yes				   |
-| `Object.prototype.hasOwnProperty` | yes				   |
-| `Object.prototype.isPrototypeOf`	| yes				   |
-| `Object.getPrototypeOf`			| yes				   |
-| `Object.defineProperty`             | data descriptors only (no accessors or ES5 invariant checks) |
-| `JSON.parse` / `JSON.stringify`	| yes				   |
-| String indexing					| yes				   |
-| `eval()` direct vs indirect		| yes				   |
-| `String.prototype.match`			| ES5 behaviour		   |
-| `Date` object						| most ES5 methods	   |
-| Unicode format control			| preserved			   |
+NuXJS implements a subset of ECMAScript 5 functionality that covers the most widely used browser behaviours:
+
+- `Array.isArray`.
+- `Object.prototype.hasOwnProperty`.
+- `Object.prototype.isPrototypeOf`.
+- `Object.getPrototypeOf`.
+- `Object.defineProperty` accepts only data descriptors (`value`, `writable`, `enumerable`, `configurable`). Missing fields default to `false`, accessors are ignored, failures return `false` instead of throwing, and descriptor invariants are not enforced.
+- `JSON.parse` and `JSON.stringify`.
+- String objects allow indexed access to individual characters.
+- `String.prototype.match` returns `null` for global patterns with no match and always uses the built-in `RegExp.prototype.exec` implementation.
+- `eval()` distinguishes between direct and indirect calls.
+- Many `Date` object features introduced in ES5 are available.
+- Unicode format control characters are preserved in source text.
+
+### Unsupported ES5 features
+
+NuXJS still follows ES3 semantics for several constructs that changed in ES5:
+
+- `for...in` throws a `TypeError` when the object is `null` or `undefined`.
+- Function `prototype` properties are enumerable on user-defined functions.
+- `Object.prototype.toString` reports `[object Object]` for the `arguments` object.
+- Elements of the `arguments` object do not appear in `for...in` enumeration.
 
 ### ES6-inspired extras
 
 - `Array.prototype.splice` with a single argument deletes the rest of the array.
 - Regular expression flags cannot contain Unicode escapes.
+
+### ECMAScript oddities
+
+NuXJS also implements several spec corner cases that are easy to overlook when embedding the engine:
+
+- **Hidden `ToObject` on every property access.** The specification converts primitive bases to objects before retrieving a property. Strings would therefore need a wrapper object for every indexed read. The engine uses _shallow_ string wrappers so indexing does not allocate, while method calls still turn `this` into a full `String` object as required.
+- **`catch (x)` really is its own scope.** A catch clause introduces a new declarative environment that shadows outer bindings and must be visible to `eval`. NuXJS creates a transient `CatchScope` at run time so dynamic code inside the block sees the correct variable.
+- **Built-ins can distinguish call vs construct.** Native functions may have separate `[[Call]]` and `[[Construct]]` paths. User-defined functions cannot emulate this because they share one body. Built-ins in `stdlib.js` use `support.distinctConstructor` to implement behaviours like `String` where the result differs when invoked with `new`.
 
 ## Testing and Benchmarking
 
