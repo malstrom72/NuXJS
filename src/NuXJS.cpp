@@ -366,8 +366,8 @@ static DoubleDouble multiplyAndAdd(const DoubleDouble& term, const DoubleDouble&
 	- Table ensures factorExponent >= -1073 so T = factorExponent + 1073 >= 0.
 **/
 static double scaleAndRound(const DoubleDouble& acc, double factor) {
-    if (acc.high == 0.0 && acc.low == 0.0) {
-    	return 0.0;
+	if (acc.high == 0.0 && acc.low == 0.0) {
+		return 0.0;
 	}
 	
 	const double fastResult = (acc.high + acc.low) * factor;
@@ -375,9 +375,9 @@ static double scaleAndRound(const DoubleDouble& acc, double factor) {
 		return fastResult;												// normal result; fast path is exact here
 	}
 	
-    int factorExponent;													// slow path: denormal/transition region
-    frexp(factor, &factorExponent);										// assemble payload then single rounding
-    
+	int factorExponent;													// slow path: denormal/transition region
+	frexp(factor, &factorExponent);										// assemble payload then single rounding
+	
 	const int t = factorExponent + 1073;								// guaranteed by table construction
 	assert(t >= 0);														// (no right-shift branch needed)	
 	const double bf = ldexp(acc.low, t);								// align (high, low) into the 52-bit subnormal payload scale
@@ -1125,25 +1125,29 @@ std::string String::toUTF8String() const {
 }
 
 std::wstring String::toWideString() const {
+	const Char* b = begin();
+	const Char* e = end();
 	if (sizeof (std::wstring::value_type) != 2) {
-		assert(sizeof (std::wstring::value_type) == 4);
-		std::wstring s;
-		s.reserve(size());
-		for (const Char* p = begin(); p != end();) {
-			const Char c = *p++;
-			if (c >= 0xD800 && c <= 0xDBFF && p != end() && *p >= 0xDC00 && *p <= 0xDFFF) {
-				const UInt32 codePoint = 0x10000
-						+ ((static_cast<UInt32>(c) - 0xD800) << 10)
-						+ (static_cast<UInt32>(*p) - 0xDC00);
-				s.push_back(static_cast<std::wstring::value_type>(codePoint));
-				++p;
-			} else {
-				s.push_back(static_cast<std::wstring::value_type>(c));
+		assert(sizeof (std::wstring::value_type) == 4); 
+		for (const Char* p = b; p != e; ++p) {
+			if (*p >= 0xD800 && *p <= 0xDFFF) {
+				std::wstring s;
+				s.reserve(size());
+				for (; b != e; ++b) {
+					const Char c = *b;
+					if (c >= 0xD800 && c <= 0xDBFF && b + 1 != e && *(b + 1) >= 0xDC00 && *(b + 1) <= 0xDFFF) {
+						++b;
+						const UInt32 cp = 0x10000 + ((static_cast<UInt32>(c) - 0xD800) << 10) + (static_cast<UInt32>(*b) - 0xDC00);
+						s.push_back(static_cast<std::wstring::value_type>(cp));
+					} else {
+						s.push_back(static_cast<std::wstring::value_type>(c));
+					}
+				}
+				return s;
 			}
 		}
-		return s;
 	}
-	return std::wstring(begin(), end());
+	return std::wstring(b, e);
 }
 
 /* --- GCItem --- */
@@ -1934,8 +1938,8 @@ bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Fl
 
 bool Arguments::deleteOwnProperty(Runtime& rt, const Value& key) {
 	const Value* p = findProperty(key);
-    return (p == 0 ? super::deleteOwnProperty(rt, key)
-    		: (deletedArguments[p - (scope != 0 ? scope->getLocalsPointer() : values.begin())] = true));
+	return (p == 0 ? super::deleteOwnProperty(rt, key)
+			: (deletedArguments[p - (scope != 0 ? scope->getLocalsPointer() : values.begin())] = true));
 }
 
 Enumerator* Arguments::getOwnPropertyEnumerator(Runtime& rt) const {
@@ -2804,7 +2808,7 @@ const OperatorInfo POST_OPS[] = {
 	{ "===", 0, Compiler::EQUALITY_PREC, LEFT_TO_RIGHT, BINARY, Processor::X_EQ_OP, false, true },
 	{ "==", 0, Compiler::EQUALITY_PREC, LEFT_TO_RIGHT, ABSTRACT_EQUAL, Processor::EQ_OP, false, true },
 	{ "=", 0, Compiler::ASSIGN_PREC, RIGHT_TO_LEFT, ASSIGNMENT, Processor::INVALID_OP, false, false },
-    { ">>>=", 0, Compiler::SHIFT_PREC, RIGHT_TO_LEFT, COMPOUND_ASSIGNMENT, Processor::USHR_OP, true, true },
+	{ ">>>=", 0, Compiler::SHIFT_PREC, RIGHT_TO_LEFT, COMPOUND_ASSIGNMENT, Processor::USHR_OP, true, true },
 	{ ">>=", 0, Compiler::SHIFT_PREC, RIGHT_TO_LEFT, COMPOUND_ASSIGNMENT, Processor::SHR_OP, true, true },
 	{ "<<=", 0, Compiler::SHIFT_PREC, RIGHT_TO_LEFT, COMPOUND_ASSIGNMENT, Processor::SHL_OP, true, true },
 	{ "+=", 0, Compiler::ASSIGN_PREC, RIGHT_TO_LEFT, COMPOUND_ASSIGNMENT, Processor::ADD_OP, true, true },
@@ -3428,7 +3432,7 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff 
 }
 
 int Compiler::parseOperator(Precedence precedence, int opCount, const OperatorInfo* opList) {
-    white();
+	white();
 	if (eof()) {
 		return -1;
 	}
@@ -3454,23 +3458,23 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 	xr = discard(xr);
 	const OperatorInfo& op = PRE_OPS[opIndex];
 	switch (op.type) {
-        case VOID_OPERATOR: {
-            xr = discard(operand(op));
-            break;
-        }
+		case VOID_OPERATOR: {
+			xr = discard(operand(op));
+			break;
+		}
 		
-        case GROUP: {
+		case GROUP: {
 			const bool didAcceptInOperator = acceptInOperator;
 			acceptInOperator = true;
-            xr = operand(op);
+			xr = operand(op);
 			acceptInOperator = didAcceptInOperator;
-            break;
-        }
+			break;
+		}
 		
 		case UNARY: {
 			makeRValue(operand(op), op.primitiveInput);
 			emit(op.vmOp);
-            xr = (op.primitiveOutput ? ExpressionResult::PUSHED_PRIMITIVE : ExpressionResult::PUSHED);
+			xr = (op.primitiveOutput ? ExpressionResult::PUSHED_PRIMITIVE : ExpressionResult::PUSHED);
 			break;
 		}
 
@@ -3483,14 +3487,14 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 				functionCall(Processor::NEW_OP);
 			}
 			emit(Processor::NEW_RESULT_OP); // FIX : make a chain for script constructors and require returning object for native constructors instead?
-            assert(!op.primitiveOutput);
-            xr = ExpressionResult::PUSHED;
+			assert(!op.primitiveOutput);
+			xr = ExpressionResult::PUSHED;
 			break;
 		}
 		
 		case DELETE_OPERATOR: {
-            assert(!op.primitiveInput);
-            assert(op.primitiveOutput);
+			assert(!op.primitiveInput);
+			assert(op.primitiveOutput);
 			xr = operand(op);
 			switch (xr.t) {
 				case ExpressionResult::PUSHED:
@@ -3506,8 +3510,8 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 		}
 		
 		case PRE_INC_DEC: {
-            assert(op.primitiveInput);
-            assert(op.primitiveOutput);
+			assert(op.primitiveInput);
+			assert(op.primitiveOutput);
 			xr = operand(op);
 			if (xr.t == ExpressionResult::PROPERTY) {
 				emit(Processor::REPUSH_2_OP);
@@ -3515,13 +3519,13 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			makeRValue(xr, true);
 			emit(op.vmOp);
 			makeAssignment(xr);
-            xr = ExpressionResult::PUSHED_PRIMITIVE;
+			xr = ExpressionResult::PUSHED_PRIMITIVE;
 			break;
 		}
 		
 		case TYPE_OF: {
-            assert(!op.primitiveInput);
-            assert(op.primitiveOutput);
+			assert(!op.primitiveInput);
+			assert(op.primitiveOutput);
 			xr = operand(op);
 			if (xr.t == ExpressionResult::NAMED) {
 				emitWithConstant(Processor::TYPEOF_NAMED_OP, xr.v);
@@ -3529,7 +3533,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 				makeRValue(xr, false);
 				emit(op.vmOp);
 			}
-            xr = ExpressionResult::PUSHED_PRIMITIVE;
+			xr = ExpressionResult::PUSHED_PRIMITIVE;
 			break;
 		}
 		
@@ -3546,32 +3550,32 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 	}
 	const OperatorInfo& op = POST_OPS[opIndex];
 	switch (op.type) {
-        case COMMA: {
-            xr = discard(xr);
-            xr = operand(op);
-            break;
-        }
-            
+		case COMMA: {
+			xr = discard(xr);
+			xr = operand(op);
+			break;
+		}
+			
 		case BINARY: {
 			const Processor::Opcode primitiveOp
 					= (op.vmOp == Processor::ADD_OP ? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
 			makeRValue(xr, op.primitiveInput, primitiveOp);
 			makeRValue(operand(op), op.primitiveInput, primitiveOp);
 			emit(op.vmOp);
-            xr = (op.primitiveOutput ? ExpressionResult::PUSHED_PRIMITIVE : ExpressionResult::PUSHED);
+			xr = (op.primitiveOutput ? ExpressionResult::PUSHED_PRIMITIVE : ExpressionResult::PUSHED);
 			break;
 		}
 		
 		case ABSTRACT_EQUAL: {
 			assert(!op.primitiveInput);
-            assert(op.primitiveOutput);
+			assert(op.primitiveOutput);
 			const ExpressionResult lxr = makeRValue(xr, false);
 			xr = makeRValue(operand(op), op.primitiveInput);
 			if (lxr.t != ExpressionResult::PUSHED_PRIMITIVE || xr.t != ExpressionResult::PUSHED_PRIMITIVE) {
 				emit(Processor::PRE_EQ_OP);
 			}
 			emit(op.vmOp);
-            xr = ExpressionResult::PUSHED_PRIMITIVE;
+			xr = ExpressionResult::PUSHED_PRIMITIVE;
 			break;
 		}
 
@@ -3580,17 +3584,17 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				return false;
 			}
 			assert(!op.primitiveInput);
-            assert(op.primitiveOutput);
+			assert(op.primitiveOutput);
 			makeRValue(xr, true, Processor::OBJ_TO_STRING_OP); // left should be primitive, right doesn't have to
 			makeRValue(operand(op), false);
 			emit(op.vmOp);
-            xr = ExpressionResult::PUSHED_PRIMITIVE;
+			xr = ExpressionResult::PUSHED_PRIMITIVE;
 			break;
 		}
 
 		case POST_INC_DEC: {
-            assert(op.primitiveInput);
-            assert(op.primitiveOutput);
+			assert(op.primitiveInput);
+			assert(op.primitiveOutput);
 			if (lineTerminatorInRange(b, p)) {
 				p = b;
 				return false;
@@ -3604,24 +3608,24 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			emit(op.vmOp);
 			makeAssignment(xr);
 			emit(Processor::POP_OP, 1);
-            xr = ExpressionResult::PUSHED_PRIMITIVE;
+			xr = ExpressionResult::PUSHED_PRIMITIVE;
 			break;
 		}
 		
 		case LOGICAL_AND_OR: {
 			assert(!op.primitiveInput);
-            assert(!op.primitiveOutput);
+			assert(!op.primitiveOutput);
 			makeRValue(xr, false);
 			const BranchPoint point = emitForwardBranch(op.vmOp);
 			makeRValue(operand(op), false);
 			completeForwardBranch(point);
-            xr = ExpressionResult::PUSHED;
+			xr = ExpressionResult::PUSHED;
 			break;
 		}
 		
 		case CONDITIONAL: {
 			assert(!op.primitiveInput);
-            assert(!op.primitiveOutput);
+			assert(!op.primitiveOutput);
 			makeRValue(xr, false);
 			const BranchPoint falsePoint = emitForwardBranch(Processor::JF_OP);
 			makeRValue(operand(op), false);
@@ -3629,7 +3633,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			completeForwardBranch(falsePoint);
 			rvalueExpression(ASSIGN_PREC);
 			completeForwardBranch(endPoint);
-            xr = ExpressionResult::PUSHED;
+			xr = ExpressionResult::PUSHED;
 			break;
 		}
 		
@@ -3643,8 +3647,8 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		}
 		
 		case FUNCTION_CALL: {
-            assert(!op.primitiveInput);
-            assert(!op.primitiveOutput);
+			assert(!op.primitiveInput);
+			assert(!op.primitiveOutput);
 			Processor::Opcode callOp = Processor::CALL_OP;
 			if (xr.t == ExpressionResult::NAMED && xr.v.equalsString(EVAL_STRING)) {
 				callOp = Processor::CALL_EVAL_OP;
@@ -3655,35 +3659,35 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				makeRValue(xr, false);
 			}
 			functionCall(callOp);
-            xr = ExpressionResult::PUSHED;
+			xr = ExpressionResult::PUSHED;
 			break;
 		}
 		
-        case ASSIGNMENT: {
-            assert(!op.primitiveInput);
-            assert(!op.primitiveOutput);
-            const ExpressionResult rxr = makeRValue(operand(op), false);
-            makeAssignment(xr);
-            xr = rxr;
-            break;
-        }
-            
-        case COMPOUND_ASSIGNMENT: {
-            assert(op.primitiveInput);
-            assert(op.primitiveOutput);
+		case ASSIGNMENT: {
+			assert(!op.primitiveInput);
+			assert(!op.primitiveOutput);
+			const ExpressionResult rxr = makeRValue(operand(op), false);
+			makeAssignment(xr);
+			xr = rxr;
+			break;
+		}
+			
+		case COMPOUND_ASSIGNMENT: {
+			assert(op.primitiveInput);
+			assert(op.primitiveOutput);
 			const Processor::Opcode primitiveOp
 					= (op.vmOp == Processor::ADD_OP ? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
-            if (xr.t == ExpressionResult::PROPERTY) {
-                emit(Processor::REPUSH_2_OP);
-            }
-            makeRValue(xr, true, primitiveOp);
-            makeRValue(operand(op), true, primitiveOp);
-            emit(op.vmOp);
-            makeAssignment(xr);
-            xr = ExpressionResult::PUSHED_PRIMITIVE;
-            break;
-        }
-            
+			if (xr.t == ExpressionResult::PROPERTY) {
+				emit(Processor::REPUSH_2_OP);
+			}
+			makeRValue(xr, true, primitiveOp);
+			makeRValue(operand(op), true, primitiveOp);
+			emit(op.vmOp);
+			makeAssignment(xr);
+			xr = ExpressionResult::PUSHED_PRIMITIVE;
+			break;
+		}
+			
 		case PROPERTY_BRACKETS: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, false);
@@ -3828,9 +3832,9 @@ bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
 				}
 			}
 		}
-    }
+	}
 	const Char* b = p;
-    while (postOperate(xr, precedence)) {
+	while (postOperate(xr, precedence)) {
 		b = p;
 	}
 	p = b;
