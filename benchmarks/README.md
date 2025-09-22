@@ -7,7 +7,7 @@ This directory contains micro benchmarks used to measure NuXJS performance.
 Use `PikaCmd` to run the script:
 
 ```
-./tools/benchmark.pika <test(s)> <exe>|<rev-range>|makegold ignoregold
+./tools/benchmark.pika <test(s)> <exe>|<rev-range>|makegold ignoregold [--runs <count>]
 ```
 
 - `<test(s)>` is a file name or glob pattern for the benchmarks.
@@ -15,6 +15,8 @@ Use `PikaCmd` to run the script:
 - `<exe>|<rev-range>|makegold` can be the path to the
   already compiled `NuXJS` binary, a single revision number or revision range (e.g. `12345-12350`) checked out and built prior to running, or the literal `makegold` to generate reference output.
 - `ignoregold` is optional and skips output comparison.
+- `--runs <count>` (or `-r <count>`) overrides the number of
+  executions collected before computing the median. The default is 5.
 
 ## Golden results
 
