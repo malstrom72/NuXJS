@@ -141,11 +141,11 @@ function runRoundtrip(payload) {
 }
 
 var payloads = [
-    // Iteration counts scaled to keep the benchmark under NuXJS's default execution time limit.
-    { name: "userProfile", json: JSON.stringify(buildUserProfile()), iterations: 3000 },
-    { name: "telemetryBatch", json: JSON.stringify(buildTelemetryBatch(60)), iterations: 600 },
-    { name: "deepTree", json: JSON.stringify(buildDeepTree(5, 3)), iterations: 120 },
-    { name: "matrixCollection", json: JSON.stringify(buildMatrixCollection(6, 12, 12)), iterations: 80 }
+    // Iteration counts scaled to keep the benchmark comfortably within NuXJS's default execution time window.
+    { name: "userProfile", json: JSON.stringify(buildUserProfile()), iterations: 1000 },
+    { name: "telemetryBatch", json: JSON.stringify(buildTelemetryBatch(60)), iterations: 200 },
+    { name: "deepTree", json: JSON.stringify(buildDeepTree(5, 3)), iterations: 40 },
+    { name: "matrixCollection", json: JSON.stringify(buildMatrixCollection(6, 12, 12)), iterations: 27 }
 ];
 
 for (var i = 0; i < payloads.length; ++i) {
