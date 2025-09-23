@@ -812,6 +812,16 @@ class Constants : public GCItem, public Vector<Value> {
 };
 
 /**
+	CapturedBinding stores the lexical location of an identifier captured from an ancestor scope.
+**/
+struct CapturedBinding {
+	CapturedBinding() : depth(0), slot(0) { }
+	CapturedBinding(UInt16 inDepth, Int16 inSlot) : depth(inDepth), slot(inSlot) { }
+	UInt16 depth;
+	Int16 slot;
+};
+
+/**
 	Code represents compiled bytecode and associated metadata. It is an Object so that it can be stored as a constant
 	and referenced by multiple functions.
 **/
@@ -834,6 +844,10 @@ class Code : public Object {
 		const String* getSource() const { return source; }
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
+		UInt32 getCapturedBindingCount() const { return capturedBindings.size(); }
+		const CapturedBinding& getCapturedBinding(UInt32 index) const { return capturedBindings[index]; }
+		UInt32 appendCapturedBinding(const CapturedBinding& binding);
+		UInt32 appendCapturedBinding(UInt16 depth, Int16 slot);
 
 	protected:
 		Vector<CodeWord> codeWords;
@@ -846,6 +860,7 @@ class Code : public Object {
 		const String* source;
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
+		Vector<CapturedBinding> capturedBindings;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, constants);
@@ -1692,6 +1707,14 @@ class Compiler : public GCItem {
 	public:
 		typedef GCItem super;
 	
+		struct CapturedLexicalContext {
+			CapturedLexicalContext(const CapturedLexicalContext* parentContext, const Code* parentCode, bool allowSlots)
+				: parent(parentContext), code(parentCode), allowClosureSlots(allowSlots) { }
+			const CapturedLexicalContext* const parent;
+			const Code* const code;
+			const bool allowClosureSlots;
+		};
+	
 		enum Precedence {
 			GROUP_PREC, PROPERTY_PREC, NEW_PREC, FUNCTION_CALL_PREC, POST_INC_DEC_PREC, PREFIX_PREC
 			, MUL_DIV_PREC, ADD_SUB_PREC, SHIFT_PREC, RELATIONAL_PREC, EQUALITY_PREC, BIT_AND_PREC
@@ -1701,7 +1724,8 @@ class Compiler : public GCItem {
 
 		enum Target { FOR_GLOBAL, FOR_FUNCTION, FOR_EVAL };
 
-		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0);
+		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0,
+				const CapturedLexicalContext* capturedParent = 0);
 		const Char* compile(const Char* b, const Char* e);
 		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName = 0); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
 		void compile(const String& source);
@@ -1733,13 +1757,14 @@ class Compiler : public GCItem {
 
 		struct ExpressionResult;
 		struct SemanticScope;
-
 		static const String* newHashedString(Heap& heap, const Char* b, const Char* e);
 		void error(ErrorType type, const char* message);
 		void emit(Processor::Opcode opcode, Int32 operand = 0);
 		CodeSection* changeSection(CodeSection* newOutputSection);
 		UInt32 addConstant(const Value& constant);
 		void emitWithConstant(Processor::Opcode opcode, const Value& constant);
+		UInt32 ensureCapturedBinding(UInt16 depth, Int16 slot);
+		bool recordCapturedBinding(const String* name, UInt16& depth, Int16& slot, UInt32& bindingIndex);
 		BranchPoint emitForwardBranch(Processor::Opcode opcode);
 		void completeForwardBranch(const BranchPoint& point);
 		void completeForwardBranches(const BranchPoint* begin, const BranchPoint* end);
@@ -1814,6 +1839,8 @@ class Compiler : public GCItem {
 		bool acceptInOperator;
 		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
 		int nestCounter;
+		const CapturedLexicalContext* capturedLexical;
+		Vector<CapturedBinding> capturedBindings;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, code);

@@ -3,11 +3,11 @@
 This roadmap breaks the closure-slot work into incremental milestones. Each milestone is scoped so that the tree builds and tests cleanly before proceeding to the next stage.
 
 ## Milestone 1 – Capture metadata plumbing
-- [ ] Extend `Code` with a `Vector<CapturedBinding>` plus serialization helpers that reuse the existing signed slot convention.
-- [ ] Thread a lightweight `CapturedLexicalContext` pointer through nested `Compiler` instances so child lookups can see parent `Code::nameIndexes` and the `allowClosureSlots` flag.
-- [ ] Teach identifier parsing to produce an explicit closure variant that packages `(depth, slot)` when ancestors remain hoist-safe, falling back to named resolution otherwise.
-- [ ] Persist the collected closure descriptors when finalizing a child `Code`, keeping the order aligned with opcode operands.
-- [ ] Run `timeout 180 ./build.sh`.
+- [x] Extend `Code` with a `Vector<CapturedBinding>` plus serialization helpers that reuse the existing signed slot convention.
+- [x] Thread a lightweight `CapturedLexicalContext` pointer through nested `Compiler` instances so child lookups can see parent `Code::nameIndexes` and the `allowClosureSlots` flag.
+- [x] Teach identifier parsing to produce an explicit closure variant that packages `(depth, slot)` when ancestors remain hoist-safe, falling back to named resolution otherwise.
+- [x] Persist the collected closure descriptors when finalizing a child `Code`, keeping the order aligned with opcode operands.
+- [x] Run `timeout 180 ./build.sh`.
 
 ## Milestone 2 – Bytecode surface and assembler support
 - [ ] Introduce dedicated closure opcodes (read/write/delete) and register them in the opcode tables, metadata arrays, and disassembler.
