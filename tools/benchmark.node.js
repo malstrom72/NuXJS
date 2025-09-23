@@ -199,7 +199,7 @@ function runBenchmark(options) {
 }
 
 function collectBenchmarkNames(pattern) {
-	const normalized = pattern.replace(/\/g, "/");
+	const normalized = pattern.split("\\").join("/");
 	const justName = normalized.split("/").pop();
 	const regex = wildcardToRegExp(justName);
 	const dirEntries = fs.readdirSync("benchmarks", { withFileTypes: true });
