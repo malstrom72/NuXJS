@@ -2,6 +2,8 @@
 
 This directory contains micro benchmarks used to measure NuXJS performance.
 
+- `json_roundtrip.js` repeatedly serializes and deserializes representative JSON payloads at different sizes and depths to benchmark the engine. The benchmark synthesizes its data at runtime, so no external dataset files are required.
+
 ## Running `tools/benchmark.pika`
 
 Use `PikaCmd` to run the script:
