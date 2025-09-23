@@ -1710,14 +1710,14 @@ void JSArray::sliceDenseVector(Runtime& rt, const Value& key) {
 	}
 }
 
-bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value& v, Flags flags, bool& handled) {
-	handled = false;
+bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value& v, Flags flags, bool& result) {
+	result = false;
 	UInt32 index;
 	if (key.toArrayIndex(index)) {
 		if ((flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) == 0) {
 			assert(flags == STANDARD_FLAGS);
-			handled = true;
-			return setElement(rt, index, v);
+			result = setElement(rt, index, v);
+			return true;
 		}
 		sliceDenseVector(rt, key);
 		return false;
@@ -1726,11 +1726,11 @@ bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value&
 		const double rawLength = v.toDouble();
 		const UInt32 coercedLength = static_cast<UInt32>(rawLength);
 		if (isNaN(rawLength) || rawLength < 0.0 || rawLength > 4294967295.0
-			|| rawLength != static_cast<double>(coercedLength)) {
+				|| rawLength != static_cast<double>(coercedLength)) {
 			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
 		}
-		handled = true;
-		return updateLength(coercedLength);
+		result = updateLength(coercedLength);
+		return true;
 	}
 	return false;
 }
@@ -1766,15 +1766,13 @@ bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 }
 
 bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
-	bool handled;
-	const bool result = setOwnPropertyInternal(rt, key, v, flags, handled);
-	return (handled ? result : super::setOwnProperty(rt, key, v, flags));
+	bool result;
+	return (setOwnPropertyInternal(rt, key, v, flags, result) ? result : super::setOwnProperty(rt, key, v, flags));
 }
 
 bool JSArray::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
-	bool handled;
-	const bool result = setOwnPropertyInternal(rt, key, v, STANDARD_FLAGS, handled);
-	return (handled ? result : super::updateOwnProperty(rt, key, v));
+	bool result;
+	return (setOwnPropertyInternal(rt, key, v, STANDARD_FLAGS, result) ? result : super::updateOwnProperty(rt, key, v));
 }
 
 bool JSArray::deleteOwnProperty(Runtime& rt, const Value& key) {

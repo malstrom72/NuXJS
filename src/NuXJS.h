@@ -786,7 +786,7 @@ class JSArray : public LazyJSObject<Object> {
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
 		void sliceDenseVector(Runtime& rt, const Value& key);
-		bool setOwnPropertyInternal(Runtime& rt, const Value& key, const Value& v, Flags flags, bool& handled);
+		bool setOwnPropertyInternal(Runtime& rt, const Value& key, const Value& v, Flags flags, bool& result);
 		UInt32 length;
 		Vector<Value> denseVector;
 		virtual void gcMarkReferences(Heap& heap) const {
