@@ -32,6 +32,7 @@ JavaScript returned: 3
 Counter value: 3
 === error_handling_example ===
 C++ caught again: ReferenceError: print is not defined
+  stack: ReferenceError: print is not defined
 === json_conversion_example ===
 {"b":2,"c":3,"a":1}
 === object_creation_example ===
