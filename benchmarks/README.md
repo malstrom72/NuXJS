@@ -48,3 +48,8 @@ bash tools/compareEngines.sh benchmarks/bigArray.js benchmarks/bigObject.js
 ```
 
 The script downloads and builds Duktape and QuickJS, runs each benchmark, and reports execution times alongside NuXJS.
+
+
+## JSON round-trip benchmark
+
+`benchmarks/json_roundtrip.js` measures repeated `JSON.parse`/`JSON.stringify` operations on procedurally generated payloads with varying depth and size. The script prints a checksum and string length for each payload so the harness can verify correct behavior. The expected output lives in `benchmarks/golden/json_roundtrip.txt`, and the benchmark does not require any external dataset files.
