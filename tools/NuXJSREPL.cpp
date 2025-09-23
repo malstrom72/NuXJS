@@ -263,13 +263,31 @@ static void disassemble(Heap& heap, const Code& code) {
 			case Processor::CONST_OP:
 			case Processor::GEN_FUNC_OP:
 			case Processor::CATCH_SCOPE_OP: std::wcerr << L" #" << constants[operand].toString(heap)->toWideString(); break;
-			case Processor::DECLARE_OP:
-			case Processor::READ_NAMED_OP:
-			case Processor::WRITE_NAMED_OP:
-			case Processor::WRITE_NAMED_POP_OP:
-			case Processor::ADD_PROPERTY_OP:
-			case Processor::DELETE_NAMED_OP:
-			case Processor::TYPEOF_NAMED_OP: std::wcerr << L" " << constants[operand].toString(heap)->toWideString(); break;
+case Processor::DECLARE_OP:
+case Processor::READ_NAMED_OP:
+case Processor::WRITE_NAMED_OP:
+case Processor::WRITE_NAMED_POP_OP:
+case Processor::ADD_PROPERTY_OP:
+case Processor::DELETE_NAMED_OP:
+case Processor::TYPEOF_NAMED_OP: std::wcerr << L" " << constants[operand].toString(heap)->toWideString(); break;
+case Processor::READ_CLOSURE_OP:
+case Processor::WRITE_CLOSURE_OP:
+case Processor::WRITE_CLOSURE_POP_OP:
+case Processor::DELETE_CLOSURE_OP: {
+const UInt32 bindingIndex = static_cast<UInt32>(operand);
+if (bindingIndex < code.getCapturedBindingCount()) {
+const CapturedBinding& binding = code.getCapturedBinding(bindingIndex);
+const String* name = code.getLocalName(binding.slot);
+if (name != 0) {
+std::wcerr << L" $" << name->toWideString();
+}
+std::wcerr << L" (depth=" << binding.depth << L", slot=" << static_cast<int>(binding.slot)
+<< L", index=" << bindingIndex << L")";
+} else {
+std::wcerr << L" <invalid captured index " << operand << L">";
+}
+break;
+}
 			default: break;
 		}
 		std::cerr << std::endl;

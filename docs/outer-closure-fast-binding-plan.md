@@ -10,11 +10,11 @@ This roadmap breaks the closure-slot work into incremental milestones. Each mile
 - [x] Run `timeout 180 ./build.sh`.
 
 ## Milestone 2 – Bytecode surface and assembler support
-- [ ] Introduce dedicated closure opcodes (read/write/delete) and register them in the opcode tables, metadata arrays, and disassembler.
-- [ ] Update expression/assignment emission sites to select the closure opcodes when the new `ExpressionResult::CLOSURE` is present.
-- [ ] Adjust bytecode serialization and constant-pool tooling so captured-binding indices survive save/load and debugging paths.
-- [ ] Refresh unit/assembly tests that assert opcode ranges or mnemonic layouts.
-- [ ] Run `timeout 180 ./build.sh`.
+- [x] Introduce dedicated closure opcodes (read/write/delete) and register them in the opcode tables, metadata arrays, and disassembler.
+- [x] Update expression/assignment emission sites to select the closure opcodes when the new `ExpressionResult::CLOSURE` is present.
+- [x] Adjust bytecode serialization and constant-pool tooling so captured-binding indices survive save/load and debugging paths.
+- [x] Refresh unit/assembly tests that assert opcode ranges or mnemonic layouts.
+- [x] Run `timeout 180 ./build.sh`.
 
 ## Milestone 3 – Interpreter and runtime integration
 - [ ] Add helpers on `FunctionScope` (and siblings) that walk parent frames using `(depth, slot)` while respecting `dynamicVars` and `arguments` aliasing.

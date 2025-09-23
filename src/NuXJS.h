@@ -815,11 +815,16 @@ class Constants : public GCItem, public Vector<Value> {
 	CapturedBinding stores the lexical location of an identifier captured from an ancestor scope.
 **/
 struct CapturedBinding {
-	CapturedBinding() : depth(0), slot(0) { }
-	CapturedBinding(UInt16 inDepth, Int16 inSlot) : depth(inDepth), slot(inSlot) { }
-	UInt16 depth;
-	Int16 slot;
+    CapturedBinding() : depth(0), slot(0), name(0) { }
+    CapturedBinding(UInt16 inDepth, Int16 inSlot, const String* inName) : depth(inDepth), slot(inSlot), name(inName) { }
+    UInt16 depth;
+    Int16 slot;
+    const String* name;
 };
+
+inline void gcMark(Heap& heap, const CapturedBinding& binding) {
+    gcMark(heap, binding.name);
+}
 
 /**
 	Code represents compiled bytecode and associated metadata. It is an Object so that it can be stored as a constant
@@ -847,7 +852,7 @@ class Code : public Object {
 		UInt32 getCapturedBindingCount() const { return capturedBindings.size(); }
 		const CapturedBinding& getCapturedBinding(UInt32 index) const { return capturedBindings[index]; }
 		UInt32 appendCapturedBinding(const CapturedBinding& binding);
-		UInt32 appendCapturedBinding(UInt16 depth, Int16 slot);
+		UInt32 appendCapturedBinding(UInt16 depth, Int16 slot, const String* name = 0);
 
 	protected:
 		Vector<CodeWord> codeWords;
@@ -862,16 +867,17 @@ class Code : public Object {
 		UInt32 maxStackDepth;
 		Vector<CapturedBinding> capturedBindings;
 
-		virtual void gcMarkReferences(Heap& heap) const {
-			gcMark(heap, constants);
-			nameIndexes.gcMarkReferences(heap);
-			gcMark(heap, varNames.begin(), varNames.end());
-			gcMark(heap, argumentNames.begin(), argumentNames.end());
-			gcMark(heap, name);
-			gcMark(heap, selfName);
-			gcMark(heap, source);
-			super::gcMarkReferences(heap);
-		}
+                virtual void gcMarkReferences(Heap& heap) const {
+                        gcMark(heap, constants);
+                        nameIndexes.gcMarkReferences(heap);
+                        gcMark(heap, varNames.begin(), varNames.end());
+                        gcMark(heap, argumentNames.begin(), argumentNames.end());
+                        gcMark(heap, capturedBindings.begin(), capturedBindings.end());
+                        gcMark(heap, name);
+                        gcMark(heap, selfName);
+                        gcMark(heap, source);
+                        super::gcMarkReferences(heap);
+                }
 };
 
 /**
@@ -1542,6 +1548,9 @@ class Processor : public GCItem {
 			, READ_NAMED_OP									// operand: const_index (name), stack: -> value
 			, WRITE_NAMED_OP								// operand: const_index (name), stack: value -> value
 			, WRITE_NAMED_POP_OP							// operand: const_index (name), stack: value ->
+			, READ_CLOSURE_OP							// operand: captured_binding_index, stack: -> value
+			, WRITE_CLOSURE_OP							// operand: captured_binding_index, stack: value -> value
+			, WRITE_CLOSURE_POP_OP							// operand: captured_binding_index, stack: value ->
 			, CHECK_OBJECT_COERCIBLE_OP						// stack: value -> value
 			, GET_PROPERTY_OP								// stack: object, name -> value
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
@@ -1584,6 +1593,7 @@ class Processor : public GCItem {
 			, THIS_OP, VOID_OP								// stack: -> value
 			, DELETE_OP										// stack: object, name -> boolean
 			, DELETE_NAMED_OP								// operand: const_index (name) -> boolean
+			, DELETE_CLOSURE_OP							// operand: captured_binding_index -> boolean
 			, GEN_FUNC_OP									// operand: const_index (function), stack: -> function
 			, DECLARE_OP									// operand: const_index (name), stack: function|undefined ->		// only used by eval code to declare vars and functions (non-eval code sets all this up on entry and using WRITE_LOCAL_OP).
 			, CATCH_SCOPE_OP								// operand: const_index for exception variable name, stack: value ->
@@ -1763,7 +1773,7 @@ class Compiler : public GCItem {
 		CodeSection* changeSection(CodeSection* newOutputSection);
 		UInt32 addConstant(const Value& constant);
 		void emitWithConstant(Processor::Opcode opcode, const Value& constant);
-		UInt32 ensureCapturedBinding(UInt16 depth, Int16 slot);
+		UInt32 ensureCapturedBinding(UInt16 depth, Int16 slot, const String* name);
 		bool recordCapturedBinding(const String* name, UInt16& depth, Int16& slot, UInt32& bindingIndex);
 		BranchPoint emitForwardBranch(Processor::Opcode opcode);
 		void completeForwardBranch(const BranchPoint& point);
