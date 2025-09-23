@@ -2302,11 +2302,12 @@ const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
 	code pointer (for constants etc) and it declares deletable vars.
 */
 struct Processor::EvalScope : public Scope {
-	typedef Scope super;
-	EvalScope(GCList& gcList, Scope* parentScope) : super(gcList, parentScope) { }
-	virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool) {
-		parentScope->declareVar(rt, name, initValue, false);
-	}
+typedef Scope super;
+EvalScope(GCList& gcList, Scope* parentScope) : super(gcList, parentScope) { }
+virtual bool resolveCapturedBinding(const CapturedBinding&, Value*&) const { return false; }
+virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool) {
+parentScope->declareVar(rt, name, initValue, false);
+}
 };
 	
 /*
@@ -2354,13 +2355,14 @@ struct Processor::CatchScope : public Scope {
 };
 
 struct Processor::WithScope : public Scope {
-	typedef Scope super;
-	WithScope(GCList& gcList, Scope* parentScope, Object* withObject)
-			: super(gcList, parentScope), withObject(withObject) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
-		Flags flags = withObject->getProperty(rt, name, v);
-		return (flags != NONEXISTENT ? flags : parentScope->readVar(rt, name, v));
-	}
+typedef Scope super;
+WithScope(GCList& gcList, Scope* parentScope, Object* withObject)
+: super(gcList, parentScope), withObject(withObject) { }
+virtual bool resolveCapturedBinding(const CapturedBinding&, Value*&) const { return false; }
+virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
+Flags flags = withObject->getProperty(rt, name, v);
+return (flags != NONEXISTENT ? flags : parentScope->readVar(rt, name, v));
+}
 	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
 		const Value key(name);
 		for (Object* o = withObject; o != 0; o = o->getPrototype(rt)) {
