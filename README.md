@@ -135,7 +135,7 @@ int main(int argc, const char* argv[]) {
 
 ## Benchmarking
 
-- `tools/benchmark.pika` – run NuXJS micro benchmarks or generate golden results
+- `tools/benchmark.node.js` – run NuXJS micro benchmarks or generate golden results
 - `tools/compareEngines.sh` / `.cmd` – download Duktape and QuickJS and compare their performance to NuXJS
  
 ## Building the fuzz target

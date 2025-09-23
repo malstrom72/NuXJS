@@ -2,18 +2,18 @@
 
 This directory contains micro benchmarks used to measure NuXJS performance.
 
-## Running `tools/benchmark.pika`
+## Running `tools/benchmark.node.js`
 
-Use `PikaCmd` to run the script:
+Run the Node.js benchmark harness from the repository root:
 
 ```
-./tools/benchmark.pika <test(s)> <exe>|<rev-range>|makegold ignoregold [--runs <count>]
+node tools/benchmark.node.js <test(s)> <exe>|makegold ignoregold [--runs <count>]
 ```
 
 - `<test(s)>` is a file name or glob pattern for the benchmarks.
   Use `-` or omit the parameter to run every `*.js` file.
-- `<exe>|<rev-range>|makegold` can be the path to the
-  already compiled `NuXJS` binary, a single revision number or revision range (e.g. `12345-12350`) checked out and built prior to running, or the literal `makegold` to generate reference output.
+- `<exe>|makegold` can be the path to the already compiled `NuXJS` binary
+  or the literal `makegold` to generate reference output.
 - `ignoregold` is optional and skips output comparison.
 - `--runs <count>` (or `-r <count>`) overrides the number of
   executions collected before computing the median. The default is 5.
