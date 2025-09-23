@@ -721,12 +721,305 @@ class StringWrapper : public JSObject {
 
 /* --- Value --- */
 
-const String* Value::TYPE_STRINGS[5] = {
-	&UNDEFINED_STRING, &OBJECT_STRING, &BOOLEAN_STRING, &NUMBER_STRING, &STRING_STRING
+#if defined(NUXJS_USE_NAN_BOXING)
+static const UInt64 NANBOX_BASE = 0xFFF8000000000000ULL;
+static const UInt64 NANBOX_CANONICAL_NAN = 0x7FF8000000000000ULL;
+static const UInt64 NANBOX_EXPONENT_MASK = 0x7FF0000000000000ULL;
+static const UInt64 NANBOX_QUIET_BIT = 0x0008000000000000ULL;
+static const UInt64 NANBOX_TAG_SHIFT = 48;
+static const UInt64 NANBOX_TAG_MASK = 0x0007000000000000ULL;
+static const UInt64 NANBOX_PAYLOAD_MASK = 0x0000FFFFFFFFFFFFULL;
+#endif
+
+const String* const Value::TYPE_STRINGS[Value::OBJECT_TYPE] = {
+	&UNDEFINED_STRING,
+	&OBJECT_STRING,
+	&BOOLEAN_STRING,
+	&NUMBER_STRING,
+	&STRING_STRING
 };
 
+const String* Value::decodeTypeToString(Type type) {
+	if (type >= UNDEFINED_TYPE && type < OBJECT_TYPE) {
+		return TYPE_STRINGS[static_cast<int>(type)];
+	}
+#ifndef NDEBUG
+	if (type == BAD_TYPE) {
+		return TYPE_STRINGS[UNDEFINED_TYPE];
+	}
+#endif
+	return TYPE_STRINGS[UNDEFINED_TYPE];
+}
+
+#if defined(NUXJS_USE_NAN_BOXING)
+static_assert(sizeof(void*) == 8, "NaN-boxing requires 64-bit pointers.");
+static_assert(sizeof(Value) == sizeof(UInt64), "NaN-boxed Value must remain 64 bits.");
+struct LegacyBucketLayout {
+	const String* key;
+	Byte flags;
+	Byte type;
+	UInt16 hash16;
+	union {
+		Value::Variant var;
+		Int32 index;
+	};
+};
+static_assert(sizeof(Table::Bucket) <= sizeof(LegacyBucketLayout)
+, "NaN-boxed Bucket should not exceed legacy layout size.");
+#endif
+
+Value::Value() {
+#if defined(NUXJS_USE_NAN_BOXING)
+#ifndef NDEBUG
+        setBits(encodeBoxed(ENCODED_NUMBER, NANBOX_PAYLOAD_MASK));
+#else
+        setBits(encodeBoxed(ENCODED_UNDEFINED, 0));
+#endif
+#else
+#ifndef NDEBUG
+        type = BAD_TYPE;
+#else
+        type = UNDEFINED_TYPE;
+        var.number = 0.0;
+#endif
+#endif
+}
+
+Value::Value(bool boolean) {
+#if defined(NUXJS_USE_NAN_BOXING)
+        setBits(encodeBoolean(boolean));
+#else
+        type = BOOLEAN_TYPE;
+        var.boolean = boolean;
+#endif
+}
+
+Value::Value(Int32 number) {
+#if defined(NUXJS_USE_NAN_BOXING)
+        setBits(encodeNumber(static_cast<double>(number)));
+#else
+        type = NUMBER_TYPE;
+        var.number = static_cast<double>(number);
+#endif
+}
+
+Value::Value(UInt32 number) {
+#if defined(NUXJS_USE_NAN_BOXING)
+        setBits(encodeNumber(static_cast<double>(number)));
+#else
+        type = NUMBER_TYPE;
+        var.number = static_cast<double>(number);
+#endif
+}
+
+Value::Value(double number) {
+#if defined(NUXJS_USE_NAN_BOXING)
+        setBits(encodeNumber(number));
+#else
+        type = NUMBER_TYPE;
+        var.number = number;
+#endif
+}
+
+Value::Value(const String* string) {
+#if defined(NUXJS_USE_NAN_BOXING)
+        setBits(encodePointer(ENCODED_STRING, string));
+#else
+        type = STRING_TYPE;
+        var.string = string;
+#endif
+}
+
+Value::Value(Object* object) {
+#if defined(NUXJS_USE_NAN_BOXING)
+        setBits(encodePointer(ENCODED_OBJECT, object));
+#else
+        type = OBJECT_TYPE;
+        var.object = object;
+#endif
+}
+
+Value::Type Value::getType() const {
+#if defined(NUXJS_USE_NAN_BOXING)
+        return decodeType(bits);
+#else
+        return type;
+#endif
+}
+
+bool Value::getBooleanUnchecked() const {
+#if defined(NUXJS_USE_NAN_BOXING)
+        assert(getType() == BOOLEAN_TYPE);
+        return (payload() & 1U) != 0;
+#else
+        return getBooleanUncheckedLegacy();
+#endif
+}
+
+double Value::getNumberUnchecked() const {
+#if defined(NUXJS_USE_NAN_BOXING)
+        assert(getType() == NUMBER_TYPE);
+        return bitsToNumber(bits);
+#else
+        return getNumberUncheckedLegacy();
+#endif
+}
+
+const String* Value::getStringUnchecked() const {
+#if defined(NUXJS_USE_NAN_BOXING)
+        assert(getType() == STRING_TYPE);
+        return decodeVariant(STRING_TYPE, bits).string;
+#else
+        return getStringUncheckedLegacy();
+#endif
+}
+
+Object* Value::getObjectUnchecked() const {
+#if defined(NUXJS_USE_NAN_BOXING)
+        assert(getType() == OBJECT_TYPE);
+        return decodeVariant(OBJECT_TYPE, bits).object;
+#else
+        return getObjectUncheckedLegacy();
+#endif
+}
+
+Value::Value(Type t) throw() {
+#if defined(NUXJS_USE_NAN_BOXING)
+        Variant v;
+        std::memset(&v, 0, sizeof (Variant));
+        switch (t) {
+                case BOOLEAN_TYPE: v.boolean = false; break;
+                case NUMBER_TYPE: v.number = 0.0; break;
+                case STRING_TYPE: v.string = 0; break;
+                case OBJECT_TYPE: v.object = 0; break;
+                default: break;
+        }
+        setBits(encodeFromTypeAndVariant(t, v));
+#else
+        type = t;
+        switch (t) {
+                case BOOLEAN_TYPE: var.boolean = false; break;
+                case NUMBER_TYPE: var.number = 0.0; break;
+                case STRING_TYPE: var.string = 0; break;
+                case OBJECT_TYPE: var.object = 0; break;
+                default: break;
+        }
+#endif
+}
+
+Value::Value(Type t, const Variant& v) throw() {
+#if defined(NUXJS_USE_NAN_BOXING)
+        setBits(encodeFromTypeAndVariant(t, v));
+#else
+        type = t;
+        var = v;
+#endif
+}
+
+#if defined(NUXJS_USE_NAN_BOXING)
+UInt64 Value::encodeBoxed(EncodedTag tag, UInt64 payloadValue) {
+        return NANBOX_BASE | (static_cast<UInt64>(tag) << NANBOX_TAG_SHIFT)
+                | (payloadValue & NANBOX_PAYLOAD_MASK);
+}
+
+UInt64 Value::encodePointer(EncodedTag tag, const void* pointer) {
+        const UInt64 raw = static_cast<UInt64>(reinterpret_cast<uintptr_t>(pointer));
+        assert((raw & ~NANBOX_PAYLOAD_MASK) == 0);
+        return encodeBoxed(tag, raw);
+}
+
+UInt64 Value::encodeBoolean(bool boolean) {
+        return encodeBoxed(ENCODED_BOOLEAN, boolean ? 1U : 0U);
+}
+
+UInt64 Value::encodeNumber(double number) {
+	UInt64 raw = numberToBits(number);
+	// Keep integers in their canonical IEEE-754 representation instead of a
+	// separate small-integer (SMI) encoding so both layouts share identical
+	// arithmetic semantics and comparisons.
+	if ((raw & NANBOX_EXPONENT_MASK) == NANBOX_EXPONENT_MASK && (raw & NANBOX_QUIET_BIT) != 0) {
+		raw = NANBOX_CANONICAL_NAN;
+	}
+	return raw;
+}
+
+UInt64 Value::encodeFromTypeAndVariant(Type t, const Variant& variant) {
+        switch (t) {
+                case UNDEFINED_TYPE: return encodeBoxed(ENCODED_UNDEFINED, 0);
+                case NULL_TYPE: return encodeBoxed(ENCODED_NULL, 0);
+                case BOOLEAN_TYPE: return encodeBoolean(variant.boolean);
+                case NUMBER_TYPE: return encodeNumber(variant.number);
+                case STRING_TYPE: return encodePointer(ENCODED_STRING, variant.string);
+                case OBJECT_TYPE: return encodePointer(ENCODED_OBJECT, variant.object);
+#ifndef NDEBUG
+                case BAD_TYPE: return encodeBoxed(ENCODED_NUMBER, NANBOX_PAYLOAD_MASK);
+#endif
+        }
+        assert(0);
+        return encodeBoxed(ENCODED_UNDEFINED, 0);
+}
+
+Value::Type Value::decodeType(UInt64 value) {
+        if ((value & NANBOX_EXPONENT_MASK) != NANBOX_EXPONENT_MASK
+                        || (value & NANBOX_QUIET_BIT) == 0
+                        || (value & 0x8000000000000000ULL) == 0) {
+                return NUMBER_TYPE;
+        }
+        const UInt64 tagBits = (value & NANBOX_TAG_MASK) >> NANBOX_TAG_SHIFT;
+        switch (static_cast<EncodedTag>(tagBits)) {
+                case ENCODED_UNDEFINED: return UNDEFINED_TYPE;
+                case ENCODED_NULL: return NULL_TYPE;
+                case ENCODED_BOOLEAN: return BOOLEAN_TYPE;
+                case ENCODED_STRING: return STRING_TYPE;
+	case ENCODED_OBJECT: return OBJECT_TYPE;
+#ifndef NDEBUG
+	case ENCODED_NUMBER: return BAD_TYPE;
+#endif
+	}
+	return NUMBER_TYPE;
+}
+
+Value::Variant Value::decodeVariant(Type t, UInt64 value) {
+        Variant variant;
+        switch (t) {
+                case BOOLEAN_TYPE: variant.boolean = (value & 1U) != 0; break;
+                case NUMBER_TYPE: variant.number = bitsToNumber(value); break;
+                case STRING_TYPE: variant.string = reinterpret_cast<const String*>(static_cast<uintptr_t>(value & NANBOX_PAYLOAD_MASK)); break;
+                case OBJECT_TYPE: variant.object = reinterpret_cast<Object*>(static_cast<uintptr_t>(value & NANBOX_PAYLOAD_MASK)); break;
+                default:
+                        variant.number = 0.0;
+                        break;
+        }
+        return variant;
+}
+
+UInt64 Value::numberToBits(double number) {
+        UInt64 bitsValue;
+        std::memcpy(&bitsValue, &number, sizeof (bitsValue));
+        return bitsValue;
+}
+
+double Value::bitsToNumber(UInt64 bitsValue) {
+        double number;
+        std::memcpy(&number, &bitsValue, sizeof (number));
+        return number;
+}
+
+bool Value::isBoxed() const {
+        return (bits & (0x8000000000000000ULL | NANBOX_EXPONENT_MASK | NANBOX_QUIET_BIT)) == NANBOX_BASE;
+}
+
+UInt64 Value::payload() const {
+        return bits & NANBOX_PAYLOAD_MASK;
+}
+
+void Value::setBits(UInt64 value) {
+        bits = value;
+}
+#endif
+
 Function* Value::toFunction(Heap& heap) const {
-	Function* f = asFunction();
+        Function* f = asFunction();
 	if (f == 0) {
 		throw ScriptException(heap, new(heap) Error(heap.managed(), TYPE_ERROR
 				, new(heap) String(heap.managed(), *toString(heap), IS_NOT_A_FUNCTION_STRING)));
@@ -735,31 +1028,32 @@ Function* Value::toFunction(Heap& heap) const {
 }
 
 const String* Value::typeOfString() const {
-	return (type == OBJECT_TYPE ? var.object->typeOfString() : TYPE_STRINGS[static_cast<int>(type)]);
+	const Type type = getType();
+	return (type == OBJECT_TYPE ? getObjectUnchecked()->typeOfString() : decodeTypeToString(type));
 }
 
 bool Value::toBool() const {
-	switch (type) {
-		default: assert(0);
-		case UNDEFINED_TYPE:
-		case NULL_TYPE: return false;
-		case BOOLEAN_TYPE: return var.boolean;
-		case NUMBER_TYPE: return nanToZero(var.number) != 0.0;
-		case STRING_TYPE: return (!var.string->empty());
-		case OBJECT_TYPE: return true;
-	}
+        switch (getType()) {
+                default: assert(0);
+                case UNDEFINED_TYPE:
+                case NULL_TYPE: return false;
+                case BOOLEAN_TYPE: return getBooleanUnchecked();
+                case NUMBER_TYPE: return nanToZero(getNumberUnchecked()) != 0.0;
+                case STRING_TYPE: return (!getStringUnchecked()->empty());
+                case OBJECT_TYPE: return true;
+        }
 }
 
 double Value::toDouble() const {
-	switch (type) {
-		default: assert(0);
-		case UNDEFINED_TYPE:
-		case OBJECT_TYPE: return NaN();  // Notice, you shouldn't normally call toDouble on an object as proper ToNumber requires conversion to a primitive type
-		case NULL_TYPE: return 0.0;
-		case BOOLEAN_TYPE: return var.boolean ? 1.0 : 0.0;
-		case NUMBER_TYPE: return var.number;
-		case STRING_TYPE: return stringToDouble(*var.string);
-	}
+        switch (getType()) {
+                default: assert(0);
+                case UNDEFINED_TYPE:
+                case OBJECT_TYPE: return NaN();  // Notice, you shouldn't normally call toDouble on an object as proper ToNumber requires conversion to a primitive type
+                case NULL_TYPE: return 0.0;
+                case BOOLEAN_TYPE: return getBooleanUnchecked() ? 1.0 : 0.0;
+                case NUMBER_TYPE: return getNumberUnchecked();
+                case STRING_TYPE: return stringToDouble(*getStringUnchecked());
+        }
 }
 
 Int32 Value::toInt() const {
@@ -775,27 +1069,28 @@ Int32 Value::toInt() const {
 }
 
 bool Value::toArrayIndex(UInt32& index) const {
-	switch (type) {
-		case BOOLEAN_TYPE: {
-			index = (var.boolean ? 1 : 0);
-			return true;
-		}
-		case NUMBER_TYPE: {
-			const double n = var.number;
-			if (n < 0.0 || n >= 4294967296.0) {
-				return false;
-			}
-			index = static_cast<UInt32>(n);
-			return index == n;
-		}
-		case STRING_TYPE: {
-			const Char* const e = var.string->end();
-			const Char* p = var.string->begin();
-			if (p != e && *p == '0') {
-				index = 0;
-				++p;
-			} else {
-				p = parseUnsignedInt(p, e, index);
+        switch (getType()) {
+                case BOOLEAN_TYPE: {
+                        index = (getBooleanUnchecked() ? 1 : 0);
+                        return true;
+                }
+                case NUMBER_TYPE: {
+                        const double n = getNumberUnchecked();
+                        if (n < 0.0 || n >= 4294967296.0) {
+                                return false;
+                        }
+                        index = static_cast<UInt32>(n);
+                        return index == n;
+                }
+                case STRING_TYPE: {
+                        const String* const s = getStringUnchecked();
+                        const Char* const e = s->end();
+                        const Char* p = s->begin();
+                        if (p != e && *p == '0') {
+                                index = 0;
+                                ++p;
+                        } else {
+                                p = parseUnsignedInt(p, e, index);
 			}
 			return p == e;
 		}
@@ -804,28 +1099,31 @@ bool Value::toArrayIndex(UInt32& index) const {
 }
 
 const String* Value::toString(Heap& heap) const {
-	switch (type) {
-		default: assert(0);
-		case UNDEFINED_TYPE: return &UNDEFINED_STRING;
-		case NULL_TYPE: return &NULL_STRING;
-		case BOOLEAN_TYPE: return var.boolean ? &TRUE_STRING : &FALSE_STRING;
-		case NUMBER_TYPE: return String::fromDouble(heap, var.number);
-		case STRING_TYPE: return var.string;
-		case OBJECT_TYPE: return var.object->toString(heap);
-	}
+        switch (getType()) {
+                default: assert(0);
+                case UNDEFINED_TYPE: return &UNDEFINED_STRING;
+                case NULL_TYPE: return &NULL_STRING;
+                case BOOLEAN_TYPE: return getBooleanUnchecked() ? &TRUE_STRING : &FALSE_STRING;
+                case NUMBER_TYPE: return String::fromDouble(heap, getNumberUnchecked());
+                case STRING_TYPE: return getStringUnchecked();
+                case OBJECT_TYPE: return getObjectUnchecked()->toString(heap);
+        }
 }
 
 Object* Value::toObjectOrNull(Heap& heap, bool requireExtensible) const {
-	switch (type) {
-		default: assert(0);
-		case UNDEFINED_TYPE: return 0;
-		case NULL_TYPE: return 0;
-		case BOOLEAN_TYPE: return new(heap) GenericWrapper(heap.managed(), &B_OOLEAN_STRING, *this, Runtime::BOOLEAN_PROTOTYPE);
-		case NUMBER_TYPE: return new(heap) GenericWrapper(heap.managed(), &N_UMBER_STRING, *this, Runtime::NUMBER_PROTOTYPE);
-		// I think const_cast can be accepted here, the string is always immutable when accessed as an Object
-		case STRING_TYPE: return (!requireExtensible ? static_cast<Object*>(const_cast<String*>(var.string)) : new(heap) StringWrapper(heap.managed(), var.string));
-		case OBJECT_TYPE: return var.object;
-	}
+        switch (getType()) {
+                default: assert(0);
+                case UNDEFINED_TYPE: return 0;
+                case NULL_TYPE: return 0;
+                case BOOLEAN_TYPE: return new(heap) GenericWrapper(heap.managed(), &B_OOLEAN_STRING, *this, Runtime::BOOLEAN_PROTOTYPE);
+                case NUMBER_TYPE: return new(heap) GenericWrapper(heap.managed(), &N_UMBER_STRING, *this, Runtime::NUMBER_PROTOTYPE);
+                // I think const_cast can be accepted here, the string is always immutable when accessed as an Object
+                case STRING_TYPE: {
+                        const String* const s = getStringUnchecked();
+                        return (!requireExtensible ? static_cast<Object*>(const_cast<String*>(s)) : new(heap) StringWrapper(heap.managed(), s));
+                }
+                case OBJECT_TYPE: return getObjectUnchecked();
+        }
 }
 
 Object* Value::toObject(Heap& heap, bool requireExtensible) const {
@@ -837,15 +1135,16 @@ Object* Value::toObject(Heap& heap, bool requireExtensible) const {
 }
 
 bool Value::compareStrictly(const Value& r) const {
-	assert(r.type == type);
-	switch (type) {
+	const Type t = getType();
+	assert(r.getType() == t);
+	switch (t) {
 		default: assert(0);
 		case UNDEFINED_TYPE:
 		case NULL_TYPE: return true;
-		case BOOLEAN_TYPE: return var.boolean == r.var.boolean;
-		case NUMBER_TYPE: return var.number == r.var.number;
-		case STRING_TYPE: return var.string->isEqualTo(*r.var.string);
-		case OBJECT_TYPE: return var.object == r.var.object;
+		case BOOLEAN_TYPE: return getBooleanUnchecked() == r.getBooleanUnchecked();
+		case NUMBER_TYPE: return getNumberUnchecked() == r.getNumberUnchecked();
+		case STRING_TYPE: return getStringUnchecked()->isEqualTo(*r.getStringUnchecked());
+		case OBJECT_TYPE: return getObjectUnchecked() == r.getObjectUnchecked();
 	}
 }
 
@@ -859,38 +1158,40 @@ bool Value::compareStrictly(const Value& r) const {
 	object		FALSE		FALSE	num(l) === num(r)	prim(l) == r	prim(l) == r		l === r
 */
 bool Value::isEqualTo(const Value& r) const {
-	if (type == r.type) {
+	const Type lType = getType();
+	const Type rType = r.getType();
+	if (lType == rType) {
 		return compareStrictly(r);
-	} else if (type < r.type) {	// Symmetrical operation, flip for simpler logic.
+	} else if (lType < rType) {	// Symmetrical operation, flip for simpler logic.
 		return r.isEqualTo(*this);
 	} else {
-		switch (type) {
+		switch (lType) {
 			case NULL_TYPE: return true;
 			case BOOLEAN_TYPE: return false;
-			case NUMBER_TYPE: return (r.type == BOOLEAN_TYPE && var.number == (r.var.boolean ? 1.0 : 0.0));
-			case STRING_TYPE: return (r.type >= BOOLEAN_TYPE && stringToDouble(*var.string)
-					== (r.type == BOOLEAN_TYPE ? (r.var.boolean ? 1.0 : 0.0) : r.var.number));
+			case NUMBER_TYPE: return (rType == BOOLEAN_TYPE && getNumberUnchecked() == (r.getBooleanUnchecked() ? 1.0 : 0.0));
+			case STRING_TYPE: return (rType >= BOOLEAN_TYPE && stringToDouble(*getStringUnchecked())
+					== (rType == BOOLEAN_TYPE ? (r.getBooleanUnchecked() ? 1.0 : 0.0) : r.getNumberUnchecked()));
 			default: return false;
 		}
 	}
 }
 
 bool Value::isLessThan(const Value& y) const {
-	if (type == STRING_TYPE && y.type == STRING_TYPE) {
-		return var.string->isLessThan(*y.var.string);
+	if (isString() && y.isString()) {
+		return getStringUnchecked()->isLessThan(*y.getStringUnchecked());
 	}
 	return toDouble() < y.toDouble();
 }
 
 bool Value::isLessThanOrEqualTo(const Value& y) const {
-	if (type == STRING_TYPE && y.type == STRING_TYPE) {
-		return !y.var.string->isLessThan(*var.string);
+	if (isString() && y.isString()) {
+		return !y.getStringUnchecked()->isLessThan(*getStringUnchecked());
 	}
 	return toDouble() <= y.toDouble();
 }
 
 Value Value::add(Heap& heap, const Value& y) const {
-	if (type == STRING_TYPE || y.type == STRING_TYPE) {
+	if (isString() || y.isString()) {
 		const String* ls = toString(heap);
 		const String* rs = y.toString(heap);
 		return rs->empty() ? ls : (ls->empty() ? rs : String::concatenate(heap, *ls, *rs));
@@ -911,10 +1212,10 @@ std::wostream& operator<<(std::wostream& out, const Value& v) {
 }
 
 void gcMark(Heap& heap, const Value& v) {
-	switch (v.type) {
-		case Value::STRING_TYPE: gcMark(heap, v.var.string); break;
-		case Value::OBJECT_TYPE: gcMark(heap, v.var.object); break;
-		default: break;
+	if (v.isString()) {
+		gcMark(heap, v.getStringUnchecked());
+	} else if (v.isObject()) {
+		gcMark(heap, v.getObjectUnchecked());
 	}
 }
 
@@ -1424,18 +1725,26 @@ bool Table::update(Bucket* bucket, const Value& value, Flags flags) {
 	assert(bucket->keyExists());
 	if ((bucket->flags & READ_ONLY_FLAG) != 0) {
 		return false;
-	} else {
-		bucket->flags |= EXISTS_FLAG | flags;
-		bucket->type = static_cast<Byte>(value.type & 0xFF);
-		bucket->var = value.var;
-	}
+        } else {
+                bucket->flags |= EXISTS_FLAG | flags;
+#if defined(NUXJS_USE_NAN_BOXING)
+                bucket->storage.nanBits = value.getBits();
+#else
+                bucket->type = static_cast<Byte>(value.getType() & 0xFF);
+                bucket->var = value.var;
+#endif
+        }
 	return true;
 }
 
 void Table::update(Bucket* bucket, const Int32 index) {
-	assert(bucket->keyExists());
-	bucket->flags = EXISTS_FLAG | INDEX_TYPE_FLAG;
-	bucket->index = index;
+        assert(bucket->keyExists());
+        bucket->flags = EXISTS_FLAG | INDEX_TYPE_FLAG;
+#if defined(NUXJS_USE_NAN_BOXING)
+        bucket->storage.index = index;
+#else
+        bucket->index = index;
+#endif
 }
 
 bool Table::erase(Bucket* bucket) {
@@ -1456,14 +1765,26 @@ void Table::gcMarkReferences(Heap& heap) const {
 		const Bucket& bucket = buckets[i];
 		if (bucket.keyExists()) {
 			gcMark(heap, bucket.key);
-			if (bucket.valueExists()) {
-				switch (((bucket.flags & INDEX_TYPE_FLAG) != 0) ? Value::NUMBER_TYPE : bucket.type) {
-					case Value::STRING_TYPE: gcMark(heap, bucket.var.string); break;
-					case Value::OBJECT_TYPE: gcMark(heap, bucket.var.object); break;
-					default: break;
-				}
-				++rebuildLoadCount;
-			}
+                        if (bucket.valueExists()) {
+                                if ((bucket.flags & INDEX_TYPE_FLAG) == 0) {
+#if defined(NUXJS_USE_NAN_BOXING)
+                                        Value value;
+                                        value.setBits(bucket.storage.nanBits);
+                                        if (value.isString()) {
+                                                gcMark(heap, value.getStringUnchecked());
+                                        } else if (value.isObject()) {
+                                                gcMark(heap, value.getObjectUnchecked());
+                                        }
+#else
+                                        switch (static_cast<Value::Type>(bucket.type)) {
+                                                case Value::STRING_TYPE: gcMark(heap, bucket.var.string); break;
+                                                case Value::OBJECT_TYPE: gcMark(heap, bucket.var.object); break;
+                                                default: break;
+                                        }
+#endif
+                                }
+                                ++rebuildLoadCount;
+                        }
 		}
 	}
 	assert(rebuildLoadCount <= loadCount);
