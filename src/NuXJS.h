@@ -1253,6 +1253,7 @@ struct ConstStringException : public Exception {
 };
 
 struct ScriptException : public Exception {
+	friend class Processor;
 	typedef Exception super;
 	static void throwError(Heap& heap, ErrorType type, const String* message = 0);
 	static void throwError(Heap& heap, ErrorType type, const char* message);
@@ -1667,6 +1668,7 @@ class Processor : public GCItem {
 		void enterEvalCode(const Code* code, bool local = false);
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
 		void throwVirtualException(const Value& exception);
+		bool throwVirtualException(const Value& exception, ScriptException* existingException);
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);
 		Value getResult() const;	// make sure you've called run() until it returns false before calling this

@@ -2662,17 +2662,19 @@ StackTrace* Processor::captureStackTrace() {
 	return trace;
 }
 
-void Processor::throwVirtualException(const Value& exception) {
+bool Processor::throwVirtualException(const Value& exception, ScriptException* existingException) {
 	if (firstCatcher == 0) { // FIX: what exception to throw here?
 		StackTrace* trace = captureStackTrace();
+		SourceLocation throwLocation;
+		std::string formattedStack;
+		Error* errorObject = exception.asError();
+		std::string fallbackHeader;
 		if (trace != 0 && !trace->isEmpty()) {
-			const SourceLocation& throwLocation = trace->getFrame(0).location;
-			Error* errorObject = exception.asError();
-			std::string fallbackHeader;
+			throwLocation = trace->getFrame(0).location;
 			if (errorObject == 0) {
 				fallbackHeader = exception.toString(heap)->toUTF8String();
 			}
-			std::string formattedStack = formatStackTraceString(exception, fallbackHeader, trace);
+			formattedStack = formatStackTraceString(exception, fallbackHeader, trace);
 			if (errorObject != 0) {
 				const String* fileName = (throwLocation.fileName != 0 ? throwLocation.fileName : &ANONYMOUS_SCRIPT_STRING);
 				errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(fileName), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
@@ -2683,11 +2685,26 @@ void Processor::throwVirtualException(const Value& exception) {
 					errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
 				}
 			}
-			reset();
-			throw ScriptException(heap, exception, trace, throwLocation, formattedStack);
+		} else if (errorObject != 0) {
+			errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(&ANONYMOUS_SCRIPT_STRING), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
 		}
 		reset();
-		throw ScriptException(heap, exception);
+		if (existingException != 0) {
+			if (trace != 0 && !trace->isEmpty()) {
+				existingException->initializeMetadata(trace, throwLocation, formattedStack);
+			} else {
+				SourceLocation fallbackLocation;
+				fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
+				existingException->initializeMetadata(0, fallbackLocation, std::string());
+			}
+			return true;
+		}
+		if (trace != 0 && !trace->isEmpty()) {
+			throw ScriptException(heap, exception, trace, throwLocation, formattedStack);
+		}
+		SourceLocation fallbackLocation;
+		fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
+		throw ScriptException(heap, exception, 0, fallbackLocation);
 	}
 	ip = firstCatcher->ip;
 	assert(ip != 0);
@@ -2695,7 +2712,13 @@ void Processor::throwVirtualException(const Value& exception) {
 	sp = firstCatcher->sp;
 	push(exception);
 	popCatcher();
+	return false;
 }
+
+void Processor::throwVirtualException(const Value& exception) {
+  (void)throwVirtualException(exception, 0);
+}
+
 void Processor::error(ErrorType errorType, const String* message) {
 	throwVirtualException(new(heap) Error(heap.managed(), errorType, message));
 }
@@ -3053,8 +3076,13 @@ bool Processor::run(Int32 maxCycles) {
 		try {
 			innerRun();
 		}
-		catch (const ScriptException& x) {
-			throwVirtualException(x.value);
+		catch (ScriptException& x) {
+			if (x.getStackTrace() != 0 || x.getFileName() != 0) {
+				throw;
+			}
+			if (throwVirtualException(x.value, &x)) {
+				throw;
+			}
 		}
 	}
 	return (ip != 0);

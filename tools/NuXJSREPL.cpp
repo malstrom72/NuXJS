@@ -617,6 +617,13 @@ int testMain(int argc, const char* argv[]) {
 				
 				if (execute) {
 					Code globalCode(heap.roots());
+					const String* scriptFileName = 0;
+					if (!inputFilePath.empty()) {
+							scriptFileName = String::allocate(heap, inputFilePath.c_str());
+					} else {
+							scriptFileName = rt.newStringConstant("<anonymous>");
+					}
+					globalCode.setFileName(scriptFileName);
 					Compiler compiler(heap.roots(), &globalCode, (interactive ? Compiler::FOR_EVAL : Compiler::FOR_GLOBAL));
 					try {
 						compiler.compile(source);

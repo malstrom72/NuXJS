@@ -3,6 +3,9 @@
 > function levelOne() { levelTwo(); }
 > levelOne();
 < !!!! Error: boom
-< !!!! location: <anonymous>
+< !!!! location: <anonymous>:1:25
 < !!!! stack: Error: boom
+<     at levelTwo (<anonymous>:1:25)
+<     at levelOne (<anonymous>:1:12)
+<     at <anonymous>:4:11
 -
