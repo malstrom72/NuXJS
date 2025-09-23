@@ -966,14 +966,17 @@ Value::Type Value::decodeType(UInt64 value) {
                 return NUMBER_TYPE;
         }
         const UInt64 tagBits = (value & NANBOX_TAG_MASK) >> NANBOX_TAG_SHIFT;
-        switch (static_cast<EncodedTag>(tagBits)) {
-                case ENCODED_UNDEFINED: return UNDEFINED_TYPE;
-                case ENCODED_NULL: return NULL_TYPE;
-                case ENCODED_BOOLEAN: return BOOLEAN_TYPE;
-                case ENCODED_STRING: return STRING_TYPE;
-	case ENCODED_OBJECT: return OBJECT_TYPE;
+	switch (static_cast<EncodedTag>(tagBits)) {
+		case ENCODED_UNDEFINED: return UNDEFINED_TYPE;
+		case ENCODED_NULL: return NULL_TYPE;
+		case ENCODED_BOOLEAN: return BOOLEAN_TYPE;
+		case ENCODED_STRING: return STRING_TYPE;
+		case ENCODED_OBJECT: return OBJECT_TYPE;
+		case ENCODED_NUMBER:
 #ifndef NDEBUG
-	case ENCODED_NUMBER: return BAD_TYPE;
+			return BAD_TYPE;
+#else
+			return NUMBER_TYPE;
 #endif
 	}
 	return NUMBER_TYPE;
