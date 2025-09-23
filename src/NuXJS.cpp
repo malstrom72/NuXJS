@@ -2156,6 +2156,7 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ READ_LOCAL_OP				 , "READ_LOCAL"				 , +1	  , 0 },
 	{ READ_LOCAL_TO_PRIMITIVE_OP		, "READ_LOCAL_TO_PRIMITIVE"		, +1	  , 0 },
 	{ READ_LOCAL_TO_NUMBER_OP				, "READ_LOCAL_TO_NUMBER"				, +1	  , 0 },
+	{ READ_LOCAL_TO_STRING_OP				, "READ_LOCAL_TO_STRING"				, +1	  , 0 },
 	{ WRITE_LOCAL_OP			 , "WRITE_LOCAL"			 , 0	  , 0 },
 	{ WRITE_LOCAL_POP_OP		 , "WRITE_LOCAL_POP"		 , -1	  , 0 },
 	{ READ_NAMED_OP				 , "READ_NAMED"				 , 1	  , 0 },
@@ -2505,6 +2506,16 @@ void Processor::innerRun() {
 				push(value);
 				if (value.isObject()) {
 					invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_NUMBER_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
+					return;
+				}
+				break;
+			}
+			case READ_LOCAL_TO_STRING_OP: {
+				assert(locals != 0);
+				const Value& value = locals[im];
+				push(value);
+				if (value.isObject()) {
+					invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_STRING_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
 					return;
 				}
 				break;
@@ -3277,6 +3288,10 @@ Compiler::ExpressionResult Compiler::makeRValue(const ExpressionResult& xr, bool
 				}
 				if (toPrimitiveOp == Processor::OBJ_TO_NUMBER_OP) {
 					emit(Processor::READ_LOCAL_TO_NUMBER_OP, xr.v.toInt());
+					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
+				}
+				if (toPrimitiveOp == Processor::OBJ_TO_STRING_OP) {
+					emit(Processor::READ_LOCAL_TO_STRING_OP, xr.v.toInt());
 					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
 				}
 			}

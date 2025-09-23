@@ -1524,6 +1524,7 @@ class Processor : public GCItem {
 			, READ_LOCAL_OP									// operand: local_index, stack: -> value
 			, READ_LOCAL_TO_PRIMITIVE_OP						// operand: local_index, stack: -> value (+1)
 			, READ_LOCAL_TO_NUMBER_OP									// operand: local_index, stack: -> value (+1)
+			, READ_LOCAL_TO_STRING_OP									// operand: local_index, stack: -> value (+1)
 			, WRITE_LOCAL_OP								// operand: local_index, stack: value -> value
 			, WRITE_LOCAL_POP_OP							// operand: local_index, stack: value ->
 			, READ_NAMED_OP									// operand: const_index (name), stack: -> value
