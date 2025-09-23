@@ -931,9 +931,11 @@ class ExtensibleFunction : public LazyJSObject<Function> {
 };
 
 /**
-	Scope represents a lexical environment chain used during execution. It stores local variables and links to a parent
-	scope.
+        Scope represents a lexical environment chain used during execution. It stores local variables and links to a parent
+        scope.
 **/
+class FunctionScope;
+
 class Scope : public GCItem {
 	public:
 		typedef GCItem super;
@@ -944,6 +946,9 @@ class Scope : public GCItem {
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		Value* getLocalsPointer() const { return localsPointer; }
 		Scope* getParentScope() const { return parentScope; }
+		virtual bool resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const;
+		virtual FunctionScope* nearestFunctionScope();
+		virtual const FunctionScope* nearestFunctionScope() const;
 		void makeClosure() const;
 		void leave() { if (deleteOnPop) { delete this; } }
 		
@@ -1074,6 +1079,10 @@ class FunctionScope : public Scope {
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
+		virtual bool resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const;
+		virtual FunctionScope* nearestFunctionScope();
+		virtual const FunctionScope* nearestFunctionScope() const;
+		FunctionScope* getParentFunctionScope() const { return parentFunctionScope; }
 		JSObject* getDynamicVars(Runtime& rt) const;
 		virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
 
@@ -1084,6 +1093,7 @@ class FunctionScope : public Scope {
 		mutable JSObject* dynamicVars;
 		mutable Arguments* arguments;
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
+		FunctionScope* parentFunctionScope;
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, function);
 			gcMark(heap, locals.begin(), locals.end());
@@ -1848,6 +1858,7 @@ class Compiler : public GCItem {
 		CodeSection* currentSection;
 		bool acceptInOperator;
 		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
+		bool allowClosureSlots;
 		int nestCounter;
 		const CapturedLexicalContext* capturedLexical;
 		Vector<CapturedBinding> capturedBindings;

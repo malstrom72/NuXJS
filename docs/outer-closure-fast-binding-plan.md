@@ -17,8 +17,8 @@ This roadmap breaks the closure-slot work into incremental milestones. Each mile
 - [x] Run `timeout 180 ./build.sh`.
 
 ## Milestone 3 – Interpreter and runtime integration
-- [ ] Add helpers on `FunctionScope` (and siblings) that walk parent frames using `(depth, slot)` while respecting `dynamicVars` and `arguments` aliasing.
-- [ ] Wire the new closure opcodes into the interpreter dispatch loop, including slot read/write/delete helpers and error paths.
+- [x] Add helpers on `FunctionScope` (and siblings) that walk parent frames using `(depth, slot)` while respecting `dynamicVars` and `arguments` aliasing.
+- [x] Wire the new closure opcodes into the interpreter dispatch loop, including slot read/write/delete helpers and error paths.
 - [ ] Audit `GEN_FUNC_OP` / closure creation to ensure captured-binding tables are retained and traced by GC.
 - [ ] Stress-test dynamic-scope guards (`with`, `catch`, direct `eval`) to confirm the compiler still routes unsafe identifiers through the named path.
 - [ ] Run `timeout 180 ./build.sh`.

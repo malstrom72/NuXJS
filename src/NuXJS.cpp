@@ -1995,6 +1995,18 @@ void Scope::declareVar(Runtime& rt, const String* name, const Value& initValue, 
 	return parentScope->declareVar(rt, name, initValue, dontDelete);
 }
 
+bool Scope::resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const {
+	return (parentScope != 0 && parentScope->resolveCapturedBinding(binding, slot));
+}
+
+FunctionScope* Scope::nearestFunctionScope() {
+	return (parentScope != 0 ? parentScope->nearestFunctionScope() : 0);
+}
+
+const FunctionScope* Scope::nearestFunctionScope() const {
+	return (parentScope != 0 ? parentScope->nearestFunctionScope() : 0);
+}
+
 void Scope::makeClosure() const {
 	for (const Scope* s = this; s->deleteOnPop; s = s->parentScope) {
 		s->deleteOnPop = false;
@@ -2007,7 +2019,8 @@ void Scope::makeClosure() const {
 FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, const Value* argv)
 		: super(gcList, function->closure), function(function), passedArgumentsCount(argc)
 		, locals(function->code->calcLocalsSize(argc), &gcList.getHeap()), dynamicVars(0)
-		, arguments(0), bloomSet(function->code->bloomSet) {
+		, arguments(0), bloomSet(function->code->bloomSet), parentFunctionScope(0) {
+	parentFunctionScope = (parentScope != 0 ? parentScope->nearestFunctionScope() : 0);
 	const Code* code = function->code;
 	localsPointer = locals.begin() + code->getVarsCount();
 	std::fill(locals.begin(), localsPointer, UNDEFINED_VALUE);
@@ -2112,6 +2125,34 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
 	if (!initValue.isUndefined()) {
 		writeVar(rt, name, initValue);
 	}
+}
+
+FunctionScope* FunctionScope::nearestFunctionScope() {
+	return this;
+}
+
+const FunctionScope* FunctionScope::nearestFunctionScope() const {
+	return this;
+}
+
+bool FunctionScope::resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const {
+	const FunctionScope* scope = this;
+	UInt16 remainingDepth = binding.depth;
+	while (remainingDepth > 0) {
+		if (scope->parentFunctionScope == 0) {
+			return false;
+		}
+		scope = scope->parentFunctionScope;
+		--remainingDepth;
+	}
+	Value* const resolved = scope->localsPointer + binding.slot;
+	Value* const begin = scope->locals.begin();
+	Value* const end = scope->locals.end();
+	if (resolved < begin || resolved >= end) {
+		return false;
+	}
+	slot = resolved;
+	return true;
 }
 
 FunctionScope::~FunctionScope() {
@@ -2518,10 +2559,18 @@ void Processor::innerRun() {
 				const UInt32 bindingIndex = static_cast<UInt32>(im);
 				assert(bindingIndex < code->getCapturedBindingCount());
 				const CapturedBinding& binding = code->getCapturedBinding(bindingIndex);
-				const String* name = (binding.name != 0 ? binding.name : code->getLocalName(binding.slot));
-				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
-					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
-					return;
+				Value* slot = 0;
+				if (scope->resolveCapturedBinding(binding, slot)) {
+					assert(slot != 0);
+					++sp;
+					*sp = *slot;
+				} else {
+					const String* name = (binding.name != 0 ? binding.name : code->getLocalName(binding.slot));
+					++sp;
+					if (scope->readVar(rt, name, sp) == NONEXISTENT) {
+						error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+						return;
+					}
 				}
 			}
 			break;
@@ -2533,8 +2582,14 @@ void Processor::innerRun() {
 				const UInt32 bindingIndex = static_cast<UInt32>(im);
 				assert(bindingIndex < code->getCapturedBindingCount());
 				const CapturedBinding& binding = code->getCapturedBinding(bindingIndex);
-				const String* name = (binding.name != 0 ? binding.name : code->getLocalName(binding.slot));
-				scope->writeVar(rt, name, sp[0]);
+				Value* slot = 0;
+				if (scope->resolveCapturedBinding(binding, slot)) {
+					assert(slot != 0);
+					*slot = sp[0];
+				} else {
+					const String* name = (binding.name != 0 ? binding.name : code->getLocalName(binding.slot));
+					scope->writeVar(rt, name, sp[0]);
+				}
 				break;
 			}
 			case WRITE_CLOSURE_POP_OP: {
@@ -2542,8 +2597,14 @@ void Processor::innerRun() {
 				const UInt32 bindingIndex = static_cast<UInt32>(im);
 				assert(bindingIndex < code->getCapturedBindingCount());
 				const CapturedBinding& binding = code->getCapturedBinding(bindingIndex);
-				const String* name = (binding.name != 0 ? binding.name : code->getLocalName(binding.slot));
-				scope->writeVar(rt, name, sp[0]);
+				Value* slot = 0;
+				if (scope->resolveCapturedBinding(binding, slot)) {
+					assert(slot != 0);
+					*slot = sp[0];
+				} else {
+					const String* name = (binding.name != 0 ? binding.name : code->getLocalName(binding.slot));
+					scope->writeVar(rt, name, sp[0]);
+				}
 				pop(1);
 				break;
 			}
@@ -2735,8 +2796,13 @@ void Processor::innerRun() {
 				const UInt32 bindingIndex = static_cast<UInt32>(im);
 				assert(bindingIndex < code->getCapturedBindingCount());
 				const CapturedBinding& binding = code->getCapturedBinding(bindingIndex);
-				const String* name = (binding.name != 0 ? binding.name : code->getLocalName(binding.slot));
-				push(scope->deleteVar(rt, name));
+				Value* slot = 0;
+				if (scope->resolveCapturedBinding(binding, slot)) {
+					push(false);
+				} else {
+					const String* name = (binding.name != 0 ? binding.name : code->getLocalName(binding.slot));
+					push(scope->deleteVar(rt, name));
+				}
 				break;
 			}
 			
@@ -3013,6 +3079,7 @@ struct Compiler::SemanticScope {
 Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter, const CapturedLexicalContext* capturedParent)
 		: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
 		, mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
+		, allowClosureSlots(capturedParent == 0 ? true : capturedParent->allowClosureSlots)
 		, nestCounter(initialNestCounter), capturedLexical(capturedParent), capturedBindings(&gcList.getHeap()) { }
 
 const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e) {
@@ -3740,6 +3807,9 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			if ((xr.t == ExpressionResult::NAMED || xr.t == ExpressionResult::CLOSURE) && xr.v.equalsString(EVAL_STRING)) {
 				callOp = Processor::CALL_EVAL_OP;
 			}
+			if (callOp == Processor::CALL_EVAL_OP) {
+				allowClosureSlots = false;
+			}
 			if (xr.t == ExpressionResult::PROPERTY) {
 				callOp = Processor::CALL_METHOD_OP;
 			} else {
@@ -3804,7 +3874,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
 	Code* func = new(heap) Code(heap.managed(), code->constants);
-	CapturedLexicalContext childContext(capturedLexical, code, withScopeCounter == 0);
+	CapturedLexicalContext childContext(capturedLexical, code, allowClosureSlots && withScopeCounter == 0);
 	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter, &childContext);
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
