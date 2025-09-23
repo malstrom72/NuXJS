@@ -164,6 +164,23 @@ int error_handling_example_main() {
 		heap.gc(); // for testing purposes only
 	} catch (const ScriptException& ex) {
 		std::wcout << L"C++ caught again: " << ex.what() << std::endl;
+		if (ex.hasLocation()) {
+			const String* fileName = ex.getFileName();
+			std::string location = (fileName != 0 ? fileName->toUTF8String() : std::string("<anonymous>"));
+			if (ex.getLineNumber() > 0) {
+				location.append(":");
+				location.append(std::to_string(ex.getLineNumber()));
+				if (ex.getColumnNumber() > 0) {
+					location.append(":");
+					location.append(std::to_string(ex.getColumnNumber()));
+				}
+			}
+			std::cout << "  location: " << location << std::endl;
+		}
+		const char* formattedStack = ex.formatStackTrace();
+		if (formattedStack != 0 && formattedStack[0] != '\0') {
+			std::cout << "  stack: " << formattedStack << std::endl;
+		}
 		heap.gc(); // for testing purposes only
 	}
 	return 0;
