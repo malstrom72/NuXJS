@@ -119,6 +119,16 @@ This strategy keeps the compiler untouched and confines the work to the VM plus 
 ### 3. Precomputed scope-slot tables per activation
 Another pragmatic option is to build (once per activation) a small array of parent slot pointers that mirrors the lexical chain. When `FunctionScope` is constructed, it can walk its `parentScope` links, collecting pointers to each ancestor’s `localsPointer` and maybe the bloom filters for quick rejects.【F:src/NuXJS.cpp†L1997-L2067】 `READ_NAMED_OP` would still hash the identifier in the first scope, but once it knows the ancestor index, it can index directly into the cached pointer array on future hits. This keeps bytecode unchanged yet amortizes the parent traversal cost. The trade-off is higher per-call memory and the need to refresh the tables whenever intermediate scopes such as `CatchScope` or `WithScope` are pushed/popped.【F:src/NuXJS.cpp†L2249-L2287】【F:src/NuXJS.cpp†L2305-L2327】
 
+## Tooling visibility updates
+* The REPL disassembler now prints the number of captured bindings for each function and dumps the `(depth, slot)` table with friendly names so captured-slot opcodes are easy to interpret when debugging bytecode.【F:tools/NuXJSREPL.cpp†L296-L313】
+* Legacy console tooling mirrors the same summary, including per-entry names, so script developers can inspect closure metadata without attaching the full debugger.【F:tools/work/LegacyReplTests.cpp†L332-L380】
+
+## Regression coverage
+* Added `closureCapturedSlotsBasics20250210.io` to lock in direct, aliased, and multi-level closure behaviour across the new opcodes, keeping the fast path under test when nested functions mutate parameters or capture grandparent slots.【F:tests/regression/closureCapturedSlotsBasics20250210.io†L1-L51】
+
+## Performance sampling
+* Running the release interpreter on a microbenchmark that repeatedly increments a captured variable shows the closure-slot path finishing a 20 000-iteration harness in about 2 s, whereas the same workload forced through a named lookup takes roughly 7 s, demonstrating the win from bypassing hash-based scope resolution.【0106d6†L1】【204917†L1-L2】
+
 ## Considerations and open questions
 * **Dynamic scope semantics.** Any solution must respect `with`, direct `eval`, and dynamically declared vars. The compiler already tracks `withScopeCounter`, and the runtime routes eval-created bindings into `dynamicVars`; both signals can be reused to disable caching where correctness would otherwise break.【F:src/NuXJS.cpp†L2010-L2104】【F:src/NuXJS.cpp†L4048-L4055】
 * **Arguments aliasing.** Parameters share storage with the `arguments` object until it is detached. Fast paths must keep writing through the canonical slot so that aliasing semantics are preserved.【F:src/NuXJS.cpp†L1997-L2059】

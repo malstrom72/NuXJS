@@ -24,8 +24,8 @@ This roadmap breaks the closure-slot work into incremental milestones. Each mile
 - [x] Run `timeout 180 ./build.sh`.
 
 ## Milestone 4 – Validation, tooling, and documentation
-- [ ] Port debugger, inspector, and logging utilities to display closure-slot operands and captured-binding tables.
-- [ ] Add regression tests that exercise nested closures, argument aliasing, dynamic scopes, and serialization/deserialization with the new opcodes.
-- [ ] Document the closure-slot behavior and guard policy in `docs/outer-closure-fast-binding.md`, summarizing runtime fallbacks.
-- [ ] Conduct targeted performance sampling to quantify wins versus the baseline NAMED path.
-- [ ] Run `timeout 180 ./build.sh`.
+- [x] Port debugger, inspector, and logging utilities to display closure-slot operands and captured-binding tables.
+- [x] Add regression tests that exercise nested closures, argument aliasing, dynamic scopes, and serialization/deserialization with the new opcodes.
+- [x] Document the closure-slot behavior and guard policy in `docs/outer-closure-fast-binding.md`, summarizing runtime fallbacks.
+- [x] Conduct targeted performance sampling to quantify wins versus the baseline NAMED path.
+- [x] Run `timeout 180 ./build.sh`.
