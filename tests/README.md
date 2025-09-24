@@ -1,14 +1,14 @@
 # Test Suite
 
-This folder contains regression tests written in `.io` format. Each file lists commands and expected output for the NuXJS interpreter. The helper script `tools/test.pika` reads these files, generates a temporary `.js` input file and checks that the interpreter output matches.
+This folder contains regression tests written in `.io` format. Each file lists commands and expected output for the NuXJS interpreter. The helper script `tools/test.node.js` reads these files, generates a temporary `.js` input file and checks that the interpreter output matches.
 
 ## Running the tests
 
-The top-level `build.sh` script builds both configurations and runs all tests by calling `tools/buildAndTest.sh`. That script invokes `tools/test.pika` under `PikaCmd` to execute every `.io` file.
+The top-level `build.sh` script builds both configurations and runs all tests by calling `tools/buildAndTest.sh`. That script invokes `node tools/test.node.js` to execute every `.io` file.
 
-## `tools/test.pika`
+## `tools/test.node.js`
 
-`tools/test.pika` is a PikaCmd script that drives the tests. It accepts several command-line options:
+`tools/test.node.js` is a Node.js script that drives the tests. It accepts several command-line options:
 
 - `-e` – validate sections that expect errors (lines starting with `!`). Without this flag such sections are skipped.
 - `-k <dir>` – keep the generated input files in the given directory instead of using a temporary directory.
