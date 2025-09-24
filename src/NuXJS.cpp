@@ -4103,8 +4103,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
 			const bool didAcceptInOperator = acceptInOperator;
 			acceptInOperator = true;
-			makeRValue(operand(op), false);
-			emit(Processor::OBJ_TO_STRING_OP);
+			makeRValue(operand(op), true, Processor::OBJ_TO_STRING_OP);
 			acceptInOperator = didAcceptInOperator;
 			xr = ExpressionResult(ExpressionResult::PROPERTY);
 			break;
