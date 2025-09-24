@@ -34,16 +34,16 @@ file name and saves the `.io` file directly into `tests/` so it can be added as
 a regression case. Prefixing a line with `?` runs `print()` on that expression.
 
 Each `.io` file begins with a `// CLI:` directive that communicates additional
-arguments for the regression harness. The default comment (`// CLI:`) runs the
-test with the standard REPL settings, while values such as
-`// CLI: --legacy-exceptions` opt into compatibility modes when a regression
-still depends on the legacy diagnostics. The harness no longer injects
-compatibility options automatically, so annotate tests explicitly. Use
-`python3 tools/annotate_io_cli.py` to stamp the directive across new or existing
-tests so the suite stays consistent. The helper also provides
+arguments for the regression harness. The default comment (`// CLI:`) now
+exercises NuXJS with the modern exception diagnostics, and the suite keeps that
+empty directive in every converted test. When you truly need the compact legacy
+format (for example, to diff against archived transcripts), invoke the REPL
+manually with `--legacy-exceptions`/`-E`; the harness never injects that flag on
+its own. Use `python3 tools/annotate_io_cli.py` to stamp the directive across
+new or existing tests so the suite stays consistent. The helper also provides
 `--inventory-output`/`--inventory-format` switches so you can produce a JSON or
-CSV manifest of every test that still requests `--legacy-exceptions`, which is
-useful when planning expectation migrations.
+CSV manifest when auditing for legacy holdouts—the current inventory confirms
+none remain.
 
 Once those inventories are in place you can regenerate expectations without
 the compatibility flag via `python3 tools/rewrite_exception_expectations.py`.
@@ -64,8 +64,9 @@ the modern diagnostics. Key options:
   files or the inventory.
 
 During the rewrite the tool automatically strips `--legacy-exceptions` from the
-`// CLI:` directive so the regression harness stops injecting compatibility
-flags for the converted tests.
+`// CLI:` directive, records the modern directive in the inventory, and now
+marks each entry as verified so future audits can see that the files run cleanly
+without the compatibility flag.
 
 ## Embedding NuXJS
 

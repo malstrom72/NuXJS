@@ -3,7 +3,9 @@
 The following list mirrors `docs/LegacyExceptionInventory.json` and records which
 legacy tests now run with modern diagnostics. Each entry is checked once its
 `// CLI:` directive no longer requests `--legacy-exceptions` and the expectations
-have been regenerated with the interactive rewrite helper.
+have been regenerated with the interactive rewrite helper. All entries are now
+also validated by `tools/test.pika -e` so the inventory records both conversion
+and execution without the compatibility flag.
 
 - [x] tests/conforming/mandelbrot.io
 - [x] tests/conforming/unicodeIdentifiers.io

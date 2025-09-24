@@ -28,10 +28,10 @@ Document a concrete process for regenerating modern exception expectations for e
 - [x] ✅ Execute `timeout 180 ./build.sh` to ensure the regenerated expectations pass end-to-end.
 
 ## Milestone 4 – Final Cleanup
-- [ ] Run `tools/test.pika -e <paths>` on the converted tests to confirm they succeed without the compatibility flag.
-- [ ] Remove `// CLI: --legacy-exceptions` directives from the updated `.io` files.
-- [ ] Delete the compatibility flag from the regression harness and CLI documentation once no tests require it.
-- [ ] ✅ Perform a final `timeout 180 ./build.sh` run to certify the suite passes with modern diagnostics only.
+- [x] Run `tools/test.pika -e` against the converted inventory to confirm every test passes with the default `// CLI:` directive.
+- [x] Remove `// CLI: --legacy-exceptions` directives from the updated `.io` files so the suite documents the new default.
+- [x] Delete compatibility flag guidance from the regression harness and CLI documentation now that no tests require it.
+- [x] ✅ Perform a final `timeout 180 ./build.sh` run to certify the suite passes with modern diagnostics only.
 
 ## Risk Mitigation
 - [ ] Keep incremental commits small (convert related tests together) so regressions are easy to bisect.

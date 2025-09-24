@@ -1,322 +1,362 @@
 [
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/conforming/mandelbrot.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/conforming/unicodeIdentifiers.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/assignmentNullBaseBracketLeftFirst.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/assignmentPropertyKeyCoercionBeforeBaseCheck.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/assignmentUndefinedBaseBracketLeftFirst.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/badForInStatements.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/badInOperation.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/badNumericLiterals.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/escapedLFNotAllowed.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/forInNullUndefined.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/illegalReturn.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/illegalUseOfKeywords.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/invalidCallApply.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/nonObjectPrototype.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/notAConstructor.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/notAFunction.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/oldBadTest.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/postfixIncrementNullBaseBracketLeftFirst.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/postfixIncrementUndefinedBaseBracketLeftFirst.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/prefixIncrementNullBaseBracketLeftFirst.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/prefixIncrementUndefinedBaseBracketLeftFirst.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/referenceError.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/switchSyntax.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/variousRunTimeErrors.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/erroneous/withNullUndefined.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/extremes/extremeProtoChain.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/extremes/extremeRecursion.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/extremes/extremeValueStack.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/extremes/stackOverflow.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/migrated/goodOldTests_deleteStatement.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/regression/arrayPushLengthEdgeCases.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/regression/badObjectLiteral20190507.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/regression/badTokenParsing20191007.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/regression/badZeroArgsNewCall.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/regression/validArrayLengths.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/stdlib/dates.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/stdlib/regexps2.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/unconforming/cantAssignObjectToArrayLength.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/unsorted/20180412_231138.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   },
   {
     "converted": true,
-    "desired_cli": "// CLI: --legacy-exceptions",
-    "existing_cli": "// CLI: --legacy-exceptions",
+    "desired_cli": "// CLI:",
+    "existing_cli": "// CLI:",
     "modern_cli": "// CLI:",
     "path": "tests/unsorted/20180416_130544.io",
-    "requires_legacy": false
+    "requires_legacy": false,
+    "verified_modern": true
   }
 ]
