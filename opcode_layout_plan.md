@@ -10,10 +10,12 @@ This plan describes the instrumentation, analysis, search, and validation work n
 - [x] Execute the full benchmark suite (start with one run per test) under instrumentation and archive the resulting profiles for repeatability (see `docs/opcode_profiles/2025-09-23-benchmark.json`).
 
 ## 2. Model the layout optimisation problem
-- [ ] Build a script that ingests the dynamic opcode report and constructs a weighted directed graph whose nodes are handlers and whose edge weights are observed transition counts.
-- [ ] Normalise edge weights into probabilities (edge weight ÷ source opcode executions) so hotness comparisons are meaningful across handlers.
-- [ ] Identify the hottest opcodes and top transitions to prioritise during clustering.
-- [ ] Emit summaries—hotness rankings, transition matrices, and optional Graphviz renders—to guide manual inspection.
+- [x] Build a script that ingests the dynamic opcode report and constructs a weighted directed graph whose nodes are handlers and whose edge weights are observed transition counts.
+- [x] Normalise edge weights into probabilities (edge weight ÷ source opcode executions) so hotness comparisons are meaningful across handlers.
+- [x] Identify the hottest opcodes and top transitions to prioritise during clustering.
+- [x] Emit summaries—hotness rankings, transition matrices, and optional Graphviz renders—to guide manual inspection.
+
+The `tools/analyze_opcode_profile.js` helper consumes the JSON profiles, emits Markdown summaries, and can optionally produce a Graphviz `.dot` snapshot of the hottest transitions. The first generated report lives alongside the captured data in `docs/opcode_profiles/2025-09-23-analysis.md`.
 
 ## 3. Search for improved opcode orderings
 - [ ] Implement a greedy Pettis–Hansen-style clustering pass that seeds with the hottest opcode and repeatedly appends the most likely unseen successor.

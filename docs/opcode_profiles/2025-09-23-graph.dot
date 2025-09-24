@@ -1,0 +1,48 @@
+digraph opcode_transitions {
+	rankdir=LR;
+	node [shape=box, style=filled, fillcolor="#eef5ff"];
+	"CONST";
+	"USHR";
+	"READ_NAMED";
+	"OBJ_TO_NUMBER";
+	"READ_LOCAL_TO_NUMBER";
+	"WRITE_LOCAL_POP";
+	"OR";
+	"POP";
+	"TYPEOF_NAMED";
+	"XOR";
+	"RETURN";
+	"READ_LOCAL";
+	"VOID";
+	"SHL";
+	"WRITE_NAMED_POP";
+	"AND";
+	"GT";
+	"JT";
+	"CONST" -> "USHR" [label="10,076,016\\n0.6980", penwidth=3.79];
+	"READ_NAMED" -> "OBJ_TO_NUMBER" [label="8,792,832\\n0.7028", penwidth=3.81];
+	"READ_LOCAL_TO_NUMBER" -> "CONST" [label="7,359,236\\n0.3916", penwidth=2.57];
+	"READ_LOCAL_TO_NUMBER" -> "READ_LOCAL_TO_NUMBER" [label="7,359,142\\n0.3916", penwidth=2.57];
+	"WRITE_LOCAL_POP" -> "READ_LOCAL_TO_NUMBER" [label="7,359,092\\n0.7572", penwidth=4.03];
+	"OR" -> "WRITE_LOCAL_POP" [label="6,000,600\\n1.0000", penwidth=5.00];
+	"USHR" -> "OR" [label="6,000,600\\n0.5955", penwidth=3.38];
+	"OBJ_TO_NUMBER" -> "CONST" [label="5,075,620\\n0.5772", penwidth=3.31];
+	"POP" -> "READ_NAMED" [label="5,075,542\\n0.6513", penwidth=3.61];
+	"OBJ_TO_NUMBER" -> "READ_NAMED" [label="2,717,109\\n0.3090", penwidth=2.24];
+	"TYPEOF_NAMED" -> "POP" [label="2,716,947\\n1.0000", penwidth=5.00];
+	"XOR" -> "READ_LOCAL_TO_NUMBER" [label="2,716,944\\n0.5000", penwidth=3.00];
+	"USHR" -> "XOR" [label="2,716,944\\n0.2696", penwidth=2.08];
+	"RETURN" -> "POP" [label="2,358,523\\n1.0000", penwidth=5.00];
+	"POP" -> "READ_LOCAL" [label="1,358,555\\n0.1743", penwidth=1.70];
+	"READ_LOCAL" -> "POP" [label="1,358,498\\n0.4041", penwidth=2.62];
+	"VOID" -> "RETURN" [label="1,358,485\\n1.0000", penwidth=5.00];
+	"POP" -> "VOID" [label="1,358,485\\n0.1743", penwidth=1.70];
+	"CONST" -> "SHL" [label="1,358,482\\n0.0941", penwidth=1.38];
+	"READ_NAMED" -> "WRITE_NAMED_POP" [label="1,358,475\\n0.1086", penwidth=1.43];
+	"WRITE_NAMED_POP" -> "TYPEOF_NAMED" [label="1,358,474\\n0.3655", penwidth=2.46];
+	"WRITE_NAMED_POP" -> "POP" [label="1,358,473\\n0.3655", penwidth=2.46];
+	"AND" -> "WRITE_LOCAL_POP" [label="1,358,472\\n1.0000", penwidth=5.00];
+	"GT" -> "JT" [label="1,358,472\\n1.0000", penwidth=5.00];
+	"SHL" -> "XOR" [label="1,358,472\\n1.0000", penwidth=5.00];
+}
+
