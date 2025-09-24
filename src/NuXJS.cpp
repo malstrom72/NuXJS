@@ -2342,7 +2342,10 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ READ_LOCAL_TO_STRING_OP				, "READ_LOCAL_TO_STRING"				, +1	  , 0 },
 	{ WRITE_LOCAL_OP			 , "WRITE_LOCAL"			 , 0	  , 0 },
 	{ WRITE_LOCAL_POP_OP		 , "WRITE_LOCAL_POP"		 , -1	  , 0 },
-	{ READ_NAMED_OP				 , "READ_NAMED"				 , 1	  , 0 },
+	{ READ_NAMED_OP				 , "READ_NAMED"				 , +1	  , 0 },
+	{ READ_NAMED_TO_PRIMITIVE_OP		 , "READ_NAMED_TO_PRIMITIVE"	 , +1	  , 0 },
+	{ READ_NAMED_TO_NUMBER_OP			 , "READ_NAMED_TO_NUMBER"		 , +1	  , 0 },
+	{ READ_NAMED_TO_STRING_OP			 , "READ_NAMED_TO_STRING"		 , +1	  , 0 },
 	{ WRITE_NAMED_OP			 , "WRITE_NAMED"			 , 0	  , 0 },
 	{ WRITE_NAMED_POP_OP		 , "WRITE_NAMED_POP"		 , -1	  , 0 },
 	{ CHECK_OBJECT_COERCIBLE_OP	 , "CHECK_OBJECT_COERCIBLE"  , 0	  , 0 },
@@ -2737,6 +2740,45 @@ void Processor::innerRun() {
 				const String* name = constants[im].getString();
 				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
 					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+					return;
+				}
+				break;
+			}
+			case READ_NAMED_TO_PRIMITIVE_OP: {
+				const String* name = constants[im].getString();
+				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
+					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+					return;
+				}
+				const Value& value = sp[0];
+				if (value.isObject()) {
+					invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_PRIMITIVE_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
+					return;
+				}
+				break;
+			}
+			case READ_NAMED_TO_NUMBER_OP: {
+				const String* name = constants[im].getString();
+				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
+					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+					return;
+				}
+				const Value& value = sp[0];
+				if (value.isObject()) {
+					invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_NUMBER_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
+					return;
+				}
+				break;
+			}
+			case READ_NAMED_TO_STRING_OP: {
+				const String* name = constants[im].getString();
+				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
+					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+					return;
+				}
+				const Value& value = sp[0];
+				if (value.isObject()) {
+					invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_STRING_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
 					return;
 				}
 				break;
@@ -3503,7 +3545,22 @@ Compiler::ExpressionResult Compiler::makeRValue(const ExpressionResult& xr, bool
 				}
 			}
 			emit(Processor::READ_LOCAL_OP, xr.v.toInt()); break;
-		case ExpressionResult::NAMED: emitWithConstant(Processor::READ_NAMED_OP, xr.v); break;
+		case ExpressionResult::NAMED:
+			if (toPrimitive) {
+				if (toPrimitiveOp == Processor::OBJ_TO_PRIMITIVE_OP) {
+					emitWithConstant(Processor::READ_NAMED_TO_PRIMITIVE_OP, xr.v);
+					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
+				}
+				if (toPrimitiveOp == Processor::OBJ_TO_NUMBER_OP) {
+					emitWithConstant(Processor::READ_NAMED_TO_NUMBER_OP, xr.v);
+					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
+				}
+				if (toPrimitiveOp == Processor::OBJ_TO_STRING_OP) {
+					emitWithConstant(Processor::READ_NAMED_TO_STRING_OP, xr.v);
+					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
+				}
+			}
+			emitWithConstant(Processor::READ_NAMED_OP, xr.v); break;
 		case ExpressionResult::PROPERTY: emit(Processor::GET_PROPERTY_OP); break;
 		case ExpressionResult::SAFEKEPT: emit(Processor::REPUSH_OP
 				, (currentSection->inDeadCode() ? 0 : xr.v.toInt() - currentSection->stackDepth + 1)); break;

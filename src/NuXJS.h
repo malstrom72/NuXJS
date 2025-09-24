@@ -1540,6 +1540,9 @@ class Processor : public GCItem {
 			, WRITE_LOCAL_OP								// operand: local_index, stack: value -> value
 			, WRITE_LOCAL_POP_OP							// operand: local_index, stack: value ->
 			, READ_NAMED_OP									// operand: const_index (name), stack: -> value
+			, READ_NAMED_TO_PRIMITIVE_OP	// operand: const_index (name), stack: -> value (+1)
+			, READ_NAMED_TO_NUMBER_OP		// operand: const_index (name), stack: -> value (+1)
+			, READ_NAMED_TO_STRING_OP		// operand: const_index (name), stack: -> value (+1)
 			, WRITE_NAMED_OP								// operand: const_index (name), stack: value -> value
 			, WRITE_NAMED_POP_OP							// operand: const_index (name), stack: value ->
 			, CHECK_OBJECT_COERCIBLE_OP						// stack: value -> value
