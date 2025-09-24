@@ -12,8 +12,8 @@ function main() {
         let ignoreGold = false;
         let runs = 5;
         let makeGold = false;
-        let runsOverride = false;
-        let flipOutput = false;
+	let runsOverride = false;
+	let horizontalLayout = false;
 	const args = process.argv.slice(2);
 
 	function assignRuns(value) {
@@ -32,8 +32,8 @@ function main() {
                 const arg = args[i];
                 if (arg === "ignoregold") {
                         ignoreGold = true;
-                } else if (arg === "--flip") {
-                        flipOutput = true;
+		} else if (arg === "--horizontal") {
+			horizontalLayout = true;
                 } else if (arg === "--runs" || arg === "-r") {
                         if (++i >= args.length) throw new Error("Missing value for --runs.");
                         assignRuns(args[i]);
@@ -97,9 +97,9 @@ function main() {
                 deferredError = error;
         }
 
-        const summaryLines = flipOutput
-                ? buildFlippedLines(names, runColumns, timeLines)
-                : buildSummaryLines(names, widths, timeLines);
+	const summaryLines = horizontalLayout
+		? buildSummaryLines(names, widths, timeLines)
+		: buildFlippedLines(names, runColumns, timeLines);
         for (const line of summaryLines) console.log(line);
 
 	cleanupTempDir(tempDir);
