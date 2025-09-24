@@ -5,21 +5,23 @@ const fs = require("fs");
 const path = require("path");
 
 function usage() {
-	const message = [
-		"Usage: analyze_opcode_profile <profile.json> [--report=path] [--dot=path] [--top=N]",
-		"",
-		"Reads a dynamic opcode profile captured by the instrumentation and emits",
-		"summaries of opcode hotness plus transition probabilities. Optionally writes",
-		"a Graphviz .dot file describing the hottest transitions."
-	].join("\n");
-	console.error(message);
+const message = [
+"Usage: analyze_opcode_profile <profile.json> [--report=path] [--dot=path] [--top=N] [--order=path]",
+"",
+"Reads a dynamic opcode profile captured by the instrumentation and emits",
+"summaries of opcode hotness plus transition probabilities. Optionally writes",
+"a Graphviz .dot file describing the hottest transitions and a greedy",
+"Pettis–Hansen-style opcode order derived from the observed transitions."
+].join("\n");
+console.error(message);
 }
 
 function parseArgs(argv) {
-	let input = null;
-	let reportPath = null;
-	let dotPath = null;
-	let topN = 20;
+let input = null;
+let reportPath = null;
+let dotPath = null;
+let orderPath = null;
+let topN = 20;
 
 	for (let i = 2; i < argv.length; ++i) {
 		const arg = argv[i];
@@ -30,26 +32,28 @@ function parseArgs(argv) {
 			reportPath = arg.substring("--report=".length);
 		} else if (arg.startsWith("--dot=")) {
 			dotPath = arg.substring("--dot=".length);
-		} else if (arg.startsWith("--top=")) {
-			const value = parseInt(arg.substring("--top=".length), 10);
-			if (!Number.isFinite(value) || value <= 0) {
-				throw new Error("--top must be a positive integer");
-			}
-			topN = value;
-		} else if (arg.startsWith("--")) {
-			throw new Error("Unknown option: " + arg);
-		} else if (input === null) {
-			input = arg;
-		} else {
-			throw new Error("Unexpected argument: " + arg);
-		}
-	}
+} else if (arg.startsWith("--top=")) {
+const value = parseInt(arg.substring("--top=".length), 10);
+if (!Number.isFinite(value) || value <= 0) {
+throw new Error("--top must be a positive integer");
+}
+topN = value;
+} else if (arg.startsWith("--order=")) {
+orderPath = arg.substring("--order=".length);
+} else if (arg.startsWith("--")) {
+throw new Error("Unknown option: " + arg);
+} else if (input === null) {
+input = arg;
+} else {
+throw new Error("Unexpected argument: " + arg);
+}
+}
 
-	if (input === null) {
-		throw new Error("Missing input profile path");
-	}
+if (input === null) {
+throw new Error("Missing input profile path");
+}
 
-	return { input, reportPath, dotPath, topN };
+return { input, reportPath, dotPath, orderPath, topN };
 }
 
 function loadProfile(filePath) {
@@ -137,6 +141,139 @@ function collectTopEdges(graph) {
 	return edges;
 }
 
+function ensureCluster(graph, opcode, clusterMap, clusterList) {
+	if (clusterMap.has(opcode)) {
+		return clusterMap.get(opcode);
+	}
+	const cluster = {
+		nodes: [opcode],
+		entryCount: graph.opcodeCounts.get(opcode) || 0,
+		active: true
+	};
+	clusterMap.set(opcode, cluster);
+	clusterList.push(cluster);
+	return cluster;
+}
+
+function computeClusterGain(graph, fromCluster, toCluster) {
+	let gain = 0;
+	for (const source of fromCluster.nodes) {
+		const targets = graph.transitions.get(source);
+		if (!targets) {
+			continue;
+		}
+		for (const target of toCluster.nodes) {
+			gain += targets.get(target) || 0;
+		}
+	}
+	return gain;
+}
+
+function mergeClusters(clusterMap, left, right) {
+	if (!left.active || !right.active) {
+		return;
+	}
+	for (const opcode of right.nodes) {
+		clusterMap.set(opcode, left);
+	}
+	left.nodes = left.nodes.concat(right.nodes);
+	left.entryCount += right.entryCount;
+	right.active = false;
+}
+
+function computeClusterInternalWeight(graph, cluster) {
+	let weight = 0;
+	for (const source of cluster.nodes) {
+		const targets = graph.transitions.get(source);
+		if (!targets) {
+			continue;
+		}
+		for (const target of cluster.nodes) {
+			weight += targets.get(target) || 0;
+		}
+	}
+	return weight;
+}
+
+function computeSequentialCoverage(graph, order) {
+	let weight = 0;
+	for (let i = 0; i < order.length - 1; ++i) {
+		const from = order[i];
+		const to = order[i + 1];
+		const targets = graph.transitions.get(from);
+		if (targets && targets.has(to)) {
+			weight += targets.get(to);
+		}
+	}
+	return weight;
+}
+
+function buildGreedyClusters(graph) {
+	const clusterMap = new Map();
+	const clusterList = [];
+	graph.opcodeCounts.forEach((_, opcode) => {
+		ensureCluster(graph, opcode, clusterMap, clusterList);
+	});
+	graph.transitions.forEach((targets, from) => {
+		const fromCluster = ensureCluster(graph, from, clusterMap, clusterList);
+		targets.forEach((_, to) => {
+			ensureCluster(graph, to, clusterMap, clusterList);
+		});
+		clusterMap.set(from, fromCluster);
+	});
+
+	const edges = collectTopEdges(graph);
+	for (const edge of edges) {
+		const fromCluster = clusterMap.get(edge.from);
+		const toCluster = clusterMap.get(edge.to);
+		if (!fromCluster || !toCluster || fromCluster === toCluster) {
+			continue;
+		}
+		const forwardGain = computeClusterGain(graph, fromCluster, toCluster);
+		const backwardGain = computeClusterGain(graph, toCluster, fromCluster);
+		if (forwardGain === 0 && backwardGain === 0) {
+			continue;
+		}
+		if (forwardGain >= backwardGain) {
+			mergeClusters(clusterMap, fromCluster, toCluster);
+		} else {
+			mergeClusters(clusterMap, toCluster, fromCluster);
+		}
+	}
+
+	const activeClusters = clusterList.filter((cluster) => cluster.active);
+	activeClusters.sort((a, b) => {
+		if (b.entryCount !== a.entryCount) {
+			return b.entryCount - a.entryCount;
+		}
+		return a.nodes[0] < b.nodes[0] ? -1 : 1;
+	});
+
+	const order = [];
+	const clusterSummaries = [];
+	for (const cluster of activeClusters) {
+		const internalWeight = computeClusterInternalWeight(graph, cluster);
+		clusterSummaries.push({
+			nodes: cluster.nodes.slice(),
+			entryCount: cluster.entryCount,
+			internalWeight
+		});
+		for (const opcode of cluster.nodes) {
+			order.push(opcode);
+		}
+	}
+
+	const clusterCoverage = clusterSummaries.reduce((sum, info) => sum + info.internalWeight, 0);
+	const sequentialCoverage = computeSequentialCoverage(graph, order);
+
+	return {
+		clusters: clusterSummaries,
+		order,
+		clusterCoverage,
+		sequentialCoverage
+	};
+}
+
 function renderMatrix(graph, topOpNames) {
 	const header = ["From/To"].concat(topOpNames);
 	const rows = [header];
@@ -176,7 +313,7 @@ function tableToMarkdown(table) {
 	return lines.join("\n");
 }
 
-function buildReport(graph, topN) {
+function buildReport(graph, topN, clustering) {
 	const lines = [];
 	lines.push("# Opcode Profile Summary");
 	lines.push("");
@@ -220,7 +357,7 @@ function buildReport(graph, topN) {
 			continue;
 		}
 		const sortedTargets = Array.from(targets.entries())
-			.sort((a, b) => b[1] - a[1]);
+		.sort((a, b) => b[1] - a[1]);
 		lines.push("| Rank | Successor | Count | P(Next) |");
 		lines.push("| --- | --- | ---: | ---: |");
 		for (let j = 0; j < Math.min(maxSuccessors, sortedTargets.length); ++j) {
@@ -236,6 +373,36 @@ function buildReport(graph, topN) {
 	lines.push("");
 	lines.push(tableToMarkdown(renderMatrix(graph, topNames)));
 	lines.push("");
+
+	if (clustering) {
+		lines.push("## Greedy clustering candidate layout");
+		lines.push("");
+		lines.push("Covered transitions inside clusters: " + formatCount(clustering.clusterCoverage)
+		+ " (" + formatPercent(clustering.clusterCoverage, graph.totalTransitions) + ")");
+		lines.push("Covered transitions between sequential opcodes in the flattened order: "
+		+ formatCount(clustering.sequentialCoverage) + " ("
+		+ formatPercent(clustering.sequentialCoverage, graph.totalTransitions) + ")");
+		lines.push("");
+		for (let i = 0; i < clustering.clusters.length; ++i) {
+			const cluster = clustering.clusters[i];
+			lines.push("### Cluster " + (i + 1) + " (" + cluster.nodes.length + " opcodes)");
+			lines.push("");
+			lines.push("- Entry executions: " + formatCount(cluster.entryCount));
+			lines.push("- Internal transition weight: " + formatCount(cluster.internalWeight) + " ("
+			+ formatPercent(cluster.internalWeight, graph.totalTransitions) + ")");
+			lines.push("");
+			lines.push(cluster.nodes.map((opcode) => "`" + opcode + "`").join(", "));
+			lines.push("");
+		}
+		lines.push("### Flattened opcode order");
+		lines.push("");
+		lines.push("| Position | Opcode |");
+		lines.push("| ---: | --- |");
+		for (let i = 0; i < clustering.order.length; ++i) {
+			lines.push("| " + (i + 1) + " | " + clustering.order[i] + " |");
+		}
+		lines.push("");
+	}
 
 	return lines.join("\n");
 }
@@ -275,7 +442,8 @@ function main() {
 
 	const profile = loadProfile(args.input);
 	const graph = buildGraph(profile);
-	const report = buildReport(graph, args.topN);
+	const clustering = buildGreedyClusters(graph);
+	const report = buildReport(graph, args.topN, clustering);
 
 	if (args.reportPath) {
 		const resolvedReport = path.resolve(process.cwd(), args.reportPath);
@@ -290,6 +458,12 @@ function main() {
 		const resolvedDot = path.resolve(process.cwd(), args.dotPath);
 		fs.mkdirSync(path.dirname(resolvedDot), { recursive: true });
 		fs.writeFileSync(resolvedDot, buildDot(graph, edges, args.topN) + "\n", "utf8");
+	}
+
+	if (args.orderPath) {
+		const resolvedOrder = path.resolve(process.cwd(), args.orderPath);
+		fs.mkdirSync(path.dirname(resolvedOrder), { recursive: true });
+		fs.writeFileSync(resolvedOrder, clustering.order.join("\n") + "\n", "utf8");
 	}
 }
 

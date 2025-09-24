@@ -18,10 +18,10 @@ This plan describes the instrumentation, analysis, search, and validation work n
 The `tools/analyze_opcode_profile.js` helper consumes the JSON profiles, emits Markdown summaries, and can optionally produce a Graphviz `.dot` snapshot of the hottest transitions. The first generated report lives alongside the captured data in `docs/opcode_profiles/2025-09-23-analysis.md`.
 
 ## 3. Search for improved opcode orderings
-- [ ] Implement a greedy Pettis–Hansen-style clustering pass that seeds with the hottest opcode and repeatedly appends the most likely unseen successor.
-- [ ] Allow clusters to merge whenever doing so increases the total in-block transition weight.
+- [x] Implement a greedy Pettis–Hansen-style clustering pass that seeds with the hottest opcode and repeatedly appends the most likely unseen successor.
+- [x] Allow clusters to merge whenever doing so increases the total in-block transition weight.
 - [ ] Add optional metaheuristics (simulated annealing or integer programming) seeded with the greedy result to explore alternative layouts and escape local optima.
-- [ ] Produce candidate opcode orders accompanied by their estimated cost/benefit metrics.
+- [x] Produce candidate opcode orders accompanied by their estimated cost/benefit metrics.
 - [ ] Generate diffs or scripts that rewrite `Processor::innerRun` for each candidate to simplify experimentation.
 
 ## 4. Validate performance statistically
