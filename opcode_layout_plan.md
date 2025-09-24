@@ -32,9 +32,9 @@ The analyzer now accepts `--greedy-rewrite` and `--anneal-rewrite` options which
 A new helper script (`tools/run_opcode_layout_experiment.js`) now applies rewrite scripts, rebuilds each candidate, and drives the benchmark harness so layout experiments can iterate without manual rebuilds.
 
 - [x] Automate rebuilding the interpreter for each candidate ordering.
-- [ ] Run the benchmark harness for both baseline and reordered interpreters with enough iterations (dozens of runs per workload) to capture stable timing distributions.
-- [ ] Record raw timing data and compute summary statistics (mean, median, variance) for every workload.
-- [ ] Apply statistical tests (e.g., Welch's t-test or bootstrap confidence intervals) to compare baseline and reordered timings, flagging statistically significant deltas.
-- [ ] Aggregate wins and regressions across the suite to judge net impact.
-- [ ] Document the methodology, captured data, and conclusions in a dedicated report.
+- [x] Run the benchmark harness for both baseline and reordered interpreters with enough iterations (dozens of runs per workload) to capture stable timing distributions.
+- [x] Record raw timing data and compute summary statistics (mean, median, variance) for every workload.
+- [x] Apply statistical tests (e.g., Welch's t-test or bootstrap confidence intervals) to compare baseline and reordered timings, flagging statistically significant deltas.
+- [x] Aggregate wins and regressions across the suite to judge net impact.
+- [x] Document the methodology, captured data, and conclusions in a dedicated report.
 - [ ] Integrate profiling, search, and validation into an automated pipeline so future opcode changes can be re-evaluated quickly.

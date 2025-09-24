@@ -7,9 +7,25 @@ const {spawnSync} = require("child_process");
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const TARGET_SOURCE = path.resolve(REPO_ROOT, "src/NuXJS.cpp");
-const BUILD_COMMAND = {
-	command: "timeout",
-	args: ["180", "./build.sh"],
+const BUILD_COMMANDS = {
+        full: {
+                command: "timeout",
+                args: ["180", "./build.sh"],
+                label: "timeout 180 ./build.sh",
+        },
+        nujs: {
+                command: "bash",
+                args: [
+                        path.resolve(REPO_ROOT, "tools/BuildCpp.sh"),
+                        "release",
+                        "native",
+                        "./output/NuXJS",
+                        "tools/NuXJSREPL.cpp",
+                        "src/NuXJS.cpp",
+                        "src/stdlibJS.cpp",
+                ],
+                label: "bash tools/BuildCpp.sh release native ./output/NuXJS ...",
+        },
 };
 const BENCHMARK_COMMAND = {
 	command: path.resolve(REPO_ROOT, "externals/PikaCmd/PikaCmd"),
@@ -43,13 +59,16 @@ function ensureCleanWorktree() {
 }
 
 function parseArgs(argv) {
-	const candidates = [];
-	let runsPerBenchmark = 1;
-	let iterations = 1;
-	let outputPath = null;
+        const candidates = [];
+        let runsPerBenchmark = 1;
+        let iterations = 1;
+        let outputPath = null;
+        let buildMode = "full";
+        let allowDirty = false;
+        let testsPattern = "-";
 
-	for (let i = 0; i < argv.length; ++i) {
-		const arg = argv[i];
+        for (let i = 0; i < argv.length; ++i) {
+                const arg = argv[i];
 		if (arg === "--candidate") {
 			if (i + 1 >= argv.length) {
 				fail("--candidate requires a value.");
@@ -71,34 +90,71 @@ function parseArgs(argv) {
 			iterations = parsePositiveInt(argv[++i], "--iterations");
 		} else if (arg.startsWith("--iterations=")) {
 			iterations = parsePositiveInt(arg.substring("--iterations=".length), "--iterations");
-		} else if (arg === "--output") {
-			if (i + 1 >= argv.length) {
-				fail("--output requires a value.");
-			}
-			outputPath = path.resolve(argv[++i]);
-		} else if (arg.startsWith("--output=")) {
-			outputPath = path.resolve(arg.substring("--output=".length));
-		} else if (arg === "--help" || arg === "-h") {
-			usage();
-			process.exit(0);
-		} else {
-			fail(`Unknown argument: ${arg}`);
-		}
-	}
+                } else if (arg === "--output") {
+                        if (i + 1 >= argv.length) {
+                                fail("--output requires a value.");
+                        }
+                        outputPath = path.resolve(argv[++i]);
+                } else if (arg.startsWith("--output=")) {
+                        outputPath = path.resolve(arg.substring("--output=".length));
+                } else if (arg === "--build") {
+                        if (i + 1 >= argv.length) {
+                                fail("--build requires a value.");
+                        }
+                        buildMode = parseBuildMode(argv[++i]);
+                } else if (arg.startsWith("--build=")) {
+                        buildMode = parseBuildMode(arg.substring("--build=".length));
+                } else if (arg === "--allow-dirty") {
+                        allowDirty = true;
+                } else if (arg === "--tests") {
+                        if (i + 1 >= argv.length) {
+                                fail("--tests requires a value.");
+                        }
+                        testsPattern = parseTestsPattern(argv[++i]);
+                } else if (arg.startsWith("--tests=")) {
+                        testsPattern = parseTestsPattern(arg.substring("--tests=".length));
+                } else if (arg === "--help" || arg === "-h") {
+                        usage();
+                        process.exit(0);
+                } else {
+                        fail(`Unknown argument: ${arg}`);
+                }
+        }
 
-	if (candidates.length === 0) {
-		candidates.push({
+        if (candidates.length === 0) {
+                candidates.push({
 			label: "baseline",
 			rewrite: null,
 		});
 	}
 
-	return {
-		candidates,
-		runsPerBenchmark,
-		iterations,
-		outputPath,
-	};
+        return {
+                candidates,
+                runsPerBenchmark,
+                iterations,
+                outputPath,
+                buildMode,
+                allowDirty,
+                testsPattern,
+        };
+}
+
+function parseBuildMode(value) {
+        if (!value) {
+                fail("--build requires a non-empty mode name.");
+        }
+        if (!Object.prototype.hasOwnProperty.call(BUILD_COMMANDS, value)) {
+                const known = Object.keys(BUILD_COMMANDS).join(", ");
+                fail(`Unknown build mode '${value}'. Known modes: ${known}`);
+        }
+        return value;
+}
+
+function parseTestsPattern(value) {
+        if (!value || value.length === 0) {
+                fail("--tests requires a non-empty pattern.");
+        }
+        return value;
 }
 
 function parseCandidate(value) {
@@ -139,10 +195,13 @@ function parsePositiveInt(value, flag) {
 }
 
 function usage() {
-	console.log("Usage: run_opcode_layout_experiment [--candidate label[:rewrite.js]]... [--runs N] [--iterations N] [--output file]");
-	console.log("");
-	console.log("Each candidate is rebuilt (applying the rewrite script when provided) and the benchmark harness is executed");
-	console.log("the requested number of iterations. Results are persisted as JSON when --output is supplied.");
+        console.log("Usage: run_opcode_layout_experiment [--candidate label[:rewrite.js]]... [--runs N] [--iterations N] [--output file] [--build mode] [--tests pattern] [--allow-dirty]");
+        console.log("");
+        console.log("Each candidate is rebuilt (applying the rewrite script when provided) and the benchmark harness is executed");
+        console.log("the requested number of iterations. Results are persisted as JSON when --output is supplied.");
+        console.log("Known build modes: " + Object.keys(BUILD_COMMANDS).join(", "));
+        console.log("--allow-dirty skips the clean worktree check (use with caution).");
+        console.log("--tests overrides the benchmark glob pattern (defaults to '-')");
 }
 
 function runCommand(command, args, options) {
@@ -189,33 +248,62 @@ function applyRewrite(scriptPath) {
 	};
 }
 
-function runBuild() {
-	return runCommand(BUILD_COMMAND.command, BUILD_COMMAND.args);
+function runBuild(buildMode) {
+        const command = BUILD_COMMANDS[buildMode];
+        if (!command) {
+                fail(`Unsupported build mode: ${buildMode}`);
+        }
+        return runCommand(command.command, command.args);
 }
 
-function runBenchmark(runsPerBenchmark) {
-	const args = BENCHMARK_COMMAND.args.slice();
-	args.push(String(runsPerBenchmark));
-	if (!fs.existsSync(BENCHMARK_COMMAND.command)) {
-		fail(`Benchmark executable not found: ${BENCHMARK_COMMAND.command}. Build the project first.`);
-	}
-	return runCommand(BENCHMARK_COMMAND.command, args);
+function runBenchmark(runsPerBenchmark, testsPattern) {
+        const args = BENCHMARK_COMMAND.args.slice();
+        args[1] = testsPattern;
+        args.push(String(runsPerBenchmark));
+        if (!fs.existsSync(BENCHMARK_COMMAND.command)) {
+                fail(`Benchmark executable not found: ${BENCHMARK_COMMAND.command}. Build the project first.`);
+        }
+        return runCommand(BENCHMARK_COMMAND.command, args);
+}
+
+function describeBuildCommand(mode) {
+        const command = BUILD_COMMANDS[mode];
+        if (!command) {
+                return `<unknown build mode ${mode}>`;
+        }
+        if (command.label) {
+                return command.label;
+        }
+        return `${command.command} ${command.args.join(" ")}`;
+}
+
+function describeBenchmarkCommand(runsPerBenchmark, testsPattern) {
+        const args = [testsPattern, "--runs", String(runsPerBenchmark)].join(" ");
+        return `${BENCHMARK_COMMAND.command} ${BENCHMARK_COMMAND.args[0]} ${args}`;
 }
 
 function main() {
-	ensureRepoRoot();
-	ensureCleanWorktree();
-	const options = parseArgs(process.argv.slice(2));
-	const originalSource = fs.readFileSync(TARGET_SOURCE, "utf8");
-	const results = {
-		generatedAt: new Date().toISOString(),
-		runsPerBenchmark: options.runsPerBenchmark,
-		iterations: options.iterations,
-		repository: REPO_ROOT,
-		candidates: [],
-	};
+        ensureRepoRoot();
+        const options = parseArgs(process.argv.slice(2));
+        if (!options.allowDirty) {
+                ensureCleanWorktree();
+        } else {
+                console.warn("Warning: running experiments with a dirty working tree.");
+        }
+        const originalSource = fs.readFileSync(TARGET_SOURCE, "utf8");
+        const results = {
+                generatedAt: new Date().toISOString(),
+                runsPerBenchmark: options.runsPerBenchmark,
+                iterations: options.iterations,
+                buildMode: options.buildMode,
+                buildCommand: describeBuildCommand(options.buildMode),
+                allowDirty: options.allowDirty,
+                testsPattern: options.testsPattern,
+                repository: REPO_ROOT,
+                candidates: [],
+        };
 
-	for (const candidate of options.candidates) {
+        for (const candidate of options.candidates) {
 		console.log(`\n=== Candidate: ${candidate.label} ===`);
 		fs.writeFileSync(TARGET_SOURCE, originalSource);
 		let rewriteResult = null;
@@ -232,29 +320,29 @@ function main() {
 			console.log("Using baseline opcode order.");
 		}
 
-		const buildResult = runBuild();
-		console.log(`Build exited with status ${buildResult.status} in ${buildResult.durationMs.toFixed(0)}ms.`);
-		if (buildResult.status !== 0) {
-			console.error(buildResult.stdout);
-			console.error(buildResult.stderr);
-			cleanupSource(originalSource);
+                const buildResult = runBuild(options.buildMode);
+                console.log(`Build exited with status ${buildResult.status} in ${buildResult.durationMs.toFixed(0)}ms.`);
+                if (buildResult.status !== 0) {
+                        console.error(buildResult.stdout);
+                        console.error(buildResult.stderr);
+                        cleanupSource(originalSource);
 			fail("Build failed.");
 		}
 
 		const iterationResults = [];
-		for (let iteration = 0; iteration < options.iterations; ++iteration) {
-			console.log(`Running benchmarks (iteration ${iteration + 1} / ${options.iterations})...`);
-			const benchResult = runBenchmark(options.runsPerBenchmark);
-			console.log(`Benchmark exited with status ${benchResult.status} in ${benchResult.durationMs.toFixed(0)}ms.`);
-			iterationResults.push({
-				iteration,
-				status: benchResult.status,
-				signal: benchResult.signal,
-				durationMs: benchResult.durationMs,
-				stdout: benchResult.stdout,
-				stderr: benchResult.stderr,
-				command: `${BENCHMARK_COMMAND.command} ${BENCHMARK_COMMAND.args[0]} ${BENCHMARK_COMMAND.args[1]} --runs ${options.runsPerBenchmark}`,
-			});
+                for (let iteration = 0; iteration < options.iterations; ++iteration) {
+                        console.log(`Running benchmarks (iteration ${iteration + 1} / ${options.iterations})...`);
+                        const benchResult = runBenchmark(options.runsPerBenchmark, options.testsPattern);
+                        console.log(`Benchmark exited with status ${benchResult.status} in ${benchResult.durationMs.toFixed(0)}ms.`);
+                        iterationResults.push({
+                                iteration,
+                                status: benchResult.status,
+                                signal: benchResult.signal,
+                                durationMs: benchResult.durationMs,
+                                stdout: benchResult.stdout,
+                                stderr: benchResult.stderr,
+                                command: describeBenchmarkCommand(options.runsPerBenchmark, options.testsPattern),
+                        });
 			if (benchResult.status !== 0) {
 				console.error(benchResult.stdout);
 				console.error(benchResult.stderr);
@@ -265,17 +353,17 @@ function main() {
 		results.candidates.push({
 			label: candidate.label,
 			rewriteScript: candidate.rewrite,
-			build: {
-				status: buildResult.status,
-				signal: buildResult.signal,
-				durationMs: buildResult.durationMs,
-				stdout: buildResult.stdout,
-				stderr: buildResult.stderr,
-				command: `${BUILD_COMMAND.command} ${BUILD_COMMAND.args.join(" ")}`,
-			},
-			iterations: iterationResults,
-		});
-	}
+                        build: {
+                                status: buildResult.status,
+                                signal: buildResult.signal,
+                                durationMs: buildResult.durationMs,
+                                stdout: buildResult.stdout,
+                                stderr: buildResult.stderr,
+                                command: describeBuildCommand(options.buildMode),
+                        },
+                        iterations: iterationResults,
+                });
+        }
 
 	cleanupSource(originalSource);
 

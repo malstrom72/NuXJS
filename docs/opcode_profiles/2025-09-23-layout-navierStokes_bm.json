@@ -1,0 +1,76 @@
+{
+  "generatedAt": "2025-09-24T12:54:58.852Z",
+  "runsPerBenchmark": 4,
+  "iterations": 3,
+  "buildMode": "nujs",
+  "buildCommand": "bash tools/BuildCpp.sh release native ./output/NuXJS ...",
+  "allowDirty": true,
+  "testsPattern": "navierStokes_bm.js",
+  "repository": "/workspace/NuXJS",
+  "candidates": [
+    {
+      "label": "baseline",
+      "rewriteScript": null,
+      "build": {
+        "status": 0,
+        "signal": null,
+        "durationMs": 6173.652435,
+        "stdout": "Compiling ./output/NuXJS release native using g++\n-fvisibility=hidden -fvisibility-inlines-hidden -Wno-trigraphs -Wreturn-type -Wunused-variable -Os -DNDEBUG  -o ./output/NuXJS tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp\nCompiled ./output/NuXJS successfully\n",
+        "stderr": "",
+        "command": "bash tools/BuildCpp.sh release native ./output/NuXJS ..."
+      },
+      "iterations": [
+        {
+          "iteration": 0,
+          "status": 0,
+          "signal": null,
+          "durationMs": 16828.653216,
+          "stdout": "navierStokes_bm\n---------------\n4.26365s\n4.47712s\n3.9258s\n3.87592s\nmedian: 4.094725s\n\n        navierStokes_bm  \n        ---------------  \nmedian  4.094725s        \nmem1    2.86062MiB       \nmem2    3.58688MiB       \nmem3    4.08079MiB       \n\nmedian of all tests: 4.094725s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika navierStokes_bm.js --runs 4"
+        },
+        {
+          "iteration": 1,
+          "status": 0,
+          "signal": null,
+          "durationMs": 16531.181617,
+          "stdout": "navierStokes_bm\n---------------\n4.00302s\n4.02267s\n4.10122s\n4.11072s\nmedian: 4.061945s\n\n        navierStokes_bm  \n        ---------------  \nmedian  4.061945s        \nmem1    2.86062MiB       \nmem2    3.58688MiB       \nmem3    4.08079MiB       \n\nmedian of all tests: 4.061945s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika navierStokes_bm.js --runs 4"
+        },
+        {
+          "iteration": 2,
+          "status": 0,
+          "signal": null,
+          "durationMs": 16041.930961,
+          "stdout": "navierStokes_bm\n---------------\n4.00283s\n3.88513s\n3.89761s\n3.96763s\nmedian: 3.93262s\n\n        navierStokes_bm  \n        ---------------  \nmedian  3.93262s         \nmem1    2.86062MiB       \nmem2    3.58688MiB       \nmem3    4.08079MiB       \n\nmedian of all tests: 3.93262s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika navierStokes_bm.js --runs 4"
+        }
+      ]
+    },
+    {
+      "label": "anneal",
+      "rewriteScript": "/workspace/NuXJS/docs/opcode_profiles/2025-09-23-anneal-rewrite.js",
+      "build": {
+        "status": 0,
+        "signal": null,
+        "durationMs": 5462.167644,
+        "stdout": "Compiling ./output/NuXJS release native using g++\n-fvisibility=hidden -fvisibility-inlines-hidden -Wno-trigraphs -Wreturn-type -Wunused-variable -Os -DNDEBUG  -o ./output/NuXJS tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp\nCompiled ./output/NuXJS successfully\n",
+        "stderr": "",
+        "command": "bash tools/BuildCpp.sh release native ./output/NuXJS ..."
+      },
+      "iterations": [
+        {
+          "iteration": 0,
+          "status": 255,
+          "signal": null,
+          "durationMs": 800.056827,
+          "stdout": "navierStokes_bm\n---------------\nSegmentation fault\n   ! (unknown)() !   ... ], 1));     mem1 = runLines[1] <!!!!> ;     mem2 = runLines[2];      ...\n   ! iterate(@::names, \">::{\\n\\t\\tname = $2;\\n\\t\\tfn = name # '.js';\\n\\t\\tprint(name);\\n\\t\\tprint(repeat('-', length(name)));\\n\\t\\tcmd = bak...) !   ... s(p = @[$0][i])) $1(p, i, [p]) <!!!!>  else $1(p, i);  ( i ) }\n   ! (unknown)() !   ...  # medianString # LF);   }  }) <!!!!> ; }\nUndefined: 'runLines.1'\n   ! (unknown)() !   ... dians, chop(timeLines[name][0] <!!!!> , 1)); }\n   ! iterate(@::names, \">::{\\n\\tname = $2;\\n\\tlines[0] #= name # repeat(' ', widths[name] - length(name)) # '  ';\\n\\tlines[1] #= repeat('-',...) !   ... s(p = @[$0][i])) $1(p, i, [p]) <!!!!>  else $1(p, i);  ( i ) }\n   ! (unknown)() !   ... op(timeLines[name][0], 1)); }) <!!!!> ; iterate(@lines, >print($2)); ...\n   ! (unknown)() !   ... s{find($s, \"\\n\"):} })($0), @$) <!!!!> \n",
+          "stderr": "!!!! Undefined: 'timeLines.navierStokes_bm.0'\n",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika navierStokes_bm.js --runs 4"
+        }
+      ]
+    }
+  ]
+}
