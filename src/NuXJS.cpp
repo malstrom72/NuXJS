@@ -2488,24 +2488,35 @@ void Processor::innerRun() {
 		const Opcode opcode = static_cast<Opcode>(instruction & 0xFF);
 		const Int32 im = instruction >> 8;
 		switch (opcode) {
-			case CONST_OP:				push(constants[im]); break;
-			case READ_LOCAL_OP:			assert(locals != 0); push(locals[im]); break;
-			case READ_LOCAL_TO_PRIMITIVE_OP: {
-				assert(locals != 0);
-				const Value& value = locals[im];
-				push(value);
-				if (value.isObject()) {
-					invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_PRIMITIVE_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
+			case READ_NAMED_OP: {
+				const String* name = constants[im].getString();
+				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
+					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
 					return;
 				}
-				break;
 			}
+			break;
+
+			case READ_LOCAL_OP:		     assert(locals != 0); push(locals[im]); break;
+			case CONST_OP:				  push(constants[im]); break;
+			case WRITE_LOCAL_POP_OP:	assert(locals != 0); locals[im] = sp[0]; pop(1); break;
+
 			case READ_LOCAL_TO_NUMBER_OP: {
 				assert(locals != 0);
 				const Value& value = locals[im];
 				push(value);
 				if (value.isObject()) {
 					invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_NUMBER_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
+					return;
+				}
+				break;
+			}
+			case READ_LOCAL_TO_PRIMITIVE_OP: {
+				assert(locals != 0);
+				const Value& value = locals[im];
+				push(value);
+				if (value.isObject()) {
+					invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_PRIMITIVE_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
 					return;
 				}
 				break;
@@ -2520,21 +2531,21 @@ void Processor::innerRun() {
 				}
 				break;
 			}
-			case WRITE_LOCAL_OP:		assert(locals != 0); locals[im] = sp[0]; break;
-			case WRITE_LOCAL_POP_OP:	assert(locals != 0); locals[im] = sp[0]; pop(1); break;
-			
-			case READ_NAMED_OP: {
-				const String* name = constants[im].getString();
-				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
-					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+			case WRITE_LOCAL_OP:	    assert(locals != 0); locals[im] = sp[0]; break;
+			case POP_OP:		            assert(im >= 0); pop(im); break;
+
+			case OBJ_TO_PRIMITIVE_OP:
+			case OBJ_TO_NUMBER_OP:
+			case OBJ_TO_STRING_OP: {
+				const Object* o = sp[0].asObject();
+				if (o != 0) {
+					assert(0 <= opcode - OBJ_TO_PRIMITIVE_OP && opcode - OBJ_TO_PRIMITIVE_OP < 3);
+					invokeFunction(rt.toPrimitiveFunctions[opcode - OBJ_TO_PRIMITIVE_OP], 0, 1);
 					return;
 				}
+				break;
 			}
-			break;
-			
-			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
-			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
-			
+
 			case CHECK_OBJECT_COERCIBLE_OP: {
 				if (sp[0].isUndefined() || sp[0].isNull()) {
 					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
@@ -2542,6 +2553,38 @@ void Processor::innerRun() {
 				}
 				break;
 			}
+
+			case CALL_OP: {
+				Function* const f = asFunction(sp[-im]);
+				if (f != 0) {
+					invokeFunction(f, im, im);
+				}
+				return;
+			}
+			case CALL_METHOD_OP: {
+				Object* const o = convertToObject(sp[-im - 1], true);
+				if (o != 0) {
+					Value v(UNDEFINED_VALUE);
+					Function* f;
+					const Value& name = sp[-im];
+					if (o->getProperty(rt, name, &v) == NONEXISTENT || (f = v.asFunction()) == 0) {
+						error(TYPE_ERROR, new(heap) String(heap.managed(), *name.toString(heap), IS_NOT_A_FUNCTION_STRING));
+					} else {
+						invokeFunction(f, im + 1, im, o);
+					}
+				}
+				return;
+			}
+			case CALL_EVAL_OP: {
+				Function* f = asFunction(sp[-im]);
+				if (f != 0) {
+					invokeFunction((f == rt.evalFunction ? &DIRECT_EVAL_FUNCTION : f), im, im);
+				}
+				return;
+			}
+
+			case WRITE_NAMED_OP:	    scope->writeVar(rt, constants[im].getString(), sp[0]); break;
+			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
 
 			case GET_PROPERTY_OP: {
 				const Object* o = convertToObject(sp[-1], false);
@@ -2579,18 +2622,6 @@ void Processor::innerRun() {
 				break;
 			}
 
-			case OBJ_TO_PRIMITIVE_OP:
-			case OBJ_TO_NUMBER_OP:
-			case OBJ_TO_STRING_OP: {
-				const Object* o = sp[0].asObject();
-				if (o != 0) {
-					assert(0 <= opcode - OBJ_TO_PRIMITIVE_OP && opcode - OBJ_TO_PRIMITIVE_OP < 3);
-					invokeFunction(rt.toPrimitiveFunctions[opcode - OBJ_TO_PRIMITIVE_OP], 0, 1);
-					return;
-				}
-				break;
-			}
-				
 			case PRE_EQ_OP: {
 				// FIX : doesn't feel totally efficient this...
 				if (sp[-1].isObject() != sp[0].isObject()) {
@@ -2644,43 +2675,11 @@ void Processor::innerRun() {
 			case JT_OR_POP_OP:		if (sp[0].toBool()) ip += im; else pop(1); break;
 			case JF_OR_POP_OP:		if (!sp[0].toBool()) ip += im; else pop(1); break;
 
-			case POP_OP:			assert(im >= 0); pop(im); break;
-			case PUSH_BACK_OP:		assert(im >= 0); sp[-im] = sp[0]; pop(im); break;
+			case PUSH_BACK_OP:	assert(im >= 0); sp[-im] = sp[0]; pop(im); break;
 			case REPUSH_OP:			assert(im <= 0); push(sp[im]); break;
 			case SWAP_OP:			std::swap(sp[-1], sp[0]); break;
 			case REPUSH_2_OP:		push(sp[-1]); push(sp[-1]); break;
 			case POST_SHUFFLE_OP:	push(sp[0]); sp[-1] = sp[-2]; sp[-2] = sp[-3]; sp[-3] = sp[0]; break;
-
-			case CALL_OP: {
-				Function* const f = asFunction(sp[-im]);
-				if (f != 0) {
-					invokeFunction(f, im, im);
-				}
-				return;
-			}
-			
-			case CALL_METHOD_OP: {
-				Object* const o = convertToObject(sp[-im - 1], true);
-				if (o != 0) {
-					Value v(UNDEFINED_VALUE);
-					Function* f;
-					const Value& name = sp[-im];
-					if (o->getProperty(rt, name, &v) == NONEXISTENT || (f = v.asFunction()) == 0) {
-						error(TYPE_ERROR, new(heap) String(heap.managed(), *name.toString(heap), IS_NOT_A_FUNCTION_STRING));
-					} else {
-						invokeFunction(f, im + 1, im, o);
-					}
-				}
-				return;
-			}
-			
-			case CALL_EVAL_OP: {
-				Function* f = asFunction(sp[-im]);
-				if (f != 0) {
-					invokeFunction((f == rt.evalFunction ? &DIRECT_EVAL_FUNCTION : f), im, im);
-				}
-				return;
-			}
 
 			case NEW_OP: newOperation(im); return;
 			case NEW_RESULT_OP: pop2push1(sp[0].isObject() ? sp[0] : sp[-1]); break;
