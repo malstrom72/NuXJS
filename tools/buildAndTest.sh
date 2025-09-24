@@ -22,7 +22,7 @@ bash ./BuildCpp.sh $target $model ../output/NuXJSTest_${target}_${model} ../tool
 ../output/NuXJSTest_${target}_${model} -s >/dev/null 2>&1
 ../output/NuXJSTest_${target}_${model}
 bash ./BuildCpp.sh $target $model ../output/NuXJS_${target}_${model} ../tools/NuXJSREPL.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
-../externals/PikaCmd/PikaCmd ./test.pika -e -x ../output/NuXJS_${target}_${model} ../tests/
+../externals/PikaCmd/PikaCmd ./test.pika -e -x "../output/NuXJS_${target}_${model} -s --legacy-exceptions" ../tests/
 bash ./runExamples.sh "$target"
 
 echo Success!
