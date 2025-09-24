@@ -20,9 +20,11 @@ The `tools/analyze_opcode_profile.js` helper consumes the JSON profiles, emits M
 ## 3. Search for improved opcode orderings
 - [x] Implement a greedy Pettis–Hansen-style clustering pass that seeds with the hottest opcode and repeatedly appends the most likely unseen successor.
 - [x] Allow clusters to merge whenever doing so increases the total in-block transition weight.
-- [ ] Add optional metaheuristics (simulated annealing or integer programming) seeded with the greedy result to explore alternative layouts and escape local optima.
+- [x] Add optional metaheuristics (simulated annealing or integer programming) seeded with the greedy result to explore alternative layouts and escape local optima.
 - [x] Produce candidate opcode orders accompanied by their estimated cost/benefit metrics.
 - [ ] Generate diffs or scripts that rewrite `Processor::innerRun` for each candidate to simplify experimentation.
+
+`tools/analyze_opcode_profile.js` now supports `--anneal` to run a simulated-annealing refinement over the greedy seed, and records the resulting order/coverage metrics (see `docs/opcode_profiles/2025-09-23-annealing.md`).
 
 ## 4. Validate performance statistically
 - [ ] Automate rebuilding the interpreter for each candidate ordering.

@@ -6,12 +6,19 @@ const path = require("path");
 
 function usage() {
 const message = [
-"Usage: analyze_opcode_profile <profile.json> [--report=path] [--dot=path] [--top=N] [--order=path]",
+"Usage: analyze_opcode_profile <profile.json> [--report=path] [--dot=path] [--top=N]",
+"                                         [--order=path] [--anneal] [--anneal-order=path]",
+"                                         [--anneal-iterations=N] [--anneal-start=T] [--anneal-end=T]",
 "",
 "Reads a dynamic opcode profile captured by the instrumentation and emits",
 "summaries of opcode hotness plus transition probabilities. Optionally writes",
 "a Graphviz .dot file describing the hottest transitions and a greedy",
-"Pettis–Hansen-style opcode order derived from the observed transitions."
+"Pettis–Hansen-style opcode order derived from the observed transitions.",
+"",
+"When --anneal is provided, the tool also runs a simulated-annealing search",
+"seeded with the greedy result to find higher-coverage opcode permutations.",
+"Use --anneal-iterations, --anneal-start, and --anneal-end to tweak the",
+"temperature schedule, and --anneal-order to capture the best-found order.",
 ].join("\n");
 console.error(message);
 }
@@ -22,6 +29,11 @@ let reportPath = null;
 let dotPath = null;
 let orderPath = null;
 let topN = 20;
+let runAnnealing = false;
+let annealOrderPath = null;
+let annealIterations = 50000;
+let annealStart = 1.0;
+let annealEnd = 0.001;
 
 	for (let i = 2; i < argv.length; ++i) {
 		const arg = argv[i];
@@ -32,28 +44,63 @@ let topN = 20;
 			reportPath = arg.substring("--report=".length);
 		} else if (arg.startsWith("--dot=")) {
 			dotPath = arg.substring("--dot=".length);
-} else if (arg.startsWith("--top=")) {
-const value = parseInt(arg.substring("--top=".length), 10);
-if (!Number.isFinite(value) || value <= 0) {
-throw new Error("--top must be a positive integer");
-}
-topN = value;
-} else if (arg.startsWith("--order=")) {
-orderPath = arg.substring("--order=".length);
-} else if (arg.startsWith("--")) {
-throw new Error("Unknown option: " + arg);
-} else if (input === null) {
-input = arg;
-} else {
-throw new Error("Unexpected argument: " + arg);
-}
-}
-
-if (input === null) {
-throw new Error("Missing input profile path");
-}
-
-return { input, reportPath, dotPath, orderPath, topN };
+		} else if (arg.startsWith("--top=")) {
+			const value = parseInt(arg.substring("--top=".length), 10);
+			if (!Number.isFinite(value) || value <= 0) {
+				throw new Error("--top must be a positive integer");
+			}
+			topN = value;
+		} else if (arg.startsWith("--order=")) {
+			orderPath = arg.substring("--order=".length);
+		} else if (arg === "--anneal") {
+			runAnnealing = true;
+		} else if (arg.startsWith("--anneal-order=")) {
+			runAnnealing = true;
+			annealOrderPath = arg.substring("--anneal-order=".length);
+		} else if (arg.startsWith("--anneal-iterations=")) {
+			const value = parseInt(arg.substring("--anneal-iterations=".length), 10);
+			if (!Number.isFinite(value) || value <= 0) {
+				throw new Error("--anneal-iterations must be a positive integer");
+			}
+			runAnnealing = true;
+			annealIterations = value;
+		} else if (arg.startsWith("--anneal-start=")) {
+			const value = Number(arg.substring("--anneal-start=".length));
+			if (!Number.isFinite(value) || value <= 0) {
+				throw new Error("--anneal-start must be a positive number");
+			}
+			runAnnealing = true;
+			annealStart = value;
+		} else if (arg.startsWith("--anneal-end=")) {
+			const value = Number(arg.substring("--anneal-end=".length));
+			if (!Number.isFinite(value) || value <= 0) {
+				throw new Error("--anneal-end must be a positive number");
+			}
+			runAnnealing = true;
+			annealEnd = value;
+		} else if (arg.startsWith("--")) {
+			throw new Error("Unknown option: " + arg);
+		} else if (input === null) {
+			input = arg;
+		} else {
+			throw new Error("Unexpected argument: " + arg);
+		}
+	}
+	if (input === null) {
+		throw new Error("Missing input profile path");
+	}
+	return {
+		input,
+		reportPath,
+		dotPath,
+		orderPath,
+		topN,
+		runAnnealing,
+		annealOrderPath,
+		annealIterations,
+		annealStart,
+		annealEnd
+	};
 }
 
 function loadProfile(filePath) {
@@ -208,6 +255,96 @@ function computeSequentialCoverage(graph, order) {
 	return weight;
 }
 
+function interpolateTemperature(start, end, progress) {
+	if (start === end) {
+		return start;
+	}
+	const ratio = end / start;
+	return start * Math.pow(ratio, progress);
+}
+
+function runSimulatedAnnealing(graph, initialOrder, iterations, startTemp, endTemp) {
+	const orderLength = initialOrder.length;
+	if (orderLength < 2 || iterations <= 0) {
+		const baseline = computeSequentialCoverage(graph, initialOrder);
+		return {
+			order: initialOrder.slice(),
+			initialCoverage: baseline,
+			bestCoverage: baseline,
+			acceptedMoves: 0,
+			improvedMoves: 0,
+			iterations: 0,
+			startTemp,
+			endTemp
+		};
+	}
+
+	const currentOrder = initialOrder.slice();
+	let currentCoverage = computeSequentialCoverage(graph, currentOrder);
+	let bestOrder = currentOrder.slice();
+	let bestCoverage = currentCoverage;
+	let acceptedMoves = 0;
+	let improvedMoves = 0;
+
+	const maxIterations = Math.max(1, iterations);
+	const minTemp = Math.max(Number.EPSILON, Math.min(startTemp, endTemp));
+	const clampedStart = Math.max(minTemp, startTemp);
+	const clampedEnd = Math.max(minTemp, endTemp);
+
+	for (let step = 0; step < iterations; ++step) {
+		const progress = step / (maxIterations - 1 || 1);
+		const temperature = Math.max(minTemp, interpolateTemperature(clampedStart, clampedEnd, progress));
+		let i = Math.floor(Math.random() * orderLength);
+		let j = Math.floor(Math.random() * orderLength);
+		while (j === i) {
+			j = Math.floor(Math.random() * orderLength);
+		}
+		const a = Math.min(i, j);
+		const b = Math.max(i, j);
+		const candidateOrder = currentOrder.slice();
+		const temp = candidateOrder[a];
+		candidateOrder[a] = candidateOrder[b];
+		candidateOrder[b] = temp;
+		const candidateCoverage = computeSequentialCoverage(graph, candidateOrder);
+		const delta = candidateCoverage - currentCoverage;
+		let accept = false;
+		if (delta >= 0) {
+			accept = true;
+			if (delta > 0) {
+				++improvedMoves;
+			}
+		} else {
+			const probability = Math.exp(delta / temperature);
+			if (Math.random() < probability) {
+				accept = true;
+			}
+		}
+		if (!accept) {
+			continue;
+		}
+		++acceptedMoves;
+		for (let k = 0; k < orderLength; ++k) {
+			currentOrder[k] = candidateOrder[k];
+		}
+		currentCoverage = candidateCoverage;
+		if (candidateCoverage > bestCoverage) {
+			bestCoverage = candidateCoverage;
+			bestOrder = candidateOrder.slice();
+		}
+	}
+
+	return {
+		order: bestOrder,
+		initialCoverage: computeSequentialCoverage(graph, initialOrder),
+		bestCoverage,
+		acceptedMoves,
+		improvedMoves,
+		iterations,
+		startTemp: clampedStart,
+		endTemp: clampedEnd
+	};
+}
+
 function buildGreedyClusters(graph) {
 	const clusterMap = new Map();
 	const clusterList = [];
@@ -313,7 +450,7 @@ function tableToMarkdown(table) {
 	return lines.join("\n");
 }
 
-function buildReport(graph, topN, clustering) {
+function buildReport(graph, topN, clustering, annealing) {
 	const lines = [];
 	lines.push("# Opcode Profile Summary");
 	lines.push("");
@@ -404,6 +541,35 @@ function buildReport(graph, topN, clustering) {
 		lines.push("");
 	}
 
+	if (annealing) {
+		const delta = annealing.bestCoverage - annealing.initialCoverage;
+		lines.push("## Simulated annealing refinement");
+		lines.push("");
+		lines.push("Iterations: " + formatCount(annealing.iterations));
+		lines.push("Accepted moves: " + formatCount(annealing.acceptedMoves) + " ("
+		+ formatPercent(annealing.acceptedMoves, Math.max(1, annealing.iterations)) + ")");
+		lines.push("Improving moves: " + formatCount(annealing.improvedMoves) + " ("
+		+ formatPercent(annealing.improvedMoves, Math.max(1, annealing.acceptedMoves || 1)) + ")");
+		lines.push("Temperature schedule: " + annealing.startTemp.toFixed(4) + " → " + annealing.endTemp.toFixed(4));
+		lines.push("");
+		lines.push("Sequential coverage (greedy seed): " + formatCount(annealing.initialCoverage) + " ("
+		+ formatPercent(annealing.initialCoverage, graph.totalTransitions) + ")");
+		lines.push("Sequential coverage (best annealed): " + formatCount(annealing.bestCoverage) + " ("
+		+ formatPercent(annealing.bestCoverage, graph.totalTransitions) + ")");
+		lines.push("Coverage improvement over greedy: " + formatCount(delta) + " ("
+		+ formatPercent(delta, graph.totalTransitions) + ")");
+		lines.push("");
+		if (annealing.order && annealing.order.length) {
+			lines.push("### Annealed opcode order");
+			lines.push("");
+			lines.push("| Position | Opcode |");
+			lines.push("| ---: | --- |");
+			for (let i = 0; i < annealing.order.length; ++i) {
+				lines.push("| " + (i + 1) + " | " + annealing.order[i] + " |");
+			}
+			lines.push("");
+		}
+	}
 	return lines.join("\n");
 }
 
@@ -443,7 +609,11 @@ function main() {
 	const profile = loadProfile(args.input);
 	const graph = buildGraph(profile);
 	const clustering = buildGreedyClusters(graph);
-	const report = buildReport(graph, args.topN, clustering);
+	let annealing = null;
+	if (args.runAnnealing) {
+		annealing = runSimulatedAnnealing(graph, clustering.order, args.annealIterations, args.annealStart, args.annealEnd);
+	}
+	const report = buildReport(graph, args.topN, clustering, annealing);
 
 	if (args.reportPath) {
 		const resolvedReport = path.resolve(process.cwd(), args.reportPath);
@@ -464,6 +634,12 @@ function main() {
 		const resolvedOrder = path.resolve(process.cwd(), args.orderPath);
 		fs.mkdirSync(path.dirname(resolvedOrder), { recursive: true });
 		fs.writeFileSync(resolvedOrder, clustering.order.join("\n") + "\n", "utf8");
+	}
+
+	if (args.annealOrderPath && annealing && annealing.order) {
+		const resolvedAnneal = path.resolve(process.cwd(), args.annealOrderPath);
+		fs.mkdirSync(path.dirname(resolvedAnneal), { recursive: true });
+		fs.writeFileSync(resolvedAnneal, annealing.order.join("\n") + "\n", "utf8");
 	}
 }
 
