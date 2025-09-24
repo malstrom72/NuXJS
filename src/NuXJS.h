@@ -519,6 +519,7 @@ class Table {
 class Enumerator;
 class Processor;
 class Runtime;
+struct OpcodeProfiler;
 
 /**
 	Object is the root for all scriptable objects. It provides the default implementations for property access and
@@ -1115,6 +1116,7 @@ class Runtime : public GCItem {
 		};
 
 		Runtime(Heap& heap);
+		~Runtime();
 
 		void setGlobalObject(Object* newGlobals);		///< Assign a new global object. By default the global object is a standard JSObject.
 		void setStackSize(UInt32 maxValuesOnStack);		///< Sets the stack size used by the Processor constructor. Default stack size is 1024 elements (see above) which should be sufficient for normal use.
@@ -1150,6 +1152,13 @@ class Runtime : public GCItem {
 		virtual Var runUntilReturn(Processor& processor);
 		virtual double getCurrentEpochTime();			///< Get current utc time in milliseconds relative to Unix epoch (i.e. 0 is 1970-01-01T00:00:00Z). Override to implement higher resolution than standard C time() (whole seconds).
 
+		void configureOpcodeProfilingFromEnv();
+		void enableOpcodeProfiling(const char* outputPath = 0, bool dumpOnExit = false);
+		void disableOpcodeProfiling();
+		void resetOpcodeProfile();
+		void writeOpcodeProfile(const char* path) const;
+		bool isOpcodeProfilingEnabled() const;
+
 	protected:
 		const String* newStringConstantWithHash(UInt32 hash, const char* s);
 		void fetchFunction(const Object* supportObject, const char* name, Function** f);
@@ -1172,6 +1181,9 @@ class Runtime : public GCItem {
 		double unixEpochTimeDiff;
 
 		mutable const String* stringConstantsCache[STRING_CONSTANTS_CACHE_SIZE];
+		OpcodeProfiler* opcodeProfiler;
+	
+		void recordOpcodeDispatch(int previousOpcode, int currentOpcode);
 	
 	public:
 		virtual void gcMarkReferences(Heap& heap) const {
@@ -1675,6 +1687,7 @@ class Processor : public GCItem {
 		const CodeWord* ip;		// 0 = finished (or nothing invoked), run() will return false.
 		Value* sp;
 		Vector<Value> stack;
+		Opcode profileLastOpcode;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, currentFrame);

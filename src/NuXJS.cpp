@@ -42,6 +42,12 @@
 #include "assert.h"
 #include <cmath>
 #include "NuXJS.h"
+#include <algorithm>
+#include <cctype>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <mutex>
 #ifdef _MSC_VER
 #include <float.h>
 #endif
@@ -76,6 +82,183 @@ void operator delete[](void* ptr, NuXJS::Heap* heap) {
 }
 
 namespace NuXJS {
+
+struct OpcodeProfiler {
+OpcodeProfiler();
+
+void configureFromEnv();
+void enable(const char* outputPath, bool autoDump);
+void disable();
+void reset();
+bool isEnabled() const { return enabled; }
+void record(Processor::Opcode previous, Processor::Opcode current);
+void writeJson(std::ostream& out) const;
+bool shouldDumpOnExit() const { return dumpOnExit && enabled && !outputPath.empty(); }
+const std::string& getOutputPath() const { return outputPath; }
+
+private:
+void ensureAllocated();
+void clearCounters();
+static bool equalsIgnoreCase(const char* value, const char* literal);
+
+bool enabled;
+bool dumpOnExit;
+UInt32 opcodeCount;
+Vector<size_t, 0> opcodeCounts;
+Vector<size_t, 0> transitionCounts;
+std::string outputPath;
+mutable std::mutex mutex;
+};
+
+OpcodeProfiler::OpcodeProfiler() : enabled(false), dumpOnExit(false), opcodeCount(0), opcodeCounts(0), transitionCounts(0) { }
+
+bool OpcodeProfiler::equalsIgnoreCase(const char* value, const char* literal) {
+if (value == 0 || literal == 0) {
+return false;
+}
+while (*value != 0 && *literal != 0) {
+if (std::tolower(static_cast<unsigned char>(*value))
+!= std::tolower(static_cast<unsigned char>(*literal))) {
+return false;
+}
+++value;
+++literal;
+}
+return (*value == 0 && *literal == 0);
+}
+
+void OpcodeProfiler::ensureAllocated() {
+const UInt32 count = static_cast<UInt32>(Processor::OP_COUNT);
+if (opcodeCount != count) {
+opcodeCounts.resize(count);
+transitionCounts.resize(count * count);
+opcodeCount = count;
+}
+clearCounters();
+}
+
+void OpcodeProfiler::clearCounters() {
+if (opcodeCount == 0) {
+return;
+}
+std::fill(opcodeCounts.begin(), opcodeCounts.end(), static_cast<size_t>(0));
+std::fill(transitionCounts.begin(), transitionCounts.end(), static_cast<size_t>(0));
+}
+
+void OpcodeProfiler::configureFromEnv() {
+const char* output = std::getenv("NUXJS_OPCODE_PROFILE_OUT");
+if (output != 0 && *output != 0) {
+enable(output, true);
+return;
+}
+const char* flag = std::getenv("NUXJS_OPCODE_PROFILE");
+if (flag == 0 || *flag == 0) {
+return;
+}
+if (equalsIgnoreCase(flag, "0") || equalsIgnoreCase(flag, "false")
+|| equalsIgnoreCase(flag, "off")) {
+disable();
+return;
+}
+if (equalsIgnoreCase(flag, "1") || equalsIgnoreCase(flag, "true")
+|| equalsIgnoreCase(flag, "on")) {
+enable(0, false);
+} else {
+enable(flag, true);
+}
+}
+
+void OpcodeProfiler::enable(const char* outputPathValue, bool autoDump) {
+std::lock_guard<std::mutex> guard(mutex);
+ensureAllocated();
+enabled = true;
+if (outputPathValue != 0 && *outputPathValue != 0) {
+outputPath.assign(outputPathValue);
+}
+dumpOnExit = (autoDump && !outputPath.empty());
+}
+
+void OpcodeProfiler::disable() {
+std::lock_guard<std::mutex> guard(mutex);
+enabled = false;
+dumpOnExit = false;
+opcodeCount = 0;
+opcodeCounts.resize(0);
+transitionCounts.resize(0);
+outputPath.clear();
+}
+
+void OpcodeProfiler::reset() {
+std::lock_guard<std::mutex> guard(mutex);
+if (!enabled) {
+return;
+}
+clearCounters();
+}
+
+void OpcodeProfiler::record(Processor::Opcode previous, Processor::Opcode current) {
+if (!enabled) {
+return;
+}
+const UInt32 currentIndex = static_cast<UInt32>(current);
+if (currentIndex >= opcodeCount) {
+return;
+}
+std::lock_guard<std::mutex> guard(mutex);
+++opcodeCounts[currentIndex];
+if (previous != Processor::INVALID_OP) {
+const UInt32 previousIndex = static_cast<UInt32>(previous);
+if (previousIndex < opcodeCount) {
+const UInt32 offset = previousIndex * opcodeCount + currentIndex;
+++transitionCounts[offset];
+}
+}
+}
+
+void OpcodeProfiler::writeJson(std::ostream& out) const {
+std::lock_guard<std::mutex> guard(mutex);
+if (!enabled || opcodeCount == 0) {
+out << "{\n\t\"opcodes\":[],\n\t\"transitions\":[]\n}\n";
+return;
+}
+out << "{\n\t\"opcodes\":[\n";
+for (UInt32 i = 0; i < opcodeCount; ++i) {
+const Processor::Opcode opcode = static_cast<Processor::Opcode>(i);
+const Processor::OpcodeInfo& info = Processor::getOpcodeInfo(opcode);
+out << "\t\t{\"opcode\":\"" << info.mnemonic << "\",\"count\":"
+<< static_cast<unsigned long long>(opcodeCounts[i]) << "}";
+if (i + 1 < opcodeCount) {
+out << ",\n";
+} else {
+out << "\n";
+}
+}
+out << "\t],\n\t\"transitions\":[\n";
+bool first = true;
+for (UInt32 from = 0; from < opcodeCount; ++from) {
+const Processor::Opcode fromOpcode = static_cast<Processor::Opcode>(from);
+const Processor::OpcodeInfo& fromInfo = Processor::getOpcodeInfo(fromOpcode);
+for (UInt32 to = 0; to < opcodeCount; ++to) {
+const size_t count = transitionCounts[from * opcodeCount + to];
+if (count == 0) {
+continue;
+}
+if (!first) {
+out << ",\n";
+}
+first = false;
+const Processor::Opcode toOpcode = static_cast<Processor::Opcode>(to);
+const Processor::OpcodeInfo& toInfo = Processor::getOpcodeInfo(toOpcode);
+out << "\t\t{\"from\":\"" << fromInfo.mnemonic << "\",\"to\":\""
+<< toInfo.mnemonic << "\",\"count\":"
+<< static_cast<unsigned long long>(count) << "}";
+}
+}
+if (!first) {
+out << "\n";
+}
+out << "\t]\n}\n";
+}
 
 // MSVC (at least 2010) doesn't do fmod correctly with infinite divisor
 static double NaN() { return std::numeric_limits<double>::quiet_NaN(); }
@@ -2337,7 +2520,7 @@ struct Processor::WithScope : public Scope {
 };
 
 Processor::Processor(Runtime& rt) : super(rt.heap.roots()), rt(rt), heap(rt.heap), currentFrame(0), firstCatcher(0)
-, stack(rt.stackSize, &heap) {
+, stack(rt.stackSize, &heap), profileLastOpcode(INVALID_OP) {
 	stack[0] = UNDEFINED_VALUE;
 	reset();
 }
@@ -2364,6 +2547,7 @@ void Processor::enter(const Code* code, Scope* scope, Object* thisObject) {
 	} else {
 		pushFrame(code, scope, (thisObject == 0 ? rt.getGlobalObject() : thisObject));
 		ip = code->getCodeWords();
+		profileLastOpcode = INVALID_OP;
 	}
 }
 
@@ -2392,6 +2576,7 @@ void Processor::reset() {
 	firstCatcher = 0;
 	ip = 0;
 	sp = stack.begin();
+	profileLastOpcode = INVALID_OP;
 }
 
 void Processor::pushFrame(const Code* code, Scope* scope, Object* thisObject) {
@@ -2482,11 +2667,16 @@ void Processor::innerRun() {
 	const Value* constants = currentFrame->code->getConstants()->begin();
 	Value* locals = scope->getLocalsPointer();
 	Object* thisObject = currentFrame->thisObject;
+	const bool profileEnabled = rt.isOpcodeProfilingEnabled();
 
 	while (--cyclesLeft >= 0) {
 		const CodeWord instruction = *ip++;
 		const Opcode opcode = static_cast<Opcode>(instruction & 0xFF);
 		const Int32 im = instruction >> 8;
+		if (profileEnabled) {
+			rt.recordOpcodeDispatch(profileLastOpcode, opcode);
+		}
+		profileLastOpcode = opcode;
 		switch (opcode) {
 			case READ_LOCAL_OP: {
 				assert(locals != 0);
@@ -5080,7 +5270,7 @@ static struct NoRegExpSupport : public Function {
 Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap.roots()), globalObject(0)
 		, stackSize(STANDARD_JS_STACK_SIZE), callNestCounter(0), checkTimeOutCounter(0)
 		, timeOut(0), memoryCap(MAX_MEMORY_CAP), gcThreshold(AUTO_GC_MIN_SIZE), createRegExpFunction(&NO_REG_EXP_SUPPORT)
-		, evalFunction(&EVAL_FUNCTION), unixEpochTimeDiff(0.0), evalCodeCache(&heap) {
+		, evalFunction(&EVAL_FUNCTION), unixEpochTimeDiff(0.0), evalCodeCache(&heap), opcodeProfiler(new OpcodeProfiler()) {
 	std::fill(stringConstantsCache, stringConstantsCache + (1 << STRING_CONSTANTS_CACHE_SIZE_N), (const String*)(0));
 	std::fill(prototypes, prototypes + PROTOTYPE_COUNT, (Object*)(0));
 	std::fill(toPrimitiveFunctions + 0, toPrimitiveFunctions + 3, &DEFAULT_CONVERSION);
@@ -5096,7 +5286,73 @@ Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap
 		prototypes[FIRST_ERROR_PROTOTYPE + i] = new(heap) ErrorPrototype(heap.managed(), static_cast<ErrorType>(i));
 	}
 	globalObject = new(heap) JSObject(heap.managed(), objectProto);
+	configureOpcodeProfilingFromEnv();
 }
+Runtime::~Runtime() {
+	if (opcodeProfiler != 0) {
+		if (opcodeProfiler->shouldDumpOnExit()) {
+			writeOpcodeProfile(opcodeProfiler->getOutputPath().c_str());
+		}
+		delete opcodeProfiler;
+		opcodeProfiler = 0;
+	}
+}
+
+void Runtime::configureOpcodeProfilingFromEnv() {
+	if (opcodeProfiler != 0) {
+		opcodeProfiler->configureFromEnv();
+	}
+}
+
+void Runtime::enableOpcodeProfiling(const char* outputPath, bool dumpOnExit) {
+	if (opcodeProfiler != 0) {
+		opcodeProfiler->enable(outputPath, dumpOnExit);
+	}
+}
+
+void Runtime::disableOpcodeProfiling() {
+	if (opcodeProfiler != 0) {
+		opcodeProfiler->disable();
+	}
+}
+
+void Runtime::resetOpcodeProfile() {
+	if (opcodeProfiler != 0) {
+		opcodeProfiler->reset();
+	}
+}
+
+void Runtime::writeOpcodeProfile(const char* path) const {
+	if (opcodeProfiler == 0 || !opcodeProfiler->isEnabled()) {
+		return;
+	}
+	const char* resolvedPath = path;
+	std::string fallback;
+	if ((resolvedPath == 0 || *resolvedPath == 0) && opcodeProfiler->shouldDumpOnExit()) {
+		fallback = opcodeProfiler->getOutputPath();
+		resolvedPath = fallback.c_str();
+	}
+	if (resolvedPath == 0 || *resolvedPath == 0) {
+		return;
+	}
+	std::ofstream out(resolvedPath);
+	if (!out) {
+		std::cerr << "NuXJS: failed to open opcode profile output '" << resolvedPath << "'" << std::endl;
+		return;
+	}
+	opcodeProfiler->writeJson(out);
+}
+
+bool Runtime::isOpcodeProfilingEnabled() const {
+	return (opcodeProfiler != 0 && opcodeProfiler->isEnabled());
+}
+
+void Runtime::recordOpcodeDispatch(int previousOpcode, int currentOpcode) {
+	if (opcodeProfiler != 0) {
+		opcodeProfiler->record(static_cast<Processor::Opcode>(previousOpcode), static_cast<Processor::Opcode>(currentOpcode));
+	}
+}
+
 
 void Runtime::autoGC(bool checkOutOfMemory) {
 	if (heap.size() >= gcThreshold) {
