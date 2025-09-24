@@ -1,0 +1,112 @@
+{
+  "generatedAt": "2025-09-24T12:45:49.712Z",
+  "runsPerBenchmark": 6,
+  "iterations": 4,
+  "buildMode": "nujs",
+  "buildCommand": "bash tools/BuildCpp.sh release native ./output/NuXJS ...",
+  "allowDirty": true,
+  "testsPattern": "bigArray.js",
+  "repository": "/workspace/NuXJS",
+  "candidates": [
+    {
+      "label": "baseline",
+      "rewriteScript": null,
+      "build": {
+        "status": 0,
+        "signal": null,
+        "durationMs": 5637.143919,
+        "stdout": "Compiling ./output/NuXJS release native using g++\n-fvisibility=hidden -fvisibility-inlines-hidden -Wno-trigraphs -Wreturn-type -Wunused-variable -Os -DNDEBUG  -o ./output/NuXJS tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp\nCompiled ./output/NuXJS successfully\n",
+        "stderr": "",
+        "command": "bash tools/BuildCpp.sh release native ./output/NuXJS ..."
+      },
+      "iterations": [
+        {
+          "iteration": 0,
+          "status": 0,
+          "signal": null,
+          "durationMs": 13414.476986,
+          "stdout": "bigArray\n--------\n1.85076s\n1.78119s\n1.76635s\n1.71394s\n1.72346s\n1.79648s\nmedian: 1.77377s\n\n        bigArray    \n        ----------  \nmedian  1.77377s    \nmem1    164.435MiB  \nmem2    165.362MiB  \nmem3    165.368MiB  \n\nmedian of all tests: 1.77377s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika bigArray.js --runs 6"
+        },
+        {
+          "iteration": 1,
+          "status": 0,
+          "signal": null,
+          "durationMs": 13796.466164,
+          "stdout": "bigArray\n--------\n1.9331s\n1.78602s\n1.79568s\n1.79604s\n1.71647s\n1.71994s\nmedian: 1.79085s\n\n        bigArray    \n        ----------  \nmedian  1.79085s    \nmem1    164.435MiB  \nmem2    165.362MiB  \nmem3    165.368MiB  \n\nmedian of all tests: 1.79085s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika bigArray.js --runs 6"
+        },
+        {
+          "iteration": 2,
+          "status": 0,
+          "signal": null,
+          "durationMs": 13798.988851,
+          "stdout": "bigArray\n--------\n1.73207s\n1.80926s\n1.82147s\n1.83411s\n1.76669s\n1.71368s\nmedian: 1.787975s\n\n        bigArray    \n        ----------  \nmedian  1.787975s   \nmem1    164.435MiB  \nmem2    165.362MiB  \nmem3    165.368MiB  \n\nmedian of all tests: 1.787975s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika bigArray.js --runs 6"
+        },
+        {
+          "iteration": 3,
+          "status": 0,
+          "signal": null,
+          "durationMs": 13034.911049,
+          "stdout": "bigArray\n--------\n1.72361s\n1.74154s\n1.65454s\n1.68394s\n1.71919s\n1.6824s\nmedian: 1.701565s\n\n        bigArray    \n        ----------  \nmedian  1.701565s   \nmem1    164.435MiB  \nmem2    165.362MiB  \nmem3    165.368MiB  \n\nmedian of all tests: 1.701565s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika bigArray.js --runs 6"
+        }
+      ]
+    },
+    {
+      "label": "anneal",
+      "rewriteScript": "/workspace/NuXJS/docs/opcode_profiles/2025-09-23-anneal-rewrite.js",
+      "build": {
+        "status": 0,
+        "signal": null,
+        "durationMs": 5658.365005,
+        "stdout": "Compiling ./output/NuXJS release native using g++\n-fvisibility=hidden -fvisibility-inlines-hidden -Wno-trigraphs -Wreturn-type -Wunused-variable -Os -DNDEBUG  -o ./output/NuXJS tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp\nCompiled ./output/NuXJS successfully\n",
+        "stderr": "",
+        "command": "bash tools/BuildCpp.sh release native ./output/NuXJS ..."
+      },
+      "iterations": [
+        {
+          "iteration": 0,
+          "status": 0,
+          "signal": null,
+          "durationMs": 13474.395073,
+          "stdout": "bigArray\n--------\n1.88539s\n1.75752s\n1.77924s\n1.68018s\n1.63477s\n1.75151s\nmedian: 1.754515s\n\n        bigArray    \n        ----------  \nmedian  1.754515s   \nmem1    164.435MiB  \nmem2    165.362MiB  \nmem3    165.368MiB  \n\nmedian of all tests: 1.754515s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika bigArray.js --runs 6"
+        },
+        {
+          "iteration": 1,
+          "status": 0,
+          "signal": null,
+          "durationMs": 13804.238201,
+          "stdout": "bigArray\n--------\n1.71935s\n1.65328s\n1.70442s\n1.89552s\n1.9316s\n1.79381s\nmedian: 1.75658s\n\n        bigArray    \n        ----------  \nmedian  1.75658s    \nmem1    164.435MiB  \nmem2    165.362MiB  \nmem3    165.368MiB  \n\nmedian of all tests: 1.75658s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika bigArray.js --runs 6"
+        },
+        {
+          "iteration": 2,
+          "status": 0,
+          "signal": null,
+          "durationMs": 13468.192964,
+          "stdout": "bigArray\n--------\n1.74318s\n1.74433s\n1.76253s\n1.65184s\n1.80901s\n1.6962s\nmedian: 1.743755s\n\n        bigArray    \n        ----------  \nmedian  1.743755s   \nmem1    164.435MiB  \nmem2    165.362MiB  \nmem3    165.368MiB  \n\nmedian of all tests: 1.743755s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika bigArray.js --runs 6"
+        },
+        {
+          "iteration": 3,
+          "status": 0,
+          "signal": null,
+          "durationMs": 13191.669649,
+          "stdout": "bigArray\n--------\n1.70891s\n1.69444s\n1.669s\n1.70573s\n1.78903s\n1.64581s\nmedian: 1.700085s\n\n        bigArray    \n        ----------  \nmedian  1.700085s   \nmem1    164.435MiB  \nmem2    165.362MiB  \nmem3    165.368MiB  \n\nmedian of all tests: 1.700085s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika bigArray.js --runs 6"
+        }
+      ]
+    }
+  ]
+}

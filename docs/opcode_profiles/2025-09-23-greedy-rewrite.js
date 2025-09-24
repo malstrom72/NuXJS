@@ -126,8 +126,8 @@ function findSwitchBounds(source) {
 			}
 			continue;
 		}
-		if (inDoubleQuote) {
-			if (!escape && ch === """) {
+                if (inDoubleQuote) {
+                        if (!escape && ch === "\"") {
 				inDoubleQuote = false;
 			}
 			escape = !escape && ch === "\\";
@@ -151,7 +151,7 @@ function findSwitchBounds(source) {
 			++i;
 			continue;
 		}
-		if (ch === """) {
+                if (ch === "\"") {
 			inDoubleQuote = true;
 			continue;
 		}

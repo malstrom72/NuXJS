@@ -1,0 +1,76 @@
+{
+  "generatedAt": "2025-09-24T12:53:04.335Z",
+  "runsPerBenchmark": 4,
+  "iterations": 3,
+  "buildMode": "nujs",
+  "buildCommand": "bash tools/BuildCpp.sh release native ./output/NuXJS ...",
+  "allowDirty": true,
+  "testsPattern": "chess_bm.js",
+  "repository": "/workspace/NuXJS",
+  "candidates": [
+    {
+      "label": "baseline",
+      "rewriteScript": null,
+      "build": {
+        "status": 0,
+        "signal": null,
+        "durationMs": 5571.813173,
+        "stdout": "Compiling ./output/NuXJS release native using g++\n-fvisibility=hidden -fvisibility-inlines-hidden -Wno-trigraphs -Wreturn-type -Wunused-variable -Os -DNDEBUG  -o ./output/NuXJS tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp\nCompiled ./output/NuXJS successfully\n",
+        "stderr": "",
+        "command": "bash tools/BuildCpp.sh release native ./output/NuXJS ..."
+      },
+      "iterations": [
+        {
+          "iteration": 0,
+          "status": 0,
+          "signal": null,
+          "durationMs": 29840.829174,
+          "stdout": "chess_bm\n--------\n7.44085s\n7.36854s\n7.39737s\n7.32025s\nmedian: 7.382955s\n\n        chess_bm    \n        ----------  \nmedian  7.382955s   \nmem1    4.60859MiB  \nmem2    4.85511MiB  \nmem3    5.482MiB    \n\nmedian of all tests: 7.382955s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika chess_bm.js --runs 4"
+        },
+        {
+          "iteration": 1,
+          "status": 0,
+          "signal": null,
+          "durationMs": 32508.846342,
+          "stdout": "chess_bm\n--------\n7.58362s\n7.46059s\n8.19068s\n8.92904s\nmedian: 7.88715s\n\n        chess_bm    \n        ----------  \nmedian  7.88715s    \nmem1    4.60859MiB  \nmem2    4.85511MiB  \nmem3    5.482MiB    \n\nmedian of all tests: 7.88715s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika chess_bm.js --runs 4"
+        },
+        {
+          "iteration": 2,
+          "status": 0,
+          "signal": null,
+          "durationMs": 30624.088385,
+          "stdout": "chess_bm\n--------\n7.68335s\n7.79948s\n7.43514s\n7.42009s\nmedian: 7.559245s\n\n        chess_bm    \n        ----------  \nmedian  7.559245s   \nmem1    4.60859MiB  \nmem2    4.85511MiB  \nmem3    5.482MiB    \n\nmedian of all tests: 7.559245s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika chess_bm.js --runs 4"
+        }
+      ]
+    },
+    {
+      "label": "anneal",
+      "rewriteScript": "/workspace/NuXJS/docs/opcode_profiles/2025-09-23-anneal-rewrite.js",
+      "build": {
+        "status": 0,
+        "signal": null,
+        "durationMs": 5763.200355,
+        "stdout": "Compiling ./output/NuXJS release native using g++\n-fvisibility=hidden -fvisibility-inlines-hidden -Wno-trigraphs -Wreturn-type -Wunused-variable -Os -DNDEBUG  -o ./output/NuXJS tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp\nCompiled ./output/NuXJS successfully\n",
+        "stderr": "",
+        "command": "bash tools/BuildCpp.sh release native ./output/NuXJS ..."
+      },
+      "iterations": [
+        {
+          "iteration": 0,
+          "status": 255,
+          "signal": null,
+          "durationMs": 116.050915,
+          "stdout": "chess_bm\n--------\nSegmentation fault\n   ! (unknown)() !   ... ], 1));     mem1 = runLines[1] <!!!!> ;     mem2 = runLines[2];      ...\n   ! iterate(@::names, \">::{\\n\\t\\tname = $2;\\n\\t\\tfn = name # '.js';\\n\\t\\tprint(name);\\n\\t\\tprint(repeat('-', length(name)));\\n\\t\\tcmd = bak...) !   ... s(p = @[$0][i])) $1(p, i, [p]) <!!!!>  else $1(p, i);  ( i ) }\n   ! (unknown)() !   ...  # medianString # LF);   }  }) <!!!!> ; }\nUndefined: 'runLines.1'\n   ! (unknown)() !   ... dians, chop(timeLines[name][0] <!!!!> , 1)); }\n   ! iterate(@::names, \">::{\\n\\tname = $2;\\n\\tlines[0] #= name # repeat(' ', widths[name] - length(name)) # '  ';\\n\\tlines[1] #= repeat('-',...) !   ... s(p = @[$0][i])) $1(p, i, [p]) <!!!!>  else $1(p, i);  ( i ) }\n   ! (unknown)() !   ... op(timeLines[name][0], 1)); }) <!!!!> ; iterate(@lines, >print($2)); ...\n   ! (unknown)() !   ... s{find($s, \"\\n\"):} })($0), @$) <!!!!> \n",
+          "stderr": "!!!! Undefined: 'timeLines.chess_bm.0'\n",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika chess_bm.js --runs 4"
+        }
+      ]
+    }
+  ]
+}

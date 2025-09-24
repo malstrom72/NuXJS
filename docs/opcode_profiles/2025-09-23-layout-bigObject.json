@@ -1,0 +1,94 @@
+{
+  "generatedAt": "2025-09-24T12:50:34.216Z",
+  "runsPerBenchmark": 4,
+  "iterations": 3,
+  "buildMode": "nujs",
+  "buildCommand": "bash tools/BuildCpp.sh release native ./output/NuXJS ...",
+  "allowDirty": true,
+  "testsPattern": "bigObject.js",
+  "repository": "/workspace/NuXJS",
+  "candidates": [
+    {
+      "label": "baseline",
+      "rewriteScript": null,
+      "build": {
+        "status": 0,
+        "signal": null,
+        "durationMs": 6246.493722,
+        "stdout": "Compiling ./output/NuXJS release native using g++\n-fvisibility=hidden -fvisibility-inlines-hidden -Wno-trigraphs -Wreturn-type -Wunused-variable -Os -DNDEBUG  -o ./output/NuXJS tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp\nCompiled ./output/NuXJS successfully\n",
+        "stderr": "",
+        "command": "bash tools/BuildCpp.sh release native ./output/NuXJS ..."
+      },
+      "iterations": [
+        {
+          "iteration": 0,
+          "status": 0,
+          "signal": null,
+          "durationMs": 21677.388767,
+          "stdout": "bigObject\n---------\n4.23483s\n4.0667s\n3.85358s\n4.19983s\nmedian: 4.133265s\n\n        bigObject   \n        ----------  \nmedian  4.133265s   \nmem1    358.23MiB   \nmem2    360.247MiB  \nmem3    360.253MiB  \n\nmedian of all tests: 4.133265s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika bigObject.js --runs 4"
+        },
+        {
+          "iteration": 1,
+          "status": 0,
+          "signal": null,
+          "durationMs": 21214.024058,
+          "stdout": "bigObject\n---------\n3.96831s\n3.94335s\n4.08552s\n3.93084s\nmedian: 3.95583s\n\n        bigObject   \n        ----------  \nmedian  3.95583s    \nmem1    358.23MiB   \nmem2    360.247MiB  \nmem3    360.253MiB  \n\nmedian of all tests: 3.95583s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika bigObject.js --runs 4"
+        },
+        {
+          "iteration": 2,
+          "status": 0,
+          "signal": null,
+          "durationMs": 21509.560789,
+          "stdout": "bigObject\n---------\n3.96941s\n4.15904s\n3.9206s\n4.14299s\nmedian: 4.0562s\n\n        bigObject   \n        ----------  \nmedian  4.0562s     \nmem1    358.23MiB   \nmem2    360.247MiB  \nmem3    360.253MiB  \n\nmedian of all tests: 4.0562s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika bigObject.js --runs 4"
+        }
+      ]
+    },
+    {
+      "label": "anneal",
+      "rewriteScript": "/workspace/NuXJS/docs/opcode_profiles/2025-09-23-anneal-rewrite.js",
+      "build": {
+        "status": 0,
+        "signal": null,
+        "durationMs": 5900.687349,
+        "stdout": "Compiling ./output/NuXJS release native using g++\n-fvisibility=hidden -fvisibility-inlines-hidden -Wno-trigraphs -Wreturn-type -Wunused-variable -Os -DNDEBUG  -o ./output/NuXJS tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp\nCompiled ./output/NuXJS successfully\n",
+        "stderr": "",
+        "command": "bash tools/BuildCpp.sh release native ./output/NuXJS ..."
+      },
+      "iterations": [
+        {
+          "iteration": 0,
+          "status": 0,
+          "signal": null,
+          "durationMs": 20986.02117,
+          "stdout": "bigObject\n---------\n3.97374s\n3.92149s\n3.7725s\n3.94018s\nmedian: 3.930835s\n\n        bigObject   \n        ----------  \nmedian  3.930835s   \nmem1    358.23MiB   \nmem2    360.247MiB  \nmem3    360.253MiB  \n\nmedian of all tests: 3.930835s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika bigObject.js --runs 4"
+        },
+        {
+          "iteration": 1,
+          "status": 0,
+          "signal": null,
+          "durationMs": 21264.112452,
+          "stdout": "bigObject\n---------\n3.94072s\n3.99283s\n3.85544s\n4.19604s\nmedian: 3.966775s\n\n        bigObject   \n        ----------  \nmedian  3.966775s   \nmem1    358.23MiB   \nmem2    360.247MiB  \nmem3    360.253MiB  \n\nmedian of all tests: 3.966775s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika bigObject.js --runs 4"
+        },
+        {
+          "iteration": 2,
+          "status": 0,
+          "signal": null,
+          "durationMs": 22140.636191,
+          "stdout": "bigObject\n---------\n4.02316s\n3.9425s\n4.36126s\n4.52061s\nmedian: 4.19221s\n\n        bigObject   \n        ----------  \nmedian  4.19221s    \nmem1    358.23MiB   \nmem2    360.247MiB  \nmem3    360.253MiB  \n\nmedian of all tests: 4.19221s\n",
+          "stderr": "",
+          "command": "/workspace/NuXJS/externals/PikaCmd/PikaCmd tools/benchmark.pika bigObject.js --runs 4"
+        }
+      ]
+    }
+  ]
+}
