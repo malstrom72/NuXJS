@@ -64,6 +64,12 @@ assertions for debugging purposes, while the **release** build disables assertio
 During this process, `src/stdlib.js` is minified and converted into `src/stdlibJS.cpp`. See `docs/NuXJS
 Documentation.md` for details.
 
+The build and test helpers that perform tasks like minifying the standard library or executing the `.io`
+suite run under PikaScript (`PikaCmd`). Relying on PikaScript for these critical steps keeps the project
+bootstrappable on a fresh machine without first installing other language runtimes such as Node or Python.
+We still leverage Node for auxiliary tooling—most notably the Test262 dashboard in `tools/testdash.*`—but
+those utilities are optional once the core engine has been built.
+
 The build outputs a console REPL named `NuXJS`. Type `help()` inside the REPL to see available helper functions and
 commands.
 
@@ -134,7 +140,7 @@ int main(int argc, const char* argv[]) {
 
 ## Benchmarking
 
-- `tools/benchmark.pika` – run NuXJS micro benchmarks or generate golden results
+- `tools/benchmark.node.js` – run NuXJS micro benchmarks or generate golden results
 - `tools/compareEngines.sh` / `.cmd` – download Duktape and QuickJS and compare their performance to NuXJS
  
 ## Building the fuzz target
