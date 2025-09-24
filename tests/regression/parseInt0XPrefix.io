@@ -1,3 +1,4 @@
+// CLI:
 > print(parseInt("0X1"))
 < 1
 -

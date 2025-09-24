@@ -1,3 +1,4 @@
+// CLI:
 > o = { };
 > Object.defineProperty(o, 'test', { value: 'x' })
 > print(o.test)

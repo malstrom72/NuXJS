@@ -1,3 +1,4 @@
+// CLI:
 > var log = [];
 > var obj = {};
 > Object.defineProperty(obj, 'p', { get: function() { log.push('getter'); return 1; }, configurable: true });

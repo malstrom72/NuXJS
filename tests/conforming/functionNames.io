@@ -1,3 +1,4 @@
+// CLI:
 > function f() { }
 > print(f.name)
 < f

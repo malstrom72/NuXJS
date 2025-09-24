@@ -1,3 +1,4 @@
+// CLI:
 > a=[1,2]; for (a[1 in a ? 1 : 0] = 23; false;) { }
 > print(a[0])
 > print(a[1])

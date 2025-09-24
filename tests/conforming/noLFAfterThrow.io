@@ -1,3 +1,4 @@
+// CLI:
 > (function() { try { throw 1 } catch (e) { print(e) } })()
 < 1
 -

@@ -1,3 +1,4 @@
+// CLI:
 > f=function(a, b) { this.a=a; this.b=b; this.c="cee"; this.dump=function() { print("a: " + this.a  + ", b: " + this.b + ", c: " + this.c); } }
 > x = new f
 > x.dump()

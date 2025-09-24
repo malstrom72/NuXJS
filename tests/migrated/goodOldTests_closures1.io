@@ -1,3 +1,4 @@
+// CLI:
 > a=function() { b = function() { c = function() { return d++ }; return c; }; var d = 23 ; return b }
 > b=a()()
 > print(b());

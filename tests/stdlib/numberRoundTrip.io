@@ -1,3 +1,4 @@
+// CLI:
 > function ulp(x) {
 >     var a = Math.abs(x);
 >     if (a === 0) return Math.pow(2, -1074);

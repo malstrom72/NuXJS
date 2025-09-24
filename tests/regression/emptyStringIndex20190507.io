@@ -1,3 +1,4 @@
+// CLI:
 > print("abcd"[0])
 < a
 > print("abcd"["0"])

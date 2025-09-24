@@ -1,3 +1,4 @@
+// CLI:
 > print("hello there".search("there"))
 < 6
 -

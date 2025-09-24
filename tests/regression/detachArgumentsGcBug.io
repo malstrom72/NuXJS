@@ -1,3 +1,4 @@
+// CLI:
 > function make(){ return arguments }
 -
 > make(1,2,3)

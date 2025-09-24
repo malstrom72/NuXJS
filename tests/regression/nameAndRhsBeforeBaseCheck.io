@@ -1,3 +1,4 @@
+// CLI:
 > var log = [];
 > var key = { toString: function() { log.push("key"); return "p"; } };
 > function rhs() {

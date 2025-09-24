@@ -1,3 +1,4 @@
+// CLI:
 > print((function() { for (var i = 0; i < 10; ++i) { print(i); try { try { return 1 } finally {  } } finally { continue } } })())
 < 0
 < 1

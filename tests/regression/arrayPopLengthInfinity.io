@@ -1,3 +1,4 @@
+// CLI:
 > obj={}
 > obj.length=Number.POSITIVE_INFINITY
 > obj.pop=Array.prototype.pop

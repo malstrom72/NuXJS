@@ -1,3 +1,4 @@
+// CLI:
 > print("abcd".concat("efgh"))
 < abcdefgh
 -

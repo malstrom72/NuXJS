@@ -1,3 +1,4 @@
+// CLI:
 > print("abcd".split("").toString())
 < a,b,c,d
 -

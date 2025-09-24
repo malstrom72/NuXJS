@@ -1,3 +1,4 @@
+// CLI:
 > var n = 0;
 > var obj = {toLocaleString:function(){n++;return 'obj';}};
 > Array.prototype[1] = obj;

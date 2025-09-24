@@ -1,3 +1,4 @@
+// CLI:
 > { var i = 0; while (++i < 5) { print("before " + i); if (i > 2) continue; print("after " + i) } }
 > { var i = 0; while (++i < 5) { print("before " + i); if (i > 2) break; print("after " + i) } }
 > { var i = 0; a : while (++i < 5) { print("before " + i); if (i > 2) continue a; print("after " + i) } }

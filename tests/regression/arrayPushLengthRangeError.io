@@ -1,3 +1,4 @@
+// CLI:
 > var array = []
 > array.length = 4294967295
 > try { array.push("x"); print("push succeeded unexpectedly") } catch (e) { print(e.name) }

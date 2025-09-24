@@ -1,3 +1,4 @@
+// CLI:
 > Number=function() { print("yo baby") }
 -
 > x = new Number()

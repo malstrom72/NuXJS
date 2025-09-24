@@ -1,3 +1,4 @@
+// CLI:
 > var x=[]
 > x[4294967295]=1
 > print(x.length)

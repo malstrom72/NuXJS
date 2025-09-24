@@ -1,3 +1,4 @@
+// CLI:
 > print(Error.name)
 < Error
 > print(SyntaxError.name)

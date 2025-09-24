@@ -1,3 +1,4 @@
+// CLI:
 > function XorshiftPRNG2x32(seed0, seed1) {
 > 	if (seed0 == null) seed0 = 123456789;
 > 	if (seed1 == null) seed1 = 362436069;

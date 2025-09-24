@@ -1,3 +1,4 @@
+// CLI:
 > function a() {
 >   function b() {
 >     x += 1;

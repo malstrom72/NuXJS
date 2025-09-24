@@ -1,3 +1,4 @@
+// CLI:
 > //CHECK
 > var errorCount = 0;
 > var count = 0;

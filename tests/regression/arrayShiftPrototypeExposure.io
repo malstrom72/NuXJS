@@ -1,3 +1,4 @@
+// CLI:
 > Array.prototype[1] = -1
 > var arr = [0, 1]
 > arr.length = 2

@@ -1,3 +1,4 @@
+// CLI:
 > o = function() { }; o.prototype = new String("pok")
 -
 > x = new o

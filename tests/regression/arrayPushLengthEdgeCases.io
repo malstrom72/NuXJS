@@ -1,3 +1,4 @@
+// CLI:
 > var obj = {}
 > obj.push = Array.prototype.push
 > obj.length = NaN
@@ -11,7 +12,11 @@
 > obj = { push: Array.prototype.push }
 > obj.length = Number.POSITIVE_INFINITY
 > obj.push(-4)
-! !!!! TypeError: Invalid array length
+< !!!! TypeError: Invalid array length
+< !!!! location: <eval>:1:75
+< !!!! stack: TypeError: Invalid array length
+<     at push (<eval>:1:75)
+<     at <anonymous>:3:13
 -
 > print(obj.length)
 < Infinity

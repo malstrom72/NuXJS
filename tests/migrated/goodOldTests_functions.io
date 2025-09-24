@@ -1,3 +1,4 @@
+// CLI:
 > f = function() { }
 > var a = 1 , b = 2 , c , d = 1 in f ; print(a + ", " + b + ", " + c + ", " + d);
 < 1, 2, undefined, false

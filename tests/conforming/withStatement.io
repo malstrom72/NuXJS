@@ -1,3 +1,4 @@
+// CLI:
 > o = { y: 5 }; with (o) { print(y) };
 < 5
 -

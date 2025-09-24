@@ -1,3 +1,4 @@
+// CLI:
 > a=[1,2,3,4,,,55,6,6,7,8,1,2,34,1,5,6,'a','x','zzzz',undefined,2342,undefined,-1,'b', 'c', 'aaaa', 'q', 'fff', 'r', { valueOf: function() { return 3 }, toString: function() { return "xyzzy" } }]
 > print(a.sort().toString())
 < -1,1,1,1,2,2,2342,3,34,4,5,55,6,6,6,7,8,a,aaaa,b,c,fff,q,r,x,xyzzy,zzzz,,,,

@@ -1,3 +1,4 @@
+// CLI:
 > try {
 > new Function.prototype();
 > print("constructed");

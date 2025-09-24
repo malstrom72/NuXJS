@@ -1,3 +1,4 @@
+// CLI:
 > function f() { }
 -
 > for (i in f) print(i)

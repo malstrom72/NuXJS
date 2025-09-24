@@ -1,3 +1,4 @@
+// CLI:
 > if (false && false || true && true) print("ok"); else print("oops");
 > if (!(false && true || true && false)) print("ok"); else print("oops")
 > if (!(true && false || false && true)) print("ok"); else print("oops");

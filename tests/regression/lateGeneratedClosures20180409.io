@@ -1,3 +1,4 @@
+// CLI:
 > g=(function f() { var i = 0, f; do { if (i == 1) return f; f = (function() { return i }); ++i; } while (true) })()
 > print(g())
 < 1

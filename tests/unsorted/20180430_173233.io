@@ -1,3 +1,4 @@
+// CLI:
 > function obj() { this.a="b" }
 > var o = new obj;
 -

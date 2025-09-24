@@ -1,5 +1,9 @@
+// CLI:
 > new isNaN()
-! !!!! TypeError: isNaN is not a constructor
+< !!!! TypeError: isNaN is not a constructor
+< !!!! location: <anonymous>:1:12
+< !!!! stack: TypeError: isNaN is not a constructor
+<     at <anonymous>:1:12
 -
 > isNaN.name='xyzzy'
 -
@@ -7,5 +11,8 @@
 < xyzzy
 -
 > new isNaN()
-! !!!! TypeError: isNaN is not a constructor
+< !!!! TypeError: isNaN is not a constructor
+< !!!! location: <anonymous>:1:12
+< !!!! stack: TypeError: isNaN is not a constructor
+<     at <anonymous>:1:12
 -

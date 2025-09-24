@@ -1,3 +1,4 @@
+// CLI:
 > globals=this
 > e=eval
 > o={ test1: function() { return e("this") }, test2: function() { return eval("this") } }

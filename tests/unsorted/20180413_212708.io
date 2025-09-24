@@ -1,3 +1,4 @@
+// CLI:
 > print((function() { return 123 })())
 < 123
 -

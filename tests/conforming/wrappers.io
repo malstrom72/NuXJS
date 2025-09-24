@@ -1,3 +1,4 @@
+// CLI:
 >     if (true) {
 >         var constants = [
 >             undefined, null, false, true, 1.2345, 12, +Infinity, NaN, '', 'xyzzy'

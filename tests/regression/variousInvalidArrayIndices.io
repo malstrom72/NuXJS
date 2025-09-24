@@ -1,3 +1,4 @@
+// CLI:
 > a=[]
 > a["0x3f"]=23
 > print(a.length)

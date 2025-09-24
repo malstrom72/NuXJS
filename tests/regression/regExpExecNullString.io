@@ -1,3 +1,4 @@
+// CLI:
 > var r = /ll|l/.exec(null)
 > print(r[0])
 < ll

@@ -1,3 +1,4 @@
+// CLI:
 > print((1234).toString(16))
 < 4d2
 -

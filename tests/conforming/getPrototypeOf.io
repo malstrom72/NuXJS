@@ -1,3 +1,4 @@
+// CLI:
 > print(Object.getPrototypeOf(this)===Object.prototype)
 < true
 -

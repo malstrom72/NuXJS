@@ -1,3 +1,4 @@
+// CLI:
 > var globals = this;
 -
 > // Following is true in ES>3 too because of conversion described in 10.4.3, however in ES>3 this only applies to script functions

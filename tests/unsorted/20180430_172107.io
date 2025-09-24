@@ -1,3 +1,4 @@
+// CLI:
 > var o = { f: function() { print(this.m); }, m: "member" }; o.f();
 < member
 -

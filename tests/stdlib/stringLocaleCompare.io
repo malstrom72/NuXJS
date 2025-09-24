@@ -1,3 +1,4 @@
+// CLI:
 > print("a".localeCompare("a"))
 < 0
 -

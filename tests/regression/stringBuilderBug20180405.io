@@ -1,3 +1,4 @@
+// CLI:
 > a = [ 'begin' ];
 > for (var i = 0, t = ''; i < 512; ++i) t += '*';
 > a.push(t);

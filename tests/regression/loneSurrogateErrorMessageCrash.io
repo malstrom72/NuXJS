@@ -1,3 +1,4 @@
+// CLI:
 // Regression for lone surrogate handling in String::toUTF8String.
 // The engine should surface TypeError messages without aborting and
 // preserve the offending code units through the WTF-8 encoder.

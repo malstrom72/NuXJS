@@ -1,3 +1,4 @@
+// CLI:
 > obj={}
 > obj.length=Number.POSITIVE_INFINITY
 > obj.push=Array.prototype.push

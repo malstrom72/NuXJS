@@ -1,3 +1,4 @@
+// CLI:
 // In NuXJ it is allowed to create an Array property with a numeric name even if a read-only property higher up in the
 // prototype-chain has the same name. This is a side-effect of an important optimization concerning adding elements to
 // arrays. Since creating your own read-only properties isn't a part of Ecmascript 3 standard (and no built-in object

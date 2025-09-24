@@ -1,3 +1,4 @@
+// CLI:
 > a=1
 > print(a)
 > var a

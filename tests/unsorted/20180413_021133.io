@@ -1,3 +1,4 @@
+// CLI:
 > function f(x) { switch (x) { case 1: print("hej");switch(x) { case 1: return 19283; };break; case 2: print("du"); return 478; } }
 -
 > print(f(0))

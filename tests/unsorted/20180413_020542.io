@@ -1,3 +1,4 @@
+// CLI:
 > x=1
 > switch (x) { case 1: print("hej") }
 < hej

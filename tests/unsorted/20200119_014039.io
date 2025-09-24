@@ -1,3 +1,4 @@
+// CLI:
 > print(String.prototype.length)
 < 0
 -

@@ -1,3 +1,4 @@
+// CLI:
 > function buildProtoChain(n) { var o = { x: " stop", top: "top" }, f = function() { this.x = i; this[i] = "plupp"; };  for (var i = 0; i < n; ++i) { f.prototype = o; o = new f; }; return o; }
 > function checkProtoChain(o) { var count = 0, sum = 0, x = 1; print(o.top); do { found = x in o; print(x + ": " + found); x *= 2 } while (found); while ((o = Object.getPrototypeOf(o)) !== Object.prototype) { sum += o.x; ++count }; print(count); print(sum); }
 -
@@ -34,16 +35,32 @@
 < 435 stop
 -
 > checkProtoChain(buildProtoChain(40))
-! !!!! RangeError: Prototype chain too long
+< !!!! RangeError: Prototype chain too long
+< !!!! location: <anonymous>:1:146
+< !!!! stack: RangeError: Prototype chain too long
+<     at buildProtoChain (<anonymous>:1:146)
+<     at <anonymous>:1:36
 -
 > checkProtoChain(buildProtoChain(80))
-! !!!! RangeError: Prototype chain too long
+< !!!! RangeError: Prototype chain too long
+< !!!! location: <anonymous>:1:146
+< !!!! stack: RangeError: Prototype chain too long
+<     at buildProtoChain (<anonymous>:1:146)
+<     at <anonymous>:1:36
 -
 > checkProtoChain(buildProtoChain(10000))
-! !!!! RangeError: Prototype chain too long
+< !!!! RangeError: Prototype chain too long
+< !!!! location: <anonymous>:1:146
+< !!!! stack: RangeError: Prototype chain too long
+<     at buildProtoChain (<anonymous>:1:146)
+<     at <anonymous>:1:39
 -
 > checkProtoChain(buildProtoChain(32))
-! !!!! RangeError: Prototype chain too long
+< !!!! RangeError: Prototype chain too long
+< !!!! location: <anonymous>:1:146
+< !!!! stack: RangeError: Prototype chain too long
+<     at buildProtoChain (<anonymous>:1:146)
+<     at <anonymous>:1:36
 -
 > var o = buildProtoChain(31)
 > o.qwerty = 'iop';

@@ -1,3 +1,4 @@
+// CLI:
 > var log = [];
 > var search = { toString: function() { log.push("search"); return "a"; } };
 > var replace = { toString: function() { log.push("replace"); return "b"; } };

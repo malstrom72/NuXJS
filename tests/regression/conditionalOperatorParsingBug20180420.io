@@ -1,3 +1,4 @@
+// CLI:
 > print(true?3:false?7:9)
 < 3
 -

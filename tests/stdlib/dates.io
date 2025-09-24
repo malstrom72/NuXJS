@@ -1,3 +1,4 @@
+// CLI:
 > function localDateTimeFromString(s) { var d = new Date(s); print(s + " = " + d.toDateString() + ' ' + d.toTimeString()) };
 > function utcDateTimeFromString(s) { var d = new Date(s); print(s + " : " + d.valueOf() + " = " + d.toISOString()) };
 -
@@ -50,7 +51,12 @@
 < 1974-07-14 01:15:16 GMT-01:30 : 143001916000 = 1974-07-14T02:45:16.000Z
 -
 > utcDateTimeFromString("+1974-07-14 01:15Z");
-! !!!! RangeError: Invalid time value
+< !!!! RangeError: Invalid time value
+< !!!! location: <eval>:1:59
+< !!!! stack: RangeError: Invalid time value
+<     at toISOString (<eval>:1:59)
+<     at utcDateTimeFromString (<anonymous>:1:78)
+<     at <anonymous>:1:44
 -
 > x = new Date(10100)
 > y = new Date(110100)

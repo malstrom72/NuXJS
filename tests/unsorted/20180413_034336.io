@@ -1,3 +1,4 @@
+// CLI:
 > print((function() { out: try { if (false) return 3 } finally { print("bye"); break out }; print("here") })())
 < bye
 < here

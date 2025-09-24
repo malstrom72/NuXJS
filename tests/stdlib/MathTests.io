@@ -1,3 +1,4 @@
+// CLI:
 > print(Math.abs(-3))
 < 3
 -

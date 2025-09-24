@@ -1,3 +1,4 @@
+// CLI:
 > print("aa".replace(/(a)/g, "$11"))
 < a1a1
 > print("a".replace(/(a)/, "$1A"))

@@ -1,3 +1,4 @@
+// CLI:
 > s = ''; for ( a in "abcdefgh" ) s += a + ','; print(s);
 > s = ''; for ( var a in "abcdefgh" ) s += a + ','; print(s);
 > s = ''; for ( var a = 100 in "abcdefgh" ) s += a + ','; print(s);

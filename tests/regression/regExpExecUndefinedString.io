@@ -1,3 +1,4 @@
+// CLI:
 > var r = /nd|ne/.exec(undefined)
 > print(r[0])
 < nd

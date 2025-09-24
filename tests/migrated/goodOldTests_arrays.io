@@ -1,3 +1,4 @@
+// CLI:
 > emptyArray = [   ]  ;
 > print(emptyArray.length);
 > print(emptyArray[0]);

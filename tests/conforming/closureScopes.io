@@ -1,3 +1,4 @@
+// CLI:
 > var f = (function() { var a = "b"; try { } catch (x) { } finally { return function(x) { return x + a } } })()
 -
 > print(f("c"))

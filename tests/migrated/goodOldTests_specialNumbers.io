@@ -1,3 +1,4 @@
+// CLI:
 > // FIX : infinity etc
 -
 > o = new (function(){});

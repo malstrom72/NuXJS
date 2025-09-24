@@ -1,3 +1,4 @@
+// CLI:
 > print(eval('try { } catch (x) { }'))
 < undefined
 -

@@ -1,3 +1,4 @@
+// CLI:
 > foo = "prior to throw";
 >   try {
 >     throw new Error();

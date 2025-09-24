@@ -1,3 +1,4 @@
+// CLI:
 > (function() {
 >     print("*** prototypes ***");
 >     

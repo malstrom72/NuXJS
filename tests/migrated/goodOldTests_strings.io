@@ -1,3 +1,4 @@
+// CLI:
 > print("abcdefgh"[0]);
 > print("abcdefgh"[4]);
 > print("abcdefgh"[8]);
@@ -20,7 +21,10 @@
 < 10
 < line
 < feed	tab'single quotes'
-< "double quotes" back\slash   xxx  @ cr
+< "double quotes" back\slash   xxx 
+ @ 
+cr
+ @ cr
 < false
 < true
 -

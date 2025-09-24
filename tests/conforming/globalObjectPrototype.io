@@ -1,3 +1,4 @@
+// CLI:
 > Object.prototype.marshmallow='yummy'
 -
 > print(marshmallow)
