@@ -1,3 +1,4 @@
+// CLI:
 > for(var x=-3;x<=3;++x)switch(x+3){case 1:case 2:case 1+2:print(x)}
 < -2
 < -1

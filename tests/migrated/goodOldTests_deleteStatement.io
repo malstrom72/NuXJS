@@ -1,3 +1,4 @@
+// CLI:
 > delete z;
 > print(function() { z=3; return delete z }())
 > print(function() { return delete f.z }())
@@ -6,7 +7,11 @@
 > print(function() { var z=3; var g=function() {  return delete z; } ; return g; }()())
 > print(delete "constant is always ok");
 < true
-! !!!! ReferenceError: f is not defined
+< !!!! ReferenceError: f is not defined
+< !!!! location: <anonymous>:1:18
+< !!!! stack: ReferenceError: f is not defined
+<     at <anonymous>:1:18
+<     at <anonymous>:3:41
 -
 > (function() { var x=new(function(){}); x.a="a"; var b=function(){}; b.prototype=x; var c=new b; c.a="b"; print(c.a); delete c.a; print(c.a) })();
 < b

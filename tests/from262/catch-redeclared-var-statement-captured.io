@@ -1,3 +1,4 @@
+// CLI:
 > function capturedFoo() {return foo};
 >   foo = "prior to throw";
 >   try {

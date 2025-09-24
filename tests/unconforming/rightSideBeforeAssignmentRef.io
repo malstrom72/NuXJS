@@ -1,3 +1,4 @@
+// CLI:
 > var x = 0;
 >   var innerX = (function() {
 >     // If we were to conform strictly to ES spec, the left-hand side of th assigment is a reference to the outer x.

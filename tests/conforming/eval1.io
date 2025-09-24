@@ -1,3 +1,4 @@
+// CLI:
 > (function() { var x = 3; eval("var x = 5"); print(delete x); print(typeof x); print(x); })();
 < false
 < number

@@ -471,11 +471,13 @@ int testMain(int argc, const char* argv[]) {
 		size_t peakMemory = 0;
 		bool doSuppressStdErr = false;
 		bool loadStdLib = true;
+		bool useLegacyExceptionOutput = false;
 		for (int argi = 1; argi < argc; ++argi) {
 			if (strcmp(argv[argi], "-t") == 0) doTime = true;
 			else if (strcmp(argv[argi], "-s") == 0) doSuppressStdErr = true;
 			else if (strcmp(argv[argi], "-p") == 0) pauseBeforeQuit = true;
 			else if (strcmp(argv[argi], "-n") == 0) loadStdLib = false;
+			else if (strcmp(argv[argi], "--legacy-exceptions") == 0 || strcmp(argv[argi], "-E") == 0) useLegacyExceptionOutput = true;
 			else if (inputFilePath.empty()) {
 				inputFilePath = argv[argi];
 				interactive = false;
@@ -678,10 +680,12 @@ int testMain(int argc, const char* argv[]) {
 			std::wstring ws = x.value.toString(heap)->toWideString();
 			ws = L"!!!! " + ws;
 			std::wcout << ws << std::endl;
-			bool printMetadata = false;
-			Value metadataFlag(Value::UNDEFINED);
-			if (rt.getGlobalObject()->getProperty(rt, Value(&PRINT_EXCEPTION_METADATA_STRING), &metadataFlag) != NONEXISTENT) {
-				printMetadata = metadataFlag.toBool();
+			bool printMetadata = !useLegacyExceptionOutput;
+			if (!useLegacyExceptionOutput) {
+				Value metadataFlag(Value::UNDEFINED);
+				if (rt.getGlobalObject()->getProperty(rt, Value(&PRINT_EXCEPTION_METADATA_STRING), &metadataFlag) != NONEXISTENT) {
+					printMetadata = metadataFlag.toBool();
+				}
 			}
 			std::string locationLine;
 			std::string stackLine;

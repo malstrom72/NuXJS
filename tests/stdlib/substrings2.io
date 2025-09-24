@@ -1,3 +1,4 @@
+// CLI:
 > var testFuncs = [ 'substring', 'substr', 'slice' ];
 > var testStrings = [ '', 'abcdefghijklmnopqrstuvwxyz', { toString: function() { return "qwertyuiop" }, valueOf: function() { return 'object' } } ];
 > var testArgs = [ [ ],  [ 0 ],  [ 1 ],  [ 2 ], [ 5 ], [ 100 ], [ 0.3 ], [ Infinity ], [ NaN ], [ -1 ], [ -7 ], [ -0.5 ], [ -Infinity ],

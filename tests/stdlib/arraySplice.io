@@ -1,3 +1,4 @@
+// CLI:
 > a=['a','b','c','d','e'];
 > print(a.toString())
 < a,b,c,d,e

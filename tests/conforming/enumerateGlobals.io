@@ -1,3 +1,4 @@
+// CLI:
 > var x = 3;
 > eval("var props = { }");
 > var count = 0;

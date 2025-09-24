@@ -1,3 +1,4 @@
+// CLI:
 > print("apan bapan banan".replace("bapan",function() { arguments.join = Array.prototype.join; print(arguments.join()); return "hola" }))
 < bapan,5,apan bapan banan
 < apan hola banan

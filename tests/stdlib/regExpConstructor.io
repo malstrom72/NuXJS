@@ -1,3 +1,4 @@
+// CLI:
 > var re = new RegExp(/e/g);
 > print(re.lastIndex)
 > print(re.test("ee"))

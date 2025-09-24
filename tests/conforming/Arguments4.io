@@ -1,3 +1,4 @@
+// CLI:
 > (function() { print(delete arguments); print(typeof arguments); })();
 < false
 < object

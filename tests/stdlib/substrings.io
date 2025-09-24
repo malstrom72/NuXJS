@@ -1,3 +1,4 @@
+// CLI:
 > print("abcd".substring())
 < abcd
 -

@@ -1,3 +1,4 @@
+// CLI:
 > print(("abcd".match("bcd")).join(','))
 < bcd
 -

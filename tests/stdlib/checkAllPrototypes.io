@@ -1,3 +1,4 @@
+// CLI:
 > function analyzeFlags(object, property, testValue) {
 >     var origObject = Object; // In case it is Object we are testing
 >	  var defineProperty = Object.defineProperty; // and in case we are testing defineProperty

@@ -1,3 +1,4 @@
+// CLI:
 > glob5 = 'abcd';
 > print(delete glob5);
 > print(typeof glob5);

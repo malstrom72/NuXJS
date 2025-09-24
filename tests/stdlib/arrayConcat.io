@@ -1,3 +1,4 @@
+// CLI:
 > a = [ 1, 2, 3, 4 ];
 > b=a.concat('a', 'b', 'c', 'd')
 > print(b.toString())

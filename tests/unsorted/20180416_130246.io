@@ -1,3 +1,4 @@
+// CLI:
 > print(eval("with ({x:3}) { x }"))
 < 3
 -

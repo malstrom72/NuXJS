@@ -1,3 +1,4 @@
+// CLI:
 > a: try { print("a0"); b: { try { print("b0"); break b; print("b1") } finally { print("bf") } }; print("a1"); } finally { print("af") }
 < a0
 < b0

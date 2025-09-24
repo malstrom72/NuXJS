@@ -1,3 +1,4 @@
+// CLI:
 > var globals = this;
 > function f() { print(typeof this); print(this === globals); }
 > f.call(5)

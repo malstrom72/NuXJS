@@ -1,3 +1,4 @@
+// CLI:
 > function myescape(s) {
 > 	var o = '', b = 0, c;
 > 	for (var i = 0; i < s.length; ++i) {
@@ -747,56 +748,195 @@
 < /^\1(?!(a)bc)bc$/ on abc: null
 -
 > t = RegExp("\\");
-! !!!! SyntaxError: Invalid escape in regular expression
+< !!!! SyntaxError: Invalid escape in regular expression
+< !!!! location: <eval>:1:1825
+< !!!! stack: SyntaxError: Invalid escape in regular expression
+<     at dM (<eval>:1:1825)
+<     at ec (<eval>:1:17)
+<     at cX (<eval>:1:6735)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:17
 -
 > t = RegExp("\\q");
-! !!!! SyntaxError: Invalid escape in regular expression
+< !!!! SyntaxError: Invalid escape in regular expression
+< !!!! location: <eval>:1:1825
+< !!!! stack: SyntaxError: Invalid escape in regular expression
+<     at dM (<eval>:1:1825)
+<     at ec (<eval>:1:17)
+<     at cX (<eval>:1:6735)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:18
 -
 > t = RegExp("\\1");
-! !!!! SyntaxError: Invalid back reference in regular expression
+< !!!! SyntaxError: Invalid back reference in regular expression
+< !!!! location: <eval>:1:6852
+< !!!! stack: SyntaxError: Invalid back reference in regular expression
+<     at cX (<eval>:1:6852)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:18
 -
 > t = RegExp("\\2(a)\\1");
-! !!!! SyntaxError: Invalid back reference in regular expression
+< !!!! SyntaxError: Invalid back reference in regular expression
+< !!!! location: <eval>:1:6852
+< !!!! stack: SyntaxError: Invalid back reference in regular expression
+<     at cX (<eval>:1:6852)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:24
 -
 > t = RegExp("^(?=ab)*abcdef$");
-! !!!! SyntaxError: Invalid regular expression
+< !!!! SyntaxError: Invalid regular expression
+< !!!! location: <eval>:1:6787
+< !!!! stack: SyntaxError: Invalid regular expression
+<     at cX (<eval>:1:6787)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:30
 -
 > t = RegExp("(?%)");
-! !!!! SyntaxError: Unterminated group in regular expression
+< !!!! SyntaxError: Unterminated group in regular expression
+< !!!! location: <eval>:1:2346
+< !!!! stack: SyntaxError: Unterminated group in regular expression
+<     at dM (<eval>:1:2346)
+<     at ec (<eval>:1:17)
+<     at cX (<eval>:1:6735)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:19
 -
 > t = RegExp("(");
-! !!!! SyntaxError: Invalid regular expression
+< !!!! SyntaxError: Invalid regular expression
+< !!!! location: <eval>:1:2346
+< !!!! stack: SyntaxError: Invalid regular expression
+<     at dM (<eval>:1:2346)
+<     at ec (<eval>:1:17)
+<     at cX (<eval>:1:6735)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:16
 -
 > t = RegExp("x{5,3}");
-! !!!! SyntaxError: Min greater than max in regular expression quantifier
+< !!!! SyntaxError: Min greater than max in regular expression quantifier
+< !!!! location: <eval>:1:291
+< !!!! stack: SyntaxError: Min greater than max in regular expression quantifier
+<     at db (<eval>:1:291)
+<     at dM (<eval>:1:54)
+<     at ec (<eval>:1:17)
+<     at cX (<eval>:1:6735)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:21
 -
 > t = RegExp("[");
-! !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! location: <eval>:1:1096
+< !!!! stack: SyntaxError: Invalid character class syntax in regular expression
+<     at dM (<eval>:1:1096)
+<     at ec (<eval>:1:17)
+<     at cX (<eval>:1:6735)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:16
 -
 > t = RegExp("[^");
-! !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! location: <eval>:1:1096
+< !!!! stack: SyntaxError: Invalid character class syntax in regular expression
+<     at dM (<eval>:1:1096)
+<     at ec (<eval>:1:17)
+<     at cX (<eval>:1:6735)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:17
 -
 > t = RegExp("[\\p]");
-! !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! location: <eval>:1:1096
+< !!!! stack: SyntaxError: Invalid character class syntax in regular expression
+<     at dM (<eval>:1:1096)
+<     at ec (<eval>:1:17)
+<     at cX (<eval>:1:6735)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:20
 -
 > t = RegExp("[\\3]");
-! !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! location: <eval>:1:1096
+< !!!! stack: SyntaxError: Invalid character class syntax in regular expression
+<     at dM (<eval>:1:1096)
+<     at ec (<eval>:1:17)
+<     at cX (<eval>:1:6735)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:20
 -
 > t = RegExp("[\\01]");
-! !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! location: <eval>:1:1096
+< !!!! stack: SyntaxError: Invalid character class syntax in regular expression
+<     at dM (<eval>:1:1096)
+<     at ec (<eval>:1:17)
+<     at cX (<eval>:1:6735)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:21
 -
 > t = RegExp("[\\w-1]");
-! !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! location: <eval>:1:926
+< !!!! stack: SyntaxError: Invalid character class syntax in regular expression
+<     at dM (<eval>:1:926)
+<     at ec (<eval>:1:17)
+<     at cX (<eval>:1:6735)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:22
 -
 > t = RegExp("[1-\\w]");
-! !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! location: <eval>:1:926
+< !!!! stack: SyntaxError: Invalid character class syntax in regular expression
+<     at dM (<eval>:1:926)
+<     at ec (<eval>:1:17)
+<     at cX (<eval>:1:6735)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:22
 -
 > t = RegExp("[\\S-\\w]");
-! !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! location: <eval>:1:926
+< !!!! stack: SyntaxError: Invalid character class syntax in regular expression
+<     at dM (<eval>:1:926)
+<     at ec (<eval>:1:17)
+<     at cX (<eval>:1:6735)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:24
 -
 > t = RegExp("[\\B]");
-! !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! location: <eval>:1:1096
+< !!!! stack: SyntaxError: Invalid character class syntax in regular expression
+<     at dM (<eval>:1:1096)
+<     at ec (<eval>:1:17)
+<     at cX (<eval>:1:6735)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:20
 -
 > t = RegExp("[b-a]");
-! !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! SyntaxError: Invalid character class syntax in regular expression
+< !!!! location: <eval>:1:926
+< !!!! stack: SyntaxError: Invalid character class syntax in regular expression
+<     at dM (<eval>:1:926)
+<     at ec (<eval>:1:17)
+<     at cX (<eval>:1:6735)
+<     at RegExp (<eval>:1:486)
+<     at RegExp (<eval>:1:74)
+<     at <anonymous>:1:20
 -

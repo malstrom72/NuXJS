@@ -1,3 +1,4 @@
+// CLI:
 > function a() { print("a"); }
 > function b() { print("b"); }
 > var o = { f: a };

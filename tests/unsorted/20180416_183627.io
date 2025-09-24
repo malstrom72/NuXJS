@@ -1,3 +1,4 @@
+// CLI:
 > print(eval('a=[]; for (a[0] in "abcd") print(a[0])'))
 < 0
 < 1

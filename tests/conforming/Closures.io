@@ -1,3 +1,4 @@
+// CLI:
 > f = function(i) { return (function() { return ++i; }) }
 > g = f(3000)
 > print(g())

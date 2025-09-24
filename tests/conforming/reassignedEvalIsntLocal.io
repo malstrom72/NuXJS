@@ -1,3 +1,4 @@
+// CLI:
 > i=9999
 > f=function(i) { return e("(function() { return ++i })"); }
 > e=eval

@@ -1,3 +1,4 @@
+// CLI:
 > out: { break out; switch (x) { case 0: print("HEJ"); break; } }
 -
 > out: { break out; for (a[f(1)] in {}) { } }

@@ -1,3 +1,4 @@
+// CLI:
 > print("abcd".indexOf("a"))
 < 0
 -

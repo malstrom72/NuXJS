@@ -27,6 +27,7 @@ exe = (if (PLATFORM === 'WINDOWS') 'Debug\\NuXJS.exe -s' else 'build/Debug/NuXJS
 errorsToo = false;
 keepInputFiles = false;
 inputFileDir = '';
+defaultCliArgs = '';
 for (i = 1; i < $n; ++i) {
 	arg = $[i];
 	if (arg{:1} === '-') {
@@ -75,6 +76,7 @@ testFile => {
 	};
 
 	warnAboutExpectedErrors = false;
+	cliArgs = defaultCliArgs;
 
 	tokenize(ioSource, >{
 		directive = $0{:1};
@@ -93,6 +95,10 @@ testFile => {
 			}
 		} else if (directive === '-') {
 			addSection();
+		} else if (directive === '/') {
+			if (command{:5} === ' CLI:') {
+				cliArgs = command{5:};
+			}
 		} else if (directive !== '/') {
 			skip = true;
 		}
@@ -118,7 +124,7 @@ testFile => {
 		inFile = tempDir # 'test';
 	};
 	save(inFile, allInput);
-	result = pipe(exe # (if (errorsToo) ' <' else ' ') # quotePath(inFile), false, @err, @rc);
+	result = pipe(exe # cliArgs # (if (errorsToo) ' <' else ' ') # quotePath(inFile), false, @err, @rc);
 	if (rc === 2) throw("user aborted");
 	result = replace(result, "\r\n", "\n");
 	result = trim(result, '', "\n");

@@ -1,3 +1,4 @@
+// CLI:
 > a={}
 > f = (function() { a[0]=5 })
 > g = (function(p) { a=arguments; f(); print(p) })

@@ -1,3 +1,4 @@
+// CLI:
 > print("abcd".charCodeAt(0))
 < 97
 -

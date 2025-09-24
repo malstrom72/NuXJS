@@ -1,3 +1,4 @@
+// CLI:
 > \u0066\u0075\u006c\u0073\u006d\u0075\u0072\u0066\u0065\u006e='fiskpinne'
 > print(\u0066\u0075\u006c\u0073\u006d\u0075\u0072\u0066\u0065\u006e)
 > print(fulsmurfen)
@@ -11,8 +12,10 @@
 < fiskpinne
 -
 > \u0030\u0072\u0066\u0033\u006e=\u0066\u0075\u006c\u0073\u006d\u0075\u0072\u0066\u0065\u006e='notok'
-! !!!! Line: 1
-! !!!! SyntaxError: Illegal Unicode in identifier
+< !!!! Line: 1
+< !!!! SyntaxError: Illegal Unicode in identifier
+< !!!! location: <anonymous>
+< !!!! stack: SyntaxError: Illegal Unicode in identifier
 -
 > fulsmurfe\u2115=fulsmurfen
 > print(fulsmurfe\u2115)
@@ -22,62 +25,103 @@
 < fiskpinne
 -
 > fulsmurfe\u2116=fulsmurfen
-! !!!! Line: 1
-! !!!! SyntaxError: Illegal Unicode in identifier
+< !!!! Line: 1
+< !!!! SyntaxError: Illegal Unicode in identifier
+< !!!! location: <anonymous>
+< !!!! stack: SyntaxError: Illegal Unicode in identifier
 -
 > print(eval('fulsmurfe\u2116'))
-! !!!! SyntaxError: Syntax error
+< !!!! SyntaxError: Syntax error
+< !!!! location: <anonymous>:1:30
+< !!!! stack: SyntaxError: Syntax error
+<     at <anonymous>:1:30
 -
 > fulsmurfen=fulsmurfen\u211
-! !!!! Line: 1
-! !!!! SyntaxError: Syntax error
+< !!!! Line: 1
+< !!!! SyntaxError: Syntax error
+< !!!! location: <anonymous>
+< !!!! stack: SyntaxError: Syntax error
 -
 > fulsmurfen=fulsmurfen\x2115
-! !!!! Line: 1
-! !!!! SyntaxError: Syntax error
+< !!!! Line: 1
+< !!!! SyntaxError: Syntax error
+< !!!! location: <anonymous>
+< !!!! stack: SyntaxError: Syntax error
 -
 > fulsmurfen=fulsmurfen\u
-! !!!! Line: 1
-! !!!! SyntaxError: Syntax error
+< !!!! Line: 1
+< !!!! SyntaxError: Syntax error
+< !!!! location: <anonymous>
+< !!!! stack: SyntaxError: Syntax error
 -
 > fulsmurfen=fulsmurfen\u21x5
-! !!!! Line: 1
-! !!!! SyntaxError: Invalid escape sequence
+< !!!! Line: 1
+< !!!! SyntaxError: Invalid escape sequence
+< !!!! location: <anonymous>
+< !!!! stack: SyntaxError: Invalid escape sequence
 -
 > var p=33;
 > print(void\u0070);
-! !!!! ReferenceError: voidp is not defined
+< !!!! ReferenceError: voidp is not defined
+< !!!! location: <anonymous>:2:17
+< !!!! stack: ReferenceError: voidp is not defined
+<     at <anonymous>:2:17
 -
 > void\u21x3;
-! !!!! Line: 1
-! !!!! SyntaxError: Invalid escape sequence
+< !!!! Line: 1
+< !!!! SyntaxError: Invalid escape sequence
+< !!!! location: <anonymous>
+< !!!! stack: SyntaxError: Invalid escape sequence
 -
 > /asdf/\u0067
-! !!!! SyntaxError: Invalid regular expression flags
+< !!!! SyntaxError: Invalid regular expression flags
+< !!!! location: <eval>:1:364
+< !!!! stack: SyntaxError: Invalid regular expression flags
+<     at RegExp (<eval>:1:364)
+<     at <anonymous>:1:13
 -
 > print(eval('/asdf/\u0067') instanceof RegExp)
 < true
 -
 > eval('/asdf/\u2115')
-! !!!! SyntaxError: Invalid regular expression flags
+< !!!! SyntaxError: Invalid regular expression flags
+< !!!! location: <eval>:1:364
+< !!!! stack: SyntaxError: Invalid regular expression flags
+<     at RegExp (<eval>:1:364)
+<     at <eval>:1:8
+<     at <anonymous>:1:21
 -
 > /asdf/\u2115
-! !!!! SyntaxError: Invalid regular expression flags
+< !!!! SyntaxError: Invalid regular expression flags
+< !!!! location: <eval>:1:364
+< !!!! stack: SyntaxError: Invalid regular expression flags
+<     at RegExp (<eval>:1:364)
+<     at <anonymous>:1:13
 -
 > /asdf/123
-! !!!! SyntaxError: Invalid regular expression flags
+< !!!! SyntaxError: Invalid regular expression flags
+< !!!! location: <eval>:1:364
+< !!!! stack: SyntaxError: Invalid regular expression flags
+<     at RegExp (<eval>:1:364)
+<     at <anonymous>:1:10
 -
 > var voi\u0064 = 3
-! !!!! Line: 1
-! !!!! SyntaxError: Illegal use of keyword
+< !!!! Line: 1
+< !!!! SyntaxError: Illegal use of keyword
+< !!!! location: <anonymous>
+< !!!! stack: SyntaxError: Illegal use of keyword
 -
 > voi\u0064:{}
-! !!!! Line: 1
-! !!!! SyntaxError: Illegal use of keyword
+< !!!! Line: 1
+< !!!! SyntaxError: Illegal use of keyword
+< !!!! location: <anonymous>
+< !!!! stack: SyntaxError: Illegal use of keyword
 -
 > so\u0066\u0066potatis: { while (true) { break soffpotatis; print("no"); }; print("not here either"); }; print("here");
 < here
 -
 > asdf={qwer:123}; print(123 in\u0061sdf)
-! !!!! Line: 1
-! !!!! SyntaxError: Expected ',' or ')'
+< !!!! Line: 1
+< !!!! SyntaxError: Expected ',' or ')'
+< !!!! location: <anonymous>
+< !!!! stack: SyntaxError: Expected ',' or ')'

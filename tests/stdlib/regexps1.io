@@ -1,3 +1,4 @@
+// CLI:
 > print(/a|ab/.exec("abc").toString())
 < a
 -

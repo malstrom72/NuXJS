@@ -1,3 +1,4 @@
+// CLI:
 > function f() { print(typeof f); f = 3; print(typeof f); };
 > f();
 < function

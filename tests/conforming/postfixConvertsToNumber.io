@@ -1,3 +1,4 @@
+// CLI:
 > var x = true;
 > var y = x--;
 > print(y)

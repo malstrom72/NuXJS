@@ -1,3 +1,4 @@
+// CLI:
 > print("==== switch test ====");
 > function switchTest(earlyReturn) {
 > 	var tests = [ 1, "a", null, "x", "2.0", 2.0, "x", 4.0, "continue", { }, "x", (earlyReturn ? "return" : "break out"), "never get here" ];

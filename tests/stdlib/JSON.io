@@ -1,3 +1,4 @@
+// CLI:
 > print(JSON.stringify("abcd"));
 < "abcd"
 -

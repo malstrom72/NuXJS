@@ -1,3 +1,4 @@
+// CLI:
 > TestObject=function() { }; Object.defineProperty(TestObject.prototype, 'z', { value:'f', writable:false, configurable: false });
 -
 > x=new TestObject;

@@ -1,3 +1,4 @@
+// CLI:
 > print("hej".charAt(0))
 < h
 -

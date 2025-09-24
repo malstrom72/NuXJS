@@ -1,3 +1,4 @@
+// CLI:
 > var time = new Date(-0).getTime()
 > print(time === 0)
 < true

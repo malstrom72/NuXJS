@@ -1,3 +1,4 @@
+// CLI:
 > String.prototype.toString = function() { return "zzz" }
 > String.prototype.valueOf = function() { return "xxx" }
 -

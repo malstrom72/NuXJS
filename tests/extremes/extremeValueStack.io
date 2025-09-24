@@ -1,3 +1,4 @@
+// CLI:
 > function StringBuilder() { var i = 20, b = this.buffers = [ ]; do { b[--i] = ''; } while (i > 0); }
 > StringBuilder.prototype.append = function append(s) {
 > for (var i = 0, n = 256, b = this.buffers; (b[i] += s).length >= n && i < 20; n <<= 1, ++i) { s = b[i]; b[i] = ''; }
@@ -30,8 +31,16 @@
 < last
 -
 > stackOverflowTest(10000)
-! !!!! RangeError: Stack overflow
+< !!!! RangeError: Stack overflow
+< !!!! location: <anonymous>:10:8
+< !!!! stack: RangeError: Stack overflow
+<     at stackOverflowTest (<anonymous>:10:8)
+<     at <anonymous>:1:25
 -
 > stackOverflowTest(100000)
-! !!!! RangeError: Stack overflow
+< !!!! RangeError: Stack overflow
+< !!!! location: <anonymous>:10:8
+< !!!! stack: RangeError: Stack overflow
+<     at stackOverflowTest (<anonymous>:10:8)
+<     at <anonymous>:1:26
 -

@@ -1,3 +1,4 @@
+// CLI:
 > try { TypeError = function() { print("BOOHOO"); }; o = { toString: function() { return {} } }; print('' + o); } catch (x) { print(x) }
 < TypeError: Error converting object to primitive type
 -

@@ -1,3 +1,4 @@
+// CLI:
 > print((new Date(49035737401766)).toISOString())
 > print((new Date('3523-11-19T06:10:01.766Z')).valueOf())
 < 3523-11-19T06:10:01.766Z

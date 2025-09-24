@@ -1,3 +1,4 @@
+// CLI:
 > (function() { var i = 123; try { throw "x" } catch (x) { print(i) } })()
 < 123
 -

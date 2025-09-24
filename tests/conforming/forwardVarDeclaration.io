@@ -1,3 +1,4 @@
+// CLI:
 > (function() { var x = x; print(x) })();
 < undefined
 -

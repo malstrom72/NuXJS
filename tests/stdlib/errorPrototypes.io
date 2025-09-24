@@ -1,3 +1,4 @@
+// CLI:
 > print(Object.getPrototypeOf(Error) == Function.prototype)
 < true
 -

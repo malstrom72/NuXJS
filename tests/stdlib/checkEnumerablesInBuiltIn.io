@@ -1,3 +1,4 @@
+// CLI:
 > function dump(o) { for (var k in o) print(k) }
 > dump(Array)
 -

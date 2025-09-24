@@ -1,3 +1,4 @@
+// CLI:
 > x=new Function("print('hej')")
 > x()
 < hej

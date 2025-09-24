@@ -1,3 +1,4 @@
+// CLI:
 > try {
 >     "a".replace("a", {
 >         toString: function(){ return { }; },

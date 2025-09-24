@@ -1,3 +1,4 @@
+// CLI:
 > var valueStrings = [
 >     'undefined', 'null', 'false', 'true', '0', '1', '-128', '1234.5678', '-1.0e+7', 'NaN', 'Infinity', '""', '"str"'
 >     , '"-128"', '"1.0"', '"  +1234  "', '"string"', '"5tring"'

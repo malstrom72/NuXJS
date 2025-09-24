@@ -61,7 +61,9 @@
    - When `CompilationError` (`src/NuXJS.h:1828-1836`) wraps a `ScriptException`, copy its `throwSite` so parse-time diagnostics share the same getters.
 
 ### 4. Validation and regression coverage
-- **Regression harness coverage.** `tests/regression/exceptionDiagnosticsStack.io` flips the `__printExceptionMetadata__` guard before triggering an uncaught `Error`, forcing the CLI to emit `!!!! location`/`!!!! stack` lines just for that script while asserting the canonical `Error: message` header we surface to JavaScript and embedders.
+- **Regression harness coverage.** `tests/regression/exceptionDiagnosticsStack.io` triggers an uncaught `Error`
+  and confirms the CLI emits `!!!! location`/`!!!! stack` lines by default. Use `--legacy-exceptions` when
+  invoking NuXJS to fall back to the legacy single-line format if needed.
 - **Host documentation.** `examples/examples.cpp` now emits the location and formatted stack text alongside the legacy `what()` output so native hosts can see the metadata without reimplementing the formatter.
 - **Performance guardrail.** A smoke run of `./output/NuXJS_beta_native benchmarks/minimum.js` completed with the harness reporting `12514` and `52140` microsecond samples, matching the baseline behavior while confirming the metadata plumbing adds no measurable steady-state cost.
 

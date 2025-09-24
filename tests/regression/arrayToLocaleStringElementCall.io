@@ -1,3 +1,4 @@
+// CLI:
 > var calls = 0
 > var arr = []
 > arr[0] = { toLocaleString: function() { calls += 1; return "wrapped"; } }

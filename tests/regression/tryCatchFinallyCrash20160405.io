@@ -1,3 +1,4 @@
+// CLI:
 > var c2=0,fin2=0;
 > do{
 >   try{

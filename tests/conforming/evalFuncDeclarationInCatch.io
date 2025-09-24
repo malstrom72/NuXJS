@@ -1,3 +1,4 @@
+// CLI:
 > (function() { try { throw "oops" } catch (f) { function f() { print("yo") } }; print(typeof f); })()
 < function
 -

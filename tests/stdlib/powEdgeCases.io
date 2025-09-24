@@ -1,3 +1,4 @@
+// CLI:
 > print(Math.pow(2, NaN))
 < NaN
 -

@@ -1,3 +1,4 @@
+// CLI:
 > mandelbrot = function() {
 >     var I, R, s, b, n;
 >     for(var i=-1, s=''; i<1; i+=0.06, print(s), s='') {

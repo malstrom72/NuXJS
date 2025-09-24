@@ -1,3 +1,4 @@
+// CLI:
 > var r=/((1)|(12))((3)|(23))/.exec(new String("123"))
 > print(r[0])
 > print(r[1])

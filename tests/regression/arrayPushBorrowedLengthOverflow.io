@@ -1,3 +1,4 @@
+// CLI:
 > var target = { length: 0xFFFFFFFF, push: Array.prototype.push }
 > print(target.push("a", "b", "c"))
 < 4294967298

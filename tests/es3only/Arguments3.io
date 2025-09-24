@@ -1,3 +1,4 @@
+// CLI:
 > (function() { for (var i in arguments) print(i) })('1', '2', '3', '4');
 // ES5.1: 10.6: In Edition 5 the array indexed properties of argument objects that correspond to actual formal parameters are enumerable. In Edition 3, such properties were not enumerable.
 // 0

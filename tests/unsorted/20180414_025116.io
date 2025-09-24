@@ -1,3 +1,4 @@
+// CLI:
 > print((function() { out:{ try {  } finally { return 2  } } })())
 < 2
 -

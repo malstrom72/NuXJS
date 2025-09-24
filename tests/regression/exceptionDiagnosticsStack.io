@@ -1,4 +1,4 @@
-> __printExceptionMetadata__ = true;
+// CLI:
 > function levelTwo() { throw new Error("boom"); }
 > function levelOne() { levelTwo(); }
 > levelOne();
@@ -7,5 +7,5 @@
 < !!!! stack: Error: boom
 <     at levelTwo (<anonymous>:1:25)
 <     at levelOne (<anonymous>:1:12)
-<     at <anonymous>:4:11
+<     at <anonymous>:3:11
 -

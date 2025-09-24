@@ -1,3 +1,4 @@
+// CLI:
 > print(function() { return /* no lf */ 3 }());
 < 3
 -

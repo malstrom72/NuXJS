@@ -1,3 +1,4 @@
+// CLI:
 > a=[]
 > print(a.length)
 < 0

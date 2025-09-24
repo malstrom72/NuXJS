@@ -33,6 +33,40 @@ log and `#purge` to clear it. `#save` without a name uses a timestamp for the
 file name and saves the `.io` file directly into `tests/` so it can be added as
 a regression case. Prefixing a line with `?` runs `print()` on that expression.
 
+Each `.io` file begins with a `// CLI:` directive that communicates additional
+arguments for the regression harness. The default comment (`// CLI:`) runs the
+test with the standard REPL settings, while values such as
+`// CLI: --legacy-exceptions` opt into compatibility modes when a regression
+still depends on the legacy diagnostics. The harness no longer injects
+compatibility options automatically, so annotate tests explicitly. Use
+`python3 tools/annotate_io_cli.py` to stamp the directive across new or existing
+tests so the suite stays consistent. The helper also provides
+`--inventory-output`/`--inventory-format` switches so you can produce a JSON or
+CSV manifest of every test that still requests `--legacy-exceptions`, which is
+useful when planning expectation migrations.
+
+Once those inventories are in place you can regenerate expectations without
+the compatibility flag via `python3 tools/rewrite_exception_expectations.py`.
+The helper reuses the `.io` parser so it can stream the section inputs to the
+NuXJS REPL (running in interactive mode so each failure still reports metadata)
+and replace the legacy-only `! !!!!` blocks with `< !!!!` output that mirrors
+the modern diagnostics. Key options:
+
+* Set the `NUXJS_REWRITE_BINARY` environment variable (or pass
+  `--nujs "output/NuXJS -s"`) to choose which engine binary drives the update.
+* Point `--inventory` at `docs/LegacyExceptionInventory.json` to operate only
+  on the legacy list. Use `--skip glob` as needed to defer individual files and
+  `--inventory-update` to flip each entry’s `converted` flag and store the new
+  `modern_cli` directive once the rewrite succeeds.
+* Every rewritten file is backed up as `<name>.io.bak`. Inspect the changes,
+  run the full build, then delete the backups when you are satisfied. `--check`
+  performs a dry run and prints unified diffs without touching either the `.io`
+  files or the inventory.
+
+During the rewrite the tool automatically strips `--legacy-exceptions` from the
+`// CLI:` directive so the regression harness stops injecting compatibility
+flags for the converted tests.
+
 ## Embedding NuXJS
 
 The high-level C++ API allows easy embedding of the interpreter into an existing application. Functions exposed to JavaScript typically have the signature `Var func(Runtime& rt, const Var& thisVar, const VarList& args)` and are stored in the global object like any other value. Source code may be executed with `Runtime::run()` or evaluated with `Runtime::eval()`.

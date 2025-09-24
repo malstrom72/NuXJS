@@ -1,3 +1,4 @@
+// CLI:
 > function listCharCodes(s) { var a = [ ]; for (var i = 0; i < s.length; ++i) a.push(s.charCodeAt(i)); print(a.join()); }
 > listCharCodes("abcdefgh");
 < 97,98,99,100,101,102,103,104

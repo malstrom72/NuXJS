@@ -1,3 +1,4 @@
+// CLI:
 > var sentinel = { toLocaleString: function() { return "proto"; } }
 > Array.prototype[0] = sentinel
 > var sparse = []

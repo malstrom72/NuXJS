@@ -1,3 +1,4 @@
+// CLI:
 > x = 8
 > y = 123
 > print(eval("out: {try { } finally {} }"))

@@ -1,3 +1,4 @@
+// CLI:
 > var r = /[a-z]n/.exec(function(){}())
 > print(r[0])
 < un

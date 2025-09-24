@@ -1,3 +1,4 @@
+// CLI:
 > print(eval("try { 23 } catch (x) { 57 }"))
 < 23
 -

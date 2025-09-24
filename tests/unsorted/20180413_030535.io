@@ -1,3 +1,4 @@
+// CLI:
 > (function() { x=1;23;out:{ try { switch (x) { case 1: print("hej"); try { switch(x) { case 1: 3; return 99; } } finally { print("nif"); break out };break; case 2: print("du");58 } } finally { print("fin");29 } } })()
 < hej
 < nif

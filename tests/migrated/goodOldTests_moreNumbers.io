@@ -1,3 +1,4 @@
+// CLI:
 > var x=3
 > print(x+9*5 == 48)
 > print(0 == 0)

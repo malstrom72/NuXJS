@@ -1,3 +1,4 @@
+// CLI:
 // from v8 (0.3.9.5) test suite
 > var foo = 'fisk';
 > print(foo);

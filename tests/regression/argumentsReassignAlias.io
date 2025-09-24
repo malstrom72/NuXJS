@@ -1,3 +1,4 @@
+// CLI:
 > f=function(a,b) { var args = arguments; args[0]=123; print(a); }
 > f(3,5)
 < 123

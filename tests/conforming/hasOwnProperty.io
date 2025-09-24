@@ -1,3 +1,4 @@
+// CLI:
 > o={a:"b",c:"d"}
 > print(o.hasOwnProperty('a'))
 < true

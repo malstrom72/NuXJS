@@ -1,3 +1,4 @@
+// CLI:
 > (function() { doBreakThis: do { while (true) { break /* no lf */ doBreakThis }; print("don't get here"); } while (false); print("done"); })()
 < done
 -

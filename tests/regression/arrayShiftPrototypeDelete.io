@@ -1,3 +1,4 @@
+// CLI:
 > Object.prototype[1] = -1;
 > Object.prototype.length = 2;
 > Object.prototype.shift = Array.prototype.shift;

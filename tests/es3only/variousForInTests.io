@@ -1,3 +1,4 @@
+// CLI:
 > print(eval('"hej";for (i in [1,2,3,4]) { i*3; }'))
 < 9
 -
