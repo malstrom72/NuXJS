@@ -812,6 +812,21 @@ class Constants : public GCItem, public Vector<Value> {
 };
 
 /**
+	CapturedBinding stores the lexical location of an identifier captured from an ancestor scope.
+**/
+struct CapturedBinding {
+    CapturedBinding() : depth(0), slot(0), name(0) { }
+    CapturedBinding(UInt16 inDepth, Int16 inSlot, const String* inName) : depth(inDepth), slot(inSlot), name(inName) { }
+    UInt16 depth;
+    Int16 slot;
+    const String* name;
+};
+
+inline void gcMark(Heap& heap, const CapturedBinding& binding) {
+    gcMark(heap, binding.name);
+}
+
+/**
 	Code represents compiled bytecode and associated metadata. It is an Object so that it can be stored as a constant
 	and referenced by multiple functions.
 **/
@@ -834,6 +849,10 @@ class Code : public Object {
 		const String* getSource() const { return source; }
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
+		UInt32 getCapturedBindingCount() const { return capturedBindings.size(); }
+		const CapturedBinding& getCapturedBinding(UInt32 index) const { return capturedBindings[index]; }
+		UInt32 appendCapturedBinding(const CapturedBinding& binding);
+		UInt32 appendCapturedBinding(UInt16 depth, Int16 slot, const String* name = 0);
 
 	protected:
 		Vector<CodeWord> codeWords;
@@ -846,17 +865,19 @@ class Code : public Object {
 		const String* source;
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
+		Vector<CapturedBinding> capturedBindings;
 
-		virtual void gcMarkReferences(Heap& heap) const {
-			gcMark(heap, constants);
-			nameIndexes.gcMarkReferences(heap);
-			gcMark(heap, varNames.begin(), varNames.end());
-			gcMark(heap, argumentNames.begin(), argumentNames.end());
-			gcMark(heap, name);
-			gcMark(heap, selfName);
-			gcMark(heap, source);
-			super::gcMarkReferences(heap);
-		}
+                virtual void gcMarkReferences(Heap& heap) const {
+                        gcMark(heap, constants);
+                        nameIndexes.gcMarkReferences(heap);
+                        gcMark(heap, varNames.begin(), varNames.end());
+                        gcMark(heap, argumentNames.begin(), argumentNames.end());
+                        gcMark(heap, capturedBindings.begin(), capturedBindings.end());
+                        gcMark(heap, name);
+                        gcMark(heap, selfName);
+                        gcMark(heap, source);
+                        super::gcMarkReferences(heap);
+                }
 };
 
 /**
@@ -910,9 +931,11 @@ class ExtensibleFunction : public LazyJSObject<Function> {
 };
 
 /**
-	Scope represents a lexical environment chain used during execution. It stores local variables and links to a parent
-	scope.
+        Scope represents a lexical environment chain used during execution. It stores local variables and links to a parent
+        scope.
 **/
+class FunctionScope;
+
 class Scope : public GCItem {
 	public:
 		typedef GCItem super;
@@ -923,6 +946,9 @@ class Scope : public GCItem {
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		Value* getLocalsPointer() const { return localsPointer; }
 		Scope* getParentScope() const { return parentScope; }
+		virtual bool resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const;
+		virtual FunctionScope* nearestFunctionScope();
+		virtual const FunctionScope* nearestFunctionScope() const;
 		void makeClosure() const;
 		void leave() { if (deleteOnPop) { delete this; } }
 		
@@ -1053,6 +1079,10 @@ class FunctionScope : public Scope {
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
+		virtual bool resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const;
+		virtual FunctionScope* nearestFunctionScope();
+		virtual const FunctionScope* nearestFunctionScope() const;
+		FunctionScope* getParentFunctionScope() const { return parentFunctionScope; }
 		JSObject* getDynamicVars(Runtime& rt) const;
 		virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
 
@@ -1063,6 +1093,7 @@ class FunctionScope : public Scope {
 		mutable JSObject* dynamicVars;
 		mutable Arguments* arguments;
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
+		FunctionScope* parentFunctionScope;
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, function);
 			gcMark(heap, locals.begin(), locals.end());
@@ -1527,6 +1558,9 @@ class Processor : public GCItem {
 			, READ_NAMED_OP									// operand: const_index (name), stack: -> value
 			, WRITE_NAMED_OP								// operand: const_index (name), stack: value -> value
 			, WRITE_NAMED_POP_OP							// operand: const_index (name), stack: value ->
+			, READ_CLOSURE_OP							// operand: captured_binding_index, stack: -> value
+			, WRITE_CLOSURE_OP							// operand: captured_binding_index, stack: value -> value
+			, WRITE_CLOSURE_POP_OP							// operand: captured_binding_index, stack: value ->
 			, CHECK_OBJECT_COERCIBLE_OP						// stack: value -> value
 			, GET_PROPERTY_OP								// stack: object, name -> value
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
@@ -1569,6 +1603,7 @@ class Processor : public GCItem {
 			, THIS_OP, VOID_OP								// stack: -> value
 			, DELETE_OP										// stack: object, name -> boolean
 			, DELETE_NAMED_OP								// operand: const_index (name) -> boolean
+			, DELETE_CLOSURE_OP							// operand: captured_binding_index -> boolean
 			, GEN_FUNC_OP									// operand: const_index (function), stack: -> function
 			, DECLARE_OP									// operand: const_index (name), stack: function|undefined ->		// only used by eval code to declare vars and functions (non-eval code sets all this up on entry and using WRITE_LOCAL_OP).
 			, CATCH_SCOPE_OP								// operand: const_index for exception variable name, stack: value ->
@@ -1692,6 +1727,14 @@ class Compiler : public GCItem {
 	public:
 		typedef GCItem super;
 	
+		struct CapturedLexicalContext {
+			CapturedLexicalContext(const CapturedLexicalContext* parentContext, const Code* parentCode, bool allowSlots)
+				: parent(parentContext), code(parentCode), allowClosureSlots(allowSlots) { }
+			const CapturedLexicalContext* const parent;
+			const Code* const code;
+			const bool allowClosureSlots;
+		};
+	
 		enum Precedence {
 			GROUP_PREC, PROPERTY_PREC, NEW_PREC, FUNCTION_CALL_PREC, POST_INC_DEC_PREC, PREFIX_PREC
 			, MUL_DIV_PREC, ADD_SUB_PREC, SHIFT_PREC, RELATIONAL_PREC, EQUALITY_PREC, BIT_AND_PREC
@@ -1701,7 +1744,8 @@ class Compiler : public GCItem {
 
 		enum Target { FOR_GLOBAL, FOR_FUNCTION, FOR_EVAL };
 
-		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0);
+		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0,
+				const CapturedLexicalContext* capturedParent = 0);
 		const Char* compile(const Char* b, const Char* e);
 		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName = 0); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
 		void compile(const String& source);
@@ -1733,13 +1777,14 @@ class Compiler : public GCItem {
 
 		struct ExpressionResult;
 		struct SemanticScope;
-
 		static const String* newHashedString(Heap& heap, const Char* b, const Char* e);
 		void error(ErrorType type, const char* message);
 		void emit(Processor::Opcode opcode, Int32 operand = 0);
 		CodeSection* changeSection(CodeSection* newOutputSection);
 		UInt32 addConstant(const Value& constant);
 		void emitWithConstant(Processor::Opcode opcode, const Value& constant);
+		UInt32 ensureCapturedBinding(UInt16 depth, Int16 slot, const String* name);
+		bool recordCapturedBinding(const String* name, UInt16& depth, Int16& slot, UInt32& bindingIndex);
 		BranchPoint emitForwardBranch(Processor::Opcode opcode);
 		void completeForwardBranch(const BranchPoint& point);
 		void completeForwardBranches(const BranchPoint* begin, const BranchPoint* end);
@@ -1813,7 +1858,10 @@ class Compiler : public GCItem {
 		CodeSection* currentSection;
 		bool acceptInOperator;
 		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
+		bool allowClosureSlots;
 		int nestCounter;
+		const CapturedLexicalContext* capturedLexical;
+		Vector<CapturedBinding> capturedBindings;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, code);
