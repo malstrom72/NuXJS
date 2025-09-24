@@ -7,12 +7,13 @@ const os = require("os");
 const child_process = require("child_process");
 
 function main() {
-	let tests;
-	let exe;
-	let ignoreGold = false;
-	let runs = 5;
-	let makeGold = false;
-	let runsOverride = false;
+        let tests;
+        let exe;
+        let ignoreGold = false;
+        let runs = 5;
+        let makeGold = false;
+        let runsOverride = false;
+        let flipOutput = false;
 	const args = process.argv.slice(2);
 
 	function assignRuns(value) {
@@ -27,13 +28,15 @@ function main() {
 		runsOverride = true;
 	}
 
-	for (let i = 0; i < args.length; ++i) {
-		const arg = args[i];
-		if (arg === "ignoregold") {
-			ignoreGold = true;
-		} else if (arg === "--runs" || arg === "-r") {
-			if (++i >= args.length) throw new Error("Missing value for --runs.");
-			assignRuns(args[i]);
+        for (let i = 0; i < args.length; ++i) {
+                const arg = args[i];
+                if (arg === "ignoregold") {
+                        ignoreGold = true;
+                } else if (arg === "--flip") {
+                        flipOutput = true;
+                } else if (arg === "--runs" || arg === "-r") {
+                        if (++i >= args.length) throw new Error("Missing value for --runs.");
+                        assignRuns(args[i]);
 		} else if (arg.startsWith("--runs=")) {
 			assignRuns(arg.slice(7));
 		} else if (arg.startsWith("-r=")) {
@@ -62,51 +65,56 @@ function main() {
 	const outPath = path.join(tempDir, "out");
 	const timePath = path.join(tempDir, "time");
 
-	const names = collectBenchmarkNames(tests);
-	const widths = Object.create(null);
-	const timeLines = Object.create(null);
-	for (const name of names) {
-		widths[name] = name.length;
-		timeLines[name] = [];
-	}
+        const names = collectBenchmarkNames(tests);
+        const widths = Object.create(null);
+        const timeLines = Object.create(null);
+        const runColumns = Object.create(null);
+        for (const name of names) {
+                widths[name] = name.length;
+                timeLines[name] = [];
+                runColumns[name] = [];
+        }
 
 	const overallMedians = [];
 	let deferredError = null;
 	try {
-		for (const name of names) {
-			const result = runBenchmark({
-				name,
-				exe,
-				runs,
-				ignoreGold,
-				makeGold,
-				outPath,
-				timePath,
-				widths,
-				timeLines,
-			});
-			if (result !== null) overallMedians.push(result);
-		}
-	} catch (error) {
-		deferredError = error;
-	}
+                for (const name of names) {
+                        const result = runBenchmark({
+                                name,
+                                exe,
+                                runs,
+                                ignoreGold,
+                                makeGold,
+                                outPath,
+                                timePath,
+                                widths,
+                                timeLines,
+                                runColumns,
+                        });
+                        if (result !== null) overallMedians.push(result);
+                }
+        } catch (error) {
+                deferredError = error;
+        }
 
-	const summaryLines = buildSummaryLines(names, widths, timeLines);
-	for (const line of summaryLines) console.log(line);
+        const summaryLines = flipOutput
+                ? buildFlippedLines(names, runColumns, timeLines)
+                : buildSummaryLines(names, widths, timeLines);
+        for (const line of summaryLines) console.log(line);
 
 	cleanupTempDir(tempDir);
 
-if (overallMedians.length !== 0) {
-overallMedians.sort((a, b) => a.value - b.value);
-const mid = Math.floor(overallMedians.length / 2);
-let overallDisplay;
-if (overallMedians.length % 2 !== 0) overallDisplay = overallMedians[mid].raw;
-else overallDisplay = formatNumber((overallMedians[mid - 1].value + overallMedians[mid].value) / 2);
-const total = overallMedians.reduce((sum, entry) => sum + entry.value, 0);
-const averageDisplay = formatNumber(total / overallMedians.length);
-console.log("\nmedian of all tests: " + overallDisplay + "s");
-console.log("average of all tests: " + averageDisplay + "s");
-}
+        if (overallMedians.length !== 0) {
+                overallMedians.sort((a, b) => a.value - b.value);
+                const mid = Math.floor(overallMedians.length / 2);
+                let overallDisplay;
+                if (overallMedians.length % 2 !== 0) overallDisplay = overallMedians[mid].raw;
+                else overallDisplay = formatNumber((overallMedians[mid - 1].value + overallMedians[mid].value) / 2);
+                const total = overallMedians.reduce((sum, entry) => sum + entry.value, 0);
+                const averageDisplay = formatNumber(total / overallMedians.length);
+                console.log("\nmedian of all tests: " + overallDisplay + "s");
+                console.log("average of all tests: " + averageDisplay + "s");
+        }
 
 	if (deferredError) {
 		const message = deferredError && deferredError.message ? deferredError.message : String(deferredError);
@@ -125,39 +133,41 @@ function isNumericInteger(value) {
 }
 
 function runBenchmark(options) {
-	const { name, exe, runs, ignoreGold, makeGold, outPath, timePath, widths, timeLines } = options;
-	const fn = name + ".js";
-	console.log(name);
-	console.log("-".repeat(name.length));
-	const command = exe + " -t benchmarks/" + fn + " >" + outPath + " 2>" + timePath;
-	const timeSamples = [];
-	let times = "";
-	let mem1 = "";
-	let mem2 = "";
-	let mem3 = "";
-	for (let i = 0; i < runs && times !== "FAIL"; ++i) {
-		const result = child_process.spawnSync(command, { shell: true, stdio: "ignore" });
-		if (result.error) throw result.error;
-		times = fs.readFileSync(timePath, "utf8");
-		if (times.trim() === "FAIL") {
-			times = "FAIL";
-		} else {
-			const tokens = parseTimeOutput(times);
-			if (tokens.length === 0) throw new Error("No timing data captured.");
-			console.log(tokens[0]);
-			const raw = tokens[0].endsWith("s") ? tokens[0].slice(0, -1) : tokens[0];
-			const value = Number(raw);
-			if (!Number.isFinite(value)) throw new Error("Invalid timing output: " + tokens[0]);
-			timeSamples.push({ value, raw });
-			mem1 = tokens[1] || "";
-			mem2 = tokens[2] || "";
-			mem3 = tokens[3] || "";
-		}
-	}
+        const { name, exe, runs, ignoreGold, makeGold, outPath, timePath, widths, timeLines, runColumns } = options;
+        const fn = name + ".js";
+        console.log(name);
+        console.log("-".repeat(name.length));
+        const command = exe + " -t benchmarks/" + fn + " >" + outPath + " 2>" + timePath;
+        const timeSamples = [];
+        const runValues = runColumns[name];
+        let times = "";
+        let mem1 = "";
+        let mem2 = "";
+        let mem3 = "";
+        for (let i = 0; i < runs && times !== "FAIL"; ++i) {
+                const result = child_process.spawnSync(command, { shell: true, stdio: "ignore" });
+                if (result.error) throw result.error;
+                times = fs.readFileSync(timePath, "utf8");
+                if (times.trim() === "FAIL") {
+                        times = "FAIL";
+                } else {
+                        const tokens = parseTimeOutput(times);
+                        if (tokens.length === 0) throw new Error("No timing data captured.");
+                        console.log(tokens[0]);
+                        const raw = tokens[0].endsWith("s") ? tokens[0].slice(0, -1) : tokens[0];
+                        const value = Number(raw);
+                        if (!Number.isFinite(value)) throw new Error("Invalid timing output: " + tokens[0]);
+                        timeSamples.push({ value, raw });
+                        runValues.push(tokens[0]);
+                        mem1 = tokens[1] || "";
+                        mem2 = tokens[2] || "";
+                        mem3 = tokens[3] || "";
+                }
+        }
 
-	let output = fs.readFileSync(outPath, "utf8");
-	output = normalizeOutput(output);
-	const goldenFile = path.join("benchmarks", "golden", name + ".txt");
+        let output = fs.readFileSync(outPath, "utf8");
+        output = normalizeOutput(output);
+        const goldenFile = path.join("benchmarks", "golden", name + ".txt");
 	if (makeGold) {
 		fs.writeFileSync(goldenFile, output);
 	} else if (!ignoreGold) {
@@ -171,15 +181,15 @@ function runBenchmark(options) {
 		}
 	}
 
-	const entries = timeLines[name];
-	if (times === "FAIL") {
-		console.log("\n!!! FAIL !!!\n");
-		entries[0] = "FAIL";
-		widths[name] = Math.max(widths[name], 4);
-		return null;
-	}
+        const entries = timeLines[name];
+        if (times === "FAIL") {
+                console.log("\n!!! FAIL !!!\n");
+                entries[0] = "FAIL";
+                widths[name] = Math.max(widths[name], 4);
+                return null;
+        }
 
-	if (timeSamples.length === 0) throw new Error("No timing data captured.");
+        if (timeSamples.length === 0) throw new Error("No timing data captured.");
 	timeSamples.sort((a, b) => a.value - b.value);
 	const mid = Math.floor(timeSamples.length / 2);
 	let medianValue;
@@ -243,10 +253,10 @@ function normalizeOutput(text) {
 }
 
 function buildSummaryLines(names, widths, timeLines) {
-	const lines = [];
-	lines[0] = "        ";
-	lines[1] = "        ";
-	const labels = ["median", "mem1", "mem2", "mem3"];
+        const lines = [];
+        lines[0] = "        ";
+        lines[1] = "        ";
+        const labels = ["median", "mem1", "mem2", "mem3"];
 	for (let i = 0; i < labels.length; ++i) {
 		lines[i + 2] = labels[i] + " ".repeat(8 - labels[i].length);
 	}
@@ -259,14 +269,75 @@ function buildSummaryLines(names, widths, timeLines) {
 			const value = entries[i] || "";
 			lines[i + 2] += padColumn(value, width) + "  ";
 		}
-	}
-	return lines;
+        }
+        return lines;
+}
+
+function buildFlippedLines(names, runColumns, timeLines) {
+        const metricLabels = ["median", "mem1", "mem2", "mem3"];
+        const headerLabel = "benchmark";
+        let firstWidth = headerLabel.length;
+        let maxRuns = 0;
+        for (const name of names) {
+                if (name.length > firstWidth) firstWidth = name.length;
+                const runCount = runColumns[name].length;
+                if (runCount > maxRuns) maxRuns = runCount;
+        }
+        const columnWidths = [firstWidth];
+        const runHeaders = [];
+        for (let i = 0; i < maxRuns; ++i) {
+                const header = "run" + (i + 1);
+                runHeaders.push(header);
+                let width = header.length;
+                for (const name of names) {
+                        const value = runColumns[name][i] || "";
+                        if (value.length > width) width = value.length;
+                }
+                columnWidths.push(width);
+        }
+        for (let i = 0; i < metricLabels.length; ++i) {
+                const label = metricLabels[i];
+                let width = label.length;
+                for (const name of names) {
+                        const entries = timeLines[name];
+                        const value = entries[i] || "";
+                        if (value.length > width) width = value.length;
+                }
+                columnWidths.push(width);
+        }
+        const headerValues = [headerLabel, ...runHeaders, ...metricLabels];
+        const lines = [];
+        lines.push(buildRow(headerValues, columnWidths));
+        const separators = columnWidths.map(width => "-".repeat(width));
+        lines.push(buildRow(separators, columnWidths));
+        for (const name of names) {
+                const values = [name];
+                const runs = runColumns[name];
+                for (let i = 0; i < maxRuns; ++i) {
+                        values.push(runs[i] || "");
+                }
+                const entries = timeLines[name];
+                for (let i = 0; i < metricLabels.length; ++i) {
+                        values.push(entries[i] || "");
+                }
+                lines.push(buildRow(values, columnWidths));
+        }
+        return lines;
+}
+
+function buildRow(values, widths) {
+        let line = "";
+        for (let i = 0; i < widths.length; ++i) {
+                if (i !== 0) line += "  ";
+                line += padColumn(values[i], widths[i]);
+        }
+        return line;
 }
 
 function padColumn(value, width) {
-	const text = value === undefined ? "" : String(value);
-	const pad = Math.max(0, width - text.length);
-	return text + " ".repeat(pad);
+        const text = value === undefined ? "" : String(value);
+        const pad = Math.max(0, width - text.length);
+        return text + " ".repeat(pad);
 }
 
 function formatNumber(value) {

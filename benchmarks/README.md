@@ -17,6 +17,8 @@ node tools/benchmark.node.js <test(s)> <exe>|makegold ignoregold [--runs <count>
 - `ignoregold` is optional and skips output comparison.
 - `--runs <count>` (or `-r <count>`) overrides the number of
   executions collected before computing the median. The default is 5.
+- `--flip` transposes the final summary so each row shows a benchmark,
+  the recorded run samples, and the aggregate statistics.
 
 ## Output
 
@@ -27,6 +29,11 @@ running `NuXJS` with the `-t` flag:
 - `mem1` – heap usage (MiB) when the benchmark finished.
 - `mem2` – peak heap usage (MiB) observed during the run.
 - `mem3` – peak memory reserved by the allocator (MiB), including pooled blocks.
+
+By default the summary table lists benchmarks as columns with the
+statistics above as rows. When `--flip` is supplied the harness instead
+prints one row per benchmark, followed by the individual run samples,
+and then the same median and memory columns.
 
 After the table the harness prints both the overall median and the
 arithmetic mean across all benchmark medians.
