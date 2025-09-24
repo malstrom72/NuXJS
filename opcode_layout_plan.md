@@ -7,7 +7,7 @@ This plan describes the instrumentation, analysis, search, and validation work n
 - [x] Guard the counters with the interpreter lock (or another thread-safety mechanism) so concurrent VMs cannot corrupt statistics.
 - [x] Add a runtime toggle (CLI flag or environment variable) to enable or disable instrumentation and prevent overhead in release builds.
 - [x] Teach the benchmark harness to dump the collected counters in a machine-readable format (JSON or CSV) when runs finish.
-- [ ] Execute the full benchmark suite (start with one run per test) under instrumentation and archive the resulting profiles for repeatability.
+- [x] Execute the full benchmark suite (start with one run per test) under instrumentation and archive the resulting profiles for repeatability (see `docs/opcode_profiles/2025-09-23-benchmark.json`).
 
 ## 2. Model the layout optimisation problem
 - [ ] Build a script that ingests the dynamic opcode report and constructs a weighted directed graph whose nodes are handlers and whose edge weights are observed transition counts.
