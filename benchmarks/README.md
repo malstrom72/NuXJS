@@ -18,6 +18,19 @@ node tools/benchmark.node.js <test(s)> <exe>|makegold ignoregold [--runs <count>
 - `--runs <count>` (or `-r <count>`) overrides the number of
   executions collected before computing the median. The default is 5.
 
+## Output
+
+Each benchmark prints its runtime and the memory statistics reported by
+running `NuXJS` with the `-t` flag:
+
+- `median` – median CPU time from the collected samples.
+- `mem1` – heap usage (MiB) when the benchmark finished.
+- `mem2` – peak heap usage (MiB) observed during the run.
+- `mem3` – peak memory reserved by the allocator (MiB), including pooled blocks.
+
+After the table the harness prints both the overall median and the
+arithmetic mean across all benchmark medians.
+
 ## Golden results
 
 Benchmark output is normally checked against the files in `benchmarks/golden/`.  Differences create `failed.txt` and `expected.txt` in the current directory.

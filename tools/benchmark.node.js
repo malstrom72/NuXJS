@@ -96,14 +96,17 @@ function main() {
 
 	cleanupTempDir(tempDir);
 
-	if (overallMedians.length !== 0) {
-		overallMedians.sort((a, b) => a.value - b.value);
-		const mid = Math.floor(overallMedians.length / 2);
-		let overallDisplay;
-		if (overallMedians.length % 2 !== 0) overallDisplay = overallMedians[mid].raw;
-		else overallDisplay = formatNumber((overallMedians[mid - 1].value + overallMedians[mid].value) / 2);
-		console.log("\nmedian of all tests: " + overallDisplay + "s");
-	}
+if (overallMedians.length !== 0) {
+overallMedians.sort((a, b) => a.value - b.value);
+const mid = Math.floor(overallMedians.length / 2);
+let overallDisplay;
+if (overallMedians.length % 2 !== 0) overallDisplay = overallMedians[mid].raw;
+else overallDisplay = formatNumber((overallMedians[mid - 1].value + overallMedians[mid].value) / 2);
+const total = overallMedians.reduce((sum, entry) => sum + entry.value, 0);
+const averageDisplay = formatNumber(total / overallMedians.length);
+console.log("\nmedian of all tests: " + overallDisplay + "s");
+console.log("average of all tests: " + averageDisplay + "s");
+}
 
 	if (deferredError) {
 		const message = deferredError && deferredError.message ? deferredError.message : String(deferredError);
