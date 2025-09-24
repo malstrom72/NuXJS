@@ -1547,6 +1547,9 @@ class Processor : public GCItem {
 			, WRITE_NAMED_POP_OP							// operand: const_index (name), stack: value ->
 			, CHECK_OBJECT_COERCIBLE_OP						// stack: value -> value
 			, GET_PROPERTY_OP								// stack: object, name -> value
+			, GET_PROPERTY_TO_PRIMITIVE_OP								// stack: object, name -> primitive_value
+			, GET_PROPERTY_TO_NUMBER_OP								// stack: object, name -> primitive_value
+			, GET_PROPERTY_TO_STRING_OP								// stack: object, name -> primitive_value
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
 			, SET_PROPERTY_POP_OP							// stack: object, name, value ->
 			, CHECK_RESOLVE_PROPERTY_OP						// stack: object, name -> object, name	// check coercible, then resolve object

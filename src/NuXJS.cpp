@@ -2350,6 +2350,9 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ WRITE_NAMED_POP_OP		 , "WRITE_NAMED_POP"		 , -1	  , 0 },
 	{ CHECK_OBJECT_COERCIBLE_OP	 , "CHECK_OBJECT_COERCIBLE"  , 0	  , 0 },
 	{ GET_PROPERTY_OP			 , "GET_PROPERTY"			 , -1	  , 0 },
+	{ GET_PROPERTY_TO_PRIMITIVE_OP		, "GET_PROPERTY_TO_PRIMITIVE"		, -1	     , 0 },
+	{ GET_PROPERTY_TO_NUMBER_OP			, "GET_PROPERTY_TO_NUMBER"			, -1	     , 0 },
+	{ GET_PROPERTY_TO_STRING_OP			, "GET_PROPERTY_TO_STRING"			, -1	     , 0 },
 	{ SET_PROPERTY_OP			 , "SET_PROPERTY"			 , -2	  , 0 },
 	{ SET_PROPERTY_POP_OP		 , "SET_PROPERTY_POP"		 , -3	  , 0 },
 	{ CHECK_RESOLVE_PROPERTY_OP	 , "CHECK_RESOLVE_PROPERTY"	 , 0	  , 0 },
@@ -2847,7 +2850,58 @@ void Processor::innerRun() {
 				pop(1);
 				break;
 			}
-			
+
+				case GET_PROPERTY_TO_PRIMITIVE_OP: {
+					const Object* o = convertToObject(sp[-1], false);
+					if (o == 0) {
+						return;
+					}
+					if (o->getProperty(rt, sp[0], sp - 1) == NONEXISTENT) {
+						sp[-1] = UNDEFINED_VALUE;
+					}
+					pop(1);
+					const Value& value = sp[0];
+					if (value.isObject()) {
+						invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_PRIMITIVE_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
+						return;
+					}
+					break;
+				}
+
+				case GET_PROPERTY_TO_NUMBER_OP: {
+					const Object* o = convertToObject(sp[-1], false);
+					if (o == 0) {
+						return;
+					}
+					if (o->getProperty(rt, sp[0], sp - 1) == NONEXISTENT) {
+						sp[-1] = UNDEFINED_VALUE;
+					}
+					pop(1);
+					const Value& value = sp[0];
+					if (value.isObject()) {
+						invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_NUMBER_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
+						return;
+					}
+					break;
+				}
+
+				case GET_PROPERTY_TO_STRING_OP: {
+					const Object* o = convertToObject(sp[-1], false);
+					if (o == 0) {
+						return;
+					}
+					if (o->getProperty(rt, sp[0], sp - 1) == NONEXISTENT) {
+						sp[-1] = UNDEFINED_VALUE;
+					}
+					pop(1);
+					const Value& value = sp[0];
+					if (value.isObject()) {
+						invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_STRING_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
+						return;
+					}
+					break;
+				}
+
 			case SET_PROPERTY_OP: {
 				Object* const o = sp[-2].getObject();
 				o->setProperty(rt, sp[-1], sp[0]);
@@ -3561,7 +3615,22 @@ Compiler::ExpressionResult Compiler::makeRValue(const ExpressionResult& xr, bool
 				}
 			}
 			emitWithConstant(Processor::READ_NAMED_OP, xr.v); break;
-		case ExpressionResult::PROPERTY: emit(Processor::GET_PROPERTY_OP); break;
+			case ExpressionResult::PROPERTY:
+				if (toPrimitive) {
+					if (toPrimitiveOp == Processor::OBJ_TO_PRIMITIVE_OP) {
+						emit(Processor::GET_PROPERTY_TO_PRIMITIVE_OP);
+						return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
+					}
+					if (toPrimitiveOp == Processor::OBJ_TO_NUMBER_OP) {
+						emit(Processor::GET_PROPERTY_TO_NUMBER_OP);
+						return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
+					}
+					if (toPrimitiveOp == Processor::OBJ_TO_STRING_OP) {
+						emit(Processor::GET_PROPERTY_TO_STRING_OP);
+						return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
+					}
+				}
+				emit(Processor::GET_PROPERTY_OP); break;
 		case ExpressionResult::SAFEKEPT: emit(Processor::REPUSH_OP
 				, (currentSection->inDeadCode() ? 0 : xr.v.toInt() - currentSection->stackDepth + 1)); break;
 		default: assert(0);
