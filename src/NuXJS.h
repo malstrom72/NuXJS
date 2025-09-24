@@ -35,6 +35,10 @@
 #include <cstddef>
 #include <stdint.h>
 
+#if defined(NUXJS_USE_NAN_BOXING) && (!defined(UINTPTR_MAX) || UINTPTR_MAX != 0xFFFFFFFFFFFFFFFFULL)
+#error "NUXJS_USE_NAN_BOXING requires 64-bit uintptr_t"
+#endif
+
 /**
 	These global operator overloads makes it possible to allocate *anything* (and not only GCItems) on Heap. Just
 	remember that (as opposed to GCItems) you need to call the overloaded delete operator explicitly, e.g.
@@ -55,6 +59,7 @@ typedef short Int16;
 typedef unsigned short UInt16;
 typedef int Int32;
 typedef unsigned int UInt32;
+typedef unsigned long long UInt64;
 typedef UInt16 Char;
 typedef Int32 CodeWord;
 
@@ -361,84 +366,119 @@ class JSArray;
 	conversion and comparison helpers.
 **/
 class Value {
-	friend class Table;
-	
-	public:
-		Value()
-		#ifndef NDEBUG
-				: type(BAD_TYPE)
-		#endif
-				{ }
-		Value(bool boolean) : type(BOOLEAN_TYPE) { var.boolean = boolean; }
-		Value(Int32 number) : type(NUMBER_TYPE) { var.number = number; }
-		Value(UInt32 number) : type(NUMBER_TYPE) { var.number = number; }
-		Value(double number) : type(NUMBER_TYPE) { var.number = number; }
-		Value(const String* string) : type(STRING_TYPE) { var.string = string; }
-		Value(Object* object) : type(OBJECT_TYPE) { var.object = object; }
+friend class Table;
 
-		bool isUndefined() const { return type == UNDEFINED_TYPE; }
-		bool isNull() const { return type == NULL_TYPE; }
-		bool isBoolean() const { return type == BOOLEAN_TYPE; }
-		bool isNumber() const { return type == NUMBER_TYPE; }
-		bool isString() const { return type == STRING_TYPE; }
-		bool isObject() const { return type == OBJECT_TYPE; }
-		Object* asObject() const { return (type == OBJECT_TYPE ? var.object : 0); }
-		Function* asFunction() const;
-		JSArray* asArray() const;
-		Error* asError() const;
-		const String* getString() const { assert(type == STRING_TYPE); return var.string; }
-		Object* getObject() const { assert(type == OBJECT_TYPE); return var.object; }
-		bool toBool() const;
-		Int32 toInt() const;
-		bool toArrayIndex(UInt32& index) const;				///< returns false if value is outside valid array index range (0..2^32-1)
-		double toDouble() const;							///< Will *not* convert objects to numbers (as this would require running JS code).
-		Function* toFunction(Heap& heap) const;
-		const String* toString(Heap& heap) const; 			///< this toString() method does not run any script code, so it doesn't honor any user toString or valueOf implementations.
-		std::wstring toWideString(Heap& heap) const;
-		Object* toObjectOrNull(Heap& heap, bool requireExtensible) const;
-		Object* toObject(Heap& heap, bool requireExtensible) const;
-		const String* typeOfString() const;					///< Will return one of the following for standard types and objects: &UNDEFINED_STRING, &BOOLEAN_STRING, &NUMBER_STRING, &STRING_STRING, &OBJECT_STRING, &FUNCTION_STRING.
-		bool isStrictlyEqualTo(const Value& r) const { return (type == r.type ? compareStrictly(r) : false); }	///< Same as JS operator ===
-		bool isEqualTo(const Value& r) const;				///< Almost the same as JS operator == but will *not* convert objects to primitive values (as this would require running JS code).
-		bool isLessThan(const Value& r) const;				///< Almost the same as JS operator < but will *not* convert objects to primitive values (as this would require running JS code).
-		bool isLessThanOrEqualTo(const Value& r) const;		///< Almost the same as JS operator <= but will *not* convert objects to primitive values (as this would require running JS code).
-		bool equalsString(const String& s) const;			///< Convenience routine for `v.isString() && v.getString()->isEqualTo(s)`.
-		Value add(Heap& heap, const Value& r) const;		///< Almost the same as JS operator + but will *not* convert objects to primitive values (as this would require running JS code).
-		friend void gcMark(Heap& heap, const Value& v);
-		friend std::wostream& operator<<(std::wostream& out, const Value& v);
+public:
+// Do NOT change order of elements in Type enum.
+enum Type {
+UNDEFINED_TYPE
+, NULL_TYPE
+, BOOLEAN_TYPE
+, NUMBER_TYPE
+, STRING_TYPE
+, OBJECT_TYPE
+#ifndef NDEBUG
+, BAD_TYPE = 0xBAADBAAD
+#endif
+};
+union Variant {
+bool boolean;
+double number;
+const String* string;
+Object* object;
+};
 
-		static const Value UNDEFINED;
-		static const Value NUL;					///< Sorry, NULL is a sensitive word, e.g. macro in Windows
-		static const Value NOT_A_NUMBER;		///< Sorry, NAN is sensitive, defined by some math.h
-		static const Value INFINITE_NUMBER;		///< Sorry, INFINITY is also sensitive
+Value();
+Value(bool boolean);
+Value(Int32 number);
+Value(UInt32 number);
+Value(double number);
+Value(const String* string);
+Value(Object* object);
 
-	protected:
-		// Do NOT change order of elements in Type enum.
-		enum Type {
-			UNDEFINED_TYPE
-			, NULL_TYPE
-			, BOOLEAN_TYPE
-			, NUMBER_TYPE
-			, STRING_TYPE
-			, OBJECT_TYPE
-		#ifndef NDEBUG
-			, BAD_TYPE = 0xBAADBAAD		// Only used when NDEBUG is not defined to detect use of uninitialized values.
-		#endif
-		} type;
-		union Variant {
-			bool boolean;
-			double number;
-			const String* string;
-			Object* object;
-		} var;
+Type getType() const;
+bool isUndefined() const { return getType() == UNDEFINED_TYPE; }
+bool isNull() const { return getType() == NULL_TYPE; }
+bool isBoolean() const { return getType() == BOOLEAN_TYPE; }
+bool isNumber() const { return getType() == NUMBER_TYPE; }
+bool isString() const { return getType() == STRING_TYPE; }
+bool isObject() const { return getType() == OBJECT_TYPE; }
+bool getBooleanUnchecked() const;
+double getNumberUnchecked() const;
+const String* getStringUnchecked() const;
+Object* getObjectUnchecked() const;
+Object* asObject() const { return (getType() == OBJECT_TYPE ? getObjectUnchecked() : 0); }
+Function* asFunction() const;
+JSArray* asArray() const;
+Error* asError() const;
+const String* getString() const { assert(getType() == STRING_TYPE); return getStringUnchecked(); }
+Object* getObject() const { assert(getType() == OBJECT_TYPE); return getObjectUnchecked(); }
+bool toBool() const;
+Int32 toInt() const;
+bool toArrayIndex(UInt32& index) const;
+double toDouble() const;
+Function* toFunction(Heap& heap) const;
+const String* toString(Heap& heap) const;
+std::wstring toWideString(Heap& heap) const;
+Object* toObjectOrNull(Heap& heap, bool requireExtensible) const;
+Object* toObject(Heap& heap, bool requireExtensible) const;
+const String* typeOfString() const;
+bool isStrictlyEqualTo(const Value& r) const { return (getType() == r.getType() ? compareStrictly(r) : false); }
+bool isEqualTo(const Value& r) const;
+bool isLessThan(const Value& r) const;
+bool isLessThanOrEqualTo(const Value& r) const;
+bool equalsString(const String& s) const;
+Value add(Heap& heap, const Value& r) const;
+friend void gcMark(Heap& heap, const Value& v);
+friend std::wostream& operator<<(std::wostream& out, const Value& v);
 
-		explicit Value(Type type) throw() : type(type) { }
-		explicit Value(Type type, const Variant& var) throw() : type(type), var(var) { }
-		bool compareStrictly(const Value& y) const;
-		static const String* TYPE_STRINGS[5];
+static const Value UNDEFINED;
+static const Value NUL;
+static const Value NOT_A_NUMBER;
+static const Value INFINITE_NUMBER;
 
-	private:
-		Value(const void* v); // N/A. Just to avoid unwanted casting of a pointer to bool.
+protected:
+explicit Value(Type type) throw();
+explicit Value(Type type, const Variant& var) throw();
+bool compareStrictly(const Value& y) const;
+static const String* const TYPE_STRINGS[OBJECT_TYPE];
+static const String* decodeTypeToString(Type type);
+
+private:
+Value(const void* v);
+
+#if defined(NUXJS_USE_NAN_BOXING)
+enum EncodedTag {
+ENCODED_UNDEFINED = 0,
+ENCODED_NULL = 1,
+ENCODED_BOOLEAN = 2,
+ENCODED_STRING = 3,
+ENCODED_OBJECT = 4,
+ENCODED_NUMBER = 7
+};
+
+static UInt64 encodeBoxed(EncodedTag tag, UInt64 payload);
+static UInt64 encodePointer(EncodedTag tag, const void* pointer);
+static UInt64 encodeBoolean(bool boolean);
+static UInt64 encodeNumber(double number);
+static UInt64 encodeFromTypeAndVariant(Type type, const Variant& variant);
+static Type decodeType(UInt64 bits);
+                static Variant decodeVariant(Type type, UInt64 bits);
+static UInt64 numberToBits(double number);
+static double bitsToNumber(UInt64 bits);
+bool isBoxed() const;
+UInt64 payload() const;
+UInt64 getBits() const { return bits; }
+void setBits(UInt64 value);
+UInt64 bits;
+#else
+bool getBooleanUncheckedLegacy() const { return var.boolean; }
+double getNumberUncheckedLegacy() const { return var.number; }
+const String* getStringUncheckedLegacy() const { return var.string; }
+Object* getObjectUncheckedLegacy() const { return var.object; }
+Type type;
+Variant var;
+#endif
 };
 
 typedef Byte Flags; // FIX : turn into enum
@@ -464,35 +504,61 @@ class Table {
 			(for even quicker value lookup) in the same space as a Value.
 		**/
 		class Bucket {
-			friend class Table;
+	friend class Table;
 
-			public:
-				Bucket() : key(0) { };
-				Value getValue() const {
-					assert(valueExists() && (flags & INDEX_TYPE_FLAG) == 0);
-					return Value(static_cast<Value::Type>(type), var);
-				}
-				Int32 getIndexValue() const {
-					assert(valueExists() && (flags & INDEX_TYPE_FLAG) != 0);
-					return index;
-				}
-				Flags getFlags() const { return flags; }
-				const String* getKey() const { assert(keyExists()); return key; }
-				bool doEnumerate() const { return ((flags & DONT_ENUM_FLAG) == 0); }
-				bool hasStandardFlags() const { return flags == EXISTS_FLAG; }
-				bool valueExists() const { return (key != 0 && ((flags & EXISTS_FLAG) != 0)); }
+	public:
+		Bucket() : key(0), flags(0)
+#if defined(NUXJS_USE_NAN_BOXING)
+			, hash16(0)
+			, storage{0}
+#else
+			, type(0)
+			, hash16(0)
+#endif
+		{ };
+		Value getValue() const {
+			assert(valueExists() && (flags & INDEX_TYPE_FLAG) == 0);
+#if defined(NUXJS_USE_NAN_BOXING)
+			Value value;
+			value.setBits(storage.nanBits);
+			return value;
+#else
+			return Value(static_cast<Value::Type>(type), var);
+#endif
+		}
+		Int32 getIndexValue() const {
+			assert(valueExists() && (flags & INDEX_TYPE_FLAG) != 0);
+#if defined(NUXJS_USE_NAN_BOXING)
+			return storage.index;
+#else
+			return index;
+#endif
+		}
+		Flags getFlags() const { return flags; }
+		const String* getKey() const { assert(keyExists()); return key; }
+		bool doEnumerate() const { return ((flags & DONT_ENUM_FLAG) == 0); }
+		bool hasStandardFlags() const { return flags == EXISTS_FLAG; }
+		bool valueExists() const { return (key != 0 && ((flags & EXISTS_FLAG) != 0)); }
 
-			protected:
-				const String* key;
-				Byte flags;
-				Byte type;
-				UInt16 hash16;
-				union {
-					Value::Variant var;
-					Int32 index;
-				};
-				bool keyExists() const { return key != 0; }
+	protected:
+		const String* key;
+		Byte flags;
+#if defined(NUXJS_USE_NAN_BOXING)
+		UInt16 hash16;
+		union {
+			UInt64 nanBits;
+			Int32 index;
+		} storage;
+#else
+		Byte type;
+		UInt16 hash16;
+		union {
+			Value::Variant var;
+			Int32 index;
 		};
+#endif
+		bool keyExists() const { return key != 0; }
+};
 
 		Table(Heap* heap);
 		Bucket* getFirst() const;											///< Returns first bucket with an existing value or 0.
@@ -555,9 +621,9 @@ class Object : public GCItem {
 		Object(GCList& gcList) : super(gcList) { }
 };
 
-inline Function* Value::asFunction() const { return (type == OBJECT_TYPE ? var.object->asFunction() : 0); }
-inline JSArray* Value::asArray() const { return (type == OBJECT_TYPE ? var.object->asArray() : 0); }
-inline Error* Value::asError() const { return (type == OBJECT_TYPE ? var.object->asError() : 0); }
+inline Function* Value::asFunction() const { return (isObject() ? getObjectUnchecked()->asFunction() : 0); }
+inline JSArray* Value::asArray() const { return (isObject() ? getObjectUnchecked()->asArray() : 0); }
+inline Error* Value::asError() const { return (isObject() ? getObjectUnchecked()->asError() : 0); }
 
 /**
 	Enumerators are Objects because it is convenient for the VM. They should never be accessable directly from JS.
@@ -673,7 +739,7 @@ class String : public Object {
 		mutable UInt32 bloom;
 };
 
-inline bool Value::equalsString(const String& s) const { return (type == STRING_TYPE && s.isEqualTo(*var.string)); }
+inline bool Value::equalsString(const String& s) const { return (isString() && s.isEqualTo(*getStringUnchecked())); }
 inline std::wstring Value::toWideString(Heap& heap) const { return toString(heap)->toWideString(); }
 
 /**
