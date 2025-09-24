@@ -2488,19 +2488,11 @@ void Processor::innerRun() {
 		const Opcode opcode = static_cast<Opcode>(instruction & 0xFF);
 		const Int32 im = instruction >> 8;
 		switch (opcode) {
-			case READ_NAMED_OP: {
-				const String* name = constants[im].getString();
-				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
-					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
-					return;
-				}
+			case READ_LOCAL_OP: {
+				assert(locals != 0);
+				push(locals[im]);
+				break;
 			}
-			break;
-
-			case READ_LOCAL_OP:		     assert(locals != 0); push(locals[im]); break;
-			case CONST_OP:				  push(constants[im]); break;
-			case WRITE_LOCAL_POP_OP:	assert(locals != 0); locals[im] = sp[0]; pop(1); break;
-
 			case READ_LOCAL_TO_NUMBER_OP: {
 				assert(locals != 0);
 				const Value& value = locals[im];
@@ -2531,8 +2523,34 @@ void Processor::innerRun() {
 				}
 				break;
 			}
-			case WRITE_LOCAL_OP:	    assert(locals != 0); locals[im] = sp[0]; break;
-			case POP_OP:		            assert(im >= 0); pop(im); break;
+			case WRITE_LOCAL_OP: {
+				assert(locals != 0);
+				locals[im] = sp[0];
+				break;
+			}
+			case WRITE_LOCAL_POP_OP: {
+				assert(locals != 0);
+				locals[im] = sp[0];
+				pop(1);
+				break;
+			}
+			case CONST_OP: {
+				push(constants[im]);
+				break;
+			}
+			case POP_OP: {
+				assert(im >= 0);
+				pop(im);
+				break;
+			}
+			case READ_NAMED_OP: {
+				const String* name = constants[im].getString();
+				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
+					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+					return;
+				}
+				break;
+			}
 
 			case OBJ_TO_PRIMITIVE_OP:
 			case OBJ_TO_NUMBER_OP:
