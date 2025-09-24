@@ -3615,22 +3615,22 @@ Compiler::ExpressionResult Compiler::makeRValue(const ExpressionResult& xr, bool
 				}
 			}
 			emitWithConstant(Processor::READ_NAMED_OP, xr.v); break;
-			case ExpressionResult::PROPERTY:
-				if (toPrimitive) {
-					if (toPrimitiveOp == Processor::OBJ_TO_PRIMITIVE_OP) {
-						emit(Processor::GET_PROPERTY_TO_PRIMITIVE_OP);
-						return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
-					}
-					if (toPrimitiveOp == Processor::OBJ_TO_NUMBER_OP) {
-						emit(Processor::GET_PROPERTY_TO_NUMBER_OP);
-						return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
-					}
-					if (toPrimitiveOp == Processor::OBJ_TO_STRING_OP) {
-						emit(Processor::GET_PROPERTY_TO_STRING_OP);
-						return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
-					}
+		case ExpressionResult::PROPERTY:
+			if (toPrimitive) {
+				if (toPrimitiveOp == Processor::OBJ_TO_PRIMITIVE_OP) {
+					emit(Processor::GET_PROPERTY_TO_PRIMITIVE_OP);
+					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
 				}
-				emit(Processor::GET_PROPERTY_OP); break;
+				if (toPrimitiveOp == Processor::OBJ_TO_NUMBER_OP) {
+					emit(Processor::GET_PROPERTY_TO_NUMBER_OP);
+					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
+				}
+				if (toPrimitiveOp == Processor::OBJ_TO_STRING_OP) {
+					emit(Processor::GET_PROPERTY_TO_STRING_OP);
+					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
+				}
+			}
+			emit(Processor::GET_PROPERTY_OP); break;
 		case ExpressionResult::SAFEKEPT: emit(Processor::REPUSH_OP
 				, (currentSection->inDeadCode() ? 0 : xr.v.toInt() - currentSection->stackDepth + 1)); break;
 		default: assert(0);
