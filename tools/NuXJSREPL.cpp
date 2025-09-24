@@ -524,6 +524,7 @@ int testMain(int argc, const char* argv[]) {
 
 		const String LF_STRING("\n");
 		const String PRINT_STRING("print");
+		static const String PRINT_EXCEPTION_METADATA_STRING("__printExceptionMetadata__");
 
 		MyHeap heap;
 		Runtime rt(heap);
@@ -648,6 +649,13 @@ int testMain(int argc, const char* argv[]) {
 				
 				if (execute) {
 					Code globalCode(heap.roots());
+					const String* scriptFileName = 0;
+					if (!inputFilePath.empty()) {
+							scriptFileName = String::allocate(heap, inputFilePath.c_str());
+					} else {
+							scriptFileName = rt.newStringConstant("<anonymous>");
+					}
+					globalCode.setFileName(scriptFileName);
 					Compiler compiler(heap.roots(), &globalCode, (interactive ? Compiler::FOR_EVAL : Compiler::FOR_GLOBAL));
 					try {
 						compiler.compile(source);
@@ -697,18 +705,55 @@ int testMain(int argc, const char* argv[]) {
 					source = EMPTY_STRING;
 				}
 			}
-			catch (const ScriptException& x) {
-				source = EMPTY_STRING;
-				std::wstring ws = x.value.toString(heap)->toWideString();
-				ws = L"!!!! " + ws;
-				std::wcout << ws << std::endl;
-				if (!interactive) {
-					return 1;
+		catch (const ScriptException& x) {
+			source = EMPTY_STRING;
+			std::wstring ws = x.value.toString(heap)->toWideString();
+			ws = L"!!!! " + ws;
+			std::wcout << ws << std::endl;
+			bool printMetadata = false;
+			Value metadataFlag(Value::UNDEFINED);
+			if (rt.getGlobalObject()->getProperty(rt, Value(&PRINT_EXCEPTION_METADATA_STRING), &metadataFlag) != NONEXISTENT) {
+				printMetadata = metadataFlag.toBool();
+			}
+			std::string locationLine;
+			std::string stackLine;
+			if (printMetadata) {
+				std::ostringstream locationStream;
+				const String* fileName = x.getFileName();
+				if (fileName != 0) {
+					locationStream << fileName->toUTF8String();
 				} else {
-					pushIOLines('!', String(heap.roots(), ws.c_str()));
+					locationStream << "<anonymous>";
+				}
+				if (x.getLineNumber() > 0) {
+					locationStream << ':' << x.getLineNumber();
+					if (x.getColumnNumber() > 0) {
+						locationStream << ':' << x.getColumnNumber();
+					}
+				}
+				locationLine = std::string("!!!! location: ") + locationStream.str();
+				const std::wstring locationWide(locationLine.begin(), locationLine.end());
+				std::wcout << locationWide << std::endl;
+				const char* formattedStack = x.formatStackTrace();
+				if (formattedStack != 0 && formattedStack[0] != '\0') {
+					stackLine = std::string("!!!! stack: ") + formattedStack;
+					const std::wstring stackWide(stackLine.begin(), stackLine.end());
+					std::wcout << stackWide << std::endl;
 				}
 			}
-			catch (const std::exception& x) {
+			if (!interactive) {
+				return 1;
+			} else {
+				pushIOLines('!', String(heap.roots(), ws.c_str()));
+				if (printMetadata && !locationLine.empty()) {
+					pushIOLines('!', String(heap.roots(), locationLine.c_str()));
+				}
+				if (printMetadata && !stackLine.empty()) {
+					pushIOLines('!', String(heap.roots(), stackLine.c_str()));
+				}
+			}
+		}
+		catch (const std::exception& x) {
 				source = EMPTY_STRING;
 				std::cout << "!!!! " << x.what() << std::endl;
 				if (!interactive) {

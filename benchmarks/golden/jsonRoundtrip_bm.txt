@@ -1,0 +1,4 @@
+userProfile: iterations=1000 total=335000 len=335 checksum=1599657999
+telemetryBatch: iterations=200 total=2715800 len=13579 checksum=3346302528
+deepTree: iterations=40 total=976400 len=24410 checksum=2046405104
+matrixCollection: iterations=27 total=151065 len=5595 checksum=2903119552

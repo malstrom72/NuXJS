@@ -786,6 +786,7 @@ class JSArray : public LazyJSObject<Object> {
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
 		void sliceDenseVector(Runtime& rt, const Value& key);
+		bool setOwnPropertyInternal(Runtime& rt, const Value& key, const Value& v, Flags flags, bool& result);
 		UInt32 length;
 		Vector<Value> denseVector;
 		virtual void gcMarkReferences(Heap& heap) const {
@@ -811,6 +812,43 @@ class Constants : public GCItem, public Vector<Value> {
 		}
 };
 
+class Code;
+
+/**
+SourceLocation stores the mapping between a bytecode instruction and the originating
+JavaScript source position. The compiler populates these during code generation so the
+interpreter can recover filenames, offsets, lines and columns without doing any extra
+work at runtime.
+**/
+struct SourceLocation {
+	SourceLocation() : fileName(0), offset(0), line(0), column(0) { }
+	const String* fileName;
+	UInt32 offset;
+	int line;
+	int column;
+};
+
+struct StackTrace : public GCItem {
+	typedef GCItem super;
+
+	struct Frame {
+		Frame() : code(0), functionName(0) { }
+		const Code* code;
+		const String* functionName;
+		SourceLocation location;
+	};
+
+	StackTrace(GCList& gcList);
+	void appendFrame(const Code* code, const String* functionName, const SourceLocation& location);
+	UInt32 getFrameCount() const { return frames.size(); }
+	const Frame& getFrame(UInt32 index) const { return frames[index]; }
+	const Vector<Frame>& getFrames() const { return frames; }
+	bool isEmpty() const { return frames.empty(); }
+
+	protected:
+		Vector<Frame> frames;
+		virtual void gcMarkReferences(Heap& heap) const;
+};
 /**
 	CapturedBinding stores the lexical location of an identifier captured from an ancestor scope.
 **/
@@ -846,7 +884,11 @@ class Code : public Object {
 		const CodeWord* getCodeWords() const { return codeWords.begin(); }
 		UInt32 getCodeSize() const { return codeWords.size(); }
 		const String* getName() const { return name; }
-		const String* getSource() const { return source; }
+			const String* getSource() const { return source; }
+			bool lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
+			bool hasSourceLocations() const { return !opcodeOffsets.empty(); }
+		const String* getFileName() const { return fileName; }
+		void setFileName(const String* newFileName) { fileName = newFileName; }
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
 		UInt32 getCapturedBindingCount() const { return capturedBindings.size(); }
@@ -863,21 +905,25 @@ class Code : public Object {
 		const String* name;
 		const String* selfName;
 		const String* source;
+		const String* fileName;
+		Vector<UInt32> opcodeOffsets;
+		Vector<UInt32> lineStartOffsets;
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
 		Vector<CapturedBinding> capturedBindings;
 
-                virtual void gcMarkReferences(Heap& heap) const {
-                        gcMark(heap, constants);
-                        nameIndexes.gcMarkReferences(heap);
-                        gcMark(heap, varNames.begin(), varNames.end());
-                        gcMark(heap, argumentNames.begin(), argumentNames.end());
-                        gcMark(heap, capturedBindings.begin(), capturedBindings.end());
-                        gcMark(heap, name);
-                        gcMark(heap, selfName);
-                        gcMark(heap, source);
-                        super::gcMarkReferences(heap);
-                }
+    virtual void gcMarkReferences(Heap& heap) const {
+      gcMark(heap, constants);
+      nameIndexes.gcMarkReferences(heap);
+      gcMark(heap, varNames.begin(), varNames.end());
+      gcMark(heap, argumentNames.begin(), argumentNames.end());
+      gcMark(heap, capturedBindings.begin(), capturedBindings.end());
+      gcMark(heap, name);
+      gcMark(heap, selfName);
+      gcMark(heap, source);
+			gcMark(heap, fileName);
+      super::gcMarkReferences(heap);
+    }
 };
 
 /**
@@ -1238,15 +1284,32 @@ struct ConstStringException : public Exception {
 };
 
 struct ScriptException : public Exception {
+	friend class Processor;
 	typedef Exception super;
 	static void throwError(Heap& heap, ErrorType type, const String* message = 0);
 	static void throwError(Heap& heap, ErrorType type, const char* message);
 	ScriptException(Heap& heap, const Value& value) throw();
+	ScriptException(Heap& heap, const Value& value, const StackTrace* trace, const SourceLocation& location) throw();
+	ScriptException(Heap& heap, const Value& value, const StackTrace* trace, const SourceLocation& location, const std::string& formattedStack) throw();
 	virtual const char* what() const throw() { return utf8String.c_str(); }
 	virtual ~ScriptException() throw() { }
+	const String* getFileName() const;
+	int getLineNumber() const;
+	int getColumnNumber() const;
+	bool hasLocation() const { return throwLocation.fileName != 0; }
+	const SourceLocation& getSourceLocation() const { return throwLocation; }
+	const StackTrace* getStackTrace() const { return stackTrace; }
+	const char* formatStackTrace() const;
 	Value value;
 	std::string utf8String;
+	const StackTrace* stackTrace;
+	SourceLocation throwLocation;
+	bool hasStackTrace;
+	mutable std::string formattedStackCache;
+	mutable bool formattedStackComputed;
 	Error* asErrorObject() const;
+	protected:
+	void initializeMetadata(const StackTrace* trace, const SourceLocation& location, const std::string& formattedStack) throw();
 };
 inline Error* ScriptException::asErrorObject() const { return value.asError(); }
 
@@ -1640,6 +1703,7 @@ class Processor : public GCItem {
 		void enterEvalCode(const Code* code, bool local = false);
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
 		void throwVirtualException(const Value& exception);
+		bool throwVirtualException(const Value& exception, ScriptException* existingException);
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);
 		Value getResult() const;	// make sure you've called run() until it returns false before calling this
@@ -1696,6 +1760,7 @@ class Processor : public GCItem {
 		void pushFrame(const Code* code, Scope* scope, Object* thisObject);
 		void popFrame();
 		void popCatcher();
+		StackTrace* captureStackTrace();
 
 		static const OpcodeInfo opcodeInfo[OP_COUNT];
 
@@ -1754,12 +1819,13 @@ class Compiler : public GCItem {
 	protected:
 		struct CodeSection {
 			CodeSection(Heap& heap, Int32 initialStackDepth)
-					: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
+					: code(&heap), opcodeOffsets(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
 					, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth) { }
-			void emit(Processor::Opcode opcode, Int32 operand);
+			void emit(Compiler& compiler, Processor::Opcode opcode, Int32 operand);
 			void insertSection(const CodeSection& section);
 			bool inDeadCode() const { return stackDepth == DEAD_CODE_STACK_DEPTH; }
 			Vector<CodeWord> code;
+			Vector<UInt32> opcodeOffsets;
 			Processor::Opcode lastEmitted;
 			const Int32 initialStackDepth;
 			Int32 stackDepth;
@@ -1846,6 +1912,7 @@ class Compiler : public GCItem {
 		Char* unescape(Char* buffer, const Char* e);
 		Vector<Char, 64> parseIdentifier(bool limitLeadingChar);
 		const String* identifier(bool required, bool allowKeywords);
+		UInt32 recordSourceOffset();
 
 		Heap& heap;
 		Code* const code;
@@ -1862,6 +1929,7 @@ class Compiler : public GCItem {
 		int nestCounter;
 		const CapturedLexicalContext* capturedLexical;
 		Vector<CapturedBinding> capturedBindings;
+		UInt32 lineScanOffset;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, code);
@@ -1875,8 +1943,14 @@ class Compiler : public GCItem {
 */
 struct CompilationError : public ScriptException {
 	CompilationError(const ScriptException& sourceException, const String* filename, const Compiler& fromCompiler)
-			: ScriptException(sourceException), filename(filename) {
-		fromCompiler.getStopPosition(offset, lineNumber, columnNumber);
+	: ScriptException(sourceException), filename(filename) {
+	fromCompiler.getStopPosition(offset, lineNumber, columnNumber);
+	SourceLocation location;
+	location.fileName = (filename != 0 ? filename : getFileName());
+	location.offset = static_cast<UInt32>(offset);
+	location.line = lineNumber;
+	location.column = columnNumber;
+	initializeMetadata(0, location, std::string());
 	}
 	const String* filename;
 	size_t offset;
