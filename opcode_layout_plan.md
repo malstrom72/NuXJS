@@ -29,7 +29,9 @@ The analyzer now accepts `--greedy-rewrite` and `--anneal-rewrite` options which
 `tools/analyze_opcode_profile.js` now supports `--anneal` to run a simulated-annealing refinement over the greedy seed, and records the resulting order/coverage metrics (see `docs/opcode_profiles/2025-09-23-annealing.md`).
 
 ## 4. Validate performance statistically
-- [ ] Automate rebuilding the interpreter for each candidate ordering.
+A new helper script (`tools/run_opcode_layout_experiment.js`) now applies rewrite scripts, rebuilds each candidate, and drives the benchmark harness so layout experiments can iterate without manual rebuilds.
+
+- [x] Automate rebuilding the interpreter for each candidate ordering.
 - [ ] Run the benchmark harness for both baseline and reordered interpreters with enough iterations (dozens of runs per workload) to capture stable timing distributions.
 - [ ] Record raw timing data and compute summary statistics (mean, median, variance) for every workload.
 - [ ] Apply statistical tests (e.g., Welch's t-test or bootstrap confidence intervals) to compare baseline and reordered timings, flagging statistically significant deltas.
