@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include "assert.h"
 #include <cmath>
+#include <algorithm>
 #include "NuXJS.h"
 #ifdef _MSC_VER
 #include <float.h>
@@ -181,15 +182,20 @@ const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_ST
 		, S_TRING_STRING("String");
 
 static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
-		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
-		, CANNOT_CONVERT_TO_OBJECT_STRING("Cannot convert undefined or null to object")
-		, CANNOT_USE_IN_OPERATOR_STRING("Cannot use 'in' operator on "), CLASS_STRING("class"), COLON_SPACE(": ")
-		, CONSTRUCTOR_STRING("constructor"), END_BRACKET_STRING("]"), EVAL_STRING("eval"), FALSE_STRING("false")
-		, FUNCTION_SPACE("function "), INFINITY_STRING("Infinity"), IS_NOT_A_FUNCTION_STRING(" is not a function")
-		, IS_NOT_DEFINED_STRING(" is not defined"), MESSAGE_STRING("message"), MINUS_INFINITY_STRING("-Infinity")
-		, NAME_STRING("name"), NAN_STRING("NaN"), NATIVE_FUNCTION_STRING("function() { [native code] }")
-		, PROTOTYPE_CHAIN_TOO_LONG("Prototype chain too long"), PROTOTYPE_STRING("prototype")
-		, STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value");
+                , BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
+                , CANNOT_CONVERT_TO_OBJECT_STRING("Cannot convert undefined or null to object")
+                , CANNOT_USE_IN_OPERATOR_STRING("Cannot use 'in' operator on "), CLASS_STRING("class"), COLON_SPACE(": ")
+                , CONSTRUCTOR_STRING("constructor"), END_BRACKET_STRING("]"), EVAL_STRING("eval"), FALSE_STRING("false")
+                , FUNCTION_SPACE("function "), INFINITY_STRING("Infinity"), IS_NOT_A_FUNCTION_STRING(" is not a function")
+                , IS_NOT_DEFINED_STRING(" is not defined"), MESSAGE_STRING("message"), MINUS_INFINITY_STRING("-Infinity")
+                , NAME_STRING("name"), NAN_STRING("NaN"), NATIVE_FUNCTION_STRING("function() { [native code] }")
+                , PROTOTYPE_CHAIN_TOO_LONG("Prototype chain too long"), PROTOTYPE_STRING("prototype")
+                , STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value");
+
+static const String COLUMN_NUMBER_STRING("columnNumber"), FILE_NAME_STRING("fileName")
+		, LINE_NUMBER_STRING("lineNumber"), STACK_STRING("stack");
+
+static const String ANONYMOUS_SCRIPT_STRING("<anonymous>"), EVAL_CODE_STRING("<eval>");
 
 static const String ERROR_NAMES[ERROR_TYPE_COUNT] = {
 	"Error", "EvalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError", "URIError"
@@ -218,6 +224,17 @@ static Char* intToString(Char buffer[32], Int32 i) {
 	}
 	assert(p >= buffer);
 	return p;
+}
+
+static std::string toDecimalString(Int32 value) {
+	Char buffer[32];
+	Char* begin = intToString(buffer, value);
+	std::string result;
+	result.reserve(static_cast<size_t>((buffer + 32) - begin));
+	for (const Char* p = begin; p != buffer + 32; ++p) {
+		result.push_back(static_cast<char>(*p));
+	}
+	return result;
 }
 
 const int MIN_EXPONENT = -324;
@@ -1588,13 +1605,41 @@ const String* JoiningEnumerator::nextPropertyName() {
 	return name;
 }
 
+/* --- StackTrace --- */
+
+StackTrace::StackTrace(GCList& gcList)
+		: super(gcList), frames(&gcList.getHeap())
+{
+}
+
+void StackTrace::appendFrame(const Code* code, const String* functionName, const SourceLocation& location)
+{
+	Frame entry;
+	entry.code = code;
+	entry.functionName = functionName;
+	entry.location = location;
+	frames.push(entry);
+}
+
+void StackTrace::gcMarkReferences(Heap& heap) const
+{
+	for (UInt32 i = 0; i < frames.size(); ++i) {
+		const Frame& frame = frames[i];
+		gcMark(heap, frame.code);
+		gcMark(heap, frame.functionName);
+		gcMark(heap, frame.location.fileName);
+	}
+	super::gcMarkReferences(heap);
+}
+
 /* --- Code --- */
 
 Code::Code(GCList& gcList, Constants* sharedConstants)
 	: super(gcList), codeWords(0, &gcList.getHeap())
 	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
 	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
-	, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
+	, selfName(0), source(0), fileName(0), opcodeOffsets(&gcList.getHeap()), lineStartOffsets(&gcList.getHeap())
+	, bloomSet(0), maxStackDepth(0)
 {
 	assert(constants != 0);
 }
@@ -1605,6 +1650,44 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
 		return false;
 	}
 	index = bucket->getIndexValue();
+	return true;
+}
+
+static UInt32 encodeDelta(Int32 delta) {
+	const UInt32 sign = (delta < 0 ? 1U : 0U);
+	const UInt32 magnitude = static_cast<UInt32>(sign != 0 ? -delta : delta);
+	return (magnitude << 1) | sign;
+}
+
+static Int32 decodeDelta(UInt32 encoded) {
+	const UInt32 magnitude = encoded >> 1;
+	return ((encoded & 1U) != 0 ? -static_cast<Int32>(magnitude) : static_cast<Int32>(magnitude));
+}
+
+bool Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const {
+	if (opcodeOffsets.empty() || instructionIndex >= opcodeOffsets.size()) {
+		return false;
+	}
+	Int32 absoluteOffset = 0;
+	for (UInt32 i = 0; i <= instructionIndex; ++i) {
+		absoluteOffset += decodeDelta(opcodeOffsets[i]);
+	}
+	if (absoluteOffset < 0) {
+		return false;
+	}
+	out.offset = static_cast<UInt32>(absoluteOffset);
+	out.fileName = (fileName != 0 ? fileName : &ANONYMOUS_SCRIPT_STRING);
+	if (!lineStartOffsets.empty()) {
+		const UInt32* begin = lineStartOffsets.begin();
+		const UInt32* end = lineStartOffsets.end();
+		const UInt32* it = std::upper_bound(begin, end, out.offset);
+		const UInt32* lineStart = (it == begin ? begin : it - 1);
+		out.line = static_cast<int>((lineStart - begin) + 1);
+		out.column = static_cast<int>(out.offset - *lineStart + 1);
+	} else {
+		out.line = 1;
+		out.column = static_cast<int>(out.offset + 1);
+	}
 	return true;
 }
 
@@ -2108,10 +2191,73 @@ FunctionScope::~FunctionScope() {
 	}
 }
 
+static std::string formatStackTraceString(const Value& exceptionValue, const std::string& fallbackHeader, const StackTrace* trace) {
+	if (trace == 0 || trace->isEmpty()) {
+		return std::string();
+	}
+	std::string header;
+	Error* errorObject = exceptionValue.asError();
+	if (errorObject != 0) {
+		const String* name = errorObject->getErrorName();
+		const String* message = errorObject->getErrorMessage();
+		if (name != 0) {
+			header = name->toUTF8String();
+		}
+		if (header.empty()) {
+			header = E_RROR_STRING.toUTF8String();
+		}
+		if (message != 0 && !message->empty()) {
+			if (!header.empty()) {
+				header.append(": ");
+			}
+			header.append(message->toUTF8String());
+		}
+	}
+	if (header.empty()) {
+		header = fallbackHeader;
+	}
+	std::string result = header;
+	const UInt32 frameCount = trace->getFrameCount();
+	for (UInt32 i = 0; i < frameCount; ++i) {
+		const StackTrace::Frame& frame = trace->getFrame(i);
+		result.append("\n    at ");
+		const String* functionName = frame.functionName;
+		std::string location;
+		if (frame.location.fileName != 0) {
+			location = frame.location.fileName->toUTF8String();
+		}
+		if (location.empty()) {
+			location = ANONYMOUS_SCRIPT_STRING.toUTF8String();
+		}
+		if (frame.location.line > 0) {
+			location.push_back(':');
+			location.append(toDecimalString(frame.location.line));
+			if (frame.location.column > 0) {
+				location.push_back(':');
+				location.append(toDecimalString(frame.location.column));
+			}
+		}
+		if (functionName != 0 && !functionName->empty()) {
+			std::string functionLabel = functionName->toUTF8String();
+			if (!functionLabel.empty()) {
+				result.append(functionLabel);
+				result.append(" (");
+				result.append(location);
+				result.push_back(')');
+			} else {
+				result.append(location);
+			}
+		} else {
+			result.append(location);
+		}
+	}
+	return result;
+}
+
 /* --- ScriptException --- */
-	
+
 void ScriptException::throwError(Heap& heap, ErrorType type, const String* message) {
-	throw ScriptException(heap, new(heap) Error(heap.managed(), type, message));
+	throw ScriptException(heap, new(heap) Error(heap.managed(), type, message), 0, SourceLocation(), std::string());
 }
 
 void ScriptException::throwError(Heap& heap, ErrorType type, const char* message) {
@@ -2119,8 +2265,70 @@ void ScriptException::throwError(Heap& heap, ErrorType type, const char* message
 }
 
 ScriptException::ScriptException(Heap& heap, const Value& value) throw()
-		: value(value), utf8String(value.toString(heap)->toUTF8String()) { }
-		
+		: value(value), utf8String(value.toString(heap)->toUTF8String())
+		, stackTrace(0), throwLocation(), hasStackTrace(false)
+		, formattedStackCache(), formattedStackComputed(false)
+{
+	initializeMetadata(0, SourceLocation(), std::string());
+}
+
+ScriptException::ScriptException(Heap& heap, const Value& value, const StackTrace* trace, const SourceLocation& location) throw()
+		: value(value), utf8String(value.toString(heap)->toUTF8String())
+		, stackTrace(0), throwLocation(), hasStackTrace(false)
+		, formattedStackCache(), formattedStackComputed(false)
+{
+	initializeMetadata(trace, location, std::string());
+}
+
+ScriptException::ScriptException(Heap& heap, const Value& value, const StackTrace* trace, const SourceLocation& location, const std::string& formattedStack) throw()
+		: value(value), utf8String(value.toString(heap)->toUTF8String())
+		, stackTrace(0), throwLocation(), hasStackTrace(false)
+		, formattedStackCache(), formattedStackComputed(false)
+{
+	initializeMetadata(trace, location, formattedStack);
+}
+
+void ScriptException::initializeMetadata(const StackTrace* trace, const SourceLocation& location, const std::string& formattedStack) throw()
+{
+	if (trace != 0 && !trace->isEmpty()) {
+		stackTrace = trace;
+		hasStackTrace = true;
+	} else {
+		stackTrace = 0;
+		hasStackTrace = false;
+	}
+	if (hasStackTrace || location.fileName != 0) {
+		throwLocation = location;
+	} else {
+		throwLocation = SourceLocation();
+	}
+	if (!formattedStack.empty()) {
+		formattedStackCache = formattedStack;
+		formattedStackComputed = true;
+	} else {
+		formattedStackCache.clear();
+		formattedStackComputed = false;
+	}
+}
+
+const String* ScriptException::getFileName() const { return throwLocation.fileName; }
+
+int ScriptException::getLineNumber() const { return throwLocation.line; }
+
+int ScriptException::getColumnNumber() const { return throwLocation.column; }
+
+const char* ScriptException::formatStackTrace() const
+{
+	if (!hasStackTrace || stackTrace == 0 || stackTrace->isEmpty()) {
+		return utf8String.c_str();
+	}
+	if (!formattedStackComputed) {
+		formattedStackCache = formatStackTraceString(value, utf8String, stackTrace);
+		formattedStackComputed = true;
+	}
+	return (formattedStackCache.empty() ? utf8String.c_str() : formattedStackCache.c_str());
+}
+
 /* --- EvalFunction --- */
 
 static struct EvalFunction : public Function {
@@ -2399,16 +2607,91 @@ void Processor::popFrame() {
 }
 
 void Processor::popCatcher() {
-	assert(firstCatcher != 0);
-	Catcher* killMe = firstCatcher;
-	firstCatcher = firstCatcher->nextCatcher;
-	delete killMe;
+        assert(firstCatcher != 0);
+        Catcher* killMe = firstCatcher;
+        firstCatcher = firstCatcher->nextCatcher;
+        delete killMe;
 }
 
-void Processor::throwVirtualException(const Value& exception) {
-	if (firstCatcher == 0) { // FIX: what exception to throw here?
+StackTrace* Processor::captureStackTrace() {
+	if (currentFrame == 0 || ip == 0) {
+		return 0;
+	}
+	const Frame* frame = currentFrame;
+	const CodeWord* nextIP = ip;
+	const Code* code = frame->code;
+	if (code == 0 || code->getFileName() == 0 || !code->hasSourceLocations()) {
+		return 0;
+	}
+	StackTrace* trace = 0;
+	while (frame != 0 && nextIP != 0) {
+		const Code* frameCode = frame->code;
+		if (frameCode == 0 || frameCode->getFileName() == 0 || !frameCode->hasSourceLocations()) {
+			break;
+		}
+		const CodeWord* begin = frameCode->getCodeWords();
+		if (begin == 0 || nextIP <= begin) {
+			break;
+		}
+		const UInt32 instructionIndex = static_cast<UInt32>((nextIP - begin) - 1);
+		SourceLocation location;
+		if (!frameCode->lookupSourceLocation(instructionIndex, location)) {
+			break;
+		}
+		if (trace == 0) {
+			trace = new(heap) StackTrace(heap.managed());
+		}
+		trace->appendFrame(frameCode, frameCode->getName(), location);
+		const CodeWord* callerIP = frame->returnIP;
+		frame = frame->previousFrame;
+		nextIP = callerIP;
+	}
+	return trace;
+}
+
+bool Processor::throwVirtualException(const Value& exception, ScriptException* existingException) {
+	if (firstCatcher == 0) {
+		StackTrace* trace = captureStackTrace();
+		SourceLocation throwLocation;
+		std::string formattedStack;
+		Error* errorObject = exception.asError();
+		std::string fallbackHeader;
+		if (trace != 0 && !trace->isEmpty()) {
+			throwLocation = trace->getFrame(0).location;
+			if (errorObject == 0) {
+				fallbackHeader = exception.toString(heap)->toUTF8String();
+			}
+			formattedStack = formatStackTraceString(exception, fallbackHeader, trace);
+			if (errorObject != 0) {
+				const String* fileName = (throwLocation.fileName != 0 ? throwLocation.fileName : &ANONYMOUS_SCRIPT_STRING);
+				errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(fileName), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+				errorObject->setOwnProperty(rt, Value(&LINE_NUMBER_STRING), Value(static_cast<Int32>(throwLocation.line)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+				errorObject->setOwnProperty(rt, Value(&COLUMN_NUMBER_STRING), Value(static_cast<Int32>(throwLocation.column)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+				if (!formattedStack.empty()) {
+					const String* stackString = new(heap) String(heap.managed(), formattedStack);
+					errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+				}
+			}
+		} else if (errorObject != 0) {
+			errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(&ANONYMOUS_SCRIPT_STRING), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+		}
 		reset();
-		throw ScriptException(heap, exception);
+		if (existingException != 0) {
+			if (trace != 0 && !trace->isEmpty()) {
+				existingException->initializeMetadata(trace, throwLocation, formattedStack);
+			} else {
+				SourceLocation fallbackLocation;
+				fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
+				existingException->initializeMetadata(0, fallbackLocation, std::string());
+			}
+			return true;
+		}
+		if (trace != 0 && !trace->isEmpty()) {
+			throw ScriptException(heap, exception, trace, throwLocation, formattedStack);
+		}
+		SourceLocation fallbackLocation;
+		fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
+		throw ScriptException(heap, exception, 0, fallbackLocation);
 	}
 	ip = firstCatcher->ip;
 	assert(ip != 0);
@@ -2416,6 +2699,11 @@ void Processor::throwVirtualException(const Value& exception) {
 	sp = firstCatcher->sp;
 	push(exception);
 	popCatcher();
+	return false;
+}
+
+void Processor::throwVirtualException(const Value& exception) {
+	(void)throwVirtualException(exception, 0);
 }
 
 void Processor::error(ErrorType errorType, const String* message) {
@@ -2933,7 +3221,7 @@ struct Compiler::SemanticScope {
 Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter)
 		: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
 		, mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
-		, nestCounter(initialNestCounter) { }
+		, nestCounter(initialNestCounter), lineScanOffset(0) { }
 
 const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e) {
 	if (b == e) {
@@ -2946,14 +3234,14 @@ const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e
 
 void Compiler::error(ErrorType type, const char* message) { ScriptException::throwError(heap, type, message); }
 
-void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
-	if (inDeadCode()) {	// unknown stack depth = dead code
+void Compiler::CodeSection::emit(Compiler& compiler, Processor::Opcode opcode, Int32 operand) {
+	if (inDeadCode()) { // unknown stack depth = dead code
 		return;
 	}
 	const Processor::OpcodeInfo& opcodeInfo = Processor::getOpcodeInfo(opcode);
 	stackDepth += opcodeInfo.stackUse + (((opcodeInfo.flags & Processor::OpcodeInfo::POP_OPERAND) != 0) ? -operand : 0);
 	assert(stackDepth >= 0);
-	maxStackDepth = std::max(maxStackDepth, stackDepth);		// Yeah, if we eliminate a (void/const/repush, pop) pair this might be one more than necessary, but it never seems to happen from emperical tests and it doesn't really matter in the first place.
+	maxStackDepth = std::max(maxStackDepth, stackDepth);
 	if ((opcodeInfo.flags & Processor::OpcodeInfo::TERMINAL) != 0) {
 		stackDepth = DEAD_CODE_STACK_DEPTH;
 	}
@@ -2966,7 +3254,12 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 			case Processor::REPUSH_OP:
 			case Processor::CONST_OP:
 			case Processor::VOID_OP: {
-				code.pop();
+				if (!code.empty()) {
+					code.pop();
+				}
+				if (!opcodeOffsets.empty()) {
+					opcodeOffsets.pop();
+				}
 				lastEmitted = Processor::INVALID_OP;
 				return;
 			}
@@ -2974,13 +3267,21 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 		}
 		if (replacementOpcode != Processor::INVALID_OP) {
 			const Int32 oldOperand = Processor::unpackInstruction(code.end()[-1]).second;
+			UInt32 lastOffset = 0;
+			if (!opcodeOffsets.empty()) {
+				lastOffset = opcodeOffsets[opcodeOffsets.size() - 1];
+				opcodeOffsets.pop();
+			}
 			code.pop();
 			code.push(Processor::packInstruction(replacementOpcode, oldOperand));
+			opcodeOffsets.push(lastOffset);
 			lastEmitted = replacementOpcode;
 			return;
 		}
 	}
+	const UInt32 sourceOffset = compiler.recordSourceOffset();
 	code.push(Processor::packInstruction(opcode, operand));
+	opcodeOffsets.push(sourceOffset);
 	lastEmitted = opcode;
 }
 
@@ -2988,6 +3289,7 @@ void Compiler::CodeSection::insertSection(const CodeSection& section) {
 	const Int32 stackAdjust = stackDepth - section.initialStackDepth;
 	lastEmitted = Processor::INVALID_OP;
 	code.insert(code.end(), section.code.begin(), section.code.end());
+	opcodeOffsets.insert(opcodeOffsets.end(), section.opcodeOffsets.begin(), section.opcodeOffsets.end());
 	stackDepth = section.stackDepth + stackAdjust;
 	maxStackDepth = std::max(maxStackDepth, section.maxStackDepth + stackAdjust);
 }
@@ -2996,7 +3298,7 @@ void Compiler::emit(Processor::Opcode opcode, Int32 operand) {
 	if (operand < MIN_OPERAND_VALUE || operand > MAX_OPERAND_VALUE) { // Highly hypothetical, but correctness!
 		error(RANGE_ERROR, "Internal compiler limitations reached. Reduce code complexity.");
 	}
-	currentSection->emit(opcode, operand);
+	currentSection->emit(*this, opcode, operand);
 }
 
 Compiler::CodeSection* Compiler::changeSection(CodeSection* newOutputSection) {
@@ -3070,6 +3372,30 @@ static bool isLineTerminator(Char c) {
 
 static bool lineTerminatorInRange(const Char* b, const Char* e) {
 	return (std::find_first_of(b, e, LINE_TERMINATORS, LINE_TERMINATORS + 4) != e);
+}
+
+UInt32 Compiler::recordSourceOffset() {
+	const UInt32 currentOffset = static_cast<UInt32>(p - b);
+	if (code->lineStartOffsets.empty()) {
+		code->lineStartOffsets.push(0);
+	}
+	if (lineScanOffset < currentOffset) {
+		const Char* scan = b + lineScanOffset;
+		const Char* limit = b + currentOffset;
+		while (scan != limit) {
+			if (std::find(LINE_TERMINATORS, LINE_TERMINATORS + 4, *scan) != LINE_TERMINATORS + 4) {
+				const UInt32 nextStart = static_cast<UInt32>(scan - b) + 1;
+				if (code->lineStartOffsets.empty() || code->lineStartOffsets[code->lineStartOffsets.size() - 1] != nextStart) {
+					code->lineStartOffsets.push(nextStart);
+				}
+			}
+			++scan;
+		}
+		lineScanOffset = currentOffset;
+	} else {
+		lineScanOffset = currentOffset;
+	}
+	return currentOffset;
 }
 
 void Compiler::white() {
@@ -3704,12 +4030,13 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 }
 
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
-	assert(functionName != 0);
-	Code* func = new(heap) Code(heap.managed(), code->constants);
-	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
-	try {
-		p = funcCompiler.compileFunction(p, e, functionName, selfName);
-	}
+        assert(functionName != 0);
+        Code* func = new(heap) Code(heap.managed(), code->constants);
+        func->setFileName(code->getFileName());
+        Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
+        try {
+                p = funcCompiler.compileFunction(p, e, functionName, selfName);
+        }
 	catch (const Exception&) { // FIX : a bit Q & D ish
 		p = funcCompiler.p;
 		throw;
@@ -5100,27 +5427,29 @@ Var Runtime::eval(const String& expression) {
 }
 
 Code* Runtime::compileEvalCode(const String* expression) {
-	const Table::Bucket* bucket = evalCodeCache.lookup(expression);
-	if (bucket != 0) {
-		Object* o = bucket->getValue().getObject();
-		assert(dynamic_cast<Code*>(o) != 0);
-		return reinterpret_cast<Code*>(o);
-	} else {
-		Code* code = new(heap) Code(heap.managed());
-		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
-		compiler.compile(*expression);
-		evalCodeCache.update(evalCodeCache.insert(expression), code);
-		return code;
-	}
+        const Table::Bucket* bucket = evalCodeCache.lookup(expression);
+        if (bucket != 0) {
+                Object* o = bucket->getValue().getObject();
+                assert(dynamic_cast<Code*>(o) != 0);
+                return reinterpret_cast<Code*>(o);
+        } else {
+                Code* code = new(heap) Code(heap.managed());
+                code->setFileName(&EVAL_CODE_STRING);
+                Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
+                compiler.compile(*expression);
+                evalCodeCache.update(evalCodeCache.insert(expression), code);
+                return code;
+        }
 }
 
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
-	Code* code = new(heap) Code(heap.managed());
-	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
-	try {
-		compiler.compile(source);
-	}
-	catch (const ScriptException& x) {
+        Code* code = new(heap) Code(heap.managed());
+        code->setFileName((filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING));
+        Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
+        try {
+                compiler.compile(source);
+        }
+        catch (const ScriptException& x) {
 		throw CompilationError(x, filename, compiler);
 	}
 	return code;
