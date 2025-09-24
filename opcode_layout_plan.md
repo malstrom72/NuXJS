@@ -37,4 +37,4 @@ A new helper script (`tools/run_opcode_layout_experiment.js`) now applies rewrit
 - [x] Apply statistical tests (e.g., Welch's t-test or bootstrap confidence intervals) to compare baseline and reordered timings, flagging statistically significant deltas.
 - [x] Aggregate wins and regressions across the suite to judge net impact.
 - [x] Document the methodology, captured data, and conclusions in a dedicated report.
-- [ ] Integrate profiling, search, and validation into an automated pipeline so future opcode changes can be re-evaluated quickly.
+- [x] Integrate profiling, search, and validation into an automated pipeline so future opcode changes can be re-evaluated quickly.
