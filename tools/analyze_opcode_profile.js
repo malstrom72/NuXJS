@@ -9,6 +9,7 @@ const message = [
 "Usage: analyze_opcode_profile <profile.json> [--report=path] [--dot=path] [--top=N]",
 "                                         [--order=path] [--anneal] [--anneal-order=path]",
 "                                         [--anneal-iterations=N] [--anneal-start=T] [--anneal-end=T]",
+"                                         [--greedy-rewrite=path] [--anneal-rewrite=path]",
 "",
 "Reads a dynamic opcode profile captured by the instrumentation and emits",
 "summaries of opcode hotness plus transition probabilities. Optionally writes",
@@ -34,6 +35,8 @@ let annealOrderPath = null;
 let annealIterations = 50000;
 let annealStart = 1.0;
 let annealEnd = 0.001;
+let greedyRewritePath = null;
+let annealRewritePath = null;
 
 	for (let i = 2; i < argv.length; ++i) {
 		const arg = argv[i];
@@ -78,6 +81,11 @@ let annealEnd = 0.001;
 			}
 			runAnnealing = true;
 			annealEnd = value;
+		} else if (arg.startsWith("--greedy-rewrite=")) {
+			greedyRewritePath = arg.substring("--greedy-rewrite=".length);
+		} else if (arg.startsWith("--anneal-rewrite=")) {
+			runAnnealing = true;
+			annealRewritePath = arg.substring("--anneal-rewrite=".length);
 		} else if (arg.startsWith("--")) {
 			throw new Error("Unknown option: " + arg);
 		} else if (input === null) {
@@ -99,9 +107,13 @@ let annealEnd = 0.001;
 		annealOrderPath,
 		annealIterations,
 		annealStart,
-		annealEnd
+		annealEnd,
+		greedyRewritePath,
+		annealRewritePath
 	};
 }
+
+const REPO_ROOT = path.resolve(__dirname, "..");
 
 function loadProfile(filePath) {
 	const resolved = path.resolve(process.cwd(), filePath);
@@ -450,6 +462,28 @@ function tableToMarkdown(table) {
 	return lines.join("\n");
 }
 
+function buildRewriteScript(order, outputPath) {
+	if (!order || order.length === 0) {
+		throw new Error("Cannot build rewrite script without at least one opcode");
+	}
+	const resolvedPath = path.resolve(process.cwd(), outputPath);
+	const scriptDir = path.dirname(resolvedPath);
+	const targetPath = path.resolve(REPO_ROOT, "src", "NuXJS.cpp");
+	let relativeTarget = path.relative(scriptDir, targetPath);
+	if (relativeTarget === "") {
+		relativeTarget = "src/NuXJS.cpp";
+	}
+	const templatePath = path.resolve(__dirname, "opcode_rewrite_template.js");
+	const template = fs.readFileSync(templatePath, "utf8");
+	const normalizedOrder = order.map((opcode) => opcode.endsWith("_OP") ? opcode : opcode + "_OP");
+	const orderLiteral = JSON.stringify(normalizedOrder, null, "\t");
+	const script = template
+		.replace(/__ORDER_ARRAY__/g, orderLiteral)
+		.replace(/"__RELATIVE_TARGET__"/g, JSON.stringify(relativeTarget));
+	fs.mkdirSync(scriptDir, { recursive: true });
+	fs.writeFileSync(resolvedPath, script, "utf8");
+}
+
 function buildReport(graph, topN, clustering, annealing) {
 	const lines = [];
 	lines.push("# Opcode Profile Summary");
@@ -634,6 +668,17 @@ function main() {
 		const resolvedOrder = path.resolve(process.cwd(), args.orderPath);
 		fs.mkdirSync(path.dirname(resolvedOrder), { recursive: true });
 		fs.writeFileSync(resolvedOrder, clustering.order.join("\n") + "\n", "utf8");
+	}
+
+	if (args.greedyRewritePath) {
+		buildRewriteScript(clustering.order, args.greedyRewritePath);
+	}
+
+	if (args.annealRewritePath) {
+		if (!annealing || !annealing.order) {
+			throw new Error("--anneal-rewrite requires simulated annealing results");
+		}
+		buildRewriteScript(annealing.order, args.annealRewritePath);
 	}
 
 	if (args.annealOrderPath && annealing && annealing.order) {
