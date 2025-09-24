@@ -256,7 +256,21 @@ return function inner() { return x; };
 makeInner()(); // returns 2
 ```
 
-NuXJS mirrors this behaviour by storing a `CATCH_PARAMETER` sentinel in `nameIndexes` so the identifier never upgrades to a slot binding, then restoring the original entry once the block ends.【F:src/NuXJS.cpp†L4505-L4533】 If we forced a `(depth, slot)` operand here, the closure would continue to read the outer lexical `x = 1`, breaking the ES3 guarantee that the handler-local `x` shadows the outer binding. Combined with `CatchScope::resolveCapturedBinding` forwarding rules, the runtime falls back to hashed name lookup whenever a closure relies on the handler’s object environment.【F:src/NuXJS.cpp†L3891-L3925】【F:src/NuXJS.cpp†L2322-L2337】【F:src/NuXJS.cpp†L4516-L4533】 These corrected examples demonstrate that the fast path is safe for closures compiled before the dynamic scope appears, while closures created inside `with` or `catch` blocks must retain name-based resolution.
+NuXJS mirrors this behaviour by storing a `CATCH_PARAMETER` sentinel in `nameIndexes` so the identifier never upgrades to a slot binding, then restoring the original entry once the block ends.【F:src/NuXJS.cpp†L4505-L4533】 The sentinel only suppresses slot emission for the handler parameter itself—other locals defined in the surrounding function keep their `(depth, slot)` coordinates because the catch object sits outside the function-scope frame layout and `CatchScope::resolveCapturedBinding` simply forwards fast-path probes to its parent function scope.【F:src/NuXJS.cpp†L3891-L3925】【F:src/NuXJS.cpp†L2322-L2337】 Without that guard, a closure created inside the handler would cache the outer slot for `x` and return `1`, violating the ES3 rule that the handler-local binding shadows any same-named outer variable.【F:docs/specs/ECMA-262 3.md†L3436-L3483】 These corrected examples demonstrate that the fast path is safe for closures compiled before the dynamic scope appears, while closures created inside `with` or `catch` blocks must retain name-based resolution for the handler variable.
+
+```javascript
+function demo() {
+var outer = 7;
+try {
+throw 0;
+} catch (err) {
+return function probe() { return outer; }();
+}
+}
+demo(); // still returns 7 via the fast slot path
+```
+
+The handler-local `err` stays on the named route, but the closure continues to fast-bind `outer` because the catch scope delegates captured-slot resolution to the surrounding function frame.
 
 #### Bytecode emission updates
 Once resolution yields a concrete upvalue descriptor, the emitter needs dedicated opcodes (e.g. `READ_CLOSURE_OP`, `WRITE_CLOSURE_OP`, `DELETE_CLOSURE_OP`) whose operands encode the ancestor depth and slot. Adding these opcodes touches the VM enumeration and opcode metadata tables, the interpreter dispatch, and the disassembler that prints human-readable operands.【F:src/NuXJS.h†L1536-L1590】【F:src/NuXJS.cpp†L2164-L2184】【F:src/NuXJS.cpp†L2507-L2548】【F:tools/NuXJSREPL.cpp†L262-L289】 Emission sites such as `makeRValue`, assignment helpers, and delete handling must choose the closure variants when `ExpressionResult::CLOSURE` is present instead of routing through constant-pool strings.【F:src/NuXJS.cpp†L3313-L3368】【F:src/NuXJS.cpp†L3582-L3589】【F:src/NuXJS.cpp†L3975-L3980】
