@@ -3044,8 +3044,10 @@ bool Processor::run(Int32 maxCycles) {
 		try {
 			innerRun();
 		}
-		catch (const ScriptException& x) {
-			throwVirtualException(x.value);
+		catch (ScriptException& x) {
+			if (throwVirtualException(x.value, &x)) {
+				throw;
+			}
 		}
 	}
 	return (ip != 0);
