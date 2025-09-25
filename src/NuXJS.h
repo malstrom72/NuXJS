@@ -525,9 +525,9 @@ class Runtime;
 	prototype handling.
 **/
 class Object : public GCItem {
-	public:
-		typedef GCItem super;
-	
+public:
+typedef GCItem super;
+
 		virtual Function* asFunction();							///< Default returns 0. (Functions return `this`.)
 		virtual JSArray* asArray();								///< Default returns 0. (Arrays return `this`.)
 		virtual Error* asError();								///< Default returns 0. (Errors return `this`.)
@@ -975,7 +975,9 @@ class Scope : public GCItem {
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		Value* getLocalsPointer() const { return localsPointer; }
 		Scope* getParentScope() const { return parentScope; }
-		virtual bool resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const;
+               virtual bool resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const;
+               virtual bool resolveClosureOperand(UInt16 depth, Int16 slot, Value*& resolvedSlot,
+                       FunctionScope*& owner) const;
 		virtual FunctionScope* nearestFunctionScope();
 		virtual const FunctionScope* nearestFunctionScope() const;
 		void makeClosure() const;
@@ -1108,10 +1110,13 @@ class FunctionScope : public Scope {
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
-		virtual bool resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const;
+               virtual bool resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const;
+               virtual bool resolveClosureOperand(UInt16 depth, Int16 slot, Value*& resolvedSlot,
+                       FunctionScope*& owner) const;
 		virtual FunctionScope* nearestFunctionScope();
 		virtual const FunctionScope* nearestFunctionScope() const;
 		FunctionScope* getParentFunctionScope() const { return parentFunctionScope; }
+		JSFunction* getFunction() const { return function; }
 		JSObject* getDynamicVars(Runtime& rt) const;
 		virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
 
@@ -1168,6 +1173,13 @@ class Runtime : public GCItem {
 	public:
 		typedef GCItem super;
 	
+		struct ClosureResolutionStats {
+			ClosureResolutionStats() : fastPathHits(0), cacheMisses(0), slowFallbacks(0) { }
+			UInt32 fastPathHits;
+			UInt32 cacheMisses;
+			UInt32 slowFallbacks;
+		};
+	
 		enum PrototypeId {
 			OBJECT_PROTOTYPE, FUNCTION_PROTOTYPE, STRING_PROTOTYPE, BOOLEAN_PROTOTYPE, NUMBER_PROTOTYPE
 			, DATE_PROTOTYPE, ARRAY_PROTOTYPE, FIRST_ERROR_PROTOTYPE, PROTOTYPE_COUNT = FIRST_ERROR_PROTOTYPE + ERROR_TYPE_COUNT
@@ -1206,6 +1218,11 @@ class Runtime : public GCItem {
 
 		void checkTimeOut();
 		void autoGC(bool checkOutOfMemory);
+		void resetClosureResolutionStats();
+		const ClosureResolutionStats& getClosureResolutionStats() const { return closureStats; }
+		void recordClosureFastPath();
+		void recordClosureCacheMiss();
+		void recordClosureSlowFallback();
 
 		virtual Var runUntilReturn(Processor& processor);
 		virtual double getCurrentEpochTime();			///< Get current utc time in milliseconds relative to Unix epoch (i.e. 0 is 1970-01-01T00:00:00Z). Override to implement higher resolution than standard C time() (whole seconds).
@@ -1232,6 +1249,7 @@ class Runtime : public GCItem {
 		double unixEpochTimeDiff;
 
 		mutable const String* stringConstantsCache[STRING_CONSTANTS_CACHE_SIZE];
+		ClosureResolutionStats closureStats;
 	
 	public:
 		virtual void gcMarkReferences(Heap& heap) const {
@@ -1678,16 +1696,28 @@ class Processor : public GCItem {
 			typedef GCItem super;
 			Frame(GCList& gcList, const CodeWord* returnIP, const Code* code, Scope* scope, Object* thisObject
 					, Frame* previousFrame) : super(gcList), returnIP(returnIP), code(code), scope(scope)
-					, thisObject(thisObject), previousFrame(previousFrame) { }
+					, thisObject(thisObject), previousFrame(previousFrame), resolvedClosureSlots(&gcList.getHeap()) { }
 			const CodeWord* const returnIP;
 			const Code* const code;
 			Scope* const scope;
 			Object* const thisObject;
 			Frame* const previousFrame;
+			struct ResolvedClosureSlot {
+				ResolvedClosureSlot(Int32 inOperand = 0, FunctionScope* inScope = 0, Int16 inSlot = 0, Value* inPointer = 0)
+					: operand(inOperand), scope(inScope), slot(inSlot), pointer(inPointer) { }
+				Int32 operand;
+				FunctionScope* scope;
+				Int16 slot;
+				Value* pointer;
+			};
+			Vector<ResolvedClosureSlot> resolvedClosureSlots;
 			virtual void gcMarkReferences(Heap& heap) const {
 				gcMark(heap, code);
 				gcMark(heap, scope);
 				gcMark(heap, thisObject);
+				for (size_t i = 0; i < resolvedClosureSlots.size(); ++i) {
+					gcMark(heap, resolvedClosureSlots[i].scope);
+				}
 				gcMark(heap, previousFrame);
 				super::gcMarkReferences(heap);
 			}

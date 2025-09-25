@@ -1991,7 +1991,13 @@ void Scope::declareVar(Runtime& rt, const String* name, const Value& initValue, 
 }
 
 bool Scope::resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const {
-	return (parentScope != 0 && parentScope->resolveCapturedBinding(binding, slot));
+        return (parentScope != 0 && parentScope->resolveCapturedBinding(binding, slot));
+}
+
+bool Scope::resolveClosureOperand(UInt16 depth, Int16 slot, Value*& resolvedSlot, FunctionScope*& owner) const {
+       resolvedSlot = 0;
+       owner = 0;
+       return (parentScope != 0 && parentScope->resolveClosureOperand(depth, slot, resolvedSlot, owner));
 }
 
 FunctionScope* Scope::nearestFunctionScope() {
@@ -2131,10 +2137,10 @@ const FunctionScope* FunctionScope::nearestFunctionScope() const {
 }
 
 bool FunctionScope::resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const {
-	const FunctionScope* scope = this;
-	UInt16 remainingDepth = binding.depth;
-	while (remainingDepth > 0) {
-		if (scope->parentFunctionScope == 0) {
+        const FunctionScope* scope = this;
+        UInt16 remainingDepth = binding.depth;
+        while (remainingDepth > 0) {
+                if (scope->parentFunctionScope == 0) {
 			return false;
 		}
 		scope = scope->parentFunctionScope;
@@ -2146,8 +2152,33 @@ bool FunctionScope::resolveCapturedBinding(const CapturedBinding& binding, Value
 	if (resolved < begin || resolved >= end) {
 		return false;
 	}
-	slot = resolved;
-	return true;
+        slot = resolved;
+        return true;
+}
+
+bool FunctionScope::resolveClosureOperand(UInt16 depth, Int16 slot, Value*& resolvedSlot, FunctionScope*& owner) const {
+       const FunctionScope* scope = this;
+       UInt16 remainingDepth = depth;
+       while (remainingDepth > 0) {
+               if (scope->parentFunctionScope == 0) {
+                       resolvedSlot = 0;
+                       owner = 0;
+                       return false;
+               }
+               scope = scope->parentFunctionScope;
+               --remainingDepth;
+       }
+       Value* const resolved = scope->localsPointer + slot;
+       Value* const begin = scope->locals.begin();
+       Value* const end = scope->locals.end();
+       if (resolved < begin || resolved >= end) {
+               resolvedSlot = 0;
+               owner = 0;
+               return false;
+       }
+       resolvedSlot = resolved;
+       owner = const_cast<FunctionScope*>(scope);
+       return true;
 }
 
 FunctionScope::~FunctionScope() {
@@ -2556,11 +2587,14 @@ void Processor::innerRun() {
 				Value* slot = 0;
 				if (scope->resolveCapturedBinding(binding, slot)) {
 					assert(slot != 0);
+					rt.recordClosureFastPath();
+					rt.recordClosureCacheMiss();
 					++sp;
 					*sp = *slot;
 				} else {
 					const String* name = code->getLocalName(binding.slot);
 					assert(name != 0);
+					rt.recordClosureSlowFallback();
 					++sp;
 					if (scope->readVar(rt, name, sp) == NONEXISTENT) {
 						error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
@@ -2577,10 +2611,13 @@ void Processor::innerRun() {
 				Value* slot = 0;
 				if (scope->resolveCapturedBinding(binding, slot)) {
 					assert(slot != 0);
+					rt.recordClosureFastPath();
+					rt.recordClosureCacheMiss();
 					*slot = sp[0];
 				} else {
 					const String* name = code->getLocalName(binding.slot);
 					assert(name != 0);
+					rt.recordClosureSlowFallback();
 					scope->writeVar(rt, name, sp[0]);
 				}
 				break;
@@ -2590,10 +2627,13 @@ void Processor::innerRun() {
 				Value* slot = 0;
 				if (scope->resolveCapturedBinding(binding, slot)) {
 					assert(slot != 0);
+					rt.recordClosureFastPath();
+					rt.recordClosureCacheMiss();
 					*slot = sp[0];
 				} else {
 					const String* name = code->getLocalName(binding.slot);
 					assert(name != 0);
+					rt.recordClosureSlowFallback();
 					scope->writeVar(rt, name, sp[0]);
 				}
 				pop(1);
@@ -2786,10 +2826,13 @@ void Processor::innerRun() {
 				const CapturedBinding binding = unpackClosureOperand(im);
 				Value* slot = 0;
 				if (scope->resolveCapturedBinding(binding, slot)) {
+					rt.recordClosureFastPath();
+					rt.recordClosureCacheMiss();
 					push(false);
 				} else {
 					const String* name = code->getLocalName(binding.slot);
 					assert(name != 0);
+					rt.recordClosureSlowFallback();
 					push(scope->deleteVar(rt, name));
 				}
 				break;
@@ -5242,24 +5285,30 @@ Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap
 	prototypes[STRING_PROTOTYPE] = new(heap) StringWrapper(heap.managed(), &EMPTY_STRING);
 	prototypes[DATE_PROTOTYPE] = new(heap) GenericWrapper(heap.managed(), &D_ATE_STRING, NaN(), OBJECT_PROTOTYPE);
 	prototypes[ARRAY_PROTOTYPE] = new(heap) JSArray(heap.managed());
-	for (int i = 0; i < ERROR_TYPE_COUNT; ++i) {
-		prototypes[FIRST_ERROR_PROTOTYPE + i] = new(heap) ErrorPrototype(heap.managed(), static_cast<ErrorType>(i));
-	}
-	globalObject = new(heap) JSObject(heap.managed(), objectProto);
+for (int i = 0; i < ERROR_TYPE_COUNT; ++i) {
+prototypes[FIRST_ERROR_PROTOTYPE + i] = new(heap) ErrorPrototype(heap.managed(), static_cast<ErrorType>(i));
+}
+globalObject = new(heap) JSObject(heap.managed(), objectProto);
+resetClosureResolutionStats();
 }
 
 void Runtime::autoGC(bool checkOutOfMemory) {
-	if (heap.size() >= gcThreshold) {
-		heap.drain();
-		heap.gc();
-		const size_t inUse = heap.size() - heap.pooled();
-		gcThreshold = std::min(std::max(inUse * AUTO_GC_GROWTH_FACTOR, AUTO_GC_MIN_SIZE), memoryCap);
-		checkTimeOutCounter = std::min(checkTimeOutCounter, 1U);
-		if (checkOutOfMemory && heap.size() >= memoryCap) {
-			throw ConstStringException("Out of memory");
-		}
-	}
+if (heap.size() >= gcThreshold) {
+heap.drain();
+heap.gc();
+const size_t inUse = heap.size() - heap.pooled();
+gcThreshold = std::min(std::max(inUse * AUTO_GC_GROWTH_FACTOR, AUTO_GC_MIN_SIZE), memoryCap);
+checkTimeOutCounter = std::min(checkTimeOutCounter, 1U);
+if (checkOutOfMemory && heap.size() >= memoryCap) {
+throw ConstStringException("Out of memory");
 }
+}
+}
+
+void Runtime::resetClosureResolutionStats() { closureStats = ClosureResolutionStats(); }
+void Runtime::recordClosureFastPath() { ++closureStats.fastPathHits; }
+void Runtime::recordClosureCacheMiss() { ++closureStats.cacheMisses; }
+void Runtime::recordClosureSlowFallback() { ++closureStats.slowFallbacks; }
 
 // Handle wrapping if clock_t is an integer type but not if it is a double.
 template<typename T> static bool clockExceeds(T a, T b) { return wrapToInt32(static_cast<UInt32>(a) - static_cast<UInt32>(b)) >= 0; }

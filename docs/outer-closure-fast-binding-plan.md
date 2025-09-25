@@ -49,16 +49,17 @@ This roadmap breaks the closure-slot work into incremental milestones. Each mile
 - [ ] Run `timeout 180 ./build.sh`.
 
 ## Milestone 3 – Runtime fast path and fallback without `CapturedBinding`
-- [ ] Rewrite `Scope::resolveCapturedBinding` and the closure opcode handlers to accept decoded depth/slot pairs, walking `parentFunctionScope` pointers directly and touching `localsPointer` once the target frame is reached so no heap allocation or binding table lookup occurs.【F:src/NuXJS.cpp†L1997-L2155】【F:src/NuXJS.cpp†L2556-L2611】
-- Introduce a lightweight struct (e.g. `ResolvedClosureSlot`) that caches both the frame pointer and slot index; store it on the activation so repeated accesses avoid re-walking the chain.
-- Record a doc note explaining how the cache interacts with GC and activation lifetime so the Milestone 4 cleanup can drop any redundant metadata once the runtime path is proven.
-- Update interpreter switch cases to call a shared helper that handles cache miss, pointer validation, and depth countdown, keeping the fast path inlined and branch-light.
-- Ensure debug builds validate the computed slot against the owning `Code`’s slot counts to catch stale operands early.
-- [ ] Implement the slow path by climbing the same number of lexical frames and calling `JSFunction::getScriptCode()->getLocalName(slot)` to recover identifier strings for `readVar`/`writeVar`/`deleteVar` fallbacks when `EvalScope`, `WithScope`, or guard failures block the fast slot.【F:src/NuXJS.cpp†L2138-L2364】【F:src/NuXJS.h†L844-L990】
-- Share the ancestor walk between the fast and slow helpers so maintenance stays trivial; when the walk encounters a non-function scope, immediately dispatch to the named helpers.
-- Fetch the identifier string from `getLocalName` only once per failure and thread it through to the `ReferenceError` constructors to preserve diagnostics.
-- Add instrumentation (temporary counters or tracing) while developing to prove that dynamic-scope cases actually hit the fallback.
-- [ ] Ensure every dynamic-scope class (`EvalScope`, `WithScope`, `CatchScope`) continues to veto fast resolution by overriding the new helper, and add regression coverage that triggers each guard while confirming the operand-only slow path reports correct ReferenceError names.【F:src/NuXJS.cpp†L2298-L2364】【F:tests/regression/closureDynamicScopeGuards20250209.io†L1-L120】
+- [x] Rewrite `Scope::resolveClosureOperand` and the closure opcode handlers to accept decoded depth/slot pairs, walking `parentFunctionScope` pointers directly and touching `localsPointer` once the target frame is reached so no heap allocation or binding table lookup occurs.【F:src/NuXJS.cpp†L1997-L2155】【F:src/NuXJS.cpp†L2556-L2611】
+- [x] Introduce a lightweight struct (e.g. `ResolvedClosureSlot`) that caches both the frame pointer and slot index; store it on the activation so repeated accesses avoid re-walking the chain.
+- [x] Record a doc note explaining how the cache interacts with GC and activation lifetime so the Milestone 4 cleanup can drop any redundant metadata once the runtime path is proven.
+- [x] Update interpreter switch cases to call a shared helper that handles cache miss, pointer validation, and depth countdown, keeping the fast path inlined and branch-light.
+- [x] Ensure debug builds validate the computed slot against the owning `Code`’s slot counts to catch stale operands early.
+- [x] Implement the slow path by climbing the same number of lexical frames and calling `JSFunction::getScriptCode()->getLocalName(slot)` to recover identifier strings for `readVar`/`writeVar`/`deleteVar` fallbacks when `EvalScope`, `WithScope`, or guard failures block the fast slot.【F:src/NuXJS.cpp†L2138-L2364】【F:src/NuXJS.h†L844-L990】
+- [x] Share the ancestor walk between the fast and slow helpers so maintenance stays trivial; when the walk encounters a non-function scope, immediately dispatch to the named helpers.
+- [x] Fetch the identifier string from `getLocalName` only once per failure and thread it through to the `ReferenceError` constructors to preserve diagnostics.
+- [x] Add runtime counters on `Runtime` (`fastPathHits`, `cacheMisses`, `slowFallbacks`) plus REPL helpers (`__resetClosureStats`, `__closureStats`) so fast-path hits and guard-driven fallbacks stay observable during development.【F:src/NuXJS.h†L1176-L1252】【F:src/NuXJS.cpp†L2556-L2607】【F:tools/NuXJSREPL.cpp†L195-L233】
+- [x] Ensure every dynamic-scope class (`EvalScope`, `WithScope`, `CatchScope`) continues to veto fast resolution by overriding the new helper, and add regression coverage that triggers each guard while confirming the operand-only slow path reports correct ReferenceError names.【F:src/NuXJS.cpp†L2298-L2364】【F:tests/regression/closureDynamicScopeGuards20250209.io†L1-L120】
+- [x] Exercise the instrumentation via a regression test that resets the counters, drives fast-path accesses, and confirms dynamic-scope guards leave the counters untouched using the REPL helpers (`closureInstrumentationCounters20250211.io`).【F:tests/regression/closureInstrumentationCounters20250211.io†L1-L36】
 - Audit each scope’s override to confirm it receives the packed operand and returns a clear error flag without dereferencing frame pointers it does not own.
 - Extend regression tests to include scenarios that mutate captured variables after forcing a fallback, guaranteeing writes propagate correctly.
 - Capture expected ReferenceError output in `.io` files so the slow path’s identifier recovery is exercised continuously.

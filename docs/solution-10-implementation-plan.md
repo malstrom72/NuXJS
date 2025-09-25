@@ -13,7 +13,8 @@ This checklist breaks down the work needed to adopt **Solution 10 – Ancestor-
 ## Milestone 2 – Runtime fallback helpers
 - [ ] Add a runtime utility (for example on `FunctionScope`) that accepts the operand, walks `parentFunctionScope` the encoded level, and returns both the resolved slot pointer and owning `Code` object so the identifier name can be recovered via `getLocalName` when needed.
 - [ ] Teach the `READ_CLOSURE_OP`, `WRITE_CLOSURE_OP`, `WRITE_CLOSURE_POP_OP`, and `DELETE_CLOSURE_OP` interpreter cases to decode the operand, use cached slot pointers when the fast lookup succeeds, and call the fallback helper when resolution fails.
-- [ ] Ensure every scope that can invalidate slot resolution (`EvalScope`, `WithScope`, `CatchScope`) continues to override `resolveCapturedBinding` with `false` so the fallback is exercised reliably.
+- [ ] Ensure every scope that can invalidate slot resolution (`EvalScope`, `WithScope`, `CatchScope`) continues to override `resolveClosureOperand` with `false` so the fallback is exercised reliably.
+- [x] Instrument the closure opcodes with runtime counters and expose REPL helpers to reset/read the totals so cache hits, misses, and guarded fallbacks can be monitored in regression tests.【F:src/NuXJS.h†L1176-L1252】【F:src/NuXJS.cpp†L2556-L2607】【F:tools/NuXJSREPL.cpp†L195-L233】【F:tests/regression/closureInstrumentationCounters20250211.io†L1-L36】
 - [ ] Extend the regression suite to cover fallback execution (e.g. closure inside `with`, closure inside `catch`, direct `eval` that mutates an outer binding) and verify the reported names in ReferenceErrors match the ancestor table.
 - [ ] Run `timeout 180 ./build.sh`.
 

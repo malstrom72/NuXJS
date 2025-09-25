@@ -162,18 +162,18 @@ void pushIOStop() {
 }
 
 struct PrintFunction : public Function {
-	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
-		const String* s = (argc >= 1 ? argv[0].toString(rt.getHeap()) : &EMPTY_STRING);
-		std::wcout << s->toWideString().c_str() << std::endl;
-		if (interactive) {
-			pushIOLines('<', *s);
-		}
-		return Value::UNDEFINED;
-	}
+        virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+                const String* s = (argc >= 1 ? argv[0].toString(rt.getHeap()) : &EMPTY_STRING);
+                std::wcout << s->toWideString().c_str() << std::endl;
+                if (interactive) {
+                        pushIOLines('<', *s);
+                }
+                return Value::UNDEFINED;
+        }
 };
 
 struct GCFunction : public Function {
-	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+        virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
 	   Heap& heap = rt.getHeap();
 	   const UInt32 preCount = heap.count();
 	   const size_t preSize = heap.size();
@@ -186,10 +186,29 @@ struct GCFunction : public Function {
 	   o->setOwnProperty(rt, String::allocate(heap, "preCount"), preCount);
 	   o->setOwnProperty(rt, String::allocate(heap, "preSize"), static_cast<double>(preSize));
 	   o->setOwnProperty(rt, String::allocate(heap, "postCount"), postCount);
-	   o->setOwnProperty(rt, String::allocate(heap, "postSize"), static_cast<double>(postSize));
-	   o->setOwnProperty(rt, String::allocate(heap, "pooled"), static_cast<double>(pooled));
-	   return o;
-	}
+           o->setOwnProperty(rt, String::allocate(heap, "postSize"), static_cast<double>(postSize));
+           o->setOwnProperty(rt, String::allocate(heap, "pooled"), static_cast<double>(pooled));
+           return o;
+        }
+};
+
+struct ResetClosureStatsFunction : public Function {
+        virtual Value invoke(Runtime& rt, Processor&, UInt32, const Value*, Object*) {
+                rt.resetClosureResolutionStats();
+                return Value::UNDEFINED;
+        }
+};
+
+struct GetClosureStatsFunction : public Function {
+        virtual Value invoke(Runtime& rt, Processor&, UInt32, const Value*, Object*) {
+                Heap& heap = rt.getHeap();
+                const Runtime::ClosureResolutionStats& stats = rt.getClosureResolutionStats();
+                JSObject* object = new(heap) JSObject(heap.managed(), rt.getObjectPrototype());
+                object->setOwnProperty(rt, String::allocate(heap, "fastPath"), static_cast<double>(stats.fastPathHits));
+                object->setOwnProperty(rt, String::allocate(heap, "cacheMisses"), static_cast<double>(stats.cacheMisses));
+                object->setOwnProperty(rt, String::allocate(heap, "slowFallbacks"), static_cast<double>(stats.slowFallbacks));
+                return object;
+        }
 };
 
 static void disassemble(Heap& heap, const Code& code) {
@@ -561,12 +580,16 @@ int testMain(int argc, const char* argv[]) {
 
 		PrintFunction printFunction;
 		globals.setOwnProperty(rt, &PRINT_STRING, &printFunction, DONT_ENUM_FLAG);
-		GCFunction gcFunction;
-		const String GC_STRING("gc");
-		globals.setOwnProperty(rt, &GC_STRING, &gcFunction, DONT_ENUM_FLAG);
-		globals.setOwnProperty(rt, String::allocate(heap, "dasm"), new(heap) FunctorAdapter<NativeFunction>(heap.managed(), disassemble), DONT_ENUM_FLAG);
+GCFunction gcFunction;
+const String GC_STRING("gc");
+globals.setOwnProperty(rt, &GC_STRING, &gcFunction, DONT_ENUM_FLAG);
+globals.setOwnProperty(rt, String::allocate(heap, "dasm"), new(heap) FunctorAdapter<NativeFunction>(heap.managed(), disassemble), DONT_ENUM_FLAG);
+ResetClosureStatsFunction resetClosureStatsFunction;
+globals.setOwnProperty(rt, String::allocate(heap, "__resetClosureStats"), &resetClosureStatsFunction, DONT_ENUM_FLAG);
+GetClosureStatsFunction getClosureStatsFunction;
+globals.setOwnProperty(rt, String::allocate(heap, "__closureStats"), &getClosureStatsFunction, DONT_ENUM_FLAG);
 
-		randomSeed();
+randomSeed();
 
 		if (loadStdLib) {
 			try {
