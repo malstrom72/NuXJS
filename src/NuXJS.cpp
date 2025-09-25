@@ -2673,7 +2673,7 @@ bool Processor::throwVirtualException(const Value& exception, ScriptException* e
 		if (existingException != 0) {
 			if (trace != 0 && !trace->isEmpty()) {
 				existingException->initializeMetadata(trace, throwLocation, formattedStack);
-			} else {
+			} else if (existingException->getLineNumber() <= 0) {
 				SourceLocation fallbackLocation;
 				fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
 				existingException->initializeMetadata(0, fallbackLocation, std::string());
@@ -3045,7 +3045,9 @@ bool Processor::run(Int32 maxCycles) {
 			innerRun();
 		}
 		catch (const ScriptException& x) {
-			throwVirtualException(x.value);
+			if (throwVirtualException(x.value, const_cast<ScriptException*>(&x))) {
+				throw;
+			}
 		}
 	}
 	return (ip != 0);
@@ -4840,9 +4842,14 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	emit(Processor::RETURN_OP);
 
 	assert(currentSection == &mainSection);
-	code->codeWords.resize(setupSection.code.size() + mainSection.code.size());
+	const UInt32 setupInstructionCount = static_cast<UInt32>(setupSection.code.size());
+	const UInt32 mainInstructionCount = static_cast<UInt32>(mainSection.code.size());
+	code->codeWords.resize(setupInstructionCount + mainInstructionCount);
 	std::copy(setupSection.code.begin(), setupSection.code.end(), code->codeWords.begin());
-	std::copy(mainSection.code.begin(), mainSection.code.end(), code->codeWords.begin() + setupSection.code.size());
+	std::copy(mainSection.code.begin(), mainSection.code.end(), code->codeWords.begin() + setupInstructionCount);
+	code->opcodeOffsets.resize(setupSection.opcodeOffsets.size() + mainSection.opcodeOffsets.size());
+	std::copy(setupSection.opcodeOffsets.begin(), setupSection.opcodeOffsets.end(), code->opcodeOffsets.begin());
+	std::copy(mainSection.opcodeOffsets.begin(), mainSection.opcodeOffsets.end(), code->opcodeOffsets.begin() + setupSection.opcodeOffsets.size());
 	code->constants->shrink();
 	code->maxStackDepth = std::max(mainSection.maxStackDepth, setupSection.maxStackDepth);
 	
