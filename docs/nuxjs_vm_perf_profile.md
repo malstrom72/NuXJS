@@ -46,8 +46,6 @@ Self % | Line | Opcode(s)
 0.15   | 2580 | SUB_OP                                                 
 0.14   | 2680 | PUSH_ELEMENTS_OP                                       
 0.14   | 2600 | GT_OP                                                  
-0.10   | 2507 | CHECK_OBJECT_COERCIBLE_OP                              
-0.10   | 2542 | CHECK_RESOLVE_PROPERTY_OP                              
 0.08   | 2617 | PUSH_BACK_OP                                           
 
 ## Notes
@@ -100,7 +98,6 @@ Self % | Line | Opcode(s)
 0.23   | 2580 | SUB_OP
 0.20   | 2493 | WRITE_LOCAL_POP_OP
 0.19   | 2614 | JF_OR_POP_OP
-0.16   | 2508 | CHECK_OBJECT_COERCIBLE_OP
 0.15   | 2586 | AND_OP
 0.12   | 2617 | PUSH_BACK_OP
 0.09   | 2624 | CALL_OP

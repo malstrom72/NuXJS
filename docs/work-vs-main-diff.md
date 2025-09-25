@@ -8,23 +8,17 @@ This report summarizes the behavioral and structural differences between the loc
 * `Value::toArrayIndex` now only accepts canonical decimal indices: booleans no longer map to slots, empty strings and digit strings with leading zeroes are rejected, and the parser enforces the `< 2^32 − 1` bound so callers like `String::getOwnProperty` immediately drop non-canonical keys.【F:src/NuXJS.cpp†L777-L810】【F:src/NuXJS.cpp†L1027-L1042】
 * `JSArray::setOwnProperty` validates assignments to `length` by coercing the incoming value to a number, rejecting NaN, negatives, or non-integer doubles before updating, and ensuring any fractional component triggers a `RangeError`.【F:src/NuXJS.cpp†L1756-L1779】
 
-### New Property Access Guards and Opcodes
-* Two new VM opcodes, `CHECK_OBJECT_COERCIBLE_OP` and `CHECK_RESOLVE_PROPERTY_OP`, extend the opcode table to enforce ES semantics for property access and assignment.【F:src/NuXJS.cpp†L2167-L2184】【F:src/NuXJS.h†L1521-L1539】
-* The interpreter dispatch now executes `CHECK_OBJECT_COERCIBLE_OP` before dot or bracket property loads to throw a `TypeError` when accessing properties on `null` or `undefined`, and `CHECK_RESOLVE_PROPERTY_OP` resolves property bases up-front for mutations while guarding against `null`/`undefined`. Property setters now assume operands are already objects.【F:src/NuXJS.cpp†L2444-L2559】
-
 ### Compiler Emission Updates
-* Pre- and post-increment/decrement operations on properties emit `CHECK_RESOLVE_PROPERTY_OP` so the base object is validated and reused during compound assignments.【F:src/NuXJS.cpp†L3543-L3554】【F:src/NuXJS.cpp†L3627-L3644】
-* Dot and bracket property expressions now emit `CHECK_OBJECT_COERCIBLE_OP` before generating property references, and bracket lookups explicitly coerce the key via `OBJ_TO_STRING_OP`.【F:src/NuXJS.cpp†L3673-L3742】
-* Assignment handling emits `TYPEOF_NAMED_OP` or `READ_LOCAL_OP` before performing a write, surfacing reference errors for unresolved identifiers and ensuring locals are initialized, and uses the new resolve opcode for property targets.【F:src/NuXJS.cpp†L3700-L3729】
+* Assignment handling emits `TYPEOF_NAMED_OP` or `READ_LOCAL_OP` before performing a write, surfacing reference errors for unresolved identifiers and ensuring locals are initialized.【F:src/NuXJS.cpp†L3700-L3729】
 
 ### Runtime Behavior Adjustments
-* Property loads via `Processor::innerRun` still convert base values lazily, but setters now operate directly on already-resolved objects, relying on the compiler to emit the new guard opcodes first.【F:src/NuXJS.cpp†L2444-L2559】
 * The array `length` coercion logic ensures dense vectors are sliced before delegating to the generic setter when attributes prevent simple writes.【F:src/NuXJS.cpp†L1756-L1779】
 * `FunctionPrototypeFunction::construct` now throws a `TypeError` when invoked with `new`, aligning `Function.prototype` with spec expectations that it is not constructible.【F:src/NuXJS.cpp†L4685-L4688】
 
 ## `src/NuXJS.h`
 
-* The opcode enumeration mirrors the VM additions by introducing `CHECK_OBJECT_COERCIBLE_OP` (stack: value → value) and `CHECK_RESOLVE_PROPERTY_OP` (stack: object, name → object, name) immediately after the property-write opcodes, documenting their stack effects for future compiler use.【F:src/NuXJS.h†L1521-L1539】
+* The opcode list now aligns with upstream again; no extra guard opcodes are present after reverting the evaluation-order experiment.【F:src/NuXJS.h†L1520-L1560】
+
 
 ## `src/stdlib.js`
 
@@ -56,4 +50,4 @@ This report summarizes the behavioral and structural differences between the loc
 
 ## Summary
 
-Collectively, the branch strengthens language compliance for property access, array length handling, and native library behavior, while introducing VM support needed by the updated compiler output. These changes align runtime checks and standard library methods more closely with ECMAScript 3 expectations, and ensure the Date constructor propagates explicit `undefined` parameters to `NaN` just like the spec.【F:src/stdlib.js†L906-L922】
+Collectively, the branch strengthens language compliance for property access, array length handling, and native library behavior. These changes align runtime checks and standard library methods more closely with ECMAScript 3 expectations, and ensure the Date constructor propagates explicit `undefined` parameters to `NaN` just like the spec.【F:src/stdlib.js†L906-L922】

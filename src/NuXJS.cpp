@@ -2375,11 +2375,9 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ READ_NAMED_OP				 , "READ_NAMED"				 , 1	  , 0 },
 	{ WRITE_NAMED_OP			 , "WRITE_NAMED"			 , 0	  , 0 },
 	{ WRITE_NAMED_POP_OP		 , "WRITE_NAMED_POP"		 , -1	  , 0 },
-	{ CHECK_OBJECT_COERCIBLE_OP	 , "CHECK_OBJECT_COERCIBLE"  , 0	  , 0 },
 	{ GET_PROPERTY_OP			 , "GET_PROPERTY"			 , -1	  , 0 },
 	{ SET_PROPERTY_OP			 , "SET_PROPERTY"			 , -2	  , 0 },
 	{ SET_PROPERTY_POP_OP		 , "SET_PROPERTY_POP"		 , -3	  , 0 },
-	{ CHECK_RESOLVE_PROPERTY_OP	 , "CHECK_RESOLVE_PROPERTY"	 , 0	  , 0 },
 	{ ADD_PROPERTY_OP			 , "ADD_PROPERTY"			 , -1	  , 0 },
 	{ PUSH_ELEMENTS_OP			 , "PUSH_ELEMENTS_OP"		 , 0	  , OpcodeInfo::POP_OPERAND },
 	{ OBJ_TO_PRIMITIVE_OP		 , "OBJ_TO_PRIMITIVE"		 , 0	  , 0 },
@@ -2798,13 +2796,7 @@ void Processor::innerRun() {
 			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
 			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
 			
-			case CHECK_OBJECT_COERCIBLE_OP: {
-				if (sp[0].isUndefined() || sp[0].isNull()) {
-					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
-					return;
-				}
-				break;
-			}
+
 
 			case GET_PROPERTY_OP: {
 				const Object* o = convertToObject(sp[-1], false);
@@ -2833,14 +2825,7 @@ void Processor::innerRun() {
 				break;
 			}
 
-			case CHECK_RESOLVE_PROPERTY_OP: {
-				if (sp[-1].isUndefined() || sp[-1].isNull()) {
-					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
-					return;
-				}
-				sp[-1] = convertToObject(sp[-1], false);
-				break;
-			}
+
 
 			case OBJ_TO_PRIMITIVE_OP:
 			case OBJ_TO_NUMBER_OP:
@@ -3873,7 +3858,6 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			assert(op.primitiveOutput);
 			xr = operand(op);
 			if (xr.t == ExpressionResult::PROPERTY) {
-				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
 				emit(Processor::REPUSH_2_OP);
 			}
 			makeRValue(xr, true);
@@ -3960,7 +3944,6 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				return false;
 			}
 			if (xr.t == ExpressionResult::PROPERTY) {
-				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
 				emit(Processor::REPUSH_2_OP);
 			}
 			makeRValue(xr, true);
@@ -4001,7 +3984,6 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case PROPERTY_DOT: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, op.primitiveInput);
-			emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
 			white();
 			emitWithConstant(Processor::CONST_OP, identifier(true, true));
 			xr = ExpressionResult(ExpressionResult::PROPERTY);
@@ -4028,9 +4010,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case ASSIGNMENT: {
 			assert(!op.primitiveInput);
 			assert(!op.primitiveOutput);
-			if (xr.t == ExpressionResult::PROPERTY) {
-				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
-			} else if (xr.t == ExpressionResult::NAMED) {
+			if (xr.t == ExpressionResult::NAMED) {
 				emitWithConstant(Processor::TYPEOF_NAMED_OP, xr.v);
 				emit(Processor::POP_OP, 1);
 			} else if (xr.t == ExpressionResult::LOCAL) {
@@ -4048,7 +4028,6 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			const Processor::Opcode primitiveOp = (op.vmOp == Processor::ADD_OP
 					? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
 			if (xr.t == ExpressionResult::PROPERTY) {
-				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
 				emit(Processor::REPUSH_2_OP);
 			}
 			makeRValue(xr, true, primitiveOp);
@@ -4061,11 +4040,9 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case PROPERTY_BRACKETS: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, false);
-			emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
 			const bool didAcceptInOperator = acceptInOperator;
 			acceptInOperator = true;
-			makeRValue(operand(op), false);
-			emit(Processor::OBJ_TO_STRING_OP);
+			makeRValue(operand(op), true, Processor::OBJ_TO_STRING_OP);
 			acceptInOperator = didAcceptInOperator;
 			xr = ExpressionResult(ExpressionResult::PROPERTY);
 			break;
