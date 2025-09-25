@@ -1668,8 +1668,14 @@ bool Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) co
 	if (opcodeOffsets.empty() || instructionIndex >= opcodeOffsets.size()) {
 		return false;
 	}
-	const UInt32 absoluteOffset = opcodeOffsets[instructionIndex];
-	out.offset = absoluteOffset;
+	Int32 absoluteOffset = 0;
+	for (UInt32 i = 0; i <= instructionIndex; ++i) {
+		absoluteOffset += decodeDelta(opcodeOffsets[i]);
+	}
+	if (absoluteOffset < 0) {
+		return false;
+	}
+	out.offset = static_cast<UInt32>(absoluteOffset);
 	out.fileName = (fileName != 0 ? fileName : &ANONYMOUS_SCRIPT_STRING);
 	if (!lineStartOffsets.empty()) {
 		const UInt32* begin = lineStartOffsets.begin();
@@ -2644,7 +2650,7 @@ StackTrace* Processor::captureStackTrace() {
 }
 
 bool Processor::throwVirtualException(const Value& exception, ScriptException* existingException) {
-	if (firstCatcher == 0) {
+	if (firstCatcher == 0) { // FIX: what exception to throw here?
 		StackTrace* trace = captureStackTrace();
 		SourceLocation throwLocation;
 		std::string formattedStack;
@@ -3044,8 +3050,13 @@ bool Processor::run(Int32 maxCycles) {
 		try {
 			innerRun();
 		}
-		catch (const ScriptException& x) {
-			throwVirtualException(x.value);
+		catch (ScriptException& x) {
+			if (x.getStackTrace() != 0 || x.getFileName() != 0) {
+				throw;
+			}
+			if (throwVirtualException(x.value, &x)) {
+				throw;
+			}
 		}
 	}
 	return (ip != 0);
@@ -4823,7 +4834,13 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	p = b;
 	this->e = e;
 	acceptInOperator = true;
-	
+	lineScanOffset = 0;
+	setupSection.opcodeOffsets.resize(0);
+	mainSection.opcodeOffsets.resize(0);
+	code->opcodeOffsets.resize(0);
+	code->lineStartOffsets.resize(0);
+	code->lineStartOffsets.push(0);
+
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
 	if (compilingFor == FOR_EVAL) {
 		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
@@ -4831,7 +4848,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	}
 	SemanticScope rootScope(heap, SemanticScope::ROOT_TYPE, 1, 0);
 	statementList(&rootScope);
- 	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
+	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
 	if (compilingFor != FOR_EVAL) {
 		// FIX : if RETURN_OP took a push back count we could just do void_op here, or even have another RETURN_VOID_OP
 		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
@@ -4845,7 +4862,27 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	std::copy(mainSection.code.begin(), mainSection.code.end(), code->codeWords.begin() + setupSection.code.size());
 	code->constants->shrink();
 	code->maxStackDepth = std::max(mainSection.maxStackDepth, setupSection.maxStackDepth);
-	
+	code->opcodeOffsets.resize(0);
+	code->opcodeOffsets.reserve(setupSection.opcodeOffsets.size() + mainSection.opcodeOffsets.size());
+	Int32 previousOffset = 0;
+	bool havePrevious = false;
+	for (UInt32 i = 0; i < setupSection.opcodeOffsets.size(); ++i) {
+		const UInt32 absoluteOffset = setupSection.opcodeOffsets[i];
+		const Int32 delta = (havePrevious ? static_cast<Int32>(absoluteOffset) - previousOffset : static_cast<Int32>(absoluteOffset));
+		code->opcodeOffsets.push(encodeDelta(delta));
+		previousOffset = static_cast<Int32>(absoluteOffset);
+		havePrevious = true;
+	}
+	for (UInt32 i = 0; i < mainSection.opcodeOffsets.size(); ++i) {
+		const UInt32 absoluteOffset = mainSection.opcodeOffsets[i];
+		const Int32 delta = (havePrevious ? static_cast<Int32>(absoluteOffset) - previousOffset : static_cast<Int32>(absoluteOffset));
+		code->opcodeOffsets.push(encodeDelta(delta));
+		previousOffset = static_cast<Int32>(absoluteOffset);
+		havePrevious = true;
+	}
+	setupSection.opcodeOffsets.resize(0);
+	mainSection.opcodeOffsets.resize(0);
+
 	return p;
 }
 
