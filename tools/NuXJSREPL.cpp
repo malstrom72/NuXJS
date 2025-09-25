@@ -274,18 +274,27 @@ static void disassemble(Heap& heap, const Code& code) {
 			case Processor::WRITE_CLOSURE_OP:
 			case Processor::WRITE_CLOSURE_POP_OP:
 			case Processor::DELETE_CLOSURE_OP: {
-				const UInt32 bindingIndex = static_cast<UInt32>(operand);
-				if (bindingIndex < code.getCapturedBindingCount()) {
-					const CapturedBinding& binding = code.getCapturedBinding(bindingIndex);
-					const String* name = (binding.name != 0 ? binding.name : code.getLocalName(binding.slot));
-					if (name != 0) {
-						std::wcerr << L" $" << name->toWideString();
-					}
-					std::wcerr << L" (depth=" << binding.depth << L", slot=" << static_cast<int>(binding.slot)
-						<< L", index=" << bindingIndex << L")";
+				const CapturedBinding binding = unpackClosureOperand(operand);
+				const CapturedBinding* metadata = code.findCapturedBinding(binding.depth, binding.slot);
+				const String* name = 0;
+				if (metadata != 0) {
+					name = (metadata->name != 0 ? metadata->name : code.getLocalName(metadata->slot));
 				} else {
-					std::wcerr << L" <invalid captured index " << operand << L">";
+					name = code.getLocalName(binding.slot);
 				}
+				if (name != 0) {
+					std::wcerr << L" $" << name->toWideString();
+				}
+				std::wcerr << L" (depth=" << binding.depth << L", slot=" << static_cast<int>(binding.slot);
+				if (metadata != 0) {
+					const UInt32 capturedCount = code.getCapturedBindingCount();
+					if (capturedCount != 0) {
+						const CapturedBinding* begin = &code.getCapturedBinding(0);
+						const UInt32 index = static_cast<UInt32>(metadata - begin);
+						std::wcerr << L", index=" << index;
+					}
+				}
+				std::wcerr << L")";
 				break;
 			}
 			default: break;

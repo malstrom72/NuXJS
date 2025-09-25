@@ -815,15 +815,28 @@ class Constants : public GCItem, public Vector<Value> {
 	CapturedBinding stores the lexical location of an identifier captured from an ancestor scope.
 **/
 struct CapturedBinding {
-    CapturedBinding() : depth(0), slot(0), name(0) { }
-    CapturedBinding(UInt16 inDepth, Int16 inSlot, const String* inName) : depth(inDepth), slot(inSlot), name(inName) { }
-    UInt16 depth;
-    Int16 slot;
-    const String* name;
+	CapturedBinding() : depth(0), slot(0), name(0) { }
+	CapturedBinding(UInt16 inDepth, Int16 inSlot, const String* inName) : depth(inDepth), slot(inSlot), name(inName) { }
+	UInt16 depth;
+	Int16 slot;
+	const String* name;
 };
 
+// Closure operands pack an 8-bit lexical `depth` and signed 16-bit `slot` into the low 24 bits.
+static const UInt32 CLOSURE_OPERAND_DEPTH_SHIFT = 16;
+static const UInt32 CLOSURE_OPERAND_SIGNED_MASK = 0x00FFFFFFu;
+static const UInt32 CLOSURE_OPERAND_DEPTH_MASK = 0x00FF0000u;
+static const UInt32 CLOSURE_OPERAND_SLOT_MASK = 0x0000FFFFu;
+
+inline CapturedBinding unpackClosureOperand(Int32 operand) {
+	const UInt32 raw = static_cast<UInt32>(operand) & CLOSURE_OPERAND_SIGNED_MASK;
+	const UInt16 depth = static_cast<UInt16>((raw & CLOSURE_OPERAND_DEPTH_MASK) >> CLOSURE_OPERAND_DEPTH_SHIFT);
+	const Int16 slot = static_cast<Int16>(raw & CLOSURE_OPERAND_SLOT_MASK);
+	return CapturedBinding(depth, slot, 0);
+}
+
 inline void gcMark(Heap& heap, const CapturedBinding& binding) {
-    gcMark(heap, binding.name);
+	gcMark(heap, binding.name);
 }
 
 /**
@@ -851,8 +864,10 @@ class Code : public Object {
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
 		UInt32 getCapturedBindingCount() const { return capturedBindings.size(); }
 		const CapturedBinding& getCapturedBinding(UInt32 index) const { return capturedBindings[index]; }
+		const CapturedBinding* findCapturedBinding(UInt16 depth, Int16 slot) const;
 		UInt32 appendCapturedBinding(const CapturedBinding& binding);
 		UInt32 appendCapturedBinding(UInt16 depth, Int16 slot, const String* name = 0);
+		UInt32 ensureCapturedBinding(UInt16 depth, Int16 slot, const String* name);
 
 	protected:
 		Vector<CodeWord> codeWords;
@@ -1603,7 +1618,7 @@ class Processor : public GCItem {
 			, THIS_OP, VOID_OP								// stack: -> value
 			, DELETE_OP										// stack: object, name -> boolean
 			, DELETE_NAMED_OP								// operand: const_index (name) -> boolean
-			, DELETE_CLOSURE_OP							// operand: captured_binding_index -> boolean
+			, DELETE_CLOSURE_OP							// operand: packed closure depth/slot -> boolean
 			, GEN_FUNC_OP									// operand: const_index (function), stack: -> function
 			, DECLARE_OP									// operand: const_index (name), stack: function|undefined ->		// only used by eval code to declare vars and functions (non-eval code sets all this up on entry and using WRITE_LOCAL_OP).
 			, CATCH_SCOPE_OP								// operand: const_index for exception variable name, stack: value ->
@@ -1622,7 +1637,7 @@ class Processor : public GCItem {
 		};
 	
 		struct OpcodeInfo {
-			enum { TERMINAL = 1, POP_OPERAND = 2, POP_ON_BRANCH = 4, NO_POP_ON_BRANCH = 8 };
+			enum { TERMINAL = 1, POP_OPERAND = 2, POP_ON_BRANCH = 4, NO_POP_ON_BRANCH = 8, CLOSURE_OPERAND = 16 };
 			Opcode opcode;
 			const char* mnemonic;
 			Int32 stackUse;
@@ -1783,8 +1798,9 @@ class Compiler : public GCItem {
 		CodeSection* changeSection(CodeSection* newOutputSection);
 		UInt32 addConstant(const Value& constant);
 		void emitWithConstant(Processor::Opcode opcode, const Value& constant);
-		UInt32 ensureCapturedBinding(UInt16 depth, Int16 slot, const String* name);
-		bool recordCapturedBinding(const String* name, UInt16& depth, Int16& slot, UInt32& bindingIndex);
+		bool recordCapturedBinding(const String* name, UInt16& depth, Int16& slot);
+		bool maybeEmitClosureOperand(ExpressionResult& xr, const String* name);
+		static bool packClosureOperand(UInt16 depth, Int16 slot, Int32& operand);
 		BranchPoint emitForwardBranch(Processor::Opcode opcode);
 		void completeForwardBranch(const BranchPoint& point);
 		void completeForwardBranches(const BranchPoint* begin, const BranchPoint* end);
@@ -1795,7 +1811,7 @@ class Compiler : public GCItem {
 		ExpressionResult safeKeep(); ///< Used to store result into a new temporary local (e.g. used by return statement if there are finally blocks to call first). Good rule of thumb is that anything that needs to be preserved over statements need to be safe-kept (except the completion value of course).
 		void returnSafeKept(const ExpressionResult& xr);
 		ExpressionResult makeRValue(const ExpressionResult& xr, bool toPrimitive = false, Processor::Opcode toPrimitiveOp = Processor::OBJ_TO_NUMBER_OP); ///< Creates an r-value (i.e. pushed on value stack) out of a result.
-		ExpressionResult makeAssignment(const ExpressionResult& xr); ///< Creates an assignment out of an l-value (throws if xr is not a valid l-value)
+		ExpressionResult makeAssignment(ExpressionResult xr); ///< Creates an assignment out of an l-value (throws if xr is not a valid l-value)
 		ExpressionResult discard(const ExpressionResult& xr); ///< Discards result (e.g. popping it if it is on stack)
 
 		void completeIteratorContinues(const SemanticScope* fromScope, const SemanticScope* untilScope);
@@ -1861,7 +1877,6 @@ class Compiler : public GCItem {
 		bool allowClosureSlots;
 		int nestCounter;
 		const CapturedLexicalContext* capturedLexical;
-		Vector<CapturedBinding> capturedBindings;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, code);

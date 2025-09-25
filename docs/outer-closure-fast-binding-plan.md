@@ -2,27 +2,43 @@
 
 This roadmap breaks the closure-slot work into incremental milestones. Each milestone is scoped so that the tree builds and tests cleanly before proceeding to the next stage.
 
+### Goals and guardrails
+
+* Keep every intermediate revision shippable. Compiler changes must continue to generate valid bytecode, even when a milestone only replaces part of the capture path. Guard downgrades fall back to legacy named opcodes so we never ship an operand without runtime support.
+* Avoid regressing diagnostics. Whenever a fast-path optimisation hides identifier strings, make sure the slow path still resolves names through `Code::getLocalName` so ReferenceError text remains unchanged.
+* Preserve tooling debuggability. As we eliminate `CapturedBinding`, update docs and helper functions in the same milestone so REPL and disassembly output does not degrade.
+* Prefer single-purpose helpers. Each new capture helper (for example `Code::ensureCapturedBinding`) should encapsulate reuse logic and be referenced from exactly one abstraction layer. This keeps the eventual deletion straightforward because all call sites are already funnelled through a common entry point.【F:src/NuXJS.cpp†L1623-L1629】【F:src/NuXJS.cpp†L3931-L3949】【F:src/NuXJS.cpp†L4042-L4063】【F:src/NuXJS.h†L1785-L1788】
+
+### Terminology
+
+* *Closure operand* – the packed depth/slot tuple that replaces the historical binding table index.
+* *Named opcode* – legacy bytecode that resolves identifiers by string lookup instead of a slot operand.
+* *Guard* – any condition that prevents a capture from taking the fast path (e.g. `with` scope, direct `eval`, signed-slot overflow).
+* *Slow path* – the runtime fallback that climbs scope chains and resolves identifier names when guards block operand-only execution.
+
 ## Milestone 1 – Compiler plumbing for operand-only captures
-- [ ] Replace `Compiler::recordCapturedBinding`/`ensureCapturedBinding` so they return an inline `(ancestorDistance, slotOffset)` operand instead of appending to `Compiler::capturedBindings`, deleting the vector from `Compiler` entirely while reusing `lookupNameIndex` for signed-slot resolution.【F:src/NuXJS.cpp†L3893-L3942】【F:src/NuXJS.h†L1786-L1864】
+- [x] Replace `Compiler::recordCapturedBinding`/`ensureCapturedBinding` so they return an inline `(ancestorDistance, slotOffset)` operand instead of appending to `Compiler::capturedBindings`, deleting the vector from `Compiler` entirely while reusing `lookupNameIndex` for signed-slot resolution.【F:src/NuXJS.cpp†L1596-L1629】【F:src/NuXJS.cpp†L3885-L3928】【F:src/NuXJS.h†L1724-L1868】
 - Delete the `capturedBindings` member and related helpers from `Compiler`/`Code` headers before touching call sites so the compiler fails fast if a path was overlooked.
 - Update `recordCapturedBinding` to call `lookupNameIndex` immediately; clamp the returned slot to the signed 16-bit range and return a `(bool success, UInt16 depth, Int16 slot)` triple (or similar) so downstream emitters can avoid table lookups.
 - Audit every caller—`identifier`, assignment lowering, function literals—to use the new tuple rather than indexing into a vector; keep temporary structs local to the compilation pass so nothing survives into runtime metadata.
-- [ ] Thread the ancestor lookup context through nested `Compiler` instances by extending `functionDefinition` to pass `Code::nameIndexes`, the hoist guard bit, and the parent depth counter so child `identifier` nodes can encode operands during parse time.【F:src/NuXJS.cpp†L3737-L3814】【F:src/NuXJS.cpp†L2876-L2955】
+- [x] Thread the ancestor lookup context through nested `Compiler` instances by extending `functionDefinition` to pass `Code::nameIndexes`, the hoist guard bit, and the parent depth counter so child `identifier` nodes can encode operands during parse time.【F:src/NuXJS.cpp†L3090-L3124】【F:src/NuXJS.cpp†L3885-L3898】【F:src/NuXJS.h†L1724-L1868】
 - Amend the `Compiler` constructor parameters to accept a pointer to the parent `Code` (or a light-weight descriptor) and the active lexical depth counter.
 - Copy `allowClosureSlots`, `withScopeCounter`, and pending hoist information into the child compiler before it parses its body so its own capture walk sees the correct guards.
 - Ensure teardown writes any mutated guard state back to the parent only after the nested body finishes to avoid leaking child state upward.
-- [ ] Teach `identifier`, assignment, and declaration helpers to emit the dedicated closure opcode when a captured operand is available, falling back to `READ_NAMED_OP`/`WRITE_NAMED_OP` whenever `withScopeCounter`, `CATCH_PARAMETER`, direct `eval`, or slot-range guards reject the capture.【F:src/NuXJS.cpp†L3244-L3380】【F:src/NuXJS.cpp†L4040-L4055】【F:src/NuXJS.cpp†L3893-L3933】
-- Centralise the capture decision in a helper such as `maybeEmitClosureOperand` so both expression and assignment sites share the same guard logic.
-- Update destructuring and compound assignment lowering to reuse the helper, confirming every opcode variant (load/store/delete) can surface the packed operand.
+- Document the new helper surface and guard threading so future contributors understand why the compiler now stores capture operands locally instead of mutating shared vectors; keep milestone notes in sync with the code while the table still exists.【F:src/NuXJS.cpp†L1600-L1629】【F:src/NuXJS.cpp†L3885-L3928】
+- [x] Teach `identifier`, assignment, and declaration helpers to emit the dedicated closure opcode when a captured operand is available, falling back to `READ_NAMED_OP`/`WRITE_NAMED_OP` whenever `withScopeCounter`, `CATCH_PARAMETER`, direct `eval`, or slot-range guards reject the capture.【F:src/NuXJS.cpp†L4045-L4067】【F:src/NuXJS.cpp†L3430-L3438】
+- [x] Centralise the guard evaluation in `Compiler::maybeEmitClosureOperand`, which returns a closure operand only when the fast-path checks succeed and reuses `Code::ensureCapturedBinding` for deduplication.【F:src/NuXJS.cpp†L1623-L1629】【F:src/NuXJS.cpp†L3931-L3949】【F:src/NuXJS.h†L1785-L1788】
+- [x] Update identifier resolution to call the helper after local-slot resolution so expression and assignment sites share a single decision point before emitting closure opcodes.【F:src/NuXJS.cpp†L4042-L4063】
+- [x] Extend destructuring, compound assignment, and declaration lowering to reuse the helper so every opcode variant surfaces the packed operand consistently.【F:src/NuXJS.cpp†L3429-L3440】【F:src/NuXJS.cpp†L3764-L3810】【F:src/NuXJS.cpp†L4096-L4134】【F:src/NuXJS.cpp†L4171-L4209】
 - Add targeted compiler tests or debug logging while developing to assert that names skipped because of a guard reason still emit the legacy named opcode.
-- [ ] Run `timeout 180 ./build.sh`.
+- [x] Run `timeout 180 ./build.sh`.【fa5df0†L1-L4】
 
 ## Milestone 2 – Pack `(ancestorDistance, slotOffset)` into bytecode operands
-- [ ] Introduce a helper such as `Compiler::packClosureOperand(UInt16 depth, Int16 slot)` that validates the 8-bit/16-bit bounds before calling `CodeSection::emit`, and update the closure opcodes to store the packed 24-bit value directly instead of indexing a binding table.【F:src/NuXJS.cpp†L3098-L3213】【F:src/NuXJS.cpp†L2556-L2609】
-- Decide on the bit layout (e.g. `depth << 16 | (slot & 0xFFFF)`) and document it in a shared header so runtime and tooling stay in sync.
+- [x] Introduce a helper such as `Compiler::packClosureOperand(UInt16 depth, Int16 slot)` that validates the 8-bit/16-bit bounds before calling `CodeSection::emit`, and update the closure opcodes to store the packed 24-bit value directly instead of indexing a binding table.【F:src/NuXJS.cpp†L3397-L3450】【F:src/NuXJS.cpp†L3946-L3981】【F:src/NuXJS.cpp†L2584-L2634】【F:src/NuXJS.cpp†L2809-L2830】
+- [x] Decide on the bit layout (e.g. `depth << 16 | (slot & 0xFFFF)`) and document it in a shared header so runtime and tooling stay in sync.【F:src/NuXJS.h†L825-L835】
 - Add assertions before emitting to ensure the operands never wrap; downgrade to named opcodes in the compiler when the helper rejects a capture and record a diagnostic for debugging.
 - Replace all uses of `Code::capturedBindings[index]` with direct operand writes, including any legacy emitters such as function expressions or generator helpers.
-- [ ] Update assembler/disassembler tables (`Processor::packInstruction`, opcode metadata arrays, and tooling in `tools/NuXJSREPL.cpp` / `tools/work/LegacyReplTests.cpp`) to decode the operand into depth/slot pairs for debugging without referencing `Code::capturedBindings`.【F:src/NuXJS.cpp†L1560-L1719】【F:tools/NuXJSREPL.cpp†L250-L313】【F:tools/work/LegacyReplTests.cpp†L337-L381】
+- [x] Update assembler/disassembler tables (`Processor::packInstruction`, opcode metadata arrays, and tooling in `tools/NuXJSREPL.cpp` / `tools/work/LegacyReplTests.cpp`) to decode the operand into depth/slot pairs for debugging without referencing `Code::capturedBindings`.【F:src/NuXJS.cpp†L2238-L2260】【F:src/NuXJS.h†L824-L836】【F:tools/NuXJSREPL.cpp†L280-L317】【F:tools/work/LegacyReplTests.cpp†L340-L377】
 - Extend the opcode metadata to describe the packed layout so the disassembler prints meaningful labels (for example `closure depth=1 slot=-2`).
 - Update REPL inspectors and legacy tooling to reuse a shared `unpackClosureOperand` helper rather than duplicating bit math in multiple files.
 - Re-run existing disassembly-based regression tests to confirm the textual output remains stable apart from the new annotations.
@@ -35,6 +51,7 @@ This roadmap breaks the closure-slot work into incremental milestones. Each mile
 ## Milestone 3 – Runtime fast path and fallback without `CapturedBinding`
 - [ ] Rewrite `Scope::resolveCapturedBinding` and the closure opcode handlers to accept decoded depth/slot pairs, walking `parentFunctionScope` pointers directly and touching `localsPointer` once the target frame is reached so no heap allocation or binding table lookup occurs.【F:src/NuXJS.cpp†L1997-L2155】【F:src/NuXJS.cpp†L2556-L2611】
 - Introduce a lightweight struct (e.g. `ResolvedClosureSlot`) that caches both the frame pointer and slot index; store it on the activation so repeated accesses avoid re-walking the chain.
+- Record a doc note explaining how the cache interacts with GC and activation lifetime so the Milestone 4 cleanup can drop any redundant metadata once the runtime path is proven.
 - Update interpreter switch cases to call a shared helper that handles cache miss, pointer validation, and depth countdown, keeping the fast path inlined and branch-light.
 - Ensure debug builds validate the computed slot against the owning `Code`’s slot counts to catch stale operands early.
 - [ ] Implement the slow path by climbing the same number of lexical frames and calling `JSFunction::getScriptCode()->getLocalName(slot)` to recover identifier strings for `readVar`/`writeVar`/`deleteVar` fallbacks when `EvalScope`, `WithScope`, or guard failures block the fast slot.【F:src/NuXJS.cpp†L2138-L2364】【F:src/NuXJS.h†L844-L990】
