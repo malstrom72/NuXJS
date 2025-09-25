@@ -815,11 +815,32 @@ class Constants : public GCItem, public Vector<Value> {
 	CapturedBinding stores the lexical location of an identifier captured from an ancestor scope.
 **/
 struct CapturedBinding {
-	CapturedBinding() : depth(0), slot(0), name(0) { }
-	CapturedBinding(UInt16 inDepth, Int16 inSlot, const String* inName) : depth(inDepth), slot(inSlot), name(inName) { }
-	UInt16 depth;
-	Int16 slot;
-	const String* name;
+CapturedBinding() : depth(0), slot(0) { }
+CapturedBinding(UInt16 inDepth, Int16 inSlot) : depth(inDepth), slot(inSlot) { }
+UInt16 depth;
+Int16 slot;
+};
+
+struct ClosureOperandDiagnostic {
+enum Reason {
+NON_FUNCTION_TARGET,
+WITH_SCOPE_GUARD,
+ARGUMENTS_ALIAS,
+ANCESTOR_GUARD,
+CATCH_GUARD,
+MISSING_BINDING,
+SLOT_RANGE_OVERFLOW,
+DEPTH_OVERFLOW,
+OPERAND_RANGE_OVERFLOW
+};
+
+ClosureOperandDiagnostic(Reason inReason = MISSING_BINDING, const String* inName = 0, UInt16 inDepth = 0, Int16 inSlot = 0)
+: reason(inReason), name(inName), depth(inDepth), slot(inSlot) { }
+
+Reason reason;
+const String* name;
+UInt16 depth;
+Int16 slot;
 };
 
 // Closure operands pack an 8-bit lexical `depth` and signed 16-bit `slot` into the low 24 bits.
@@ -829,14 +850,10 @@ static const UInt32 CLOSURE_OPERAND_DEPTH_MASK = 0x00FF0000u;
 static const UInt32 CLOSURE_OPERAND_SLOT_MASK = 0x0000FFFFu;
 
 inline CapturedBinding unpackClosureOperand(Int32 operand) {
-	const UInt32 raw = static_cast<UInt32>(operand) & CLOSURE_OPERAND_SIGNED_MASK;
-	const UInt16 depth = static_cast<UInt16>((raw & CLOSURE_OPERAND_DEPTH_MASK) >> CLOSURE_OPERAND_DEPTH_SHIFT);
-	const Int16 slot = static_cast<Int16>(raw & CLOSURE_OPERAND_SLOT_MASK);
-	return CapturedBinding(depth, slot, 0);
-}
-
-inline void gcMark(Heap& heap, const CapturedBinding& binding) {
-	gcMark(heap, binding.name);
+const UInt32 raw = static_cast<UInt32>(operand) & CLOSURE_OPERAND_SIGNED_MASK;
+const UInt16 depth = static_cast<UInt16>((raw & CLOSURE_OPERAND_DEPTH_MASK) >> CLOSURE_OPERAND_DEPTH_SHIFT);
+const Int16 slot = static_cast<Int16>(raw & CLOSURE_OPERAND_SLOT_MASK);
+return CapturedBinding(depth, slot);
 }
 
 /**
@@ -846,7 +863,7 @@ inline void gcMark(Heap& heap, const CapturedBinding& binding) {
 class Code : public Object {
 	friend class FunctionScope;
 	friend class Compiler; // FIX : maybe not one day?
-	
+
 	public:
 		typedef Object super;
 
@@ -862,37 +879,34 @@ class Code : public Object {
 		const String* getSource() const { return source; }
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
-		UInt32 getCapturedBindingCount() const { return capturedBindings.size(); }
-		const CapturedBinding& getCapturedBinding(UInt32 index) const { return capturedBindings[index]; }
-		const CapturedBinding* findCapturedBinding(UInt16 depth, Int16 slot) const;
-		UInt32 appendCapturedBinding(const CapturedBinding& binding);
-		UInt32 appendCapturedBinding(UInt16 depth, Int16 slot, const String* name = 0);
-		UInt32 ensureCapturedBinding(UInt16 depth, Int16 slot, const String* name);
+		void recordClosureOperandDiagnostic(const ClosureOperandDiagnostic& diagnostic);
+		const Vector<ClosureOperandDiagnostic>& getClosureOperandDiagnostics() const { return closureOperandDiagnostics; }
 
 	protected:
 		Vector<CodeWord> codeWords;
 		Constants* const constants;
 		Table nameIndexes;							///< < 0 : local variables, >= 0 : arguments, CATCH_PARAMETER == current catch parameter during compile-time only (don't use fast index binding)
-		Vector<const String*> varNames;				///< Notice that this list is reversed in relation to indexes in the "locals" array in FunctionScope.
+		Vector<const String*> varNames;			///< Notice that this list is reversed in relation to indexes in the "locals" array in FunctionScope.
 		Vector<const String*> argumentNames;
 		const String* name;
 		const String* selfName;
 		const String* source;
-		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
+		UInt32 bloomSet;					///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
-		Vector<CapturedBinding> capturedBindings;
-
-                virtual void gcMarkReferences(Heap& heap) const {
-                        gcMark(heap, constants);
-                        nameIndexes.gcMarkReferences(heap);
-                        gcMark(heap, varNames.begin(), varNames.end());
-                        gcMark(heap, argumentNames.begin(), argumentNames.end());
-                        gcMark(heap, capturedBindings.begin(), capturedBindings.end());
-                        gcMark(heap, name);
-                        gcMark(heap, selfName);
-                        gcMark(heap, source);
-                        super::gcMarkReferences(heap);
-                }
+		Vector<ClosureOperandDiagnostic> closureOperandDiagnostics;
+		virtual void gcMarkReferences(Heap& heap) const {
+			gcMark(heap, constants);
+			nameIndexes.gcMarkReferences(heap);
+			gcMark(heap, varNames.begin(), varNames.end());
+			gcMark(heap, argumentNames.begin(), argumentNames.end());
+			gcMark(heap, name);
+			gcMark(heap, selfName);
+			gcMark(heap, source);
+			for (UInt32 i = 0; i < closureOperandDiagnostics.size(); ++i) {
+				gcMark(heap, closureOperandDiagnostics[i].name);
+			}
+			super::gcMarkReferences(heap);
+		}
 };
 
 /**
@@ -1798,7 +1812,7 @@ class Compiler : public GCItem {
 		CodeSection* changeSection(CodeSection* newOutputSection);
 		UInt32 addConstant(const Value& constant);
 		void emitWithConstant(Processor::Opcode opcode, const Value& constant);
-		bool recordCapturedBinding(const String* name, UInt16& depth, Int16& slot);
+bool recordCapturedBinding(const String* name, UInt16& depth, Int16& slot, ClosureOperandDiagnostic::Reason& failureReason);
 		bool maybeEmitClosureOperand(ExpressionResult& xr, const String* name);
 		static bool packClosureOperand(UInt16 depth, Int16 slot, Int32& operand);
 		BranchPoint emitForwardBranch(Processor::Opcode opcode);

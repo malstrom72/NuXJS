@@ -36,13 +36,13 @@ This roadmap breaks the closure-slot work into incremental milestones. Each mile
 ## Milestone 2 – Pack `(ancestorDistance, slotOffset)` into bytecode operands
 - [x] Introduce a helper such as `Compiler::packClosureOperand(UInt16 depth, Int16 slot)` that validates the 8-bit/16-bit bounds before calling `CodeSection::emit`, and update the closure opcodes to store the packed 24-bit value directly instead of indexing a binding table.【F:src/NuXJS.cpp†L3397-L3450】【F:src/NuXJS.cpp†L3946-L3981】【F:src/NuXJS.cpp†L2584-L2634】【F:src/NuXJS.cpp†L2809-L2830】
 - [x] Decide on the bit layout (e.g. `depth << 16 | (slot & 0xFFFF)`) and document it in a shared header so runtime and tooling stay in sync.【F:src/NuXJS.h†L825-L835】
-- Add assertions before emitting to ensure the operands never wrap; downgrade to named opcodes in the compiler when the helper rejects a capture and record a diagnostic for debugging.
+- [x] Add assertions before emitting to ensure the operands never wrap; downgrade to named opcodes in the compiler when the helper rejects a capture and record a diagnostic for debugging.【F:src/NuXJS.cpp†L3892-L3921】【F:src/NuXJS.cpp†L3923-L3954】【F:src/NuXJS.h†L818-L856】
 - Replace all uses of `Code::capturedBindings[index]` with direct operand writes, including any legacy emitters such as function expressions or generator helpers.
-- [x] Update assembler/disassembler tables (`Processor::packInstruction`, opcode metadata arrays, and tooling in `tools/NuXJSREPL.cpp` / `tools/work/LegacyReplTests.cpp`) to decode the operand into depth/slot pairs for debugging without referencing `Code::capturedBindings`.【F:src/NuXJS.cpp†L2238-L2260】【F:src/NuXJS.h†L824-L836】【F:tools/NuXJSREPL.cpp†L280-L317】【F:tools/work/LegacyReplTests.cpp†L340-L377】
+- [x] Update assembler/disassembler tables (`Processor::packInstruction`, opcode metadata arrays, and tooling in `tools/NuXJSREPL.cpp` / `tools/work/LegacyReplTests.cpp`) to decode the operand into depth/slot pairs for debugging without referencing `Code::capturedBindings`.【F:src/NuXJS.cpp†L2238-L2260】【F:src/NuXJS.h†L824-L836】【F:tools/NuXJSREPL.cpp†L260-L320】【F:tools/work/LegacyReplTests.cpp†L351-L389】
 - Extend the opcode metadata to describe the packed layout so the disassembler prints meaningful labels (for example `closure depth=1 slot=-2`).
 - Update REPL inspectors and legacy tooling to reuse a shared `unpackClosureOperand` helper rather than duplicating bit math in multiple files.
 - Re-run existing disassembly-based regression tests to confirm the textual output remains stable apart from the new annotations.
-- [ ] Adjust bytecode serialization so no captured-binding array is written to or read from save images; ensure section headers, counts, and GC marking no longer assume `Code::capturedBindings` exists.【F:src/NuXJS.cpp†L4562-L4752】【F:src/NuXJS.h†L840-L874】
+- [x] Adjust bytecode serialization so no captured-binding array is written to or read from save images; ensure section headers, counts, and GC marking no longer assume `Code::capturedBindings` exists.【F:src/NuXJS.cpp†L2550-L2596】【F:src/NuXJS.cpp†L2776-L2785】【F:src/NuXJS.h†L817-L835】
 - Remove the captured-binding chunk from both writer and reader paths, updating version numbers if required so older snapshots fail gracefully.
 - Eliminate GC mark loops that iterate the old vector; rely on operand decoding plus `Code::getLocalName` during fallback instead.
 - Smoke-test snapshot load/save tooling (if available) or stub out the feature until operand-only captures ship.
@@ -65,7 +65,7 @@ This roadmap breaks the closure-slot work into incremental milestones. Each mile
 - [ ] Run `timeout 180 ./build.sh`.
 
 ## Milestone 4 – Remove legacy `CapturedBinding` infrastructure
-- [ ] Delete the `CapturedBinding` struct, its GC hooks, and the `Code::capturedBindings` vector from headers and implementation files; replace any remaining callers (including REPL, legacy disassembly, and unit helpers) with operand decoding logic.【F:src/NuXJS.h†L815-L874】【F:src/NuXJS.cpp†L1560-L1661】【F:tools/NuXJSREPL.cpp†L250-L313】
+- [ ] Delete the `CapturedBinding` struct and update any remaining callers (including REPL, legacy disassembly, and unit helpers) with operand decoding logic. The per-code captured-binding vector has already been removed, so future work focuses on retiring the struct wrapper entirely.【F:src/NuXJS.h†L817-L835】【F:src/NuXJS.cpp†L1596-L1604】【F:tools/NuXJSREPL.cpp†L260-L320】
 - Start by removing the type definition and GC mark function so any forgotten include or pointer usage fails compilation.
 - Sweep the runtime, tools, and tests for `capturedBindings` references, substituting calls to `unpackClosureOperand` where a human-readable name is required.
 - Re-run GC stress or leak tooling if available to confirm the removal did not leave dangling references.

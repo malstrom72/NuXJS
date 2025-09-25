@@ -1594,48 +1594,25 @@ const String* JoiningEnumerator::nextPropertyName() {
 /* --- Code --- */
 
 Code::Code(GCList& gcList, Constants* sharedConstants)
-	: super(gcList), codeWords(0, &gcList.getHeap())
-	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
-	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
-	, selfName(0), source(0), bloomSet(0), maxStackDepth(0), capturedBindings(&gcList.getHeap())
+: super(gcList), codeWords(0, &gcList.getHeap())
+, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
+, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
+, selfName(0), source(0), bloomSet(0), maxStackDepth(0), closureOperandDiagnostics(&gcList.getHeap())
 {
-	assert(constants != 0);
+assert(constants != 0);
 }
 
 bool Code::lookupNameIndex(const String* name, Int32& index) const {
-	const Table::Bucket* bucket = nameIndexes.lookup(name);
-	if (bucket == 0) {
-		return false;
-	}
-	index = bucket->getIndexValue();
-	return true;
+        const Table::Bucket* bucket = nameIndexes.lookup(name);
+        if (bucket == 0) {
+                return false;
+        }
+        index = bucket->getIndexValue();
+        return true;
 }
 
-UInt32 Code::appendCapturedBinding(const CapturedBinding& binding) {
-	capturedBindings.push(binding);
-	return capturedBindings.size() - 1;
-}
-
-const CapturedBinding* Code::findCapturedBinding(UInt16 depth, Int16 slot) const {
-	for (UInt32 i = 0; i < capturedBindings.size(); ++i) {
-		if (capturedBindings[i].depth == depth && capturedBindings[i].slot == slot) {
-			return &capturedBindings[i];
-		}
-	}
-	return 0;
-}
-
-UInt32 Code::appendCapturedBinding(UInt16 depth, Int16 slot, const String* name) {
-	return appendCapturedBinding(CapturedBinding(depth, slot, name));
-}
-
-UInt32 Code::ensureCapturedBinding(UInt16 depth, Int16 slot, const String* name) {
-	for (UInt32 i = 0; i < capturedBindings.size(); ++i) {
-		if (capturedBindings[i].depth == depth && capturedBindings[i].slot == slot) {
-			return i;
-		}
-	}
-	return appendCapturedBinding(depth, slot, name);
+void Code::recordClosureOperandDiagnostic(const ClosureOperandDiagnostic& diagnostic) {
+	closureOperandDiagnostics.push(diagnostic);
 }
 
 /* --- Function --- */
@@ -2582,8 +2559,7 @@ void Processor::innerRun() {
 					++sp;
 					*sp = *slot;
 				} else {
-					const CapturedBinding* metadata = code->findCapturedBinding(binding.depth, binding.slot);
-					const String* name = (metadata != 0 && metadata->name != 0 ? metadata->name : code->getLocalName(binding.slot));
+					const String* name = code->getLocalName(binding.slot);
 					assert(name != 0);
 					++sp;
 					if (scope->readVar(rt, name, sp) == NONEXISTENT) {
@@ -2593,7 +2569,7 @@ void Processor::innerRun() {
 				}
 			}
 			break;
-			
+
 			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
 			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
 			case WRITE_CLOSURE_OP: {
@@ -2603,8 +2579,7 @@ void Processor::innerRun() {
 					assert(slot != 0);
 					*slot = sp[0];
 				} else {
-					const CapturedBinding* metadata = code->findCapturedBinding(binding.depth, binding.slot);
-					const String* name = (metadata != 0 && metadata->name != 0 ? metadata->name : code->getLocalName(binding.slot));
+					const String* name = code->getLocalName(binding.slot);
 					assert(name != 0);
 					scope->writeVar(rt, name, sp[0]);
 				}
@@ -2617,15 +2592,14 @@ void Processor::innerRun() {
 					assert(slot != 0);
 					*slot = sp[0];
 				} else {
-					const CapturedBinding* metadata = code->findCapturedBinding(binding.depth, binding.slot);
-					const String* name = (metadata != 0 && metadata->name != 0 ? metadata->name : code->getLocalName(binding.slot));
+					const String* name = code->getLocalName(binding.slot);
 					assert(name != 0);
 					scope->writeVar(rt, name, sp[0]);
 				}
 				pop(1);
 				break;
 			}
-			
+
 			case CHECK_OBJECT_COERCIBLE_OP: {
 				if (sp[0].isUndefined() || sp[0].isNull()) {
 					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
@@ -2814,8 +2788,7 @@ void Processor::innerRun() {
 				if (scope->resolveCapturedBinding(binding, slot)) {
 					push(false);
 				} else {
-					const CapturedBinding* metadata = code->findCapturedBinding(binding.depth, binding.slot);
-					const String* name = (metadata != 0 && metadata->name != 0 ? metadata->name : code->getLocalName(binding.slot));
+					const String* name = code->getLocalName(binding.slot);
 					assert(name != 0);
 					push(scope->deleteVar(rt, name));
 				}
@@ -3907,22 +3880,25 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
 
-bool Compiler::recordCapturedBinding(const String* name, UInt16& depth, Int16& slot) {
+bool Compiler::recordCapturedBinding(const String* name, UInt16& depth, Int16& slot, ClosureOperandDiagnostic::Reason& failureReason) {
 	depth = 0;
 	slot = 0;
 	const CapturedLexicalContext* context = capturedLexical;
 	UInt16 currentDepth = 1;
 	while (context != 0) {
 		if (!context->allowClosureSlots) {
+			failureReason = ClosureOperandDiagnostic::ANCESTOR_GUARD;
 			return false;
 		}
 		if (context->code != 0) {
 			Int32 index;
 			if (context->code->lookupNameIndex(name, index)) {
 				if (index == CATCH_PARAMETER) {
+					failureReason = ClosureOperandDiagnostic::CATCH_GUARD;
 					return false;
 				}
 				if (index < std::numeric_limits<Int16>::min() || index > std::numeric_limits<Int16>::max()) {
+					failureReason = ClosureOperandDiagnostic::SLOT_RANGE_OVERFLOW;
 					return false;
 				}
 				depth = currentDepth;
@@ -3933,6 +3909,7 @@ bool Compiler::recordCapturedBinding(const String* name, UInt16& depth, Int16& s
 		context = context->parent;
 		++currentDepth;
 	}
+	failureReason = ClosureOperandDiagnostic::MISSING_BINDING;
 	return false;
 }
 
@@ -3951,28 +3928,37 @@ bool Compiler::packClosureOperand(UInt16 depth, Int16 slot, Int32& operand) {
 }
 
 bool Compiler::maybeEmitClosureOperand(ExpressionResult& xr, const String* name) {
-        assert(xr.t == ExpressionResult::NAMED);
-        if (compilingFor != FOR_FUNCTION) {
-                return false;
-        }
-        if (withScopeCounter != 0) {
-                return false;
-        }
-        if (name->isEqualTo(ARGUMENTS_STRING)) {
-                return false;
-        }
-        UInt16 depth;
-        Int16 slot;
-        if (!recordCapturedBinding(name, depth, slot)) {
-                return false;
-        }
-        Int32 operand;
-        if (!packClosureOperand(depth, slot, operand)) {
-                return false;
-        }
-        code->ensureCapturedBinding(depth, slot, name);
-        xr = ExpressionResult(ExpressionResult::CLOSURE, name, depth, slot, operand);
-        return true;
+	assert(xr.t == ExpressionResult::NAMED);
+	if (compilingFor != FOR_FUNCTION) {
+		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(ClosureOperandDiagnostic::NON_FUNCTION_TARGET, name));
+		return false;
+	}
+	if (withScopeCounter != 0) {
+		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(ClosureOperandDiagnostic::WITH_SCOPE_GUARD, name));
+		return false;
+	}
+	if (name->isEqualTo(ARGUMENTS_STRING)) {
+		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(ClosureOperandDiagnostic::ARGUMENTS_ALIAS, name));
+		return false;
+	}
+	UInt16 depth;
+	Int16 slot;
+	ClosureOperandDiagnostic::Reason failureReason = ClosureOperandDiagnostic::MISSING_BINDING;
+	if (!recordCapturedBinding(name, depth, slot, failureReason)) {
+		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(failureReason, name, depth, slot));
+		return false;
+	}
+	if (depth > 0xFF) {
+		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(ClosureOperandDiagnostic::DEPTH_OVERFLOW, name, depth, slot));
+		return false;
+	}
+	Int32 operand;
+	if (!packClosureOperand(depth, slot, operand)) {
+		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(ClosureOperandDiagnostic::OPERAND_RANGE_OVERFLOW, name, depth, slot));
+		return false;
+	}
+	xr = ExpressionResult(ExpressionResult::CLOSURE, name, depth, slot, operand);
+	return true;
 }
 
 const Int32 MAX_NESTED_EXPRESSION_DEPTH = 64;
@@ -4764,9 +4750,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	p = b;
 	this->e = e;
 	acceptInOperator = true;
-	code->capturedBindings.resize(0);
-	
-	// FIX : not 100% necessary now because we should always start with undefined on top of stack
+// FIX : not 100% necessary now because we should always start with undefined on top of stack
 	if (compilingFor == FOR_EVAL) {
 		emit(Processor::POP_OP, 1); // FIX : only if we reserve one element for return like we do now
 		emit(Processor::VOID_OP);
@@ -4795,8 +4779,7 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 	assert(functionName != 0);
 	p = b;
 	this->e = e;
-	code->capturedBindings.resize(0);
-	expectToken("(", true);
+expectToken("(", true);
 	white();
 	Table& nameIndexes = code->nameIndexes;
 	Vector<const String*>& argumentNames = code->argumentNames;
