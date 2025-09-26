@@ -46,7 +46,7 @@ This roadmap breaks the closure-slot work into incremental milestones. Each mile
 - Remove the captured-binding chunk from both writer and reader paths, updating version numbers if required so older snapshots fail gracefully.
 - Eliminate GC mark loops that iterate the old vector; rely on operand decoding plus `Code::getLocalName` during fallback instead.
 - Smoke-test snapshot load/save tooling (if available) or stub out the feature until operand-only captures ship.
-- [ ] Run `timeout 180 ./build.sh`.
+- [x] Run `timeout 180 ./build.sh`.
 
 ## Milestone 3 – Runtime fast path and fallback without `CapturedBinding`
 - [x] Rewrite `Scope::resolveClosureOperand` and the closure opcode handlers to accept decoded depth/slot pairs, walking `parentFunctionScope` pointers directly and touching `localsPointer` once the target frame is reached so no heap allocation or binding table lookup occurs.【F:src/NuXJS.cpp†L1997-L2155】【F:src/NuXJS.cpp†L2556-L2611】
@@ -63,29 +63,29 @@ This roadmap breaks the closure-slot work into incremental milestones. Each mile
 - Audit each scope’s override to confirm it receives the packed operand and returns a clear error flag without dereferencing frame pointers it does not own.
 - Extend regression tests to include scenarios that mutate captured variables after forcing a fallback, guaranteeing writes propagate correctly.
 - Capture expected ReferenceError output in `.io` files so the slow path’s identifier recovery is exercised continuously.
-- [ ] Run `timeout 180 ./build.sh`.
+- [x] Run `timeout 180 ./build.sh`.
 
 ## Milestone 4 – Remove legacy `CapturedBinding` infrastructure
-- [ ] Delete the `CapturedBinding` struct and update any remaining callers (including REPL, legacy disassembly, and unit helpers) with operand decoding logic. The per-code captured-binding vector has already been removed, so future work focuses on retiring the struct wrapper entirely.【F:src/NuXJS.h†L817-L835】【F:src/NuXJS.cpp†L1596-L1604】【F:tools/NuXJSREPL.cpp†L260-L320】
+- [x] Delete the `CapturedBinding` struct and update any remaining callers (including REPL, legacy disassembly, and unit helpers) with operand decoding logic. The per-code captured-binding vector has already been removed, so future work focuses on retiring the struct wrapper entirely.【F:src/NuXJS.h†L817-L835】【F:src/NuXJS.cpp†L1596-L1604】【F:tools/NuXJSREPL.cpp†L260-L320】
 - Start by removing the type definition and GC mark function so any forgotten include or pointer usage fails compilation.
 - Sweep the runtime, tools, and tests for `capturedBindings` references, substituting calls to `unpackClosureOperand` where a human-readable name is required.
 - Re-run GC stress or leak tooling if available to confirm the removal did not leave dangling references.
-- [ ] Rip out `Compiler::capturedBindings` ownership and serialization (`Code::appendCapturedBinding`, `Compiler::ensureCapturedBinding`, etc.) so compilation no longer stores per-binding name pointers or indices.【F:src/NuXJS.cpp†L1614-L1642】【F:src/NuXJS.cpp†L3893-L3942】
+- [x] Rip out `Compiler::capturedBindings` ownership and serialization (`Code::appendCapturedBinding`, `Compiler::ensureCapturedBinding`, etc.) so compilation no longer stores per-binding name pointers or indices.【F:src/NuXJS.cpp†L1614-L1642】【F:src/NuXJS.cpp†L3893-L3942】
 - Delete the helper implementations entirely and inline any remaining logic into the operand packer to prevent future reintroduction of the table.
 - Update serialization counts and version headers to skip writing the removed data; add asserts that legacy readers are no longer invoked.
 - Remove related unit tests or fixtures that expected a populated binding list, replacing them with operand checks.
-- [ ] Update documentation and comments that reference `CapturedBinding` or binding tables to explain the operand-only layout and the runtime fallback through `Code::getLocalName`. Ensure the design report stays aligned with the implementation details.【F:docs/outer-closure-fast-binding.md†L1-L260】
+- [x] Update documentation and comments that reference `CapturedBinding` or binding tables to explain the operand-only layout and the runtime fallback through `Code::getLocalName`. Ensure the design report stays aligned with the implementation details.【F:docs/outer-closure-fast-binding.md†L1-L260】
 - Touch the major design docs (`outer-closure-fast-binding.md`, `solution-10-implementation-plan.md`) and inline code comments to reflect the new invariants.
 - Highlight the operand encoding and fallback mechanics in developer-facing docs so future maintainers understand why metadata was removed.
 - Capture any caveats (e.g. operand overflow falling back to named) in the troubleshooting section of the docs.
-- [ ] Run `timeout 180 ./build.sh`.
+- [x] Run `timeout 180 ./build.sh`.
 
 ## Milestone 5 – Tooling, tests, and performance validation
-- [ ] Refresh disassembly output, REPL inspectors, and logging utilities to print the unpacked `(ancestorDistance, slotOffset)` directly from operands so developers can diagnose closure captures without referencing removed tables.【F:tools/NuXJSREPL.cpp†L250-L313】【F:tools/work/LegacyReplTests.cpp†L337-L381】
+- [x] Refresh disassembly output, REPL inspectors, and logging utilities to print the unpacked `(ancestorDistance, slotOffset)` directly from operands so developers can diagnose closure captures without referencing removed tables.【F:tools/NuXJSREPL.cpp†L250-L313】【F:tools/work/LegacyReplTests.cpp†L337-L381】
 - Share the operand unpacker through a common header so every tool renders identical output, keeping regressions easy to spot.
 - Update any scripting harnesses that diff disassembly output to accept the new format and regenerate their golden files.
 - Verify interactive REPL commands still work end-to-end by manually inspecting a script with closures.
-- [ ] Expand regression suites (`closureCapturedSlotsBasics20250210.io`, `closureDynamicScopeGuards20250209.io`) and add new `.io` cases that assert both the fast path and operand-only fallback behave correctly across eval, with, and catch scenarios after the binding array disappears.【F:tests/regression/closureCapturedSlotsBasics20250210.io†L1-L80】【F:tests/regression/closureDynamicScopeGuards20250209.io†L1-L120】
+- [x] Expand regression suites (`closureCapturedSlotsBasics20250210.io`, `closureDynamicScopeGuards20250209.io`) and add new `.io` cases that assert both the fast path and operand-only fallback behave correctly across eval, with, and catch scenarios after the binding array disappears.【F:tests/regression/closureCapturedSlotsBasics20250210.io†L1-L80】【F:tests/regression/closureDynamicScopeGuards20250209.io†L1-L152】
 - Craft explicit `.io` files that exercise operand overflow, forced slow paths, and deletion semantics to keep coverage broad.
 - Run the full regression harness locally and capture logs for inclusion in the PR description to demonstrate the absence of guard regressions.
 - Add comments to the tests explaining which guard each block validates so future contributors can extend them consistently.

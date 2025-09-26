@@ -85,3 +85,52 @@
 > print((moreOuter())()());
 < 2
 -
+> function captureWithShadowing(box) {
+> var outer = "lexical";
+> with (box) {
+> return function() { return outer; };
+> }
+> }
+> var shadowBox = { outer: "dynamic" };
+> var readShadowed = captureWithShadowing(shadowBox);
+> print(readShadowed());
+< dynamic
+> shadowBox.outer = "changed";
+> print(readShadowed());
+< changed
+> delete shadowBox.outer;
+> print(readShadowed());
+< lexical
+-
+> function writeThroughWith(box) {
+> var captured = 0;
+> with (box) {
+> return {
+> step: function(delta) { captured += delta; return captured; },
+> readBox: function() { return box.captured; }
+> };
+> }
+> }
+> var writeBox = { captured: 100 };
+> var controller = writeThroughWith(writeBox);
+> print(controller.readBox());
+< 100
+> print(controller.step(2));
+< 102
+> print(controller.readBox());
+< 102
+> delete writeBox.captured;
+> print(controller.step(3));
+< 3
+> print(controller.readBox());
+< undefined
+-
+> function captureEvalShadow() {
+> var shared = "outer";
+> function inner() { return shared; }
+> eval("shared = 'eval';");
+> return inner;
+> }
+> print(captureEvalShadow()());
+< eval
+-
