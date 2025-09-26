@@ -35,7 +35,7 @@ The present compiler launches a fresh `Compiler` instance for every nested funct
 * Reuse `declareIdentifier` as the single place that pushes locals into the fast-path table. The helper already refuses to return a local index when `withScopeCounter` is non-zero or the target is the synthetic catch parameter (`CATCH_PARAMETER`).【F:src/NuXJS.cpp†L3893-L3917】【F:src/NuXJS.cpp†L3737-L3755】 Propagating the same boolean to descendants keeps the new closure metadata aligned with the existing fast-path rules for `with` and catch bindings.【F:src/NuXJS.cpp†L4048-L4055】【F:src/NuXJS.cpp†L3751-L3754】
 * Thread a minimal `(depth, slot)` payload through `ExpressionResult`. The parser currently sets `ExpressionResult::LOCAL` when an identifier matches the current frame; we only need an extra variant that carries the depth and reuses the existing signed-slot convention. Touchpoints are limited to `identifier`, `optionalExpression`, and the assignment helpers that already switch on `ExpressionResult::Type`.【F:src/NuXJS.cpp†L2876-L2939】【F:src/NuXJS.cpp†L3244-L3274】
 
-Once `functionDefinition` copies the collected captures into the nested `Code` (mirroring how it already finalizes `argumentNames` and `varNames`), the VM no longer needs to serialize a side table of capture metadata. Each closure operand carries the `(depth, slot)` tuple directly, and runtime fallbacks recover identifier names from the existing lexical metadata on demand.【F:src/NuXJS.cpp†L3889-L3906】【F:src/NuXJS.cpp†L2550-L2596】【F:src/NuXJS.cpp†L2776-L2785】
+Once `functionDefinition` copies the collected captures into the nested `Code` (mirroring how it already finalizes `argumentNames` and `varNames`), the VM no longer needs to serialize a side table of capture metadata. Each closure operand carries the `(depth, slot)` tuple directly, and runtime fallbacks recover identifier names from the existing lexical metadata on demand.【F:src/NuXJS.cpp†L3889-L3906】【F:src/NuXJS.cpp†L2531-L2599】【F:src/NuXJS.cpp†L2776-L2785】
 
 #### Closure operand decoding
 `unpackClosureOperand` decodes the packed closure operand into two primitive values:
@@ -46,11 +46,11 @@ Once `functionDefinition` copies the collected captures into the nested `Code` (
 Tooling such as the REPL disassembler records the raw operand integers and calls the same helper whenever it needs human-readable output, guaranteeing a single source of truth for both bit layout and diagnostic text.【F:tools/NuXJSREPL.cpp†L220-L339】【F:tools/work/LegacyReplTests.cpp†L253-L377】 Catch parameters already poison their entry in `nameIndexes` with `CATCH_PARAMETER`, so lookups simply fail while that sentinel is active.【F:src/NuXJS.cpp†L3893-L3917】【F:src/NuXJS.cpp†L3751-L3754】【F:src/NuXJS.cpp†L4304-L4336】 `arguments` is excluded by the same fast-path check, which prevents emitting closure records for bindings that flow through `dynamicVars` instead.【F:src/NuXJS.cpp†L3850-L3858】【F:src/NuXJS.cpp†L2010-L2104】 This keeps the runtime representation identical to the layout that `FunctionScope` already expects while avoiding extra heap objects.
 
 #### Recovering identifier names when fast paths fail
-Because the compiler no longer preserves a separate vector of captured bindings, runtime fallbacks recover identifier strings directly from lexical metadata. Every activation retains its `JSFunction`, whose `code` exposes the `varNames`/`argumentNames` tables through `Code::getLocalName`, and the closure chain keeps the correct `FunctionScope` for each lexical ancestor.【F:src/NuXJS.h†L969-L990】【F:src/NuXJS.cpp†L2552-L2609】【F:src/NuXJS.cpp†L2783-L2834】 Successful fast-path resolutions are cached per activation in `Processor::Frame::resolvedClosureSlots`, so repeated reads and writes reuse the computed pointer without rewalking the ancestor chain.【F:src/NuXJS.h†L1680-L1708】【F:src/NuXJS.cpp†L2532-L2603】 When `Scope::resolveClosureOperand` declines the fast slot, the interpreter walks `binding.depth` frames, queries the ancestor `Code::getLocalName(binding.slot)`, and reuses the generic `Scope::readVar`/`writeVar` helpers. This preserves ReferenceError reporting and dynamic-scope semantics without storing duplicate name pointers on the `Code` object.【F:src/NuXJS.cpp†L2599-L2633】【F:src/NuXJS.cpp†L2835-L2853】
+Because the compiler no longer preserves a separate vector of captured bindings, runtime fallbacks recover identifier strings directly from lexical metadata. Every activation retains its `JSFunction`, whose `code` exposes the `varNames`/`argumentNames` tables through `Code::getLocalName`, and the closure chain keeps the correct `FunctionScope` for each lexical ancestor.【F:src/NuXJS.h†L969-L990】【F:src/NuXJS.cpp†L2611-L2699】【F:src/NuXJS.cpp†L2783-L2834】 Each closure opcode asks the current scope to `resolveClosureOperand`; when that succeeds and no dynamic scope features have executed in the owning activation, the interpreter reads or writes the slot directly. If the lookup fails or a guard bit indicates that `eval`, `with`, or `catch` ran, the opcode walks `binding.depth` frames, queries `Code::getLocalName(binding.slot)`, and reuses the generic `Scope::readVar`/`writeVar` helpers. This preserves ReferenceError reporting and dynamic-scope semantics without storing duplicate name pointers on the `Code` object.【F:src/NuXJS.cpp†L2619-L2696】【F:src/NuXJS.cpp†L2835-L2853】
 
 #### Instrumentation and validation
 
-To keep guard behaviour observable, the runtime now records closure-resolution counters on `Runtime::ClosureResolutionStats`, tracking fast-path hits, cache misses, and slow-path fallbacks for every opcode execution.【F:src/NuXJS.h†L1176-L1252】【F:src/NuXJS.cpp†L2556-L2607】 The interpreter increments these counters in each closure opcode, and the REPL exposes `__resetClosureStats` / `__closureStats` helpers so tests can reset and inspect the totals without native tooling.【F:src/NuXJS.cpp†L2556-L2607】【F:tools/NuXJSREPL.cpp†L195-L233】 Regression `closureInstrumentationCounters20250211.io` exercises the helpers to confirm fast-path accesses increment the hit counters while dynamic-scope-guarded closures fall back to named resolution and leave the counters unchanged.【F:tests/regression/closureInstrumentationCounters20250211.io†L1-L36】
+To keep guard behaviour observable, the runtime now records closure-resolution counters on `Runtime::ClosureResolutionStats`, tracking fast-path hits and slow-path fallbacks for every opcode execution.【F:src/NuXJS.h†L1168-L1184】【F:src/NuXJS.cpp†L5336-L5338】 The interpreter increments these counters in each closure opcode, and the REPL exposes `__resetClosureStats` / `__closureStats` helpers so tests can reset and inspect the totals without native tooling.【F:src/NuXJS.cpp†L5336-L5338】【F:tools/NuXJSREPL.cpp†L195-L211】 Regression `closureInstrumentationCounters20250211.io` exercises the helpers to confirm fast-path accesses increment the hit counter while dynamic-scope guards flip the execution into the slow-fallback count.【F:tests/regression/closureInstrumentationCounters20250211.io†L1-L33】
 
 #### Identifier analysis workflow
 With the contextual chain in place, the lookup steps become:
@@ -104,7 +104,7 @@ To keep the compile-time scheme sound we therefore need an upfront signal that t
 
 *Pros*
 - Integrates with the existing `statementList` loop, so a guard scan can walk the remaining tokens before any nested `functionDefinition` instantiates a child compiler and copies the parent guard bit.【F:src/NuXJS.cpp†L4714-L4719】【F:src/NuXJS.cpp†L3876-L3889】
-- Keeps runtime costs unchanged because guard decisions are still made entirely at compile time; no additional checks land in the interpreter’s closure opcodes.【F:src/NuXJS.cpp†L2559-L2609】
+- Keeps runtime costs unchanged because guard decisions are still made entirely at compile time; no additional checks land in the interpreter’s closure opcodes.【F:src/NuXJS.cpp†L2619-L2699】
 
 *Cons*
 - Requires a new peeking lexer that recognises `with` statements and direct `eval` calls without advancing `p`, otherwise the real parser would see partially consumed tokens on the second pass.【F:src/NuXJS.cpp†L4714-L4719】【F:src/NuXJS.cpp†L3805-L3814】
@@ -134,29 +134,29 @@ To keep the compile-time scheme sound we therefore need an upfront signal that t
 
 *Pros*
 - Reuses the existing `capturedBindings` table and instruction stream so early compiles proceed unchanged; only guard violations trigger rewrites before `code->codeWords` is sealed.【F:src/NuXJS.cpp†L3893-L3901】【F:src/NuXJS.cpp†L4744-L4752】
-- Avoids recompiling whole functions—unsafe captures are simply rewritten back to `READ_NAMED_OP`/`WRITE_NAMED_OP` using the original identifier.【F:src/NuXJS.cpp†L2559-L2609】
+- Avoids recompiling whole functions—unsafe captures are simply rewritten back to `READ_NAMED_OP`/`WRITE_NAMED_OP` using the original identifier.【F:src/NuXJS.cpp†L2619-L2699】
 
 *Cons*
-- Must track every opcode location that referenced a captured binding so the scrubber can restore the named operand reliably; missing a site leaves incorrect fast-path bytecode behind.【F:src/NuXJS.cpp†L3893-L3929】【F:src/NuXJS.cpp†L2550-L2609】
-- (Historical) Kept the `CapturedBinding` vector and `name` pointer alive even after invalidation because the interpreter needed those strings for the fallback helpers. The modern operand-only system avoids this duplication by querying `Code::getLocalName` on demand.【F:src/NuXJS.cpp†L2550-L2609】
+- Must track every opcode location that referenced a captured binding so the scrubber can restore the named operand reliably; missing a site leaves incorrect fast-path bytecode behind.【F:src/NuXJS.cpp†L3893-L3929】【F:src/NuXJS.cpp†L2611-L2699】
+- (Historical) Kept the `CapturedBinding` vector and `name` pointer alive even after invalidation because the interpreter needed those strings for the fallback helpers. The modern operand-only system avoids this duplication by querying `Code::getLocalName` on demand.【F:src/NuXJS.cpp†L2611-L2699】
 
 *Implementation notes*
 - Extend `recordCapturedBinding` to stash `(codeOffset, constantIndex)` pairs in a scrub list whenever it emits a closure operand so the compiler can later revert those instructions without searching the bytecode blindly.【F:src/NuXJS.cpp†L3893-L3925】【F:src/NuXJS.cpp†L3098-L3134】
 - Trigger the scrubber from the same sites that flip the guard—direct eval detection and the `withScopeCounter` maintained by `withStatement`—ensuring the rewrite runs before `compile` copies the sections into the final `codeWords`.【F:src/NuXJS.cpp†L3805-L3814】【F:src/NuXJS.cpp†L4240-L4249】【F:src/NuXJS.cpp†L4744-L4752】
-- When invalidating a capture, rewrite the opcode back to its `*_NAMED_OP` form and restore the identifier operand via `emitWithConstant`, leaving the binding vector and `name` pointer intact for runtime fallbacks.【F:src/NuXJS.cpp†L3211-L3213】【F:src/NuXJS.cpp†L2550-L2609】
+- When invalidating a capture, rewrite the opcode back to its `*_NAMED_OP` form and restore the identifier operand via `emitWithConstant`, leaving the binding vector and `name` pointer intact for runtime fallbacks.【F:src/NuXJS.cpp†L3211-L3213】【F:src/NuXJS.cpp†L2611-L2699】
 
 **Solution 4 – Runtime guard handshake**
 
 *Pros*
 - Minimal compiler churn: rely on `FunctionScope::resolveClosureOperand` to refuse resolutions whenever a dynamic scope intervenes, reusing today’s runtime guard surface.【F:src/NuXJS.cpp†L2138-L2155】【F:src/NuXJS.cpp†L2304-L2363】
-- Guarantees correctness even if the parser misses a hazard, because the interpreter falls back to `readVar`/`writeVar` when the guard fails.【F:src/NuXJS.cpp†L2559-L2609】
+- Guarantees correctness even if the parser misses a hazard, because the interpreter falls back to `readVar`/`writeVar` when the guard fails.【F:src/NuXJS.cpp†L2619-L2699】
 
 *Cons*
-- Adds runtime overhead to every closure access—the interpreter must probe `resolveClosureOperand` and often rerun the full named lookup when a `WithScope` or `EvalScope` is active.【F:src/NuXJS.cpp†L2550-L2609】【F:src/NuXJS.cpp†L2304-L2363】
-- (Historical) Could not drop `CapturedBinding::name` because the fallback path still needed the identifier string for error messages and dynamic lookups. Operand decoding plus `Code::getLocalName` now covers that need.【F:src/NuXJS.cpp†L2550-L2609】
+- Adds runtime overhead to every closure access—the interpreter must probe `resolveClosureOperand` and often rerun the full named lookup when a `WithScope` or `EvalScope` is active.【F:src/NuXJS.cpp†L2611-L2699】【F:src/NuXJS.cpp†L2304-L2363】
+- (Historical) Could not drop `CapturedBinding::name` because the fallback path still needed the identifier string for error messages and dynamic lookups. Operand decoding plus `Code::getLocalName` now covers that need.【F:src/NuXJS.cpp†L2611-L2699】
 
 *Implementation notes*
-- Keep the compiler untouched and update `Processor::innerRun` so the closure opcodes invoke `Scope::resolveClosureOperand` before falling back to the named helpers, reusing the runtime guard overrides already supplied by `EvalScope` and `WithScope`.【F:src/NuXJS.cpp†L2550-L2609】【F:src/NuXJS.cpp†L1998-L2065】【F:src/NuXJS.cpp†L2300-L2364】
+- Keep the compiler untouched and update `Processor::innerRun` so the closure opcodes invoke `Scope::resolveClosureOperand` before falling back to the named helpers, reusing the runtime guard overrides already supplied by `EvalScope` and `WithScope`.【F:src/NuXJS.cpp†L2611-L2699】【F:src/NuXJS.cpp†L1998-L2065】【F:src/NuXJS.cpp†L2300-L2364】
 - Ensure the interpreter honours the compiler’s direct-eval toggle by checking the existing `allowClosureSlots` flag when `CALL_EVAL_OP` is emitted, so runtime and compile-time guard decisions stay aligned.【F:src/NuXJS.cpp†L3805-L3814】
 
 **Solution 5 – Token-buffer guard pass**
@@ -178,7 +178,7 @@ To keep the compile-time scheme sound we therefore need an upfront signal that t
 
 *Pros*
 - Keeps the single-pass parser intact while delaying opcode commitment: nested `functionDefinition` calls queue their binding metadata, and a final sweep decides whether to emit closure or named opcodes before `code->codeWords` is frozen.【F:src/NuXJS.cpp†L3876-L3889】【F:src/NuXJS.cpp†L4744-L4752】
-- Allows dropping the per-function binding array once operands are rewritten, because only the chosen opcode reaches the VM.【F:src/NuXJS.cpp†L3893-L3901】【F:src/NuXJS.cpp†L2559-L2609】
+- Allows dropping the per-function binding array once operands are rewritten, because only the chosen opcode reaches the VM.【F:src/NuXJS.cpp†L3893-L3901】【F:src/NuXJS.cpp†L2619-L2699】
 
 *Cons*
 - Needs placeholder opcodes and relocation tables so the late pass can patch both reads and writes without disturbing stack accounting in `CodeSection::emit`.【F:src/NuXJS.cpp†L3098-L3115】
@@ -187,13 +187,13 @@ To keep the compile-time scheme sound we therefore need an upfront signal that t
 *Implementation notes*
 - When `functionDefinition` records a captured binding, enqueue a `PendingClosure` entry (code offset, binding index, guard state) so the compiler can delay committing the opcode until the outer body’s guard state is final.【F:src/NuXJS.cpp†L3876-L3889】【F:src/NuXJS.cpp†L3893-L3925】
 - Run the commit phase immediately before `compile` copies `setupSection` and `mainSection` into `code->codeWords`, rewriting placeholders through `CodeSection::emit` / `Processor::packInstruction` so stack accounting remains correct.【F:src/NuXJS.cpp†L3098-L3134】【F:src/NuXJS.cpp†L4744-L4752】
-- Populate `Code::capturedBindings` only after the commit decides which opcodes stay on the closure path, keeping GC and tooling focused on final descriptors rather than provisional metadata.【F:src/NuXJS.h†L833-L856】【F:src/NuXJS.cpp†L2550-L2609】
+- Populate `Code::capturedBindings` only after the commit decides which opcodes stay on the closure path, keeping GC and tooling focused on final descriptors rather than provisional metadata.【F:src/NuXJS.h†L833-L856】【F:src/NuXJS.cpp†L2611-L2699】
 
 **Solution 7 – Dual-path emission with late selection**
 
 *Pros*
 - Emits both closure and named variants up front so the final selection is a simple pruning step once the guard state is known, eliminating recomputation cost.【F:src/NuXJS.cpp†L3893-L3929】【F:src/NuXJS.cpp†L3313-L3368】
-- Guarantees a valid fallback is always available, reducing the risk of spec violations when hazards appear late.【F:src/NuXJS.cpp†L2559-L2609】
+- Guarantees a valid fallback is always available, reducing the risk of spec violations when hazards appear late.【F:src/NuXJS.cpp†L2619-L2699】
 
 *Cons*
 - Temporarily doubles instruction and constant-pool usage until the pruning pass runs, increasing compilation time and memory pressure for large scripts.【F:src/NuXJS.cpp†L3098-L3115】
@@ -208,7 +208,7 @@ To keep the compile-time scheme sound we therefore need an upfront signal that t
 
 *Pros*
 - Builds on existing span knowledge: `functionDefinition` already captures the nested body’s `[begin, end)` pointers, so the compiler can re-run `compileFunction` with the definitive guard once the outer body finishes scanning hazards such as `with` or direct `eval` calls.【F:src/NuXJS.cpp†L3876-L3889】【F:src/NuXJS.cpp†L3805-L3814】【F:src/NuXJS.cpp†L4240-L4249】
-- Guard flips are rare, so most functions compile only once; when a recompile is needed, the second pass can inline `(ancestorDistance, slotOffset)` operands and omit the captured-binding table entirely, leaving the final bytecode as compact as the pure fast-path design.【F:src/NuXJS.cpp†L3893-L3901】【F:src/NuXJS.cpp†L2559-L2609】
+- Guard flips are rare, so most functions compile only once; when a recompile is needed, the second pass can inline `(ancestorDistance, slotOffset)` operands and omit the captured-binding table entirely, leaving the final bytecode as compact as the pure fast-path design.【F:src/NuXJS.cpp†L3893-L3901】【F:src/NuXJS.cpp†L2619-L2699】
 - When a late `with` or direct `eval` forces recompilation, the second pass runs after the enclosing statement list has completed, so any hoisted declarations that were already visible on the first pass remain available and the regenerated bytecode can still emit final `(ancestorDistance, slotOffset)` operands.【F:src/NuXJS.cpp†L4085-L4125】【F:src/NuXJS.cpp†L4714-L4719】 (Capturing locals declared *later* in the body would still require an additional hoisting step or always-on deferral, because the recompilation only triggers when the guard actually flips.)
 
 *Cons*
@@ -380,7 +380,7 @@ This pared-down sequence keeps the first milestone focused on plumbing concrete 
 
 ##### Parent-scope caching follow-up
 
-`Processor::Frame::resolvedClosureSlots` now caches the first successful resolution of each closure operand within an activation, so the interpreter only walks the `parentFunctionScope` chain once before reusing the computed pointer.【F:src/NuXJS.h†L1680-L1708】【F:src/NuXJS.cpp†L2532-L2603】 The cache stores both the owning `FunctionScope` and the concrete slot address, and `Frame::gcMarkReferences` marks each cached scope so garbage collection retains the captured activation.【F:src/NuXJS.h†L1680-L1708】 Later reads, writes, and deletes therefore bypass the depth loop entirely while remaining guarded by the same dynamic-scope checks. A potential follow-up could promote this cache to the `JSFunction` instance so repeated invocations share resolved slots across activations, but that would require proving the cached `FunctionScope` survives for the closure’s lifetime and remains safe under recursion or re-entrancy.【F:src/NuXJS.cpp†L2628-L2669】
+Earlier prototypes cached resolved slots on `Processor::Frame`, but the minimal solution intentionally dropped that layer so repeated accesses simply ask `resolveClosureOperand` again. This keeps the implementation small—no per-frame cache vectors, GC hooks, or invalidation paths—while still allowing the slow-path guard to fall back to name-based lookups when dynamic scope features appear.
 
 Addressing these areas together would let the compiler emit closure-aware bytecode while falling back gracefully in the presence of dynamic scope features that could invalidate compile-time assumptions.
 

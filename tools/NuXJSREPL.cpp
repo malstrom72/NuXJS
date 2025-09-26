@@ -205,7 +205,6 @@ struct GetClosureStatsFunction : public Function {
                 const Runtime::ClosureResolutionStats& stats = rt.getClosureResolutionStats();
                 JSObject* object = new(heap) JSObject(heap.managed(), rt.getObjectPrototype());
                 object->setOwnProperty(rt, String::allocate(heap, "fastPath"), static_cast<double>(stats.fastPathHits));
-                object->setOwnProperty(rt, String::allocate(heap, "cacheMisses"), static_cast<double>(stats.cacheMisses));
                 object->setOwnProperty(rt, String::allocate(heap, "slowFallbacks"), static_cast<double>(stats.slowFallbacks));
                 return object;
         }

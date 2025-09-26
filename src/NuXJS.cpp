@@ -1597,8 +1597,7 @@ Code::Code(GCList& gcList, Constants* sharedConstants)
 : super(gcList), codeWords(0, &gcList.getHeap())
 , constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
 , nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
-, selfName(0), source(0), bloomSet(0), maxStackDepth(0), dynamicScopeUsed(false)
-	, closureOperandDiagnostics(&gcList.getHeap())
+, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
 {
 	assert(constants != 0);
 }
@@ -1610,10 +1609,6 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
         }
         index = bucket->getIndexValue();
         return true;
-}
-
-void Code::recordClosureOperandDiagnostic(const ClosureOperandDiagnostic& diagnostic) {
-	closureOperandDiagnostics.push(diagnostic);
 }
 
 /* --- Function --- */
@@ -2017,7 +2012,7 @@ void Scope::makeClosure() const {
 FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, const Value* argv)
 		: super(gcList, function->closure), function(function), passedArgumentsCount(argc)
 		, locals(function->code->calcLocalsSize(argc), &gcList.getHeap()), dynamicVars(0)
-		, arguments(0), bloomSet(function->code->bloomSet), parentFunctionScope(0) {
+		, arguments(0), bloomSet(function->code->bloomSet), parentFunctionScope(0), dynamicScopeUsed(false) {
 	parentFunctionScope = (parentScope != 0 ? parentScope->nearestFunctionScope() : 0);
 	const Code* code = function->code;
 	localsPointer = locals.begin() + code->getVarsCount();
@@ -2432,11 +2427,11 @@ void Processor::enterGlobalCode(const Code* code) {
 	enter(code, rt.getGlobalScope(), rt.getGlobalObject());
 }
 
+static void markDynamicScopeUsage(Scope* scope);
+
 void Processor::enterEvalCode(const Code* code, bool local) {
 	if (local && currentFrame != 0) {
-		if (currentFrame->code != 0) {
-			currentFrame->code->markDynamicScopeUsage();
-		}
+		markDynamicScopeUsage(currentFrame->scope);
 		enter(code, new(heap) Processor::EvalScope(heap.managed(), currentFrame->scope), currentFrame->thisObject);
 	} else {
 		enter(code, new(heap) Processor::EvalScope(heap.managed(), rt.getGlobalScope()), rt.getGlobalObject());
@@ -2546,7 +2541,7 @@ static const String* lookupClosureFallbackName(Scope* scope, UInt16 depth, Int16
 			if (ownerFunction != 0) {
 				const Code* const ownerCode = ownerFunction->getScriptCode();
 				if (ownerCode != 0) {
-				return ownerCode->getLocalName(slotIndex);
+					return ownerCode->getLocalName(slotIndex);
 				}
 			}
 		}
@@ -2554,37 +2549,36 @@ static const String* lookupClosureFallbackName(Scope* scope, UInt16 depth, Int16
 	return (currentCode != 0 ? currentCode->getLocalName(slotIndex) : 0);
 }
 
-Processor::Frame::ResolvedClosureSlot* Processor::findCachedClosureSlot(Frame* frame, Int32 operand, Scope* guardScope) {
-	if (frame == 0) {
-		return 0;
-	}
-	Vector<Frame::ResolvedClosureSlot>& cachedSlots = frame->resolvedClosureSlots;
-	for (size_t i = 0; i < cachedSlots.size(); ++i) {
-		Frame::ResolvedClosureSlot& cached = cachedSlots[i];
-		if (cached.operand == operand && cached.guardScope == guardScope && cached.pointer != 0) {
-			return &cached;
-		}
-	}
-	return 0;
-}
-
-void Processor::cacheClosureSlot(Frame* frame, Int32 operand, Scope* guardScope, FunctionScope* ownerScope
-		, Int16 slotIndex, Value* pointer) {
-	if (frame == 0) {
+static void markDynamicScopeUsage(Scope* scope) {
+	if (scope == 0) {
 		return;
 	}
-	Vector<Frame::ResolvedClosureSlot>& cachedSlots = frame->resolvedClosureSlots;
-	for (size_t i = 0; i < cachedSlots.size(); ++i) {
-		Frame::ResolvedClosureSlot& cached = cachedSlots[i];
-		if (cached.operand == operand && cached.guardScope == guardScope) {
-			cached.owner = ownerScope;
-			cached.slot = slotIndex;
-			cached.pointer = pointer;
-			return;
-		}
+	FunctionScope* functionScope = scope->nearestFunctionScope();
+	if (functionScope != 0) {
+		functionScope->markDynamicScopeUsage();
 	}
-	cachedSlots.push(Frame::ResolvedClosureSlot(operand, guardScope, ownerScope, slotIndex, pointer));
 }
+
+static bool hasDynamicScopeBarrier(Scope* scope, FunctionScope* owner) {
+	FunctionScope* walker = scope->nearestFunctionScope();
+	bool isCurrentFunction = true;
+	while (walker != 0) {
+		if (walker->hasDynamicScopeUsage()) {
+			if (!isCurrentFunction || walker == owner) {
+				return true;
+			}
+		}
+		if (walker == owner) {
+			break;
+		}
+		walker = walker->getParentFunctionScope();
+		isCurrentFunction = false;
+	}
+	return false;
+}
+
+
+
 void Processor::innerRun() {
 	assert(currentFrame != 0);	// you must enter something first
 	Scope* scope = currentFrame->scope;
@@ -2614,41 +2608,16 @@ void Processor::innerRun() {
 			}
 			break;
 			
-				case READ_CLOSURE_OP: {
+			case READ_CLOSURE_OP: {
 					UInt16 depth;
 					Int16 slotIndex;
 					unpackClosureOperand(im, depth, slotIndex);
-					bool cacheHit = false;
 					Value* slot = 0;
 					FunctionScope* owner = 0;
-					const Code* ownerCode = 0;
-					Processor::Frame::ResolvedClosureSlot* cached = Processor::findCachedClosureSlot(currentFrame, im, scope);
-					if (cached != 0) {
-						slot = cached->pointer;
-						owner = cached->owner;
-						cacheHit = true;
-					}
-					if (owner != 0 && owner->getFunction() != 0) {
-						ownerCode = owner->getFunction()->getScriptCode();
-					}
-					if (!cacheHit && scope->resolveClosureOperand(depth, slotIndex, slot, owner)) {
-						assert(slot != 0);
-						if (owner != 0 && owner->getFunction() != 0) {
-							ownerCode = owner->getFunction()->getScriptCode();
-						}
-						if (ownerCode == 0 || !ownerCode->usesDynamicScope()) {
-							Processor::cacheClosureSlot(currentFrame, im, scope, owner, slotIndex, slot);
-						}
-					}
-					if (ownerCode == 0 && owner != 0 && owner->getFunction() != 0) {
-						ownerCode = owner->getFunction()->getScriptCode();
-					}
-					const bool forceSlowPath = (ownerCode != 0 && ownerCode->usesDynamicScope());
-					if (!forceSlowPath && slot != 0) {
+					const bool resolved = scope->resolveClosureOperand(depth, slotIndex, slot, owner);
+					const bool dynamicGuard = hasDynamicScopeBarrier(scope, owner);
+					if (resolved && slot != 0 && owner != 0 && !dynamicGuard) {
 						rt.recordClosureFastPath();
-						if (!cacheHit) {
-							rt.recordClosureCacheMiss();
-						}
 						++sp;
 						*sp = *slot;
 					} else {
@@ -2657,52 +2626,27 @@ void Processor::innerRun() {
 						rt.recordClosureSlowFallback();
 						++sp;
 						if (scope->readVar(rt, name, sp) == NONEXISTENT) {
+							Heap& heap = rt.getHeap();
 							error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
 							return;
 						}
 					}
-					}
-					break;
 			}
+			break;
 
 			case WRITE_NAMED_OP:			scope->writeVar(rt, constants[im].getString(), sp[0]); break;
 			case WRITE_NAMED_POP_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
 
-				case WRITE_CLOSURE_OP: {
+			case WRITE_CLOSURE_OP: {
 					UInt16 depth;
 					Int16 slotIndex;
 					unpackClosureOperand(im, depth, slotIndex);
-					bool cacheHit = false;
 					Value* slot = 0;
 					FunctionScope* owner = 0;
-					const Code* ownerCode = 0;
-					Processor::Frame::ResolvedClosureSlot* cached = Processor::findCachedClosureSlot(currentFrame, im, scope);
-					if (cached != 0) {
-						slot = cached->pointer;
-						owner = cached->owner;
-						cacheHit = true;
-					}
-					if (owner != 0 && owner->getFunction() != 0) {
-						ownerCode = owner->getFunction()->getScriptCode();
-					}
-					if (!cacheHit && scope->resolveClosureOperand(depth, slotIndex, slot, owner)) {
-						assert(slot != 0);
-						if (owner != 0 && owner->getFunction() != 0) {
-							ownerCode = owner->getFunction()->getScriptCode();
-						}
-						if (ownerCode == 0 || !ownerCode->usesDynamicScope()) {
-							Processor::cacheClosureSlot(currentFrame, im, scope, owner, slotIndex, slot);
-						}
-					}
-					if (ownerCode == 0 && owner != 0 && owner->getFunction() != 0) {
-						ownerCode = owner->getFunction()->getScriptCode();
-					}
-					const bool forceSlowPath = (ownerCode != 0 && ownerCode->usesDynamicScope());
-					if (!forceSlowPath && slot != 0) {
+					const bool resolved = scope->resolveClosureOperand(depth, slotIndex, slot, owner);
+					const bool dynamicGuard = hasDynamicScopeBarrier(scope, owner);
+					if (resolved && slot != 0 && owner != 0 && !dynamicGuard) {
 						rt.recordClosureFastPath();
-						if (!cacheHit) {
-							rt.recordClosureCacheMiss();
-						}
 						*slot = sp[0];
 					} else {
 						const String* name = lookupClosureFallbackName(scope, depth, slotIndex, code);
@@ -2710,44 +2654,19 @@ void Processor::innerRun() {
 						rt.recordClosureSlowFallback();
 						scope->writeVar(rt, name, sp[0]);
 					}
-					}
-					break;
+				}
+				break;
 
-				case WRITE_CLOSURE_POP_OP: {
+			case WRITE_CLOSURE_POP_OP: {
 					UInt16 depth;
 					Int16 slotIndex;
 					unpackClosureOperand(im, depth, slotIndex);
-					bool cacheHit = false;
 					Value* slot = 0;
 					FunctionScope* owner = 0;
-					const Code* ownerCode = 0;
-					Processor::Frame::ResolvedClosureSlot* cached = Processor::findCachedClosureSlot(currentFrame, im, scope);
-					if (cached != 0) {
-						slot = cached->pointer;
-						owner = cached->owner;
-						cacheHit = true;
-					}
-					if (owner != 0 && owner->getFunction() != 0) {
-						ownerCode = owner->getFunction()->getScriptCode();
-					}
-					if (!cacheHit && scope->resolveClosureOperand(depth, slotIndex, slot, owner)) {
-						assert(slot != 0);
-						if (owner != 0 && owner->getFunction() != 0) {
-							ownerCode = owner->getFunction()->getScriptCode();
-						}
-						if (ownerCode == 0 || !ownerCode->usesDynamicScope()) {
-							Processor::cacheClosureSlot(currentFrame, im, scope, owner, slotIndex, slot);
-						}
-					}
-					if (ownerCode == 0 && owner != 0 && owner->getFunction() != 0) {
-						ownerCode = owner->getFunction()->getScriptCode();
-					}
-					const bool forceSlowPath = (ownerCode != 0 && ownerCode->usesDynamicScope());
-					if (!forceSlowPath && slot != 0) {
+					const bool resolved = scope->resolveClosureOperand(depth, slotIndex, slot, owner);
+					const bool dynamicGuard = hasDynamicScopeBarrier(scope, owner);
+					if (resolved && slot != 0 && owner != 0 && !dynamicGuard) {
 						rt.recordClosureFastPath();
-						if (!cacheHit) {
-							rt.recordClosureCacheMiss();
-						}
 						*slot = sp[0];
 					} else {
 						const String* name = lookupClosureFallbackName(scope, depth, slotIndex, code);
@@ -2756,44 +2675,19 @@ void Processor::innerRun() {
 						scope->writeVar(rt, name, sp[0]);
 					}
 					pop(1);
-					}
-					break;
+				}
+				break;
 
-				case DELETE_CLOSURE_OP: {
+			case DELETE_CLOSURE_OP: {
 					UInt16 depth;
 					Int16 slotIndex;
 					unpackClosureOperand(im, depth, slotIndex);
-					bool cacheHit = false;
 					Value* slot = 0;
 					FunctionScope* owner = 0;
-					const Code* ownerCode = 0;
-					Processor::Frame::ResolvedClosureSlot* cached = Processor::findCachedClosureSlot(currentFrame, im, scope);
-					if (cached != 0) {
-						slot = cached->pointer;
-						owner = cached->owner;
-						cacheHit = true;
-					}
-					if (owner != 0 && owner->getFunction() != 0) {
-						ownerCode = owner->getFunction()->getScriptCode();
-					}
-					if (!cacheHit && scope->resolveClosureOperand(depth, slotIndex, slot, owner)) {
-						assert(slot != 0);
-						if (owner != 0 && owner->getFunction() != 0) {
-							ownerCode = owner->getFunction()->getScriptCode();
-						}
-						if (ownerCode == 0 || !ownerCode->usesDynamicScope()) {
-							Processor::cacheClosureSlot(currentFrame, im, scope, owner, slotIndex, slot);
-						}
-					}
-					if (ownerCode == 0 && owner != 0 && owner->getFunction() != 0) {
-						ownerCode = owner->getFunction()->getScriptCode();
-					}
-					const bool forceSlowPath = (ownerCode != 0 && ownerCode->usesDynamicScope());
-					if (!forceSlowPath && slot != 0) {
+					const bool resolved = scope->resolveClosureOperand(depth, slotIndex, slot, owner);
+					const bool dynamicGuard = hasDynamicScopeBarrier(scope, owner);
+					if (resolved && slot != 0 && owner != 0 && !dynamicGuard) {
 						rt.recordClosureFastPath();
-						if (!cacheHit) {
-							rt.recordClosureCacheMiss();
-						}
 						push(false);
 					} else {
 						const String* name = lookupClosureFallbackName(scope, depth, slotIndex, code);
@@ -2801,8 +2695,8 @@ void Processor::innerRun() {
 						rt.recordClosureSlowFallback();
 						push(scope->deleteVar(rt, name));
 					}
-					}
-					break;
+				}
+				break;
 
 			case CHECK_OBJECT_COERCIBLE_OP: {
 				if (sp[0].isUndefined() || sp[0].isNull()) {
@@ -2943,16 +2837,16 @@ void Processor::innerRun() {
 				return;
 			}
 			
-			case CALL_EVAL_OP: {
-				Function* f = asFunction(sp[-im]);
-				if (f != 0) {
-					if (f == rt.evalFunction && code != 0) {
-						code->markDynamicScopeUsage();
-					}
-					invokeFunction((f == rt.evalFunction ? &DIRECT_EVAL_FUNCTION : f), im, im);
-				}
-				return;
-			}
+                        case CALL_EVAL_OP: {
+                                Function* f = asFunction(sp[-im]);
+                                if (f != 0) {
+                                        if (f == rt.evalFunction) {
+                                                markDynamicScopeUsage(scope);
+                                        }
+                                        invokeFunction((f == rt.evalFunction ? &DIRECT_EVAL_FUNCTION : f), im, im);
+                                }
+                                return;
+                        }
 
 			case NEW_OP: newOperation(im); return;
 			case NEW_RESULT_OP: pop2push1(sp[0].isObject() ? sp[0] : sp[-1]); break;
@@ -2998,27 +2892,23 @@ void Processor::innerRun() {
 				break;
 			}
 			
-			case CATCH_SCOPE_OP: {
-				if (code != 0) {
-					code->markDynamicScopeUsage();
-				}
-				pushFrame(code, new(heap) CatchScope(heap.managed(), scope, constants[im].getString(), sp[0]), thisObject);
-				pop(1);
-				return;
-			}
+                        case CATCH_SCOPE_OP: {
+                                markDynamicScopeUsage(scope);
+                                pushFrame(code, new(heap) CatchScope(heap.managed(), scope, constants[im].getString(), sp[0]), thisObject);
+                                pop(1);
+                                return;
+                        }
 			
-			case WITH_SCOPE_OP: {
-				Object* o = convertToObject(sp[0], false);
-				if (o != 0) {
-					if (code != 0) {
-						code->markDynamicScopeUsage();
-					}
-					pushFrame(code, new(heap) WithScope(heap.managed(), scope, o), thisObject);
-					pop(1);
-					return;
-				}
-				break;
-			}
+                        case WITH_SCOPE_OP: {
+                                Object* o = convertToObject(sp[0], false);
+                                if (o != 0) {
+                                        markDynamicScopeUsage(scope);
+                                        pushFrame(code, new(heap) WithScope(heap.managed(), scope, o), thisObject);
+                                        pop(1);
+                                        return;
+                                }
+                                break;
+                        }
 
 			case POP_FRAME_OP: popFrame(); return;
 			case TRY_OP: firstCatcher = new(heap) Catcher(heap.managed(), ip + im, sp, currentFrame, firstCatcher); break;
@@ -4000,9 +3890,6 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			if ((xr.t == ExpressionResult::NAMED || xr.t == ExpressionResult::CLOSURE) && xr.v.equalsString(EVAL_STRING)) {
 				callOp = Processor::CALL_EVAL_OP;
 			}
-			if (callOp == Processor::CALL_EVAL_OP) {
-				allowClosureSlots = false;
-			}
 			if (xr.t == ExpressionResult::PROPERTY) {
 				callOp = Processor::CALL_METHOD_OP;
 			} else {
@@ -4067,7 +3954,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
 	Code* func = new(heap) Code(heap.managed(), code->constants);
-	CapturedLexicalContext childContext(capturedLexical, code, allowClosureSlots && withScopeCounter == 0);
+CapturedLexicalContext childContext(capturedLexical, code, allowClosureSlots);
 	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter, &childContext);
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
@@ -4127,9 +4014,6 @@ bool Compiler::packClosureOperand(UInt16 depth, Int16 slot, Int32& operand) {
 bool Compiler::maybeEmitClosureOperand(ExpressionResult& xr, const String* name) {
 	assert(xr.t == ExpressionResult::NAMED);
 	if (compilingFor != FOR_FUNCTION) {
-		return false;
-	}
-	if (withScopeCounter != 0) {
 		return false;
 	}
 	if (name->isEqualTo(ARGUMENTS_STRING)) {
@@ -5451,7 +5335,6 @@ throw ConstStringException("Out of memory");
 
 void Runtime::resetClosureResolutionStats() { closureStats = ClosureResolutionStats(); }
 void Runtime::recordClosureFastPath() { ++closureStats.fastPathHits; }
-void Runtime::recordClosureCacheMiss() { ++closureStats.cacheMisses; }
 void Runtime::recordClosureSlowFallback() { ++closureStats.slowFallbacks; }
 
 // Handle wrapping if clock_t is an integer type but not if it is a double.
