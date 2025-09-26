@@ -1594,30 +1594,25 @@ const String* JoiningEnumerator::nextPropertyName() {
 /* --- Code --- */
 
 Code::Code(GCList& gcList, Constants* sharedConstants)
-	: super(gcList), codeWords(0, &gcList.getHeap())
-	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
-	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
-	, selfName(0), source(0), bloomSet(0), maxStackDepth(0), capturedBindings(&gcList.getHeap())
+: super(gcList), codeWords(0, &gcList.getHeap())
+, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
+, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
+, selfName(0), source(0), bloomSet(0), maxStackDepth(0), closureOperandDiagnostics(&gcList.getHeap())
 {
-	assert(constants != 0);
+assert(constants != 0);
 }
 
 bool Code::lookupNameIndex(const String* name, Int32& index) const {
-	const Table::Bucket* bucket = nameIndexes.lookup(name);
-	if (bucket == 0) {
-		return false;
-	}
-	index = bucket->getIndexValue();
-	return true;
+        const Table::Bucket* bucket = nameIndexes.lookup(name);
+        if (bucket == 0) {
+                return false;
+        }
+        index = bucket->getIndexValue();
+        return true;
 }
 
-UInt32 Code::appendCapturedBinding(const CapturedBinding& binding) {
-	capturedBindings.push(binding);
-	return capturedBindings.size() - 1;
-}
-
-UInt32 Code::appendCapturedBinding(UInt16 depth, Int16 slot, const String* name) {
-	return appendCapturedBinding(CapturedBinding(depth, slot, name));
+void Code::recordClosureOperandDiagnostic(const ClosureOperandDiagnostic& diagnostic) {
+	closureOperandDiagnostics.push(diagnostic);
 }
 
 /* --- Function --- */
@@ -1995,8 +1990,10 @@ void Scope::declareVar(Runtime& rt, const String* name, const Value& initValue, 
 	return parentScope->declareVar(rt, name, initValue, dontDelete);
 }
 
-bool Scope::resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const {
-	return (parentScope != 0 && parentScope->resolveCapturedBinding(binding, slot));
+bool Scope::resolveClosureOperand(UInt16 depth, Int16 slot, Value*& resolvedSlot, FunctionScope*& owner) const {
+	resolvedSlot = 0;
+	owner = 0;
+	return (parentScope != 0 && parentScope->resolveClosureOperand(depth, slot, resolvedSlot, owner));
 }
 
 FunctionScope* Scope::nearestFunctionScope() {
@@ -2135,24 +2132,29 @@ const FunctionScope* FunctionScope::nearestFunctionScope() const {
 	return this;
 }
 
-bool FunctionScope::resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const {
-	const FunctionScope* scope = this;
-	UInt16 remainingDepth = binding.depth;
-	while (remainingDepth > 0) {
-		if (scope->parentFunctionScope == 0) {
-			return false;
-		}
-		scope = scope->parentFunctionScope;
-		--remainingDepth;
-	}
-	Value* const resolved = scope->localsPointer + binding.slot;
-	Value* const begin = scope->locals.begin();
-	Value* const end = scope->locals.end();
-	if (resolved < begin || resolved >= end) {
-		return false;
-	}
-	slot = resolved;
-	return true;
+bool FunctionScope::resolveClosureOperand(UInt16 depth, Int16 slot, Value*& resolvedSlot, FunctionScope*& owner) const {
+const FunctionScope* scope = this;
+       UInt16 remainingDepth = depth;
+       while (remainingDepth > 0) {
+               if (scope->parentFunctionScope == 0) {
+                       resolvedSlot = 0;
+                       owner = 0;
+                       return false;
+               }
+               scope = scope->parentFunctionScope;
+               --remainingDepth;
+       }
+       Value* const resolved = scope->localsPointer + slot;
+       Value* const begin = scope->locals.begin();
+       Value* const end = scope->locals.end();
+       if (resolved < begin || resolved >= end) {
+               resolvedSlot = 0;
+               owner = 0;
+               return false;
+       }
+       resolvedSlot = resolved;
+       owner = const_cast<FunctionScope*>(scope);
+       return true;
 }
 
 FunctionScope::~FunctionScope() {
@@ -2210,9 +2212,9 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ READ_NAMED_OP				 , "READ_NAMED"				 , 1	  , 0 },
 	{ WRITE_NAMED_OP			 , "WRITE_NAMED"			 , 0	  , 0 },
 	{ WRITE_NAMED_POP_OP		 , "WRITE_NAMED_POP"		 , -1	  , 0 },
-	{ READ_CLOSURE_OP                        , "READ_CLOSURE"                        , +1     , 0 },
-	{ WRITE_CLOSURE_OP                       , "WRITE_CLOSURE"                       , 0      , 0 },
-	{ WRITE_CLOSURE_POP_OP            , "WRITE_CLOSURE_POP"            , -1     , 0 },
+	{ READ_CLOSURE_OP                        , "READ_CLOSURE"                        , +1     , OpcodeInfo::CLOSURE_OPERAND },
+	{ WRITE_CLOSURE_OP                       , "WRITE_CLOSURE"                       , 0      , OpcodeInfo::CLOSURE_OPERAND },
+	{ WRITE_CLOSURE_POP_OP            , "WRITE_CLOSURE_POP"            , -1     , OpcodeInfo::CLOSURE_OPERAND },
 	{ CHECK_OBJECT_COERCIBLE_OP	 , "CHECK_OBJECT_COERCIBLE"  , 0	  , 0 },
 	{ GET_PROPERTY_OP			 , "GET_PROPERTY"			 , -1	  , 0 },
 	{ SET_PROPERTY_OP			 , "SET_PROPERTY"			 , -2	  , 0 },
@@ -2274,7 +2276,7 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ VOID_OP					 , "VOID"					 , +1	  , 0 },
 	{ DELETE_OP					 , "DELETE"					 , -1	  , 0 },
 	{ DELETE_NAMED_OP			 , "DELETE_NAMED"			 , 1	  , 0 },
-	{ DELETE_CLOSURE_OP		 , "DELETE_CLOSURE"		 , 1	  , 0 },
+	{ DELETE_CLOSURE_OP		 , "DELETE_CLOSURE"		 , 1	  , OpcodeInfo::CLOSURE_OPERAND },
 	{ GEN_FUNC_OP				 , "GEN_FUNC"				 , +1	  , 0 },
 	{ DECLARE_OP				 , "DECLARE"				 , -1	  , 0 },
 	{ CATCH_SCOPE_OP			 , "CATCH_SCOPE"			 , -1	  , 0 },
@@ -2302,26 +2304,21 @@ const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
 	code pointer (for constants etc) and it declares deletable vars.
 */
 struct Processor::EvalScope : public Scope {
-typedef Scope super;
-EvalScope(GCList& gcList, Scope* parentScope) : super(gcList, parentScope) { }
-virtual bool resolveCapturedBinding(const CapturedBinding&, Value*&) const { return false; }
-virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool) {
-parentScope->declareVar(rt, name, initValue, false);
-}
+	typedef Scope super;
+	EvalScope(GCList& gcList, Scope* parentScope) : super(gcList, parentScope) { }
+	virtual bool resolveClosureOperand(UInt16, Int16, Value*&, FunctionScope*&) const { return false; }
+	virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool)
+	{
+		parentScope->declareVar(rt, name, initValue, false);
+	}
 };
-	
-/*
-	The CatchScope is necessary because within a catch block there is a single extra variable that is local to the catch
-	block. It is created dynamically and pushed on the call stack when entering a catch block and removed at any exit
-	point. Remember you can access the catch variable via evals, otherwise we could have just placed it among the locals
-	variables.
-*/
 struct Processor::CatchScope : public Scope {
 	typedef Scope super;
 
 	CatchScope(GCList& gcList, Scope* parentScope, const String* exceptionName, const Value& exceptionValue)
 			: super(gcList, parentScope), exceptionName(exceptionName), exceptionValue(exceptionValue) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const	{
+	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const
+	{
 		if (name->isEqualTo(*exceptionName)) {
 			*v = exceptionValue;
 			return DONT_DELETE_FLAG | EXISTS_FLAG;
@@ -2329,40 +2326,45 @@ struct Processor::CatchScope : public Scope {
 			return parentScope->readVar(rt, name, v);
 		}
 	}
-	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
+	virtual void writeVar(Runtime& rt, const String* name, const Value& v)
+	{
 		if (name->isEqualTo(*exceptionName)) {
 			exceptionValue = v;
 		} else {
 			parentScope->writeVar(rt, name, v);
 		}
 	}
-	virtual bool deleteVar(Runtime& rt, const String* name) {
+	virtual bool deleteVar(Runtime& rt, const String* name)
+	{
 		if (name->isEqualTo(*exceptionName)) {
 			return false;
 		} else {
 			return parentScope->deleteVar(rt, name);
 		}
 	}
+	virtual bool resolveClosureOperand(UInt16, Int16, Value*&, FunctionScope*&) const { return false; }
 
 	const String* exceptionName;
 	Value exceptionValue;
 
-	virtual void gcMarkReferences(Heap& heap) const {
+	virtual void gcMarkReferences(Heap& heap) const
+	{
 		gcMark(heap, exceptionName);
 		gcMark(heap, exceptionValue);
 		super::gcMarkReferences(heap);
 	}
 };
-
 struct Processor::WithScope : public Scope {
-typedef Scope super;
-WithScope(GCList& gcList, Scope* parentScope, Object* withObject)
-: super(gcList, parentScope), withObject(withObject) { }
-virtual bool resolveCapturedBinding(const CapturedBinding&, Value*&) const { return false; }
-virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
-Flags flags = withObject->getProperty(rt, name, v);
-return (flags != NONEXISTENT ? flags : parentScope->readVar(rt, name, v));
-}
+	typedef Scope super;
+	WithScope(GCList& gcList, Scope* parentScope, Object* withObject)
+		: super(gcList, parentScope), withObject(withObject) { }
+	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const
+	{
+		const Value key(name);
+		const Flags flags = withObject->getProperty(rt, key, v);
+		return (flags != NONEXISTENT ? flags : parentScope->readVar(rt, name, v));
+	}
+	virtual bool resolveClosureOperand(UInt16, Int16, Value*&, FunctionScope*&) const { return false; }
 	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
 		const Value key(name);
 		for (Object* o = withObject; o != 0; o = o->getPrototype(rt)) {
@@ -2527,6 +2529,58 @@ void Processor::newOperation(const Int32 argc) {
 	}
 }
 
+static const String* lookupClosureFallbackName(Scope* scope, UInt16 depth, Int16 slotIndex, const Code* currentCode) {
+	FunctionScope* functionScope = scope->nearestFunctionScope();
+	if (functionScope != 0) {
+		UInt16 remainingDepth = depth;
+		while (remainingDepth > 0 && functionScope != 0) {
+			functionScope = functionScope->getParentFunctionScope();
+			--remainingDepth;
+		}
+		if (functionScope != 0) {
+			JSFunction* const ownerFunction = functionScope->getFunction();
+			if (ownerFunction != 0) {
+				const Code* const ownerCode = ownerFunction->getScriptCode();
+				if (ownerCode != 0) {
+					return ownerCode->getLocalName(slotIndex);
+				}
+			}
+		}
+	}
+	return (currentCode != 0 ? currentCode->getLocalName(slotIndex) : 0);
+}
+
+Processor::Frame::ResolvedClosureSlot* Processor::findCachedClosureSlot(Frame* frame, Int32 operand, Scope* guardScope) {
+	if (frame == 0) {
+		return 0;
+	}
+	Vector<Frame::ResolvedClosureSlot>& cachedSlots = frame->resolvedClosureSlots;
+	for (size_t i = 0; i < cachedSlots.size(); ++i) {
+		Frame::ResolvedClosureSlot& cached = cachedSlots[i];
+		if (cached.operand == operand && cached.guardScope == guardScope && cached.pointer != 0) {
+			return &cached;
+		}
+	}
+	return 0;
+}
+
+void Processor::cacheClosureSlot(Frame* frame, Int32 operand, Scope* guardScope, FunctionScope* ownerScope
+		, Int16 slotIndex, Value* pointer) {
+	if (frame == 0) {
+		return;
+	}
+	Vector<Frame::ResolvedClosureSlot>& cachedSlots = frame->resolvedClosureSlots;
+	for (size_t i = 0; i < cachedSlots.size(); ++i) {
+		Frame::ResolvedClosureSlot& cached = cachedSlots[i];
+		if (cached.operand == operand && cached.guardScope == guardScope) {
+			cached.owner = ownerScope;
+			cached.slot = slotIndex;
+			cached.pointer = pointer;
+			return;
+		}
+	}
+	cachedSlots.push(Frame::ResolvedClosureSlot(operand, guardScope, ownerScope, slotIndex, pointer));
+}
 void Processor::innerRun() {
 	assert(currentFrame != 0);	// you must enter something first
 	Scope* scope = currentFrame->scope;
@@ -2557,17 +2611,32 @@ void Processor::innerRun() {
 			break;
 			
 			case READ_CLOSURE_OP: {
-				assert(im >= 0);
-				const UInt32 bindingIndex = static_cast<UInt32>(im);
-				assert(bindingIndex < code->getCapturedBindingCount());
-				const CapturedBinding& binding = code->getCapturedBinding(bindingIndex);
+				UInt16 depth;
+				Int16 slotIndex;
+				unpackClosureOperand(im, depth, slotIndex);
+				bool cacheHit = false;
 				Value* slot = 0;
-				if (scope->resolveCapturedBinding(binding, slot)) {
+				FunctionScope* owner = 0;
+				Processor::Frame::ResolvedClosureSlot* cached = Processor::findCachedClosureSlot(currentFrame, im, scope);
+				if (cached != 0) {
+					slot = cached->pointer;
+					owner = cached->owner;
+					cacheHit = true;
+				} else if (scope->resolveClosureOperand(depth, slotIndex, slot, owner)) {
 					assert(slot != 0);
+					Processor::cacheClosureSlot(currentFrame, im, scope, owner, slotIndex, slot);
+				}
+				if (slot != 0) {
+					rt.recordClosureFastPath();
+					if (!cacheHit) {
+						rt.recordClosureCacheMiss();
+					}
 					++sp;
 					*sp = *slot;
 				} else {
-					const String* name = (binding.name != 0 ? binding.name : code->getLocalName(binding.slot));
+					const String* name = lookupClosureFallbackName(scope, depth, slotIndex, code);
+					assert(name != 0);
+					rt.recordClosureSlowFallback();
 					++sp;
 					if (scope->readVar(rt, name, sp) == NONEXISTENT) {
 						error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
@@ -2576,41 +2645,103 @@ void Processor::innerRun() {
 				}
 			}
 			break;
-			
+
 			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
 			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
+
 			case WRITE_CLOSURE_OP: {
-				assert(im >= 0);
-				const UInt32 bindingIndex = static_cast<UInt32>(im);
-				assert(bindingIndex < code->getCapturedBindingCount());
-				const CapturedBinding& binding = code->getCapturedBinding(bindingIndex);
+				UInt16 depth;
+				Int16 slotIndex;
+				unpackClosureOperand(im, depth, slotIndex);
+				bool cacheHit = false;
 				Value* slot = 0;
-				if (scope->resolveCapturedBinding(binding, slot)) {
+				FunctionScope* owner = 0;
+				Processor::Frame::ResolvedClosureSlot* cached = Processor::findCachedClosureSlot(currentFrame, im, scope);
+				if (cached != 0) {
+					slot = cached->pointer;
+					owner = cached->owner;
+					cacheHit = true;
+				} else if (scope->resolveClosureOperand(depth, slotIndex, slot, owner)) {
 					assert(slot != 0);
+					Processor::cacheClosureSlot(currentFrame, im, scope, owner, slotIndex, slot);
+				}
+				if (slot != 0) {
+					rt.recordClosureFastPath();
+					if (!cacheHit) {
+						rt.recordClosureCacheMiss();
+					}
 					*slot = sp[0];
 				} else {
-					const String* name = (binding.name != 0 ? binding.name : code->getLocalName(binding.slot));
+					const String* name = lookupClosureFallbackName(scope, depth, slotIndex, code);
+					assert(name != 0);
+					rt.recordClosureSlowFallback();
 					scope->writeVar(rt, name, sp[0]);
 				}
-				break;
 			}
+			break;
+
 			case WRITE_CLOSURE_POP_OP: {
-				assert(im >= 0);
-				const UInt32 bindingIndex = static_cast<UInt32>(im);
-				assert(bindingIndex < code->getCapturedBindingCount());
-				const CapturedBinding& binding = code->getCapturedBinding(bindingIndex);
+				UInt16 depth;
+				Int16 slotIndex;
+				unpackClosureOperand(im, depth, slotIndex);
+				bool cacheHit = false;
 				Value* slot = 0;
-				if (scope->resolveCapturedBinding(binding, slot)) {
+				FunctionScope* owner = 0;
+				Processor::Frame::ResolvedClosureSlot* cached = Processor::findCachedClosureSlot(currentFrame, im, scope);
+				if (cached != 0) {
+					slot = cached->pointer;
+					owner = cached->owner;
+					cacheHit = true;
+				} else if (scope->resolveClosureOperand(depth, slotIndex, slot, owner)) {
 					assert(slot != 0);
+					Processor::cacheClosureSlot(currentFrame, im, scope, owner, slotIndex, slot);
+				}
+				if (slot != 0) {
+					rt.recordClosureFastPath();
+					if (!cacheHit) {
+						rt.recordClosureCacheMiss();
+					}
 					*slot = sp[0];
 				} else {
-					const String* name = (binding.name != 0 ? binding.name : code->getLocalName(binding.slot));
+					const String* name = lookupClosureFallbackName(scope, depth, slotIndex, code);
+					assert(name != 0);
+					rt.recordClosureSlowFallback();
 					scope->writeVar(rt, name, sp[0]);
 				}
 				pop(1);
-				break;
 			}
-			
+			break;
+
+			case DELETE_CLOSURE_OP: {
+				UInt16 depth;
+				Int16 slotIndex;
+				unpackClosureOperand(im, depth, slotIndex);
+				bool cacheHit = false;
+				Value* slot = 0;
+				FunctionScope* owner = 0;
+				Processor::Frame::ResolvedClosureSlot* cached = Processor::findCachedClosureSlot(currentFrame, im, scope);
+				if (cached != 0) {
+					slot = cached->pointer;
+					owner = cached->owner;
+					cacheHit = true;
+				} else if (scope->resolveClosureOperand(depth, slotIndex, slot, owner)) {
+					assert(slot != 0);
+					Processor::cacheClosureSlot(currentFrame, im, scope, owner, slotIndex, slot);
+				}
+				if (slot != 0) {
+					rt.recordClosureFastPath();
+					if (!cacheHit) {
+						rt.recordClosureCacheMiss();
+					}
+					push(false);
+				} else {
+					const String* name = lookupClosureFallbackName(scope, depth, slotIndex, code);
+					assert(name != 0);
+					rt.recordClosureSlowFallback();
+					push(scope->deleteVar(rt, name));
+				}
+			}
+			break;
 			case CHECK_OBJECT_COERCIBLE_OP: {
 				if (sp[0].isUndefined() || sp[0].isNull()) {
 					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
@@ -2793,21 +2924,6 @@ void Processor::innerRun() {
 			}
 			
 			case DELETE_NAMED_OP: push(scope->deleteVar(rt, constants[im].getString())); break;
-			case DELETE_CLOSURE_OP: {
-				assert(im >= 0);
-				const UInt32 bindingIndex = static_cast<UInt32>(im);
-				assert(bindingIndex < code->getCapturedBindingCount());
-				const CapturedBinding& binding = code->getCapturedBinding(bindingIndex);
-				Value* slot = 0;
-				if (scope->resolveCapturedBinding(binding, slot)) {
-					push(false);
-				} else {
-					const String* name = (binding.name != 0 ? binding.name : code->getLocalName(binding.slot));
-					push(scope->deleteVar(rt, name));
-				}
-				break;
-			}
-			
 			case DELETE_OP: {
 				Object* o = convertToObject(sp[-1], true);
 				if (o == 0) {
@@ -2998,7 +3114,7 @@ enum Literal { NULL_LITERAL, FALSE_LITERAL, TRUE_LITERAL, FUNCTION_LITERAL, THIS
 
 struct Compiler::ExpressionResult {
 	enum Type {
-		NONE				// void
+		NONE			// void
 		, PUSHED			// arbitrary value on stack
 		, PUSHED_PRIMITIVE	// primitive value on stack
 		, CONSTANT			// constant (and primitive) value on stack
@@ -3008,14 +3124,14 @@ struct Compiler::ExpressionResult {
 		, PROPERTY			// arbitrary value in object property
 		, SAFEKEPT			// further up the value stack (value = position relative to safe-kept-counter)
 	};
-	ExpressionResult() : t(NONE), v(UNDEFINED_VALUE), capturedIndex(0), depth(0), slot(0) { }
+	ExpressionResult() : t(NONE), v(UNDEFINED_VALUE), closureOperand(0), depth(0), slot(0) { }
 	ExpressionResult(Type type, const Value& value = UNDEFINED_VALUE)
-		: t(type), v(value), capturedIndex(0), depth(0), slot(0) { }
-	ExpressionResult(Type type, const Value& value, UInt16 bindingDepth, Int16 bindingSlot, UInt32 index)
-		: t(type), v(value), capturedIndex(index), depth(bindingDepth), slot(bindingSlot) { }
+		: t(type), v(value), closureOperand(0), depth(0), slot(0) { }
+	ExpressionResult(Type type, const Value& value, UInt16 bindingDepth, Int16 bindingSlot, Int32 operand)
+		: t(type), v(value), closureOperand(operand), depth(bindingDepth), slot(bindingSlot) { }
 	Type t;
 	Value v;
-	UInt32 capturedIndex;
+	Int32 closureOperand;
 	UInt16 depth;
 	Int16 slot;
 };
@@ -3082,7 +3198,7 @@ Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNes
 		: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
 		, mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
 		, allowClosureSlots(capturedParent == 0 ? true : capturedParent->allowClosureSlots)
-		, nestCounter(initialNestCounter), capturedLexical(capturedParent), capturedBindings(&gcList.getHeap()) { }
+		, nestCounter(initialNestCounter), capturedLexical(capturedParent) { }
 
 const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e) {
 	if (b == e) {
@@ -3381,7 +3497,7 @@ Compiler::ExpressionResult Compiler::makeRValue(const ExpressionResult& xr, bool
 		case ExpressionResult::CONSTANT: emitWithConstant(Processor::CONST_OP, xr.v); return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
 		case ExpressionResult::LOCAL: emit(Processor::READ_LOCAL_OP, xr.v.toInt()); break;
 		case ExpressionResult::NAMED: emitWithConstant(Processor::READ_NAMED_OP, xr.v); break;
-		case ExpressionResult::CLOSURE: emit(Processor::READ_CLOSURE_OP, xr.capturedIndex); break;
+		case ExpressionResult::CLOSURE: emit(Processor::READ_CLOSURE_OP, xr.closureOperand); break;
 		case ExpressionResult::PROPERTY: emit(Processor::GET_PROPERTY_OP); break;
 		case ExpressionResult::SAFEKEPT: emit(Processor::REPUSH_OP
 				, (currentSection->inDeadCode() ? 0 : xr.v.toInt() - currentSection->stackDepth + 1)); break;
@@ -3417,13 +3533,16 @@ void Compiler::returnSafeKept(const ExpressionResult& xr) {
 	emit(evalPopOpcode(), 1);
 }
 
-Compiler::ExpressionResult Compiler::makeAssignment(const ExpressionResult& xr) {
+Compiler::ExpressionResult Compiler::makeAssignment(ExpressionResult xr) {
+	if (xr.t == ExpressionResult::NAMED && xr.v.isString()) {
+		maybeEmitClosureOperand(xr, xr.v.getString());
+	}
 	switch (xr.t) {
-		default: error(REFERENCE_ERROR, "Illegal l-value"); // FIX : ECMA like the word "reference"
-		case ExpressionResult::LOCAL: emit(Processor::WRITE_LOCAL_OP, xr.v.toInt()); break;
-		case ExpressionResult::NAMED: emitWithConstant(Processor::WRITE_NAMED_OP, xr.v); break;
-		case ExpressionResult::CLOSURE: emit(Processor::WRITE_CLOSURE_OP, xr.capturedIndex); break;
-		case ExpressionResult::PROPERTY: emit(Processor::SET_PROPERTY_OP); break;
+                default: error(REFERENCE_ERROR, "Illegal l-value"); // FIX : ECMA like the word "reference"
+                case ExpressionResult::LOCAL: emit(Processor::WRITE_LOCAL_OP, xr.v.toInt()); break;
+                case ExpressionResult::NAMED: emitWithConstant(Processor::WRITE_NAMED_OP, xr.v); break;
+		case ExpressionResult::CLOSURE: emit(Processor::WRITE_CLOSURE_OP, xr.closureOperand); break;
+                case ExpressionResult::PROPERTY: emit(Processor::SET_PROPERTY_OP); break;
 	}
 	return ExpressionResult(ExpressionResult::PUSHED);
 }
@@ -3433,7 +3552,7 @@ Compiler::ExpressionResult Compiler::discard(const ExpressionResult& xr) {
 		case ExpressionResult::PUSHED:
 		case ExpressionResult::PUSHED_PRIMITIVE: emit(Processor::POP_OP, 1); break;
 		case ExpressionResult::NAMED: emitWithConstant(Processor::READ_NAMED_OP, xr.v); emit(Processor::POP_OP, 1); break;
-		case ExpressionResult::CLOSURE: emit(Processor::READ_CLOSURE_OP, xr.capturedIndex); emit(Processor::POP_OP, 1); break;
+		case ExpressionResult::CLOSURE: emit(Processor::READ_CLOSURE_OP, xr.closureOperand); emit(Processor::POP_OP, 1); break;
 		case ExpressionResult::PROPERTY: emit(Processor::GET_PROPERTY_OP); emit(Processor::POP_OP, 1); break;
 		default: break;
 	}
@@ -3655,7 +3774,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 				case ExpressionResult::CONSTANT: xr = ExpressionResult(ExpressionResult::CONSTANT, true); break;
 				case ExpressionResult::LOCAL: xr = ExpressionResult(ExpressionResult::CONSTANT, false); break;
 				case ExpressionResult::NAMED: emitWithConstant(Processor::DELETE_NAMED_OP, xr.v); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
-			case ExpressionResult::CLOSURE: emit(Processor::DELETE_CLOSURE_OP, xr.capturedIndex); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
+		case ExpressionResult::CLOSURE: emit(Processor::DELETE_CLOSURE_OP, xr.closureOperand); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
 				case ExpressionResult::PROPERTY: emit(Processor::DELETE_OP); xr = ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE); break;
 				default: assert(0);
 			}
@@ -3890,45 +4009,85 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
 
-UInt32 Compiler::ensureCapturedBinding(UInt16 depth, Int16 slot, const String* name) {
-	for (UInt32 i = 0; i < capturedBindings.size(); ++i) {
-		if (capturedBindings[i].depth == depth && capturedBindings[i].slot == slot) {
-			return i;
-		}
-	}
-	capturedBindings.push(CapturedBinding(depth, slot, name));
-	return capturedBindings.size() - 1;
-}
-
-bool Compiler::recordCapturedBinding(const String* name, UInt16& depth, Int16& slot, UInt32& bindingIndex) {
+bool Compiler::recordCapturedBinding(const String* name, UInt16& depth, Int16& slot, ClosureOperandDiagnostic::Reason& failureReason) {
 	depth = 0;
 	slot = 0;
-	bindingIndex = 0;
 	const CapturedLexicalContext* context = capturedLexical;
 	UInt16 currentDepth = 1;
 	while (context != 0) {
 		if (!context->allowClosureSlots) {
+			failureReason = ClosureOperandDiagnostic::ANCESTOR_GUARD;
 			return false;
 		}
 		if (context->code != 0) {
 			Int32 index;
 			if (context->code->lookupNameIndex(name, index)) {
 				if (index == CATCH_PARAMETER) {
+					failureReason = ClosureOperandDiagnostic::CATCH_GUARD;
 					return false;
 				}
 				if (index < std::numeric_limits<Int16>::min() || index > std::numeric_limits<Int16>::max()) {
+					failureReason = ClosureOperandDiagnostic::SLOT_RANGE_OVERFLOW;
 					return false;
 				}
 				depth = currentDepth;
 				slot = static_cast<Int16>(index);
-				bindingIndex = ensureCapturedBinding(depth, slot, name);
 				return true;
 			}
 		}
 		context = context->parent;
 		++currentDepth;
 	}
+	failureReason = ClosureOperandDiagnostic::MISSING_BINDING;
 	return false;
+}
+
+bool Compiler::packClosureOperand(UInt16 depth, Int16 slot, Int32& operand) {
+	if (depth > 0xFF) {
+		return false;
+	}
+	const UInt32 raw = (static_cast<UInt32>(depth) << CLOSURE_OPERAND_DEPTH_SHIFT)
+		| static_cast<UInt32>(static_cast<UInt16>(slot));
+	const Int32 signedRaw = static_cast<Int32>((raw << 8) >> 8);
+	if (signedRaw < MIN_OPERAND_VALUE || signedRaw > MAX_OPERAND_VALUE) {
+		return false;
+	}
+	operand = signedRaw;
+	return true;
+}
+
+bool Compiler::maybeEmitClosureOperand(ExpressionResult& xr, const String* name) {
+	assert(xr.t == ExpressionResult::NAMED);
+	if (compilingFor != FOR_FUNCTION) {
+		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(ClosureOperandDiagnostic::NON_FUNCTION_TARGET, name));
+		return false;
+	}
+	if (withScopeCounter != 0) {
+		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(ClosureOperandDiagnostic::WITH_SCOPE_GUARD, name));
+		return false;
+	}
+	if (name->isEqualTo(ARGUMENTS_STRING)) {
+		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(ClosureOperandDiagnostic::ARGUMENTS_ALIAS, name));
+		return false;
+	}
+	UInt16 depth;
+	Int16 slot;
+	ClosureOperandDiagnostic::Reason failureReason = ClosureOperandDiagnostic::MISSING_BINDING;
+	if (!recordCapturedBinding(name, depth, slot, failureReason)) {
+		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(failureReason, name, depth, slot));
+		return false;
+	}
+	if (depth > 0xFF) {
+		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(ClosureOperandDiagnostic::DEPTH_OVERFLOW, name, depth, slot));
+		return false;
+	}
+	Int32 operand;
+	if (!packClosureOperand(depth, slot, operand)) {
+		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(ClosureOperandDiagnostic::OPERAND_RANGE_OVERFLOW, name, depth, slot));
+		return false;
+	}
+	xr = ExpressionResult(ExpressionResult::CLOSURE, name, depth, slot, operand);
+	return true;
 }
 
 const Int32 MAX_NESTED_EXPRESSION_DEPTH = 64;
@@ -4029,31 +4188,26 @@ bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
 						xr = discard(xr);
 						xr = ExpressionResult(ExpressionResult::NAMED, name);
 						// Notice: compilingFor != FOR_EVAL and checking for "arguments" is only for non-strict mode (if we ever support strict-mode in the future)
-						if (!name->isEqualTo(ARGUMENTS_STRING) && compilingFor == FOR_FUNCTION && withScopeCounter == 0) {
-							const Table::Bucket* bucket = code->nameIndexes.lookup(name);
-							if (bucket != 0) {
-								const Int32 index = bucket->getIndexValue();
-								if (index != CATCH_PARAMETER) {
-									xr = ExpressionResult(ExpressionResult::LOCAL, index);
-									break;
+						if (compilingFor == FOR_FUNCTION) {
+							if (withScopeCounter == 0 && !name->isEqualTo(ARGUMENTS_STRING)) {
+								const Table::Bucket* bucket = code->nameIndexes.lookup(name);
+								if (bucket != 0) {
+									const Int32 index = bucket->getIndexValue();
+									if (index != CATCH_PARAMETER) {
+										xr = ExpressionResult(ExpressionResult::LOCAL, index);
+									}
 								}
 							}
-						}
-						if (!name->isEqualTo(ARGUMENTS_STRING) && compilingFor == FOR_FUNCTION) {
-							UInt16 depth;
-							Int16 slot;
-							UInt32 bindingIndex;
-							if (recordCapturedBinding(name, depth, slot, bindingIndex)) {
-								xr = ExpressionResult(ExpressionResult::CLOSURE, name, depth, slot, bindingIndex);
-								break;
+							if (xr.t == ExpressionResult::NAMED) {
+								maybeEmitClosureOperand(xr, name);
 							}
 						}
 						break;
-					
+
 					}
-				}
-			}
-		}
+}
+}
+}
 	}
 	const Char* b = p;
 	while (postOperate(xr, precedence)) {
@@ -4725,8 +4879,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	p = b;
 	this->e = e;
 	acceptInOperator = true;
-	
-	// FIX : not 100% necessary now because we should always start with undefined on top of stack
+// FIX : not 100% necessary now because we should always start with undefined on top of stack
 	if (compilingFor == FOR_EVAL) {
 		emit(Processor::POP_OP, 1); // FIX : only if we reserve one element for return like we do now
 		emit(Processor::VOID_OP);
@@ -4747,8 +4900,6 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	std::copy(mainSection.code.begin(), mainSection.code.end(), code->codeWords.begin() + setupSection.code.size());
 	code->constants->shrink();
 	code->maxStackDepth = std::max(mainSection.maxStackDepth, setupSection.maxStackDepth);
-	code->capturedBindings = capturedBindings;
-	
 	return p;
 }
 
@@ -4757,7 +4908,7 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 	assert(functionName != 0);
 	p = b;
 	this->e = e;
-	expectToken("(", true);
+expectToken("(", true);
 	white();
 	Table& nameIndexes = code->nameIndexes;
 	Vector<const String*>& argumentNames = code->argumentNames;
@@ -5220,24 +5371,30 @@ Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap
 	prototypes[STRING_PROTOTYPE] = new(heap) StringWrapper(heap.managed(), &EMPTY_STRING);
 	prototypes[DATE_PROTOTYPE] = new(heap) GenericWrapper(heap.managed(), &D_ATE_STRING, NaN(), OBJECT_PROTOTYPE);
 	prototypes[ARRAY_PROTOTYPE] = new(heap) JSArray(heap.managed());
-	for (int i = 0; i < ERROR_TYPE_COUNT; ++i) {
-		prototypes[FIRST_ERROR_PROTOTYPE + i] = new(heap) ErrorPrototype(heap.managed(), static_cast<ErrorType>(i));
-	}
-	globalObject = new(heap) JSObject(heap.managed(), objectProto);
+for (int i = 0; i < ERROR_TYPE_COUNT; ++i) {
+prototypes[FIRST_ERROR_PROTOTYPE + i] = new(heap) ErrorPrototype(heap.managed(), static_cast<ErrorType>(i));
+}
+globalObject = new(heap) JSObject(heap.managed(), objectProto);
+resetClosureResolutionStats();
 }
 
 void Runtime::autoGC(bool checkOutOfMemory) {
-	if (heap.size() >= gcThreshold) {
-		heap.drain();
-		heap.gc();
-		const size_t inUse = heap.size() - heap.pooled();
-		gcThreshold = std::min(std::max(inUse * AUTO_GC_GROWTH_FACTOR, AUTO_GC_MIN_SIZE), memoryCap);
-		checkTimeOutCounter = std::min(checkTimeOutCounter, 1U);
-		if (checkOutOfMemory && heap.size() >= memoryCap) {
-			throw ConstStringException("Out of memory");
-		}
-	}
+if (heap.size() >= gcThreshold) {
+heap.drain();
+heap.gc();
+const size_t inUse = heap.size() - heap.pooled();
+gcThreshold = std::min(std::max(inUse * AUTO_GC_GROWTH_FACTOR, AUTO_GC_MIN_SIZE), memoryCap);
+checkTimeOutCounter = std::min(checkTimeOutCounter, 1U);
+if (checkOutOfMemory && heap.size() >= memoryCap) {
+throw ConstStringException("Out of memory");
 }
+}
+}
+
+void Runtime::resetClosureResolutionStats() { closureStats = ClosureResolutionStats(); }
+void Runtime::recordClosureFastPath() { ++closureStats.fastPathHits; }
+void Runtime::recordClosureCacheMiss() { ++closureStats.cacheMisses; }
+void Runtime::recordClosureSlowFallback() { ++closureStats.slowFallbacks; }
 
 // Handle wrapping if clock_t is an integer type but not if it is a double.
 template<typename T> static bool clockExceeds(T a, T b) { return wrapToInt32(static_cast<UInt32>(a) - static_cast<UInt32>(b)) >= 0; }

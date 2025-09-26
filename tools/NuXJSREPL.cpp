@@ -162,18 +162,18 @@ void pushIOStop() {
 }
 
 struct PrintFunction : public Function {
-	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
-		const String* s = (argc >= 1 ? argv[0].toString(rt.getHeap()) : &EMPTY_STRING);
-		std::wcout << s->toWideString().c_str() << std::endl;
-		if (interactive) {
-			pushIOLines('<', *s);
-		}
-		return Value::UNDEFINED;
-	}
+        virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+                const String* s = (argc >= 1 ? argv[0].toString(rt.getHeap()) : &EMPTY_STRING);
+                std::wcout << s->toWideString().c_str() << std::endl;
+                if (interactive) {
+                        pushIOLines('<', *s);
+                }
+                return Value::UNDEFINED;
+        }
 };
 
 struct GCFunction : public Function {
-	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+        virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
 	   Heap& heap = rt.getHeap();
 	   const UInt32 preCount = heap.count();
 	   const size_t preSize = heap.size();
@@ -186,18 +186,57 @@ struct GCFunction : public Function {
 	   o->setOwnProperty(rt, String::allocate(heap, "preCount"), preCount);
 	   o->setOwnProperty(rt, String::allocate(heap, "preSize"), static_cast<double>(preSize));
 	   o->setOwnProperty(rt, String::allocate(heap, "postCount"), postCount);
-	   o->setOwnProperty(rt, String::allocate(heap, "postSize"), static_cast<double>(postSize));
-	   o->setOwnProperty(rt, String::allocate(heap, "pooled"), static_cast<double>(pooled));
-	   return o;
-	}
+           o->setOwnProperty(rt, String::allocate(heap, "postSize"), static_cast<double>(postSize));
+           o->setOwnProperty(rt, String::allocate(heap, "pooled"), static_cast<double>(pooled));
+           return o;
+        }
+};
+
+struct ResetClosureStatsFunction : public Function {
+        virtual Value invoke(Runtime& rt, Processor&, UInt32, const Value*, Object*) {
+                rt.resetClosureResolutionStats();
+                return Value::UNDEFINED;
+        }
+};
+
+struct GetClosureStatsFunction : public Function {
+        virtual Value invoke(Runtime& rt, Processor&, UInt32, const Value*, Object*) {
+                Heap& heap = rt.getHeap();
+                const Runtime::ClosureResolutionStats& stats = rt.getClosureResolutionStats();
+                JSObject* object = new(heap) JSObject(heap.managed(), rt.getObjectPrototype());
+                object->setOwnProperty(rt, String::allocate(heap, "fastPath"), static_cast<double>(stats.fastPathHits));
+                object->setOwnProperty(rt, String::allocate(heap, "cacheMisses"), static_cast<double>(stats.cacheMisses));
+                object->setOwnProperty(rt, String::allocate(heap, "slowFallbacks"), static_cast<double>(stats.slowFallbacks));
+                return object;
+        }
 };
 
 static void disassemble(Heap& heap, const Code& code) {
 	const CodeWord* codeWords = code.getCodeWords();
-	const Value* constants = code.getConstants()->begin();
-	const UInt32 codeSize = code.getCodeSize();
-	
-	Vector<Int32> stackDepths(codeSize, &heap);
+const Value* constants = code.getConstants()->begin();
+const UInt32 codeSize = code.getCodeSize();
+
+	std::vector<Int32> encounteredOperands;
+
+	struct OperandRecorder {
+		std::vector<Int32>& operands;
+
+		OperandRecorder(std::vector<Int32>& encountered) : operands(encountered) { }
+
+		std::size_t operator()(Int32 operand) {
+			for (std::size_t i = 0; i < operands.size(); ++i) {
+				if (operands[i] == operand) {
+					return i;
+				}
+			}
+			operands.push_back(operand);
+			return operands.size() - 1;
+		}
+	};
+
+	OperandRecorder recordOperand(encounteredOperands);
+
+Vector<Int32> stackDepths(codeSize, &heap);
 	std::fill(stackDepths.begin(), stackDepths.end(), DEAD_CODE_STACK_DEPTH);
 	
 	Int32 maxStackDepth = 0;
@@ -270,24 +309,22 @@ static void disassemble(Heap& heap, const Code& code) {
 			case Processor::ADD_PROPERTY_OP:
 			case Processor::DELETE_NAMED_OP:
 			case Processor::TYPEOF_NAMED_OP: std::wcerr << L" " << constants[operand].toString(heap)->toWideString(); break;
-			case Processor::READ_CLOSURE_OP:
-			case Processor::WRITE_CLOSURE_OP:
-			case Processor::WRITE_CLOSURE_POP_OP:
-			case Processor::DELETE_CLOSURE_OP: {
-				const UInt32 bindingIndex = static_cast<UInt32>(operand);
-				if (bindingIndex < code.getCapturedBindingCount()) {
-					const CapturedBinding& binding = code.getCapturedBinding(bindingIndex);
-					const String* name = (binding.name != 0 ? binding.name : code.getLocalName(binding.slot));
-					if (name != 0) {
-						std::wcerr << L" $" << name->toWideString();
-					}
-					std::wcerr << L" (depth=" << binding.depth << L", slot=" << static_cast<int>(binding.slot)
-						<< L", index=" << bindingIndex << L")";
-				} else {
-					std::wcerr << L" <invalid captured index " << operand << L">";
-				}
-				break;
-			}
+case Processor::READ_CLOSURE_OP:
+case Processor::WRITE_CLOSURE_OP:
+case Processor::WRITE_CLOSURE_POP_OP:
+case Processor::DELETE_CLOSURE_OP: {
+	UInt16 depth;
+	Int16 slot;
+	unpackClosureOperand(operand, depth, slot);
+	const std::size_t bindingIndex = recordOperand(operand);
+	const String* name = code.getLocalName(slot);
+	if (name != 0) {
+		std::wcerr << L" $" << name->toWideString();
+	}
+	std::wcerr << L" (depth=" << depth << L", slot=" << static_cast<int>(slot)
+		<< L", index=" << bindingIndex << L")";
+	break;
+}
 			default: break;
 		}
 		std::cerr << std::endl;
@@ -297,14 +334,16 @@ static void disassemble(Heap& heap, const Code& code) {
 	std::cerr << "\tCode: " << code.getCodeSize() << std::endl;
 	std::cerr << "\tVars: " << code.getVarsCount() << std::endl;
 	std::cerr << "\tArguments: " << code.getArgumentsCount() << std::endl;
-	const UInt32 capturedCount = code.getCapturedBindingCount();
-	std::cerr << "\tCaptured: " << capturedCount << std::endl;
+	const std::size_t capturedCount = encounteredOperands.size();
+	std::cerr << "\tCaptured: " << static_cast<unsigned long long>(capturedCount) << std::endl;
 	if (capturedCount != 0) {
 		std::cerr << "\tCaptured bindings:" << std::endl;
-		for (UInt32 i = 0; i < capturedCount; ++i) {
-			const CapturedBinding& binding = code.getCapturedBinding(i);
-			const String* name = (binding.name != 0 ? binding.name : code.getLocalName(binding.slot));
-			std::cerr << "\t\t#" << i << " depth=" << binding.depth << " slot=" << static_cast<int>(binding.slot);
+		for (std::size_t i = 0; i < capturedCount; ++i) {
+			UInt16 depth;
+			Int16 slot;
+			unpackClosureOperand(encounteredOperands[i], depth, slot);
+			const String* name = code.getLocalName(slot);
+			std::cerr << "\t\t#" << i << " depth=" << depth << " slot=" << static_cast<int>(slot);
 			if (name != 0) {
 				std::wcerr << L" name=" << name->toWideString();
 			}
@@ -554,12 +593,16 @@ int testMain(int argc, const char* argv[]) {
 
 		PrintFunction printFunction;
 		globals.setOwnProperty(rt, &PRINT_STRING, &printFunction, DONT_ENUM_FLAG);
-		GCFunction gcFunction;
-		const String GC_STRING("gc");
-		globals.setOwnProperty(rt, &GC_STRING, &gcFunction, DONT_ENUM_FLAG);
-		globals.setOwnProperty(rt, String::allocate(heap, "dasm"), new(heap) FunctorAdapter<NativeFunction>(heap.managed(), disassemble), DONT_ENUM_FLAG);
+GCFunction gcFunction;
+const String GC_STRING("gc");
+globals.setOwnProperty(rt, &GC_STRING, &gcFunction, DONT_ENUM_FLAG);
+globals.setOwnProperty(rt, String::allocate(heap, "dasm"), new(heap) FunctorAdapter<NativeFunction>(heap.managed(), disassemble), DONT_ENUM_FLAG);
+ResetClosureStatsFunction resetClosureStatsFunction;
+globals.setOwnProperty(rt, String::allocate(heap, "__resetClosureStats"), &resetClosureStatsFunction, DONT_ENUM_FLAG);
+GetClosureStatsFunction getClosureStatsFunction;
+globals.setOwnProperty(rt, String::allocate(heap, "__closureStats"), &getClosureStatsFunction, DONT_ENUM_FLAG);
 
-		randomSeed();
+randomSeed();
 
 		if (loadStdLib) {
 			try {
