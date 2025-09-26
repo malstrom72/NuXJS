@@ -264,16 +264,25 @@ double getCPUSecs() {
 const Value* constants = code.getConstants()->begin();
 const UInt32 codeSize = code.getCodeSize();
 
-std::vector<Int32> encounteredOperands;
-	auto recordOperand = [&encounteredOperands](Int32 operand) -> std::size_t {
-		for (std::size_t i = 0; i < encounteredOperands.size(); ++i) {
-			if (encounteredOperands[i] == operand) {
-				return i;
+	std::vector<Int32> encounteredOperands;
+
+	struct OperandRecorder {
+		std::vector<Int32>& operands;
+
+		OperandRecorder(std::vector<Int32>& encountered) : operands(encountered) { }
+
+		std::size_t operator()(Int32 operand) {
+			for (std::size_t i = 0; i < operands.size(); ++i) {
+				if (operands[i] == operand) {
+					return i;
+				}
 			}
+			operands.push_back(operand);
+			return operands.size() - 1;
 		}
-		encounteredOperands.push_back(operand);
-		return encounteredOperands.size() - 1;
 	};
+
+	OperandRecorder recordOperand(encounteredOperands);
 
 Vector<Int32> stackDepths(codeSize, &heap);
 		std::fill(stackDepths.begin(), stackDepths.end(), DEAD_CODE_STACK_DEPTH);
