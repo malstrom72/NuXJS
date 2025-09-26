@@ -192,49 +192,10 @@ struct GCFunction : public Function {
         }
 };
 
-struct ResetClosureStatsFunction : public Function {
-        virtual Value invoke(Runtime& rt, Processor&, UInt32, const Value*, Object*) {
-                rt.resetClosureResolutionStats();
-                return Value::UNDEFINED;
-        }
-};
-
-struct GetClosureStatsFunction : public Function {
-        virtual Value invoke(Runtime& rt, Processor&, UInt32, const Value*, Object*) {
-                Heap& heap = rt.getHeap();
-                const Runtime::ClosureResolutionStats& stats = rt.getClosureResolutionStats();
-                JSObject* object = new(heap) JSObject(heap.managed(), rt.getObjectPrototype());
-                object->setOwnProperty(rt, String::allocate(heap, "fastPath"), static_cast<double>(stats.fastPathHits));
-                object->setOwnProperty(rt, String::allocate(heap, "cacheMisses"), static_cast<double>(stats.cacheMisses));
-                object->setOwnProperty(rt, String::allocate(heap, "slowFallbacks"), static_cast<double>(stats.slowFallbacks));
-                return object;
-        }
-};
-
 static void disassemble(Heap& heap, const Code& code) {
 	const CodeWord* codeWords = code.getCodeWords();
 const Value* constants = code.getConstants()->begin();
 const UInt32 codeSize = code.getCodeSize();
-
-	std::vector<Int32> encounteredOperands;
-
-	struct OperandRecorder {
-		std::vector<Int32>& operands;
-
-		OperandRecorder(std::vector<Int32>& encountered) : operands(encountered) { }
-
-		std::size_t operator()(Int32 operand) {
-			for (std::size_t i = 0; i < operands.size(); ++i) {
-				if (operands[i] == operand) {
-					return i;
-				}
-			}
-			operands.push_back(operand);
-			return operands.size() - 1;
-		}
-	};
-
-	OperandRecorder recordOperand(encounteredOperands);
 
 Vector<Int32> stackDepths(codeSize, &heap);
 	std::fill(stackDepths.begin(), stackDepths.end(), DEAD_CODE_STACK_DEPTH);
@@ -309,47 +270,30 @@ Vector<Int32> stackDepths(codeSize, &heap);
 			case Processor::ADD_PROPERTY_OP:
 			case Processor::DELETE_NAMED_OP:
 			case Processor::TYPEOF_NAMED_OP: std::wcerr << L" " << constants[operand].toString(heap)->toWideString(); break;
-case Processor::READ_CLOSURE_OP:
-case Processor::WRITE_CLOSURE_OP:
-case Processor::WRITE_CLOSURE_POP_OP:
-case Processor::DELETE_CLOSURE_OP: {
-	UInt16 depth;
-	Int16 slot;
-	unpackClosureOperand(operand, depth, slot);
-	const std::size_t bindingIndex = recordOperand(operand);
-	const String* name = code.getLocalName(slot);
-	if (name != 0) {
-		std::wcerr << L" $" << name->toWideString();
-	}
-	std::wcerr << L" (depth=" << depth << L", slot=" << static_cast<int>(slot)
-		<< L", index=" << bindingIndex << L")";
-	break;
-}
+			case Processor::READ_CLOSURE_OP:
+			case Processor::WRITE_CLOSURE_OP:
+			case Processor::WRITE_CLOSURE_POP_OP:
+			case Processor::DELETE_CLOSURE_OP: {
+				UInt16 depth;
+				Int16 slot;
+				unpackClosureOperand(operand, depth, slot);
+				const String* name = code.getLocalName(slot);
+				if (name != 0) {
+					std::wcerr << L" $" << name->toWideString();
+				}
+				std::wcerr << L" (depth=" << depth << L", slot=" << static_cast<int>(slot) << L")";
+				break;
+			}
 			default: break;
 		}
 		std::cerr << std::endl;
 	}
 
-	std::cerr << "\tMax stack depth: " << code.getMaxStackDepth() << std::endl;
-	std::cerr << "\tCode: " << code.getCodeSize() << std::endl;
-	std::cerr << "\tVars: " << code.getVarsCount() << std::endl;
-	std::cerr << "\tArguments: " << code.getArgumentsCount() << std::endl;
-	const std::size_t capturedCount = encounteredOperands.size();
-	std::cerr << "\tCaptured: " << static_cast<unsigned long long>(capturedCount) << std::endl;
-	if (capturedCount != 0) {
-		std::cerr << "\tCaptured bindings:" << std::endl;
-		for (std::size_t i = 0; i < capturedCount; ++i) {
-			UInt16 depth;
-			Int16 slot;
-			unpackClosureOperand(encounteredOperands[i], depth, slot);
-			const String* name = code.getLocalName(slot);
-			std::cerr << "\t\t#" << i << " depth=" << depth << " slot=" << static_cast<int>(slot);
-			if (name != 0) {
-				std::wcerr << L" name=" << name->toWideString();
-			}
-			std::cerr << std::endl;
-		}
-	}
+std::cerr << "\tMax stack depth: " << code.getMaxStackDepth() << std::endl;
+std::cerr << "\tCode: " << code.getCodeSize() << std::endl;
+std::cerr << "\tVars: " << code.getVarsCount() << std::endl;
+std::cerr << "\tArguments: " << code.getArgumentsCount() << std::endl;
+std::cerr << "\tCaptured: 0" << std::endl;
 
 	(void)errors;
 	assert(errors == 0);
@@ -597,11 +541,6 @@ GCFunction gcFunction;
 const String GC_STRING("gc");
 globals.setOwnProperty(rt, &GC_STRING, &gcFunction, DONT_ENUM_FLAG);
 globals.setOwnProperty(rt, String::allocate(heap, "dasm"), new(heap) FunctorAdapter<NativeFunction>(heap.managed(), disassemble), DONT_ENUM_FLAG);
-ResetClosureStatsFunction resetClosureStatsFunction;
-globals.setOwnProperty(rt, String::allocate(heap, "__resetClosureStats"), &resetClosureStatsFunction, DONT_ENUM_FLAG);
-GetClosureStatsFunction getClosureStatsFunction;
-globals.setOwnProperty(rt, String::allocate(heap, "__closureStats"), &getClosureStatsFunction, DONT_ENUM_FLAG);
-
 randomSeed();
 
 		if (loadStdLib) {
