@@ -35,6 +35,10 @@
 #include <cstddef>
 #include <stdint.h>
 
+#ifndef NUXJS_VERBOSE_EXCEPTIONS
+#define NUXJS_VERBOSE_EXCEPTIONS 1
+#endif
+
 /**
 	These global operator overloads makes it possible to allocate *anything* (and not only GCItems) on Heap. Just
 	remember that (as opposed to GCItems) you need to call the overloaded delete operator explicitly, e.g.
@@ -815,7 +819,9 @@ class Constants : public GCItem, public Vector<Value> {
 	Code represents compiled bytecode and associated metadata. It is an Object so that it can be stored as a constant
 	and referenced by multiple functions.
 **/
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 struct SourceLocation;
+#endif
 
 class Code : public Object {
 	friend class FunctionScope;
@@ -833,12 +839,14 @@ class Code : public Object {
 		const CodeWord* getCodeWords() const { return codeWords.begin(); }
 		UInt32 getCodeSize() const { return codeWords.size(); }
 		const String* getName() const { return name; }
-                const String* getSource() const { return source; }
-                bool lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
-                bool hasSourceLocations() const { return !opcodeOffsets.empty(); }
-                const String* getFileName() const { return fileName; }
-                void setFileName(const String* newFileName) { fileName = newFileName; }
-                UInt32 getMaxStackDepth() const { return maxStackDepth; }
+		const String* getSource() const { return source; }
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		bool lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
+		bool hasSourceLocations() const { return !opcodeOffsets.empty(); }
+		const String* getFileName() const { return fileName; }
+		void setFileName(const String* newFileName) { fileName = newFileName; }
+	#endif
+		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
 
 	protected:
@@ -850,9 +858,11 @@ class Code : public Object {
 		const String* name;
 		const String* selfName;
 		const String* source;
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		const String* fileName;
 		Vector<UInt32> opcodeOffsets;
 		Vector<UInt32> lineStartOffsets;
+	#endif
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
 
@@ -864,7 +874,9 @@ class Code : public Object {
 			gcMark(heap, name);
 			gcMark(heap, selfName);
 			gcMark(heap, source);
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			gcMark(heap, fileName);
+		#endif
 			super::gcMarkReferences(heap);
 		}
 };
@@ -1209,54 +1221,70 @@ inline const String* Runtime::newStringConstant(const char* s) {
 struct Exception : public std::exception { virtual ~Exception() throw() { } };
 
 struct ConstStringException : public Exception {
-        typedef Exception super;
-        ConstStringException(const char* s) throw() : stringPointer(s) { }
-        virtual const char* what() const throw() { return stringPointer; }
-        virtual ~ConstStringException() throw() { }
-        const char* stringPointer;
+	typedef Exception super;
+	ConstStringException(const char* s) throw() : stringPointer(s) { }
+	virtual const char* what() const throw() { return stringPointer; }
+	virtual ~ConstStringException() throw() { }
+	const char* stringPointer;
 };
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 struct SourceLocation {
-        SourceLocation() : fileName(0), offset(0), line(0), column(0) { }
-        const String* fileName;
-        UInt32 offset;
-        int line;
-        int column;
+	SourceLocation() : fileName(0), offset(0), line(0), column(0) { }
+	const String* fileName;
+	UInt32 offset;
+	int line;
+	int column;
 };
 
-struct StackTrace : public GCItem {
-        typedef GCItem super;
+class StackTrace : public GCItem {
+	public:
+		typedef GCItem super;
 
-        struct Frame {
-                Frame() : code(0), functionName(0) { }
-                const Code* code;
-                const String* functionName;
-                SourceLocation location;
-        };
+		struct Frame {
+			Frame() : code(0), functionName(0) { }
+			const Code* code;
+			const String* functionName;
+			SourceLocation location;
+		};
 
-        StackTrace(GCList& gcList);
-        void appendFrame(const Code* code, const String* functionName, const SourceLocation& location);
-        UInt32 getFrameCount() const { return frames.size(); }
-        const Frame& getFrame(UInt32 index) const { return frames[index]; }
-        const Vector<Frame>& getFrames() const { return frames; }
-        bool isEmpty() const { return frames.empty(); }
+		StackTrace(GCList& gcList);
+		void appendFrame(const Code* code, const String* functionName, const SourceLocation& location);
+		UInt32 getFrameCount() const { return frames.size(); }
+		const Frame& getFrame(UInt32 index) const { return frames[index]; }
+		const Vector<Frame>& getFrames() const { return frames; }
+		bool isEmpty() const { return frames.empty(); }
 
-        protected:
-                Vector<Frame> frames;
-                virtual void gcMarkReferences(Heap& heap) const;
+	protected:
+		Vector<Frame> frames;
+		virtual void gcMarkReferences(Heap& heap) const {
+			for (UInt32 i = 0; i < frames.size(); ++i) {
+				const Frame& frame = frames[i];
+				gcMark(heap, frame.code);
+				gcMark(heap, frame.functionName);
+				gcMark(heap, frame.location.fileName);
+			}
+			super::gcMarkReferences(heap);
+		}	
 };
 
+#endif
 struct ScriptException : public Exception {
+#if (NUXJS_VERBOSE_EXCEPTIONS)
         friend class Processor;
-        typedef Exception super;
-        static void throwError(Heap& heap, ErrorType type, const String* message = 0);
-        static void throwError(Heap& heap, ErrorType type, const char* message);
-        ScriptException(Heap& heap, const Value& value) throw();
+#endif
+	typedef Exception super;
+	static void throwError(Heap& heap, ErrorType type, const String* message = 0);
+	static void throwError(Heap& heap, ErrorType type, const char* message);
+	ScriptException(Heap& heap, const Value& value) throw();
+#if (NUXJS_VERBOSE_EXCEPTIONS)
         ScriptException(Heap& heap, const Value& value, const StackTrace* trace, const SourceLocation& location) throw();
         ScriptException(Heap& heap, const Value& value, const StackTrace* trace, const SourceLocation& location
                         , const std::string& formattedStack) throw();
-        virtual const char* what() const throw() { return utf8String.c_str(); }
-        virtual ~ScriptException() throw() { }
+#endif
+	virtual const char* what() const throw() { return utf8String.c_str(); }
+	virtual ~ScriptException() throw() { }
+#if (NUXJS_VERBOSE_EXCEPTIONS)
         const String* getFileName() const;
         int getLineNumber() const;
         int getColumnNumber() const;
@@ -1264,16 +1292,21 @@ struct ScriptException : public Exception {
         const SourceLocation& getSourceLocation() const { return throwLocation; }
         const StackTrace* getStackTrace() const { return stackTrace; }
         const char* formatStackTrace() const;
-        Value value;
-        std::string utf8String;
+#endif
+	Value value;
+	std::string utf8String;
+#if (NUXJS_VERBOSE_EXCEPTIONS)
         const StackTrace* stackTrace;
         SourceLocation throwLocation;
         bool hasStackTrace;
         mutable std::string formattedStackCache;
         mutable bool formattedStackComputed;
-        Error* asErrorObject() const;
+#endif
+	Error* asErrorObject() const;
+#if (NUXJS_VERBOSE_EXCEPTIONS)
         protected:
                 void initializeMetadata(const StackTrace* trace, const SourceLocation& location, const std::string& formattedStack) throw();
+#endif
 };
 inline Error* ScriptException::asErrorObject() const { return value.asError(); }
 
@@ -1661,7 +1694,9 @@ class Processor : public GCItem {
 		void enterEvalCode(const Code* code, bool local = false);
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
 		void throwVirtualException(const Value& exception);
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		bool throwVirtualException(const Value& exception, ScriptException* existingException);
+	#endif
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);
 		Value getResult() const;	// make sure you've called run() until it returns false before calling this
@@ -1718,7 +1753,9 @@ class Processor : public GCItem {
 		void pushFrame(const Code* code, Scope* scope, Object* thisObject);
 		void popFrame();
 		void popCatcher();
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		StackTrace* captureStackTrace();
+	#endif
 
 		static const OpcodeInfo opcodeInfo[OP_COUNT];
 
@@ -1768,13 +1805,23 @@ class Compiler : public GCItem {
 	protected:
 		struct CodeSection {
 			CodeSection(Heap& heap, Int32 initialStackDepth)
+				#if (NUXJS_VERBOSE_EXCEPTIONS)
 				: code(&heap), opcodeOffsets(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
-				, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth) { }
+				#else
+					: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
+				#endif
+					, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth) { }
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			void emit(Compiler& compiler, Processor::Opcode opcode, Int32 operand);
+		#else
+			void emit(Processor::Opcode opcode, Int32 operand);
+		#endif
 			void insertSection(const CodeSection& section);
 			bool inDeadCode() const { return stackDepth == DEAD_CODE_STACK_DEPTH; }
 			Vector<CodeWord> code;
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			Vector<UInt32> opcodeOffsets;
+		#endif
 			Processor::Opcode lastEmitted;
 			const Int32 initialStackDepth;
 			Int32 stackDepth;
@@ -1860,7 +1907,9 @@ class Compiler : public GCItem {
 		Char* unescape(Char* buffer, const Char* e);
 		Vector<Char, 64> parseIdentifier(bool limitLeadingChar);
 		const String* identifier(bool required, bool allowKeywords);
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		UInt32 recordSourceOffset();
+	#endif
 
 		Heap& heap;
 		Code* const code;
@@ -1874,7 +1923,9 @@ class Compiler : public GCItem {
 		bool acceptInOperator;
 		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
 		int nestCounter;
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		UInt32 lineScanOffset;
+	#endif
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, code);
@@ -1888,14 +1939,16 @@ class Compiler : public GCItem {
 */
 struct CompilationError : public ScriptException {
 	CompilationError(const ScriptException& sourceException, const String* filename, const Compiler& fromCompiler)
-		: ScriptException(sourceException), filename(filename) {
-			fromCompiler.getStopPosition(offset, lineNumber, columnNumber);
+			: ScriptException(sourceException), filename(filename) {
+		fromCompiler.getStopPosition(offset, lineNumber, columnNumber);
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			SourceLocation location;
 			location.fileName = (filename != 0 ? filename : getFileName());
 			location.offset = static_cast<UInt32>(offset);
 			location.line = lineNumber;
 			location.column = columnNumber;
 			initializeMetadata(0, location, std::string());
+		#endif
 	}
 	const String* filename;
 	size_t offset;

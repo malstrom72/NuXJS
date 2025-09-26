@@ -41,7 +41,6 @@
 #include <stdint.h>
 #include "assert.h"
 #include <cmath>
-#include <algorithm>
 #include "NuXJS.h"
 #ifdef _MSC_VER
 #include <float.h>
@@ -182,20 +181,22 @@ const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_ST
 		, S_TRING_STRING("String");
 
 static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
-                , BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
-                , CANNOT_CONVERT_TO_OBJECT_STRING("Cannot convert undefined or null to object")
-                , CANNOT_USE_IN_OPERATOR_STRING("Cannot use 'in' operator on "), CLASS_STRING("class"), COLON_SPACE(": ")
-                , CONSTRUCTOR_STRING("constructor"), END_BRACKET_STRING("]"), EVAL_STRING("eval"), FALSE_STRING("false")
-                , FUNCTION_SPACE("function "), INFINITY_STRING("Infinity"), IS_NOT_A_FUNCTION_STRING(" is not a function")
-                , IS_NOT_DEFINED_STRING(" is not defined"), MESSAGE_STRING("message"), MINUS_INFINITY_STRING("-Infinity")
-                , NAME_STRING("name"), NAN_STRING("NaN"), NATIVE_FUNCTION_STRING("function() { [native code] }")
-                , PROTOTYPE_CHAIN_TOO_LONG("Prototype chain too long"), PROTOTYPE_STRING("prototype")
-                , STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value");
+		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
+		, CANNOT_CONVERT_TO_OBJECT_STRING("Cannot convert undefined or null to object")
+		, CANNOT_USE_IN_OPERATOR_STRING("Cannot use 'in' operator on "), CLASS_STRING("class"), COLON_SPACE(": ")
+		, CONSTRUCTOR_STRING("constructor"), END_BRACKET_STRING("]"), EVAL_STRING("eval"), FALSE_STRING("false")
+		, FUNCTION_SPACE("function "), INFINITY_STRING("Infinity"), IS_NOT_A_FUNCTION_STRING(" is not a function")
+		, IS_NOT_DEFINED_STRING(" is not defined"), MESSAGE_STRING("message"), MINUS_INFINITY_STRING("-Infinity")
+		, NAME_STRING("name"), NAN_STRING("NaN"), NATIVE_FUNCTION_STRING("function() { [native code] }")
+		, PROTOTYPE_CHAIN_TOO_LONG("Prototype chain too long"), PROTOTYPE_STRING("prototype")
+		, STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value");
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 static const String COLUMN_NUMBER_STRING("columnNumber"), FILE_NAME_STRING("fileName")
 		, LINE_NUMBER_STRING("lineNumber"), STACK_STRING("stack");
 
 static const String ANONYMOUS_SCRIPT_STRING("<anonymous>"), EVAL_CODE_STRING("<eval>");
+#endif
 
 static const String ERROR_NAMES[ERROR_TYPE_COUNT] = {
 	"Error", "EvalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError", "URIError"
@@ -224,17 +225,6 @@ static Char* intToString(Char buffer[32], Int32 i) {
 	}
 	assert(p >= buffer);
 	return p;
-}
-
-static std::string toDecimalString(Int32 value) {
-	Char buffer[32];
-	Char* begin = intToString(buffer, value);
-	std::string result;
-	result.reserve(static_cast<size_t>((buffer + 32) - begin));
-	for (const Char* p = begin; p != buffer + 32; ++p) {
-		result.push_back(static_cast<char>(*p));
-	}
-	return result;
 }
 
 const int MIN_EXPONENT = -324;
@@ -1605,15 +1595,13 @@ const String* JoiningEnumerator::nextPropertyName() {
 	return name;
 }
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+
 /* --- StackTrace --- */
 
-StackTrace::StackTrace(GCList& gcList)
-		: super(gcList), frames(&gcList.getHeap())
-{
-}
+StackTrace::StackTrace(GCList& gcList) : super(gcList), frames(&gcList.getHeap()) { }
 
-void StackTrace::appendFrame(const Code* code, const String* functionName, const SourceLocation& location)
-{
+void StackTrace::appendFrame(const Code* code, const String* functionName, const SourceLocation& location) {
 	Frame entry;
 	entry.code = code;
 	entry.functionName = functionName;
@@ -1621,16 +1609,7 @@ void StackTrace::appendFrame(const Code* code, const String* functionName, const
 	frames.push(entry);
 }
 
-void StackTrace::gcMarkReferences(Heap& heap) const
-{
-	for (UInt32 i = 0; i < frames.size(); ++i) {
-		const Frame& frame = frames[i];
-		gcMark(heap, frame.code);
-		gcMark(heap, frame.functionName);
-		gcMark(heap, frame.location.fileName);
-	}
-	super::gcMarkReferences(heap);
-}
+#endif
 
 /* --- Code --- */
 
@@ -1638,8 +1617,10 @@ Code::Code(GCList& gcList, Constants* sharedConstants)
 	: super(gcList), codeWords(0, &gcList.getHeap())
 	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
 	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
-	, selfName(0), source(0), fileName(0), opcodeOffsets(&gcList.getHeap()), lineStartOffsets(&gcList.getHeap())
-	, bloomSet(0), maxStackDepth(0)
+	, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	, opcodeOffsets(&gcList.getHeap()), lineStartOffsets(&gcList.getHeap())
+#endif
 {
 	assert(constants != 0);
 }
@@ -1653,6 +1634,7 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
 	return true;
 }
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 static UInt32 encodeDelta(Int32 delta) {
 	const UInt32 sign = (delta < 0 ? 1U : 0U);
 	const UInt32 magnitude = static_cast<UInt32>(sign != 0 ? -delta : delta);
@@ -1690,6 +1672,7 @@ bool Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) co
 	}
 	return true;
 }
+#endif
 
 /* --- Function --- */
 
@@ -2191,6 +2174,18 @@ FunctionScope::~FunctionScope() {
 	}
 }
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+static std::string toDecimalString(Int32 value) {
+	Char buffer[32];
+	Char* begin = intToString(buffer, value);
+	std::string result;
+	result.reserve(static_cast<size_t>((buffer + 32) - begin));
+	for (const Char* p = begin; p != buffer + 32; ++p) {
+		result.push_back(static_cast<char>(*p));
+	}
+	return result;
+}
+
 static std::string formatStackTraceString(const Value& exceptionValue, const std::string& fallbackHeader, const StackTrace* trace) {
 	if (trace == 0 || trace->isEmpty()) {
 		return std::string();
@@ -2254,10 +2249,16 @@ static std::string formatStackTraceString(const Value& exceptionValue, const std
 	return result;
 }
 
-/* --- ScriptException --- */
+#endif
 
+/* --- ScriptException --- */
+	
 void ScriptException::throwError(Heap& heap, ErrorType type, const String* message) {
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	throw ScriptException(heap, new(heap) Error(heap.managed(), type, message), 0, SourceLocation(), std::string());
+#else
+	throw ScriptException(heap, new(heap) Error(heap.managed(), type, message));
+#endif
 }
 
 void ScriptException::throwError(Heap& heap, ErrorType type, const char* message) {
@@ -2266,12 +2267,17 @@ void ScriptException::throwError(Heap& heap, ErrorType type, const char* message
 
 ScriptException::ScriptException(Heap& heap, const Value& value) throw()
 		: value(value), utf8String(value.toString(heap)->toUTF8String())
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		, stackTrace(0), throwLocation(), hasStackTrace(false)
 		, formattedStackCache(), formattedStackComputed(false)
+	#endif
 {
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	initializeMetadata(0, SourceLocation(), std::string());
+#endif
 }
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 ScriptException::ScriptException(Heap& heap, const Value& value, const StackTrace* trace, const SourceLocation& location) throw()
 		: value(value), utf8String(value.toString(heap)->toUTF8String())
 		, stackTrace(0), throwLocation(), hasStackTrace(false)
@@ -2328,6 +2334,7 @@ const char* ScriptException::formatStackTrace() const
 	}
 	return (formattedStackCache.empty() ? utf8String.c_str() : formattedStackCache.c_str());
 }
+#endif
 
 /* --- EvalFunction --- */
 
@@ -2607,12 +2614,13 @@ void Processor::popFrame() {
 }
 
 void Processor::popCatcher() {
-        assert(firstCatcher != 0);
-        Catcher* killMe = firstCatcher;
-        firstCatcher = firstCatcher->nextCatcher;
-        delete killMe;
+	assert(firstCatcher != 0);
+	Catcher* killMe = firstCatcher;
+	firstCatcher = firstCatcher->nextCatcher;
+	delete killMe;
 }
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 StackTrace* Processor::captureStackTrace() {
 	if (currentFrame == 0 || ip == 0) {
 		return 0;
@@ -2705,6 +2713,19 @@ bool Processor::throwVirtualException(const Value& exception, ScriptException* e
 void Processor::throwVirtualException(const Value& exception) {
 	(void)throwVirtualException(exception, 0);
 }
+#else
+void Processor::throwVirtualException(const Value& exception) {
+	if (firstCatcher == 0) { // FIX: what exception to throw here?
+		reset();
+	}
+	ip = firstCatcher->ip;
+	assert(ip != 0);
+	currentFrame = firstCatcher->frame;
+	sp = firstCatcher->sp;
+	push(exception);
+	popCatcher();
+}
+#endif
 
 void Processor::error(ErrorType errorType, const String* message) {
 	throwVirtualException(new(heap) Error(heap.managed(), errorType, message));
@@ -3050,6 +3071,7 @@ bool Processor::run(Int32 maxCycles) {
 		try {
 			innerRun();
 		}
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		catch (ScriptException& x) {
 			if (x.getStackTrace() != 0 || x.getFileName() != 0) {
 				throw;
@@ -3057,6 +3079,10 @@ bool Processor::run(Int32 maxCycles) {
 			if (throwVirtualException(x.value, &x)) {
 				throw;
 			}
+	#else
+		catch (const ScriptException& x) {
+			throwVirtualException(x.value);
+	#endif
 		}
 	}
 	return (ip != 0);
@@ -3226,8 +3252,13 @@ struct Compiler::SemanticScope {
 Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter)
 		: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
 		, mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
-		, nestCounter(initialNestCounter), lineScanOffset(0) { }
-
+		, nestCounter(initialNestCounter)
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		, lineScanOffset(0)
+	#endif
+{
+}
+ 
 const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e) {
 	if (b == e) {
 		return &EMPTY_STRING;
@@ -3239,14 +3270,22 @@ const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e
 
 void Compiler::error(ErrorType type, const char* message) { ScriptException::throwError(heap, type, message); }
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 void Compiler::CodeSection::emit(Compiler& compiler, Processor::Opcode opcode, Int32 operand) {
-	if (inDeadCode()) { // unknown stack depth = dead code
+#else
+void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
+#endif
+	if (inDeadCode()) {	// unknown stack depth = dead code
 		return;
 	}
 	const Processor::OpcodeInfo& opcodeInfo = Processor::getOpcodeInfo(opcode);
 	stackDepth += opcodeInfo.stackUse + (((opcodeInfo.flags & Processor::OpcodeInfo::POP_OPERAND) != 0) ? -operand : 0);
 	assert(stackDepth >= 0);
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	maxStackDepth = std::max(maxStackDepth, stackDepth);
+#else
+	maxStackDepth = std::max(maxStackDepth, stackDepth);		// Yeah, if we eliminate a (void/const/repush, pop) pair this might be one more than necessary, but it never seems to happen from emperical tests and it doesn't really matter in the first place.
+#endif
 	if ((opcodeInfo.flags & Processor::OpcodeInfo::TERMINAL) != 0) {
 		stackDepth = DEAD_CODE_STACK_DEPTH;
 	}
@@ -3259,12 +3298,16 @@ void Compiler::CodeSection::emit(Compiler& compiler, Processor::Opcode opcode, I
 			case Processor::REPUSH_OP:
 			case Processor::CONST_OP:
 			case Processor::VOID_OP: {
+			#if (NUXJS_VERBOSE_EXCEPTIONS)
 				if (!code.empty()) {
-					code.pop();
+			#endif
+				code.pop();
+			#if (NUXJS_VERBOSE_EXCEPTIONS)
 				}
 				if (!opcodeOffsets.empty()) {
 					opcodeOffsets.pop();
 				}
+			#endif
 				lastEmitted = Processor::INVALID_OP;
 				return;
 			}
@@ -3272,21 +3315,29 @@ void Compiler::CodeSection::emit(Compiler& compiler, Processor::Opcode opcode, I
 		}
 		if (replacementOpcode != Processor::INVALID_OP) {
 			const Int32 oldOperand = Processor::unpackInstruction(code.end()[-1]).second;
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			UInt32 lastOffset = 0;
 			if (!opcodeOffsets.empty()) {
 				lastOffset = opcodeOffsets[opcodeOffsets.size() - 1];
 				opcodeOffsets.pop();
 			}
+		#endif
 			code.pop();
 			code.push(Processor::packInstruction(replacementOpcode, oldOperand));
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			opcodeOffsets.push(lastOffset);
+		#endif
 			lastEmitted = replacementOpcode;
 			return;
 		}
 	}
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	const UInt32 sourceOffset = compiler.recordSourceOffset();
+#endif
 	code.push(Processor::packInstruction(opcode, operand));
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	opcodeOffsets.push(sourceOffset);
+#endif
 	lastEmitted = opcode;
 }
 
@@ -3294,7 +3345,9 @@ void Compiler::CodeSection::insertSection(const CodeSection& section) {
 	const Int32 stackAdjust = stackDepth - section.initialStackDepth;
 	lastEmitted = Processor::INVALID_OP;
 	code.insert(code.end(), section.code.begin(), section.code.end());
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	opcodeOffsets.insert(opcodeOffsets.end(), section.opcodeOffsets.begin(), section.opcodeOffsets.end());
+#endif
 	stackDepth = section.stackDepth + stackAdjust;
 	maxStackDepth = std::max(maxStackDepth, section.maxStackDepth + stackAdjust);
 }
@@ -3303,7 +3356,11 @@ void Compiler::emit(Processor::Opcode opcode, Int32 operand) {
 	if (operand < MIN_OPERAND_VALUE || operand > MAX_OPERAND_VALUE) { // Highly hypothetical, but correctness!
 		error(RANGE_ERROR, "Internal compiler limitations reached. Reduce code complexity.");
 	}
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	currentSection->emit(*this, opcode, operand);
+#else
+	currentSection->emit(opcode, operand);
+#endif
 }
 
 Compiler::CodeSection* Compiler::changeSection(CodeSection* newOutputSection) {
@@ -3379,6 +3436,7 @@ static bool lineTerminatorInRange(const Char* b, const Char* e) {
 	return (std::find_first_of(b, e, LINE_TERMINATORS, LINE_TERMINATORS + 4) != e);
 }
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 UInt32 Compiler::recordSourceOffset() {
 	const UInt32 currentOffset = static_cast<UInt32>(p - b);
 	if (code->lineStartOffsets.empty()) {
@@ -3402,6 +3460,7 @@ UInt32 Compiler::recordSourceOffset() {
 	}
 	return currentOffset;
 }
+#endif
 
 void Compiler::white() {
 	while (!eof()) {
@@ -4035,13 +4094,15 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 }
 
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
-        assert(functionName != 0);
-        Code* func = new(heap) Code(heap.managed(), code->constants);
-        func->setFileName(code->getFileName());
-        Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
-        try {
-                p = funcCompiler.compileFunction(p, e, functionName, selfName);
-        }
+	assert(functionName != 0);
+	Code* func = new(heap) Code(heap.managed(), code->constants);
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	func->setFileName(code->getFileName());
+#endif
+	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
+	try {
+		p = funcCompiler.compileFunction(p, e, functionName, selfName);
+	}
 	catch (const Exception&) { // FIX : a bit Q & D ish
 		p = funcCompiler.p;
 		throw;
@@ -4834,13 +4895,15 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	p = b;
 	this->e = e;
 	acceptInOperator = true;
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	lineScanOffset = 0;
 	setupSection.opcodeOffsets.resize(0);
 	mainSection.opcodeOffsets.resize(0);
 	code->opcodeOffsets.resize(0);
 	code->lineStartOffsets.resize(0);
 	code->lineStartOffsets.push(0);
-
+#endif
+	
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
 	if (compilingFor == FOR_EVAL) {
 		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
@@ -4848,7 +4911,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	}
 	SemanticScope rootScope(heap, SemanticScope::ROOT_TYPE, 1, 0);
 	statementList(&rootScope);
-	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
+ 	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
 	if (compilingFor != FOR_EVAL) {
 		// FIX : if RETURN_OP took a push back count we could just do void_op here, or even have another RETURN_VOID_OP
 		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
@@ -4862,6 +4925,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	std::copy(mainSection.code.begin(), mainSection.code.end(), code->codeWords.begin() + setupSection.code.size());
 	code->constants->shrink();
 	code->maxStackDepth = std::max(mainSection.maxStackDepth, setupSection.maxStackDepth);
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	code->opcodeOffsets.resize(0);
 	code->opcodeOffsets.reserve(setupSection.opcodeOffsets.size() + mainSection.opcodeOffsets.size());
 	Int32 previousOffset = 0;
@@ -4882,7 +4946,8 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	}
 	setupSection.opcodeOffsets.resize(0);
 	mainSection.opcodeOffsets.resize(0);
-
+#endif
+	
 	return p;
 }
 
@@ -5458,29 +5523,33 @@ Var Runtime::eval(const String& expression) {
 }
 
 Code* Runtime::compileEvalCode(const String* expression) {
-        const Table::Bucket* bucket = evalCodeCache.lookup(expression);
-        if (bucket != 0) {
-                Object* o = bucket->getValue().getObject();
-                assert(dynamic_cast<Code*>(o) != 0);
-                return reinterpret_cast<Code*>(o);
-        } else {
-                Code* code = new(heap) Code(heap.managed());
-                code->setFileName(&EVAL_CODE_STRING);
-                Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
-                compiler.compile(*expression);
-                evalCodeCache.update(evalCodeCache.insert(expression), code);
-                return code;
-        }
+	const Table::Bucket* bucket = evalCodeCache.lookup(expression);
+	if (bucket != 0) {
+		Object* o = bucket->getValue().getObject();
+		assert(dynamic_cast<Code*>(o) != 0);
+		return reinterpret_cast<Code*>(o);
+	} else {
+		Code* code = new(heap) Code(heap.managed());
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+		code->setFileName(&EVAL_CODE_STRING);
+#endif
+		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
+		compiler.compile(*expression);
+		evalCodeCache.update(evalCodeCache.insert(expression), code);
+		return code;
+	}
 }
 
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
-        Code* code = new(heap) Code(heap.managed());
-        code->setFileName((filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING));
-        Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
-        try {
-                compiler.compile(source);
-        }
-        catch (const ScriptException& x) {
+	Code* code = new(heap) Code(heap.managed());
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	code->setFileName((filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING));
+#endif
+	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
+	try {
+		compiler.compile(source);
+	}
+	catch (const ScriptException& x) {
 		throw CompilationError(x, filename, compiler);
 	}
 	return code;
