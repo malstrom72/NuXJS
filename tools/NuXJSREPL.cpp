@@ -216,16 +216,25 @@ static void disassemble(Heap& heap, const Code& code) {
 const Value* constants = code.getConstants()->begin();
 const UInt32 codeSize = code.getCodeSize();
 
-std::vector<CapturedBinding> encounteredBindings;
-auto recordBinding = [&encounteredBindings](const CapturedBinding& binding) -> std::size_t {
-for (std::size_t i = 0; i < encounteredBindings.size(); ++i) {
-if (encounteredBindings[i].depth == binding.depth && encounteredBindings[i].slot == binding.slot) {
-return i;
-}
-}
-encounteredBindings.push_back(binding);
-return encounteredBindings.size() - 1;
-};
+	std::vector<Int32> encounteredOperands;
+
+	struct OperandRecorder {
+		std::vector<Int32>& operands;
+
+		OperandRecorder(std::vector<Int32>& encountered) : operands(encountered) { }
+
+		std::size_t operator()(Int32 operand) {
+			for (std::size_t i = 0; i < operands.size(); ++i) {
+				if (operands[i] == operand) {
+					return i;
+				}
+			}
+			operands.push_back(operand);
+			return operands.size() - 1;
+		}
+	};
+
+	OperandRecorder recordOperand(encounteredOperands);
 
 Vector<Int32> stackDepths(codeSize, &heap);
 	std::fill(stackDepths.begin(), stackDepths.end(), DEAD_CODE_STACK_DEPTH);
@@ -304,15 +313,17 @@ case Processor::READ_CLOSURE_OP:
 case Processor::WRITE_CLOSURE_OP:
 case Processor::WRITE_CLOSURE_POP_OP:
 case Processor::DELETE_CLOSURE_OP: {
-const CapturedBinding binding = unpackClosureOperand(operand);
-const std::size_t bindingIndex = recordBinding(binding);
-const String* name = code.getLocalName(binding.slot);
-if (name != 0) {
-std::wcerr << L" $" << name->toWideString();
-}
-std::wcerr << L" (depth=" << binding.depth << L", slot=" << static_cast<int>(binding.slot)
-<< L", index=" << bindingIndex << L")";
-break;
+	UInt16 depth;
+	Int16 slot;
+	unpackClosureOperand(operand, depth, slot);
+	const std::size_t bindingIndex = recordOperand(operand);
+	const String* name = code.getLocalName(slot);
+	if (name != 0) {
+		std::wcerr << L" $" << name->toWideString();
+	}
+	std::wcerr << L" (depth=" << depth << L", slot=" << static_cast<int>(slot)
+		<< L", index=" << bindingIndex << L")";
+	break;
 }
 			default: break;
 		}
@@ -323,20 +334,22 @@ break;
 	std::cerr << "\tCode: " << code.getCodeSize() << std::endl;
 	std::cerr << "\tVars: " << code.getVarsCount() << std::endl;
 	std::cerr << "\tArguments: " << code.getArgumentsCount() << std::endl;
-const std::size_t capturedCount = encounteredBindings.size();
-std::cerr << "\tCaptured: " << static_cast<unsigned long long>(capturedCount) << std::endl;
-if (capturedCount != 0) {
-std::cerr << "\tCaptured bindings:" << std::endl;
-for (std::size_t i = 0; i < capturedCount; ++i) {
-const CapturedBinding& binding = encounteredBindings[i];
-const String* name = code.getLocalName(binding.slot);
-std::cerr << "\t\t#" << i << " depth=" << binding.depth << " slot=" << static_cast<int>(binding.slot);
-if (name != 0) {
-std::wcerr << L" name=" << name->toWideString();
-}
-std::cerr << std::endl;
-}
-}
+	const std::size_t capturedCount = encounteredOperands.size();
+	std::cerr << "\tCaptured: " << static_cast<unsigned long long>(capturedCount) << std::endl;
+	if (capturedCount != 0) {
+		std::cerr << "\tCaptured bindings:" << std::endl;
+		for (std::size_t i = 0; i < capturedCount; ++i) {
+			UInt16 depth;
+			Int16 slot;
+			unpackClosureOperand(encounteredOperands[i], depth, slot);
+			const String* name = code.getLocalName(slot);
+			std::cerr << "\t\t#" << i << " depth=" << depth << " slot=" << static_cast<int>(slot);
+			if (name != 0) {
+				std::wcerr << L" name=" << name->toWideString();
+			}
+			std::cerr << std::endl;
+		}
+	}
 
 	(void)errors;
 	assert(errors == 0);

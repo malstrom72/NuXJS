@@ -811,16 +811,6 @@ class Constants : public GCItem, public Vector<Value> {
 		}
 };
 
-/**
-	CapturedBinding stores the lexical location of an identifier captured from an ancestor scope.
-**/
-struct CapturedBinding {
-CapturedBinding() : depth(0), slot(0) { }
-CapturedBinding(UInt16 inDepth, Int16 inSlot) : depth(inDepth), slot(inSlot) { }
-UInt16 depth;
-Int16 slot;
-};
-
 struct ClosureOperandDiagnostic {
 enum Reason {
 NON_FUNCTION_TARGET,
@@ -849,11 +839,10 @@ static const UInt32 CLOSURE_OPERAND_SIGNED_MASK = 0x00FFFFFFu;
 static const UInt32 CLOSURE_OPERAND_DEPTH_MASK = 0x00FF0000u;
 static const UInt32 CLOSURE_OPERAND_SLOT_MASK = 0x0000FFFFu;
 
-inline CapturedBinding unpackClosureOperand(Int32 operand) {
+inline void unpackClosureOperand(Int32 operand, UInt16& depthOut, Int16& slotOut) {
 const UInt32 raw = static_cast<UInt32>(operand) & CLOSURE_OPERAND_SIGNED_MASK;
-const UInt16 depth = static_cast<UInt16>((raw & CLOSURE_OPERAND_DEPTH_MASK) >> CLOSURE_OPERAND_DEPTH_SHIFT);
-const Int16 slot = static_cast<Int16>(raw & CLOSURE_OPERAND_SLOT_MASK);
-return CapturedBinding(depth, slot);
+depthOut = static_cast<UInt16>((raw & CLOSURE_OPERAND_DEPTH_MASK) >> CLOSURE_OPERAND_DEPTH_SHIFT);
+slotOut = static_cast<Int16>(raw & CLOSURE_OPERAND_SLOT_MASK);
 }
 
 /**
@@ -975,9 +964,8 @@ class Scope : public GCItem {
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		Value* getLocalsPointer() const { return localsPointer; }
 		Scope* getParentScope() const { return parentScope; }
-               virtual bool resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const;
-               virtual bool resolveClosureOperand(UInt16 depth, Int16 slot, Value*& resolvedSlot,
-                       FunctionScope*& owner) const;
+virtual bool resolveClosureOperand(UInt16 depth, Int16 slot, Value*& resolvedSlot,
+FunctionScope*& owner) const;
 		virtual FunctionScope* nearestFunctionScope();
 		virtual const FunctionScope* nearestFunctionScope() const;
 		void makeClosure() const;
@@ -1110,9 +1098,8 @@ class FunctionScope : public Scope {
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
-               virtual bool resolveCapturedBinding(const CapturedBinding& binding, Value*& slot) const;
-               virtual bool resolveClosureOperand(UInt16 depth, Int16 slot, Value*& resolvedSlot,
-                       FunctionScope*& owner) const;
+virtual bool resolveClosureOperand(UInt16 depth, Int16 slot, Value*& resolvedSlot,
+FunctionScope*& owner) const;
 		virtual FunctionScope* nearestFunctionScope();
 		virtual const FunctionScope* nearestFunctionScope() const;
 		FunctionScope* getParentFunctionScope() const { return parentFunctionScope; }
@@ -1703,10 +1690,12 @@ class Processor : public GCItem {
 			Object* const thisObject;
 			Frame* const previousFrame;
 			struct ResolvedClosureSlot {
-				ResolvedClosureSlot(Int32 inOperand = 0, FunctionScope* inScope = 0, Int16 inSlot = 0, Value* inPointer = 0)
-					: operand(inOperand), scope(inScope), slot(inSlot), pointer(inPointer) { }
+				ResolvedClosureSlot(Int32 inOperand = 0, Scope* inGuardScope = 0, FunctionScope* inOwner = 0
+						, Int16 inSlot = 0, Value* inPointer = 0)
+					: operand(inOperand), guardScope(inGuardScope), owner(inOwner), slot(inSlot), pointer(inPointer) { }
 				Int32 operand;
-				FunctionScope* scope;
+				Scope* guardScope;
+				FunctionScope* owner;
 				Int16 slot;
 				Value* pointer;
 			};
@@ -1716,7 +1705,8 @@ class Processor : public GCItem {
 				gcMark(heap, scope);
 				gcMark(heap, thisObject);
 				for (size_t i = 0; i < resolvedClosureSlots.size(); ++i) {
-					gcMark(heap, resolvedClosureSlots[i].scope);
+					gcMark(heap, resolvedClosureSlots[i].guardScope);
+					gcMark(heap, resolvedClosureSlots[i].owner);
 				}
 				gcMark(heap, previousFrame);
 				super::gcMarkReferences(heap);
@@ -1755,6 +1745,8 @@ class Processor : public GCItem {
 		void pushFrame(const Code* code, Scope* scope, Object* thisObject);
 		void popFrame();
 		void popCatcher();
+		static Frame::ResolvedClosureSlot* findCachedClosureSlot(Frame* frame, Int32 operand, Scope* guardScope);
+		static void cacheClosureSlot(Frame* frame, Int32 operand, Scope* guardScope, FunctionScope* ownerScope, Int16 slotIndex, Value* pointer);
 
 		static const OpcodeInfo opcodeInfo[OP_COUNT];
 
