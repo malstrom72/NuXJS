@@ -811,6 +811,28 @@ class Constants : public GCItem, public Vector<Value> {
 		}
 };
 
+struct ClosureOperandDiagnostic {
+	enum Reason {
+		NON_FUNCTION_TARGET,
+		WITH_SCOPE_GUARD,
+		ARGUMENTS_ALIAS,
+		ANCESTOR_GUARD,
+		CATCH_GUARD,
+		MISSING_BINDING,
+		SLOT_RANGE_OVERFLOW,
+		DEPTH_OVERFLOW,
+		OPERAND_RANGE_OVERFLOW
+	};
+
+	ClosureOperandDiagnostic(Reason inReason = MISSING_BINDING, const String* inName = 0, UInt16 inDepth = 0, Int16 inSlot = 0)
+		: reason(inReason), name(inName), depth(inDepth), slot(inSlot) { }
+
+	Reason reason;
+	const String* name;
+	UInt16 depth;
+	Int16 slot;
+};
+
 // Closure operands pack an 8-bit lexical `depth` and signed 16-bit `slot` into the low 24 bits.
 static const UInt32 CLOSURE_OPERAND_DEPTH_SHIFT = 16;
 static const UInt32 CLOSURE_OPERAND_SIGNED_MASK = 0x00FFFFFFu;
@@ -842,12 +864,14 @@ class Code : public Object {
 		const Constants* getConstants() const { return constants; }
 		const CodeWord* getCodeWords() const { return codeWords.begin(); }
 		UInt32 getCodeSize() const { return codeWords.size(); }
-const String* getName() const { return name; }
-const String* getSource() const { return source; }
-UInt32 getMaxStackDepth() const { return maxStackDepth; }
-UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
-bool usesDynamicScope() const { return dynamicScopeUsed; }
-void markDynamicScopeUsage() const { dynamicScopeUsed = true; }
+		const String* getName() const { return name; }
+		const String* getSource() const { return source; }
+		UInt32 getMaxStackDepth() const { return maxStackDepth; }
+		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
+		void recordClosureOperandDiagnostic(const ClosureOperandDiagnostic& diagnostic);
+		const Vector<ClosureOperandDiagnostic>& getClosureOperandDiagnostics() const { return closureOperandDiagnostics; }
+		bool usesDynamicScope() const { return dynamicScopeUsed; }
+		void markDynamicScopeUsage() const { dynamicScopeUsed = true; }
 
 	protected:
 		Vector<CodeWord> codeWords;
@@ -859,18 +883,22 @@ void markDynamicScopeUsage() const { dynamicScopeUsed = true; }
 		const String* selfName;
 		const String* source;
 		UInt32 bloomSet;					///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
-UInt32 maxStackDepth;
-mutable bool dynamicScopeUsed;
-virtual void gcMarkReferences(Heap& heap) const {
-gcMark(heap, constants);
-nameIndexes.gcMarkReferences(heap);
-gcMark(heap, varNames.begin(), varNames.end());
-gcMark(heap, argumentNames.begin(), argumentNames.end());
-gcMark(heap, name);
-gcMark(heap, selfName);
-gcMark(heap, source);
-super::gcMarkReferences(heap);
-}
+		UInt32 maxStackDepth;
+		mutable bool dynamicScopeUsed;
+		Vector<ClosureOperandDiagnostic> closureOperandDiagnostics;
+		virtual void gcMarkReferences(Heap& heap) const {
+			gcMark(heap, constants);
+			nameIndexes.gcMarkReferences(heap);
+			gcMark(heap, varNames.begin(), varNames.end());
+			gcMark(heap, argumentNames.begin(), argumentNames.end());
+			gcMark(heap, name);
+			gcMark(heap, selfName);
+			gcMark(heap, source);
+			for (UInt32 i = 0; i < closureOperandDiagnostics.size(); ++i) {
+				gcMark(heap, closureOperandDiagnostics[i].name);
+			}
+			super::gcMarkReferences(heap);
+		}
 };
 
 /**
