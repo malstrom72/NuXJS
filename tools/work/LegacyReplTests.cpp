@@ -261,10 +261,30 @@ double getCPUSecs() {
 
 	static void disassemble(Heap& heap, const Code& code) {
 		const CodeWord* codeWords = code.getCodeWords();
-		const Value* constants = code.getConstants()->begin();
-		const UInt32 codeSize = code.getCodeSize();
-		
-		Vector<Int32> stackDepths(codeSize, &heap);
+const Value* constants = code.getConstants()->begin();
+const UInt32 codeSize = code.getCodeSize();
+
+	std::vector<Int32> encounteredOperands;
+
+	struct OperandRecorder {
+		std::vector<Int32>& operands;
+
+		OperandRecorder(std::vector<Int32>& encountered) : operands(encountered) { }
+
+		std::size_t operator()(Int32 operand) {
+			for (std::size_t i = 0; i < operands.size(); ++i) {
+				if (operands[i] == operand) {
+					return i;
+				}
+			}
+			operands.push_back(operand);
+			return operands.size() - 1;
+		}
+	};
+
+	OperandRecorder recordOperand(encounteredOperands);
+
+Vector<Int32> stackDepths(codeSize, &heap);
 		std::fill(stackDepths.begin(), stackDepths.end(), DEAD_CODE_STACK_DEPTH);
 		
 		Int32 maxStackDepth = 0;
@@ -337,33 +357,22 @@ double getCPUSecs() {
 				case Processor::ADD_PROPERTY_OP:
 				case Processor::DELETE_NAMED_OP:
 				case Processor::TYPEOF_NAMED_OP: std::wcerr << L" " << constants[operand].toString(heap)->toWideString(); break;
-			case Processor::READ_CLOSURE_OP:
-			case Processor::WRITE_CLOSURE_OP:
-			case Processor::WRITE_CLOSURE_POP_OP:
-			case Processor::DELETE_CLOSURE_OP: {
-				const CapturedBinding binding = unpackClosureOperand(operand);
-				const CapturedBinding* metadata = code.findCapturedBinding(binding.depth, binding.slot);
-				const String* name = 0;
-				if (metadata != 0) {
-					name = (metadata->name != 0 ? metadata->name : code.getLocalName(metadata->slot));
-				} else {
-					name = code.getLocalName(binding.slot);
-				}
-				if (name != 0) {
-					std::wcerr << L" $" << name->toWideString();
-				}
-				std::wcerr << L" (depth=" << binding.depth << L", slot=" << static_cast<int>(binding.slot);
-				if (metadata != 0) {
-					const UInt32 capturedCount = code.getCapturedBindingCount();
-					if (capturedCount != 0) {
-						const CapturedBinding* begin = &code.getCapturedBinding(0);
-						const UInt32 index = static_cast<UInt32>(metadata - begin);
-						std::wcerr << L", index=" << index;
-					}
-				}
-				std::wcerr << L")";
-				break;
-			}
+case Processor::READ_CLOSURE_OP:
+case Processor::WRITE_CLOSURE_OP:
+case Processor::WRITE_CLOSURE_POP_OP:
+case Processor::DELETE_CLOSURE_OP: {
+	UInt16 depth;
+	Int16 slot;
+	unpackClosureOperand(operand, depth, slot);
+	const std::size_t bindingIndex = recordOperand(operand);
+	const String* name = code.getLocalName(slot);
+	if (name != 0) {
+		std::wcerr << L" $" << name->toWideString();
+	}
+	std::wcerr << L" (depth=" << depth << L", slot=" << static_cast<int>(slot)
+		<< L", index=" << bindingIndex << L")";
+	break;
+}
 }
 				default: break;
 			}
@@ -375,24 +384,22 @@ double getCPUSecs() {
 	//	std::cerr << "\tConstants: " << code.getConstants().size() << std::endl;
 		std::cerr << "\tVars: " << code.getVarsCount() << std::endl;
 		std::cerr << "\tArguments: " << code.getArgumentsCount() << std::endl;
-		const UInt32 capturedCount = code.getCapturedBindingCount();
-		std::cerr << "	Captured: " << capturedCount << std::endl;
+		const std::size_t capturedCount = encounteredOperands.size();
+		std::cerr << "	Captured: " << static_cast<unsigned long long>(capturedCount) << std::endl;
 		if (capturedCount != 0) {
 			std::cerr << "	Captured bindings:" << std::endl;
-			for (UInt32 i = 0; i < capturedCount; ++i) {
-				const CapturedBinding& binding = code.getCapturedBinding(i);
-				const String* name = (binding.name != 0 ? binding.name : code.getLocalName(binding.slot));
-				std::cerr << "		#" << i << " depth=" << binding.depth << " slot=" << static_cast<int>(binding.slot);
+			for (std::size_t i = 0; i < capturedCount; ++i) {
+				UInt16 depth;
+				Int16 slot;
+				unpackClosureOperand(encounteredOperands[i], depth, slot);
+				const String* name = code.getLocalName(slot);
+				std::cerr << "		#" << i << " depth=" << depth << " slot=" << static_cast<int>(slot);
 				if (name != 0) {
 					std::wcerr << L" name=" << name->toWideString();
 				}
 				std::cerr << std::endl;
 			}
 		}
-	/* FIX :	for (const Value* p = code.constants.begin(); p != code.constants.end(); ++p) {
-			std::wcerr << "\t\t" << p.toString(heap).toWideString() << std::endl;
-		}*/
-
 		assert(errors == 0);
 	}
 
