@@ -1595,22 +1595,6 @@ const String* JoiningEnumerator::nextPropertyName() {
 	return name;
 }
 
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-
-/* --- StackTrace --- */
-
-StackTrace::StackTrace(GCList& gcList) : super(gcList), frames(&gcList.getHeap()) { }
-
-void StackTrace::appendFrame(const Code* code, const String* functionName, const SourceLocation& location) {
-	Frame entry;
-	entry.code = code;
-	entry.functionName = functionName;
-	entry.location = location;
-	frames.push(entry);
-}
-
-#endif
-
 /* --- Code --- */
 
 Code::Code(GCList& gcList, Constants* sharedConstants)
@@ -2174,90 +2158,14 @@ FunctionScope::~FunctionScope() {
 	}
 }
 
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-static std::string toDecimalString(Int32 value) {
-	Char buffer[32];
-	Char* begin = intToString(buffer, value);
-	std::string result;
-	result.reserve(static_cast<size_t>((buffer + 32) - begin));
-	for (const Char* p = begin; p != buffer + 32; ++p) {
-		result.push_back(static_cast<char>(*p));
-	}
-	return result;
-}
-
-static std::string formatStackTraceString(const Value& exceptionValue, const std::string& fallbackHeader, const StackTrace* trace) {
-	if (trace == 0 || trace->isEmpty()) {
-		return std::string();
-	}
-	std::string header;
-	Error* errorObject = exceptionValue.asError();
-	if (errorObject != 0) {
-		const String* name = errorObject->getErrorName();
-		const String* message = errorObject->getErrorMessage();
-		if (name != 0) {
-			header = name->toUTF8String();
-		}
-		if (header.empty()) {
-			header = E_RROR_STRING.toUTF8String();
-		}
-		if (message != 0 && !message->empty()) {
-			if (!header.empty()) {
-				header.append(": ");
-			}
-			header.append(message->toUTF8String());
-		}
-	}
-	if (header.empty()) {
-		header = fallbackHeader;
-	}
-	std::string result = header;
-	const UInt32 frameCount = trace->getFrameCount();
-	for (UInt32 i = 0; i < frameCount; ++i) {
-		const StackTrace::Frame& frame = trace->getFrame(i);
-		result.append("\n    at ");
-		const String* functionName = frame.functionName;
-		std::string location;
-		if (frame.location.fileName != 0) {
-			location = frame.location.fileName->toUTF8String();
-		}
-		if (location.empty()) {
-			location = ANONYMOUS_SCRIPT_STRING.toUTF8String();
-		}
-		if (frame.location.line > 0) {
-			location.push_back(':');
-			location.append(toDecimalString(frame.location.line));
-			if (frame.location.column > 0) {
-				location.push_back(':');
-				location.append(toDecimalString(frame.location.column));
-			}
-		}
-		if (functionName != 0 && !functionName->empty()) {
-			std::string functionLabel = functionName->toUTF8String();
-			if (!functionLabel.empty()) {
-				result.append(functionLabel);
-				result.append(" (");
-				result.append(location);
-				result.push_back(')');
-			} else {
-				result.append(location);
-			}
-		} else {
-			result.append(location);
-		}
-	}
-	return result;
-}
-
-#endif
-
 /* --- ScriptException --- */
-	
+
 void ScriptException::throwError(Heap& heap, ErrorType type, const String* message) {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	throw ScriptException(heap, new(heap) Error(heap.managed(), type, message), 0, SourceLocation(), std::string());
+        VerboseExceptionMetadata metadata;
+        throw ScriptException(heap, new(heap) Error(heap.managed(), type, message), metadata);
 #else
-	throw ScriptException(heap, new(heap) Error(heap.managed(), type, message));
+        throw ScriptException(heap, new(heap) Error(heap.managed(), type, message));
 #endif
 }
 
@@ -2266,73 +2174,100 @@ void ScriptException::throwError(Heap& heap, ErrorType type, const char* message
 }
 
 ScriptException::ScriptException(Heap& heap, const Value& value) throw()
-		: value(value), utf8String(value.toString(heap)->toUTF8String())
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		, stackTrace(0), throwLocation(), hasStackTrace(false)
-		, formattedStackCache(), formattedStackComputed(false)
-	#endif
-{
+	: value(value), utf8String(value.toString(heap)->toUTF8String())
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	initializeMetadata(0, SourceLocation(), std::string());
+	, verboseMetadata()
+	, verboseStackCache()
+	, verboseStackComputed(false)
 #endif
+{
 }
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-ScriptException::ScriptException(Heap& heap, const Value& value, const StackTrace* trace, const SourceLocation& location) throw()
-		: value(value), utf8String(value.toString(heap)->toUTF8String())
-		, stackTrace(0), throwLocation(), hasStackTrace(false)
-		, formattedStackCache(), formattedStackComputed(false)
+ScriptException::ScriptException(Heap& heap, const Value& value, const VerboseExceptionMetadata& metadata) throw()
+	: value(value), utf8String(value.toString(heap)->toUTF8String())
+	, verboseMetadata()
+	, verboseStackCache()
+	, verboseStackComputed(false)
 {
-	initializeMetadata(trace, location, std::string());
+	setVerboseMetadata(metadata);
 }
 
-ScriptException::ScriptException(Heap& heap, const Value& value, const StackTrace* trace, const SourceLocation& location, const std::string& formattedStack) throw()
-		: value(value), utf8String(value.toString(heap)->toUTF8String())
-		, stackTrace(0), throwLocation(), hasStackTrace(false)
-		, formattedStackCache(), formattedStackComputed(false)
+static inline bool hasVerboseSourceMetadata(const Code* code)
 {
-	initializeMetadata(trace, location, formattedStack);
+	return code != 0 && code->getFileName() != 0 && code->hasSourceLocations();
 }
 
-void ScriptException::initializeMetadata(const StackTrace* trace, const SourceLocation& location, const std::string& formattedStack) throw()
+static std::string formatLocationLabel(const SourceLocation& location)
 {
-	if (trace != 0 && !trace->isEmpty()) {
-		stackTrace = trace;
-		hasStackTrace = true;
-	} else {
-		stackTrace = 0;
-		hasStackTrace = false;
+	const String* fileName = (location.fileName != 0 ? location.fileName : &ANONYMOUS_SCRIPT_STRING);
+	std::string label = fileName->toUTF8String();
+	if (location.line > 0) {
+		label.push_back(':');
+		label.append(std::to_string(location.line));
+		if (location.column > 0) {
+			label.push_back(':');
+			label.append(std::to_string(location.column));
+		}
 	}
-	if (hasStackTrace || location.fileName != 0) {
-		throwLocation = location;
-	} else {
-		throwLocation = SourceLocation();
-	}
-	if (!formattedStack.empty()) {
-		formattedStackCache = formattedStack;
-		formattedStackComputed = true;
-	} else {
-		formattedStackCache.clear();
-		formattedStackComputed = false;
-	}
+	return label;
 }
 
-const String* ScriptException::getFileName() const { return throwLocation.fileName; }
+static std::string buildVerboseStackString(const std::string& header, const VerboseExceptionMetadata& metadata)
+{
+	if (metadata.location.fileName == 0) {
+		return header;
+	}
+	std::string formattedStack = header;
+	for (UInt32 i = 0; i < metadata.frames.size(); ++i) {
+		formattedStack.append("\n    at ");
+		const VerboseStackFrame& frame = metadata.frames[i];
+		const std::string locationLabel = formatLocationLabel(frame.location);
+		const String* const functionName = frame.functionName;
+		if (functionName != 0 && !functionName->empty()) {
+			formattedStack.append(functionName->toUTF8String());
+			formattedStack.append(" (");
+			formattedStack.append(locationLabel);
+			formattedStack.push_back(')');
+		} else {
+			formattedStack.append(locationLabel);
+		}
+	}
+	return formattedStack;
+}
 
-int ScriptException::getLineNumber() const { return throwLocation.line; }
+const String* ScriptException::getFileName() const { return verboseMetadata.location.fileName; }
 
-int ScriptException::getColumnNumber() const { return throwLocation.column; }
+int ScriptException::getLineNumber() const { return verboseMetadata.location.line; }
+
+int ScriptException::getColumnNumber() const { return verboseMetadata.location.column; }
 
 const char* ScriptException::formatStackTrace() const
 {
-	if (!hasStackTrace || stackTrace == 0 || stackTrace->isEmpty()) {
+	if (verboseMetadata.location.fileName == 0) {
 		return utf8String.c_str();
 	}
-	if (!formattedStackComputed) {
-		formattedStackCache = formatStackTraceString(value, utf8String, stackTrace);
-		formattedStackComputed = true;
+	if (!verboseStackComputed) {
+		verboseStackCache = buildVerboseStackString(utf8String, verboseMetadata);
+		verboseStackComputed = true;
 	}
-	return (formattedStackCache.empty() ? utf8String.c_str() : formattedStackCache.c_str());
+	return verboseStackCache.c_str();
+}
+
+bool ScriptException::hasVerboseStack() const { return verboseMetadata.location.fileName != 0; }
+
+void ScriptException::setVerboseMetadata(const VerboseExceptionMetadata& metadata)
+{
+	verboseMetadata = metadata;
+	verboseStackCache.clear();
+	verboseStackComputed = false;
+	if (verboseMetadata.location.fileName == 0) {
+		if (verboseMetadata.frames.empty()) {
+			verboseMetadata.location = SourceLocation();
+		} else {
+			verboseMetadata.location.fileName = &ANONYMOUS_SCRIPT_STRING;
+		}
+	}
 }
 #endif
 
@@ -2621,20 +2556,21 @@ void Processor::popCatcher() {
 }
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-StackTrace* Processor::captureStackTrace() {
+bool Processor::captureVerboseMetadata(const Value& exception, VerboseExceptionMetadata& out) {
+	out = VerboseExceptionMetadata();
+	(void)exception;
 	if (currentFrame == 0 || ip == 0) {
-		return 0;
+		return false;
 	}
 	const Frame* frame = currentFrame;
 	const CodeWord* nextIP = ip;
 	const Code* code = frame->code;
-	if (code == 0 || code->getFileName() == 0 || !code->hasSourceLocations()) {
-		return 0;
+	if (!hasVerboseSourceMetadata(code)) {
+		return false;
 	}
-	StackTrace* trace = 0;
 	while (frame != 0 && nextIP != 0) {
 		const Code* frameCode = frame->code;
-		if (frameCode == 0 || frameCode->getFileName() == 0 || !frameCode->hasSourceLocations()) {
+		if (!hasVerboseSourceMetadata(frameCode)) {
 			break;
 		}
 		const CodeWord* begin = frameCode->getCodeWords();
@@ -2646,61 +2582,61 @@ StackTrace* Processor::captureStackTrace() {
 		if (!frameCode->lookupSourceLocation(instructionIndex, location)) {
 			break;
 		}
-		if (trace == 0) {
-			trace = new(heap) StackTrace(heap.managed());
+		if (out.location.fileName == 0) {
+			out.location = location;
 		}
-		trace->appendFrame(frameCode, frameCode->getName(), location);
+		VerboseStackFrame frameMetadata;
+		frameMetadata.functionName = frameCode->getName();
+		frameMetadata.location = location;
+		out.frames.push(frameMetadata);
 		const CodeWord* callerIP = frame->returnIP;
 		frame = frame->previousFrame;
 		nextIP = callerIP;
 	}
-	return trace;
+	if (out.location.fileName != 0) {
+		return true;
+	}
+	return false;
 }
+#endif
 
 bool Processor::throwVirtualException(const Value& exception, ScriptException* existingException) {
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	if (firstCatcher == 0) { // FIX: what exception to throw here?
-		StackTrace* trace = captureStackTrace();
-		SourceLocation throwLocation;
-		std::string formattedStack;
+		VerboseExceptionMetadata metadata;
+		const bool hasVerbose = captureVerboseMetadata(exception, metadata);
 		Error* errorObject = exception.asError();
-		std::string fallbackHeader;
-		if (trace != 0 && !trace->isEmpty()) {
-			throwLocation = trace->getFrame(0).location;
-			if (errorObject == 0) {
-				fallbackHeader = exception.toString(heap)->toUTF8String();
-			}
-			formattedStack = formatStackTraceString(exception, fallbackHeader, trace);
-			if (errorObject != 0) {
-				const String* fileName = (throwLocation.fileName != 0 ? throwLocation.fileName : &ANONYMOUS_SCRIPT_STRING);
-				errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(fileName), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-				errorObject->setOwnProperty(rt, Value(&LINE_NUMBER_STRING), Value(static_cast<Int32>(throwLocation.line)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-				errorObject->setOwnProperty(rt, Value(&COLUMN_NUMBER_STRING), Value(static_cast<Int32>(throwLocation.column)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-				if (!formattedStack.empty()) {
-					const String* stackString = new(heap) String(heap.managed(), formattedStack);
-					errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+		if (errorObject != 0) {
+			const bool hasLocation = (metadata.location.fileName != 0);
+			const String* fileName = (hasLocation ? metadata.location.fileName : &ANONYMOUS_SCRIPT_STRING);
+			errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(fileName), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+			if (hasLocation) {
+				errorObject->setOwnProperty(rt, Value(&LINE_NUMBER_STRING), Value(static_cast<Int32>(metadata.location.line)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+				errorObject->setOwnProperty(rt, Value(&COLUMN_NUMBER_STRING), Value(static_cast<Int32>(metadata.location.column)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+				if (hasVerbose) {
+					std::string exceptionString = exception.toString(heap)->toUTF8String();
+					const std::string stackString = buildVerboseStackString(exceptionString, metadata);
+					const String* stackValue = new(heap) String(heap.managed(), stackString);
+					errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackValue), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
 				}
 			}
-		} else if (errorObject != 0) {
-			errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(&ANONYMOUS_SCRIPT_STRING), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
 		}
 		reset();
 		if (existingException != 0) {
-			if (trace != 0 && !trace->isEmpty()) {
-				existingException->initializeMetadata(trace, throwLocation, formattedStack);
-			} else {
-				SourceLocation fallbackLocation;
-				fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
-				existingException->initializeMetadata(0, fallbackLocation, std::string());
-			}
+			existingException->setVerboseMetadata(metadata);
 			return true;
 		}
-		if (trace != 0 && !trace->isEmpty()) {
-			throw ScriptException(heap, exception, trace, throwLocation, formattedStack);
+		if (hasVerbose) {
+			throw ScriptException(heap, exception, metadata);
 		}
-		SourceLocation fallbackLocation;
-		fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
-		throw ScriptException(heap, exception, 0, fallbackLocation);
+		throw ScriptException(heap, exception);
 	}
+#else
+	(void)existingException;
+	if (firstCatcher == 0) { // FIX: what exception to throw here?
+		reset();
+	}
+#endif
 	ip = firstCatcher->ip;
 	assert(ip != 0);
 	currentFrame = firstCatcher->frame;
@@ -2709,23 +2645,9 @@ bool Processor::throwVirtualException(const Value& exception, ScriptException* e
 	popCatcher();
 	return false;
 }
-
 void Processor::throwVirtualException(const Value& exception) {
 	(void)throwVirtualException(exception, 0);
 }
-#else
-void Processor::throwVirtualException(const Value& exception) {
-	if (firstCatcher == 0) { // FIX: what exception to throw here?
-		reset();
-	}
-	ip = firstCatcher->ip;
-	assert(ip != 0);
-	currentFrame = firstCatcher->frame;
-	sp = firstCatcher->sp;
-	push(exception);
-	popCatcher();
-}
-#endif
 
 void Processor::error(ErrorType errorType, const String* message) {
 	throwVirtualException(new(heap) Error(heap.managed(), errorType, message));
@@ -3071,18 +2993,17 @@ bool Processor::run(Int32 maxCycles) {
 		try {
 			innerRun();
 		}
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		catch (ScriptException& x) {
-			if (x.getStackTrace() != 0 || x.getFileName() != 0) {
-				throw;
-			}
-			if (throwVirtualException(x.value, &x)) {
-				throw;
-			}
-	#else
-		catch (const ScriptException& x) {
+                catch (ScriptException& x) {
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+                        if (x.hasVerboseStack() || x.getFileName() != 0) {
+                                throw;
+                        }
+                        if (throwVirtualException(x.value, &x)) {
+                                throw;
+                        }
+#else
 			throwVirtualException(x.value);
-	#endif
+#endif
 		}
 	}
 	return (ip != 0);
@@ -3250,8 +3171,8 @@ struct Compiler::SemanticScope {
 };
 
 Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter)
-		: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
-		, mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
+               : super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1, this)
+               , mainSection(heap, 1, this), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
 		, nestCounter(initialNestCounter)
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		, lineScanOffset(0)
@@ -3270,22 +3191,14 @@ const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e
 
 void Compiler::error(ErrorType type, const char* message) { ScriptException::throwError(heap, type, message); }
 
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-void Compiler::CodeSection::emit(Compiler& compiler, Processor::Opcode opcode, Int32 operand) {
-#else
 void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
-#endif
 	if (inDeadCode()) {	// unknown stack depth = dead code
 		return;
 	}
 	const Processor::OpcodeInfo& opcodeInfo = Processor::getOpcodeInfo(opcode);
 	stackDepth += opcodeInfo.stackUse + (((opcodeInfo.flags & Processor::OpcodeInfo::POP_OPERAND) != 0) ? -operand : 0);
 	assert(stackDepth >= 0);
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	maxStackDepth = std::max(maxStackDepth, stackDepth);
-#else
 	maxStackDepth = std::max(maxStackDepth, stackDepth);		// Yeah, if we eliminate a (void/const/repush, pop) pair this might be one more than necessary, but it never seems to happen from emperical tests and it doesn't really matter in the first place.
-#endif
 	if ((opcodeInfo.flags & Processor::OpcodeInfo::TERMINAL) != 0) {
 		stackDepth = DEAD_CODE_STACK_DEPTH;
 	}
@@ -3298,16 +3211,14 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 			case Processor::REPUSH_OP:
 			case Processor::CONST_OP:
 			case Processor::VOID_OP: {
-			#if (NUXJS_VERBOSE_EXCEPTIONS)
 				if (!code.empty()) {
-			#endif
-				code.pop();
-			#if (NUXJS_VERBOSE_EXCEPTIONS)
+					code.pop();
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+					if (!opcodeOffsets.empty()) {
+						opcodeOffsets.pop();
+					}
+#endif
 				}
-				if (!opcodeOffsets.empty()) {
-					opcodeOffsets.pop();
-				}
-			#endif
 				lastEmitted = Processor::INVALID_OP;
 				return;
 			}
@@ -3315,13 +3226,13 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 		}
 		if (replacementOpcode != Processor::INVALID_OP) {
 			const Int32 oldOperand = Processor::unpackInstruction(code.end()[-1]).second;
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			UInt32 lastOffset = 0;
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 			if (!opcodeOffsets.empty()) {
 				lastOffset = opcodeOffsets[opcodeOffsets.size() - 1];
 				opcodeOffsets.pop();
 			}
-		#endif
+#endif
 			code.pop();
 			code.push(Processor::packInstruction(replacementOpcode, oldOperand));
 		#if (NUXJS_VERBOSE_EXCEPTIONS)
@@ -3332,7 +3243,7 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 		}
 	}
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	const UInt32 sourceOffset = compiler.recordSourceOffset();
+        const UInt32 sourceOffset = (owner != 0 ? owner->recordSourceOffset() : 0);
 #endif
 	code.push(Processor::packInstruction(opcode, operand));
 #if (NUXJS_VERBOSE_EXCEPTIONS)
@@ -3356,11 +3267,7 @@ void Compiler::emit(Processor::Opcode opcode, Int32 operand) {
 	if (operand < MIN_OPERAND_VALUE || operand > MAX_OPERAND_VALUE) { // Highly hypothetical, but correctness!
 		error(RANGE_ERROR, "Internal compiler limitations reached. Reduce code complexity.");
 	}
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	currentSection->emit(*this, opcode, operand);
-#else
-	currentSection->emit(opcode, operand);
-#endif
+        currentSection->emit(opcode, operand);
 }
 
 Compiler::CodeSection* Compiler::changeSection(CodeSection* newOutputSection) {
@@ -4363,7 +4270,7 @@ void Compiler::forStatement(SemanticScope* emptyLabelScope, SemanticScope* scope
 		exitLoopPoint = emitForwardBranch(Processor::JF_OP);
 	}
 	expectToken(";", true);
-	CodeSection incrementSection(heap, currentSection->stackDepth);
+	CodeSection incrementSection(heap, currentSection->stackDepth, this);
 	{
 		CodeSection* previousSection = changeSection(&incrementSection);
 		ExpressionResult incXR;
@@ -4458,7 +4365,7 @@ void Compiler::forOrForInStatement(SemanticScope* currentScope, SemanticScope* s
 	SemanticScope emptyLabelScope(heap, EMPTY_STRING, currentSection->stackDepth, currentScope);
 	emptyLabelScope.makeIteratorScopes(scopeLabelsEnd);
 	expectToken("(", true);
-	CodeSection initSection(heap, currentSection->stackDepth);
+	CodeSection initSection(heap, currentSection->stackDepth, this);
 	if (token("var", true)) {
 		white();
 		acceptInOperator = false;
@@ -4750,7 +4657,7 @@ void Compiler::switchStatement(SemanticScope* currentScope) {
 	expectToken("{", true);
 	const Int32 testsSectionEntryStackDepth = currentSection->stackDepth;
 	const BranchPoint testsPoint = emitForwardBranch(Processor::JMP_OP);
-	CodeSection testsSection(heap, testsSectionEntryStackDepth);
+	CodeSection testsSection(heap, testsSectionEntryStackDepth, this);
 	Vector<Int32> jumpOffsets(&heap);
 	BranchPoint defaultPoint;
 	SemanticScope emptyLabelScope(heap, EMPTY_STRING, testsSectionEntryStackDepth, currentScope);
