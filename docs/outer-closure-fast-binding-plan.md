@@ -89,11 +89,11 @@ This roadmap breaks the closure-slot work into incremental milestones. Each mile
 - Craft explicit `.io` files that exercise operand overflow, forced slow paths, and deletion semantics to keep coverage broad.
 - Run the full regression harness locally and capture logs for inclusion in the PR description to demonstrate the absence of guard regressions.
 - Add comments to the tests explaining which guard each block validates so future contributors can extend them consistently.
-- [ ] Re-run targeted benchmarks (`closure_outer_binding_bm_1.js` and any capture-heavy workloads) to measure the impact of dropping hash-based lookups, recording before/after numbers in the benchmark golden files or design notes.【F:benchmarks/closure_outer_binding_bm_1.js†L1-L26】【F:benchmarks/golden/closure_outer_binding_bm_1.txt†L1-L1】
+- [x] Re-run targeted benchmarks (`closure_outer_binding_bm_1.js` and any capture-heavy workloads) to measure the impact of dropping hash-based lookups, recording before/after numbers in the benchmark golden files or design notes.【F:benchmarks/closure_outer_binding_bm_1.js†L1-L26】【F:benchmarks/golden/closure_outer_binding_bm_1.txt†L1-L1】
 - Capture baseline numbers from the current main branch before landing operand-only closures, then repeat after the change to show the delta.
 - Document the methodology (hardware, iteration count, warm-up) alongside the numbers so results are reproducible.
 - Investigate any unexpected regressions immediately—before marking the milestone done—to ensure the fast path is delivering the intended benefit.
-- [ ] Run `timeout 180 ./build.sh`.
+- [x] Run `timeout 180 ./build.sh`.
 
 ## Milestone health check
 

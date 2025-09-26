@@ -419,6 +419,9 @@ Another pragmatic option is to build (once per activation) a small array of pare
 
 ## Performance sampling
 * Running the release interpreter on a microbenchmark that repeatedly increments a captured variable shows the closure-slot path finishing a 20 000-iteration harness in about 2 s, whereas the same workload forced through a named lookup takes roughly 7 s, demonstrating the win from bypassing hash-based scope resolution.【0106d6†L1】【204917†L1-L2】
+* A fresh 5-run benchmark sweep via `externals/PikaCmd/PikaCmd tools/benchmark.pika closure_outer_binding_bm_1 "./output/NuXJS -s"`
+  reported a 0.313 s median with peak memory between 1.60 MiB and 1.63 MiB, confirming the operand-only closures keep the
+  hot-path speedup intact on the current toolchain.【ce887a†L1-L13】
 
 ## Considerations and open questions
 * **Dynamic scope semantics.** Any solution must respect `with`, direct `eval`, and dynamically declared vars. The compiler already tracks `withScopeCounter`, and the runtime routes eval-created bindings into `dynamicVars`; both signals can be reused to disable caching where correctness would otherwise break.【F:src/NuXJS.cpp†L2010-L2104】【F:src/NuXJS.cpp†L4048-L4055】
