@@ -21,9 +21,13 @@
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **/
 
-// Legacy REPL helper tests preserved for reference.
-// These were removed from NuXJREPL.cpp in commit 1c94e96930ac393051cb76839e7fbad371db9ab4.
-// Wrapped in #if 0 to avoid interfering with normal builds.
+/**
+	Legacy REPL helper tests preserved for reference.
+	This harness mirrors the interactive disassembler so tooling changes
+	remain regression-tested even though the suite lives outside the main
+	build. The file stays under `#if 0` to avoid impacting normal builds
+	while still providing context for docs milestones.
+**/
 
 #if 0
 static int recursiveStackCheck(const Code& code, Vector<Int32>& stackDepths
@@ -264,16 +268,28 @@ double getCPUSecs() {
 const Value* constants = code.getConstants()->begin();
 const UInt32 codeSize = code.getCodeSize();
 
-std::vector<CapturedBinding> encounteredBindings;
-auto recordBinding = [&encounteredBindings](const CapturedBinding& binding) -> std::size_t {
-for (std::size_t i = 0; i < encounteredBindings.size(); ++i) {
-if (encounteredBindings[i].depth == binding.depth && encounteredBindings[i].slot == binding.slot) {
-return i;
-}
-}
-encounteredBindings.push_back(binding);
-return encounteredBindings.size() - 1;
-};
+	std::vector<Int32> encounteredOperands;
+
+	//	`OperandRecorder` mirrors the REPL functor so the legacy harness
+	//	remains byte-for-byte compatible with toolchains that predate
+	//	lambda support while still reporting stable capture indices.
+	struct OperandRecorder {
+		std::vector<Int32>& operands;
+
+		OperandRecorder(std::vector<Int32>& encountered) : operands(encountered) { }
+
+		std::size_t operator()(Int32 operand) {
+			for (std::size_t i = 0; i < operands.size(); ++i) {
+				if (operands[i] == operand) {
+					return i;
+				}
+			}
+			operands.push_back(operand);
+			return operands.size() - 1;
+		}
+	};
+
+	OperandRecorder recordOperand(encounteredOperands);
 
 Vector<Int32> stackDepths(codeSize, &heap);
 		std::fill(stackDepths.begin(), stackDepths.end(), DEAD_CODE_STACK_DEPTH);
@@ -352,15 +368,17 @@ case Processor::READ_CLOSURE_OP:
 case Processor::WRITE_CLOSURE_OP:
 case Processor::WRITE_CLOSURE_POP_OP:
 case Processor::DELETE_CLOSURE_OP: {
-const CapturedBinding binding = unpackClosureOperand(operand);
-const std::size_t bindingIndex = recordBinding(binding);
-const String* name = code.getLocalName(binding.slot);
-if (name != 0) {
-std::wcerr << L" $" << name->toWideString();
-}
-std::wcerr << L" (depth=" << binding.depth << L", slot=" << static_cast<int>(binding.slot)
-<< L", index=" << bindingIndex << L")";
-break;
+	UInt16 depth;
+	Int16 slot;
+	unpackClosureOperand(operand, depth, slot);
+	const std::size_t bindingIndex = recordOperand(operand);
+	const String* name = code.getLocalName(slot);
+	if (name != 0) {
+		std::wcerr << L" $" << name->toWideString();
+	}
+	std::wcerr << L" (depth=" << depth << L", slot=" << static_cast<int>(slot)
+		<< L", index=" << bindingIndex << L")";
+	break;
 }
 }
 				default: break;
@@ -373,24 +391,22 @@ break;
 	//	std::cerr << "\tConstants: " << code.getConstants().size() << std::endl;
 		std::cerr << "\tVars: " << code.getVarsCount() << std::endl;
 		std::cerr << "\tArguments: " << code.getArgumentsCount() << std::endl;
-		const std::size_t capturedCount = encounteredBindings.size();
+		const std::size_t capturedCount = encounteredOperands.size();
 		std::cerr << "	Captured: " << static_cast<unsigned long long>(capturedCount) << std::endl;
 		if (capturedCount != 0) {
 			std::cerr << "	Captured bindings:" << std::endl;
 			for (std::size_t i = 0; i < capturedCount; ++i) {
-				const CapturedBinding& binding = encounteredBindings[i];
-				const String* name = code.getLocalName(binding.slot);
-				std::cerr << "		#" << i << " depth=" << binding.depth << " slot=" << static_cast<int>(binding.slot);
+				UInt16 depth;
+				Int16 slot;
+				unpackClosureOperand(encounteredOperands[i], depth, slot);
+				const String* name = code.getLocalName(slot);
+				std::cerr << "		#" << i << " depth=" << depth << " slot=" << static_cast<int>(slot);
 				if (name != 0) {
 					std::wcerr << L" name=" << name->toWideString();
 				}
 				std::cerr << std::endl;
 			}
 		}
-	/* FIX :	for (const Value* p = code.constants.begin(); p != code.constants.end(); ++p) {
-			std::wcerr << "\t\t" << p.toString(heap).toWideString() << std::endl;
-		}*/
-
 		assert(errors == 0);
 	}
 

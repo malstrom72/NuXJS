@@ -19,7 +19,7 @@ Because nested functions are compiled in isolation, the bytecode for the inner f
 The remainder of this document preserves the alternative strategies we evaluated while `Code::capturedBindings` still existed.
 Those sections remain valuable for historical context, but the current implementation (milestone 2) no longer serialises
 `CapturedBinding` tables onto the `Code` object—the interpreter now derives fallback metadata entirely from closure operands and
-`Code::getLocalName`. Where the legacy text still mentions maintaining or invalidating the vector, read those statements as
+`Code::getLocalName`. The helper struct itself has since been removed; `unpackClosureOperand` writes the decoded depth/slot pair directly into caller-provided references so tooling and runtime helpers can share the same bit math without allocating temporary descriptors. Where the legacy text still mentions maintaining or invalidating the vector, read those statements as
 describing prior behaviour rather than to-do work for the modern system.
 
 ### 1. Compile-time upvalue slots
@@ -37,13 +37,13 @@ The present compiler launches a fresh `Compiler` instance for every nested funct
 
 Once `functionDefinition` copies the collected captures into the nested `Code` (mirroring how it already finalizes `argumentNames` and `varNames`), the VM no longer needs to serialize a side table of capture metadata. Each closure operand carries the `(depth, slot)` tuple directly, and runtime fallbacks recover identifier names from the existing lexical metadata on demand.【F:src/NuXJS.cpp†L3889-L3906】【F:src/NuXJS.cpp†L2550-L2596】【F:src/NuXJS.cpp†L2776-L2785】
 
-#### CapturedBinding record layout
-`CapturedBinding` now acts purely as a lightweight decoder for closure operands. Each entry stores:
+#### Closure operand decoding
+`unpackClosureOperand` decodes the packed closure operand into two primitive values:
 
 * `UInt16 depth` – how many `FunctionScope` hops to walk before dereferencing the slot.
-* `Int16 slot` – the signed index returned by `Code::lookupNameIndex`, where negative values address `var` slots via `~slot` and non-negative values index the argument tail that starts at `localsPointer`.【F:src/NuXJS.h†L817-L835】【F:src/NuXJS.cpp†L1997-L2052】
+* `Int16 slot` – the signed index returned by `Code::lookupNameIndex`, where negative values address `var` slots via `~slot` and non-negative values index the argument tail that starts at `localsPointer`.【F:src/NuXJS.h†L823-L835】【F:src/NuXJS.cpp†L2159-L2182】
 
-No extra flags are necessary on the descriptor itself. Catch parameters already poison their entry in `nameIndexes` with `CATCH_PARAMETER`, so lookups simply fail while that sentinel is active.【F:src/NuXJS.cpp†L3893-L3917】【F:src/NuXJS.cpp†L3751-L3754】【F:src/NuXJS.cpp†L4304-L4336】 `arguments` is excluded by the same fast-path check, which prevents emitting closure records for bindings that flow through `dynamicVars` instead.【F:src/NuXJS.cpp†L3850-L3858】【F:src/NuXJS.cpp†L2010-L2104】 This keeps the runtime representation identical to the layout that `FunctionScope` already expects.
+Tooling such as the REPL disassembler records the raw operand integers and calls the same helper whenever it needs human-readable output, guaranteeing a single source of truth for both bit layout and diagnostic text.【F:tools/NuXJSREPL.cpp†L220-L339】【F:tools/work/LegacyReplTests.cpp†L253-L377】 Catch parameters already poison their entry in `nameIndexes` with `CATCH_PARAMETER`, so lookups simply fail while that sentinel is active.【F:src/NuXJS.cpp†L3893-L3917】【F:src/NuXJS.cpp†L3751-L3754】【F:src/NuXJS.cpp†L4304-L4336】 `arguments` is excluded by the same fast-path check, which prevents emitting closure records for bindings that flow through `dynamicVars` instead.【F:src/NuXJS.cpp†L3850-L3858】【F:src/NuXJS.cpp†L2010-L2104】 This keeps the runtime representation identical to the layout that `FunctionScope` already expects while avoiding extra heap objects.
 
 #### Recovering identifier names when fast paths fail
 Because the compiler no longer preserves a separate vector of captured bindings, runtime fallbacks recover identifier strings directly from lexical metadata. Every activation retains its `JSFunction`, whose `code` exposes the `varNames`/`argumentNames` tables through `Code::getLocalName`, and the closure chain keeps the correct `FunctionScope` for each lexical ancestor.【F:src/NuXJS.h†L969-L990】【F:src/NuXJS.cpp†L2552-L2609】【F:src/NuXJS.cpp†L2783-L2834】 Successful fast-path resolutions are cached per activation in `Processor::Frame::resolvedClosureSlots`, so repeated reads and writes reuse the computed pointer without rewalking the ancestor chain.【F:src/NuXJS.h†L1680-L1708】【F:src/NuXJS.cpp†L2532-L2603】 When `Scope::resolveClosureOperand` declines the fast slot, the interpreter walks `binding.depth` frames, queries the ancestor `Code::getLocalName(binding.slot)`, and reuses the generic `Scope::readVar`/`writeVar` helpers. This preserves ReferenceError reporting and dynamic-scope semantics without storing duplicate name pointers on the `Code` object.【F:src/NuXJS.cpp†L2599-L2633】【F:src/NuXJS.cpp†L2835-L2853】
@@ -419,6 +419,9 @@ Another pragmatic option is to build (once per activation) a small array of pare
 
 ## Performance sampling
 * Running the release interpreter on a microbenchmark that repeatedly increments a captured variable shows the closure-slot path finishing a 20 000-iteration harness in about 2 s, whereas the same workload forced through a named lookup takes roughly 7 s, demonstrating the win from bypassing hash-based scope resolution.【0106d6†L1】【204917†L1-L2】
+* A fresh 5-run benchmark sweep via `externals/PikaCmd/PikaCmd tools/benchmark.pika closure_outer_binding_bm_1 "./output/NuXJS -s"`
+  reported a 0.313 s median with peak memory between 1.60 MiB and 1.63 MiB, confirming the operand-only closures keep the
+  hot-path speedup intact on the current toolchain.【ce887a†L1-L13】
 
 ## Considerations and open questions
 * **Dynamic scope semantics.** Any solution must respect `with`, direct `eval`, and dynamically declared vars. The compiler already tracks `withScopeCounter`, and the runtime routes eval-created bindings into `dynamicVars`; both signals can be reused to disable caching where correctness would otherwise break.【F:src/NuXJS.cpp†L2010-L2104】【F:src/NuXJS.cpp†L4048-L4055】
