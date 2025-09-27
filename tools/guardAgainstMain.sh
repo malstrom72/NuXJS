@@ -17,7 +17,7 @@ EOF
 branch=main
 macro=NUXJS_NOT_MAIN
 remove=false
-passthrough=()
+declare -a passthrough=()
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
