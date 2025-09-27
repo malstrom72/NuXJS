@@ -373,24 +373,24 @@ static double scaleAndRound(const DoubleDouble& acc, double factor) {
 	
 	const double fastResult = (acc.high + acc.low) * factor;
 	if (fastResult >= 2.2250738585072014e-308) {
-		return fastResult;												// normal result; fast path is exact here
+		return fastResult;								// normal result; fast path is exact here
 	}
 	
-	int factorExponent;													// slow path: denormal/transition region
-	frexp(factor, &factorExponent);										// assemble payload then single rounding
+	int factorExponent;									// slow path: denormal/transition region
+	frexp(factor, &factorExponent);							// assemble payload then single rounding
 	
-	const int t = factorExponent + 1073;								// guaranteed by table construction
-	assert(t >= 0);														// (no right-shift branch needed)	
-	const double bf = ldexp(acc.low, t);								// align (high, low) into the 52-bit subnormal payload scale
+	const int t = factorExponent + 1073;						// guaranteed by table construction
+	assert(t >= 0);										// (no right-shift branch needed)	
+	const double bf = ldexp(acc.low, t);						// align (high, low) into the 52-bit subnormal payload scale
 	const double bi = floor(bf);
-	const double fraction = bf - bi;									// fractional contribution
+	const double fraction = bf - bi;							// fractional contribution
 	
-	double ni = ldexp(acc.high, t) + bi;								// integer payload (exact in double)
+	double ni = ldexp(acc.high, t) + bi;						// integer payload (exact in double)
 	if (fraction > 0.5 || (fraction == 0.5 && fmod(ni, 2.0) != 0.0)) {
-		ni += 1.0;														// round to nearest, ties-to-even
+		ni += 1.0;										// round to nearest, ties-to-even
 	}
 	
-	return ldexp(ni, -1074);											// subnormal construction (or DBL_MIN when ni == 2^52)
+	return ldexp(ni, -1074);								// subnormal construction (or DBL_MIN when ni == 2^52)
 }
 
 const int QUICK_CONSTANTS_INTEGERS_RANGE = 1000;
@@ -614,8 +614,8 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 			DoubleDouble accumulator(0.0, 0.0);
 			while (p != significandEnd) {
 				if (*p != '.') {
-					accumulator = multiplyAndAdd(accumulator, magnitude, (*p - '0'));
-					magnitude = magnitude / 10;
+				accumulator = multiplyAndAdd(accumulator, magnitude, (*p - '0'));
+				magnitude = magnitude / 10;
 				}
 				++p;
 			}
@@ -670,7 +670,7 @@ class GenericWrapper : public JSObject {
 		virtual Value getInternalValue(Heap&) const { return wrapped; }
 		virtual Object* getPrototype(Runtime& rt) const {
 			return (prototypeId == Runtime::ARBITRARY_PROTOTYPE
-					? super::getPrototype(rt) : rt.getPrototypeObject(prototypeId));
+				? super::getPrototype(rt) : rt.getPrototypeObject(prototypeId));
 		}
 		void setInternalValue(const Value& v) { wrapped = v; }
 
@@ -795,7 +795,7 @@ bool Value::toArrayIndex(UInt32& index) const {
 			while (p != end && *p >= '0' && *p <= '9') {
 				const UInt32 digit = static_cast<UInt32>(*p - '0');
 				if (index > 429496729U || (index == 429496729U && digit >= 5U)) {
-					return false;
+				return false;
 				}
 				index = index * 10 + digit;
 				++p;
@@ -872,7 +872,7 @@ bool Value::isEqualTo(const Value& r) const {
 			case BOOLEAN_TYPE: return false;
 			case NUMBER_TYPE: return (r.type == BOOLEAN_TYPE && var.number == (r.var.boolean ? 1.0 : 0.0));
 			case STRING_TYPE: return (r.type >= BOOLEAN_TYPE && stringToDouble(*var.string)
-					== (r.type == BOOLEAN_TYPE ? (r.var.boolean ? 1.0 : 0.0) : r.var.number));
+				== (r.type == BOOLEAN_TYPE ? (r.var.boolean ? 1.0 : 0.0) : r.var.number));
 			default: return false;
 		}
 	}
@@ -1111,8 +1111,8 @@ std::string String::toUTF8String() const {
 		} else if (c >= 0xD800 && c <= 0xDBFF && p + 1 != end() && *(p + 1) >= 0xDC00 && *(p + 1) <= 0xDFFF) {
 			++p;
 			const UInt32 codePoint = 0x10000
-					+ ((static_cast<UInt32>(c) - 0xD800) << 10)
-					+ (static_cast<UInt32>(*p) - 0xDC00);
+				+ ((static_cast<UInt32>(c) - 0xD800) << 10)
+				+ (static_cast<UInt32>(*p) - 0xDC00);
 			s.push_back(static_cast<char>(0xF0 | (codePoint >> 18)));
 			s.push_back(static_cast<char>(0x80 | ((codePoint >> 12) & 0x3F)));
 			s.push_back(static_cast<char>(0x80 | ((codePoint >> 6) & 0x3F)));
@@ -1141,8 +1141,8 @@ std::wstring String::toWideString() const {
 			for (p = b; p != e; ++p) {
 				UInt32 c = *p;
 				if (c >= 0xD800 && c <= 0xDBFF && p + 1 != e && *(p + 1) >= 0xDC00 && *(p + 1) <= 0xDFFF) {
-					++p;
-					c = 0x10000 + ((static_cast<UInt32>(c) - 0xD800) << 10) + (static_cast<UInt32>(*p) - 0xDC00);
+				++p;
+				c = 0x10000 + ((static_cast<UInt32>(c) - 0xD800) << 10) + (static_cast<UInt32>(*p) - 0xDC00);
 				}
 				s.push_back(static_cast<std::wstring::value_type>(c));
 			}
@@ -1461,9 +1461,9 @@ void Table::gcMarkReferences(Heap& heap) const {
 			gcMark(heap, bucket.key);
 			if (bucket.valueExists()) {
 				switch (((bucket.flags & INDEX_TYPE_FLAG) != 0) ? Value::NUMBER_TYPE : bucket.type) {
-					case Value::STRING_TYPE: gcMark(heap, bucket.var.string); break;
-					case Value::OBJECT_TYPE: gcMark(heap, bucket.var.object); break;
-					default: break;
+				case Value::STRING_TYPE: gcMark(heap, bucket.var.string); break;
+				case Value::OBJECT_TYPE: gcMark(heap, bucket.var.object); break;
+				default: break;
 				}
 				++rebuildLoadCount;
 			}
@@ -1597,9 +1597,9 @@ Code::Code(GCList& gcList, Constants* sharedConstants)
 : super(gcList), codeWords(0, &gcList.getHeap())
 , constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
 , nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
-, selfName(0), source(0), bloomSet(0), maxStackDepth(0), closureOperandDiagnostics(&gcList.getHeap())
+, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
 {
-assert(constants != 0);
+	assert(constants != 0);
 }
 
 bool Code::lookupNameIndex(const String* name, Int32& index) const {
@@ -1609,10 +1609,6 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
         }
         index = bucket->getIndexValue();
         return true;
-}
-
-void Code::recordClosureOperandDiagnostic(const ClosureOperandDiagnostic& diagnostic) {
-	closureOperandDiagnostics.push(diagnostic);
 }
 
 /* --- Function --- */
@@ -1733,10 +1729,10 @@ bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 				UInt32 moveIndex = index + 1;
 				denseVector.push(v);
 				while ((bucket = completeObject->lookup(String::fromInt(heap, moveIndex))) != 0
-						&& bucket->hasStandardFlags()) {
-					denseVector.push(bucket->getValue());
-					completeObject->erase(bucket);
-					++moveIndex;
+				&& bucket->hasStandardFlags()) {
+				denseVector.push(bucket->getValue());
+				completeObject->erase(bucket);
+				++moveIndex;
 				}
 			}
 		}
@@ -2016,7 +2012,7 @@ void Scope::makeClosure() const {
 FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, const Value* argv)
 		: super(gcList, function->closure), function(function), passedArgumentsCount(argc)
 		, locals(function->code->calcLocalsSize(argc), &gcList.getHeap()), dynamicVars(0)
-		, arguments(0), bloomSet(function->code->bloomSet), parentFunctionScope(0) {
+		, arguments(0), bloomSet(function->code->bloomSet), parentFunctionScope(0), dynamicScopeUsed(false) {
 	parentFunctionScope = (parentScope != 0 ? parentScope->nearestFunctionScope() : 0);
 	const Code* code = function->code;
 	localsPointer = locals.begin() + code->getVarsCount();
@@ -2205,7 +2201,7 @@ const Int32 MAX_OPERAND_VALUE = (1 << 23) - 1;
 
 // This list must be in enum order
 const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
-	{ CONST_OP					 , "CONST"					 , +1	  , 0 },
+	{ CONST_OP				 , "CONST"				 , +1	  , 0 },
 	{ READ_LOCAL_OP				 , "READ_LOCAL"				 , +1	  , 0 },
 	{ WRITE_LOCAL_OP			 , "WRITE_LOCAL"			 , 0	  , 0 },
 	{ WRITE_LOCAL_POP_OP		 , "WRITE_LOCAL_POP"		 , -1	  , 0 },
@@ -2225,56 +2221,56 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ OBJ_TO_PRIMITIVE_OP		 , "OBJ_TO_PRIMITIVE"		 , 0	  , 0 },
 	{ OBJ_TO_NUMBER_OP			 , "OBJ_TO_NUMBER"			 , 0	  , 0 },
 	{ OBJ_TO_STRING_OP			 , "OBJ_TO_STRING"			 , 0	  , 0 },
-	{ PRE_EQ_OP					 , "PRE_EQ"					 , 0	  , 0 },
-	{ INC_OP					 , "INC"					 , 0	  , 0 },
-	{ DEC_OP					 , "DEC"					 , 0	  , 0 },
-	{ ADD_OP					 , "ADD"					 , -1	  , 0 },
-	{ SUB_OP					 , "SUB"					 , -1	  , 0 },
-	{ MUL_OP					 , "MUL"					 , -1	  , 0 },
-	{ DIV_OP					 , "DIV"					 , -1	  , 0 },
-	{ MOD_OP					 , "MOD"					 , -1	  , 0 },
-	{ OR_OP						 , "OR"						 , -1	  , 0 },
-	{ XOR_OP					 , "XOR"					 , -1	  , 0 },
-	{ AND_OP					 , "AND"					 , -1	  , 0 },
-	{ SHL_OP					 , "SHL"					 , -1	  , 0 },
-	{ SHR_OP					 , "SHR"					 , -1	  , 0 },
-	{ USHR_OP					 , "USHR"					 , -1	  , 0 },
-	{ PLUS_OP					 , "PLUS"					 , 0	  , 0 },
-	{ MINUS_OP					 , "MINUS"					 , 0	  , 0 },
-	{ INV_OP					 , "INV"					 , 0	  , 0 },
-	{ NOT_OP					 , "NOT"					 , 0	  , 0 },
-	{ X_EQ_OP					 , "X_EQ"					 , -1	  , 0 },
-	{ X_NEQ_OP					 , "X_NEQ"					 , -1	  , 0 },
-	{ EQ_OP						 , "EQ"						 , -1	  , 0 },
-	{ NEQ_OP					 , "NEQ"					 , -1	  , 0 },
-	{ LT_OP						 , "LT"						 , -1	  , 0 },
-	{ LEQ_OP					 , "LEQ"					 , -1	  , 0 },
-	{ GT_OP						 , "GT"						 , -1	  , 0 },
-	{ GEQ_OP					 , "GEQ"					 , -1	  , 0 },
-	{ JMP_OP					 , "JMP"					 , 0	  , OpcodeInfo::TERMINAL },
-	{ JSR_OP					 , "JSR"					 , 0	  , 0 },
-	{ JT_OP						 , "JT"						 , -1	  , 0 },
-	{ JF_OP						 , "JF"						 , -1	  , 0 },
+	{ PRE_EQ_OP				 , "PRE_EQ"				 , 0	  , 0 },
+	{ INC_OP				 , "INC"				 , 0	  , 0 },
+	{ DEC_OP				 , "DEC"				 , 0	  , 0 },
+	{ ADD_OP				 , "ADD"				 , -1	  , 0 },
+	{ SUB_OP				 , "SUB"				 , -1	  , 0 },
+	{ MUL_OP				 , "MUL"				 , -1	  , 0 },
+	{ DIV_OP				 , "DIV"				 , -1	  , 0 },
+	{ MOD_OP				 , "MOD"				 , -1	  , 0 },
+	{ OR_OP				 , "OR"				 , -1	  , 0 },
+	{ XOR_OP				 , "XOR"				 , -1	  , 0 },
+	{ AND_OP				 , "AND"				 , -1	  , 0 },
+	{ SHL_OP				 , "SHL"				 , -1	  , 0 },
+	{ SHR_OP				 , "SHR"				 , -1	  , 0 },
+	{ USHR_OP				 , "USHR"				 , -1	  , 0 },
+	{ PLUS_OP				 , "PLUS"				 , 0	  , 0 },
+	{ MINUS_OP				 , "MINUS"				 , 0	  , 0 },
+	{ INV_OP				 , "INV"				 , 0	  , 0 },
+	{ NOT_OP				 , "NOT"				 , 0	  , 0 },
+	{ X_EQ_OP				 , "X_EQ"				 , -1	  , 0 },
+	{ X_NEQ_OP				 , "X_NEQ"				 , -1	  , 0 },
+	{ EQ_OP				 , "EQ"				 , -1	  , 0 },
+	{ NEQ_OP				 , "NEQ"				 , -1	  , 0 },
+	{ LT_OP				 , "LT"				 , -1	  , 0 },
+	{ LEQ_OP				 , "LEQ"				 , -1	  , 0 },
+	{ GT_OP				 , "GT"				 , -1	  , 0 },
+	{ GEQ_OP				 , "GEQ"				 , -1	  , 0 },
+	{ JMP_OP				 , "JMP"				 , 0	  , OpcodeInfo::TERMINAL },
+	{ JSR_OP				 , "JSR"				 , 0	  , 0 },
+	{ JT_OP				 , "JT"				 , -1	  , 0 },
+	{ JF_OP				 , "JF"				 , -1	  , 0 },
 	{ JT_OR_POP_OP				 , "JT_OR_POP"				 , -1	  , OpcodeInfo::NO_POP_ON_BRANCH },
 	{ JF_OR_POP_OP				 , "JF_OR_POP"				 , -1	  , OpcodeInfo::NO_POP_ON_BRANCH },
-	{ POP_OP					 , "POP"					 , 0	  , OpcodeInfo::POP_OPERAND },
+	{ POP_OP				 , "POP"				 , 0	  , OpcodeInfo::POP_OPERAND },
 	{ PUSH_BACK_OP				 , "PUSH_BACK"				 , 0	  , OpcodeInfo::POP_OPERAND },
-	{ REPUSH_OP					 , "REPUSH"					 , 1	  , 0 },
-	{ SWAP_OP					 , "SWAP"					 , 0	  , 0 },
+	{ REPUSH_OP				 , "REPUSH"				 , 1	  , 0 },
+	{ SWAP_OP				 , "SWAP"				 , 0	  , 0 },
 	{ REPUSH_2_OP				 , "REPUSH_2"				 , +2	  , 0 },
 	{ POST_SHUFFLE_OP			 , "POST_SHUFFLE"			 , +1	  , 0 },
-	{ CALL_OP					 , "CALL"					 , 0	  , OpcodeInfo::POP_OPERAND },
+	{ CALL_OP				 , "CALL"				 , 0	  , OpcodeInfo::POP_OPERAND },
 	{ CALL_METHOD_OP			 , "CALL_METHOD"			 , -1	  , OpcodeInfo::POP_OPERAND },
 	{ CALL_EVAL_OP				 , "CALL_EVAL"				 , 0	  , OpcodeInfo::POP_OPERAND },
-	{ NEW_OP					 , "NEW"					 , +1	  , OpcodeInfo::POP_OPERAND },
+	{ NEW_OP				 , "NEW"				 , +1	  , OpcodeInfo::POP_OPERAND },
 	{ NEW_RESULT_OP				 , "NEW_RESULT"				 , -1	  , 0 },
 	{ NEW_OBJECT_OP				 , "NEW_OBJECT"				 , +1	  , 0 },
 	{ NEW_ARRAY_OP				 , "NEW_ARRAY"				 , +1	  , 0 },
 	{ NEW_REG_EXP_OP			 , "NEW_REG_EXP"			 , -1	  , 0 },
-	{ RETURN_OP					 , "RETURN"					 , -1	  , OpcodeInfo::TERMINAL },
-	{ THIS_OP					 , "THIS"					 , +1	  , 0 },
-	{ VOID_OP					 , "VOID"					 , +1	  , 0 },
-	{ DELETE_OP					 , "DELETE"					 , -1	  , 0 },
+	{ RETURN_OP				 , "RETURN"				 , -1	  , OpcodeInfo::TERMINAL },
+	{ THIS_OP				 , "THIS"				 , +1	  , 0 },
+	{ VOID_OP				 , "VOID"				 , +1	  , 0 },
+	{ DELETE_OP				 , "DELETE"				 , -1	  , 0 },
 	{ DELETE_NAMED_OP			 , "DELETE_NAMED"			 , 1	  , 0 },
 	{ DELETE_CLOSURE_OP		 , "DELETE_CLOSURE"		 , 1	  , OpcodeInfo::CLOSURE_OPERAND },
 	{ GEN_FUNC_OP				 , "GEN_FUNC"				 , +1	  , 0 },
@@ -2282,12 +2278,12 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ CATCH_SCOPE_OP			 , "CATCH_SCOPE"			 , -1	  , 0 },
 	{ WITH_SCOPE_OP				 , "WITH_SCOPE"				 , -1	  , 0 },
 	{ POP_FRAME_OP				 , "POP_FRAME"				 , 0	  , 0 },
-	{ TRY_OP					 , "TRY"					 , 0	  , OpcodeInfo::NO_POP_ON_BRANCH },
-	{ TRIED_OP					 , "TRIED"					 , 0	  , 0 },
-	{ THROW_OP					 , "THROW"					 , -1	  , OpcodeInfo::TERMINAL },
-	{ IN_OP						 , "IN"						 , -1	  , 0 },
+	{ TRY_OP				 , "TRY"				 , 0	  , OpcodeInfo::NO_POP_ON_BRANCH },
+	{ TRIED_OP				 , "TRIED"				 , 0	  , 0 },
+	{ THROW_OP				 , "THROW"				 , -1	  , OpcodeInfo::TERMINAL },
+	{ IN_OP				 , "IN"				 , -1	  , 0 },
 	{ INSTANCE_OF_OP			 , "INSTANCE_OF"			 , -1	  , 0 },
-	{ TYPEOF_OP					 , "TYPEOF"					 , 0	  , 0 },
+	{ TYPEOF_OP				 , "TYPEOF"				 , 0	  , 0 },
 	{ TYPEOF_NAMED_OP			 , "TYPEOF_NAMED"			 , 1	  , 0 },
 	{ GET_ENUMERATOR_OP			 , "GET_ENUMERATOR"			 , 0	  , 0 },
 	{ NEXT_PROPERTY_OP			 , "NEXT_PROPERTY"			 , 0	  , OpcodeInfo::POP_ON_BRANCH }
@@ -2372,7 +2368,7 @@ struct Processor::WithScope : public Scope {
 			const Flags flags = o->getOwnProperty(rt, key, &dummy);
 			if (flags != NONEXISTENT) {
 				if ((flags & READ_ONLY_FLAG) == 0) {
-					withObject->setOwnProperty(rt, key, v);
+				withObject->setOwnProperty(rt, key, v);
 				}
 				return;
 			}
@@ -2431,8 +2427,11 @@ void Processor::enterGlobalCode(const Code* code) {
 	enter(code, rt.getGlobalScope(), rt.getGlobalObject());
 }
 
+static void markDynamicScopeUsage(Scope* scope);
+
 void Processor::enterEvalCode(const Code* code, bool local) {
 	if (local && currentFrame != 0) {
+		markDynamicScopeUsage(currentFrame->scope);
 		enter(code, new(heap) Processor::EvalScope(heap.managed(), currentFrame->scope), currentFrame->thisObject);
 	} else {
 		enter(code, new(heap) Processor::EvalScope(heap.managed(), rt.getGlobalScope()), rt.getGlobalObject());
@@ -2550,37 +2549,36 @@ static const String* lookupClosureFallbackName(Scope* scope, UInt16 depth, Int16
 	return (currentCode != 0 ? currentCode->getLocalName(slotIndex) : 0);
 }
 
-Processor::Frame::ResolvedClosureSlot* Processor::findCachedClosureSlot(Frame* frame, Int32 operand, Scope* guardScope) {
-	if (frame == 0) {
-		return 0;
-	}
-	Vector<Frame::ResolvedClosureSlot>& cachedSlots = frame->resolvedClosureSlots;
-	for (size_t i = 0; i < cachedSlots.size(); ++i) {
-		Frame::ResolvedClosureSlot& cached = cachedSlots[i];
-		if (cached.operand == operand && cached.guardScope == guardScope && cached.pointer != 0) {
-			return &cached;
-		}
-	}
-	return 0;
-}
-
-void Processor::cacheClosureSlot(Frame* frame, Int32 operand, Scope* guardScope, FunctionScope* ownerScope
-		, Int16 slotIndex, Value* pointer) {
-	if (frame == 0) {
+static void markDynamicScopeUsage(Scope* scope) {
+	if (scope == 0) {
 		return;
 	}
-	Vector<Frame::ResolvedClosureSlot>& cachedSlots = frame->resolvedClosureSlots;
-	for (size_t i = 0; i < cachedSlots.size(); ++i) {
-		Frame::ResolvedClosureSlot& cached = cachedSlots[i];
-		if (cached.operand == operand && cached.guardScope == guardScope) {
-			cached.owner = ownerScope;
-			cached.slot = slotIndex;
-			cached.pointer = pointer;
-			return;
-		}
+	FunctionScope* functionScope = scope->nearestFunctionScope();
+	if (functionScope != 0) {
+		functionScope->markDynamicScopeUsage();
 	}
-	cachedSlots.push(Frame::ResolvedClosureSlot(operand, guardScope, ownerScope, slotIndex, pointer));
 }
+
+static bool hasDynamicScopeBarrier(Scope* scope, FunctionScope* owner) {
+	FunctionScope* walker = scope->nearestFunctionScope();
+	bool isCurrentFunction = true;
+	while (walker != 0) {
+		if (walker->hasDynamicScopeUsage()) {
+			if (!isCurrentFunction || walker == owner) {
+				return true;
+			}
+		}
+		if (walker == owner) {
+			break;
+		}
+		walker = walker->getParentFunctionScope();
+		isCurrentFunction = false;
+	}
+	return false;
+}
+
+
+
 void Processor::innerRun() {
 	assert(currentFrame != 0);	// you must enter something first
 	Scope* scope = currentFrame->scope;
@@ -2604,77 +2602,52 @@ void Processor::innerRun() {
 			case READ_NAMED_OP: {
 				const String* name = constants[im].getString();
 				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
-					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
-					return;
+				error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+				return;
 				}
 			}
 			break;
 			
 			case READ_CLOSURE_OP: {
-				UInt16 depth;
-				Int16 slotIndex;
-				unpackClosureOperand(im, depth, slotIndex);
-				bool cacheHit = false;
-				Value* slot = 0;
-				FunctionScope* owner = 0;
-				Processor::Frame::ResolvedClosureSlot* cached = Processor::findCachedClosureSlot(currentFrame, im, scope);
-				if (cached != 0) {
-					slot = cached->pointer;
-					owner = cached->owner;
-					cacheHit = true;
-				} else if (scope->resolveClosureOperand(depth, slotIndex, slot, owner)) {
-					assert(slot != 0);
-					Processor::cacheClosureSlot(currentFrame, im, scope, owner, slotIndex, slot);
-				}
-				if (slot != 0) {
-					rt.recordClosureFastPath();
-					if (!cacheHit) {
-						rt.recordClosureCacheMiss();
-					}
-					++sp;
-					*sp = *slot;
-				} else {
+					UInt16 depth;
+					Int16 slotIndex;
+					unpackClosureOperand(im, depth, slotIndex);
+					Value* slot = 0;
+					FunctionScope* owner = 0;
+					const bool resolved = scope->resolveClosureOperand(depth, slotIndex, slot, owner);
+					const bool dynamicGuard = hasDynamicScopeBarrier(scope, owner);
+					if (resolved && slot != 0 && owner != 0 && !dynamicGuard) {
+						++sp;
+						*sp = *slot;
+					} else {
 					const String* name = lookupClosureFallbackName(scope, depth, slotIndex, code);
 					assert(name != 0);
-					rt.recordClosureSlowFallback();
 					++sp;
 					if (scope->readVar(rt, name, sp) == NONEXISTENT) {
-						error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
-						return;
+						Heap& heap = rt.getHeap();
+							error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+							return;
+						}
 					}
-				}
 			}
 			break;
 
-			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
-			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
+			case WRITE_NAMED_OP:			scope->writeVar(rt, constants[im].getString(), sp[0]); break;
+			case WRITE_NAMED_POP_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
 
 			case WRITE_CLOSURE_OP: {
 				UInt16 depth;
 				Int16 slotIndex;
 				unpackClosureOperand(im, depth, slotIndex);
-				bool cacheHit = false;
 				Value* slot = 0;
 				FunctionScope* owner = 0;
-				Processor::Frame::ResolvedClosureSlot* cached = Processor::findCachedClosureSlot(currentFrame, im, scope);
-				if (cached != 0) {
-					slot = cached->pointer;
-					owner = cached->owner;
-					cacheHit = true;
-				} else if (scope->resolveClosureOperand(depth, slotIndex, slot, owner)) {
-					assert(slot != 0);
-					Processor::cacheClosureSlot(currentFrame, im, scope, owner, slotIndex, slot);
-				}
-				if (slot != 0) {
-					rt.recordClosureFastPath();
-					if (!cacheHit) {
-						rt.recordClosureCacheMiss();
-					}
+				const bool resolved = scope->resolveClosureOperand(depth, slotIndex, slot, owner);
+				const bool dynamicGuard = hasDynamicScopeBarrier(scope, owner);
+				if (resolved && slot != 0 && owner != 0 && !dynamicGuard) {
 					*slot = sp[0];
 				} else {
 					const String* name = lookupClosureFallbackName(scope, depth, slotIndex, code);
 					assert(name != 0);
-					rt.recordClosureSlowFallback();
 					scope->writeVar(rt, name, sp[0]);
 				}
 			}
@@ -2684,28 +2657,15 @@ void Processor::innerRun() {
 				UInt16 depth;
 				Int16 slotIndex;
 				unpackClosureOperand(im, depth, slotIndex);
-				bool cacheHit = false;
 				Value* slot = 0;
 				FunctionScope* owner = 0;
-				Processor::Frame::ResolvedClosureSlot* cached = Processor::findCachedClosureSlot(currentFrame, im, scope);
-				if (cached != 0) {
-					slot = cached->pointer;
-					owner = cached->owner;
-					cacheHit = true;
-				} else if (scope->resolveClosureOperand(depth, slotIndex, slot, owner)) {
-					assert(slot != 0);
-					Processor::cacheClosureSlot(currentFrame, im, scope, owner, slotIndex, slot);
-				}
-				if (slot != 0) {
-					rt.recordClosureFastPath();
-					if (!cacheHit) {
-						rt.recordClosureCacheMiss();
-					}
+				const bool resolved = scope->resolveClosureOperand(depth, slotIndex, slot, owner);
+				const bool dynamicGuard = hasDynamicScopeBarrier(scope, owner);
+				if (resolved && slot != 0 && owner != 0 && !dynamicGuard) {
 					*slot = sp[0];
 				} else {
 					const String* name = lookupClosureFallbackName(scope, depth, slotIndex, code);
 					assert(name != 0);
-					rt.recordClosureSlowFallback();
 					scope->writeVar(rt, name, sp[0]);
 				}
 				pop(1);
@@ -2716,36 +2676,24 @@ void Processor::innerRun() {
 				UInt16 depth;
 				Int16 slotIndex;
 				unpackClosureOperand(im, depth, slotIndex);
-				bool cacheHit = false;
 				Value* slot = 0;
 				FunctionScope* owner = 0;
-				Processor::Frame::ResolvedClosureSlot* cached = Processor::findCachedClosureSlot(currentFrame, im, scope);
-				if (cached != 0) {
-					slot = cached->pointer;
-					owner = cached->owner;
-					cacheHit = true;
-				} else if (scope->resolveClosureOperand(depth, slotIndex, slot, owner)) {
-					assert(slot != 0);
-					Processor::cacheClosureSlot(currentFrame, im, scope, owner, slotIndex, slot);
-				}
-				if (slot != 0) {
-					rt.recordClosureFastPath();
-					if (!cacheHit) {
-						rt.recordClosureCacheMiss();
-					}
+				const bool resolved = scope->resolveClosureOperand(depth, slotIndex, slot, owner);
+				const bool dynamicGuard = hasDynamicScopeBarrier(scope, owner);
+				if (resolved && slot != 0 && owner != 0 && !dynamicGuard) {
 					push(false);
 				} else {
 					const String* name = lookupClosureFallbackName(scope, depth, slotIndex, code);
 					assert(name != 0);
-					rt.recordClosureSlowFallback();
 					push(scope->deleteVar(rt, name));
 				}
 			}
 			break;
+
 			case CHECK_OBJECT_COERCIBLE_OP: {
 				if (sp[0].isUndefined() || sp[0].isNull()) {
-					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
-					return;
+				error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
+				return;
 				}
 				break;
 			}
@@ -2753,10 +2701,10 @@ void Processor::innerRun() {
 			case GET_PROPERTY_OP: {
 				const Object* o = convertToObject(sp[-1], false);
 				if (o == 0) {
-					return;
+				return;
 				}
 				if (o->getProperty(rt, sp[0], sp - 1) == NONEXISTENT) {
-					sp[-1] = UNDEFINED_VALUE;
+				sp[-1] = UNDEFINED_VALUE;
 				}
 				pop(1);
 				break;
@@ -2779,8 +2727,8 @@ void Processor::innerRun() {
 
 			case CHECK_RESOLVE_PROPERTY_OP: {
 				if (sp[-1].isUndefined() || sp[-1].isNull()) {
-					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
-					return;
+				error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
+				return;
 				}
 				sp[-1] = convertToObject(sp[-1], false);
 				break;
@@ -2791,9 +2739,9 @@ void Processor::innerRun() {
 			case OBJ_TO_STRING_OP: {
 				const Object* o = sp[0].asObject();
 				if (o != 0) {
-					assert(0 <= opcode - OBJ_TO_PRIMITIVE_OP && opcode - OBJ_TO_PRIMITIVE_OP < 3);
-					invokeFunction(rt.toPrimitiveFunctions[opcode - OBJ_TO_PRIMITIVE_OP], 0, 1);
-					return;
+				assert(0 <= opcode - OBJ_TO_PRIMITIVE_OP && opcode - OBJ_TO_PRIMITIVE_OP < 3);
+				invokeFunction(rt.toPrimitiveFunctions[opcode - OBJ_TO_PRIMITIVE_OP], 0, 1);
+				return;
 				}
 				break;
 			}
@@ -2801,13 +2749,13 @@ void Processor::innerRun() {
 			case PRE_EQ_OP: {
 				// FIX : doesn't feel totally efficient this...
 				if (sp[-1].isObject() != sp[0].isObject()) {
-					if (sp[-1].isObject()) {
-						std::swap(sp[-1], sp[0]);
-					}
-					if (sp[-1].isString() || sp[-1].isNumber() || sp[-1].isBoolean()) {
-						invokeFunction(rt.toPrimitiveFunctions[OBJ_TO_PRIMITIVE_OP - OBJ_TO_PRIMITIVE_OP], 0, 1);
-						return;
-					}
+				if (sp[-1].isObject()) {
+				std::swap(sp[-1], sp[0]);
+				}
+				if (sp[-1].isString() || sp[-1].isNumber() || sp[-1].isBoolean()) {
+				invokeFunction(rt.toPrimitiveFunctions[OBJ_TO_PRIMITIVE_OP - OBJ_TO_PRIMITIVE_OP], 0, 1);
+				return;
+				}
 				}
 				break;
 			}
@@ -2861,7 +2809,7 @@ void Processor::innerRun() {
 			case CALL_OP: {
 				Function* const f = asFunction(sp[-im]);
 				if (f != 0) {
-					invokeFunction(f, im, im);
+				invokeFunction(f, im, im);
 				}
 				return;
 			}
@@ -2869,25 +2817,28 @@ void Processor::innerRun() {
 			case CALL_METHOD_OP: {
 				Object* const o = convertToObject(sp[-im - 1], true);
 				if (o != 0) {
-					Value v(UNDEFINED_VALUE);
-					Function* f;
-					const Value& name = sp[-im];
-					if (o->getProperty(rt, name, &v) == NONEXISTENT || (f = v.asFunction()) == 0) {
-						error(TYPE_ERROR, new(heap) String(heap.managed(), *name.toString(heap), IS_NOT_A_FUNCTION_STRING));
-					} else {
-						invokeFunction(f, im + 1, im, o);
-					}
+				Value v(UNDEFINED_VALUE);
+				Function* f;
+				const Value& name = sp[-im];
+				if (o->getProperty(rt, name, &v) == NONEXISTENT || (f = v.asFunction()) == 0) {
+				error(TYPE_ERROR, new(heap) String(heap.managed(), *name.toString(heap), IS_NOT_A_FUNCTION_STRING));
+				} else {
+				invokeFunction(f, im + 1, im, o);
+				}
 				}
 				return;
 			}
 			
-			case CALL_EVAL_OP: {
-				Function* f = asFunction(sp[-im]);
-				if (f != 0) {
-					invokeFunction((f == rt.evalFunction ? &DIRECT_EVAL_FUNCTION : f), im, im);
-				}
-				return;
-			}
+                        case CALL_EVAL_OP: {
+                                Function* f = asFunction(sp[-im]);
+                                if (f != 0) {
+                                        if (f == rt.evalFunction) {
+                                                markDynamicScopeUsage(scope);
+                                        }
+                                        invokeFunction((f == rt.evalFunction ? &DIRECT_EVAL_FUNCTION : f), im, im);
+                                }
+                                return;
+                        }
 
 			case NEW_OP: newOperation(im); return;
 			case NEW_RESULT_OP: pop2push1(sp[0].isObject() ? sp[0] : sp[-1]); break;
@@ -2927,27 +2878,30 @@ void Processor::innerRun() {
 			case DELETE_OP: {
 				Object* o = convertToObject(sp[-1], true);
 				if (o == 0) {
-					return;
+				return;
 				}
 				pop2push1(o->deleteOwnProperty(rt, sp[0]));
 				break;
 			}
 			
-			case CATCH_SCOPE_OP: {
-				pushFrame(code, new(heap) CatchScope(heap.managed(), scope, constants[im].getString(), sp[0]), thisObject);
-				pop(1);
-				return;
-			}
+                        case CATCH_SCOPE_OP: {
+                                markDynamicScopeUsage(scope);
+                                pushFrame(code, new(heap) CatchScope(heap.managed(), scope, constants[im].getString(), sp[0]), thisObject);
+                                pop(1);
+                                return;
+                        }
 			
-			case WITH_SCOPE_OP: {
-				Object* o = convertToObject(sp[0], false);
-				if (o != 0) {
-				pushFrame(code, new(heap) WithScope(heap.managed(), scope, o), thisObject);
-					pop(1);
-				}
-				return;
-			}
-			
+                        case WITH_SCOPE_OP: {
+                                Object* o = convertToObject(sp[0], false);
+                                if (o != 0) {
+                                        markDynamicScopeUsage(scope);
+                                        pushFrame(code, new(heap) WithScope(heap.managed(), scope, o), thisObject);
+                                        pop(1);
+                                        return;
+                                }
+                                break;
+                        }
+
 			case POP_FRAME_OP: popFrame(); return;
 			case TRY_OP: firstCatcher = new(heap) Catcher(heap.managed(), ip + im, sp, currentFrame, firstCatcher); break;
 			case TRIED_OP: popCatcher(); break;
@@ -2956,8 +2910,8 @@ void Processor::innerRun() {
 			case IN_OP: {
 				const Object* o = sp[0].asObject();
 				if (o == 0) {
-					error(TYPE_ERROR, new(heap) String(heap.managed(), CANNOT_USE_IN_OPERATOR_STRING, *sp[0].toString(heap)));
-					return;
+				error(TYPE_ERROR, new(heap) String(heap.managed(), CANNOT_USE_IN_OPERATOR_STRING, *sp[0].toString(heap)));
+				return;
 				}
 				Value dummy;
 				sp[-1] = (o->getProperty(rt, sp[-1], &dummy) != NONEXISTENT);
@@ -2967,7 +2921,7 @@ void Processor::innerRun() {
 			case INSTANCE_OF_OP: {
 				Function* f = asFunction(sp[0]);
 				if (f == 0) {
-					return;
+				return;
 				}
 				sp[-1] = (f->hasInstance(rt, sp[-1].asObject()));
 				pop(1);
@@ -2984,7 +2938,7 @@ void Processor::innerRun() {
 			case GET_ENUMERATOR_OP: {
 				const Object* o = convertToObject(sp[0], false);
 				if (o == 0) {
-					return;
+				return;
 				}
 				sp[0] = o->getPropertyEnumerator(rt);
 				break;
@@ -2995,10 +2949,10 @@ void Processor::innerRun() {
 				assert(dynamic_cast<Enumerator*>(o) != 0);
 				const String* name = reinterpret_cast<Enumerator*>(o)->nextPropertyName();
 				if (name != 0) {
-					sp[0] = name;
+				sp[0] = name;
 				} else {
-					ip += im;
-					pop(1);
+				ip += im;
+				pop(1);
 				}
 				break;
 			}
@@ -3186,7 +3140,7 @@ struct Compiler::SemanticScope {
 	}
 	
 	Type type;
-	const String label;					// empty for automatic while, for, case labels
+	const String label;				// empty for automatic while, for, case labels
 	SemanticScope* const next;
 	Int32 stackDepthOnEntry;
 	Vector<BranchPoint> breaks;			// source points for break jmp's
@@ -3343,18 +3297,18 @@ void Compiler::white() {
 		switch (*p) {
 			case ' ': case '\f': case '\n': case '\r': case '\t': case '\v': case 0xA0: case 0x2028: case 0x2029: ++p; break;
 			case '/':	if (p + 1 != e && p[1] == '/') {
-							p = std::find_first_of(p += 2, e, LINE_TERMINATORS, LINE_TERMINATORS + 4);
-							break;
-						} else if (p + 1 != e && p[1] == '*') {
-							static const Char END_CHARS[] = { '*', '/' };
-							p += 2;
-							p = std::search(p, e, END_CHARS, END_CHARS + 2);
-							if (eof()) {
-								error(SYNTAX_ERROR, "Missing */");
-							}
-							p += 2;
-							break;
-						}
+					p = std::find_first_of(p += 2, e, LINE_TERMINATORS, LINE_TERMINATORS + 4);
+					break;
+				} else if (p + 1 != e && p[1] == '*') {
+					static const Char END_CHARS[] = { '*', '/' };
+					p += 2;
+					p = std::search(p, e, END_CHARS, END_CHARS + 2);
+					if (eof()) {
+						error(SYNTAX_ERROR, "Missing */");
+					}
+					p += 2;
+					break;
+				}
 			default:	return;
 		}
 	}
@@ -3467,7 +3421,7 @@ Char* Compiler::unescape(Char* buffer, const Char* e) {
 			} else if (*p == 'x' || *p == 'u') {
 				const int n = (*p == 'x' ? 2 : 4);
 				if (e - (p + 1) < n || parseHex(p + 1, p + 1 + n, l) != p + 1 + n) {
-					error(SYNTAX_ERROR, "Invalid escape sequence");
+				error(SYNTAX_ERROR, "Invalid escape sequence");
 				}
 				p += n;
 			} else if (isLineTerminator(*p)) {
@@ -3596,18 +3550,18 @@ Value Compiler::stringOrNumberConstant() {
 		switch (*p) {
 			case '0': {
 				if (p + 1 == e || (p[1] != '.' && !testUnicodeChar(p[1], IDENTIFIER_START_OFFSETS))) {
-					++p;
-					return 0;
+				++p;
+				return 0;
 				} else if (p[1] == 'x' || p[1] == 'X') {
-					UInt32 u;
-					const Char* q = parseHex(p + 2, e, u);
-					if (q != p + 2) {
-						p = q;
-						return u;
-					}
-					break;
+				UInt32 u;
+				const Char* q = parseHex(p + 2, e, u);
+				if (q != p + 2) {
+				p = q;
+				return u;
+				}
+				break;
 				} else if (p[1] != '.' && p[1] != 'e' && p[1] != 'E') {
-					break;
+				break;
 				}
 				/* fall through */
 			}
@@ -3615,8 +3569,8 @@ Value Compiler::stringOrNumberConstant() {
 				double d;
 				const Char* q = parseDouble(p, e, d);
 				if (q != p && (q == e || !testUnicodeChar(*q, IDENTIFIER_START_OFFSETS))) {
-					p = q;
-					return d;
+				p = q;
+				return d;
 				}
 				break;
 			}
@@ -3831,7 +3785,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			
 		case BINARY: {
 			const Processor::Opcode primitiveOp = (op.vmOp == Processor::ADD_OP
-					? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
+				? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
 			makeRValue(xr, op.primitiveInput, primitiveOp);
 			makeRValue(operand(op), op.primitiveInput, primitiveOp);
 			emit(op.vmOp);
@@ -3928,9 +3882,6 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			if ((xr.t == ExpressionResult::NAMED || xr.t == ExpressionResult::CLOSURE) && xr.v.equalsString(EVAL_STRING)) {
 				callOp = Processor::CALL_EVAL_OP;
 			}
-			if (callOp == Processor::CALL_EVAL_OP) {
-				allowClosureSlots = false;
-			}
 			if (xr.t == ExpressionResult::PROPERTY) {
 				callOp = Processor::CALL_METHOD_OP;
 			} else {
@@ -3962,7 +3913,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			assert(op.primitiveInput);
 			assert(op.primitiveOutput);
 			const Processor::Opcode primitiveOp = (op.vmOp == Processor::ADD_OP
-					? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
+				? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
 			if (xr.t == ExpressionResult::PROPERTY) {
 				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
 				emit(Processor::REPUSH_2_OP);
@@ -3995,7 +3946,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
 	Code* func = new(heap) Code(heap.managed(), code->constants);
-	CapturedLexicalContext childContext(capturedLexical, code, allowClosureSlots && withScopeCounter == 0);
+CapturedLexicalContext childContext(capturedLexical, code, allowClosureSlots);
 	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter, &childContext);
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
@@ -4009,25 +3960,22 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
 
-bool Compiler::recordCapturedBinding(const String* name, UInt16& depth, Int16& slot, ClosureOperandDiagnostic::Reason& failureReason) {
+bool Compiler::recordCapturedBinding(const String* name, UInt16& depth, Int16& slot) {
 	depth = 0;
 	slot = 0;
 	const CapturedLexicalContext* context = capturedLexical;
 	UInt16 currentDepth = 1;
 	while (context != 0) {
 		if (!context->allowClosureSlots) {
-			failureReason = ClosureOperandDiagnostic::ANCESTOR_GUARD;
 			return false;
 		}
 		if (context->code != 0) {
 			Int32 index;
 			if (context->code->lookupNameIndex(name, index)) {
 				if (index == CATCH_PARAMETER) {
-					failureReason = ClosureOperandDiagnostic::CATCH_GUARD;
 					return false;
 				}
 				if (index < std::numeric_limits<Int16>::min() || index > std::numeric_limits<Int16>::max()) {
-					failureReason = ClosureOperandDiagnostic::SLOT_RANGE_OVERFLOW;
 					return false;
 				}
 				depth = currentDepth;
@@ -4038,7 +3986,6 @@ bool Compiler::recordCapturedBinding(const String* name, UInt16& depth, Int16& s
 		context = context->parent;
 		++currentDepth;
 	}
-	failureReason = ClosureOperandDiagnostic::MISSING_BINDING;
 	return false;
 }
 
@@ -4059,31 +4006,18 @@ bool Compiler::packClosureOperand(UInt16 depth, Int16 slot, Int32& operand) {
 bool Compiler::maybeEmitClosureOperand(ExpressionResult& xr, const String* name) {
 	assert(xr.t == ExpressionResult::NAMED);
 	if (compilingFor != FOR_FUNCTION) {
-		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(ClosureOperandDiagnostic::NON_FUNCTION_TARGET, name));
-		return false;
-	}
-	if (withScopeCounter != 0) {
-		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(ClosureOperandDiagnostic::WITH_SCOPE_GUARD, name));
 		return false;
 	}
 	if (name->isEqualTo(ARGUMENTS_STRING)) {
-		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(ClosureOperandDiagnostic::ARGUMENTS_ALIAS, name));
 		return false;
 	}
 	UInt16 depth;
 	Int16 slot;
-	ClosureOperandDiagnostic::Reason failureReason = ClosureOperandDiagnostic::MISSING_BINDING;
-	if (!recordCapturedBinding(name, depth, slot, failureReason)) {
-		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(failureReason, name, depth, slot));
-		return false;
-	}
-	if (depth > 0xFF) {
-		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(ClosureOperandDiagnostic::DEPTH_OVERFLOW, name, depth, slot));
+	if (!recordCapturedBinding(name, depth, slot)) {
 		return false;
 	}
 	Int32 operand;
 	if (!packClosureOperand(depth, slot, operand)) {
-		code->recordClosureOperandDiagnostic(ClosureOperandDiagnostic(ClosureOperandDiagnostic::OPERAND_RANGE_OVERFLOW, name, depth, slot));
 		return false;
 	}
 	xr = ExpressionResult(ExpressionResult::CLOSURE, name, depth, slot, operand);
@@ -4116,16 +4050,16 @@ bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
 				case FALSE_LITERAL: xr = ExpressionResult(ExpressionResult::CONSTANT, false); break;
 				case TRUE_LITERAL: xr = ExpressionResult(ExpressionResult::CONSTANT, true); break;
 				case THIS_LITERAL: {
-					emit(Processor::THIS_OP);
-					xr = ExpressionResult(ExpressionResult::PUSHED);
-					break;
+				emit(Processor::THIS_OP);
+				xr = ExpressionResult(ExpressionResult::PUSHED);
+				break;
 				}
 				case FUNCTION_LITERAL: {
-					white();
-					const String* name = identifier(false, false);
-					functionDefinition(name, name);
-					xr = ExpressionResult(ExpressionResult::PUSHED);
-					break;
+				white();
+				const String* name = identifier(false, false);
+				functionDefinition(name, name);
+				xr = ExpressionResult(ExpressionResult::PUSHED);
+				break;
 				}
 				default: assert(0);
 			}
@@ -4138,73 +4072,73 @@ bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
 				xr = ExpressionResult(ExpressionResult::CONSTANT, v);
 			} else {
 				switch (*p) {
-					case '{': {
+				case '{': {
+				++p;
+				xr = discard(xr);
+				xr = objectInitialiser();
+				break;
+				}
+				
+				case '[': {
+				++p;
+				xr = discard(xr);
+				xr = arrayInitialiser();
+				break;
+				}
+				
+				case '/': {
+				bool inClass = false;
+				while (++p != e && !isLineTerminator(*p) && (*p != '/' || inClass)) {
+					if (*p == '\\' && p + 1 != e && !isLineTerminator(p[1])) {
 						++p;
-						xr = discard(xr);
-						xr = objectInitialiser();
-						break;
+					} else if (*p == '[') {
+						inClass = true;
+					} else if (*p == ']' && inClass) {
+						inClass = false;
 					}
-					
-					case '[': {
-						++p;
-						xr = discard(xr);
-						xr = arrayInitialiser();
-						break;
-					}
-					
-					case '/': {
-						bool inClass = false;
-						while (++p != e && !isLineTerminator(*p) && (*p != '/' || inClass)) {
-							if (*p == '\\' && p + 1 != e && !isLineTerminator(p[1])) {
-								++p;
-							} else if (*p == '[') {
-								inClass = true;
-							} else if (*p == ']' && inClass) {
-								inClass = false;
+				}
+				if (p == e || *p != '/') {
+					error(SYNTAX_ERROR, "Unterminated regular expression");
+				} else {
+					xr = discard(xr);
+					const String* regExpSource = newHashedString(heap, b + 1, p);
+					emitWithConstant(Processor::CONST_OP, regExpSource);
+					++p;
+					const Char* b = p;
+					parseIdentifier(false);
+					const String* regExpFlags = newHashedString(heap, b, p);
+					emitWithConstant(Processor::CONST_OP, regExpFlags);
+					emit(Processor::NEW_REG_EXP_OP);
+					xr = ExpressionResult(ExpressionResult::PUSHED);
+				}
+				break;
+				}
+				
+				default: {
+				const String* name = identifier(false, false);
+				if (name->empty()) {
+					return false;
+				}
+				xr = discard(xr);
+				xr = ExpressionResult(ExpressionResult::NAMED, name);
+				// Notice: compilingFor != FOR_EVAL and checking for "arguments" is only for non-strict mode (if we ever support strict-mode in the future)
+				if (compilingFor == FOR_FUNCTION) {
+					if (withScopeCounter == 0 && !name->isEqualTo(ARGUMENTS_STRING)) {
+						const Table::Bucket* bucket = code->nameIndexes.lookup(name);
+						if (bucket != 0) {
+							const Int32 index = bucket->getIndexValue();
+							if (index != CATCH_PARAMETER) {
+							xr = ExpressionResult(ExpressionResult::LOCAL, index);
 							}
 						}
-						if (p == e || *p != '/') {
-							error(SYNTAX_ERROR, "Unterminated regular expression");
-						} else {
-							xr = discard(xr);
-							const String* regExpSource = newHashedString(heap, b + 1, p);
-							emitWithConstant(Processor::CONST_OP, regExpSource);
-							++p;
-							const Char* b = p;
-							parseIdentifier(false);
-							const String* regExpFlags = newHashedString(heap, b, p);
-							emitWithConstant(Processor::CONST_OP, regExpFlags);
-							emit(Processor::NEW_REG_EXP_OP);
-							xr = ExpressionResult(ExpressionResult::PUSHED);
-						}
-						break;
 					}
-					
-					default: {
-						const String* name = identifier(false, false);
-						if (name->empty()) {
-							return false;
-						}
-						xr = discard(xr);
-						xr = ExpressionResult(ExpressionResult::NAMED, name);
-						// Notice: compilingFor != FOR_EVAL and checking for "arguments" is only for non-strict mode (if we ever support strict-mode in the future)
-						if (compilingFor == FOR_FUNCTION) {
-							if (withScopeCounter == 0 && !name->isEqualTo(ARGUMENTS_STRING)) {
-								const Table::Bucket* bucket = code->nameIndexes.lookup(name);
-								if (bucket != 0) {
-									const Int32 index = bucket->getIndexValue();
-									if (index != CATCH_PARAMETER) {
-										xr = ExpressionResult(ExpressionResult::LOCAL, index);
-									}
-								}
-							}
-							if (xr.t == ExpressionResult::NAMED) {
-								maybeEmitClosureOperand(xr, name);
-							}
-						}
-						break;
+					if (xr.t == ExpressionResult::NAMED) {
+						maybeEmitClosureOperand(xr, name);
+					}
+				}
+				break;
 
-					}
+				}
 }
 }
 }
@@ -4562,65 +4496,65 @@ void Compiler::block(SemanticScope* scope) {
 	mode we need to always flush eval results to stack before each call to finally() and when setting up try scopes.
 	There is also a rule that eval result from try scope should be rolled back in case of a throw.
 	
-							// NO EVAL						// EVAL
-							// ========						// ========
+					// NO EVAL				// EVAL
+					// ========				// ========
  
-							// spaceHolder					// (eval)
+					// spaceHolder				// (eval)
 	try {
-							// spaceHolder					// rollback (eval)
+					// spaceHolder				// rollback (eval)
 		<statements>
-							// spaceHolder					// (eval)
+					// spaceHolder				// (eval)
 		finally()
 	}
-							// spaceHolder thrownA			// (eval) thrownA
+					// spaceHolder thrownA			// (eval) thrownA
 	catch (x) {
 		*try {
-							// spaceHolder					// (eval)
+					// spaceHolder				// (eval)
 			<statements>
 			finally()
 		*}
-							// spaceHolder thrownA thrownB	// (eval) thrownA thrownB
+					// spaceHolder thrownA thrownB	// (eval) thrownA thrownB
 		*catch {
-							// thrownB						// thrownB
+					// thrownB				// thrownB
 			*finally()
-							// thrownB						// thrownB
+					// thrownB				// thrownB
 			*throw
 		*}
 	}
-							// spaceHolder					// (eval)
+					// spaceHolder				// (eval)
 	finally {
-							// spaceHolder					// rollback (eval)
+					// spaceHolder				// rollback (eval)
 		<statements>
-							// spaceHolder					// rollback
+					// spaceHolder				// rollback
 	}
-							//								// (eval)
+					//						// (eval)
 
 
 
-							// NO EVAL						// EVAL
-							// ========						// ========
+					// NO EVAL				// EVAL
+					// ========				// ========
  
-							// spaceHolder					// (eval)
+					// spaceHolder				// (eval)
 	try {
-							// spaceHolder					// rollback (eval)
+					// spaceHolder				// rollback (eval)
 		<statements>
-							// spaceHolder					// (eval)
+					// spaceHolder				// (eval)
 		finally()
 	}
-							// spaceHolder thrownA			// (eval) thrownA
+					// spaceHolder thrownA			// (eval) thrownA
 	*catch {
-							// thrownA						// thrownA
+					// thrownA				// thrownA
 		*finally()
-							// thrownA						// thrownA
+					// thrownA				// thrownA
 		*throw
 	*}
-							// spaceHolder					// (eval)
+					// spaceHolder				// (eval)
 	finally {
-							// spaceHolder					// rollback (eval)
+					// spaceHolder				// rollback (eval)
 		<statements>
-							// spaceHolder					// rollback
+					// spaceHolder				// rollback
 	}
-							//								// (eval)
+					//						// (eval)
 */
 void Compiler::tryStatement(SemanticScope* currentScope) {
 	white();
@@ -4825,7 +4759,7 @@ void Compiler::statement(SemanticScope* currentScope, SemanticScope* scopeLabels
 			}
 			for (SemanticScope* s = currentScope; s != 0; s = s->next) {
 				if (!s->label.empty() && s->label.isEqualTo(label)) {
-					error(SYNTAX_ERROR, "Duplicate label");
+				error(SYNTAX_ERROR, "Duplicate label");
 				}
 			}
 			SemanticScope newLabelScope(heap, label, currentSection->stackDepth, currentScope);
@@ -5092,12 +5026,12 @@ struct Support {
 			if (o != 0) {
 				const String* s = argv[1].toString(rt.getHeap());
 				if (s->isEqualTo(PROTOTYPE_STRING)) {
-					Object* p = o->getPrototype(rt);
-					return (p == 0 ? NULL_VALUE : Value(p));
+				Object* p = o->getPrototype(rt);
+				return (p == 0 ? NULL_VALUE : Value(p));
 				} else if (s->isEqualTo(CLASS_STRING)) {
-					return o->getClassName();
+				return o->getClassName();
 				} else if (s->isEqualTo(VALUE_STRING)) {
-					return o->getInternalValue(rt.getHeap());
+				return o->getInternalValue(rt.getHeap());
 				}
 			}
 		}
@@ -5129,9 +5063,9 @@ struct Support {
 				return new(heap) StringWrapper(heap.managed(), internalValue.toString(heap));
 			} else if (className->isEqualTo(E_RROR_STRING)) {
 				for (int i = 0; i < ERROR_TYPE_COUNT; ++i) {
-					if (prototype == rt.getErrorPrototype(static_cast<ErrorType>(i))) {
-						return new(heap) Error(heap.managed(), static_cast<ErrorType>(i));
-					}
+				if (prototype == rt.getErrorPrototype(static_cast<ErrorType>(i))) {
+				return new(heap) Error(heap.managed(), static_cast<ErrorType>(i));
+				}
 				}
 			}
 			return new(heap) GenericWrapper(heap.managed(), className, internalValue, Runtime::ARBITRARY_PROTOTYPE, prototype);
@@ -5157,10 +5091,10 @@ struct Support {
 			Object* o = argv[0].asObject();
 			if (o != 0) {
 				success = o->setOwnProperty(rt, argv[1], (argc >= 3 ? argv[2] : UNDEFINED_VALUE)
-						, (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0)
-						| (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0)
-						| (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0)
-						| EXISTS_FLAG);
+				, (argc >= 4 && argv[3].toBool() ? READ_ONLY_FLAG : 0)
+				| (argc >= 5 && argv[4].toBool() ? DONT_ENUM_FLAG : 0)
+				| (argc >= 6 && argv[5].toBool() ? DONT_DELETE_FLAG : 0)
+				| EXISTS_FLAG);
 			}
 		}
 		return success;
@@ -5173,7 +5107,7 @@ struct Support {
 			Code* code = new(heap) Code(heap.managed());
 			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
 			compiler.compileFunction(source->begin(), source->end()
-					, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING));
+				, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING));
 			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
 		}
 		return UNDEFINED_VALUE;
@@ -5192,13 +5126,13 @@ struct Support {
 			if (arrayObject != 0) {
 				Value v;
 				if (arrayObject->getProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) { // FIX : in the future I think we should have a virtual getLength
-					Int32 offset = (argc > 3 ? argv[3].toInt() : 0);
-					UInt32 length = static_cast<UInt32>(std::max(v.toInt() - offset, 0));
-					args = Vector<Value>(length, &heap);
-					for (UInt32 i = 0; i < length; ++i) {
-						args[i] = UNDEFINED_VALUE;
-						arrayObject->getProperty(rt, i + offset, &args[i]);
-					}
+				Int32 offset = (argc > 3 ? argv[3].toInt() : 0);
+				UInt32 length = static_cast<UInt32>(std::max(v.toInt() - offset, 0));
+				args = Vector<Value>(length, &heap);
+				for (UInt32 i = 0; i < length; ++i) {
+				args[i] = UNDEFINED_VALUE;
+				arrayObject->getProperty(rt, i + offset, &args[i]);
+				}
 				}
 			}
 			// FIX : we copy all arguments once to argv, and then chain will copy them again to a scope object, couldn't we short-cut that somehow?
@@ -5265,7 +5199,7 @@ struct Support {
 				const Char* b = s->begin();
 				Heap& heap = rt.getHeap();
 				return (from < 1.0 && to >= l ? s
-						: new(heap) String(heap.managed(), b + static_cast<UInt32>(from), b + static_cast<UInt32>(to)));
+				: new(heap) String(heap.managed(), b + static_cast<UInt32>(from), b + static_cast<UInt32>(to)));
 			}
 		}
 		return &EMPTY_STRING;
@@ -5278,7 +5212,7 @@ struct Support {
 			const String* const match = argv[2].toString(rt.getHeap());
 			const UInt32 matchSize = match->size();
 			if (offset + matchSize <= text->size()
-					&& std::equal(text->begin() + offset, text->begin() + offset + matchSize, match->begin())) {
+				&& std::equal(text->begin() + offset, text->begin() + offset + matchSize, match->begin())) {
 				return true;
 			}
 		}
@@ -5375,7 +5309,6 @@ for (int i = 0; i < ERROR_TYPE_COUNT; ++i) {
 prototypes[FIRST_ERROR_PROTOTYPE + i] = new(heap) ErrorPrototype(heap.managed(), static_cast<ErrorType>(i));
 }
 globalObject = new(heap) JSObject(heap.managed(), objectProto);
-resetClosureResolutionStats();
 }
 
 void Runtime::autoGC(bool checkOutOfMemory) {
@@ -5390,11 +5323,6 @@ throw ConstStringException("Out of memory");
 }
 }
 }
-
-void Runtime::resetClosureResolutionStats() { closureStats = ClosureResolutionStats(); }
-void Runtime::recordClosureFastPath() { ++closureStats.fastPathHits; }
-void Runtime::recordClosureCacheMiss() { ++closureStats.cacheMisses; }
-void Runtime::recordClosureSlowFallback() { ++closureStats.slowFallbacks; }
 
 // Handle wrapping if clock_t is an integer type but not if it is a double.
 template<typename T> static bool clockExceeds(T a, T b) { return wrapToInt32(static_cast<UInt32>(a) - static_cast<UInt32>(b)) >= 0; }

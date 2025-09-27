@@ -42,14 +42,14 @@ This roadmap breaks the closure-slot work into incremental milestones. Each mile
 - Extend the opcode metadata to describe the packed layout so the disassembler prints meaningful labels (for example `closure depth=1 slot=-2`).
 - Update REPL inspectors and legacy tooling to reuse a shared `unpackClosureOperand` helper rather than duplicating bit math in multiple files.
 - Re-run existing disassembly-based regression tests to confirm the textual output remains stable apart from the new annotations.
-- [x] Adjust bytecode serialization so no captured-binding array is written to or read from save images; ensure section headers, counts, and GC marking no longer assume `Code::capturedBindings` exists.【F:src/NuXJS.cpp†L2550-L2596】【F:src/NuXJS.cpp†L2776-L2785】【F:src/NuXJS.h†L817-L835】
+- [x] Adjust bytecode serialization so no captured-binding array is written to or read from save images; ensure section headers, counts, and GC marking no longer assume `Code::capturedBindings` exists.【F:src/NuXJS.cpp†L2531-L2599】【F:src/NuXJS.cpp†L2776-L2785】【F:src/NuXJS.h†L817-L835】
 - Remove the captured-binding chunk from both writer and reader paths, updating version numbers if required so older snapshots fail gracefully.
 - Eliminate GC mark loops that iterate the old vector; rely on operand decoding plus `Code::getLocalName` during fallback instead.
 - Smoke-test snapshot load/save tooling (if available) or stub out the feature until operand-only captures ship.
 - [x] Run `timeout 180 ./build.sh`.
 
 ## Milestone 3 – Runtime fast path and fallback without `CapturedBinding`
-- [x] Rewrite `Scope::resolveClosureOperand` and the closure opcode handlers to accept decoded depth/slot pairs, walking `parentFunctionScope` pointers directly and touching `localsPointer` once the target frame is reached so no heap allocation or binding table lookup occurs.【F:src/NuXJS.cpp†L1997-L2155】【F:src/NuXJS.cpp†L2556-L2611】
+- [x] Rewrite `Scope::resolveClosureOperand` and the closure opcode handlers to accept decoded depth/slot pairs, walking `parentFunctionScope` pointers directly and touching `localsPointer` once the target frame is reached so no heap allocation or binding table lookup occurs.【F:src/NuXJS.cpp†L1997-L2155】【F:src/NuXJS.cpp†L2611-L2699】
 - [x] Introduce a lightweight struct (e.g. `ResolvedClosureSlot`) that caches both the frame pointer and slot index; store it on the activation so repeated accesses avoid re-walking the chain.
 - [x] Record a doc note explaining how the cache interacts with GC and activation lifetime so the Milestone 4 cleanup can drop any redundant metadata once the runtime path is proven.
 - [x] Update interpreter switch cases to call a shared helper that handles cache miss, pointer validation, and depth countdown, keeping the fast path inlined and branch-light.
@@ -57,9 +57,7 @@ This roadmap breaks the closure-slot work into incremental milestones. Each mile
 - [x] Implement the slow path by climbing the same number of lexical frames and calling `JSFunction::getScriptCode()->getLocalName(slot)` to recover identifier strings for `readVar`/`writeVar`/`deleteVar` fallbacks when `EvalScope`, `WithScope`, or guard failures block the fast slot.【F:src/NuXJS.cpp†L2138-L2364】【F:src/NuXJS.h†L844-L990】
 - [x] Share the ancestor walk between the fast and slow helpers so maintenance stays trivial; when the walk encounters a non-function scope, immediately dispatch to the named helpers.
 - [x] Fetch the identifier string from `getLocalName` only once per failure and thread it through to the `ReferenceError` constructors to preserve diagnostics.
-- [x] Add runtime counters on `Runtime` (`fastPathHits`, `cacheMisses`, `slowFallbacks`) plus REPL helpers (`__resetClosureStats`, `__closureStats`) so fast-path hits and guard-driven fallbacks stay observable during development.【F:src/NuXJS.h†L1176-L1252】【F:src/NuXJS.cpp†L2556-L2607】【F:tools/NuXJSREPL.cpp†L195-L233】
 - [x] Ensure every dynamic-scope class (`EvalScope`, `WithScope`, `CatchScope`) continues to veto fast resolution by overriding the new helper, and add regression coverage that triggers each guard while confirming the operand-only slow path reports correct ReferenceError names.【F:src/NuXJS.cpp†L2298-L2364】【F:tests/regression/closureDynamicScopeGuards20250209.io†L1-L120】
-- [x] Exercise the instrumentation via a regression test that resets the counters, drives fast-path accesses, and confirms dynamic-scope guards leave the counters untouched using the REPL helpers (`closureInstrumentationCounters20250211.io`).【F:tests/regression/closureInstrumentationCounters20250211.io†L1-L36】
 - Audit each scope’s override to confirm it receives the packed operand and returns a clear error flag without dereferencing frame pointers it does not own.
 - Extend regression tests to include scenarios that mutate captured variables after forcing a fallback, guaranteeing writes propagate correctly.
 - Capture expected ReferenceError output in `.io` files so the slow path’s identifier recovery is exercised continuously.

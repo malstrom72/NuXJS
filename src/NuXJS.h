@@ -811,28 +811,6 @@ class Constants : public GCItem, public Vector<Value> {
 		}
 };
 
-struct ClosureOperandDiagnostic {
-enum Reason {
-NON_FUNCTION_TARGET,
-WITH_SCOPE_GUARD,
-ARGUMENTS_ALIAS,
-ANCESTOR_GUARD,
-CATCH_GUARD,
-MISSING_BINDING,
-SLOT_RANGE_OVERFLOW,
-DEPTH_OVERFLOW,
-OPERAND_RANGE_OVERFLOW
-};
-
-ClosureOperandDiagnostic(Reason inReason = MISSING_BINDING, const String* inName = 0, UInt16 inDepth = 0, Int16 inSlot = 0)
-: reason(inReason), name(inName), depth(inDepth), slot(inSlot) { }
-
-Reason reason;
-const String* name;
-UInt16 depth;
-Int16 slot;
-};
-
 // Closure operands pack an 8-bit lexical `depth` and signed 16-bit `slot` into the low 24 bits.
 static const UInt32 CLOSURE_OPERAND_DEPTH_SHIFT = 16;
 static const UInt32 CLOSURE_OPERAND_SIGNED_MASK = 0x00FFFFFFu;
@@ -867,9 +845,7 @@ class Code : public Object {
 		const String* getName() const { return name; }
 		const String* getSource() const { return source; }
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
-		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
-		void recordClosureOperandDiagnostic(const ClosureOperandDiagnostic& diagnostic);
-		const Vector<ClosureOperandDiagnostic>& getClosureOperandDiagnostics() const { return closureOperandDiagnostics; }
+UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
 
 	protected:
 		Vector<CodeWord> codeWords;
@@ -881,8 +857,7 @@ class Code : public Object {
 		const String* selfName;
 		const String* source;
 		UInt32 bloomSet;					///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
-		UInt32 maxStackDepth;
-		Vector<ClosureOperandDiagnostic> closureOperandDiagnostics;
+UInt32 maxStackDepth;
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, constants);
 			nameIndexes.gcMarkReferences(heap);
@@ -890,10 +865,7 @@ class Code : public Object {
 			gcMark(heap, argumentNames.begin(), argumentNames.end());
 			gcMark(heap, name);
 			gcMark(heap, selfName);
-			gcMark(heap, source);
-			for (UInt32 i = 0; i < closureOperandDiagnostics.size(); ++i) {
-				gcMark(heap, closureOperandDiagnostics[i].name);
-			}
+gcMark(heap, source);
 			super::gcMarkReferences(heap);
 		}
 };
@@ -961,10 +933,10 @@ class Scope : public GCItem {
 		virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		virtual bool deleteVar(Runtime& rt, const String* name);
-		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
+				virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		Value* getLocalsPointer() const { return localsPointer; }
 		Scope* getParentScope() const { return parentScope; }
-virtual bool resolveClosureOperand(UInt16 depth, Int16 slot, Value*& resolvedSlot,
+		virtual bool resolveClosureOperand(UInt16 depth, Int16 slot, Value*& resolvedSlot,
 FunctionScope*& owner) const;
 		virtual FunctionScope* nearestFunctionScope();
 		virtual const FunctionScope* nearestFunctionScope() const;
@@ -1098,13 +1070,14 @@ class FunctionScope : public Scope {
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
-virtual bool resolveClosureOperand(UInt16 depth, Int16 slot, Value*& resolvedSlot,
-FunctionScope*& owner) const;
+		virtual bool resolveClosureOperand(UInt16 depth, Int16 slot, Value*& resolvedSlot, FunctionScope*& owner) const;
 		virtual FunctionScope* nearestFunctionScope();
 		virtual const FunctionScope* nearestFunctionScope() const;
 		FunctionScope* getParentFunctionScope() const { return parentFunctionScope; }
 		JSFunction* getFunction() const { return function; }
 		JSObject* getDynamicVars(Runtime& rt) const;
+		void markDynamicScopeUsage() const { dynamicScopeUsed = true; }
+		bool hasDynamicScopeUsage() const { return dynamicScopeUsed; }
 		virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
 
 	protected:
@@ -1115,6 +1088,7 @@ FunctionScope*& owner) const;
 		mutable Arguments* arguments;
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		FunctionScope* parentFunctionScope;
+		mutable bool dynamicScopeUsed;
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, function);
 			gcMark(heap, locals.begin(), locals.end());
@@ -1160,18 +1134,11 @@ class Runtime : public GCItem {
 	public:
 		typedef GCItem super;
 	
-		struct ClosureResolutionStats {
-			ClosureResolutionStats() : fastPathHits(0), cacheMisses(0), slowFallbacks(0) { }
-			UInt32 fastPathHits;
-			UInt32 cacheMisses;
-			UInt32 slowFallbacks;
-		};
-	
-		enum PrototypeId {
-			OBJECT_PROTOTYPE, FUNCTION_PROTOTYPE, STRING_PROTOTYPE, BOOLEAN_PROTOTYPE, NUMBER_PROTOTYPE
-			, DATE_PROTOTYPE, ARRAY_PROTOTYPE, FIRST_ERROR_PROTOTYPE, PROTOTYPE_COUNT = FIRST_ERROR_PROTOTYPE + ERROR_TYPE_COUNT
-			, ARBITRARY_PROTOTYPE 
-		};
+enum PrototypeId {
+OBJECT_PROTOTYPE, FUNCTION_PROTOTYPE, STRING_PROTOTYPE, BOOLEAN_PROTOTYPE, NUMBER_PROTOTYPE
+, DATE_PROTOTYPE, ARRAY_PROTOTYPE, FIRST_ERROR_PROTOTYPE, PROTOTYPE_COUNT = FIRST_ERROR_PROTOTYPE + ERROR_TYPE_COUNT
+, ARBITRARY_PROTOTYPE
+};
 
 		Runtime(Heap& heap);
 
@@ -1205,13 +1172,7 @@ class Runtime : public GCItem {
 
 		void checkTimeOut();
 		void autoGC(bool checkOutOfMemory);
-		void resetClosureResolutionStats();
-		const ClosureResolutionStats& getClosureResolutionStats() const { return closureStats; }
-		void recordClosureFastPath();
-		void recordClosureCacheMiss();
-		void recordClosureSlowFallback();
-
-		virtual Var runUntilReturn(Processor& processor);
+virtual Var runUntilReturn(Processor& processor);
 		virtual double getCurrentEpochTime();			///< Get current utc time in milliseconds relative to Unix epoch (i.e. 0 is 1970-01-01T00:00:00Z). Override to implement higher resolution than standard C time() (whole seconds).
 
 	protected:
@@ -1235,8 +1196,7 @@ class Runtime : public GCItem {
 		Function* evalFunction;
 		double unixEpochTimeDiff;
 
-		mutable const String* stringConstantsCache[STRING_CONSTANTS_CACHE_SIZE];
-		ClosureResolutionStats closureStats;
+mutable const String* stringConstantsCache[STRING_CONSTANTS_CACHE_SIZE];
 	
 	public:
 		virtual void gcMarkReferences(Heap& heap) const {
@@ -1683,31 +1643,16 @@ class Processor : public GCItem {
 			typedef GCItem super;
 			Frame(GCList& gcList, const CodeWord* returnIP, const Code* code, Scope* scope, Object* thisObject
 					, Frame* previousFrame) : super(gcList), returnIP(returnIP), code(code), scope(scope)
-					, thisObject(thisObject), previousFrame(previousFrame), resolvedClosureSlots(&gcList.getHeap()) { }
+					, thisObject(thisObject), previousFrame(previousFrame) { }
 			const CodeWord* const returnIP;
 			const Code* const code;
 			Scope* const scope;
 			Object* const thisObject;
 			Frame* const previousFrame;
-			struct ResolvedClosureSlot {
-				ResolvedClosureSlot(Int32 inOperand = 0, Scope* inGuardScope = 0, FunctionScope* inOwner = 0
-						, Int16 inSlot = 0, Value* inPointer = 0)
-					: operand(inOperand), guardScope(inGuardScope), owner(inOwner), slot(inSlot), pointer(inPointer) { }
-				Int32 operand;
-				Scope* guardScope;
-				FunctionScope* owner;
-				Int16 slot;
-				Value* pointer;
-			};
-			Vector<ResolvedClosureSlot> resolvedClosureSlots;
 			virtual void gcMarkReferences(Heap& heap) const {
 				gcMark(heap, code);
 				gcMark(heap, scope);
 				gcMark(heap, thisObject);
-				for (size_t i = 0; i < resolvedClosureSlots.size(); ++i) {
-					gcMark(heap, resolvedClosureSlots[i].guardScope);
-					gcMark(heap, resolvedClosureSlots[i].owner);
-				}
 				gcMark(heap, previousFrame);
 				super::gcMarkReferences(heap);
 			}
@@ -1745,8 +1690,6 @@ class Processor : public GCItem {
 		void pushFrame(const Code* code, Scope* scope, Object* thisObject);
 		void popFrame();
 		void popCatcher();
-		static Frame::ResolvedClosureSlot* findCachedClosureSlot(Frame* frame, Int32 operand, Scope* guardScope);
-		static void cacheClosureSlot(Frame* frame, Int32 operand, Scope* guardScope, FunctionScope* ownerScope, Int16 slotIndex, Value* pointer);
 
 		static const OpcodeInfo opcodeInfo[OP_COUNT];
 
@@ -1834,7 +1777,7 @@ class Compiler : public GCItem {
 		CodeSection* changeSection(CodeSection* newOutputSection);
 		UInt32 addConstant(const Value& constant);
 		void emitWithConstant(Processor::Opcode opcode, const Value& constant);
-bool recordCapturedBinding(const String* name, UInt16& depth, Int16& slot, ClosureOperandDiagnostic::Reason& failureReason);
+bool recordCapturedBinding(const String* name, UInt16& depth, Int16& slot);
 		bool maybeEmitClosureOperand(ExpressionResult& xr, const String* name);
 		static bool packClosureOperand(UInt16 depth, Int16 slot, Int32& operand);
 		BranchPoint emitForwardBranch(Processor::Opcode opcode);
