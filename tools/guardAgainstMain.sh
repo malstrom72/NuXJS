@@ -20,16 +20,16 @@ remove=false
 declare -a passthrough=()
 
 run_diffguard() {
-        local src=$1
-        local dest=$2
-        local -a args=("python3" "tools/diffguard.py" "$macro")
+	local src=$1
+	local dest=$2
+	local -a args=("python3" "tools/diffguard.py" "$macro")
 
-        if ((${#passthrough[@]})); then
-                args+=("${passthrough[@]}")
-        fi
+	if ((${#passthrough[@]})); then
+			args+=("${passthrough[@]}")
+	fi
 
-        args+=("$src" "$dest" "$dest")
-        "${args[@]}"
+	args+=("$src" "$dest" "$dest")
+	"${args[@]}"
 }
 
 while [[ $# -gt 0 ]]; do
