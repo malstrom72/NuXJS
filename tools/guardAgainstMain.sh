@@ -19,6 +19,19 @@ macro=NUXJS_NOT_MAIN
 remove=false
 declare -a passthrough=()
 
+run_diffguard() {
+	local src=$1
+	local dest=$2
+	local -a args=("python3" "tools/diffguard.py" "$macro")
+
+	if ((${#passthrough[@]})); then
+			args+=("${passthrough[@]}")
+	fi
+
+	args+=("$src" "$dest" "$dest")
+	"${args[@]}"
+}
+
 while [[ $# -gt 0 ]]; do
 	case $1 in
 		--branch)
@@ -70,6 +83,6 @@ trap 'rm -f "$tmp_cpp" "$tmp_h"' EXIT
 git show "$branch:src/NuXJS.cpp" >"$tmp_cpp"
 git show "$branch:src/NuXJS.h" >"$tmp_h"
 
-python3 tools/diffguard.py "$macro" "${passthrough[@]}" "$tmp_cpp" src/NuXJS.cpp src/NuXJS.cpp
-python3 tools/diffguard.py "$macro" "${passthrough[@]}" "$tmp_h" src/NuXJS.h src/NuXJS.h
+run_diffguard "$tmp_cpp" src/NuXJS.cpp
+run_diffguard "$tmp_h" src/NuXJS.h
 
