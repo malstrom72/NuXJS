@@ -73,13 +73,19 @@ def guard_diff(base: list[str], alt: list[str], macro: str, path: str) -> list[s
 		_check_balance(alt_block, path, j1, "alternate")
 		sample = base_block[0] if base_block else (alt_block[0] if alt_block else "")
 		indent = _indent(sample)
-		prefix = indent[:-1] if indent else ""
-		out.append(f"{prefix}#if ({macro})\n")
-		out.extend(alt_block)
-		if base_block:
-			out.append(f"{prefix}#else\n")
-			out.extend(base_block)
-		out.append(f"{prefix}#endif\n")
+			prefix = indent[:-1] if indent else ""
+			if alt_block and base_block:
+				out.append(f"{prefix}#if ({macro})\n")
+				out.extend(alt_block)
+				out.append(f"{prefix}#else\n")
+				out.extend(base_block)
+			elif alt_block:
+				out.append(f"{prefix}#if ({macro})\n")
+				out.extend(alt_block)
+			else:
+				out.append(f"{prefix}#if (!{macro})\n")
+				out.extend(base_block)
+			out.append(f"{prefix}#endif\n")
 	return out
 
 
