@@ -176,9 +176,10 @@ const String BOOLEAN_STRING("boolean"), FUNCTION_STRING("function"), NUMBER_STRI
 
 const String EMPTY_STRING, LENGTH_STRING("length"), NULL_STRING("null"), UNDEFINED_STRING("undefined");
 
+
 const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_STRING("Boolean"), D_ATE_STRING("Date")
-		, E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
-		, S_TRING_STRING("String");
+, E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
+, S_TRING_STRING("String");
 
 static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
@@ -2186,7 +2187,7 @@ static std::string toDecimalString(Int32 value) {
 	return result;
 }
 
-static std::string formatStackTraceString(const Value& exceptionValue, const std::string& fallbackHeader, const StackTrace* trace) {
+static std::string formatStackTraceString(const Value& exceptionValue, const std::string& fallbackHeader, const StackTrace* trace, UInt32 skipFrames) {
 	if (trace == 0 || trace->isEmpty()) {
 		return std::string();
 	}
@@ -2213,7 +2214,8 @@ static std::string formatStackTraceString(const Value& exceptionValue, const std
 	}
 	std::string result = header;
 	const UInt32 frameCount = trace->getFrameCount();
-	for (UInt32 i = 0; i < frameCount; ++i) {
+	UInt32 firstFrame = (skipFrames < frameCount ? skipFrames : frameCount - 1);
+	for (UInt32 i = firstFrame; i < frameCount; ++i) {
 		const StackTrace::Frame& frame = trace->getFrame(i);
 		result.append("\n    at ");
 		const String* functionName = frame.functionName;
@@ -2329,7 +2331,7 @@ const char* ScriptException::formatStackTrace() const
 		return utf8String.c_str();
 	}
 	if (!formattedStackComputed) {
-		formattedStackCache = formatStackTraceString(value, utf8String, stackTrace);
+		formattedStackCache = formatStackTraceString(value, utf8String, stackTrace, 0);
 		formattedStackComputed = true;
 	}
 	return (formattedStackCache.empty() ? utf8String.c_str() : formattedStackCache.c_str());
@@ -2657,32 +2659,93 @@ StackTrace* Processor::captureStackTrace() {
 	return trace;
 }
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+void Processor::ensureErrorStack(Error* errorObject, UInt32 skipFrames) {
+	if (errorObject == 0) {
+		return;
+	}
+        Value stackValue(UNDEFINED_VALUE);
+        const bool stackAlreadySet = (errorObject->getProperty(rt, &STACK_STRING, &stackValue) != NONEXISTENT && !stackValue.isUndefined());
+        if (stackAlreadySet) {
+                return;
+        }
+        StackTrace* trace = captureStackTrace();
+	Heap& heap = rt.getHeap();
+	const String* stackString = 0;
+	bool hasLocation = false;
+	SourceLocation topLocation;
+	std::string formatted;
+	if (trace != 0 && !trace->isEmpty()) {
+		const UInt32 frameCount = trace->getFrameCount();
+		UInt32 firstFrame = (skipFrames < frameCount ? skipFrames : frameCount - 1);
+		const StackTrace::Frame& frame = trace->getFrame(firstFrame);
+		topLocation = frame.location;
+		hasLocation = true;
+		formatted = formatStackTraceString(Value(errorObject), std::string(), trace, firstFrame);
+	}
+	if (!formatted.empty()) {
+		stackString = new(heap) String(heap.managed(), formatted);
+	} else {
+		stackString = errorObject->toString(heap);
+	}
+	Value newStackValue(stackString);
+        errorObject->setOwnProperty(rt, Value(&STACK_STRING), newStackValue, DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+	if (hasLocation) {
+		Value existing(UNDEFINED_VALUE);
+		if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
+			const String* fileName = (topLocation.fileName != 0 ? topLocation.fileName : &ANONYMOUS_SCRIPT_STRING);
+			errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(fileName), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+		}
+		if (errorObject->getProperty(rt, &LINE_NUMBER_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
+			errorObject->setOwnProperty(rt, Value(&LINE_NUMBER_STRING), Value(static_cast<Int32>(topLocation.line)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+		}
+		if (errorObject->getProperty(rt, &COLUMN_NUMBER_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
+			errorObject->setOwnProperty(rt, Value(&COLUMN_NUMBER_STRING), Value(static_cast<Int32>(topLocation.column)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+		}
+	}
+}
+#endif
+
 bool Processor::throwVirtualException(const Value& exception, ScriptException* existingException) {
-	if (firstCatcher == 0) { // FIX: what exception to throw here?
-		StackTrace* trace = captureStackTrace();
-		SourceLocation throwLocation;
-		std::string formattedStack;
-		Error* errorObject = exception.asError();
-		std::string fallbackHeader;
-		if (trace != 0 && !trace->isEmpty()) {
-			throwLocation = trace->getFrame(0).location;
-			if (errorObject == 0) {
-				fallbackHeader = exception.toString(heap)->toUTF8String();
-			}
-			formattedStack = formatStackTraceString(exception, fallbackHeader, trace);
-			if (errorObject != 0) {
-				const String* fileName = (throwLocation.fileName != 0 ? throwLocation.fileName : &ANONYMOUS_SCRIPT_STRING);
-				errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(fileName), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-				errorObject->setOwnProperty(rt, Value(&LINE_NUMBER_STRING), Value(static_cast<Int32>(throwLocation.line)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-				errorObject->setOwnProperty(rt, Value(&COLUMN_NUMBER_STRING), Value(static_cast<Int32>(throwLocation.column)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-				if (!formattedStack.empty()) {
-					const String* stackString = new(heap) String(heap.managed(), formattedStack);
-					errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+	Error* errorObject = exception.asError();
+	ensureErrorStack(errorObject, 0);
+		if (firstCatcher == 0) { // FIX: what exception to throw here?
+			StackTrace* trace = captureStackTrace();
+			SourceLocation throwLocation;
+			std::string formattedStack;
+			std::string fallbackHeader;
+			if (trace != 0 && !trace->isEmpty()) {
+				throwLocation = trace->getFrame(0).location;
+				if (errorObject == 0) {
+					fallbackHeader = exception.toString(heap)->toUTF8String();
+				}
+				formattedStack = formatStackTraceString(exception, fallbackHeader, trace, 0);
+				if (errorObject != 0) {
+					Value existing(UNDEFINED_VALUE);
+					if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
+						const String* fileName = (throwLocation.fileName != 0 ? throwLocation.fileName : &ANONYMOUS_SCRIPT_STRING);
+						errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(fileName), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+					}
+					if (errorObject->getProperty(rt, &LINE_NUMBER_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
+						errorObject->setOwnProperty(rt, Value(&LINE_NUMBER_STRING), Value(static_cast<Int32>(throwLocation.line)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+					}
+					if (errorObject->getProperty(rt, &COLUMN_NUMBER_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
+						errorObject->setOwnProperty(rt, Value(&COLUMN_NUMBER_STRING), Value(static_cast<Int32>(throwLocation.column)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+					}
+					if (!formattedStack.empty()) {
+                                                const bool stackAlreadySet = (errorObject->getProperty(rt, &STACK_STRING, &existing) != NONEXISTENT && !existing.isUndefined());
+                                                if (!stackAlreadySet) {
+                                                        const String* stackString = new(heap) String(heap.managed(), formattedStack);
+                                                        errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+                                                }
+                                        }
+				}
+			} else if (errorObject != 0) {
+				Value existing(UNDEFINED_VALUE);
+				if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
+					errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(&ANONYMOUS_SCRIPT_STRING), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
 				}
 			}
-		} else if (errorObject != 0) {
-			errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(&ANONYMOUS_SCRIPT_STRING), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-		}
 		reset();
 		if (existingException != 0) {
 			if (trace != 0 && !trace->isEmpty()) {
@@ -5181,6 +5244,27 @@ struct Support {
 		return UNDEFINED_VALUE;
 	}
 
+	static Value captureError(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object*) {
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+		if (argc >= 1) {
+			Error* errorObject = argv[0].asError();
+			if (errorObject != 0) {
+				Int32 skip = (argc >= 2 ? argv[1].toInt() : 0);
+				if (skip < 0) {
+					skip = 0;
+				}
+				processor.ensureErrorStack(errorObject, static_cast<UInt32>(skip));
+			}
+		}
+#else
+		(void)rt;
+		(void)processor;
+		(void)argc;
+		(void)argv;
+#endif
+		return UNDEFINED_VALUE;
+	}
+
 	static Value distinctConstructor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 1) {
 			Function* regularFunction = argv[0].asFunction();
@@ -5372,7 +5456,7 @@ static struct {
 	FunctorAdapter<NativeFunction> func;
 } SUPPORT_FUNCTIONS[] = {
 	{ "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
-	{ "defineProperty", Support::defineProperty }, { "compileFunction", Support::compileFunction },
+	{ "captureError", Support::captureError }, { "defineProperty", Support::defineProperty }, { "compileFunction", Support::compileFunction },
 	{ "distinctConstructor", Support::distinctConstructor }, { "callWithArgs", Support::callWithArgs },
 	{ "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
 	{ "isPropertyEnumerable", Support::isPropertyEnumerable }, { "atan2", Support::atan2 },

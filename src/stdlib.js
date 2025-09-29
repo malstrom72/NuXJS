@@ -18,7 +18,7 @@
 	@preserve: undefined,upperToLower,value,valueOf,var,void,while,writable,pop,parse,toDateString,instanceof,test
 	@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,$match
 	@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
-	@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
+	@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive,captureError
 
 	support: {
 		prototypes: {	// built-in prototype objects
@@ -1611,6 +1611,7 @@ function createErrorConstructor(name, prototype) {
 		var e;
 		support.defineProperty(e = support.createWrapper("Error", name, prototype), "message"
 				, (message !== void 0 ? str(message) : ''), false, true, false);
+		support.captureError(e, 1);
 		return e
 	}
 };

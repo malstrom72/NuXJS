@@ -1694,9 +1694,10 @@ class Processor : public GCItem {
 		void enterEvalCode(const Code* code, bool local = false);
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
 		void throwVirtualException(const Value& exception);
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 		bool throwVirtualException(const Value& exception, ScriptException* existingException);
-	#endif
+		void ensureErrorStack(Error* errorObject, UInt32 skipFrames);
+#endif
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);
 		Value getResult() const;	// make sure you've called run() until it returns false before calling this

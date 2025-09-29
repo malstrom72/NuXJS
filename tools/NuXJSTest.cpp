@@ -804,6 +804,57 @@ static Value returnFortyTwo(Runtime&, Processor&, UInt32, const Value*, Object*)
 	return Value(42);
 }
 
+static Var bounceThroughCpp(Runtime& rt, const Var&, const VarList& args) {
+	EXPECT(args.size() >= 1);
+        try {
+                return args[0]();
+        } catch (const ScriptException& ex) {
+                Var errorVar(rt, ex.value);
+                EXPECT(errorVar["stack"].to<std::wstring>().find(L"native bounce") != std::wstring::npos);
+                EXPECT(errorVar["error"].to<Value>().isUndefined());
+                return errorVar;
+        }
+}
+
+static Var throwFromCpp(Runtime& rt, const Var&, const VarList&) {
+	ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "native type error");
+	return Var(rt);
+}
+
+static void testExceptionStacks() {
+	std::cout << std::endl << "***** Exception stacks *****" << std::endl << std::endl;
+	std::cout << "  - JS -> C++ propagation" << std::endl;
+	std::cout << "  - C++ -> JS propagation" << std::endl;
+	std::cout << "  - cross-language rethrows" << std::endl;
+
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
+
+	try {
+		rt.run("function jsFail(){ throw new Error('cpp catch sample'); }\njsFail();");
+		EXPECT(false);
+        } catch (const ScriptException& ex) {
+                Var errorVar(rt, ex.value);
+                EXPECT(errorVar["stack"].to<std::wstring>().find(L"cpp catch sample") != std::wstring::npos);
+                EXPECT(errorVar["error"].to<Value>().isUndefined());
+        }
+
+	Var globals = rt.getGlobalsVar();
+	globals["bounceNative"] = bounceThroughCpp;
+	globals["throwFromCpp"] = throwFromCpp;
+
+	rt.run("var throughCppCaught;\nfunction callBounce(){ var err = bounceNative(function(){ throw new Error('native bounce'); }); if (err) { throw err; } }\ntry { callBounce(); } catch (err) { throughCppCaught = err; }");
+	Var throughCppCaught = globals["throughCppCaught"];
+        EXPECT(throughCppCaught["stack"].to<std::wstring>().find(L"native bounce") != std::wstring::npos);
+        EXPECT(throughCppCaught["error"].to<Value>().isUndefined());
+
+	rt.run("var cppThrown; try { throwFromCpp(); } catch (err) { cppThrown = err; }");
+	Var cppThrown = globals["cppThrown"];
+        EXPECT(cppThrown["stack"].to<std::wstring>().find(L"native type error") != std::wstring::npos);
+        EXPECT(cppThrown["error"].to<Value>().isUndefined());
+}
+
 static void testHighLevelAPI() {
 	std::cout << std::endl << "***** High Level API *****" << std::endl << std::endl;
 	std::cout << "  - C++ to JS binding" << std::endl;
@@ -1802,6 +1853,7 @@ int main(int argc, const char* argv[]) {
 		testJSON();
 		testCompilation();
 		testLimits();
+		testExceptionStacks();
 		testHighLevelAPI();
 		readMeSample1();
 		readMeSample2();
