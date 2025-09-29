@@ -1,17 +1,18 @@
 # Simple Error Stack Capture Plan
 
 ## Milestone 1 – One place that formats the stack string
-- [ ] Move the existing Node-style formatter into a helper that only returns a `String` and never builds a `StackTrace` object.
-- [ ] Make the helper accept a pre-trimmed frame iterator so callers can skip VM/internal frames before formatting.
-- [ ] Store the resulting string directly on the `Error` instance as its canonical stack payload.
+- [x] Move the existing Node-style formatter into a helper that only returns a `String` and never builds a `StackTrace` object.
+- [x] Make the helper accept a pre-trimmed frame iterator so callers can skip VM/internal frames before formatting.
+- [x] Store the resulting string directly on the `Error` instance as its canonical stack payload.
 
 ### Tests
-- [ ] Add a focused C++ unit that throws from native code, calls the helper once, and verifies the formatted string includes the expected header plus `    at` rows.
+- [x] Add a focused C++ unit that throws from native code, calls the helper once, and verifies the formatted string includes the expected header plus `    at` rows.
 
 ## Milestone 2 – Capture the string exactly once per throw
 - [ ] Call the new helper from every place that constructs or rethrows an `Error`, ensuring we only walk the stack when the object has no string yet.
 - [ ] Confirm no legacy alias needs mirroring; `.stack` is the sole property populated during construction.
 - [ ] Ensure `throwVirtualException` reads the already-stored string instead of re-walking the stack.
+- [x] Remove the legacy `StackTrace` data structure and build the stack string directly while walking frames.
 
 ### Tests
 - [ ] Extend the C++ coverage to throw, catch, and rethrow in all C++↔JS combinations, asserting the string never changes.
