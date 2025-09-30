@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include "assert.h"
 #include <cmath>
+#include <vector>
 #include "NuXJS.h"
 #ifdef _MSC_VER
 #include <float.h>
@@ -762,7 +763,7 @@ double Value::toDouble() const {
 	switch (type) {
 		default: assert(0);
 		case UNDEFINED_TYPE:
-		case OBJECT_TYPE: return NaN();  // Notice, you shouldn't normally call toDouble on an object as proper ToNumber requires conversion to a primitive type
+		case OBJECT_TYPE: return NaN();	 // Notice, you shouldn't normally call toDouble on an object as proper ToNumber requires conversion to a primitive type
 		case NULL_TYPE: return 0.0;
 		case BOOLEAN_TYPE: return var.boolean ? 1.0 : 0.0;
 		case NUMBER_TYPE: return var.number;
@@ -869,7 +870,7 @@ bool Value::compareStrictly(const Value& r) const {
 bool Value::isEqualTo(const Value& r) const {
 	if (type == r.type) {
 		return compareStrictly(r);
-	} else if (type < r.type) {	// Symmetrical operation, flip for simpler logic.
+	} else if (type < r.type) { // Symmetrical operation, flip for simpler logic.
 		return r.isEqualTo(*this);
 	} else {
 		switch (type) {
@@ -1081,8 +1082,8 @@ Enumerator* String::getOwnPropertyEnumerator(Runtime& rt) const {
 const String* String::fromInt(Heap& heap, Int32 i) {
 	Char buffer[32];
 	return (i >= -QUICK_CONSTANTS_INTEGERS_RANGE && i <= QUICK_CONSTANTS_INTEGERS_RANGE)
-		 	? &QUICK_CONSTANTS.integers[i + QUICK_CONSTANTS_INTEGERS_RANGE]
-		 	: new(heap) String(heap.managed(), intToString(buffer, i), buffer + 32);
+			? &QUICK_CONSTANTS.integers[i + QUICK_CONSTANTS_INTEGERS_RANGE]
+			: new(heap) String(heap.managed(), intToString(buffer, i), buffer + 32);
 }
 
 const String* String::fromDouble(Heap& heap, double d) {
@@ -1598,29 +1599,15 @@ const String* JoiningEnumerator::nextPropertyName() {
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 
-/* --- StackTrace --- */
-
-StackTrace::StackTrace(GCList& gcList) : super(gcList), frames(&gcList.getHeap()) { }
-
-void StackTrace::appendFrame(const Code* code, const String* functionName, const SourceLocation& location) {
-	Frame entry;
-	entry.code = code;
-	entry.functionName = functionName;
-	entry.location = location;
-	frames.push(entry);
-}
-
-#endif
-
 /* --- Code --- */
 
 Code::Code(GCList& gcList, Constants* sharedConstants)
-	: super(gcList), codeWords(0, &gcList.getHeap())
-	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
-	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
-	, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
+        : super(gcList), codeWords(0, &gcList.getHeap())
+        , constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
+        , nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
+        , selfName(0), source(0), bloomSet(0), maxStackDepth(0)
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	, opcodeOffsets(&gcList.getHeap()), lineStartOffsets(&gcList.getHeap())
+        , opcodeOffsets(&gcList.getHeap()), lineStartOffsets(&gcList.getHeap()), lineNumberBase(1)
 #endif
 {
 	assert(constants != 0);
@@ -1660,12 +1647,12 @@ bool Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) co
 	}
 	out.offset = static_cast<UInt32>(absoluteOffset);
 	out.fileName = (fileName != 0 ? fileName : &ANONYMOUS_SCRIPT_STRING);
-	if (!lineStartOffsets.empty()) {
-		const UInt32* begin = lineStartOffsets.begin();
-		const UInt32* end = lineStartOffsets.end();
-		const UInt32* it = std::upper_bound(begin, end, out.offset);
-		const UInt32* lineStart = (it == begin ? begin : it - 1);
-		out.line = static_cast<int>((lineStart - begin) + 1);
+        if (!lineStartOffsets.empty()) {
+                const UInt32* begin = lineStartOffsets.begin();
+                const UInt32* end = lineStartOffsets.end();
+                const UInt32* it = std::upper_bound(begin, end, out.offset);
+                const UInt32* lineStart = (it == begin ? begin : it - 1);
+                out.line = static_cast<int>(lineNumberBase + static_cast<UInt32>(lineStart - begin));
 		out.column = static_cast<int>(out.offset - *lineStart + 1);
 	} else {
 		out.line = 1;
@@ -1914,7 +1901,7 @@ void JSFunction::constructCompleteObject(Runtime& rt) const {
 /* --- Error --- */
 
 Error::Error(GCList& gcList, ErrorType type, const String* message)
-		: super(gcList), errorType(type), name(&ERROR_NAMES[errorType]), message(message) {
+		: super(gcList), errorType(type), name(&ERROR_NAMES[errorType]), message(message), stack(0) {
 	assert(0 <= errorType && errorType < ERROR_TYPE_COUNT);
 }
 
@@ -1925,6 +1912,8 @@ Object* Error::getPrototype(Runtime& rt) const { return rt.getErrorPrototype(err
 ErrorType Error::getErrorType() const { return errorType; }
 const String* Error::getErrorName() const { return name; }
 const String* Error::getErrorMessage() const { return message; }
+const String* Error::getStackString() const { return stack; }
+void Error::setStackString(const String* stackString) { stack = stackString; }
 
 const String* Error::toString(Heap& heap) const {
 	return (message == 0 ? name : String::concatenate(heap, String(heap.roots(), *name, COLON_SPACE), *message));
@@ -1934,6 +1923,11 @@ void Error::updateReflection(Runtime& rt) {
 	Value v;
 	name = (getProperty(rt, &NAME_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : &ERROR_NAMES[errorType]);
 	message = (getProperty(rt, &MESSAGE_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
+	if (getProperty(rt, &STACK_STRING, &v) != NONEXISTENT && !v.isUndefined()) {
+		stack = v.toString(rt.getHeap());
+	} else {
+		stack = 0;
+	}
 }
 
 bool Error::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
@@ -1951,6 +1945,9 @@ bool Error::deleteOwnProperty(Runtime& rt, const Value& key) {
 void Error::constructCompleteObject(Runtime& rt) const {
 	if (message != 0) {
 		completeObject->setOwnProperty(rt, &MESSAGE_STRING, message, DONT_ENUM_FLAG);
+	}
+	if (stack != 0) {
+		completeObject->setOwnProperty(rt, &STACK_STRING, stack, DONT_ENUM_FLAG);
 	}
 }
 
@@ -2187,10 +2184,7 @@ static std::string toDecimalString(Int32 value) {
 	return result;
 }
 
-static std::string formatStackTraceString(const Value& exceptionValue, const std::string& fallbackHeader, const StackTrace* trace, UInt32 skipFrames) {
-	if (trace == 0 || trace->isEmpty()) {
-		return std::string();
-	}
+static std::string buildStackHeader(const Value& exceptionValue, const std::string& fallbackHeader) {
 	std::string header;
 	Error* errorObject = exceptionValue.asError();
 	if (errorObject != 0) {
@@ -2212,13 +2206,17 @@ static std::string formatStackTraceString(const Value& exceptionValue, const std
 	if (header.empty()) {
 		header = fallbackHeader;
 	}
-	std::string result = header;
-	const UInt32 frameCount = trace->getFrameCount();
-	UInt32 firstFrame = (skipFrames < frameCount ? skipFrames : frameCount - 1);
-	for (UInt32 i = firstFrame; i < frameCount; ++i) {
-		const StackTrace::Frame& frame = trace->getFrame(i);
+	return header;
+}
+
+static std::string buildStackTraceText(const Value& exceptionValue, const std::string& fallbackHeader, const std::vector<StackFrameInfo>& frames, size_t firstFrameIndex) {
+	if (frames.empty() || firstFrameIndex >= frames.size()) {
+		return std::string();
+	}
+	std::string result = buildStackHeader(exceptionValue, fallbackHeader);
+	for (size_t i = firstFrameIndex; i < frames.size(); ++i) {
 		result.append("\n    at ");
-		const String* functionName = frame.functionName;
+		const StackFrameInfo& frame = frames[i];
 		std::string location;
 		if (frame.location.fileName != 0) {
 			location = frame.location.fileName->toUTF8String();
@@ -2234,8 +2232,8 @@ static std::string formatStackTraceString(const Value& exceptionValue, const std
 				location.append(toDecimalString(frame.location.column));
 			}
 		}
-		if (functionName != 0 && !functionName->empty()) {
-			std::string functionLabel = functionName->toUTF8String();
+		if (frame.functionName != 0 && !frame.functionName->empty()) {
+			std::string functionLabel = frame.functionName->toUTF8String();
 			if (!functionLabel.empty()) {
 				result.append(functionLabel);
 				result.append(" (");
@@ -2251,15 +2249,51 @@ static std::string formatStackTraceString(const Value& exceptionValue, const std
 	return result;
 }
 
+static const String* formatStackString(Heap& heap, const Value& exceptionValue, const std::vector<StackFrameInfo>& frames, size_t firstFrameIndex, const std::string& fallbackHeader) {
+	if (frames.empty() || firstFrameIndex >= frames.size()) {
+		return 0;
+	}
+	const std::string formatted = buildStackTraceText(exceptionValue, fallbackHeader, frames, firstFrameIndex);
+	return (formatted.empty() ? 0 : new(heap) String(heap.managed(), formatted));
+}
+
+void Processor::collectStackFrames(std::vector<StackFrameInfo>& frames) const
+{
+	frames.clear();
+	const Frame* frameWalker = currentFrame;
+	const CodeWord* nextIP = ip;
+	while (frameWalker != 0 && nextIP != 0) {
+		const Code* frameCode = frameWalker->code;
+		if (frameCode == 0 || frameCode->getFileName() == 0 || !frameCode->hasSourceLocations()) {
+			break;
+		}
+		const CodeWord* begin = frameCode->getCodeWords();
+		if (begin == 0 || nextIP <= begin) {
+			break;
+		}
+		const UInt32 instructionIndex = static_cast<UInt32>((nextIP - begin) - 1);
+		SourceLocation location;
+		if (!frameCode->lookupSourceLocation(instructionIndex, location)) {
+			break;
+		}
+		StackFrameInfo info;
+		info.functionName = frameCode->getName();
+		info.location = location;
+		frames.push_back(info);
+		nextIP = frameWalker->returnIP;
+		frameWalker = frameWalker->previousFrame;
+	}
+}
+
 #endif
 
 /* --- ScriptException --- */
 	
 void ScriptException::throwError(Heap& heap, ErrorType type, const String* message) {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	throw ScriptException(heap, new(heap) Error(heap.managed(), type, message), 0, SourceLocation(), std::string());
+throw ScriptException(heap, new(heap) Error(heap.managed(), type, message), SourceLocation(), std::string());
 #else
-	throw ScriptException(heap, new(heap) Error(heap.managed(), type, message));
+throw ScriptException(heap, new(heap) Error(heap.managed(), type, message));
 #endif
 }
 
@@ -2268,73 +2302,84 @@ void ScriptException::throwError(Heap& heap, ErrorType type, const char* message
 }
 
 ScriptException::ScriptException(Heap& heap, const Value& value) throw()
-		: value(value), utf8String(value.toString(heap)->toUTF8String())
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		, stackTrace(0), throwLocation(), hasStackTrace(false)
-		, formattedStackCache(), formattedStackComputed(false)
-	#endif
+: value(value), utf8String(value.toString(heap)->toUTF8String())
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+, throwLocation(), hasThrowLocation(false)
+, formattedStackCache(), formattedStackComputed(false)
+#endif
 {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	initializeMetadata(0, SourceLocation(), std::string());
+initializeMetadata(SourceLocation(), std::string());
 #endif
 }
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-ScriptException::ScriptException(Heap& heap, const Value& value, const StackTrace* trace, const SourceLocation& location) throw()
-		: value(value), utf8String(value.toString(heap)->toUTF8String())
-		, stackTrace(0), throwLocation(), hasStackTrace(false)
-		, formattedStackCache(), formattedStackComputed(false)
+ScriptException::ScriptException(Heap& heap, const Value& value, const SourceLocation& location) throw()
+: value(value), utf8String(value.toString(heap)->toUTF8String())
+, throwLocation(), hasThrowLocation(false)
+, formattedStackCache(), formattedStackComputed(false)
 {
-	initializeMetadata(trace, location, std::string());
+initializeMetadata(location, std::string());
 }
 
-ScriptException::ScriptException(Heap& heap, const Value& value, const StackTrace* trace, const SourceLocation& location, const std::string& formattedStack) throw()
-		: value(value), utf8String(value.toString(heap)->toUTF8String())
-		, stackTrace(0), throwLocation(), hasStackTrace(false)
-		, formattedStackCache(), formattedStackComputed(false)
+ScriptException::ScriptException(Heap& heap, const Value& value, const SourceLocation& location, const std::string& formattedStack) throw()
+: value(value), utf8String(value.toString(heap)->toUTF8String())
+, throwLocation(), hasThrowLocation(false)
+, formattedStackCache(), formattedStackComputed(false)
 {
-	initializeMetadata(trace, location, formattedStack);
+initializeMetadata(location, formattedStack);
 }
 
-void ScriptException::initializeMetadata(const StackTrace* trace, const SourceLocation& location, const std::string& formattedStack) throw()
+void ScriptException::initializeMetadata(const SourceLocation& location, const std::string& formattedStack) throw()
 {
-	if (trace != 0 && !trace->isEmpty()) {
-		stackTrace = trace;
-		hasStackTrace = true;
-	} else {
-		stackTrace = 0;
-		hasStackTrace = false;
-	}
-	if (hasStackTrace || location.fileName != 0) {
-		throwLocation = location;
-	} else {
-		throwLocation = SourceLocation();
-	}
-	if (!formattedStack.empty()) {
-		formattedStackCache = formattedStack;
-		formattedStackComputed = true;
-	} else {
-		formattedStackCache.clear();
-		formattedStackComputed = false;
-	}
+if (location.fileName != 0) {
+throwLocation = location;
+hasThrowLocation = true;
+} else {
+throwLocation = SourceLocation();
+hasThrowLocation = false;
+}
+if (!formattedStack.empty()) {
+formattedStackCache = formattedStack;
+formattedStackComputed = true;
+} else {
+formattedStackCache.clear();
+formattedStackComputed = false;
+}
 }
 
-const String* ScriptException::getFileName() const { return throwLocation.fileName; }
+const String* ScriptException::getFileName() const { return (hasThrowLocation ? throwLocation.fileName : 0); }
 
-int ScriptException::getLineNumber() const { return throwLocation.line; }
+int ScriptException::getLineNumber() const { return (hasThrowLocation ? throwLocation.line : 0); }
 
-int ScriptException::getColumnNumber() const { return throwLocation.column; }
+int ScriptException::getColumnNumber() const { return (hasThrowLocation ? throwLocation.column : 0); }
+
+bool ScriptException::hasStackString() const
+{
+Error* errorObject = value.asError();
+if (errorObject != 0 && errorObject->getStackString() != 0) {
+return true;
+}
+return (formattedStackComputed && !formattedStackCache.empty());
+}
 
 const char* ScriptException::formatStackTrace() const
 {
-	if (!hasStackTrace || stackTrace == 0 || stackTrace->isEmpty()) {
-		return utf8String.c_str();
-	}
-	if (!formattedStackComputed) {
-		formattedStackCache = formatStackTraceString(value, utf8String, stackTrace, 0);
-		formattedStackComputed = true;
-	}
-	return (formattedStackCache.empty() ? utf8String.c_str() : formattedStackCache.c_str());
+if (!formattedStackComputed) {
+formattedStackCache.clear();
+Error* errorObject = value.asError();
+if (errorObject != 0) {
+const String* stackString = errorObject->getStackString();
+if (stackString != 0) {
+formattedStackCache = stackString->toUTF8String();
+formattedStackComputed = true;
+}
+}
+if (!formattedStackComputed) {
+formattedStackComputed = true;
+}
+}
+return (formattedStackCache.empty() ? utf8String.c_str() : formattedStackCache.c_str());
 }
 #endif
 
@@ -2366,86 +2411,86 @@ const Int32 MAX_OPERAND_VALUE = (1 << 23) - 1;
 
 // This list must be in enum order
 const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
-	{ CONST_OP                   , "CONST"                   , +1     , 0 },
-	{ READ_LOCAL_OP              , "READ_LOCAL"              , +1     , 0 },
-	{ WRITE_LOCAL_OP             , "WRITE_LOCAL"             , 0      , 0 },
-	{ WRITE_LOCAL_POP_OP         , "WRITE_LOCAL_POP"         , -1     , 0 },
-	{ READ_NAMED_OP              , "READ_NAMED"              , 1      , 0 },
-	{ WRITE_NAMED_OP             , "WRITE_NAMED"             , 0      , 0 },
-	{ WRITE_NAMED_POP_OP         , "WRITE_NAMED_POP"         , -1     , 0 },
-	{ GET_PROPERTY_OP            , "GET_PROPERTY"            , -1     , 0 },
-	{ SET_PROPERTY_OP            , "SET_PROPERTY"            , -2     , 0 },
-	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -3     , 0 },
-	{ ADD_PROPERTY_OP            , "ADD_PROPERTY"            , -1     , 0 },
-	{ PUSH_ELEMENTS_OP           , "PUSH_ELEMENTS_OP"        , 0      , OpcodeInfo::POP_OPERAND },
-	{ OBJ_TO_PRIMITIVE_OP        , "OBJ_TO_PRIMITIVE"        , 0      , 0 },
-	{ OBJ_TO_NUMBER_OP           , "OBJ_TO_NUMBER"           , 0      , 0 },
-	{ OBJ_TO_STRING_OP           , "OBJ_TO_STRING"           , 0      , 0 },
-	{ PRE_EQ_OP                  , "PRE_EQ"                  , 0      , 0 },
-	{ INC_OP                     , "INC"                     , 0      , 0 },
-	{ DEC_OP                     , "DEC"                     , 0      , 0 },
-	{ ADD_OP                     , "ADD"                     , -1     , 0 },
-	{ SUB_OP                     , "SUB"                     , -1     , 0 },
-	{ MUL_OP                     , "MUL"                     , -1     , 0 },
-	{ DIV_OP                     , "DIV"                     , -1     , 0 },
-	{ MOD_OP                     , "MOD"                     , -1     , 0 },
-	{ OR_OP                      , "OR"                      , -1     , 0 },
-	{ XOR_OP                     , "XOR"                     , -1     , 0 },
-	{ AND_OP                     , "AND"                     , -1     , 0 },
-	{ SHL_OP                     , "SHL"                     , -1     , 0 },
-	{ SHR_OP                     , "SHR"                     , -1     , 0 },
-	{ USHR_OP                    , "USHR"                    , -1     , 0 },
-	{ PLUS_OP                    , "PLUS"                    , 0      , 0 },
-	{ MINUS_OP                   , "MINUS"                   , 0      , 0 },
-	{ INV_OP                     , "INV"                     , 0      , 0 },
-	{ NOT_OP                     , "NOT"                     , 0      , 0 },
-	{ X_EQ_OP                    , "X_EQ"                    , -1     , 0 },
-	{ X_NEQ_OP                   , "X_NEQ"                   , -1     , 0 },
-	{ EQ_OP                      , "EQ"                      , -1     , 0 },
-	{ NEQ_OP                     , "NEQ"                     , -1     , 0 },
-	{ LT_OP                      , "LT"                      , -1     , 0 },
-	{ LEQ_OP                     , "LEQ"                     , -1     , 0 },
-	{ GT_OP                      , "GT"                      , -1     , 0 },
-	{ GEQ_OP                     , "GEQ"                     , -1     , 0 },
-	{ JMP_OP                     , "JMP"                     , 0      , OpcodeInfo::TERMINAL },
-	{ JSR_OP                     , "JSR"                     , 0      , 0 },
-	{ JT_OP                      , "JT"                      , -1     , 0 },
-	{ JF_OP                      , "JF"                      , -1     , 0 },
-	{ JT_OR_POP_OP               , "JT_OR_POP"               , -1     , OpcodeInfo::NO_POP_ON_BRANCH },
-	{ JF_OR_POP_OP               , "JF_OR_POP"               , -1     , OpcodeInfo::NO_POP_ON_BRANCH },
-	{ POP_OP                     , "POP"                     , 0      , OpcodeInfo::POP_OPERAND },
-	{ PUSH_BACK_OP               , "PUSH_BACK"               , 0      , OpcodeInfo::POP_OPERAND },
-	{ REPUSH_OP                  , "REPUSH"                  , 1      , 0 },
-	{ SWAP_OP                    , "SWAP"                    , 0      , 0 },
-	{ REPUSH_2_OP                , "REPUSH_2"                , +2     , 0 },
-	{ POST_SHUFFLE_OP            , "POST_SHUFFLE"            , +1     , 0 },
-	{ CALL_OP                    , "CALL"                    , 0      , OpcodeInfo::POP_OPERAND },
-	{ CALL_METHOD_OP             , "CALL_METHOD"             , -1     , OpcodeInfo::POP_OPERAND },
-	{ CALL_EVAL_OP               , "CALL_EVAL"               , 0      , OpcodeInfo::POP_OPERAND },
-	{ NEW_OP                     , "NEW"                     , +1     , OpcodeInfo::POP_OPERAND },
-	{ NEW_RESULT_OP              , "NEW_RESULT"              , -1     , 0 },
-	{ NEW_OBJECT_OP              , "NEW_OBJECT"              , +1     , 0 },
-	{ NEW_ARRAY_OP               , "NEW_ARRAY"               , +1     , 0 },
-	{ NEW_REG_EXP_OP             , "NEW_REG_EXP"             , -1     , 0 },
-	{ RETURN_OP                  , "RETURN"                  , -1     , OpcodeInfo::TERMINAL },
-	{ THIS_OP                    , "THIS"                    , +1     , 0 },
-	{ VOID_OP                    , "VOID"                    , +1     , 0 },
-	{ DELETE_OP                  , "DELETE"                  , -1     , 0 },
-	{ DELETE_NAMED_OP            , "DELETE_NAMED"            , 1      , 0 },
-	{ GEN_FUNC_OP                , "GEN_FUNC"                , +1     , 0 },
-	{ DECLARE_OP                 , "DECLARE"                 , -1     , 0 },
-	{ CATCH_SCOPE_OP             , "CATCH_SCOPE"             , -1     , 0 },
-	{ WITH_SCOPE_OP              , "WITH_SCOPE"              , -1     , 0 },
-	{ POP_FRAME_OP               , "POP_FRAME"               , 0      , 0 },
-	{ TRY_OP                     , "TRY"                     , 0      , OpcodeInfo::NO_POP_ON_BRANCH },
-	{ TRIED_OP                   , "TRIED"                   , 0      , 0 },
-	{ THROW_OP                   , "THROW"                   , -1     , OpcodeInfo::TERMINAL },
-	{ IN_OP                      , "IN"                      , -1     , 0 },
-	{ INSTANCE_OF_OP             , "INSTANCE_OF"             , -1     , 0 },
-	{ TYPEOF_OP                  , "TYPEOF"                  , 0      , 0 },
-	{ TYPEOF_NAMED_OP            , "TYPEOF_NAMED"            , 1      , 0 },
-	{ GET_ENUMERATOR_OP          , "GET_ENUMERATOR"          , 0      , 0 },
-	{ NEXT_PROPERTY_OP           , "NEXT_PROPERTY"           , 0      , OpcodeInfo::POP_ON_BRANCH }
+	{ CONST_OP					 , "CONST"					 , +1	  , 0 },
+	{ READ_LOCAL_OP				 , "READ_LOCAL"				 , +1	  , 0 },
+	{ WRITE_LOCAL_OP			 , "WRITE_LOCAL"			 , 0	  , 0 },
+	{ WRITE_LOCAL_POP_OP		 , "WRITE_LOCAL_POP"		 , -1	  , 0 },
+	{ READ_NAMED_OP				 , "READ_NAMED"				 , 1	  , 0 },
+	{ WRITE_NAMED_OP			 , "WRITE_NAMED"			 , 0	  , 0 },
+	{ WRITE_NAMED_POP_OP		 , "WRITE_NAMED_POP"		 , -1	  , 0 },
+	{ GET_PROPERTY_OP			 , "GET_PROPERTY"			 , -1	  , 0 },
+	{ SET_PROPERTY_OP			 , "SET_PROPERTY"			 , -2	  , 0 },
+	{ SET_PROPERTY_POP_OP		 , "SET_PROPERTY_POP"		 , -3	  , 0 },
+	{ ADD_PROPERTY_OP			 , "ADD_PROPERTY"			 , -1	  , 0 },
+	{ PUSH_ELEMENTS_OP			 , "PUSH_ELEMENTS_OP"		 , 0	  , OpcodeInfo::POP_OPERAND },
+	{ OBJ_TO_PRIMITIVE_OP		 , "OBJ_TO_PRIMITIVE"		 , 0	  , 0 },
+	{ OBJ_TO_NUMBER_OP			 , "OBJ_TO_NUMBER"			 , 0	  , 0 },
+	{ OBJ_TO_STRING_OP			 , "OBJ_TO_STRING"			 , 0	  , 0 },
+	{ PRE_EQ_OP					 , "PRE_EQ"					 , 0	  , 0 },
+	{ INC_OP					 , "INC"					 , 0	  , 0 },
+	{ DEC_OP					 , "DEC"					 , 0	  , 0 },
+	{ ADD_OP					 , "ADD"					 , -1	  , 0 },
+	{ SUB_OP					 , "SUB"					 , -1	  , 0 },
+	{ MUL_OP					 , "MUL"					 , -1	  , 0 },
+	{ DIV_OP					 , "DIV"					 , -1	  , 0 },
+	{ MOD_OP					 , "MOD"					 , -1	  , 0 },
+	{ OR_OP						 , "OR"						 , -1	  , 0 },
+	{ XOR_OP					 , "XOR"					 , -1	  , 0 },
+	{ AND_OP					 , "AND"					 , -1	  , 0 },
+	{ SHL_OP					 , "SHL"					 , -1	  , 0 },
+	{ SHR_OP					 , "SHR"					 , -1	  , 0 },
+	{ USHR_OP					 , "USHR"					 , -1	  , 0 },
+	{ PLUS_OP					 , "PLUS"					 , 0	  , 0 },
+	{ MINUS_OP					 , "MINUS"					 , 0	  , 0 },
+	{ INV_OP					 , "INV"					 , 0	  , 0 },
+	{ NOT_OP					 , "NOT"					 , 0	  , 0 },
+	{ X_EQ_OP					 , "X_EQ"					 , -1	  , 0 },
+	{ X_NEQ_OP					 , "X_NEQ"					 , -1	  , 0 },
+	{ EQ_OP						 , "EQ"						 , -1	  , 0 },
+	{ NEQ_OP					 , "NEQ"					 , -1	  , 0 },
+	{ LT_OP						 , "LT"						 , -1	  , 0 },
+	{ LEQ_OP					 , "LEQ"					 , -1	  , 0 },
+	{ GT_OP						 , "GT"						 , -1	  , 0 },
+	{ GEQ_OP					 , "GEQ"					 , -1	  , 0 },
+	{ JMP_OP					 , "JMP"					 , 0	  , OpcodeInfo::TERMINAL },
+	{ JSR_OP					 , "JSR"					 , 0	  , 0 },
+	{ JT_OP						 , "JT"						 , -1	  , 0 },
+	{ JF_OP						 , "JF"						 , -1	  , 0 },
+	{ JT_OR_POP_OP				 , "JT_OR_POP"				 , -1	  , OpcodeInfo::NO_POP_ON_BRANCH },
+	{ JF_OR_POP_OP				 , "JF_OR_POP"				 , -1	  , OpcodeInfo::NO_POP_ON_BRANCH },
+	{ POP_OP					 , "POP"					 , 0	  , OpcodeInfo::POP_OPERAND },
+	{ PUSH_BACK_OP				 , "PUSH_BACK"				 , 0	  , OpcodeInfo::POP_OPERAND },
+	{ REPUSH_OP					 , "REPUSH"					 , 1	  , 0 },
+	{ SWAP_OP					 , "SWAP"					 , 0	  , 0 },
+	{ REPUSH_2_OP				 , "REPUSH_2"				 , +2	  , 0 },
+	{ POST_SHUFFLE_OP			 , "POST_SHUFFLE"			 , +1	  , 0 },
+	{ CALL_OP					 , "CALL"					 , 0	  , OpcodeInfo::POP_OPERAND },
+	{ CALL_METHOD_OP			 , "CALL_METHOD"			 , -1	  , OpcodeInfo::POP_OPERAND },
+	{ CALL_EVAL_OP				 , "CALL_EVAL"				 , 0	  , OpcodeInfo::POP_OPERAND },
+	{ NEW_OP					 , "NEW"					 , +1	  , OpcodeInfo::POP_OPERAND },
+	{ NEW_RESULT_OP				 , "NEW_RESULT"				 , -1	  , 0 },
+	{ NEW_OBJECT_OP				 , "NEW_OBJECT"				 , +1	  , 0 },
+	{ NEW_ARRAY_OP				 , "NEW_ARRAY"				 , +1	  , 0 },
+	{ NEW_REG_EXP_OP			 , "NEW_REG_EXP"			 , -1	  , 0 },
+	{ RETURN_OP					 , "RETURN"					 , -1	  , OpcodeInfo::TERMINAL },
+	{ THIS_OP					 , "THIS"					 , +1	  , 0 },
+	{ VOID_OP					 , "VOID"					 , +1	  , 0 },
+	{ DELETE_OP					 , "DELETE"					 , -1	  , 0 },
+	{ DELETE_NAMED_OP			 , "DELETE_NAMED"			 , 1	  , 0 },
+	{ GEN_FUNC_OP				 , "GEN_FUNC"				 , +1	  , 0 },
+	{ DECLARE_OP				 , "DECLARE"				 , -1	  , 0 },
+	{ CATCH_SCOPE_OP			 , "CATCH_SCOPE"			 , -1	  , 0 },
+	{ WITH_SCOPE_OP				 , "WITH_SCOPE"				 , -1	  , 0 },
+	{ POP_FRAME_OP				 , "POP_FRAME"				 , 0	  , 0 },
+	{ TRY_OP					 , "TRY"					 , 0	  , OpcodeInfo::NO_POP_ON_BRANCH },
+	{ TRIED_OP					 , "TRIED"					 , 0	  , 0 },
+	{ THROW_OP					 , "THROW"					 , -1	  , OpcodeInfo::TERMINAL },
+	{ IN_OP						 , "IN"						 , -1	  , 0 },
+	{ INSTANCE_OF_OP			 , "INSTANCE_OF"			 , -1	  , 0 },
+	{ TYPEOF_OP					 , "TYPEOF"					 , 0	  , 0 },
+	{ TYPEOF_NAMED_OP			 , "TYPEOF_NAMED"			 , 1	  , 0 },
+	{ GET_ENUMERATOR_OP			 , "GET_ENUMERATOR"			 , 0	  , 0 },
+	{ NEXT_PROPERTY_OP			 , "NEXT_PROPERTY"			 , 0	  , OpcodeInfo::POP_ON_BRANCH }
 };
 
 const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
@@ -2477,7 +2522,7 @@ struct Processor::CatchScope : public Scope {
 
 	CatchScope(GCList& gcList, Scope* parentScope, const String* exceptionName, const Value& exceptionValue)
 			: super(gcList, parentScope), exceptionName(exceptionName), exceptionValue(exceptionValue) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const  {
+	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const	{
 		if (name->isEqualTo(*exceptionName)) {
 			*v = exceptionValue;
 			return DONT_DELETE_FLAG | EXISTS_FLAG;
@@ -2513,7 +2558,7 @@ struct Processor::CatchScope : public Scope {
 struct Processor::WithScope : public Scope {
 	typedef Scope super;
 	WithScope(GCList& gcList, Scope* parentScope, Object* withObject)
-	 		: super(gcList, parentScope), withObject(withObject) { }
+			: super(gcList, parentScope), withObject(withObject) { }
 	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
 		Flags flags = withObject->getProperty(rt, name, v);
 		return (flags != NONEXISTENT ? flags : parentScope->readVar(rt, name, v));
@@ -2623,84 +2668,60 @@ void Processor::popCatcher() {
 }
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-StackTrace* Processor::captureStackTrace() {
-	if (currentFrame == 0 || ip == 0) {
-		return 0;
-	}
-	const Frame* frame = currentFrame;
-	const CodeWord* nextIP = ip;
-	const Code* code = frame->code;
-	if (code == 0 || code->getFileName() == 0 || !code->hasSourceLocations()) {
-		return 0;
-	}
-	StackTrace* trace = 0;
-	while (frame != 0 && nextIP != 0) {
-		const Code* frameCode = frame->code;
-		if (frameCode == 0 || frameCode->getFileName() == 0 || !frameCode->hasSourceLocations()) {
-			break;
-		}
-		const CodeWord* begin = frameCode->getCodeWords();
-		if (begin == 0 || nextIP <= begin) {
-			break;
-		}
-		const UInt32 instructionIndex = static_cast<UInt32>((nextIP - begin) - 1);
-		SourceLocation location;
-		if (!frameCode->lookupSourceLocation(instructionIndex, location)) {
-			break;
-		}
-		if (trace == 0) {
-			trace = new(heap) StackTrace(heap.managed());
-		}
-		trace->appendFrame(frameCode, frameCode->getName(), location);
-		const CodeWord* callerIP = frame->returnIP;
-		frame = frame->previousFrame;
-		nextIP = callerIP;
-	}
-	return trace;
-}
-
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-void Processor::ensureErrorStack(Error* errorObject, UInt32 skipFrames) {
-	if (errorObject == 0) {
-		return;
-	}
-        Value stackValue(UNDEFINED_VALUE);
-        const bool stackAlreadySet = (errorObject->getProperty(rt, &STACK_STRING, &stackValue) != NONEXISTENT && !stackValue.isUndefined());
-        if (stackAlreadySet) {
+void Processor::ensureErrorStack(Error* errorObject, UInt32 skipFrames, const std::vector<StackFrameInfo>* cachedFrames) {
+        if (errorObject == 0) {
                 return;
         }
-        StackTrace* trace = captureStackTrace();
-	Heap& heap = rt.getHeap();
-	const String* stackString = 0;
-	bool hasLocation = false;
-	SourceLocation topLocation;
-	std::string formatted;
-	if (trace != 0 && !trace->isEmpty()) {
-		const UInt32 frameCount = trace->getFrameCount();
-		UInt32 firstFrame = (skipFrames < frameCount ? skipFrames : frameCount - 1);
-		const StackTrace::Frame& frame = trace->getFrame(firstFrame);
-		topLocation = frame.location;
-		hasLocation = true;
-		formatted = formatStackTraceString(Value(errorObject), std::string(), trace, firstFrame);
-	}
-	if (!formatted.empty()) {
-		stackString = new(heap) String(heap.managed(), formatted);
-	} else {
-		stackString = errorObject->toString(heap);
-	}
-	Value newStackValue(stackString);
-        errorObject->setOwnProperty(rt, Value(&STACK_STRING), newStackValue, DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-	if (hasLocation) {
-		Value existing(UNDEFINED_VALUE);
-		if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-			const String* fileName = (topLocation.fileName != 0 ? topLocation.fileName : &ANONYMOUS_SCRIPT_STRING);
-			errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(fileName), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-		}
+        Heap& heap = rt.getHeap();
+        Value stackValue(UNDEFINED_VALUE);
+        const bool stackPropertyHasString = (errorObject->getProperty(rt, &STACK_STRING, &stackValue) != NONEXISTENT && !stackValue.isUndefined());
+        const String* propertyStackString = (stackPropertyHasString ? stackValue.toString(heap) : 0);
+        const String* stackString = errorObject->getStackString();
+        if (stackString == 0 && propertyStackString != 0) {
+                stackString = propertyStackString;
+                errorObject->setStackString(stackString);
+        }
+        bool hasLocation = false;
+        SourceLocation topLocation;
+        const std::vector<StackFrameInfo>* framesPointer = cachedFrames;
+        std::vector<StackFrameInfo> localFrames;
+        if (framesPointer == 0 && stackString == 0) {
+                collectStackFrames(localFrames);
+                framesPointer = &localFrames;
+        }
+        if (framesPointer != 0 && !framesPointer->empty()) {
+                const size_t frameCount = framesPointer->size();
+                const size_t skipIndex = static_cast<size_t>(skipFrames);
+                const size_t firstFrame = (skipIndex < frameCount ? skipIndex : frameCount - 1);
+                topLocation = (*framesPointer)[firstFrame].location;
+                hasLocation = true;
+                if (stackString == 0) {
+                        stackString = formatStackString(heap, Value(errorObject), *framesPointer, firstFrame, std::string());
+                }
+        }
+        if (stackString == 0) {
+                stackString = errorObject->toString(heap);
+        }
+        errorObject->setStackString(stackString);
+        if (!stackPropertyHasString || propertyStackString != stackString) {
+                Value newStackValue(stackString);
+                errorObject->setOwnProperty(rt, Value(&STACK_STRING), newStackValue, DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+        }
+        Value existing(UNDEFINED_VALUE);
+        if (hasLocation) {
+                if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
+                        const String* fileName = (topLocation.fileName != 0 ? topLocation.fileName : &ANONYMOUS_SCRIPT_STRING);
+                        errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(fileName), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+                }
 		if (errorObject->getProperty(rt, &LINE_NUMBER_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
 			errorObject->setOwnProperty(rt, Value(&LINE_NUMBER_STRING), Value(static_cast<Int32>(topLocation.line)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
 		}
 		if (errorObject->getProperty(rt, &COLUMN_NUMBER_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
 			errorObject->setOwnProperty(rt, Value(&COLUMN_NUMBER_STRING), Value(static_cast<Int32>(topLocation.column)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+		}
+	} else {
+		if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
+			errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(&ANONYMOUS_SCRIPT_STRING), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
 		}
 	}
 }
@@ -2708,62 +2729,57 @@ void Processor::ensureErrorStack(Error* errorObject, UInt32 skipFrames) {
 
 bool Processor::throwVirtualException(const Value& exception, ScriptException* existingException) {
 	Error* errorObject = exception.asError();
-	ensureErrorStack(errorObject, 0);
-		if (firstCatcher == 0) { // FIX: what exception to throw here?
-			StackTrace* trace = captureStackTrace();
-			SourceLocation throwLocation;
-			std::string formattedStack;
+	std::vector<StackFrameInfo> frames;
+	collectStackFrames(frames);
+	ensureErrorStack(errorObject, 0, &frames);
+	if (firstCatcher == 0) { // FIX: what exception to throw here?
+		SourceLocation throwLocation;
+		bool hasThrowLocation = false;
+		std::string formattedStack;
+		const String* formattedStackString = 0;
+		if (!frames.empty()) {
+			throwLocation = frames[0].location;
+			hasThrowLocation = true;
+		}
+		if (errorObject != 0) {
+			formattedStackString = errorObject->getStackString();
+		}
+		if (formattedStackString == 0 && !frames.empty()) {
 			std::string fallbackHeader;
-			if (trace != 0 && !trace->isEmpty()) {
-				throwLocation = trace->getFrame(0).location;
-				if (errorObject == 0) {
-					fallbackHeader = exception.toString(heap)->toUTF8String();
-				}
-				formattedStack = formatStackTraceString(exception, fallbackHeader, trace, 0);
-				if (errorObject != 0) {
-					Value existing(UNDEFINED_VALUE);
-					if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-						const String* fileName = (throwLocation.fileName != 0 ? throwLocation.fileName : &ANONYMOUS_SCRIPT_STRING);
-						errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(fileName), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-					}
-					if (errorObject->getProperty(rt, &LINE_NUMBER_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-						errorObject->setOwnProperty(rt, Value(&LINE_NUMBER_STRING), Value(static_cast<Int32>(throwLocation.line)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-					}
-					if (errorObject->getProperty(rt, &COLUMN_NUMBER_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-						errorObject->setOwnProperty(rt, Value(&COLUMN_NUMBER_STRING), Value(static_cast<Int32>(throwLocation.column)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-					}
-					if (!formattedStack.empty()) {
-                                                const bool stackAlreadySet = (errorObject->getProperty(rt, &STACK_STRING, &existing) != NONEXISTENT && !existing.isUndefined());
-                                                if (!stackAlreadySet) {
-                                                        const String* stackString = new(heap) String(heap.managed(), formattedStack);
-                                                        errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-                                                }
-                                        }
-				}
-			} else if (errorObject != 0) {
-				Value existing(UNDEFINED_VALUE);
-				if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-					errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(&ANONYMOUS_SCRIPT_STRING), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-				}
+			if (errorObject == 0) {
+				fallbackHeader = exception.toString(heap)->toUTF8String();
 			}
+			formattedStackString = formatStackString(heap, exception, frames, 0, fallbackHeader);
+		}
+		if (formattedStackString != 0) {
+			formattedStack = formattedStackString->toUTF8String();
+			if (errorObject != 0) {
+				Value existing(UNDEFINED_VALUE);
+				if (errorObject->getProperty(rt, &STACK_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
+					errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(formattedStackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+				}
+				errorObject->setStackString(formattedStackString);
+			}
+		}
 		reset();
 		if (existingException != 0) {
-			if (trace != 0 && !trace->isEmpty()) {
-				existingException->initializeMetadata(trace, throwLocation, formattedStack);
+			if (hasThrowLocation) {
+				existingException->initializeMetadata(throwLocation, formattedStack);
 			} else {
 				SourceLocation fallbackLocation;
 				fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
-				existingException->initializeMetadata(0, fallbackLocation, std::string());
+				existingException->initializeMetadata(fallbackLocation, std::string());
 			}
 			return true;
 		}
-		if (trace != 0 && !trace->isEmpty()) {
-			throw ScriptException(heap, exception, trace, throwLocation, formattedStack);
+		if (hasThrowLocation) {
+			throw ScriptException(heap, exception, throwLocation, formattedStack);
 		}
 		SourceLocation fallbackLocation;
 		fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
-		throw ScriptException(heap, exception, 0, fallbackLocation);
+		throw ScriptException(heap, exception, fallbackLocation);
 	}
+
 	ip = firstCatcher->ip;
 	assert(ip != 0);
 	currentFrame = firstCatcher->frame;
@@ -2772,7 +2788,6 @@ bool Processor::throwVirtualException(const Value& exception, ScriptException* e
 	popCatcher();
 	return false;
 }
-
 void Processor::throwVirtualException(const Value& exception) {
 	(void)throwVirtualException(exception, 0);
 }
@@ -3008,7 +3023,7 @@ void Processor::innerRun() {
 			case NEW_OBJECT_OP: push(new(heap) JSObject(heap.managed(), rt.getObjectPrototype())); break;
 			case NEW_ARRAY_OP: push(new(heap) JSArray(heap.managed())); break;
 			case NEW_REG_EXP_OP: invokeFunction(rt.createRegExpFunction, 1, 2); return;
-			case RETURN_OP:	ip = currentFrame->returnIP; popFrame(); return;
+			case RETURN_OP: ip = currentFrame->returnIP; popFrame(); return;
 			case THIS_OP: push(thisObject); break;
 			case VOID_OP: push(UNDEFINED_VALUE); break;
 			
@@ -3109,7 +3124,7 @@ void Processor::innerRun() {
 				Object* o = sp[0].getObject();
 				assert(dynamic_cast<Enumerator*>(o) != 0);
 				const String* name = reinterpret_cast<Enumerator*>(o)->nextPropertyName();
- 				if (name != 0) {
+				if (name != 0) {
 					sp[0] = name;
 				} else {
 					ip += im;
@@ -3135,13 +3150,13 @@ bool Processor::run(Int32 maxCycles) {
 			innerRun();
 		}
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		catch (ScriptException& x) {
-			if (x.getStackTrace() != 0 || x.getFileName() != 0) {
-				throw;
-			}
-			if (throwVirtualException(x.value, &x)) {
-				throw;
-			}
+catch (ScriptException& x) {
+if (x.hasStackString() || x.getFileName() != 0) {
+throw;
+}
+if (throwVirtualException(x.value, &x)) {
+throw;
+}
 	#else
 		catch (const ScriptException& x) {
 			throwVirtualException(x.value);
@@ -3304,21 +3319,27 @@ struct Compiler::SemanticScope {
 	}
 	
 	Type type;
-	const String label; 				// empty for automatic while, for, case labels
+	const String label;					// empty for automatic while, for, case labels
 	SemanticScope* const next;
 	Int32 stackDepthOnEntry;
-	Vector<BranchPoint> breaks; 		// source points for break jmp's
-	Vector<BranchPoint> continues; 		// source points for continue jmp's
-	Vector<BranchPoint> finallys; 		// source points for finally jsr's
+	Vector<BranchPoint> breaks;			// source points for break jmp's
+	Vector<BranchPoint> continues;		// source points for continue jmp's
+	Vector<BranchPoint> finallys;		// source points for finally jsr's
 };
 
-Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter)
-		: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
-		, mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
-		, nestCounter(initialNestCounter)
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		, lineScanOffset(0)
-	#endif
+Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+               , const Char* sourceBegin, UInt32 initialBaseLine
+#endif
+               )
+                : super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
+                , mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
+                , nestCounter(initialNestCounter)
+        #if (NUXJS_VERBOSE_EXCEPTIONS)
+                , absoluteStart(sourceBegin)
+                , baseLineNumber(initialBaseLine != 0 ? initialBaseLine : 1U)
+                , lineScanOffset(0)
+        #endif
 {
 }
  
@@ -3338,7 +3359,7 @@ void Compiler::CodeSection::emit(Compiler& compiler, Processor::Opcode opcode, I
 #else
 void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 #endif
-	if (inDeadCode()) {	// unknown stack depth = dead code
+	if (inDeadCode()) { // unknown stack depth = dead code
 		return;
 	}
 	const Processor::OpcodeInfo& opcodeInfo = Processor::getOpcodeInfo(opcode);
@@ -3633,11 +3654,11 @@ static UInt32 unescapedMaxLength(const Char* p, const Char* e) {
 	return l;
 }
 
-static const Char ESCAPE_CHARS[] = { '\\', '\"', '\'', 'b',  'f',  'n',  'r',  't',  'v', '0' };
+static const Char ESCAPE_CHARS[] = { '\\', '\"', '\'', 'b',	 'f',  'n',	 'r',  't',	 'v', '0' };
 static const Char ESCAPE_CODES[] = { '\\', '\"', '\'', '\b', '\f', '\n', '\r', '\t', '\v', '\0' };
 const int ESCAPE_CODE_COUNT = sizeof (ESCAPE_CHARS) / sizeof (*ESCAPE_CHARS);
 
-Char* Compiler::unescape(Char* buffer, const Char* e) {	
+Char* Compiler::unescape(Char* buffer, const Char* e) { 
 	assert(!eof() && (*p == '"' || *p == '\''));
 	Char endChar = *p;
 	++p;
@@ -4162,7 +4183,11 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 	func->setFileName(code->getFileName());
 #endif
-	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
+        Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+                        , absoluteStart, baseLineNumber
+#endif
+        );
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
 	}
@@ -4389,7 +4414,7 @@ void Compiler::completeBreaks(const SemanticScope* ofScope) {
 void Compiler::forInStatement(SemanticScope* emptyLabelScope, SemanticScope* scopeLabelsEnd
 		, const CodeSection& iterationSection, const ExpressionResult& iterationXR) {
 	ExpressionResult enumXR(rvalueExpression());
- 	emit(Processor::GET_ENUMERATOR_OP);
+	emit(Processor::GET_ENUMERATOR_OP);
 	enumXR = safeKeep();
 	expectToken(")", true);
 	for (SemanticScope* s = emptyLabelScope; s != scopeLabelsEnd; s = s->next) {	// we must change stack depth of all labels that point to this scope, otherwise we'll pop the enumerator on continue
@@ -4780,7 +4805,7 @@ void Compiler::tryStatement(SemanticScope* currentScope) {
 	completeForwardBranch(finallyRethrowPoint);
 	if (token("finally", true)) {
 		SemanticScope finallyScope(heap, SemanticScope::FINALLY_TYPE, currentSection->stackDepth, currentScope);
-		if (compilingFor == FOR_EVAL) {	// Ecmascript dictates that finally block should never change completion value.
+		if (compilingFor == FOR_EVAL) { // Ecmascript dictates that finally block should never change completion value.
 			emit(Processor::VOID_OP);
 		}
 		block(&finallyScope);
@@ -4959,25 +4984,29 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	this->e = e;
 	acceptInOperator = true;
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	lineScanOffset = 0;
-	setupSection.opcodeOffsets.resize(0);
-	mainSection.opcodeOffsets.resize(0);
-	code->opcodeOffsets.resize(0);
-	code->lineStartOffsets.resize(0);
-	code->lineStartOffsets.push(0);
+        lineScanOffset = 0;
+        setupSection.opcodeOffsets.resize(0);
+        mainSection.opcodeOffsets.resize(0);
+        code->opcodeOffsets.resize(0);
+        code->lineStartOffsets.resize(0);
+        code->lineStartOffsets.push(0);
+        if (absoluteStart == 0) {
+                absoluteStart = b;
+        }
+        code->setLineNumberBase(baseLineNumber != 0 ? baseLineNumber : 1U);
 #endif
 	
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
 	if (compilingFor == FOR_EVAL) {
-		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
+		emit(Processor::POP_OP, 1); // FIX : only if we reserve one element for return like we do now
 		emit(Processor::VOID_OP);
 	}
 	SemanticScope rootScope(heap, SemanticScope::ROOT_TYPE, 1, 0);
 	statementList(&rootScope);
- 	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
+	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
 	if (compilingFor != FOR_EVAL) {
 		// FIX : if RETURN_OP took a push back count we could just do void_op here, or even have another RETURN_VOID_OP
-		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
+		emit(Processor::POP_OP, 1); // FIX : only if we reserve one element for return like we do now
 		emit(Processor::VOID_OP);
 	}
 	emit(Processor::RETURN_OP);
@@ -5038,10 +5067,24 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 		argumentNames.push(name);
 		code->bloomSet |= name->createBloomCode();
 		white();
-	}
-	expectToken("{", true);
-	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
-	expectToken("}", false);
+        }
+        expectToken("{", true);
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+        const Char* bodyStart = p;
+        if (absoluteStart != 0 && bodyStart >= absoluteStart) {
+                UInt32 lineNumber = 1;
+                for (const Char* scan = absoluteStart; scan < bodyStart; ++scan) {
+                        if (isLineTerminator(*scan)) {
+                                ++lineNumber;
+                        }
+                }
+                baseLineNumber = (lineNumber != 0 ? lineNumber : 1U);
+        } else {
+                baseLineNumber = 1;
+        }
+#endif
+        compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
+        expectToken("}", false);
 	code->name = functionName;
 	code->selfName = selfName;
 	code->source = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
@@ -5297,7 +5340,11 @@ struct Support {
 			Heap& heap = rt.getHeap();
 			const String* source = argv[0].toString(heap);
 			Code* code = new(heap) Code(heap.managed());
-			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
+                        Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION, 0
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+                                        , source->begin(), 1
+#endif
+                        );
 			compiler.compileFunction(source->begin(), source->end()
 					, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING));
 			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
@@ -5617,7 +5664,11 @@ Code* Runtime::compileEvalCode(const String* expression) {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 		code->setFileName(&EVAL_CODE_STRING);
 #endif
-		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
+                Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL, 0
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+                                , expression->begin(), 1
+#endif
+                );
 		compiler.compile(*expression);
 		evalCodeCache.update(evalCodeCache.insert(expression), code);
 		return code;
@@ -5629,7 +5680,11 @@ Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 	code->setFileName((filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING));
 #endif
-	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
+        Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL, 0
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+                                , source.begin(), 1
+#endif
+        );
 	try {
 		compiler.compile(source);
 	}
@@ -5710,8 +5765,8 @@ void Runtime::setMemoryCap(size_t maxBytesUsed) { memoryCap = maxBytesUsed; }
 void Runtime::noTimeOut() { checkTimeOutCounter = 0; }
 
 void Runtime::resetTimeOut(Int32 timeOutSeconds) {
-	timeOut = clock() + timeOutSeconds * CLOCKS_PER_SEC;
-	checkTimeOutCounter = CHECK_TIMEOUT_INTERVAL;
+timeOut = clock() + timeOutSeconds * CLOCKS_PER_SEC;
+checkTimeOutCounter = CHECK_TIMEOUT_INTERVAL;
 }
 
 } /* namespace NuXJS */
@@ -5723,5 +5778,5 @@ void Runtime::resetTimeOut(Int32 timeOutSeconds) {
 #endif
 
 #ifdef _MSC_VER
-#pragma float_control(pop)  
+#pragma float_control(pop)	
 #endif
