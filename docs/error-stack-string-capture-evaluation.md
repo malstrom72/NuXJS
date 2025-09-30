@@ -8,6 +8,7 @@ This note captures what we observed while reviewing the NuXJS sources with the g
 2. `buildStackTraceText` (src/NuXJS.cpp, lines 2212-2250) formats the captured frames straight into a Node-style string. There is no intermediate `StackTrace` object anymore—the helper writes the final string directly from the iterator.
 3. `Processor::ensureErrorStack` (src/NuXJS.cpp, lines 2671-2726) runs whenever we construct or rethrow an `Error`. It checks whether `.stack` already contains a string, collects frames if needed, calls the formatter once, and writes the resulting string onto the property. If the walk produced metadata, it also populates `fileName`, `lineNumber`, and `columnNumber` directly from the top frame.
 4. `Processor::throwVirtualException` (src/NuXJS.cpp, lines 2729-2780) fires whenever control leaves the VM because of an exception. After calling `ensureErrorStack`, it simply reuses the stored string and propagates the top-frame metadata into the native `ScriptException` wrapper so C++ callers can report the error without re-entering JS.
+5. `Compiler` assigns each `Code` object a base line index while compiling nested functions so that `lookupSourceLocation` can report source lines relative to the original script instead of the isolated function body.
 
 The important detail is that the walking logic, the Node-style formatter, and the property population live in one place. Native helpers only decide *when* to request the capture.
 

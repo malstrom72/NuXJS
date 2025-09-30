@@ -841,10 +841,12 @@ class Code : public Object {
 		const String* getName() const { return name; }
 		const String* getSource() const { return source; }
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		bool lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
-		bool hasSourceLocations() const { return !opcodeOffsets.empty(); }
-		const String* getFileName() const { return fileName; }
-		void setFileName(const String* newFileName) { fileName = newFileName; }
+               bool lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
+               bool hasSourceLocations() const { return !opcodeOffsets.empty(); }
+               const String* getFileName() const { return fileName; }
+               void setFileName(const String* newFileName) { fileName = newFileName; }
+               UInt32 getLineNumberBase() const { return lineNumberBase; }
+               void setLineNumberBase(UInt32 newBase) { lineNumberBase = (newBase != 0 ? newBase : 1U); }
 	#endif
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
@@ -860,8 +862,9 @@ class Code : public Object {
 		const String* source;
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		const String* fileName;
-		Vector<UInt32> opcodeOffsets;
-		Vector<UInt32> lineStartOffsets;
+               Vector<UInt32> opcodeOffsets;
+               Vector<UInt32> lineStartOffsets;
+               UInt32 lineNumberBase;
 	#endif
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
@@ -1772,7 +1775,11 @@ class Compiler : public GCItem {
 
 		enum Target { FOR_GLOBAL, FOR_FUNCTION, FOR_EVAL };
 
-		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0);
+               Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+                               , const Char* sourceBegin = 0, UInt32 initialBaseLine = 1
+#endif
+               );
 		const Char* compile(const Char* b, const Char* e);
 		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName = 0); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
 		void compile(const String& source);
@@ -1900,7 +1907,9 @@ class Compiler : public GCItem {
 		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
 		int nestCounter;
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		UInt32 lineScanOffset;
+               const Char* absoluteStart;
+               UInt32 baseLineNumber;
+               UInt32 lineScanOffset;
 	#endif
 
 		virtual void gcMarkReferences(Heap& heap) const {
