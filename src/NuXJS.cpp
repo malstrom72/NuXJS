@@ -2669,49 +2669,50 @@ void Processor::popCatcher() {
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 void Processor::ensureErrorStack(Error* errorObject, UInt32 skipFrames, const std::vector<StackFrameInfo>* cachedFrames) {
-	if (errorObject == 0) {
-		return;
-	}
-	Heap& heap = rt.getHeap();
-	Value stackValue(UNDEFINED_VALUE);
-	const bool stackAlreadySet = (errorObject->getProperty(rt, &STACK_STRING, &stackValue) != NONEXISTENT && !stackValue.isUndefined());
-	if (stackAlreadySet) {
-		if (errorObject->getStackString() == 0) {
-			errorObject->setStackString(stackValue.toString(heap));
-		}
-		return;
-	}
-	const String* stackString = errorObject->getStackString();
-	bool hasLocation = false;
-	SourceLocation topLocation;
-	const std::vector<StackFrameInfo>* framesPointer = cachedFrames;
-	std::vector<StackFrameInfo> localFrames;
-	if (framesPointer == 0) {
-		collectStackFrames(localFrames);
-		framesPointer = &localFrames;
-	}
-	if (framesPointer != 0 && !framesPointer->empty()) {
-		const size_t frameCount = framesPointer->size();
-		const size_t skipIndex = static_cast<size_t>(skipFrames);
-		const size_t firstFrame = (skipIndex < frameCount ? skipIndex : frameCount - 1);
-		topLocation = (*framesPointer)[firstFrame].location;
-		hasLocation = true;
-		if (stackString == 0) {
-			stackString = formatStackString(heap, Value(errorObject), *framesPointer, firstFrame, std::string());
-		}
-	}
-	if (stackString == 0) {
-		stackString = errorObject->toString(heap);
-	}
-	errorObject->setStackString(stackString);
-	Value newStackValue(stackString);
-	errorObject->setOwnProperty(rt, Value(&STACK_STRING), newStackValue, DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-	Value existing(UNDEFINED_VALUE);
-	if (hasLocation) {
-		if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-			const String* fileName = (topLocation.fileName != 0 ? topLocation.fileName : &ANONYMOUS_SCRIPT_STRING);
-			errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(fileName), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-		}
+        if (errorObject == 0) {
+                return;
+        }
+        Heap& heap = rt.getHeap();
+        Value stackValue(UNDEFINED_VALUE);
+        const bool stackPropertyHasString = (errorObject->getProperty(rt, &STACK_STRING, &stackValue) != NONEXISTENT && !stackValue.isUndefined());
+        const String* propertyStackString = (stackPropertyHasString ? stackValue.toString(heap) : 0);
+        const String* stackString = errorObject->getStackString();
+        if (stackString == 0 && propertyStackString != 0) {
+                stackString = propertyStackString;
+                errorObject->setStackString(stackString);
+        }
+        bool hasLocation = false;
+        SourceLocation topLocation;
+        const std::vector<StackFrameInfo>* framesPointer = cachedFrames;
+        std::vector<StackFrameInfo> localFrames;
+        if (framesPointer == 0 && stackString == 0) {
+                collectStackFrames(localFrames);
+                framesPointer = &localFrames;
+        }
+        if (framesPointer != 0 && !framesPointer->empty()) {
+                const size_t frameCount = framesPointer->size();
+                const size_t skipIndex = static_cast<size_t>(skipFrames);
+                const size_t firstFrame = (skipIndex < frameCount ? skipIndex : frameCount - 1);
+                topLocation = (*framesPointer)[firstFrame].location;
+                hasLocation = true;
+                if (stackString == 0) {
+                        stackString = formatStackString(heap, Value(errorObject), *framesPointer, firstFrame, std::string());
+                }
+        }
+        if (stackString == 0) {
+                stackString = errorObject->toString(heap);
+        }
+        errorObject->setStackString(stackString);
+        if (!stackPropertyHasString || propertyStackString != stackString) {
+                Value newStackValue(stackString);
+                errorObject->setOwnProperty(rt, Value(&STACK_STRING), newStackValue, DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+        }
+        Value existing(UNDEFINED_VALUE);
+        if (hasLocation) {
+                if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
+                        const String* fileName = (topLocation.fileName != 0 ? topLocation.fileName : &ANONYMOUS_SCRIPT_STRING);
+                        errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(fileName), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+                }
 		if (errorObject->getProperty(rt, &LINE_NUMBER_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
 			errorObject->setOwnProperty(rt, Value(&LINE_NUMBER_STRING), Value(static_cast<Int32>(topLocation.line)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
 		}

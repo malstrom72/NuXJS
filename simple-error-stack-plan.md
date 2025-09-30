@@ -19,9 +19,9 @@
  - [x] Add `.io` scripts for direct throws, native rethrows, and built-in TypeError paths that confirm `.stack` is populated immediately.
 
 ## Milestone 3 – Clean documentation and guardrails
-- [ ] Update the stack-trace documentation to describe the new eager string path and the absence of the shared `StackTrace` data structure.
-- [ ] Drop any dead code that previously maintained frame lists or metadata caches.
-- [ ] Confirm that debugger-facing metadata (filename, line, column) now sources from the stored string or lightweight helpers.
+- [x] Update the stack-trace documentation to describe the new eager string path and the absence of the shared `StackTrace` data structure.
+- [x] Drop any dead code that previously maintained frame lists or metadata caches.
+- [x] Confirm that debugger-facing metadata (filename, line, column) now sources from the stored string or lightweight helpers.
 
 ### Tests
-- [ ] Run `./build.sh` to regenerate documentation artifacts and execute the regression suite, confirming the success banner appears.
+- [x] Run `./build.sh` to regenerate documentation artifacts and execute the regression suite, confirming the success banner appears.

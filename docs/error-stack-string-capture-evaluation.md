@@ -5,21 +5,22 @@ This note captures what we observed while reviewing the NuXJS sources with the g
 ## 1. What the current helpers do
 
 1. `Processor::collectStackFrames` (src/NuXJS.cpp, lines 2260-2286) walks the interpreter frames, skips entries that do not have source tables, and records the `returnIP` so we do not double count the current instruction. Each captured frame stores the function name and resolved `SourceLocation` in a temporary `std::vector`.
-2. `Processor::ensureErrorStack` (src/NuXJS.cpp, lines 2671-2726) runs whenever we construct or rethrow an `Error`. It checks whether `.stack` already contains a string, collects frames if needed, formats them through the Node-style helper, and writes the resulting string onto the property. If the walk produced metadata, it also populates `fileName`, `lineNumber`, and `columnNumber`.
-3. `Processor::throwVirtualException` (src/NuXJS.cpp, lines 2729-2780) fires whenever control leaves the VM because of an exception. After calling `ensureErrorStack`, it reuses the stored string if present or formats the captured frames once, then copies the metadata into the native `ScriptException` wrapper so C++ callers can report the error without re-entering JS.
+2. `buildStackTraceText` (src/NuXJS.cpp, lines 2212-2250) formats the captured frames straight into a Node-style string. There is no intermediate `StackTrace` object anymore—the helper writes the final string directly from the iterator.
+3. `Processor::ensureErrorStack` (src/NuXJS.cpp, lines 2671-2726) runs whenever we construct or rethrow an `Error`. It checks whether `.stack` already contains a string, collects frames if needed, calls the formatter once, and writes the resulting string onto the property. If the walk produced metadata, it also populates `fileName`, `lineNumber`, and `columnNumber` directly from the top frame.
+4. `Processor::throwVirtualException` (src/NuXJS.cpp, lines 2729-2780) fires whenever control leaves the VM because of an exception. After calling `ensureErrorStack`, it simply reuses the stored string and propagates the top-frame metadata into the native `ScriptException` wrapper so C++ callers can report the error without re-entering JS.
 
 The important detail is that the walking logic, the Node-style formatter, and the property population live in one place. Native helpers only decide *when* to request the capture.
 
 ## 2. What changes if we generate the string eagerly
 
-Switching to a string-only model does not remove the need for the steps above; it changes where they live. The VM still has to:
+Switching to a string-only model removes the legacy `StackTrace` cache while keeping the observable behaviour intact. The VM still has to:
 
 * Walk the VM stack and resolve source locations so the `at file:line:column` entries match the Node layout. We now centralise that in `collectStackFrames`.
 * Decide which frames to omit (native throw helpers, internal trampoline functions, async continuations) so that the formatted output aligns with the observable behaviour today. Those decisions currently live next to the walker.
-* Populate the metadata properties (`fileName`, `lineNumber`, `columnNumber`) that debuggers and the regression suite expect on every error object.
-* Provide the formatted stack to both the JS-visible `Error` instance *and* the `ScriptException` wrapper that crosses the C++ boundary. Without the shared `StackTrace` object, the two consumers coordinate through the shared string and captured frame list.
+* Populate the metadata properties (`fileName`, `lineNumber`, `columnNumber`) that debuggers and the regression suite expect on every error object using the same frame iterator that produced the string.
+* Provide the formatted stack to both the JS-visible `Error` instance *and* the `ScriptException` wrapper that crosses the C++ boundary. The shared coordination point is now the cached string plus the throw-site metadata we derived while formatting it.
 
-In other words, the runtime still performs the same work; the question is whether we do it once in a shared helper or repeat the logic in every throw path.
+In other words, the runtime still performs the same work; the question is whether we do it once in a shared helper or repeat the logic in every throw path. The eager approach keeps the single helper while discarding the structured cache entirely.
 
 ## 3. Where the duplicated effort would appear
 
@@ -30,10 +31,10 @@ The code already shows two distinct consumers for the stack data:
 
 Because both steps happen on every throw, generating the final string eagerly inside `ensureErrorStack` means we either:
 
-1. Build the string once, store it on the error object, and teach `throwVirtualException` to reuse it when constructing the `ScriptException`. That replaces the current `StackTrace` cache with a cached string plus the transient frame vector, or
+1. Build the string once, store it on the error object, and teach `throwVirtualException` to reuse it when constructing the `ScriptException`. That replaces the old `StackTrace` cache with a cached string and immediate metadata derived from the initial walk, or
 2. Walk and format the stack twice—once for the JS properties and once for the host exception—because each call site currently asks for the information independently.
 
-The second option is what we refer to as “duplicated work”: two full stack walks, two sets of allocations, and two rounds of property bookkeeping for the same throw event. The implementation now uses the first option and shifts the shared state to a cached string plus the transient frame vector.
+The second option is what we refer to as “duplicated work”: two full stack walks, two sets of allocations, and two rounds of property bookkeeping for the same throw event. The implementation now uses the first option and shifts the shared state to the cached string and throw-site metadata that we compute during the first walk.
 
 ## 4. Open questions for an eager-string prototype
 
