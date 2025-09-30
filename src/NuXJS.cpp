@@ -1368,11 +1368,6 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v) const {
 
 bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 	if (updateOwnProperty(rt, key, v)) {
-		Function* assignedFunction = v.asFunction();
-		if (assignedFunction != 0) {
-			const String* propertyName = key.toString(rt.getHeap());
-			assignedFunction->assignDisplayName(propertyName, &rt);
-		}
 		return true;
 	}
 	const Object* o = this;
@@ -1382,15 +1377,7 @@ bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 			return false;
 		}
 	}
-	const bool didSet = setOwnProperty(rt, key, v);
-	if (didSet) {
-		Function* assignedFunction = v.asFunction();
-		if (assignedFunction != 0) {
-			const String* propertyName = key.toString(rt.getHeap());
-			assignedFunction->assignDisplayName(propertyName, &rt);
-		}
-	}
-	return didSet;
+	return setOwnProperty(rt, key, v);
 }
 
 Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
@@ -1450,10 +1437,6 @@ bool Table::update(Bucket* bucket, const Value& value, Flags flags) {
 		bucket->flags |= EXISTS_FLAG | flags;
 		bucket->type = static_cast<Byte>(value.type & 0xFF);
 		bucket->var = value.var;
-		Function* assignedFunction = value.asFunction();
-		if (assignedFunction != 0) {
-			assignedFunction->assignDisplayName(bucket->getKey());
-		}
 	}
 	return true;
 }
