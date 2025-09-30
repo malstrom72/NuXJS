@@ -17,11 +17,17 @@
 >	f();
 > } catch (err) {
 >	var frames = err.stack.split("\n");
+>	print(frames[1].indexOf("at h (") >= 0);
+>	print(frames[2].indexOf("at g (") >= 0);
+>	print(frames[3].indexOf("at f (") >= 0);
 >	print(frames[1].indexOf(":11:") >= 0);
 >	print(frames[2].indexOf(":8:") >= 0);
 >	print(frames[3].indexOf(":3:") >= 0);
 >	print(frames[4].indexOf(":13:") >= 0);
 > }
+< true
+< true
+< true
 < true
 < true
 < true

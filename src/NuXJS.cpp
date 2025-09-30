@@ -1368,6 +1368,11 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v) const {
 
 bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 	if (updateOwnProperty(rt, key, v)) {
+		Function* assignedFunction = v.asFunction();
+		if (assignedFunction != 0) {
+			const String* propertyName = key.toString(rt.getHeap());
+			assignedFunction->assignDisplayName(propertyName, &rt);
+		}
 		return true;
 	}
 	const Object* o = this;
@@ -1377,7 +1382,15 @@ bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 			return false;
 		}
 	}
-	return setOwnProperty(rt, key, v);
+	const bool didSet = setOwnProperty(rt, key, v);
+	if (didSet) {
+		Function* assignedFunction = v.asFunction();
+		if (assignedFunction != 0) {
+			const String* propertyName = key.toString(rt.getHeap());
+			assignedFunction->assignDisplayName(propertyName, &rt);
+		}
+	}
+	return didSet;
 }
 
 Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
@@ -1437,6 +1450,10 @@ bool Table::update(Bucket* bucket, const Value& value, Flags flags) {
 		bucket->flags |= EXISTS_FLAG | flags;
 		bucket->type = static_cast<Byte>(value.type & 0xFF);
 		bucket->var = value.var;
+		Function* assignedFunction = value.asFunction();
+		if (assignedFunction != 0) {
+			assignedFunction->assignDisplayName(bucket->getKey());
+		}
 	}
 	return true;
 }
@@ -1694,6 +1711,18 @@ bool Function::hasInstance(Runtime& rt, Object* object) const {
 	return false;
 }
 
+void Function::assignDisplayName(const String* displayName, Runtime*) {
+	const Code* scriptCode = getScriptCode();
+	if (scriptCode == 0 || displayName == 0 || displayName->empty()) {
+		return;
+	}
+	const String* existingName = scriptCode->getName();
+	if (existingName != 0 && !existingName->empty()) {
+		return;
+	}
+	const_cast<Code*>(scriptCode)->setName(displayName);
+}
+
 /* --- JSArray --- */
 
 JSArray::JSArray(GCList& gcList) : super(gcList), length(0), denseVector(&gcList.getHeap()) { }
@@ -1885,6 +1914,23 @@ Value JSFunction::getInternalValue(Heap& heap) const { return toString(heap); }
 const String* JSFunction::toString(Heap& heap) const {
 	const String* s = code->getSource();
 	return (s != 0 ? s : Object::toString(heap));
+}
+
+void JSFunction::assignDisplayName(const String* displayName, Runtime* runtime) {
+	const Code* scriptCode = getScriptCode();
+	if (scriptCode == 0) {
+		return;
+	}
+	const String* existingName = scriptCode->getName();
+	const bool wasUnnamed = (existingName == 0 || existingName->empty());
+	Function::assignDisplayName(displayName, runtime);
+	if (!wasUnnamed || runtime == 0 || completeObject == 0) {
+		return;
+	}
+	const String* updatedName = scriptCode->getName();
+	if (updatedName != 0 && !updatedName->empty()) {
+		completeObject->updateOwnProperty(*runtime, Value(&NAME_STRING), Value(updatedName));
+	}
 }
 
 Value JSFunction::invoke(Runtime&, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {

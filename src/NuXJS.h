@@ -839,6 +839,7 @@ class Code : public Object {
 		const CodeWord* getCodeWords() const { return codeWords.begin(); }
 		UInt32 getCodeSize() const { return codeWords.size(); }
 		const String* getName() const { return name; }
+		void setName(const String* newName) { name = newName; }
 		const String* getSource() const { return source; }
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
                bool lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
@@ -900,6 +901,7 @@ class Function : public Object {
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
 		virtual bool hasInstance(Runtime& rt, Object* object) const;
+		virtual void assignDisplayName(const String* displayName, Runtime* runtime = 0);
 		virtual const Code* getScriptCode() const { return 0; }
 		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject = 0) = 0;
 
@@ -977,6 +979,7 @@ class JSFunction : public ExtensibleFunction {
 		virtual Value getInternalValue(Heap& heap) const;
 		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
 		virtual const Code* getScriptCode() const { return code; }
+		virtual void assignDisplayName(const String* displayName, Runtime* runtime = 0);
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
