@@ -821,6 +821,32 @@ static Var throwFromCpp(Runtime& rt, const Var&, const VarList&) {
 	return Var(rt);
 }
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+static const String* gFirstTrackedStackString = 0;
+static bool gTrackedStackMismatch = false;
+#endif
+
+static Var rethrowNative(Runtime& rt, const Var&, const VarList& args) {
+	EXPECT(args.size() >= 1);
+	try {
+		return args[0]();
+	} catch (const ScriptException& ex) {
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+		Error* errorObject = ex.asErrorObject();
+		if (errorObject != 0) {
+			const String* stackString = errorObject->getStackString();
+			if (gFirstTrackedStackString == 0) {
+				gFirstTrackedStackString = stackString;
+			} else if (stackString != gFirstTrackedStackString) {
+				gTrackedStackMismatch = true;
+			}
+		}
+#endif
+		throw;
+	}
+	return Var(rt);
+}
+
 static void testExceptionStacks() {
 	std::cout << std::endl << "***** Exception stacks *****" << std::endl << std::endl;
 	std::cout << "	- JS -> C++ propagation" << std::endl;
@@ -877,6 +903,102 @@ static void testNativeStackFormatter() {
 			EXPECT(view.find("\n    at ") != std::string::npos);
 		}
 	}
+}
+
+static void testStackStringRethrows() {
+	std::cout << std::endl << "***** Stack string rethrow stability *****" << std::endl << std::endl;
+	std::cout << "	- JS catch and rethrow" << std::endl;
+	std::cout << "	- C++ errors bounced through JS" << std::endl;
+	std::cout << "	- native crossover rethrows" << std::endl;
+
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
+
+	Var globals = rt.getGlobalsVar();
+	globals["throwFromCpp"] = throwFromCpp;
+	globals["rethrowNative"] = rethrowNative;
+
+	rt.run("var capturedStack; var jsStable = false;\n"
+		"try {\n"
+		"  try {\n"
+		"    throw new Error('js rethrow stable');\n"
+		"  } catch (inner) {\n"
+		"    capturedStack = inner.stack;\n"
+		"    throw inner;\n"
+		"  }\n"
+		"} catch (outer) {\n"
+		"  jsStable = (outer.stack === capturedStack);\n"
+		"}\n");
+	EXPECT(globals["jsStable"].to<bool>());
+
+	rt.run("var cppCaptured; var cppStable = false;\n"
+		"try {\n"
+		"  try {\n"
+		"    throwFromCpp();\n"
+		"  } catch (inner) {\n"
+		"    cppCaptured = inner.stack;\n"
+		"    throw inner;\n"
+		"  }\n"
+		"} catch (outer) {\n"
+		"  cppStable = (outer.stack === cppCaptured);\n"
+		"}\n");
+	EXPECT(globals["cppStable"].to<bool>());
+
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	gFirstTrackedStackString = 0;
+	gTrackedStackMismatch = false;
+#endif
+	rt.run("function throwNativeOnce(){ throw new Error('native bounce stable'); }\n"
+		"function nestedNativeThrow(){ rethrowNative(function(){ throw new Error('nested rethrow stable'); }); }\n");
+	Var throwNativeOnce = globals["throwNativeOnce"];
+	Var nestedNativeThrow = globals["nestedNativeThrow"];
+	Var rethrowFn = globals["rethrowNative"];
+
+	const String* firstStack = 0;
+	try {
+		try {
+			rethrowFn(throwNativeOnce);
+			EXPECT(false);
+		} catch (const ScriptException& first) {
+			Error* errorObject = first.asErrorObject();
+			EXPECT(errorObject != 0);
+			firstStack = (errorObject != 0 ? errorObject->getStackString() : 0);
+			EXPECT(firstStack != 0);
+			throw;
+		}
+	} catch (const ScriptException& second) {
+		Error* errorObject = second.asErrorObject();
+		EXPECT(errorObject != 0);
+		if (errorObject != 0) {
+			EXPECT(firstStack == errorObject->getStackString());
+		}
+	}
+
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	gFirstTrackedStackString = 0;
+	gTrackedStackMismatch = false;
+#endif
+	try {
+		rethrowFn(nestedNativeThrow);
+		EXPECT(false);
+	} catch (const ScriptException& nested) {
+		Error* errorObject = nested.asErrorObject();
+		EXPECT(errorObject != 0);
+		if (errorObject != 0) {
+			const String* stackString = errorObject->getStackString();
+			EXPECT(stackString != 0);
+			if (stackString != 0) {
+				const std::string view = stackString->toUTF8String();
+				EXPECT(view.find("nested rethrow stable") != std::string::npos);
+			}
+		}
+	}
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	EXPECT(!gTrackedStackMismatch);
+	gFirstTrackedStackString = 0;
+	gTrackedStackMismatch = false;
+#endif
 }
 
 static void testHighLevelAPI() {
@@ -1879,6 +2001,7 @@ int main(int argc, const char* argv[]) {
 		testLimits();
 		testExceptionStacks();
 		testNativeStackFormatter();
+		testStackStringRethrows();
 		testHighLevelAPI();
 		readMeSample1();
 		readMeSample2();

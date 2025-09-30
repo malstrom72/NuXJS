@@ -1241,6 +1241,12 @@ struct SourceLocation {
 		int column;
 };
 
+struct StackFrameInfo {
+		StackFrameInfo() : functionName(0), location() { }
+		const String* functionName;
+		SourceLocation location;
+};
+
 #endif
 struct ScriptException : public Exception {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
@@ -1666,8 +1672,9 @@ class Processor : public GCItem {
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
 		void throwVirtualException(const Value& exception);
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-bool throwVirtualException(const Value& exception, ScriptException* existingException);
-void ensureErrorStack(Error* errorObject, UInt32 skipFrames);
+		bool throwVirtualException(const Value& exception, ScriptException* existingException);
+		void ensureErrorStack(Error* errorObject, UInt32 skipFrames, const std::vector<StackFrameInfo>* cachedFrames = 0);
+		void collectStackFrames(std::vector<StackFrameInfo>& frames) const;
 #endif
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);

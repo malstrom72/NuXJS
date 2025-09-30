@@ -9,14 +9,14 @@
 - [x] Add a focused C++ unit that throws from native code, calls the helper once, and verifies the formatted string includes the expected header plus `    at` rows.
 
 ## Milestone 2 – Capture the string exactly once per throw
-- [ ] Call the new helper from every place that constructs or rethrows an `Error`, ensuring we only walk the stack when the object has no string yet.
-- [ ] Confirm no legacy alias needs mirroring; `.stack` is the sole property populated during construction.
-- [ ] Ensure `throwVirtualException` reads the already-stored string instead of re-walking the stack.
+- [x] Call the new helper from every place that constructs or rethrows an `Error`, ensuring we only walk the stack when the object has no string yet.
+ - [x] Confirm no legacy alias needs mirroring; `.stack` is the sole property populated during construction.
+- [x] Ensure `throwVirtualException` reads the already-stored string instead of re-walking the stack.
 - [x] Remove the legacy `StackTrace` data structure and build the stack string directly while walking frames.
 
 ### Tests
-- [ ] Extend the C++ coverage to throw, catch, and rethrow in all C++↔JS combinations, asserting the string never changes.
-- [ ] Add `.io` scripts for direct throws, native rethrows, and built-in TypeError paths that confirm `.stack` is populated immediately.
+- [x] Extend the C++ coverage to throw, catch, and rethrow in all C++↔JS combinations, asserting the string never changes.
+ - [x] Add `.io` scripts for direct throws, native rethrows, and built-in TypeError paths that confirm `.stack` is populated immediately.
 
 ## Milestone 3 – Clean documentation and guardrails
 - [ ] Update the stack-trace documentation to describe the new eager string path and the absence of the shared `StackTrace` data structure.

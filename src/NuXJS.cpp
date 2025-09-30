@@ -2184,12 +2184,6 @@ static std::string toDecimalString(Int32 value) {
 	return result;
 }
 
-struct StackFrameInfo {
-	StackFrameInfo() : functionName(0), location() { }
-	const String* functionName;
-	SourceLocation location;
-};
-
 static std::string buildStackHeader(const Value& exceptionValue, const std::string& fallbackHeader) {
 	std::string header;
 	Error* errorObject = exceptionValue.asError();
@@ -2261,6 +2255,34 @@ static const String* formatStackString(Heap& heap, const Value& exceptionValue, 
 	}
 	const std::string formatted = buildStackTraceText(exceptionValue, fallbackHeader, frames, firstFrameIndex);
 	return (formatted.empty() ? 0 : new(heap) String(heap.managed(), formatted));
+}
+
+void Processor::collectStackFrames(std::vector<StackFrameInfo>& frames) const
+{
+	frames.clear();
+	const Frame* frameWalker = currentFrame;
+	const CodeWord* nextIP = ip;
+	while (frameWalker != 0 && nextIP != 0) {
+		const Code* frameCode = frameWalker->code;
+		if (frameCode == 0 || frameCode->getFileName() == 0 || !frameCode->hasSourceLocations()) {
+			break;
+		}
+		const CodeWord* begin = frameCode->getCodeWords();
+		if (begin == 0 || nextIP <= begin) {
+			break;
+		}
+		const UInt32 instructionIndex = static_cast<UInt32>((nextIP - begin) - 1);
+		SourceLocation location;
+		if (!frameCode->lookupSourceLocation(instructionIndex, location)) {
+			break;
+		}
+		StackFrameInfo info;
+		info.functionName = frameCode->getName();
+		info.location = location;
+		frames.push_back(info);
+		nextIP = frameWalker->returnIP;
+		frameWalker = frameWalker->previousFrame;
+	}
 }
 
 #endif
@@ -2646,51 +2668,36 @@ void Processor::popCatcher() {
 }
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-void Processor::ensureErrorStack(Error* errorObject, UInt32 skipFrames) {
+void Processor::ensureErrorStack(Error* errorObject, UInt32 skipFrames, const std::vector<StackFrameInfo>* cachedFrames) {
 	if (errorObject == 0) {
 		return;
 	}
+	Heap& heap = rt.getHeap();
 	Value stackValue(UNDEFINED_VALUE);
 	const bool stackAlreadySet = (errorObject->getProperty(rt, &STACK_STRING, &stackValue) != NONEXISTENT && !stackValue.isUndefined());
 	if (stackAlreadySet) {
+		if (errorObject->getStackString() == 0) {
+			errorObject->setStackString(stackValue.toString(heap));
+		}
 		return;
 	}
-	Heap& heap = rt.getHeap();
 	const String* stackString = errorObject->getStackString();
 	bool hasLocation = false;
 	SourceLocation topLocation;
-	std::vector<StackFrameInfo> frames;
-	const Frame* frameWalker = currentFrame;
-	const CodeWord* nextIP = ip;
-	while (frameWalker != 0 && nextIP != 0) {
-		const Code* frameCode = frameWalker->code;
-		if (frameCode == 0 || frameCode->getFileName() == 0 || !frameCode->hasSourceLocations()) {
-			break;
-		}
-		const CodeWord* begin = frameCode->getCodeWords();
-		if (begin == 0 || nextIP <= begin) {
-			break;
-		}
-		const UInt32 instructionIndex = static_cast<UInt32>((nextIP - begin) - 1);
-		SourceLocation location;
-		if (!frameCode->lookupSourceLocation(instructionIndex, location)) {
-			break;
-		}
-		StackFrameInfo info;
-		info.functionName = frameCode->getName();
-		info.location = location;
-		frames.push_back(info);
-		nextIP = frameWalker->returnIP;
-		frameWalker = frameWalker->previousFrame;
+	const std::vector<StackFrameInfo>* framesPointer = cachedFrames;
+	std::vector<StackFrameInfo> localFrames;
+	if (framesPointer == 0) {
+		collectStackFrames(localFrames);
+		framesPointer = &localFrames;
 	}
-	if (!frames.empty()) {
-		const size_t frameCount = frames.size();
+	if (framesPointer != 0 && !framesPointer->empty()) {
+		const size_t frameCount = framesPointer->size();
 		const size_t skipIndex = static_cast<size_t>(skipFrames);
 		const size_t firstFrame = (skipIndex < frameCount ? skipIndex : frameCount - 1);
-		topLocation = frames[firstFrame].location;
+		topLocation = (*framesPointer)[firstFrame].location;
 		hasLocation = true;
 		if (stackString == 0) {
-			stackString = formatStackString(heap, Value(errorObject), frames, firstFrame, std::string());
+			stackString = formatStackString(heap, Value(errorObject), *framesPointer, firstFrame, std::string());
 		}
 	}
 	if (stackString == 0) {
@@ -2699,8 +2706,8 @@ void Processor::ensureErrorStack(Error* errorObject, UInt32 skipFrames) {
 	errorObject->setStackString(stackString);
 	Value newStackValue(stackString);
 	errorObject->setOwnProperty(rt, Value(&STACK_STRING), newStackValue, DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+	Value existing(UNDEFINED_VALUE);
 	if (hasLocation) {
-		Value existing(UNDEFINED_VALUE);
 		if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
 			const String* fileName = (topLocation.fileName != 0 ? topLocation.fileName : &ANONYMOUS_SCRIPT_STRING);
 			errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(fileName), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
@@ -2711,101 +2718,66 @@ void Processor::ensureErrorStack(Error* errorObject, UInt32 skipFrames) {
 		if (errorObject->getProperty(rt, &COLUMN_NUMBER_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
 			errorObject->setOwnProperty(rt, Value(&COLUMN_NUMBER_STRING), Value(static_cast<Int32>(topLocation.column)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
 		}
+	} else {
+		if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
+			errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(&ANONYMOUS_SCRIPT_STRING), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+		}
 	}
 }
 #endif
 
 bool Processor::throwVirtualException(const Value& exception, ScriptException* existingException) {
 	Error* errorObject = exception.asError();
-	ensureErrorStack(errorObject, 0);
-		if (firstCatcher == 0) { // FIX: what exception to throw here?
-			SourceLocation throwLocation;
-			std::string formattedStack;
-			std::string fallbackHeader;
-			const String* formattedStackString = 0;
-			std::vector<StackFrameInfo> frames;
-			const Frame* frameWalker = currentFrame;
-			const CodeWord* nextIP = ip;
-			while (frameWalker != 0 && nextIP != 0) {
-				const Code* frameCode = frameWalker->code;
-				if (frameCode == 0 || frameCode->getFileName() == 0 || !frameCode->hasSourceLocations()) {
-					break;
-				}
-				const CodeWord* begin = frameCode->getCodeWords();
-				if (begin == 0 || nextIP <= begin) {
-					break;
-				}
-				const UInt32 instructionIndex = static_cast<UInt32>((nextIP - begin) - 1);
-				SourceLocation location;
-				if (!frameCode->lookupSourceLocation(instructionIndex, location)) {
-					break;
-				}
-				StackFrameInfo info;
-				info.functionName = frameCode->getName();
-				info.location = location;
-				frames.push_back(info);
-				nextIP = frameWalker->returnIP;
-				frameWalker = frameWalker->previousFrame;
-			}
-			if (!frames.empty()) {
-				throwLocation = frames[0].location;
-				if (errorObject == 0) {
-					fallbackHeader = exception.toString(heap)->toUTF8String();
-				}
-				if (errorObject != 0) {
-					formattedStackString = errorObject->getStackString();
-				}
-				if (formattedStackString == 0) {
-					formattedStackString = formatStackString(heap, exception, frames, 0, fallbackHeader);
-					if (errorObject != 0 && formattedStackString != 0) {
-						errorObject->setStackString(formattedStackString);
-					}
-				}
-				if (formattedStackString != 0) {
-					formattedStack = formattedStackString->toUTF8String();
-				}
-				if (errorObject != 0) {
-					Value existing(UNDEFINED_VALUE);
-					if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-						const String* fileName = (throwLocation.fileName != 0 ? throwLocation.fileName : &ANONYMOUS_SCRIPT_STRING);
-						errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(fileName), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-					}
-					if (errorObject->getProperty(rt, &LINE_NUMBER_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-						errorObject->setOwnProperty(rt, Value(&LINE_NUMBER_STRING), Value(static_cast<Int32>(throwLocation.line)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-					}
-					if (errorObject->getProperty(rt, &COLUMN_NUMBER_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-						errorObject->setOwnProperty(rt, Value(&COLUMN_NUMBER_STRING), Value(static_cast<Int32>(throwLocation.column)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-					}
-					if (formattedStackString != 0) {
-						if (errorObject->getProperty(rt, &STACK_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-							errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(formattedStackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-						}
-					}
-				}
-			} else if (errorObject != 0) {
-				Value existing(UNDEFINED_VALUE);
-				if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-					errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(&ANONYMOUS_SCRIPT_STRING), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-				}
-			}
-			reset();
-			if (existingException != 0) {
-				if (!frames.empty()) {
-					existingException->initializeMetadata(throwLocation, formattedStack);
-				} else {
-					SourceLocation fallbackLocation;
-					fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
-					existingException->initializeMetadata(fallbackLocation, std::string());
-				}
-				return true;
-			}
-			if (!frames.empty()) {
-				throw ScriptException(heap, exception, throwLocation, formattedStack);
-			}
-			SourceLocation fallbackLocation;
-			fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
-			throw ScriptException(heap, exception, fallbackLocation);
+	std::vector<StackFrameInfo> frames;
+	collectStackFrames(frames);
+	ensureErrorStack(errorObject, 0, &frames);
+	if (firstCatcher == 0) { // FIX: what exception to throw here?
+		SourceLocation throwLocation;
+		bool hasThrowLocation = false;
+		std::string formattedStack;
+		const String* formattedStackString = 0;
+		if (!frames.empty()) {
+			throwLocation = frames[0].location;
+			hasThrowLocation = true;
 		}
+		if (errorObject != 0) {
+			formattedStackString = errorObject->getStackString();
+		}
+		if (formattedStackString == 0 && !frames.empty()) {
+			std::string fallbackHeader;
+			if (errorObject == 0) {
+				fallbackHeader = exception.toString(heap)->toUTF8String();
+			}
+			formattedStackString = formatStackString(heap, exception, frames, 0, fallbackHeader);
+		}
+		if (formattedStackString != 0) {
+			formattedStack = formattedStackString->toUTF8String();
+			if (errorObject != 0) {
+				Value existing(UNDEFINED_VALUE);
+				if (errorObject->getProperty(rt, &STACK_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
+					errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(formattedStackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+				}
+				errorObject->setStackString(formattedStackString);
+			}
+		}
+		reset();
+		if (existingException != 0) {
+			if (hasThrowLocation) {
+				existingException->initializeMetadata(throwLocation, formattedStack);
+			} else {
+				SourceLocation fallbackLocation;
+				fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
+				existingException->initializeMetadata(fallbackLocation, std::string());
+			}
+			return true;
+		}
+		if (hasThrowLocation) {
+			throw ScriptException(heap, exception, throwLocation, formattedStack);
+		}
+		SourceLocation fallbackLocation;
+		fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
+		throw ScriptException(heap, exception, fallbackLocation);
+	}
 
 	ip = firstCatcher->ip;
 	assert(ip != 0);
@@ -2815,7 +2787,6 @@ bool Processor::throwVirtualException(const Value& exception, ScriptException* e
 	popCatcher();
 	return false;
 }
-
 void Processor::throwVirtualException(const Value& exception) {
 	(void)throwVirtualException(exception, 0);
 }
