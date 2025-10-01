@@ -17,8 +17,8 @@ for arg in "$@"; do
 done
 
 if $remove; then
-	python3 tools/diffguard.py NUXJS_NOT_MAIN --remove src/NuXJS.cpp src/NuXJS.cpp
-	python3 tools/diffguard.py NUXJS_NOT_MAIN --remove src/NuXJS.h src/NuXJS.h
+	python3 tools/diffguard.py NUXJS_VERBOSE_EXCEPTIONS --remove src/NuXJS.cpp src/NuXJS.cpp
+	python3 tools/diffguard.py NUXJS_VERBOSE_EXCEPTIONS --remove src/NuXJS.h src/NuXJS.h
 	exit 0
 fi
 
@@ -29,6 +29,6 @@ trap 'rm -f "$tmp_cpp" "$tmp_h"' EXIT
 git show "$branch:src/NuXJS.cpp" >"$tmp_cpp"
 git show "$branch:src/NuXJS.h" >"$tmp_h"
 
-python3 tools/diffguard.py NUXJS_NOT_MAIN "$@" "$tmp_cpp" src/NuXJS.cpp src/NuXJS.cpp
-python3 tools/diffguard.py NUXJS_NOT_MAIN "$@" "$tmp_h" src/NuXJS.h src/NuXJS.h
+python3 tools/diffguard.py NUXJS_VERBOSE_EXCEPTIONS "$@" "$tmp_cpp" src/NuXJS.cpp src/NuXJS.cpp
+python3 tools/diffguard.py NUXJS_VERBOSE_EXCEPTIONS "$@" "$tmp_h" src/NuXJS.h src/NuXJS.h
 

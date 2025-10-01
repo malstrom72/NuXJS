@@ -85,7 +85,7 @@ class GCItem {
 	public:
 		static void* operator new(size_t n, Heap& heap);	///< Will store a secret pointer to Heap in allocated memory.
 		static void operator delete(void* ptr);				///< Will use the secret pointer to delete from correct Heap.
-		static void operator delete(void* ptr, Heap& heap); ///< C++ calls this (only) if constructor throws.
+		static void operator delete(void* ptr, Heap& heap);	///< C++ calls this (only) if constructor throws.
 	
 	protected:
 		GCItem() throw() : _gcList(0) { _gcPrev = _gcNext = this; }
@@ -150,7 +150,7 @@ class Heap {
 		GCList& roots() throw() { return rootList; }
 		void* allocate(size_t size);					///< Notice that allocated memory is *not* automatically released when Heap is destroyed (unless it is indirectly freed via the deletion of all managed GCItems).
 		void free(void* ptr);							///< Null pointer is not ok, and naturally you must not free an already freed pointer.
-		void drain();									///< Frees pooled blocks. Suggestion: call before each gc to only hold on to as much memory as we required since last gc.
+		void drain(); 									///< Frees pooled blocks. Suggestion: call before each gc to only hold on to as much memory as we required since last gc.
 		UInt32 count() const { return allocatedCount; }
 		size_t size() const { return allocatedSize; }
 		size_t pooled() const { return pooledSize; }
@@ -255,7 +255,7 @@ template<typename T, UInt32 INTERNAL_COUNT = DEFAULT_INTERNAL_COUNT> class Vecto
 
 		void insert(T* p, const T* b, const T* e) {
 			assert(begin() <= p && p <= end());
-			assert(!(b <= p && p < e)); // can't insert from itself
+			assert(!(b <= p && p < e));	// can't insert from itself
 			const UInt32 o = distance(begin(), p);
 			const UInt32 n = distance(b, e);
 			resize(count + n);
@@ -397,7 +397,7 @@ class Value {
 		bool toArrayIndex(UInt32& index) const;				///< returns false if value is outside valid array index range (0..2^32-1)
 		double toDouble() const;							///< Will *not* convert objects to numbers (as this would require running JS code).
 		Function* toFunction(Heap& heap) const;
-		const String* toString(Heap& heap) const;			///< this toString() method does not run any script code, so it doesn't honor any user toString or valueOf implementations.
+		const String* toString(Heap& heap) const; 			///< this toString() method does not run any script code, so it doesn't honor any user toString or valueOf implementations.
 		std::wstring toWideString(Heap& heap) const;
 		Object* toObjectOrNull(Heap& heap, bool requireExtensible) const;
 		Object* toObject(Heap& heap, bool requireExtensible) const;
@@ -537,7 +537,7 @@ class Object : public GCItem {
 		virtual Error* asError();								///< Default returns 0. (Errors return `this`.)
 		virtual const String* typeOfString() const;				///< Default returns "object". (Strings and functions override.)
 		virtual const String* getClassName() const;				///< Default returns &O_BJECT_STRING ("Object"). Override if you implement custom native objects. Must return the same string pointer everytime.
-		virtual const String* toString(Heap& heap) const;		///< this toString() method does not run any script code, so it doesn't honor any user toString or valueOf implementations.
+		virtual const String* toString(Heap& heap) const; 		///< this toString() method does not run any script code, so it doesn't honor any user toString or valueOf implementations.
 		virtual Value getInternalValue(Heap& heap) const;		///< Used by the standard library to retrieve internal value for wrappers (Number, String etc), source code for functions and parser function for RegExp. Default returns UNDEFINED_VALUE.
 		virtual Object* getPrototype(Runtime& rt) const;		///< Default returns the Object prototype.
 
@@ -547,10 +547,10 @@ class Object : public GCItem {
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);												///< Default returns false.
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;											///< Default returns an empty enumerator.
 
-		Flags getProperty(Runtime& rt, const Value& key, Value* v) const;	///< Searches prototype chain.
-		bool setProperty(Runtime& rt, const Value& key, const Value& v);	///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
+		Flags getProperty(Runtime& rt, const Value& key, Value* v) const; 	///< Searches prototype chain.
+		bool setProperty(Runtime& rt, const Value& key, const Value& v); 	///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
 		bool isOwnPropertyEnumerable(Runtime& rt, const Value& key) const;
-		bool hasOwnProperty(Runtime& rt, const Value& key) const;			///< Checks via getOwnProperty().
+		bool hasOwnProperty(Runtime& rt, const Value& key) const; 			///< Checks via getOwnProperty().
 		bool hasProperty(Runtime& rt, const Value& key) const;				///< Checks via getProperty().
 		Enumerator* getPropertyEnumerator(Runtime& rt) const;				///< Unlike getOwnPropertyEnumerator() this one also enumerates all prototype properties.
 
@@ -649,7 +649,7 @@ class String : public Object {
 		String(GCList& gcList, const std::string& s);
 		String(GCList& gcList, const std::wstring& s);									///< If wchar_t is 16-bit, this constructor assumes the wstring is already in UTF16 format and simply copies all characters. If it is 32-bit, it will be converted to UTF16 accordingly.
 		virtual const String* typeOfString() const;
-		virtual const String* getClassName() const; // &S_TRING_STRING
+		virtual const String* getClassName() const;	// &S_TRING_STRING
 		virtual const String* toString(Heap&) const { return this; }
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
@@ -733,10 +733,10 @@ class JSObject : public Object, public Table {
 		user accesses properties or extends the object(but you still need an object reference). Example are Functions
 		which are most often not treated as objects by the user.
 	
-	2)	Memory: until the user accesses or adds properties, LazyJSObjects can be super tiny (vtable pointer + pointer
+	2) 	Memory: until the user accesses or adds properties, LazyJSObjects can be super tiny (vtable pointer + pointer
 		to complete object + whatever internal fields are needed).
 	
-	3)	Doesn't require a Runtime or even a Heap to be constructed. Although they are required to be placed on the
+	3) 	Doesn't require a Runtime or even a Heap to be constructed. Although they are required to be placed on the
 		heap since they contain a reference.
 	
 	This class is a template so this concept can be used with different super classes.
@@ -772,7 +772,7 @@ class JSArray : public LazyJSObject<Object> {
 		JSArray(GCList& gcList);
 		JSArray(GCList& gcList, UInt32 initialLength);	// Will fill with UNDEFINED_VALUE. Just an optimization if you know the final array length beforehand.
 		JSArray(GCList& gcList, UInt32 initialLength, const Value* initialElements);
-		virtual const String* getClassName() const; // &A_RRAY_STRING
+		virtual const String* getClassName() const;	// &A_RRAY_STRING
 		virtual JSArray* asArray();
 		virtual Object* getPrototype(Runtime& rt) const;
 		// FIX : toString too?
@@ -782,7 +782,7 @@ class JSArray : public LazyJSObject<Object> {
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 		void pushElements(Runtime& rt, Int32 count, const Value* elements);
-		UInt32 getLength() const { return length; } // fix: make virtual and have for all objects?
+		UInt32 getLength() const { return length; }	// fix: make virtual and have for all objects?
 		bool updateLength(UInt32 newLength);	// fix: make virtual and have for all objects?
 		Value getElement(Runtime& rt, UInt32 index) const;
 		bool setElement(Runtime& rt, UInt32 index, const Value& v);
@@ -839,15 +839,14 @@ class Code : public Object {
 		const CodeWord* getCodeWords() const { return codeWords.begin(); }
 		UInt32 getCodeSize() const { return codeWords.size(); }
 		const String* getName() const { return name; }
-		void setName(const String* newName) { name = newName; }
 		const String* getSource() const { return source; }
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-               bool lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
-               bool hasSourceLocations() const { return !opcodeOffsets.empty(); }
-               const String* getFileName() const { return fileName; }
-               void setFileName(const String* newFileName) { fileName = newFileName; }
-               UInt32 getLineNumberBase() const { return lineNumberBase; }
-               void setLineNumberBase(UInt32 newBase) { lineNumberBase = (newBase != 0 ? newBase : 1U); }
+		bool lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
+		bool hasSourceLocations() const { return !opcodeOffsets.empty(); }
+		const String* getFileName() const { return fileName; }
+		void setFileName(const String* newFileName) { fileName = newFileName; }
+		UInt32 getLineNumberBase() const { return lineNumberBase; }
+		void setLineNumberBase(UInt32 newBase) { lineNumberBase = (newBase != 0 ? newBase : 1U); }
 	#endif
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
@@ -863,9 +862,9 @@ class Code : public Object {
 		const String* source;
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		const String* fileName;
-               Vector<UInt32> opcodeOffsets;
-               Vector<UInt32> lineStartOffsets;
-               UInt32 lineNumberBase;
+		Vector<UInt32> opcodeOffsets;
+		Vector<UInt32> lineStartOffsets;
+		UInt32 lineNumberBase;
 	#endif
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
@@ -895,13 +894,12 @@ class Function : public Object {
 	
 		virtual Function* asFunction();
 		virtual const String* typeOfString() const;
-		virtual const String* getClassName() const; // &F_UNCTION_STRING
+		virtual const String* getClassName() const;	// &F_UNCTION_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Value getInternalValue(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
 		virtual bool hasInstance(Runtime& rt, Object* object) const;
-		virtual void assignDisplayName(const String* displayName, Runtime* runtime = 0);
 		virtual const Code* getScriptCode() const { return 0; }
 		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject = 0) = 0;
 
@@ -979,7 +977,6 @@ class JSFunction : public ExtensibleFunction {
 		virtual Value getInternalValue(Heap& heap) const;
 		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
 		virtual const Code* getScriptCode() const { return code; }
-		virtual void assignDisplayName(const String* displayName, Runtime* runtime = 0);
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
@@ -1006,7 +1003,7 @@ class Error : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 		Error(GCList& heap, ErrorType type, const String* message = 0);
-		virtual const String* getClassName() const; // &E_RROR_STRING
+		virtual const String* getClassName() const;	// &E_RROR_STRING
 		virtual Error* asError();
 		virtual const String* toString(Heap& heap) const;
 		virtual Value getInternalValue(Heap& heap) const; // error type name
@@ -1015,22 +1012,28 @@ class Error : public LazyJSObject<Object> {
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		ErrorType getErrorType() const;
 		const String* getErrorName() const;
-const String* getErrorMessage() const;
-const String* getStackString() const;
-void setStackString(const String* stackString);
+		const String* getErrorMessage() const;
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		const String* getStackString() const;
+		void setStackString(const String* stackString);
+	#endif
 	
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
 		void updateReflection(Runtime& rt);
 
 		const ErrorType errorType;
-		const String* name;		// may get updated by script code
-		const String* message;	// may get updated by script code
+		const String* name; 	// may get updated by script code
+		const String* message; 	// may get updated by script code
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		const String* stack;
+	#endif
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, name);
 			gcMark(heap, message);
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			gcMark(heap, stack);
+		#endif
 			super::gcMarkReferences(heap);
 		}
 };
@@ -1040,8 +1043,8 @@ class Arguments : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 
-		Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
-		virtual const String* getClassName() const; // &A_RGUMENTS_STRING
+        Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
+		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
@@ -1053,8 +1056,8 @@ class Arguments : public LazyJSObject<Object> {
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
-		Value* findProperty(const Value& key) const;
-		const FunctionScope* scope;
+        Value* findProperty(const Value& key) const;
+        const FunctionScope* scope;
 		JSFunction* const function;
 		UInt32 const argumentsCount;
 		Vector<Byte> deletedArguments;
@@ -1086,7 +1089,7 @@ class FunctionScope : public Scope {
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		JSObject* getDynamicVars(Runtime& rt) const;
-		virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
+	   	virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
 
 	protected:
 		JSFunction* const function;
@@ -1161,7 +1164,7 @@ class Runtime : public GCItem {
 		Object* getErrorPrototype(ErrorType error) const;
 		Object* getGlobalObject() const { assert(globalObject != 0); return globalObject; }
 		Runtime::GlobalScope* getGlobalScope() { return &globalScope; }
-		JSObject* newJSObject() const;							///< Convenience routine for `new(heap) JSObject(heap.managed(), rt.getObjectPrototype())`
+		JSObject* newJSObject() const; 							///< Convenience routine for `new(heap) JSObject(heap.managed(), rt.getObjectPrototype())`
 		JSArray* newJSArray(UInt32 initialLength = 0) const;	///< Convenience routine for `new(heap) JSArray(heap.managed(), initialLength)`
 		const String* newStringConstant(const char* s);
 
@@ -1252,23 +1255,24 @@ struct StackFrameInfo {
 		const String* functionName;
 		SourceLocation location;
 };
+#endif
 
-#endif
-struct ScriptException : public Exception {
-#if (NUXJS_VERBOSE_EXCEPTIONS)
+class ScriptException : public Exception {
+	public:
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		friend class Processor;
-#endif
+	#endif
 		typedef Exception super;
 		static void throwError(Heap& heap, ErrorType type, const String* message = 0);
 		static void throwError(Heap& heap, ErrorType type, const char* message);
 		ScriptException(Heap& heap, const Value& value) throw();
-#if (NUXJS_VERBOSE_EXCEPTIONS)
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		ScriptException(Heap& heap, const Value& value, const SourceLocation& location) throw();
 		ScriptException(Heap& heap, const Value& value, const SourceLocation& location, const std::string& formattedStack) throw();
-#endif
+	#endif
 		virtual const char* what() const throw() { return utf8String.c_str(); }
 		virtual ~ScriptException() throw() { }
-#if (NUXJS_VERBOSE_EXCEPTIONS)
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		const String* getFileName() const;
 		int getLineNumber() const;
 		int getColumnNumber() const;
@@ -1276,19 +1280,19 @@ struct ScriptException : public Exception {
 		const SourceLocation& getSourceLocation() const { return throwLocation; }
 		bool hasStackString() const;
 		const char* formatStackTrace() const;
-#endif
+	#endif
 		Value value;
 		std::string utf8String;
-#if (NUXJS_VERBOSE_EXCEPTIONS)
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		SourceLocation throwLocation;
 		bool hasThrowLocation;
 		mutable std::string formattedStackCache;
 		mutable bool formattedStackComputed;
-#endif
+	#endif
 		Error* asErrorObject() const;
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-		protected:
-				void initializeMetadata(const SourceLocation& location, const std::string& formattedStack) throw();
+	protected:
+		void initializeMetadata(const SourceLocation& location, const std::string& formattedStack) throw();
 #endif
 };
 inline Error* ScriptException::asErrorObject() const { return value.asError(); }
@@ -1379,7 +1383,7 @@ class AccessorBase {
 template<> inline bool AccessorBase::to<bool>() const { return get().toBool(); }	// operator bool() is ambiguous and notoriously dangerous so we left it out. Use var.to<bool>() instead.
 template<> inline Int32 AccessorBase::to<Int32>() const { return get().toInt(); }	// Adding an operator int() would cause ambiguity with implicit casts, but to<Int32> is still a good idea.
 template<> inline UInt32 AccessorBase::to<UInt32>() const { return static_cast<UInt32>(get().toInt()); }	// Adding an operator unsigned int() would cause ambiguity with implicit casts, but to<UInt32> is still a good idea.
-template<> inline Value AccessorBase::to<Value>() const { return get(); }			// to<Value> ends up ambigious without this.
+template<> inline Value AccessorBase::to<Value>() const { return get(); } 			// to<Value> ends up ambigious without this.
 
 /**
 	Var is a garbage collected wrapper that exposes convenient C++ access to JavaScript values.
@@ -1677,11 +1681,11 @@ class Processor : public GCItem {
 		void enterEvalCode(const Code* code, bool local = false);
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
 		void throwVirtualException(const Value& exception);
-#if (NUXJS_VERBOSE_EXCEPTIONS)
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		bool throwVirtualException(const Value& exception, ScriptException* existingException);
 		void ensureErrorStack(Error* errorObject, UInt32 skipFrames, const std::vector<StackFrameInfo>* cachedFrames = 0);
 		void collectStackFrames(std::vector<StackFrameInfo>& frames) const;
-#endif
+	#endif
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);
 		Value getResult() const;	// make sure you've called run() until it returns false before calling this
@@ -1778,11 +1782,11 @@ class Compiler : public GCItem {
 
 		enum Target { FOR_GLOBAL, FOR_FUNCTION, FOR_EVAL };
 
-               Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-                               , const Char* sourceBegin = 0, UInt32 initialBaseLine = 1
-#endif
-               );
+		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0
+			#if (NUXJS_VERBOSE_EXCEPTIONS)
+				, const Char* sourceBegin = 0, UInt32 initialBaseLine = 1
+			#endif
+				);
 		const Char* compile(const Char* b, const Char* e);
 		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName = 0); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
 		void compile(const String& source);
@@ -1791,12 +1795,14 @@ class Compiler : public GCItem {
 	protected:
 		struct CodeSection {
 			CodeSection(Heap& heap, Int32 initialStackDepth)
-				#if (NUXJS_VERBOSE_EXCEPTIONS)
-				: code(&heap), opcodeOffsets(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
-				#else
-					: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
-				#endif
-					, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth) { }
+				: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
+				, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth)
+			#if (NUXJS_VERBOSE_EXCEPTIONS)
+				, opcodeOffsets(&heap)
+			#endif
+		 	{
+			}
+			
 		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			void emit(Compiler& compiler, Processor::Opcode opcode, Int32 operand);
 		#else
@@ -1805,13 +1811,13 @@ class Compiler : public GCItem {
 			void insertSection(const CodeSection& section);
 			bool inDeadCode() const { return stackDepth == DEAD_CODE_STACK_DEPTH; }
 			Vector<CodeWord> code;
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
-			Vector<UInt32> opcodeOffsets;
-		#endif
 			Processor::Opcode lastEmitted;
 			const Int32 initialStackDepth;
 			Int32 stackDepth;
 			Int32 maxStackDepth;
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
+			Vector<UInt32> opcodeOffsets;
+		#endif
 		};
 
 		struct BranchPoint {
@@ -1910,9 +1916,9 @@ class Compiler : public GCItem {
 		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
 		int nestCounter;
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-               const Char* absoluteStart;
-               UInt32 baseLineNumber;
-               UInt32 lineScanOffset;
+		const Char* absoluteStart;
+		UInt32 baseLineNumber;
+		UInt32 lineScanOffset;
 	#endif
 
 		virtual void gcMarkReferences(Heap& heap) const {
@@ -1929,14 +1935,14 @@ struct CompilationError : public ScriptException {
 	CompilationError(const ScriptException& sourceException, const String* filename, const Compiler& fromCompiler)
 			: ScriptException(sourceException), filename(filename) {
 		fromCompiler.getStopPosition(offset, lineNumber, columnNumber);
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
-			SourceLocation location;
-			location.fileName = (filename != 0 ? filename : getFileName());
-			location.offset = static_cast<UInt32>(offset);
-			location.line = lineNumber;
-			location.column = columnNumber;
-initializeMetadata(location, std::string());
-		#endif
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		SourceLocation location;
+		location.fileName = (filename != 0 ? filename : getFileName());
+		location.offset = static_cast<UInt32>(offset);
+		location.line = lineNumber;
+		location.column = columnNumber;
+		initializeMetadata(location, std::string());
+	#endif
 	}
 	const String* filename;
 	size_t offset;
