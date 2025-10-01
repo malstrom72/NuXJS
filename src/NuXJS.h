@@ -844,15 +844,11 @@ class Code : public Object {
 		UInt32 getCodeSize() const { return codeWords.size(); }
 		const String* getName() const { return name; }
 		const String* getSource() const { return source; }
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 		bool lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
 		bool hasSourceLocations() const {
 		#if (NUXJS_RLE_OFFSETS)
-			return (!opcodeOffsets.empty()
-			#if (NUXJS_VERBOSE_EXCEPTIONS)
-				|| !opcodeOffsetValues.empty()
-			#endif
-			);
+			return !opcodeOffsetRuns.empty();
 		#else
 			return !opcodeOffsets.empty();
 		#endif
@@ -861,7 +857,7 @@ class Code : public Object {
 		void setFileName(const String* newFileName) { fileName = newFileName; }
 		UInt32 getLineNumberBase() const { return lineNumberBase; }
 		void setLineNumberBase(UInt32 newBase) { lineNumberBase = (newBase != 0 ? newBase : 1U); }
-	#endif
+#endif
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
 
@@ -874,18 +870,17 @@ class Code : public Object {
 		const String* name;
 		const String* selfName;
 		const String* source;
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 		const String* fileName;
+#if (NUXJS_RLE_OFFSETS)
+		Vector<std::pair<UInt32, UInt32> > opcodeOffsetRuns;
+		bool hasCompressedOffsets() const { return !opcodeOffsetRuns.empty(); }
+#else
 		Vector<UInt32> opcodeOffsets;
+#endif
 		Vector<UInt32> lineStartOffsets;
 		UInt32 lineNumberBase;
-	#if (NUXJS_RLE_OFFSETS)
-		// Optional compressed representation of opcode offsets (absolute offsets with run-lengths)
-		Vector<UInt32> opcodeOffsetValues;
-		Vector<UInt32> opcodeRunLengths;
-		bool hasCompressedOffsets() const { return !opcodeOffsetValues.empty(); }
-	#endif
-	#endif
+#endif
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
 
@@ -1817,9 +1812,13 @@ class Compiler : public GCItem {
 			CodeSection(Heap& heap, Int32 initialStackDepth)
 				: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
 				, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth)
-			#if (NUXJS_VERBOSE_EXCEPTIONS)
-				, opcodeOffsets(&heap)
-			#endif
+				#if (NUXJS_VERBOSE_EXCEPTIONS)
+				#if (NUXJS_RLE_OFFSETS)
+								, opcodeOffsetRuns(&heap)
+				#else
+								, opcodeOffsets(&heap)
+				#endif
+				#endif
 		 	{
 			}
 			
@@ -1835,9 +1834,13 @@ class Compiler : public GCItem {
 			const Int32 initialStackDepth;
 			Int32 stackDepth;
 			Int32 maxStackDepth;
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
-			Vector<UInt32> opcodeOffsets;
-		#endif
+				#if (NUXJS_VERBOSE_EXCEPTIONS)
+				#if (NUXJS_RLE_OFFSETS)
+								Vector<std::pair<UInt32, UInt32> > opcodeOffsetRuns;
+				#else
+								Vector<UInt32> opcodeOffsets;
+				#endif
+				#endif
 		};
 
 		struct BranchPoint {

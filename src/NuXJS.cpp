@@ -93,30 +93,61 @@ namespace {
 			enabled = (v != 0 && *v != '\0');
 			for (int i = 0; i < 33; ++i) hist[i] = 0;
 		}
-		void add(const Vector<UInt32>& offs) {
-			if (!enabled || offs.empty()) return;
-			++codeCount;
-			offsetCount += offs.size();
-			UInt32 prev = offs[0];
-			unsigned int runLen = 1;
-			for (UInt32 i = 1; i < offs.size(); ++i) {
-				const UInt32 cur = offs[i];
-				if (cur == prev) {
-					++runLen;
-				} else {
-					const unsigned int bucket = (runLen <= 32 ? runLen : 33);
-					++hist[bucket - 1]; // 0-based index
+#if (NUXJS_RLE_OFFSETS)
+			void add(const Vector<std::pair<UInt32, UInt32> >& runs) {
+				if (!enabled || runs.empty()) {
+					return;
+				}
+				++codeCount;
+				for (UInt32 i = 0; i < runs.size(); ++i) {
+					const UInt32 len = runs[i].second;
+					offsetCount += len;
+					const unsigned int bucket = (len <= 32 ? len : 33);
+					++hist[bucket - 1];
 					++runCount;
-					if (runLen == 1) ++singletonRuns; else repeatedOffsets += (runLen - 1);
-					runLen = 1;
-					prev = cur;
+					if (len == 1) {
+						++singletonRuns;
+					} else {
+						repeatedOffsets += (len - 1);
+					}
 				}
 			}
-			const unsigned int bucket = (runLen <= 32 ? runLen : 33);
-			++hist[bucket - 1];
-			++runCount;
-			if (runLen == 1) ++singletonRuns; else repeatedOffsets += (runLen - 1);
-		}
+#else
+			void add(const Vector<UInt32>& offs) {
+				if (!enabled || offs.empty()) {
+					return;
+				}
+				++codeCount;
+				offsetCount += offs.size();
+				UInt32 prev = offs[0];
+				unsigned int runLen = 1;
+				for (UInt32 i = 1; i < offs.size(); ++i) {
+					const UInt32 cur = offs[i];
+					if (cur == prev) {
+						++runLen;
+					} else {
+						const unsigned int bucket = (runLen <= 32 ? runLen : 33);
+						++hist[bucket - 1]; // 0-based index
+						++runCount;
+						if (runLen == 1) {
+							++singletonRuns;
+						} else {
+							repeatedOffsets += (runLen - 1);
+						}
+						runLen = 1;
+						prev = cur;
+					}
+				}
+				const unsigned int bucket = (runLen <= 32 ? runLen : 33);
+				++hist[bucket - 1];
+				++runCount;
+				if (runLen == 1) {
+					++singletonRuns;
+				} else {
+					repeatedOffsets += (runLen - 1);
+				}
+			}
+#endif
 		~OpcodeOffsetProfiler() {
 			if (!enabled) return;
 			std::cout << std::endl << "***** opcodeOffsets profile *****" << std::endl;
@@ -1665,9 +1696,10 @@ Code::Code(GCList& gcList, Constants* sharedConstants)
     , nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
     , selfName(0), source(0), bloomSet(0), maxStackDepth(0)
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-    , opcodeOffsets(&gcList.getHeap()), lineStartOffsets(&gcList.getHeap()), lineNumberBase(1)
 #if (NUXJS_RLE_OFFSETS)
-    , opcodeOffsetValues(&gcList.getHeap()), opcodeRunLengths(&gcList.getHeap())
+    , opcodeOffsetRuns(&gcList.getHeap()), lineStartOffsets(&gcList.getHeap()), lineNumberBase(1)
+#else
+    , opcodeOffsets(&gcList.getHeap()), lineStartOffsets(&gcList.getHeap()), lineNumberBase(1)
 #endif
 #endif
 {
@@ -1690,24 +1722,25 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 bool Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const {
 #if (NUXJS_RLE_OFFSETS)
-    if (!opcodeOffsetValues.empty() && !opcodeRunLengths.empty()) {
-        UInt32 remaining = instructionIndex;
-        const UInt32 runs = opcodeOffsetValues.size();
-        for (UInt32 i = 0; i < runs; ++i) {
-            const UInt32 len = opcodeRunLengths[i];
-            if (remaining < len) {
-                out.offset = opcodeOffsetValues[i];
-                goto HAVE_OFFSET_VALUE;
-            }
-            remaining -= len;
-        }
-        return false;
-    }
+	if (opcodeOffsetRuns.empty()) {
+		return false;
+	}
+	UInt32 remaining = instructionIndex;
+	for (UInt32 i = 0; i < opcodeOffsetRuns.size(); ++i) {
+		const std::pair<UInt32, UInt32>& run = opcodeOffsetRuns[i];
+		if (remaining < run.second) {
+			out.offset = run.first;
+			goto HAVE_OFFSET_VALUE;
+		}
+		remaining -= run.second;
+	}
+	return false;
+#else
+	if (opcodeOffsets.empty() || instructionIndex >= opcodeOffsets.size()) {
+		return false;
+	}
+	out.offset = opcodeOffsets[instructionIndex];
 #endif
-    if (opcodeOffsets.empty() || instructionIndex >= opcodeOffsets.size()) {
-        return false;
-    }
-    out.offset = opcodeOffsets[instructionIndex];
 HAVE_OFFSET_VALUE:
 	out.fileName = (fileName != 0 ? fileName : &ANONYMOUS_SCRIPT_STRING);
 	if (!lineStartOffsets.empty()) {
@@ -3427,6 +3460,47 @@ const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e
 
 void Compiler::error(ErrorType type, const char* message) { ScriptException::throwError(heap, type, message); }
 
+#if (NUXJS_VERBOSE_EXCEPTIONS) && (NUXJS_RLE_OFFSETS)
+static void pushOpcodeOffsetRun(Vector<std::pair<UInt32, UInt32> >& runs, UInt32 offset) {
+	if (!runs.empty()) {
+		std::pair<UInt32, UInt32>& last = runs[runs.size() - 1];
+		if (last.first == offset) {
+			++last.second;
+			return;
+		}
+	}
+	runs.push(std::pair<UInt32, UInt32>(offset, 1));
+}
+
+static UInt32 popOpcodeOffsetRun(Vector<std::pair<UInt32, UInt32> >& runs) {
+	UInt32 value = 0;
+	if (!runs.empty()) {
+		std::pair<UInt32, UInt32>& last = runs[runs.size() - 1];
+		value = last.first;
+		if (last.second > 1) {
+			--last.second;
+		} else {
+			runs.pop();
+		}
+	}
+	return value;
+}
+
+static void appendOpcodeOffsetRuns(Vector<std::pair<UInt32, UInt32> >& dest, const Vector<std::pair<UInt32, UInt32> >& src) {
+	if (src.empty()) {
+		return;
+	}
+	UInt32 start = 0;
+	if (!dest.empty() && dest[dest.size() - 1].first == src[0].first) {
+		dest[dest.size() - 1].second += src[0].second;
+		start = 1;
+	}
+	for (UInt32 i = start; i < src.size(); ++i) {
+		dest.push(src[i]);
+	}
+}
+#endif
+
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 void Compiler::CodeSection::emit(Compiler& compiler, Processor::Opcode opcode, Int32 operand) {
 #else
@@ -3453,16 +3527,20 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 			case Processor::REPUSH_OP:
 			case Processor::CONST_OP:
 			case Processor::VOID_OP: {
-			#if (NUXJS_VERBOSE_EXCEPTIONS)
-				if (!code.empty()) {
-			#endif
-				code.pop();
-			#if (NUXJS_VERBOSE_EXCEPTIONS)
-				}
-				if (!opcodeOffsets.empty()) {
-					opcodeOffsets.pop();
-				}
-			#endif
+                        #if (NUXJS_VERBOSE_EXCEPTIONS)
+                                if (!code.empty()) {
+                        #endif
+                                code.pop();
+                        #if (NUXJS_VERBOSE_EXCEPTIONS)
+                                }
+#if (NUXJS_RLE_OFFSETS)
+                                popOpcodeOffsetRun(opcodeOffsetRuns);
+#else
+                                if (!opcodeOffsets.empty()) {
+                                        opcodeOffsets.pop();
+                                }
+#endif
+                        #endif
 				lastEmitted = Processor::INVALID_OP;
 				return;
 			}
@@ -3470,18 +3548,26 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 		}
 		if (replacementOpcode != Processor::INVALID_OP) {
 			const Int32 oldOperand = Processor::unpackInstruction(code.end()[-1]).second;
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
-			UInt32 lastOffset = 0;
-			if (!opcodeOffsets.empty()) {
-				lastOffset = opcodeOffsets[opcodeOffsets.size() - 1];
-				opcodeOffsets.pop();
-			}
-		#endif
+                #if (NUXJS_VERBOSE_EXCEPTIONS)
+                        UInt32 lastOffset = 0;
+#if (NUXJS_RLE_OFFSETS)
+                        lastOffset = popOpcodeOffsetRun(opcodeOffsetRuns);
+#else
+                        if (!opcodeOffsets.empty()) {
+                                lastOffset = opcodeOffsets[opcodeOffsets.size() - 1];
+                                opcodeOffsets.pop();
+                        }
+#endif
+                #endif
 			code.pop();
 			code.push(Processor::packInstruction(replacementOpcode, oldOperand));
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
-			opcodeOffsets.push(lastOffset);
-		#endif
+                #if (NUXJS_VERBOSE_EXCEPTIONS)
+#if (NUXJS_RLE_OFFSETS)
+                        pushOpcodeOffsetRun(opcodeOffsetRuns, lastOffset);
+#else
+                        opcodeOffsets.push(lastOffset);
+#endif
+                #endif
 			lastEmitted = replacementOpcode;
 			return;
 		}
@@ -3491,7 +3577,11 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 #endif
 	code.push(Processor::packInstruction(opcode, operand));
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	opcodeOffsets.push(sourceOffset);
+#if (NUXJS_RLE_OFFSETS)
+        pushOpcodeOffsetRun(opcodeOffsetRuns, sourceOffset);
+#else
+        opcodeOffsets.push(sourceOffset);
+#endif
 #endif
 	lastEmitted = opcode;
 }
@@ -3501,7 +3591,11 @@ void Compiler::CodeSection::insertSection(const CodeSection& section) {
 	lastEmitted = Processor::INVALID_OP;
 	code.insert(code.end(), section.code.begin(), section.code.end());
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	opcodeOffsets.insert(opcodeOffsets.end(), section.opcodeOffsets.begin(), section.opcodeOffsets.end());
+#if (NUXJS_RLE_OFFSETS)
+        appendOpcodeOffsetRuns(opcodeOffsetRuns, section.opcodeOffsetRuns);
+#else
+        opcodeOffsets.insert(opcodeOffsets.end(), section.opcodeOffsets.begin(), section.opcodeOffsets.end());
+#endif
 #endif
 	stackDepth = section.stackDepth + stackAdjust;
 	maxStackDepth = std::max(maxStackDepth, section.maxStackDepth + stackAdjust);
@@ -5053,13 +5147,19 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	this->e = e;
 	acceptInOperator = true;
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	lineScanOffset = 0;
-	setupSection.opcodeOffsets.resize(0);
-	mainSection.opcodeOffsets.resize(0);
-	code->opcodeOffsets.resize(0);
-	code->lineStartOffsets.resize(0);
-	code->lineStartOffsets.push(0);
-	if (absoluteStart == 0) {
+        lineScanOffset = 0;
+        #if (NUXJS_RLE_OFFSETS)
+        setupSection.opcodeOffsetRuns.resize(0);
+        mainSection.opcodeOffsetRuns.resize(0);
+        code->opcodeOffsetRuns.resize(0);
+        #else
+        setupSection.opcodeOffsets.resize(0);
+        mainSection.opcodeOffsets.resize(0);
+        code->opcodeOffsets.resize(0);
+        #endif
+        code->lineStartOffsets.resize(0);
+        code->lineStartOffsets.push(0);
+        if (absoluteStart == 0) {
 		absoluteStart = b;
 	}
 	code->setLineNumberBase(baseLineNumber != 0 ? baseLineNumber : 1U);
@@ -5087,47 +5187,31 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	code->constants->shrink();
 	code->maxStackDepth = std::max(mainSection.maxStackDepth, setupSection.maxStackDepth);
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	code->opcodeOffsets.resize(0);
-	code->opcodeOffsets.reserve(setupSection.opcodeOffsets.size() + mainSection.opcodeOffsets.size());
-	for (UInt32 i = 0; i < setupSection.opcodeOffsets.size(); ++i) {
-		const UInt32 absoluteOffset = setupSection.opcodeOffsets[i];
-		code->opcodeOffsets.push(absoluteOffset);
-	}
-	for (UInt32 i = 0; i < mainSection.opcodeOffsets.size(); ++i) {
-		const UInt32 absoluteOffset = mainSection.opcodeOffsets[i];
-		code->opcodeOffsets.push(absoluteOffset);
-	}
-	setupSection.opcodeOffsets.resize(0);
-	mainSection.opcodeOffsets.resize(0);
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	gOpcodeOffsetProfiler.add(code->opcodeOffsets);
-#endif
 #if (NUXJS_RLE_OFFSETS)
-	// Build compressed representation and clear uncompressed storage
-	if (!code->opcodeOffsets.empty()) {
-		code->opcodeOffsetValues.resize(0);
-		code->opcodeRunLengths.resize(0);
-		UInt32 prev = code->opcodeOffsets[0];
-		UInt32 runLen = 1;
-		for (UInt32 i = 1; i < code->opcodeOffsets.size(); ++i) {
-			const UInt32 cur = code->opcodeOffsets[i];
-			if (cur == prev) {
-				++runLen;
-			} else {
-				code->opcodeOffsetValues.push(prev);
-				code->opcodeRunLengths.push(runLen);
-				prev = cur;
-				runLen = 1;
-			}
-		}
-		code->opcodeOffsetValues.push(prev);
-		code->opcodeRunLengths.push(runLen);
-		code->opcodeOffsets.resize(0);
-	}
+        code->opcodeOffsetRuns.resize(0);
+        appendOpcodeOffsetRuns(code->opcodeOffsetRuns, setupSection.opcodeOffsetRuns);
+        appendOpcodeOffsetRuns(code->opcodeOffsetRuns, mainSection.opcodeOffsetRuns);
+        setupSection.opcodeOffsetRuns.resize(0);
+        mainSection.opcodeOffsetRuns.resize(0);
+        gOpcodeOffsetProfiler.add(code->opcodeOffsetRuns);
+#else
+        code->opcodeOffsets.resize(0);
+        code->opcodeOffsets.reserve(setupSection.opcodeOffsets.size() + mainSection.opcodeOffsets.size());
+        for (UInt32 i = 0; i < setupSection.opcodeOffsets.size(); ++i) {
+                const UInt32 absoluteOffset = setupSection.opcodeOffsets[i];
+                code->opcodeOffsets.push(absoluteOffset);
+        }
+        for (UInt32 i = 0; i < mainSection.opcodeOffsets.size(); ++i) {
+                const UInt32 absoluteOffset = mainSection.opcodeOffsets[i];
+                code->opcodeOffsets.push(absoluteOffset);
+        }
+        setupSection.opcodeOffsets.resize(0);
+        mainSection.opcodeOffsets.resize(0);
+        gOpcodeOffsetProfiler.add(code->opcodeOffsets);
 #endif
 #endif
-	
-	return p;
+
+        return p;
 }
 
 const Char* Compiler::compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName) {
