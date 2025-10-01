@@ -51,11 +51,11 @@
 - [x] ✅ `timeout 180 ./build.sh`
 
 ## Milestone 5 – Update consumers of source metadata
-- [ ] `JSFunction::toString()` should call `code->getSource()` which now prefers the unit but falls back to the direct `Code::source` pointer for legacy cases.
-- [ ] `Processor::collectStackFrames()` and other traceback helpers must fetch filenames and line info through `SourceCodeUnit`. Guard against null units so we retain the previous early-out behavior when metadata is intentionally missing.
-- [ ] `CompilationError` and any other place calling `code->getLineNumberBase()`/`setLineNumberBase()` should migrate to asking the compiler or `SourceCodeUnit` as appropriate; ensure nested function setup writes base lines to the compiler rather than a unit field.
-- [ ] Sweep the codebase for references to `code->lineStartOffsets` or direct line metadata and replace them with unit-based lookups.
-- [ ] ✅ `timeout 180 ./build.sh`
+- [x] `JSFunction::toString()` should call `code->getSource()` which now prefers the unit but falls back to the direct `Code::source` pointer for legacy cases.
+- [x] `Processor::collectStackFrames()` and other traceback helpers must fetch filenames and line info through `SourceCodeUnit`. Guard against null units so we retain the previous early-out behavior when metadata is intentionally missing.
+- [x] `CompilationError` and any other place calling `code->getLineNumberBase()`/`setLineNumberBase()` should migrate to asking the compiler or `SourceCodeUnit` as appropriate; ensure nested function setup writes base lines to the compiler rather than a unit field.
+- [x] Sweep the codebase for references to `code->lineStartOffsets` or direct line metadata and replace them with unit-based lookups.
+- [x] ✅ `timeout 180 ./build.sh`
 
 ## Milestone 6 – Housekeeping & validation
 - [ ] Delete any lingering transitional helpers and confirm conditional compilation (`NUXJS_VERBOSE_EXCEPTIONS`, `NUXJS_RLE_OFFSETS`) still wraps the opcode-offset logic correctly.

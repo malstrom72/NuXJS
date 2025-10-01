@@ -2538,7 +2538,8 @@ void Processor::collectStackFrames(std::vector<StackFrameInfo>& frames) const
 	const CodeWord* nextIP = ip;
 	while (frameWalker != 0 && nextIP != 0) {
 		const Code* frameCode = frameWalker->code;
-		if (frameCode == 0 || frameCode->getFileName() == 0 || !frameCode->hasSourceLocations()) {
+		const SourceCodeUnit* unit = (frameCode != 0 ? frameCode->getSourceUnit() : 0);
+		if (frameCode == 0 || unit == 0 || !frameCode->hasSourceLocations()) {
 			break;
 		}
 		const CodeWord* begin = frameCode->getCodeWords();
@@ -2547,8 +2548,12 @@ void Processor::collectStackFrames(std::vector<StackFrameInfo>& frames) const
 		}
 		const UInt32 instructionIndex = static_cast<UInt32>((nextIP - begin) - 1);
 		SourceLocation location;
+		location.fileName = unit->getFileName();
 		if (!frameCode->lookupSourceLocation(instructionIndex, location)) {
 			break;
+		}
+		if (location.fileName == 0) {
+			location.fileName = unit->getFileName();
 		}
 		StackFrameInfo info;
 		info.functionName = frameCode->getName();
@@ -5353,8 +5358,8 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 		const UInt32 baseOffset = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
 		if (resetLineScan) {
 			unit->beginLineScan(baseOffset);
+			unit->setLineNumberBase(baseLine);
 		}
-		unit->setLineNumberBase(baseLine);
 	} else {
 		code->setLineNumberBase(baseLine);
 	}
@@ -6074,12 +6079,18 @@ Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
 	Code* code = new(heap) Code(heap.managed(), 0, unit);
 	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL, unit);
 #endif
+	const String* effectiveFileName = filename;
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	if (effectiveFileName == 0 && unit != 0) {
+		effectiveFileName = unit->getFileName();
+	}
+#endif
 	try {
-		compiler.compile(source);
-	}
+                compiler.compile(source);
+        }
 	catch (const ScriptException& x) {
-		throw CompilationError(x, filename, compiler);
-	}
+                throw CompilationError(x, effectiveFileName, compiler);
+        }
 	return code;
 }
 
