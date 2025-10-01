@@ -39,16 +39,16 @@
 - [x] Update `getStopPosition()` and similar helpers to ask the unit for filename and line/column data instead of peeking at removed `Code` fields.
 - [x] When building a function’s source `String` at the end of `compileFunction()`, call `sourceUnit->setSource(...)` instead of writing to `code->source` directly.
 - [x] Maintain compatibility by leaving any still-migrating runtime helpers in place (they continue to consult `Code::getSource()` which now bridges through the unit).
-- [ ] ✅ `timeout 180 ./build.sh`
+- [x] ✅ `timeout 180 ./build.sh`
 
 ## Milestone 4 – Create source units at every compilation site
-- [ ] `Runtime::compileGlobalCode`: allocate a unit via `SourceCodeUnit::createWithName(runtime, &source, filenameOrAnonymous)` before building the compiler and thread it through the new constructor.
-- [ ] `Runtime::compileEvalCode`: allocate a unit via `createEval` (tagged with `&EVAL_CODE_STRING` and the incoming expression `String*`). Cache the `Code` together with its unit so repeated eval lookups reuse the existing metadata.
-- [ ] `Runtime::compileFunction` built-in: allocate a unit with `<anonymous>` as file name (via `createAnonymous`) before constructing the compiler.
-- [ ] `Compiler::functionDefinition` (nested functions): pass the parent’s unit to the nested compiler so nested functions append directly to the shared line table. When computing the nested `baseLineNumber`, keep it on the nested compiler instance; the unit itself remains agnostic to base lines.
-- [ ] Ensure each of these pathways wires the unit into the new `Code` constructor so opcode offsets remain anchored to the correct unit.
-- [ ] Remove temporary adapters introduced in Milestone 1 once all call sites are updated.
-- [ ] ✅ `timeout 180 ./build.sh`
+- [x] `Runtime::compileGlobalCode`: allocate a unit via `SourceCodeUnit::createWithName(runtime, &source, filenameOrAnonymous)` before building the compiler and thread it through the new constructor.
+- [x] `Runtime::compileEvalCode`: allocate a unit via `createEval` (tagged with `&EVAL_CODE_STRING` and the incoming expression `String*`). Cache the `Code` together with its unit so repeated eval lookups reuse the existing metadata.
+- [x] `Runtime::compileFunction` built-in: allocate a unit with `<anonymous>` as file name (via `createAnonymous`) before constructing the compiler.
+- [x] `Compiler::functionDefinition` (nested functions): pass the parent’s unit to the nested compiler so nested functions append directly to the shared line table. When computing the nested `baseLineNumber`, keep it on the nested compiler instance; the unit itself remains agnostic to base lines.
+- [x] Ensure each of these pathways wires the unit into the new `Code` constructor so opcode offsets remain anchored to the correct unit.
+- [x] Remove temporary adapters introduced in Milestone 1 once all call sites are updated.
+- [x] ✅ `timeout 180 ./build.sh`
 
 ## Milestone 5 – Update consumers of source metadata
 - [ ] `JSFunction::toString()` should call `code->getSource()` which now prefers the unit but falls back to the direct `Code::source` pointer for legacy cases.
