@@ -1618,24 +1618,13 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
 }
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-static UInt32 encodeDelta(Int32 delta) {
-	const UInt32 sign = (delta < 0 ? 1U : 0U);
-	const UInt32 magnitude = static_cast<UInt32>(sign != 0 ? -delta : delta);
-	return (magnitude << 1) | sign;
-}
-
-static Int32 decodeDelta(UInt32 encoded) {
-	const UInt32 magnitude = encoded >> 1;
-	return ((encoded & 1U) != 0 ? -static_cast<Int32>(magnitude) : static_cast<Int32>(magnitude));
-}
-
 bool Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const {
 	if (opcodeOffsets.empty() || instructionIndex >= opcodeOffsets.size()) {
 		return false;
 	}
 	Int32 absoluteOffset = 0;
 	for (UInt32 i = 0; i <= instructionIndex; ++i) {
-		absoluteOffset += decodeDelta(opcodeOffsets[i]);
+		absoluteOffset += opcodeOffsets[i];
 	}
 	if (absoluteOffset < 0) {
 		return false;
@@ -2742,7 +2731,7 @@ void Processor::throwVirtualException(const Value& exception) {
 	collectStackFrames(frames);
 	ensureErrorStack(errorObject, 0, &frames);
 #endif
-	if (firstCatcher == 0) { // FIX: what exception to throw here?
+	if (firstCatcher == 0) { // No JS catcher: throw a ScriptException (do not return)
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		SourceLocation throwLocation;
 		bool hasThrowLocation = false;
@@ -2774,26 +2763,13 @@ void Processor::throwVirtualException(const Value& exception) {
 		}
 	#endif
 		reset();
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		if (existingException != 0) {
-			if (hasThrowLocation) {
-				existingException->initializeMetadata(throwLocation, formattedStack);
-			} else {
-				SourceLocation fallbackLocation;
-				fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
-				existingException->initializeMetadata(fallbackLocation, std::string());
-			}
-			return true;
-		}
+		// Always throw a ScriptException here to match non-verbose behavior
 		if (hasThrowLocation) {
 			throw ScriptException(heap, exception, throwLocation, formattedStack);
 		}
 		SourceLocation fallbackLocation;
 		fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
 		throw ScriptException(heap, exception, fallbackLocation);
-	#else
-		throw ScriptException(heap, exception);
-	#endif
 	}
 	ip = firstCatcher->ip;
 	assert(ip != 0);
@@ -3158,12 +3134,8 @@ bool Processor::run(Int32 maxCycles) {
 		}
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		catch (ScriptException& x) {
-			if (x.hasStackString() || x.getFileName() != 0) {
-				throw;
-			}
-			if (throwVirtualException(x.value, &x)) {
-				throw;
-			}
+			// Attempt to reinject into JS if a catcher exists; otherwise this throws
+			throwVirtualException(x.value, &x);
 		}
 	#else
 		catch (const ScriptException& x) {
@@ -5029,14 +5001,14 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	for (UInt32 i = 0; i < setupSection.opcodeOffsets.size(); ++i) {
 		const UInt32 absoluteOffset = setupSection.opcodeOffsets[i];
 		const Int32 delta = (havePrevious ? static_cast<Int32>(absoluteOffset) - previousOffset : static_cast<Int32>(absoluteOffset));
-		code->opcodeOffsets.push(encodeDelta(delta));
+		code->opcodeOffsets.push(delta);
 		previousOffset = static_cast<Int32>(absoluteOffset);
 		havePrevious = true;
 	}
 	for (UInt32 i = 0; i < mainSection.opcodeOffsets.size(); ++i) {
 		const UInt32 absoluteOffset = mainSection.opcodeOffsets[i];
 		const Int32 delta = (havePrevious ? static_cast<Int32>(absoluteOffset) - previousOffset : static_cast<Int32>(absoluteOffset));
-		code->opcodeOffsets.push(encodeDelta(delta));
+		code->opcodeOffsets.push(delta);
 		previousOffset = static_cast<Int32>(absoluteOffset);
 		havePrevious = true;
 	}

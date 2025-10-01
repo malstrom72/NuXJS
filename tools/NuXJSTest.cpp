@@ -905,6 +905,30 @@ static void testNativeStackFormatter() {
 	}
 }
 
+static void testJsCatchAcrossNativeRethrow() {
+	std::cout << std::endl << "***** JS catch across native rethrow *****" << std::endl << std::endl;
+	std::cout << "\t- JS throws inside native" << std::endl;
+	std::cout << "\t- native catches and rethrows" << std::endl;
+	std::cout << "\t- JS outer try/catch should handle it" << std::endl;
+
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
+	Var globals = rt.getGlobalsVar();
+	globals["rethrowNative"] = rethrowNative;
+
+	// Expectation: No C++ exception escapes here; JS outer catch should handle rethrow
+	EXPECT_NO_EXCEPTION(rt.run(
+		"var ok = false;\n"
+		"try {\n"
+		"  rethrowNative(function(){ throw new Error('cross-language'); });\n"
+		"} catch (e) {\n"
+		"  ok = true;\n"
+		"}\n"));
+	// If the engine behaved as desired, the JS flag should be true
+	EXPECT(globals["ok"].to<bool>());
+}
+
 static void testStackStringRethrows() {
 	std::cout << std::endl << "***** Stack string rethrow stability *****" << std::endl << std::endl;
 	std::cout << "	- JS catch and rethrow" << std::endl;
@@ -2001,6 +2025,7 @@ int main(int argc, const char* argv[]) {
 		testLimits();
 		testExceptionStacks();
 		testNativeStackFormatter();
+		testJsCatchAcrossNativeRethrow();
 		testStackStringRethrows();
 		testHighLevelAPI();
 		readMeSample1();
