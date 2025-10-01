@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include "assert.h"
 #include <cmath>
+#include <cstdlib>
 #include "NuXJS.h"
 #ifdef _MSC_VER
 #include <float.h>
@@ -76,6 +77,68 @@ void operator delete[](void* ptr, NuXJS::Heap* heap) {
 }
 
 namespace NuXJS {
+
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+namespace {
+	struct OpcodeOffsetProfiler {
+		bool enabled;
+		unsigned long long codeCount;
+		unsigned long long offsetCount;
+		unsigned long long runCount;
+		unsigned long long singletonRuns;
+		unsigned long long repeatedOffsets;
+		unsigned long long hist[33]; // 1..32, 33rd bucket is 33+
+		OpcodeOffsetProfiler() : enabled(false), codeCount(0), offsetCount(0), runCount(0), singletonRuns(0), repeatedOffsets(0) {
+			const char* v = std::getenv("NUXJS_PROFILE_OFFSETS");
+			enabled = (v != 0 && *v != '\0');
+			for (int i = 0; i < 33; ++i) hist[i] = 0;
+		}
+		void add(const Vector<UInt32>& offs) {
+			if (!enabled || offs.empty()) return;
+			++codeCount;
+			offsetCount += offs.size();
+			UInt32 prev = offs[0];
+			unsigned int runLen = 1;
+			for (UInt32 i = 1; i < offs.size(); ++i) {
+				const UInt32 cur = offs[i];
+				if (cur == prev) {
+					++runLen;
+				} else {
+					const unsigned int bucket = (runLen <= 32 ? runLen : 33);
+					++hist[bucket - 1]; // 0-based index
+					++runCount;
+					if (runLen == 1) ++singletonRuns; else repeatedOffsets += (runLen - 1);
+					runLen = 1;
+					prev = cur;
+				}
+			}
+			const unsigned int bucket = (runLen <= 32 ? runLen : 33);
+			++hist[bucket - 1];
+			++runCount;
+			if (runLen == 1) ++singletonRuns; else repeatedOffsets += (runLen - 1);
+		}
+		~OpcodeOffsetProfiler() {
+			if (!enabled) return;
+			std::cout << std::endl << "***** opcodeOffsets profile *****" << std::endl;
+			std::cout << "code objects: " << codeCount << ", total opcodes: " << offsetCount << std::endl;
+			const double frac = (offsetCount != 0 ? static_cast<double>(repeatedOffsets) / static_cast<double>(offsetCount) : 0.0);
+			std::cout << "repeated opcodes: " << repeatedOffsets << " (" << (frac * 100.0) << "%)" << std::endl;
+			std::cout << "runs: " << runCount << ", singleton runs: " << singletonRuns << std::endl;
+			std::cout << "run length histogram (len : count)" << std::endl;
+			for (unsigned int len = 1; len <= 32; ++len) {
+				if (hist[len - 1] != 0) {
+					std::cout << "  " << len << ": " << hist[len - 1] << std::endl;
+				}
+			}
+			if (hist[32] != 0) {
+				std::cout << "  33+: " << hist[32] << std::endl;
+			}
+			std::cout << std::endl;
+		}
+	};
+	static OpcodeOffsetProfiler gOpcodeOffsetProfiler;
+}
+#endif
 
 // MSVC (at least 2010) doesn't do fmod correctly with infinite divisor
 static double NaN() { return std::numeric_limits<double>::quiet_NaN(); }
@@ -1597,15 +1660,22 @@ const String* JoiningEnumerator::nextPropertyName() {
 /* --- Code --- */
 
 Code::Code(GCList& gcList, Constants* sharedConstants)
-	: super(gcList), codeWords(0, &gcList.getHeap())
-	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
-	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
-	, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
+    : super(gcList), codeWords(0, &gcList.getHeap())
+    , constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
+    , nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
+    , selfName(0), source(0), bloomSet(0), maxStackDepth(0)
 #if (NUXJS_VERBOSE_EXCEPTIONS)
     , opcodeOffsets(&gcList.getHeap()), lineStartOffsets(&gcList.getHeap()), lineNumberBase(1)
+#if (NUXJS_RLE_OFFSETS)
+    , opcodeOffsetValues(&gcList.getHeap()), opcodeRunLengths(&gcList.getHeap())
+#endif
 #endif
 {
 	assert(constants != 0);
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	// Ensure lineStartOffsets is never empty under verbose exceptions
+	lineStartOffsets.push(0);
+#endif
 }
 
 bool Code::lookupNameIndex(const String* name, Int32& index) const {
@@ -1619,11 +1689,26 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 bool Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const {
+#if (NUXJS_RLE_OFFSETS)
+    if (!opcodeOffsetValues.empty() && !opcodeRunLengths.empty()) {
+        UInt32 remaining = instructionIndex;
+        const UInt32 runs = opcodeOffsetValues.size();
+        for (UInt32 i = 0; i < runs; ++i) {
+            const UInt32 len = opcodeRunLengths[i];
+            if (remaining < len) {
+                out.offset = opcodeOffsetValues[i];
+                goto HAVE_OFFSET_VALUE;
+            }
+            remaining -= len;
+        }
+        return false;
+    }
+#endif
     if (opcodeOffsets.empty() || instructionIndex >= opcodeOffsets.size()) {
         return false;
     }
-    const UInt32 absoluteOffset = opcodeOffsets[instructionIndex];
-    out.offset = absoluteOffset;
+    out.offset = opcodeOffsets[instructionIndex];
+HAVE_OFFSET_VALUE:
 	out.fileName = (fileName != 0 ? fileName : &ANONYMOUS_SCRIPT_STRING);
 	if (!lineStartOffsets.empty()) {
 		const UInt32* begin = lineStartOffsets.begin();
@@ -2715,55 +2800,69 @@ void Processor::ensureErrorStack(Error* errorObject, UInt32 skipFrames, const st
 #endif
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-bool Processor::throwVirtualException(const Value& exception, ScriptException* existingException) {
-#else
-void Processor::throwVirtualException(const Value& exception) {
-#endif
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	Error* errorObject = exception.asError();
-	std::vector<StackFrameInfo> frames;
-	collectStackFrames(frames);
-	ensureErrorStack(errorObject, 0, &frames);
-#endif
-	if (firstCatcher == 0) { // No JS catcher: throw a ScriptException (do not return)
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
+
+namespace {
+	struct ThrowSiteInfo {
+		ThrowSiteInfo() : hasThrowLocation(false), throwLocation(), formattedStackString(0) { }
+		bool hasThrowLocation;
 		SourceLocation throwLocation;
-		bool hasThrowLocation = false;
-		std::string formattedStack;
-		const String* formattedStackString = 0;
+		const String* formattedStackString;
+	};
+
+	static void snapshotThrowSite(Processor& processor, Heap& heap, Runtime& rt, const Value& exception
+			, std::vector<StackFrameInfo>& frames, ThrowSiteInfo& out) {
+		frames.clear();
+		processor.collectStackFrames(frames);
+		Error* errorObject = exception.asError();
+		processor.ensureErrorStack(errorObject, 0, &frames);
 		if (!frames.empty()) {
-			throwLocation = frames[0].location;
-			hasThrowLocation = true;
+			out.throwLocation = frames[0].location;
+			out.hasThrowLocation = true;
 		}
-		if (errorObject != 0) {
-			formattedStackString = errorObject->getStackString();
-		}
-		if (formattedStackString == 0 && !frames.empty()) {
+		const String* formatted = (errorObject != 0 ? errorObject->getStackString() : 0);
+		if (formatted == 0 && !frames.empty()) {
 			std::string fallbackHeader;
 			if (errorObject == 0) {
 				fallbackHeader = exception.toString(heap)->toUTF8String();
 			}
-			formattedStackString = formatStackString(heap, exception, frames, 0, fallbackHeader);
-		}
-		if (formattedStackString != 0) {
-			formattedStack = formattedStackString->toUTF8String();
-			if (errorObject != 0) {
+			formatted = formatStackString(heap, exception, frames, 0, fallbackHeader);
+			if (errorObject != 0 && formatted != 0) {
 				Value existing(UNDEFINED_VALUE);
 				if (errorObject->getProperty(rt, &STACK_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-					errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(formattedStackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+					errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(formatted), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
 				}
-				errorObject->setStackString(formattedStackString);
+				errorObject->setStackString(formatted);
 			}
 		}
-	#endif
+		out.formattedStackString = formatted;
+	}
+}
+
+bool Processor::throwVirtualException(const Value& exception, ScriptException* /*existingException*/) {
+#else
+void Processor::throwVirtualException(const Value& exception) {
+#endif
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	std::vector<StackFrameInfo> frames;
+	ThrowSiteInfo ts;
+	snapshotThrowSite(*this, heap, rt, exception, frames, ts);
+#endif
+	if (firstCatcher == 0) { // No JS catcher: throw a ScriptException (do not return)
 		reset();
-		// Always throw a ScriptException here to match non-verbose behavior
-		if (hasThrowLocation) {
-			throw ScriptException(heap, exception, throwLocation, formattedStack);
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+		if (ts.hasThrowLocation) {
+			std::string formatted;
+			if (ts.formattedStackString != 0) {
+				formatted = ts.formattedStackString->toUTF8String();
+			}
+			throw ScriptException(heap, exception, ts.throwLocation, formatted);
 		}
 		SourceLocation fallbackLocation;
 		fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
 		throw ScriptException(heap, exception, fallbackLocation);
+#else
+		throw ScriptException(heap, exception);
+#endif
 	}
 	ip = firstCatcher->ip;
 	assert(ip != 0);
@@ -4988,18 +5087,44 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	code->constants->shrink();
 	code->maxStackDepth = std::max(mainSection.maxStackDepth, setupSection.maxStackDepth);
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-    code->opcodeOffsets.resize(0);
-    code->opcodeOffsets.reserve(setupSection.opcodeOffsets.size() + mainSection.opcodeOffsets.size());
-    for (UInt32 i = 0; i < setupSection.opcodeOffsets.size(); ++i) {
-        const UInt32 absoluteOffset = setupSection.opcodeOffsets[i];
-        code->opcodeOffsets.push(absoluteOffset);
-    }
-    for (UInt32 i = 0; i < mainSection.opcodeOffsets.size(); ++i) {
-        const UInt32 absoluteOffset = mainSection.opcodeOffsets[i];
-        code->opcodeOffsets.push(absoluteOffset);
-    }
-    setupSection.opcodeOffsets.resize(0);
-    mainSection.opcodeOffsets.resize(0);
+	code->opcodeOffsets.resize(0);
+	code->opcodeOffsets.reserve(setupSection.opcodeOffsets.size() + mainSection.opcodeOffsets.size());
+	for (UInt32 i = 0; i < setupSection.opcodeOffsets.size(); ++i) {
+		const UInt32 absoluteOffset = setupSection.opcodeOffsets[i];
+		code->opcodeOffsets.push(absoluteOffset);
+	}
+	for (UInt32 i = 0; i < mainSection.opcodeOffsets.size(); ++i) {
+		const UInt32 absoluteOffset = mainSection.opcodeOffsets[i];
+		code->opcodeOffsets.push(absoluteOffset);
+	}
+	setupSection.opcodeOffsets.resize(0);
+	mainSection.opcodeOffsets.resize(0);
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	gOpcodeOffsetProfiler.add(code->opcodeOffsets);
+#endif
+#if (NUXJS_RLE_OFFSETS)
+	// Build compressed representation and clear uncompressed storage
+	if (!code->opcodeOffsets.empty()) {
+		code->opcodeOffsetValues.resize(0);
+		code->opcodeRunLengths.resize(0);
+		UInt32 prev = code->opcodeOffsets[0];
+		UInt32 runLen = 1;
+		for (UInt32 i = 1; i < code->opcodeOffsets.size(); ++i) {
+			const UInt32 cur = code->opcodeOffsets[i];
+			if (cur == prev) {
+				++runLen;
+			} else {
+				code->opcodeOffsetValues.push(prev);
+				code->opcodeRunLengths.push(runLen);
+				prev = cur;
+				runLen = 1;
+			}
+		}
+		code->opcodeOffsetValues.push(prev);
+		code->opcodeRunLengths.push(runLen);
+		code->opcodeOffsets.resize(0);
+	}
+#endif
 #endif
 	
 	return p;
@@ -5063,9 +5188,23 @@ void Compiler::compile(const String& source) {
 }
 
 void Compiler::getStopPosition(size_t& offset, int& lineNumber, int& columnNumber) const {
+	offset = p - b;
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	// Fast path using precomputed line starts when available
+	if (!code->lineStartOffsets.empty()) {
+		const UInt32* begin = code->lineStartOffsets.begin();
+		const UInt32* end = code->lineStartOffsets.end();
+		const UInt32 absOffset = static_cast<UInt32>(offset);
+		const UInt32* it = std::upper_bound(begin, end, absOffset);
+		const UInt32* lineStart = (it == begin ? begin : it - 1);
+		lineNumber = static_cast<int>(code->getLineNumberBase() + static_cast<UInt32>(lineStart - begin));
+		columnNumber = static_cast<int>(absOffset - *lineStart + 1);
+		return;
+	}
+#endif
+	// Fallback: scan from start
 	lineNumber = 1;
 	columnNumber = 1;
-	offset = p - b;
 	for (const Char* q = b; q != p; ++q) {
 		assert(q != e);
 		if (std::find(LINE_TERMINATORS, LINE_TERMINATORS + 3, *q) != LINE_TERMINATORS + 3) {

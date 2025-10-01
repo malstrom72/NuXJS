@@ -39,6 +39,10 @@
 #define NUXJS_VERBOSE_EXCEPTIONS 1
 #endif
 
+#ifndef NUXJS_RLE_OFFSETS
+#define NUXJS_RLE_OFFSETS 1
+#endif
+
 /**
 	These global operator overloads makes it possible to allocate *anything* (and not only GCItems) on Heap. Just
 	remember that (as opposed to GCItems) you need to call the overloaded delete operator explicitly, e.g.
@@ -842,7 +846,17 @@ class Code : public Object {
 		const String* getSource() const { return source; }
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		bool lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
-		bool hasSourceLocations() const { return !opcodeOffsets.empty(); }
+		bool hasSourceLocations() const {
+		#if (NUXJS_RLE_OFFSETS)
+			return (!opcodeOffsets.empty()
+			#if (NUXJS_VERBOSE_EXCEPTIONS)
+				|| !opcodeOffsetValues.empty()
+			#endif
+			);
+		#else
+			return !opcodeOffsets.empty();
+		#endif
+		}
 		const String* getFileName() const { return fileName; }
 		void setFileName(const String* newFileName) { fileName = newFileName; }
 		UInt32 getLineNumberBase() const { return lineNumberBase; }
@@ -865,6 +879,12 @@ class Code : public Object {
 		Vector<UInt32> opcodeOffsets;
 		Vector<UInt32> lineStartOffsets;
 		UInt32 lineNumberBase;
+	#if (NUXJS_RLE_OFFSETS)
+		// Optional compressed representation of opcode offsets (absolute offsets with run-lengths)
+		Vector<UInt32> opcodeOffsetValues;
+		Vector<UInt32> opcodeRunLengths;
+		bool hasCompressedOffsets() const { return !opcodeOffsetValues.empty(); }
+	#endif
 	#endif
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
