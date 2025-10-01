@@ -12,25 +12,25 @@
 4. Guarantee `opcodeOffsets` are measured against the associated `SourceCodeUnit` so tracebacks remain accurate after section concatenation.
 
 ## Milestone 1 – Define the `SourceCodeUnit` GC object
-- [ ] Declare `class SourceCodeUnit : public GCItem` in `src/NuXJS.h` near the existing `Code` definition, and implement its methods in `src/NuXJS.cpp`.
-  - [ ] Fields: `const String* source`, `const String* fileName`, and (under `#if NUXJS_VERBOSE_EXCEPTIONS`) `Vector<UInt32> lineStartOffsets` seeded with zero so column math works immediately.
-  - [ ] Provide minimal accessors: `const String* getSource() const`, `void setSource(const String*)`, `const String* getFileName() const`, and `void setFileName(const String*)`. The file name defaults to `ANONYMOUS_SCRIPT_STRING` when unset.
-  - [ ] Add newline tracking helpers that mirror the current compiler logic without altering caller responsibilities: `void beginLineScan()` clears the optional table and pushes zero when verbose exceptions are enabled, `void recordLineProgress(const Char* basePtr, UInt32 fromOffset, UInt32 toOffset)` appends offsets for each detected newline, and both functions become no-ops when the feature flag is disabled.
-  - [ ] Implement `bool computeLineColumn(UInt32 offset, int& line, int& column) const` using `std::upper_bound` over `lineStartOffsets`; return `false` when verbose data is unavailable so callers can fall back to their legacy approximations.
-  - [ ] Override `gcMarkReferences` to mark `source` and `fileName`.
-  - [ ] Provide static helpers such as `SourceCodeUnit::createWithName(Runtime&, const String* source, const String* name)`, `createAnonymous(Runtime&, const String* source)`, and `createEval(Runtime&, const String* source)` so the compiler sites in later milestones have explicit construction entry points.
-- [ ] Keep the rest of the system compiling by leaving all `Code` and `Compiler` call sites untouched; temporary adapters (e.g. factory functions that simply wrap existing `String*` values) ensure the new file compiles even before consumers switch over.
-- [ ] ✅ `timeout 180 ./build.sh`
+- [x] Declare `class SourceCodeUnit : public GCItem` in `src/NuXJS.h` near the existing `Code` definition, and implement its methods in `src/NuXJS.cpp`.
+  - [x] Fields: `const String* source`, `const String* fileName`, and (under `#if NUXJS_VERBOSE_EXCEPTIONS`) `Vector<UInt32> lineStartOffsets` seeded with zero so column math works immediately.
+  - [x] Provide minimal accessors: `const String* getSource() const`, `void setSource(const String*)`, `const String* getFileName() const`, and `void setFileName(const String*)`. The file name defaults to `ANONYMOUS_SCRIPT_STRING` when unset.
+  - [x] Add newline tracking helpers that mirror the current compiler logic without altering caller responsibilities: `void beginLineScan()` clears the optional table and pushes zero when verbose exceptions are enabled, `void recordLineProgress(const Char* basePtr, UInt32 fromOffset, UInt32 toOffset)` appends offsets for each detected newline, and both functions become no-ops when the feature flag is disabled.
+  - [x] Implement `bool computeLineColumn(UInt32 offset, int& line, int& column) const` using `std::upper_bound` over `lineStartOffsets`; return `false` when verbose data is unavailable so callers can fall back to their legacy approximations.
+  - [x] Override `gcMarkReferences` to mark `source` and `fileName`.
+  - [x] Provide static helpers such as `SourceCodeUnit::createWithName(Runtime&, const String* source, const String* name)`, `createAnonymous(Runtime&, const String* source)`, and `createEval(Runtime&, const String* source)` so the compiler sites in later milestones have explicit construction entry points.
+- [x] Keep the rest of the system compiling by leaving all `Code` and `Compiler` call sites untouched; temporary adapters (e.g. factory functions that simply wrap existing `String*` values) ensure the new file compiles even before consumers switch over.
+- [x] ✅ `timeout 180 ./build.sh`
 
 ## Milestone 2 – Attach `SourceCodeUnit` to `Code`
-- [ ] Add a `SourceCodeUnit* sourceUnit` member to `Code`, initialized to `0`, while retaining the existing `const String* source` slot so closures or runtime-created functions can still carry bespoke sources during the transition.
-- [ ] Expose `SourceCodeUnit* getSourceUnit() const` and ensure `Code::getSource()` first consults the unit before falling back to the legacy pointer. Keep the source-unit pointer write-once by wiring it through the constructor and dedicated initialization helpers—no generic `setSourceUnit()` mutator is needed.
-- [ ] Remove `fileName`, `lineStartOffsets`, and any line-number base fields from `Code`; line metadata now lives exclusively in the unit under `NUXJS_VERBOSE_EXCEPTIONS`.
-- [ ] Update the constructor to drop the legacy `lineStartOffsets.push(0)` block and to accept an optional `SourceCodeUnit*` parameter used during code creation.
-- [ ] Adjust `gcMarkReferences` to mark both `sourceUnit` and the retained `source` pointer.
-- [ ] Update `lookupSourceLocation()` to rely on the unit for file/line/column data, replacing today’s early-outs with internal `NUX_ASSERT(sourceUnit)` checks so missing metadata is treated as a bug rather than silently ignored.
-- [ ] Bridge the gap by keeping the old helper methods (e.g. `getFileName()`) temporarily delegating to the unit while we migrate call sites in later milestones.
-- [ ] ✅ `timeout 180 ./build.sh`
+- [x] Add a `SourceCodeUnit* sourceUnit` member to `Code`, initialized to `0`, while retaining the existing `const String* source` slot so closures or runtime-created functions can still carry bespoke sources during the transition.
+- [x] Expose `SourceCodeUnit* getSourceUnit() const` and ensure `Code::getSource()` first consults the unit before falling back to the legacy pointer. Keep the source-unit pointer write-once by wiring it through the constructor and dedicated initialization helpers—no generic `setSourceUnit()` mutator is needed.
+- [x] Remove `fileName`, `lineStartOffsets`, and any line-number base fields from `Code`; line metadata now lives exclusively in the unit under `NUXJS_VERBOSE_EXCEPTIONS`.
+- [x] Update the constructor to drop the legacy `lineStartOffsets.push(0)` block and to accept an optional `SourceCodeUnit*` parameter used during code creation.
+- [x] Adjust `gcMarkReferences` to mark both `sourceUnit` and the retained `source` pointer.
+- [x] Update `lookupSourceLocation()` to rely on the unit for file/line/column data, replacing today’s early-outs with internal `NUX_ASSERT(sourceUnit)` checks so missing metadata is treated as a bug rather than silently ignored.
+- [x] Bridge the gap by keeping the old helper methods (e.g. `getFileName()`) temporarily delegating to the unit while we migrate call sites in later milestones.
+- [x] ✅ `timeout 180 ./build.sh`
 
 ## Milestone 3 – Thread the unit through the compiler
 - [ ] Extend the `Compiler` constructor signature to accept a `SourceCodeUnit*` (store it in a new `sourceUnit` member). Every call site will supply a freshly allocated instance (see Milestone 4).
