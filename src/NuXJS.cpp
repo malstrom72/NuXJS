@@ -1813,46 +1813,34 @@ void SourceCodeUnit::gcMarkReferences(Heap& heap) const {
 /* --- Code --- */
 
 Code::Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* initialUnit)
-	: super(gcList)
-	, codeWords(0, &gcList.getHeap())
-	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
-	, nameIndexes(&gcList.getHeap())
-	, varNames(&gcList.getHeap())
-	, argumentNames(&gcList.getHeap())
-	, name(0)
-	, selfName(0)
-	, source(0)
-	, sourceUnit(initialUnit)
-	, bloomSet(0)
-	, maxStackDepth(0)
+        : super(gcList)
+        , codeWords(0, &gcList.getHeap())
+        , constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
+        , nameIndexes(&gcList.getHeap())
+        , varNames(&gcList.getHeap())
+        , argumentNames(&gcList.getHeap())
+        , name(0)
+        , selfName(0)
+        , source(0)
+        , sourceUnit(initialUnit)
+        , bloomSet(0)
+        , maxStackDepth(0)
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 #if (NUXJS_RLE_OFFSETS)
-	, opcodeOffsetRuns(&gcList.getHeap())
+        , opcodeOffsetRuns(&gcList.getHeap())
 #else
-	, opcodeOffsets(&gcList.getHeap())
+        , opcodeOffsets(&gcList.getHeap())
 #endif
 #endif
 {
-	assert(constants != 0);
-}
-
-SourceCodeUnit* Code::ensureSourceUnit() {
+        assert(constants != 0);
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	if (sourceUnit == 0) {
-		Heap& heap = gcGetHeap();
-		sourceUnit = new(heap) SourceCodeUnit(heap.managed());
-		if (source != 0 && sourceUnit->getSource() == 0) {
-			sourceUnit->setSource(source);
-		}
-	}
-	return sourceUnit;
-#else
-	return 0;
+        assert(sourceUnit != 0);
 #endif
 }
 
 bool Code::lookupNameIndex(const String* name, Int32& index) const {
-const Table::Bucket* bucket = nameIndexes.lookup(name);
+	const Table::Bucket* bucket = nameIndexes.lookup(name);
 	if (bucket == 0) {
 		return false;
 	}
@@ -1863,28 +1851,8 @@ const Table::Bucket* bucket = nameIndexes.lookup(name);
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 const String* Code::getFileName() const
 {
-	return (sourceUnit != 0 ? sourceUnit->getFileName() : &ANONYMOUS_SCRIPT_STRING);
-}
-
-void Code::setFileName(const String* newFileName)
-{
-	SourceCodeUnit* unit = ensureSourceUnit();
-	if (unit != 0) {
-		unit->setFileName(newFileName);
-	}
-}
-
-UInt32 Code::getLineNumberBase() const
-{
-	return (sourceUnit != 0 ? sourceUnit->getLineNumberBase() : 1U);
-}
-
-void Code::setLineNumberBase(UInt32 newBase)
-{
-	SourceCodeUnit* unit = ensureSourceUnit();
-	if (unit != 0) {
-		unit->setLineNumberBase(newBase);
-	}
+        assert(sourceUnit != 0);
+        return (sourceUnit != 0 ? sourceUnit->getFileName() : &ANONYMOUS_SCRIPT_STRING);
 }
 
 
@@ -3622,23 +3590,27 @@ Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, SourceCodeUnit
 	#endif
 	, activeSourceUnit(suppliedUnit)
 {
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-	if (activeSourceUnit == 0) {
-		activeSourceUnit = code->getSourceUnit();
-	}
-	if (activeSourceUnit != 0) {
-		const String* effectiveName = (suppliedFileName != 0 ? suppliedFileName : activeSourceUnit->getFileName());
-		activeSourceUnit->setFileName(effectiveName != 0 ? effectiveName : &ANONYMOUS_SCRIPT_STRING);
-	}
-	if (suppliedUnit != 0 && suppliedUnit == activeSourceUnit && initialNestCounter != 0) {
-		resetLineScan = false;
-	}
-	#else
-	(void)suppliedFileName;
-	#endif
-	if (code->sourceUnit == 0) {
-		code->sourceUnit = activeSourceUnit;
-	}
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+        if (activeSourceUnit == 0) {
+                activeSourceUnit = code->getSourceUnit();
+        }
+        assert(activeSourceUnit != 0);
+        if (activeSourceUnit != 0) {
+                const String* effectiveName = (suppliedFileName != 0 ? suppliedFileName : activeSourceUnit->getFileName());
+                activeSourceUnit->setFileName(effectiveName != 0 ? effectiveName : &ANONYMOUS_SCRIPT_STRING);
+        }
+        if (suppliedUnit != 0 && suppliedUnit == activeSourceUnit && initialNestCounter != 0) {
+                resetLineScan = false;
+        }
+#else
+        (void)suppliedFileName;
+#endif
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+        assert(code->sourceUnit == 0 || code->sourceUnit == activeSourceUnit);
+#endif
+        if (code->sourceUnit == 0) {
+                code->sourceUnit = activeSourceUnit;
+        }
 }
 
 const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e) {
@@ -3879,25 +3851,24 @@ static bool lineTerminatorInRange(const Char* b, const Char* e) {
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 UInt32 Compiler::recordSourceOffset() {
-	const UInt32 currentOffset = static_cast<UInt32>(p - b);
-	if (lineScanOffset < currentOffset) {
-		SourceCodeUnit* unit = activeSourceUnit;
-		if (unit == 0) {
-			unit = code->ensureSourceUnit();
-			activeSourceUnit = unit;
-		}
-		if (unit != 0) {
-			const Char* basePtr = (absoluteStart != 0 ? absoluteStart : b);
-			const UInt32 baseAdjust = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
-			const UInt32 fromOffset = baseAdjust + lineScanOffset;
-			const UInt32 toOffset = baseAdjust + currentOffset;
-			unit->recordLineProgress(basePtr, fromOffset, toOffset);
-		}
-		lineScanOffset = currentOffset;
-	} else {
-		lineScanOffset = currentOffset;
-	}
-	return currentOffset;
+        const UInt32 currentOffset = static_cast<UInt32>(p - b);
+        if (lineScanOffset < currentOffset) {
+                SourceCodeUnit* unit = activeSourceUnit;
+                assert(unit != 0);
+                if (unit != 0) {
+			// Source offsets remain anchored to the unit's byte stream so opcode tables align with
+			// SourceCodeUnit::computeLineColumn().
+                        const Char* basePtr = (absoluteStart != 0 ? absoluteStart : b);
+                        const UInt32 baseAdjust = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
+                        const UInt32 fromOffset = baseAdjust + lineScanOffset;
+                        const UInt32 toOffset = baseAdjust + currentOffset;
+                        unit->recordLineProgress(basePtr, fromOffset, toOffset);
+                }
+                lineScanOffset = currentOffset;
+        } else {
+                lineScanOffset = currentOffset;
+        }
+        return currentOffset;
 }
 #endif
 
@@ -4537,10 +4508,11 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 	SourceCodeUnit* unit = activeSourceUnit;
 	Code* func = new(heap) Code(heap.managed(), code->constants, unit);
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	const String* funcFileName = (unit != 0 ? unit->getFileName() : code->getFileName());
-	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, unit, funcFileName, nestCounter, absoluteStart, baseLineNumber);
+        assert(unit != 0);
+        const String* funcFileName = (unit != 0 ? unit->getFileName() : &ANONYMOUS_SCRIPT_STRING);
+        Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, unit, funcFileName, nestCounter, absoluteStart, baseLineNumber);
 #else
-	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, unit, 0, nestCounter);
+        Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, unit, 0, nestCounter);
 #endif
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
@@ -5351,19 +5323,17 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	if (absoluteStart == 0) {
 		absoluteStart = b;
 	}
-	const UInt32 baseLine = (baseLineNumber != 0 ? baseLineNumber : 1U);
-	SourceCodeUnit* unit = activeSourceUnit;
-	assert(unit != 0);
-	if (unit != 0) {
-		const UInt32 baseOffset = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
-		if (resetLineScan) {
-			unit->beginLineScan(baseOffset);
-			unit->setLineNumberBase(baseLine);
-		}
-	} else {
-		code->setLineNumberBase(baseLine);
-	}
-	#endif
+        const UInt32 baseLine = (baseLineNumber != 0 ? baseLineNumber : 1U);
+        SourceCodeUnit* unit = activeSourceUnit;
+        assert(unit != 0);
+        if (unit != 0) {
+                const UInt32 baseOffset = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
+                if (resetLineScan) {
+                        unit->beginLineScan(baseOffset);
+                        unit->setLineNumberBase(baseLine);
+                }
+        }
+        #endif
 
 
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
@@ -5479,16 +5449,17 @@ void Compiler::compile(const String& source) {
 
 void Compiler::getStopPosition(size_t& offset, int& lineNumber, int& columnNumber) const {
 	offset = p - b;
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-	SourceCodeUnit* unit = activeSourceUnit;
-	if (unit == 0) {
-		unit = code->getSourceUnit();
-	}
-	if (unit != 0) {
-		const UInt32 baseAdjust = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
-		const UInt32 absOffset = baseAdjust + static_cast<UInt32>(offset);
-		if (unit->computeLineColumn(absOffset, lineNumber, columnNumber)) {
-			return;
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+        SourceCodeUnit* unit = activeSourceUnit;
+        if (unit == 0) {
+                unit = code->getSourceUnit();
+        }
+        assert(unit != 0);
+        if (unit != 0) {
+                const UInt32 baseAdjust = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
+                const UInt32 absOffset = baseAdjust + static_cast<UInt32>(offset);
+                if (unit->computeLineColumn(absOffset, lineNumber, columnNumber)) {
+                        return;
 		}
 	}
 	#endif

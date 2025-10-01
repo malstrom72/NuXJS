@@ -821,7 +821,8 @@ class Constants : public GCItem, public Vector<Value> {
 
 /**
 	SourceCodeUnit owns the original source string and metadata describing how opcode offsets map back to the
-	programmer's file. Later milestones will thread instances of this GC item through the compiler and runtime.
+	programmer's file. Compiler and runtime components now rely on this GC item for filename and line lookups,
+	so opcode offsets are measured relative to the unit's byte offsets.
 **/
 class SourceCodeUnit : public GCItem {
 	public:
@@ -857,6 +858,8 @@ class SourceCodeUnit : public GCItem {
 /**
 	Code represents compiled bytecode and associated metadata. It is an Object so that it can be stored as a constant
 	and referenced by multiple functions.
+	Source metadata such as filenames and line/column tables live on the associated `SourceCodeUnit`; full-script
+	code objects keep their legacy `source` pointer in sync with the unit's source string.
 **/
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 struct SourceLocation;
@@ -890,9 +893,6 @@ class Code : public Object {
 		#endif
 		}
 		const String* getFileName() const;
-		void setFileName(const String* newFileName);
-		UInt32 getLineNumberBase() const;
-		void setLineNumberBase(UInt32 newBase);
 #endif
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
@@ -930,7 +930,6 @@ class Code : public Object {
 			super::gcMarkReferences(heap);
 		}
 
-		SourceCodeUnit* ensureSourceUnit();
 };
 
 /**

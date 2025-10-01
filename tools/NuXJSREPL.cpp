@@ -617,18 +617,27 @@ int testMain(int argc, const char* argv[]) {
 					doQuit = true; // FIX : we shouldn't use the same loop for interactive and non-interactive
 				}
 				
-				if (execute) {
-					Code globalCode(heap.roots());
-					const String* scriptFileName = 0;
-					if (!inputFilePath.empty()) {
-							scriptFileName = String::allocate(heap, inputFilePath.c_str());
-					} else {
-							scriptFileName = rt.newStringConstant("<anonymous>");
-					}
-					globalCode.setFileName(scriptFileName);
-					Compiler compiler(heap.roots(), &globalCode, (interactive ? Compiler::FOR_EVAL : Compiler::FOR_GLOBAL));
-					try {
-						compiler.compile(source);
+					if (execute) {
+						const String* scriptFileName = 0;
+						if (!inputFilePath.empty()) {
+								scriptFileName = String::allocate(heap, inputFilePath.c_str());
+						} else {
+								scriptFileName = rt.newStringConstant("<anonymous>");
+						}
+						Heap& runtimeHeap = rt.getHeap();
+						const Char* scriptBegin = source.begin();
+						const Char* scriptEnd = source.end();
+						const String* scriptSource = new(runtimeHeap) String(runtimeHeap.managed(), scriptBegin, scriptEnd);
+						SourceCodeUnit* unit = SourceCodeUnit::createWithName(rt, scriptSource, scriptFileName);
+						Code globalCode(heap.roots(), 0, unit);
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+						Compiler compiler(heap.roots(), &globalCode, (interactive ? Compiler::FOR_EVAL : Compiler::FOR_GLOBAL)
+								, unit, unit->getFileName(), 0, scriptSource->begin(), 1);
+#else
+						Compiler compiler(heap.roots(), &globalCode, (interactive ? Compiler::FOR_EVAL : Compiler::FOR_GLOBAL), unit);
+#endif
+                                        try {
+                                                compiler.compile(*scriptSource);
 					}
 					catch (const Exception&) {
 						size_t offset;

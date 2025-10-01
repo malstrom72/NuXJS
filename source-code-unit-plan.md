@@ -58,7 +58,7 @@
 - [x] ✅ `timeout 180 ./build.sh`
 
 ## Milestone 6 – Housekeeping & validation
-- [ ] Delete any lingering transitional helpers and confirm conditional compilation (`NUXJS_VERBOSE_EXCEPTIONS`, `NUXJS_RLE_OFFSETS`) still wraps the opcode-offset logic correctly.
-- [ ] Verify `opcodeOffsetRuns`/`opcodeOffsets` continue to store offsets produced by `recordSourceOffset()` (now sourced from the unit), so they remain aligned with the unit’s byte offsets.
-- [ ] Refresh comments and documentation to note that opcode offsets are measured against the owning `SourceCodeUnit` and that `Code::source` mirrors the unit for full-script code objects.
-- [ ] ✅ `timeout 180 ./build.sh`
+- [x] Delete any lingering transitional helpers and confirm conditional compilation (`NUXJS_VERBOSE_EXCEPTIONS`, `NUXJS_RLE_OFFSETS`) still wraps the opcode-offset logic correctly.
+- [x] Verify `opcodeOffsetRuns`/`opcodeOffsets` continue to store offsets produced by `recordSourceOffset()` (now sourced from the unit), so they remain aligned with the unit’s byte offsets.
+- [x] Refresh comments and documentation to note that opcode offsets are measured against the owning `SourceCodeUnit` and that `Code::source` mirrors the unit for full-script code objects.
+- [x] ✅ `timeout 180 ./build.sh`
