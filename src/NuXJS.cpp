@@ -1619,17 +1619,11 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 bool Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const {
-	if (opcodeOffsets.empty() || instructionIndex >= opcodeOffsets.size()) {
-		return false;
-	}
-	Int32 absoluteOffset = 0;
-	for (UInt32 i = 0; i <= instructionIndex; ++i) {
-		absoluteOffset += opcodeOffsets[i];
-	}
-	if (absoluteOffset < 0) {
-		return false;
-	}
-	out.offset = static_cast<UInt32>(absoluteOffset);
+    if (opcodeOffsets.empty() || instructionIndex >= opcodeOffsets.size()) {
+        return false;
+    }
+    const UInt32 absoluteOffset = opcodeOffsets[instructionIndex];
+    out.offset = absoluteOffset;
 	out.fileName = (fileName != 0 ? fileName : &ANONYMOUS_SCRIPT_STRING);
 	if (!lineStartOffsets.empty()) {
 		const UInt32* begin = lineStartOffsets.begin();
@@ -4994,26 +4988,18 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	code->constants->shrink();
 	code->maxStackDepth = std::max(mainSection.maxStackDepth, setupSection.maxStackDepth);
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	code->opcodeOffsets.resize(0);
-	code->opcodeOffsets.reserve(setupSection.opcodeOffsets.size() + mainSection.opcodeOffsets.size());
-	Int32 previousOffset = 0;
-	bool havePrevious = false;
-	for (UInt32 i = 0; i < setupSection.opcodeOffsets.size(); ++i) {
-		const UInt32 absoluteOffset = setupSection.opcodeOffsets[i];
-		const Int32 delta = (havePrevious ? static_cast<Int32>(absoluteOffset) - previousOffset : static_cast<Int32>(absoluteOffset));
-		code->opcodeOffsets.push(delta);
-		previousOffset = static_cast<Int32>(absoluteOffset);
-		havePrevious = true;
-	}
-	for (UInt32 i = 0; i < mainSection.opcodeOffsets.size(); ++i) {
-		const UInt32 absoluteOffset = mainSection.opcodeOffsets[i];
-		const Int32 delta = (havePrevious ? static_cast<Int32>(absoluteOffset) - previousOffset : static_cast<Int32>(absoluteOffset));
-		code->opcodeOffsets.push(delta);
-		previousOffset = static_cast<Int32>(absoluteOffset);
-		havePrevious = true;
-	}
-	setupSection.opcodeOffsets.resize(0);
-	mainSection.opcodeOffsets.resize(0);
+    code->opcodeOffsets.resize(0);
+    code->opcodeOffsets.reserve(setupSection.opcodeOffsets.size() + mainSection.opcodeOffsets.size());
+    for (UInt32 i = 0; i < setupSection.opcodeOffsets.size(); ++i) {
+        const UInt32 absoluteOffset = setupSection.opcodeOffsets[i];
+        code->opcodeOffsets.push(absoluteOffset);
+    }
+    for (UInt32 i = 0; i < mainSection.opcodeOffsets.size(); ++i) {
+        const UInt32 absoluteOffset = mainSection.opcodeOffsets[i];
+        code->opcodeOffsets.push(absoluteOffset);
+    }
+    setupSection.opcodeOffsets.resize(0);
+    mainSection.opcodeOffsets.resize(0);
 #endif
 	
 	return p;

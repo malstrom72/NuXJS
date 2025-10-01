@@ -862,7 +862,7 @@ class Code : public Object {
 		const String* source;
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		const String* fileName;
-		Vector<Int32> opcodeOffsets;
+		Vector<UInt32> opcodeOffsets;
 		Vector<UInt32> lineStartOffsets;
 		UInt32 lineNumberBase;
 	#endif
