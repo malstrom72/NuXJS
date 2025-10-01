@@ -1831,10 +1831,10 @@ class Compiler : public GCItem {
 
 		enum Target { FOR_GLOBAL, FOR_FUNCTION, FOR_EVAL };
 
-		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0
-			#if (NUXJS_VERBOSE_EXCEPTIONS)
+		Compiler(GCList& gcList, Code* code, Target compileFor, SourceCodeUnit* sourceUnit = 0, const String* fileName = 0, int initialNestCounter = 0
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
 				, const Char* sourceBegin = 0, UInt32 initialBaseLine = 1
-			#endif
+		#endif
 				);
 		const Char* compile(const Char* b, const Char* e);
 		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName = 0); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
@@ -1976,7 +1976,9 @@ class Compiler : public GCItem {
 		const Char* absoluteStart;
 		UInt32 baseLineNumber;
 		UInt32 lineScanOffset;
+		bool resetLineScan;
 	#endif
+		SourceCodeUnit* activeSourceUnit;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, code);

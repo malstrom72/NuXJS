@@ -33,12 +33,12 @@
 - [x] ✅ `timeout 180 ./build.sh`
 
 ## Milestone 3 – Thread the unit through the compiler
-- [ ] Extend the `Compiler` constructor signature to accept a `SourceCodeUnit*` (store it in a new `sourceUnit` member). Every call site will supply a freshly allocated instance (see Milestone 4).
-- [ ] Inside the constructor, assign the supplied unit to the target `Code` (if not already set) and store the provided file name directly in the unit. Keep `baseLineNumber` on the compiler object; the unit remains agnostic to per-compilation offsets.
-- [ ] Replace `Compiler`’s newline scanning helpers so they delegate to `SourceCodeUnit::recordLineProgress()` while continuing to append monotonically for nested functions; nested compilers inherit the parent’s absolute offsets without clearing the accumulated table.
-- [ ] Update `getStopPosition()` and similar helpers to ask the unit for filename and line/column data instead of peeking at removed `Code` fields.
-- [ ] When building a function’s source `String` at the end of `compileFunction()`, call `sourceUnit->setSource(...)` instead of writing to `code->source` directly.
-- [ ] Maintain compatibility by leaving any still-migrating runtime helpers in place (they continue to consult `Code::getSource()` which now bridges through the unit).
+- [x] Extend the `Compiler` constructor signature to accept a `SourceCodeUnit*` (store it in a new `sourceUnit` member). Every call site will supply a freshly allocated instance (see Milestone 4).
+- [x] Inside the constructor, assign the supplied unit to the target `Code` (if not already set) and store the provided file name directly in the unit. Keep `baseLineNumber` on the compiler object; the unit remains agnostic to per-compilation offsets.
+- [x] Replace `Compiler`’s newline scanning helpers so they delegate to `SourceCodeUnit::recordLineProgress()` while continuing to append monotonically for nested functions; nested compilers inherit the parent’s absolute offsets without clearing the accumulated table.
+- [x] Update `getStopPosition()` and similar helpers to ask the unit for filename and line/column data instead of peeking at removed `Code` fields.
+- [x] When building a function’s source `String` at the end of `compileFunction()`, call `sourceUnit->setSource(...)` instead of writing to `code->source` directly.
+- [x] Maintain compatibility by leaving any still-migrating runtime helpers in place (they continue to consult `Code::getSource()` which now bridges through the unit).
 - [ ] ✅ `timeout 180 ./build.sh`
 
 ## Milestone 4 – Create source units at every compilation site

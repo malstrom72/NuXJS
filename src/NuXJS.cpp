@@ -2581,7 +2581,7 @@ ScriptException::ScriptException(Heap& heap, const Value& value) throw()
 		, formattedStackCache(), formattedStackComputed(false)
 	#endif
 {
-#if (NUXJS_VERBOSE_EXCEPTIONS)
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 	initializeMetadata(SourceLocation(), std::string());
 #endif
 }
@@ -3601,20 +3601,42 @@ struct Compiler::SemanticScope {
 	Vector<BranchPoint> finallys; 		// source points for finally jsr's
 };
 
-Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		, const Char* sourceBegin, UInt32 initialBaseLine
-	#endif
-		)
+Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, SourceCodeUnit* suppliedUnit, const String* suppliedFileName, int initialNestCounter
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	, const Char* sourceBegin, UInt32 initialBaseLine
+#endif
+	)
 	: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
 	, mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
 	, nestCounter(initialNestCounter)
-#if (NUXJS_VERBOSE_EXCEPTIONS)
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 	, absoluteStart(sourceBegin)
 	, baseLineNumber(initialBaseLine != 0 ? initialBaseLine : 1U)
 	, lineScanOffset(0)
-#endif
+	, resetLineScan(true)
+	#endif
+	, activeSourceUnit(suppliedUnit)
 {
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+	if (activeSourceUnit == 0) {
+		activeSourceUnit = code->getSourceUnit();
+	}
+	if (activeSourceUnit == 0) {
+		activeSourceUnit = code->ensureSourceUnit();
+	}
+	if (activeSourceUnit != 0) {
+		const String* effectiveName = (suppliedFileName != 0 ? suppliedFileName : activeSourceUnit->getFileName());
+		activeSourceUnit->setFileName(effectiveName != 0 ? effectiveName : &ANONYMOUS_SCRIPT_STRING);
+	}
+	if (suppliedUnit != 0 && suppliedUnit == activeSourceUnit && initialNestCounter != 0) {
+		resetLineScan = false;
+	}
+	#else
+	(void)suppliedFileName;
+	#endif
+	if (code->sourceUnit == 0) {
+		code->sourceUnit = activeSourceUnit;
+	}
 }
 
 const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e) {
@@ -3857,7 +3879,11 @@ static bool lineTerminatorInRange(const Char* b, const Char* e) {
 UInt32 Compiler::recordSourceOffset() {
 	const UInt32 currentOffset = static_cast<UInt32>(p - b);
 	if (lineScanOffset < currentOffset) {
-		SourceCodeUnit* unit = code->ensureSourceUnit();
+		SourceCodeUnit* unit = activeSourceUnit;
+		if (unit == 0) {
+			unit = code->ensureSourceUnit();
+			activeSourceUnit = unit;
+		}
 		if (unit != 0) {
 			const Char* basePtr = (absoluteStart != 0 ? absoluteStart : b);
 			const UInt32 baseAdjust = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
@@ -4508,10 +4534,10 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 	assert(functionName != 0);
 	Code* func = new(heap) Code(heap.managed(), code->constants);
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	func->setFileName(code->getFileName());
-	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter, absoluteStart, baseLineNumber);
+	const String* funcFileName = code->getFileName();
+	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, 0, funcFileName, nestCounter, absoluteStart, baseLineNumber);
 #else
-	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
+	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, 0, 0, nestCounter);
 #endif
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
@@ -5308,30 +5334,36 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	p = b;
 	this->e = e;
 	acceptInOperator = true;
-#if (NUXJS_VERBOSE_EXCEPTIONS)
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 	lineScanOffset = 0;
-	#if (NUXJS_RLE_OFFSETS)
+		#if (NUXJS_RLE_OFFSETS)
 	setupSection.opcodeOffsetRuns.resize(0);
 	mainSection.opcodeOffsetRuns.resize(0);
 	code->opcodeOffsetRuns.resize(0);
-	#else
+		#else
 	setupSection.opcodeOffsets.resize(0);
 	mainSection.opcodeOffsets.resize(0);
 	code->opcodeOffsets.resize(0);
-	#endif
+		#endif
 	if (absoluteStart == 0) {
 		absoluteStart = b;
 	}
 	const UInt32 baseLine = (baseLineNumber != 0 ? baseLineNumber : 1U);
-	SourceCodeUnit* activeUnit = code->ensureSourceUnit();
-	if (activeUnit != 0) {
+	SourceCodeUnit* unit = activeSourceUnit;
+	if (unit == 0) {
+		unit = code->ensureSourceUnit();
+		activeSourceUnit = unit;
+	}
+	if (unit != 0) {
 		const UInt32 baseOffset = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
-		activeUnit->beginLineScan(baseOffset);
-		activeUnit->setLineNumberBase(baseLine);
+		if (resetLineScan) {
+			unit->beginLineScan(baseOffset);
+		}
+		unit->setLineNumberBase(baseLine);
 	} else {
 		code->setLineNumberBase(baseLine);
 	}
-#endif
+	#endif
 
 
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
@@ -5409,7 +5441,7 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 		white();
 	}
 	expectToken("{", true);
-#if (NUXJS_VERBOSE_EXCEPTIONS)
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 	const Char* bodyStart = p;
 	if (absoluteStart != 0 && bodyStart >= absoluteStart) {
 		UInt32 lineNumber = 1;
@@ -5422,12 +5454,17 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 	} else {
 		baseLineNumber = 1;
 	}
-#endif
+	#endif
 	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
 	expectToken("}", false);
 	code->name = functionName;
 	code->selfName = selfName;
-	code->source = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
+	const String* functionSource = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
+	if (activeSourceUnit != 0) {
+		activeSourceUnit->setSource(functionSource);
+	} else {
+		code->source = functionSource;
+	}
 	code->bloomSet |= (selfName != 0 ? selfName->createBloomCode() : 0) | ARGUMENTS_STRING.createBloomCode();
 	return p;
 }
@@ -5442,16 +5479,19 @@ void Compiler::compile(const String& source) {
 
 void Compiler::getStopPosition(size_t& offset, int& lineNumber, int& columnNumber) const {
 	offset = p - b;
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-        SourceCodeUnit* unit = code->getSourceUnit();
-        if (unit != 0) {
-                const UInt32 baseAdjust = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
-                const UInt32 absOffset = baseAdjust + static_cast<UInt32>(offset);
-                if (unit->computeLineColumn(absOffset, lineNumber, columnNumber)) {
-                        return;
-                }
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+	SourceCodeUnit* unit = activeSourceUnit;
+	if (unit == 0) {
+		unit = code->getSourceUnit();
 	}
-#endif
+	if (unit != 0) {
+		const UInt32 baseAdjust = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
+		const UInt32 absOffset = baseAdjust + static_cast<UInt32>(offset);
+		if (unit->computeLineColumn(absOffset, lineNumber, columnNumber)) {
+			return;
+		}
+	}
+	#endif
 	lineNumber = static_cast<int>(baseLineNumber);
 	columnNumber = 1;
 	for (const Char* q = b; q != p; ++q) {
@@ -5683,18 +5723,18 @@ struct Support {
 	static Value compileFunction(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 1) {
 			Heap& heap = rt.getHeap();
-			const String* source = argv[0].toString(heap);
-			Code* code = new(heap) Code(heap.managed());
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
-			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION, 0, source->begin(), 1);
-		#else
-			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
-		#endif
-			compiler.compileFunction(source->begin(), source->end()
-					, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING));
-			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
-		}
-		return UNDEFINED_VALUE;
+		const String* source = argv[0].toString(heap);
+		Code* code = new(heap) Code(heap.managed());
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION, 0, &ANONYMOUS_SCRIPT_STRING, 0, source->begin(), 1);
+	#else
+		Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
+	#endif
+		compiler.compileFunction(source->begin(), source->end()
+		, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING));
+		return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
+	}
+	return UNDEFINED_VALUE;
 	}
 
 	static Value callWithArgs(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object*) {
@@ -6010,12 +6050,11 @@ Code* Runtime::compileEvalCode(const String* expression) {
 		return reinterpret_cast<Code*>(o);
 	} else {
 		Code* code = new(heap) Code(heap.managed());
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		code->setFileName(&EVAL_CODE_STRING);
-		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL, 0, expression->begin(), 1);
-	#else
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL, 0, &EVAL_CODE_STRING, 0, expression->begin(), 1);
+#else
 		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
-	#endif
+#endif
 		compiler.compile(*expression);
 		evalCodeCache.update(evalCodeCache.insert(expression), code);
 		return code;
@@ -6025,8 +6064,8 @@ Code* Runtime::compileEvalCode(const String* expression) {
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
 	Code* code = new(heap) Code(heap.managed());
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	code->setFileName((filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING));
-	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL, 0, source.begin(), 1);
+	const String* unitFileName = (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING);
+	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL, 0, unitFileName, 0, source.begin(), 1);
 #else
 	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
 #endif
