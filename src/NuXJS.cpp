@@ -93,61 +93,61 @@ namespace {
 			enabled = (v != 0 && *v != '\0');
 			for (int i = 0; i < 33; ++i) hist[i] = 0;
 		}
-#if (NUXJS_RLE_OFFSETS)
-			void add(const Vector<std::pair<UInt32, UInt32> >& runs) {
-				if (!enabled || runs.empty()) {
-					return;
-				}
-				++codeCount;
-				for (UInt32 i = 0; i < runs.size(); ++i) {
-					const UInt32 len = runs[i].second;
-					offsetCount += len;
-					const unsigned int bucket = (len <= 32 ? len : 33);
-					++hist[bucket - 1];
-					++runCount;
-					if (len == 1) {
-						++singletonRuns;
-					} else {
-						repeatedOffsets += (len - 1);
-					}
-				}
+	#if (NUXJS_RLE_OFFSETS)
+		void add(const Vector<std::pair<UInt32, UInt32> >& runs) {
+			if (!enabled || runs.empty()) {
+				return;
 			}
-#else
-			void add(const Vector<UInt32>& offs) {
-				if (!enabled || offs.empty()) {
-					return;
-				}
-				++codeCount;
-				offsetCount += offs.size();
-				UInt32 prev = offs[0];
-				unsigned int runLen = 1;
-				for (UInt32 i = 1; i < offs.size(); ++i) {
-					const UInt32 cur = offs[i];
-					if (cur == prev) {
-						++runLen;
-					} else {
-						const unsigned int bucket = (runLen <= 32 ? runLen : 33);
-						++hist[bucket - 1]; // 0-based index
-						++runCount;
-						if (runLen == 1) {
-							++singletonRuns;
-						} else {
-							repeatedOffsets += (runLen - 1);
-						}
-						runLen = 1;
-						prev = cur;
-					}
-				}
-				const unsigned int bucket = (runLen <= 32 ? runLen : 33);
+			++codeCount;
+			for (UInt32 i = 0; i < runs.size(); ++i) {
+				const UInt32 len = runs[i].second;
+				offsetCount += len;
+				const unsigned int bucket = (len <= 32 ? len : 33);
 				++hist[bucket - 1];
 				++runCount;
-				if (runLen == 1) {
+				if (len == 1) {
 					++singletonRuns;
 				} else {
-					repeatedOffsets += (runLen - 1);
+					repeatedOffsets += (len - 1);
 				}
 			}
-#endif
+		}
+	#else
+		void add(const Vector<UInt32>& offs) {
+			if (!enabled || offs.empty()) {
+				return;
+			}
+			++codeCount;
+			offsetCount += offs.size();
+			UInt32 prev = offs[0];
+			unsigned int runLen = 1;
+			for (UInt32 i = 1; i < offs.size(); ++i) {
+				const UInt32 cur = offs[i];
+				if (cur == prev) {
+					++runLen;
+				} else {
+					const unsigned int bucket = (runLen <= 32 ? runLen : 33);
+					++hist[bucket - 1]; // 0-based index
+					++runCount;
+					if (runLen == 1) {
+						++singletonRuns;
+					} else {
+						repeatedOffsets += (runLen - 1);
+					}
+					runLen = 1;
+					prev = cur;
+				}
+			}
+			const unsigned int bucket = (runLen <= 32 ? runLen : 33);
+			++hist[bucket - 1];
+			++runCount;
+			if (runLen == 1) {
+				++singletonRuns;
+			} else {
+				repeatedOffsets += (runLen - 1);
+			}
+		}
+	#endif
 		~OpcodeOffsetProfiler() {
 			if (!enabled) return;
 			std::cout << std::endl << "***** opcodeOffsets profile *****" << std::endl;
@@ -1688,131 +1688,71 @@ const String* JoiningEnumerator::nextPropertyName() {
 	return name;
 }
 
+static const Char LINE_TERMINATORS[] = { '\n', 0x2028, 0x2029, '\r' }; // FIX : '\r' must be last for line count to work, but I think we should change line counting algo in the future, a single '\r' without '\n' should count too really
+
+static bool isLineTerminator(Char c) {
+	return (std::find(LINE_TERMINATORS, LINE_TERMINATORS + 4, c) != LINE_TERMINATORS + 4);
+}
+
+static bool lineTerminatorInRange(const Char* b, const Char* e) {
+	return (std::find_first_of(b, e, LINE_TERMINATORS, LINE_TERMINATORS + 4) != e);
+}
+
 /* --- SourceCodeUnit --- */
 
-SourceCodeUnit::SourceCodeUnit(GCList& gcList, const String* initialSource, const String* initialFileName)
-       : super(gcList)
-       , source(initialSource)
-       , fileName(initialFileName != 0 ? initialFileName : &ANONYMOUS_SCRIPT_STRING)
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-       , lineStartOffsets(&gcList.getHeap())
-#endif
+SourceCodeUnit::SourceCodeUnit(GCList& gcList, const String* sourceCode, const String* fileName)
+	: super(gcList), source(sourceCode), fileName(fileName), lineOffsets(&gcList.getHeap())
 {
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-       lineStartOffsets.push(0);
-#endif
-}
-
-const String* SourceCodeUnit::getFileName() const {
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-       return (fileName != 0 ? fileName : &ANONYMOUS_SCRIPT_STRING);
-#else
-       return fileName;
-#endif
-}
-
-void SourceCodeUnit::beginLineScan(UInt32 initialOffset) {
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-       lineStartOffsets.resize(0);
-       lineStartOffsets.push(initialOffset);
-#else
-	(void)initialOffset;
-#endif
-}
-
-void SourceCodeUnit::recordLineProgress(const Char* basePtr, UInt32 fromOffset, UInt32 toOffset) {
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	if (basePtr == 0 || fromOffset >= toOffset) {
-		return;
-	}
-	if (lineStartOffsets.empty()) {
-		lineStartOffsets.push(fromOffset);
-	}
-	const Char* scan = basePtr + fromOffset;
-	const Char* limit = basePtr + toOffset;
-	while (scan != limit) {
-		const Char c = *scan;
-		if (c == '\n' || c == '\r' || c == 0x2028 || c == 0x2029) {
-			const UInt32 nextStart = static_cast<UInt32>(scan - basePtr) + 1;
-			if (lineStartOffsets.empty() || lineStartOffsets[lineStartOffsets.size() - 1] != nextStart) {
-				lineStartOffsets.push(nextStart);
+	assert(sourceCode != 0);
+	assert(fileName != 0);
+	lineOffsets.push(0);
+	const Char* const e = source->end();
+	for (const Char* p = source->begin(); p != e; ++p) {
+		if (isLineTerminator(*p)) {
+			if (*p == '\r' && p + 1 != e && *(p + 1) == '\n') {
+				++p;
 			}
+			lineOffsets.push(static_cast<UInt32>(p + 1 - source->begin()));
 		}
-		++scan;
 	}
-#else
-	(void)basePtr;
-	(void)fromOffset;
-	(void)toOffset;
-#endif
+	lineOffsets.shrink();
 }
 
-bool SourceCodeUnit::computeLineColumn(UInt32 offset, int& line, int& column) const {
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-       if (lineStartOffsets.empty()) {
-               return false;
-       }
-       const UInt32* begin = lineStartOffsets.begin();
-       const UInt32* end = lineStartOffsets.end();
-       const UInt32* it = std::upper_bound(begin, end, offset);
-       const UInt32* lineStart = (it == begin ? begin : it - 1);
-       line = static_cast<int>(static_cast<UInt32>(lineStart - begin) + 1U);
-       column = static_cast<int>(offset - *lineStart + 1);
-       return true;
-#else
-       (void)offset;
-       (void)line;
-       (void)column;
-       return false;
-#endif
-}
-
-SourceCodeUnit* SourceCodeUnit::createWithName(Runtime& rt, const String* newSource, const String* name) {
-       Heap& heap = rt.getHeap();
-       return new(heap) SourceCodeUnit(heap.managed(), newSource, name);
-}
-
-SourceCodeUnit* SourceCodeUnit::createAnonymous(Runtime& rt, const String* newSource) {
-       return createWithName(rt, newSource, &ANONYMOUS_SCRIPT_STRING);
-}
-
-SourceCodeUnit* SourceCodeUnit::createEval(Runtime& rt, const String* newSource) {
-	return createWithName(rt, newSource, &EVAL_CODE_STRING);
-}
-
-void SourceCodeUnit::gcMarkReferences(Heap& heap) const {
-       gcMark(heap, source);
-       gcMark(heap, fileName);
-       super::gcMarkReferences(heap);
+void SourceCodeUnit::computeLineColumn(UInt32 offset, UInt32& line, UInt32& column) const {
+	assert(offset <= source->size());
+	const UInt32* begin = lineOffsets.begin();
+	const UInt32* end = lineOffsets.end();
+	const UInt32* it = std::upper_bound(begin, end, offset);
+	assert(it != begin);
+	line = static_cast<UInt32>(it - begin);
+	column = static_cast<UInt32>(offset - *(it - 1) + 1);
 }
 
 /* --- Code --- */
 
-Code::Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* initialUnit)
-        : super(gcList)
-        , codeWords(0, &gcList.getHeap())
-        , constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
-        , nameIndexes(&gcList.getHeap())
-        , varNames(&gcList.getHeap())
-        , argumentNames(&gcList.getHeap())
-        , name(0)
-        , selfName(0)
-        , source(0)
-        , sourceUnit(initialUnit)
-        , bloomSet(0)
-        , maxStackDepth(0)
+Code::Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUnit)
+	: super(gcList)
+	, codeWords(0, &gcList.getHeap())
+	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
+	, sourceUnit(sourceUnit)
+	, nameIndexes(&gcList.getHeap())
+	, varNames(&gcList.getHeap())
+	, argumentNames(&gcList.getHeap())
+	, name(0)
+	, selfName(0)
+	, source(0)
+	, bloomSet(0)
+	, maxStackDepth(0)
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 #if (NUXJS_RLE_OFFSETS)
-        , opcodeOffsetRuns(&gcList.getHeap())
+	, opcodeOffsetRuns(&gcList.getHeap())
 #else
-        , opcodeOffsets(&gcList.getHeap())
+	, opcodeOffsets(&gcList.getHeap())
 #endif
 #endif
 {
-        assert(constants != 0);
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-        assert(sourceUnit != 0);
-#endif
+	assert(constants != 0);
+	assert(sourceUnit != 0);
 }
 
 bool Code::lookupNameIndex(const String* name, Int32& index) const {
@@ -1856,17 +1796,9 @@ bool Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) co
 HAVE_OFFSET_VALUE:
         const SourceCodeUnit* unit = sourceUnit;
         assert(unit != 0);
-        if (unit != 0) {
-                out.fileName = unit->getFileName();
-                if (unit->computeLineColumn(out.offset, out.line, out.column)) {
-                        return true;
-                }
-        } else {
-                out.fileName = &ANONYMOUS_SCRIPT_STRING;
-        }
-        out.line = 1;
-        out.column = static_cast<int>(out.offset + 1);
-        return true;
+		out.fileName = unit->getFileName();
+		unit->computeLineColumn(out.offset, out.line, out.column);
+		return true;
 }
 #endif
 
@@ -2500,7 +2432,7 @@ void Processor::collectStackFrames(std::vector<StackFrameInfo>& frames) const
 			location.fileName = unit->getFileName();
 		}
 		StackFrameInfo info;
-		info.functionName = frameCode->getName();
+		info.functionName = (frameCode->hasName() ? frameCode->getName() : 0);
 		info.location = location;
 		frames.push_back(info);
 		nextIP = frameWalker->returnIP;
@@ -3550,40 +3482,11 @@ struct Compiler::SemanticScope {
 	Vector<BranchPoint> finallys; 		// source points for finally jsr's
 };
 
-Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, SourceCodeUnit* suppliedUnit, const String* suppliedFileName, int initialNestCounter
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	, const Char* sourceBegin, UInt32 initialBaseLine
-#endif
-	)
-	: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
-	, mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
-	, nestCounter(initialNestCounter)
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-	, absoluteStart(sourceBegin)
-	, baseLineNumber(initialBaseLine != 0 ? initialBaseLine : 1U)
-	, lineScanOffset(0)
-	, resetLineScan(true)
-	#endif
-	, activeSourceUnit(suppliedUnit)
+Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter)
+	: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor)
+	, setupSection(heap, 1), mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true)
+	, withScopeCounter(0), nestCounter(initialNestCounter)
 {
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-       if (activeSourceUnit == 0) {
-               activeSourceUnit = code->getSourceUnit();
-       }
-       assert(activeSourceUnit != 0);
-       (void)suppliedFileName;
-       if (suppliedUnit != 0 && suppliedUnit == activeSourceUnit && initialNestCounter != 0) {
-               resetLineScan = false;
-       }
-#else
-       (void)suppliedFileName;
-#endif
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-        assert(code->sourceUnit == 0 || code->sourceUnit == activeSourceUnit);
-#endif
-        if (code->sourceUnit == 0) {
-                code->sourceUnit = activeSourceUnit;
-        }
 }
 
 const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e) {
@@ -3687,30 +3590,31 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 			const Int32 oldOperand = Processor::unpackInstruction(code.end()[-1]).second;
 		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			UInt32 lastOffset = 0;
-#if (NUXJS_RLE_OFFSETS)
+		#if (NUXJS_RLE_OFFSETS)
 			lastOffset = popOpcodeOffsetRun(opcodeOffsetRuns);
-#else
+		#else
 			if (!opcodeOffsets.empty()) {
 				lastOffset = opcodeOffsets[opcodeOffsets.size() - 1];
 				opcodeOffsets.pop();
 			}
-#endif
+		#endif
 		#endif
 			code.pop();
 			code.push(Processor::packInstruction(replacementOpcode, oldOperand));
 		#if (NUXJS_VERBOSE_EXCEPTIONS)
-#if (NUXJS_RLE_OFFSETS)
+		#if (NUXJS_RLE_OFFSETS)
 			pushOpcodeOffsetRun(opcodeOffsetRuns, lastOffset);
-#else
+		#else
 			opcodeOffsets.push(lastOffset);
-#endif
+		#endif
 		#endif
 			lastEmitted = replacementOpcode;
 			return;
 		}
 	}
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	const UInt32 sourceOffset = compiler.recordSourceOffset();
+	const UInt32 sourceOffset = compiler.p - compiler.code->getSourceUnit()->getSource()->begin();
+	assert(sourceOffset <= compiler.code->getSourceUnit()->getSource()->size());
 #endif
 	code.push(Processor::packInstruction(opcode, operand));
 #if (NUXJS_VERBOSE_EXCEPTIONS)
@@ -3811,39 +3715,6 @@ UInt32 Compiler::addConstant(const Value& constant) {
 void Compiler::emitWithConstant(Processor::Opcode opcode, const Value& constant) {
 	emit(opcode, addConstant(constant));
 }
-
-static const Char LINE_TERMINATORS[] = { '\n', 0x2028, 0x2029, '\r' }; // FIX : '\r' must be last for line count to work, but I think we should change line counting algo in the future, a single '\r' without '\n' should count too really
-
-static bool isLineTerminator(Char c) {
-	return (std::find(LINE_TERMINATORS, LINE_TERMINATORS + 4, c) != LINE_TERMINATORS + 4);
-}
-
-static bool lineTerminatorInRange(const Char* b, const Char* e) {
-	return (std::find_first_of(b, e, LINE_TERMINATORS, LINE_TERMINATORS + 4) != e);
-}
-
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-UInt32 Compiler::recordSourceOffset() {
-        const UInt32 currentOffset = static_cast<UInt32>(p - b);
-        if (lineScanOffset < currentOffset) {
-                SourceCodeUnit* unit = activeSourceUnit;
-                assert(unit != 0);
-                if (unit != 0) {
-			// Source offsets remain anchored to the unit's byte stream so opcode tables align with
-			// SourceCodeUnit::computeLineColumn().
-                        const Char* basePtr = (absoluteStart != 0 ? absoluteStart : b);
-                        const UInt32 baseAdjust = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
-                        const UInt32 fromOffset = baseAdjust + lineScanOffset;
-                        const UInt32 toOffset = baseAdjust + currentOffset;
-                        unit->recordLineProgress(basePtr, fromOffset, toOffset);
-                }
-                lineScanOffset = currentOffset;
-        } else {
-                lineScanOffset = currentOffset;
-        }
-        return currentOffset;
-}
-#endif
 
 void Compiler::white() {
 	while (!eof()) {
@@ -4478,15 +4349,9 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
-	SourceCodeUnit* unit = activeSourceUnit;
+	SourceCodeUnit* unit = code->getSourceUnit();
 	Code* func = new(heap) Code(heap.managed(), code->constants, unit);
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-        assert(unit != 0);
-        const String* funcFileName = (unit != 0 ? unit->getFileName() : &ANONYMOUS_SCRIPT_STRING);
-        Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, unit, funcFileName, nestCounter, absoluteStart, baseLineNumber);
-#else
-        Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, unit, 0, nestCounter);
-#endif
+	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
 	}
@@ -4789,7 +4654,7 @@ void Compiler::functionStatement() {
 	white();
 	const String* name = identifier(true, false);
 	CodeSection* previousSection = changeSection(&setupSection);
-	functionDefinition(name);
+	functionDefinition(name, 0);
 	declareIdentifier(name, true);
 	changeSection(previousSection);
 }
@@ -5283,29 +5148,16 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	this->e = e;
 	acceptInOperator = true;
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-       lineScanOffset = 0;
-               #if (NUXJS_RLE_OFFSETS)
-       setupSection.opcodeOffsetRuns.resize(0);
-       mainSection.opcodeOffsetRuns.resize(0);
-       code->opcodeOffsetRuns.resize(0);
-               #else
-       setupSection.opcodeOffsets.resize(0);
-       mainSection.opcodeOffsets.resize(0);
-       code->opcodeOffsets.resize(0);
-               #endif
-       if (absoluteStart == 0) {
-               absoluteStart = b;
-       }
-       SourceCodeUnit* unit = activeSourceUnit;
-       assert(unit != 0);
-       if (unit != 0) {
-               const UInt32 baseOffset = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
-               if (resetLineScan) {
-                       unit->beginLineScan(baseOffset);
-               }
-       }
+#if (NUXJS_RLE_OFFSETS)
+	setupSection.opcodeOffsetRuns.resize(0);
+	mainSection.opcodeOffsetRuns.resize(0);
+	code->opcodeOffsetRuns.resize(0);
+#else
+	setupSection.opcodeOffsets.resize(0);
+	mainSection.opcodeOffsets.resize(0);
+	code->opcodeOffsets.resize(0);
 #endif
-
+#endif
 
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
 	if (compilingFor == FOR_EVAL) {
@@ -5382,28 +5234,14 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 		white();
 	}
 	expectToken("{", true);
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-	const Char* bodyStart = p;
-	if (absoluteStart != 0 && bodyStart >= absoluteStart) {
-		UInt32 lineNumber = 1;
-		for (const Char* scan = absoluteStart; scan < bodyStart; ++scan) {
-			if (isLineTerminator(*scan)) {
-				++lineNumber;
-			}
-		}
-		baseLineNumber = (lineNumber != 0 ? lineNumber : 1U);
-	} else {
-		baseLineNumber = 1;
-	}
-	#endif
 	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
-       expectToken("}", false);
-       code->name = functionName;
-       code->selfName = selfName;
-       const String* functionSource = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
-       code->source = functionSource;
-       code->bloomSet |= (selfName != 0 ? selfName->createBloomCode() : 0) | ARGUMENTS_STRING.createBloomCode();
-       return p;
+	expectToken("}", false);
+	code->name = functionName;
+	code->selfName = selfName;
+	const String* functionSource = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
+	code->source = functionSource;
+	code->bloomSet |= (selfName != 0 ? selfName->createBloomCode() : 0) | ARGUMENTS_STRING.createBloomCode();
+	return p;
 }
 
 void Compiler::compile(const String& source) {
@@ -5414,32 +5252,9 @@ void Compiler::compile(const String& source) {
 	}
 }
 
-void Compiler::getStopPosition(size_t& offset, int& lineNumber, int& columnNumber) const {
+void Compiler::getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const {
 	offset = p - b;
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-        SourceCodeUnit* unit = activeSourceUnit;
-        if (unit == 0) {
-                unit = code->getSourceUnit();
-        }
-        assert(unit != 0);
-        if (unit != 0) {
-                const UInt32 baseAdjust = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
-                const UInt32 absOffset = baseAdjust + static_cast<UInt32>(offset);
-                if (unit->computeLineColumn(absOffset, lineNumber, columnNumber)) {
-                        return;
-		}
-	}
-	#endif
-	lineNumber = static_cast<int>(baseLineNumber);
-	columnNumber = 1;
-	for (const Char* q = b; q != p; ++q) {
-		assert(q != e);
-		if (std::find(LINE_TERMINATORS, LINE_TERMINATORS + 3, *q) != LINE_TERMINATORS + 3) {
-			++lineNumber;
-			columnNumber = 0;
-		}
-		++columnNumber;
-	}
+    code->getSourceUnit()->computeLineColumn(offset, lineNumber, columnNumber);
 }
 
 /* --- Runtime --- */
@@ -5659,24 +5474,18 @@ struct Support {
 	}
 
 	static Value compileFunction(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-	if (argc >= 1) {
-		Heap& heap = rt.getHeap();
-		const String* source = argv[0].toString(heap);
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-		SourceCodeUnit* unit = SourceCodeUnit::createAnonymous(rt, source);
-		Code* code = new(heap) Code(heap.managed(), 0, unit);
-		Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION, unit, unit->getFileName(), 0, source->begin(), 1);
-#else
-		SourceCodeUnit* unit = SourceCodeUnit::createAnonymous(rt, source);
-		Code* code = new(heap) Code(heap.managed(), 0, unit);
-		Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION, unit);
-#endif
-		compiler.compileFunction(source->begin(), source->end()
-			, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING));
-		return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
+		if (argc >= 1) {
+			Heap& heap = rt.getHeap();
+			const String* source = argv[0].toString(heap);
+			SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), source, &ANONYMOUS_SCRIPT_STRING);
+			Code* code = new(heap) Code(heap.managed(), 0, unit);
+			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION, 1);
+			compiler.compileFunction(source->begin(), source->end()
+					, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING), 0);
+			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
+		}
+		return UNDEFINED_VALUE;
 	}
-	return UNDEFINED_VALUE;
-}
 
 	static Value callWithArgs(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object*) {
 		Heap& heap = rt.getHeap();
@@ -5990,15 +5799,9 @@ Code* Runtime::compileEvalCode(const String* expression) {
 		assert(dynamic_cast<Code*>(o) != 0);
 		return reinterpret_cast<Code*>(o);
 	} else {
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-		SourceCodeUnit* unit = SourceCodeUnit::createEval(*this, expression);
+		SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), expression, &EVAL_CODE_STRING);
 		Code* code = new(heap) Code(heap.managed(), 0, unit);
-		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL, unit, unit->getFileName(), 0, expression->begin(), 1);
-#else
-		SourceCodeUnit* unit = SourceCodeUnit::createEval(*this, expression);
-		Code* code = new(heap) Code(heap.managed(), 0, unit);
-		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL, unit);
-#endif
+		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL, 1);
 		compiler.compile(*expression);
 		evalCodeCache.update(evalCodeCache.insert(expression), code);
 		return code;
@@ -6006,29 +5809,16 @@ Code* Runtime::compileEvalCode(const String* expression) {
 }
 
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	SourceCodeUnit* unit = SourceCodeUnit::createWithName(*this, &source
-		, (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING));
+	const String* effectiveFileName = (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING);
+	SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), &source, effectiveFileName);
 	Code* code = new(heap) Code(heap.managed(), 0, unit);
-	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL, unit, unit->getFileName(), 0, source.begin(), 1);
-#else
-	SourceCodeUnit* unit = SourceCodeUnit::createWithName(*this, &source
-		, (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING));
-	Code* code = new(heap) Code(heap.managed(), 0, unit);
-	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL, unit);
-#endif
-	const String* effectiveFileName = filename;
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	if (effectiveFileName == 0 && unit != 0) {
-		effectiveFileName = unit->getFileName();
-	}
-#endif
+	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL, 1);
 	try {
-                compiler.compile(source);
-        }
+		compiler.compile(source);
+	}
 	catch (const ScriptException& x) {
-                throw CompilationError(x, effectiveFileName, compiler);
-        }
+		throw CompilationError(x, effectiveFileName, compiler);
+	}
 	return code;
 }
 

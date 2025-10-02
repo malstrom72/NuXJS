@@ -742,7 +742,7 @@ static void testCompilation() {
 	p.enterEvalCode(rt.compileEvalCode(expr));
 	EXPECT_EQUAL(rt.runUntilReturn(p), 42);
 
-	const String source(heap.managed(), "var x=3; x+4;");
+	const String source(heap.roots(), "var x=3; x+4;");
 	Processor p2(rt);
 	p2.enterGlobalCode(rt.compileGlobalCode(source));
 	Var res = rt.runUntilReturn(p2);
@@ -860,11 +860,11 @@ static void testExceptionStacks() {
 	try {
 		rt.run("function jsFail(){ throw new Error('cpp catch sample'); }\njsFail();");
 		EXPECT(false);
-		} catch (const ScriptException& ex) {
-				Var errorVar(rt, ex.value);
-				EXPECT(errorVar["stack"].to<std::wstring>().find(L"cpp catch sample") != std::wstring::npos);
-				EXPECT(errorVar["error"].to<Value>().isUndefined());
-		}
+	} catch (const ScriptException& ex) {
+		Var errorVar(rt, ex.value);
+		EXPECT(errorVar["stack"].to<std::wstring>().find(L"cpp catch sample") != std::wstring::npos);
+		EXPECT(errorVar["error"].to<Value>().isUndefined());
+	}
 
 	Var globals = rt.getGlobalsVar();
 	globals["bounceNative"] = bounceThroughCpp;
@@ -872,14 +872,15 @@ static void testExceptionStacks() {
 
 	rt.run("var throughCppCaught;\nfunction callBounce(){ var err = bounceNative(function(){ throw new Error('native bounce'); }); if (err) { throw err; } }\ntry { callBounce(); } catch (err) { throughCppCaught = err; }");
 	Var throughCppCaught = globals["throughCppCaught"];
-		EXPECT(throughCppCaught["stack"].to<std::wstring>().find(L"native bounce") != std::wstring::npos);
-		EXPECT(throughCppCaught["error"].to<Value>().isUndefined());
+	EXPECT(throughCppCaught["stack"].to<std::wstring>().find(L"native bounce") != std::wstring::npos);
+	EXPECT(throughCppCaught["error"].to<Value>().isUndefined());
 
 	rt.run("var cppThrown; try { throwFromCpp(); } catch (err) { cppThrown = err; }");
 	Var cppThrown = globals["cppThrown"];
-		EXPECT(cppThrown["stack"].to<std::wstring>().find(L"native type error") != std::wstring::npos);
-		EXPECT(cppThrown["error"].to<Value>().isUndefined());
+	EXPECT(cppThrown["stack"].to<std::wstring>().find(L"native type error") != std::wstring::npos);
+	EXPECT(cppThrown["error"].to<Value>().isUndefined());
 }
+
 static void testNativeStackFormatter() {
 	std::cout << std::endl << "***** Native stack formatter helper *****" << std::endl << std::endl;
 	Heap heap;
@@ -1888,9 +1889,9 @@ void testStrings() {
 		EXPECT_EQUAL(STRING_FROM_CSTRING.size(), 11);
 		EXPECT_EQUAL(STRING_FROM_CSTRING.end() - STRING_FROM_CSTRING.begin(), 11);
 		EXPECT(std::equal(STRING_FROM_CSTRING.begin(), STRING_FROM_CSTRING.end(), "fromCString"));
-		const String stringOnHeap(heap.managed(), "fromCString");
+		const String stringOnHeap(heap.roots(), "fromCString");
 		EXPECT(stringOnHeap.isEqualTo(STRING_FROM_CSTRING));
-		const String stringFromStdString(heap.managed(), std::string("fromCString"));
+		const String stringFromStdString(heap.roots(), std::string("fromCString"));
 		EXPECT(stringFromStdString.isEqualTo(STRING_FROM_CSTRING));
 	}
 	{
@@ -1906,9 +1907,9 @@ void testStrings() {
 		const std::wstring wideString = STRING_FROM_WIDE_CSTRING.toWideString();
 		EXPECT_EQUAL(wideString.size(), 16);
 		EXPECT(std::equal(wideString.begin(), wideString.end(), L"fromWideCString\u4711"));
-		const String stringOnHeap(heap.managed(), L"fromWideCString\u4711");
+		const String stringOnHeap(heap.roots(), L"fromWideCString\u4711");
 		EXPECT(stringOnHeap.isEqualTo(STRING_FROM_WIDE_CSTRING));
-		const String stringFromStdString(heap.managed(), std::wstring(L"fromWideCString\u4711"));
+		const String stringFromStdString(heap.roots(), std::wstring(L"fromWideCString\u4711"));
 		EXPECT(stringFromStdString.isEqualTo(STRING_FROM_WIDE_CSTRING));
 	}
 	{
@@ -1921,14 +1922,14 @@ void testStrings() {
 		EXPECT(std::equal(surrogatePairUTF8String.begin(), surrogatePairUTF8String.end(), "surrogatePair: \xF0\x9F\x98\x80"));
 		const std::wstring surrogatePairWideString = SURROGATE_PAIR_STRING.toWideString();
 		EXPECT(std::equal(surrogatePairWideString.begin(), surrogatePairWideString.end(), L"surrogatePair: \U0001F600"));
-		const String stringOnHeap(heap.managed(), L"surrogatePair: \U0001F600");
+		const String stringOnHeap(heap.roots(), L"surrogatePair: \U0001F600");
 		EXPECT(stringOnHeap.isEqualTo(SURROGATE_PAIR_STRING));
-		const String stringFromStdString(heap.managed(), std::wstring(L"surrogatePair: \U0001F600"));
+		const String stringFromStdString(heap.roots(), std::wstring(L"surrogatePair: \U0001F600"));
 		EXPECT(stringFromStdString.isEqualTo(SURROGATE_PAIR_STRING));
 	}
 	{
 		const std::wstring isolatedSurrogate(1, static_cast<std::wstring::value_type>(0xD83D));
-		const String isolatedSurrogateString(heap.managed(), isolatedSurrogate);
+		const String isolatedSurrogateString(heap.roots(), isolatedSurrogate);
 		EXPECT_EQUAL(isolatedSurrogateString.size(), 1);
 		EXPECT_EQUAL(isolatedSurrogateString.toWideString(), isolatedSurrogate);
 	}

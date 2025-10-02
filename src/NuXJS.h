@@ -825,29 +825,24 @@ class Constants : public GCItem, public Vector<Value> {
 	so opcode offsets are measured relative to the unit's byte offsets.
 **/
 class SourceCodeUnit : public GCItem {
-       public:
-               typedef GCItem super;
+	public:
+		typedef GCItem super;
+		SourceCodeUnit(GCList& gcList, const String* sourceCode, const String* fileName);
+		const String* getSource() const { assert(source != 0); return source; }
+		const String* getFileName() const { assert(fileName != 0); return fileName; }
+		void recordLineProgress(UInt32 fromOffset, UInt32 toOffset);
+		void computeLineColumn(UInt32 offset, UInt32& line, UInt32& column) const;
 
-               SourceCodeUnit(GCList& gcList, const String* initialSource = 0, const String* initialFileName = 0);
+	protected:
+		virtual void gcMarkReferences(Heap& heap) const {
+			gcMark(heap, source);
+			gcMark(heap, fileName);
+       		super::gcMarkReferences(heap);
+		}
 
-               const String* getSource() const { return source; }
-               const String* getFileName() const;
-               void beginLineScan(UInt32 initialOffset = 0);
-               void recordLineProgress(const Char* basePtr, UInt32 fromOffset, UInt32 toOffset);
-               bool computeLineColumn(UInt32 offset, int& line, int& column) const;
-
-               static SourceCodeUnit* createWithName(Runtime& rt, const String* source, const String* name);
-               static SourceCodeUnit* createAnonymous(Runtime& rt, const String* source);
-               static SourceCodeUnit* createEval(Runtime& rt, const String* source);
-
-       protected:
-               virtual void gcMarkReferences(Heap& heap) const;
-
-               const String* const source;
-               const String* const fileName;
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-               Vector<UInt32> lineStartOffsets;
-#endif
+		const String* const source;
+		const String* const fileName;
+		Vector<UInt32> lineOffsets; 	// Byte offsets of line beginnings in source code. lineOffsets[0] is always 0.
 };
 
 /**
@@ -867,7 +862,7 @@ class Code : public Object {
 	public:
 		typedef Object super;
 
-		Code(GCList& gcList, Constants* sharedConstants = 0, SourceCodeUnit* sourceUnit = 0);
+		Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUnit);
 		bool lookupNameIndex(const String* name, Int32& index) const;
 		UInt32 getVarsCount() const { return varNames.size(); }
 		UInt32 getArgumentsCount() const { return argumentNames.size(); }
@@ -875,15 +870,11 @@ class Code : public Object {
 		const Constants* getConstants() const { return constants; }
 		const CodeWord* getCodeWords() const { return codeWords.begin(); }
 		UInt32 getCodeSize() const { return codeWords.size(); }
-		const String* getName() const { return name; }
-               const String* getSource() const {
-                       if (source != 0) {
-                               return source;
-                       }
-                       return (sourceUnit != 0 ? sourceUnit->getSource() : 0);
-               }
-		SourceCodeUnit* getSourceUnit() const { return sourceUnit; }
-#if (NUXJS_VERBOSE_EXCEPTIONS)
+		bool hasName() const { return (name != 0); }
+		const String* getName() const { assert(name != 0); return name; }
+		const String* getSource() const { assert(source != 0); return source; }
+		SourceCodeUnit* getSourceUnit() const { assert(sourceUnit != 0); return sourceUnit; }
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		bool lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
 		bool hasSourceLocations() const {
 		#if (NUXJS_RLE_OFFSETS)
@@ -893,40 +884,40 @@ class Code : public Object {
 		#endif
 		}
 		const String* getFileName() const;
-#endif
+	#endif
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
 
 	protected:
 		Vector<CodeWord> codeWords;
 		Constants* const constants;
+		SourceCodeUnit* const sourceUnit;
 		Table nameIndexes;							///< < 0 : local variables, >= 0 : arguments, CATCH_PARAMETER == current catch parameter during compile-time only (don't use fast index binding)
 		Vector<const String*> varNames;				///< Notice that this list is reversed in relation to indexes in the "locals" array in FunctionScope.
 		Vector<const String*> argumentNames;
 		const String* name;
 		const String* selfName;
 		const String* source;
-		SourceCodeUnit* sourceUnit;
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-#if (NUXJS_RLE_OFFSETS)
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+	#if (NUXJS_RLE_OFFSETS)
 		Vector<std::pair<UInt32, UInt32> > opcodeOffsetRuns;
 		bool hasCompressedOffsets() const { return !opcodeOffsetRuns.empty(); }
-#else
+	#else
 		Vector<UInt32> opcodeOffsets;
-#endif
-#endif
+	#endif
+	#endif
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, constants);
+			gcMark(heap, sourceUnit);
 			nameIndexes.gcMarkReferences(heap);
 			gcMark(heap, varNames.begin(), varNames.end());
 			gcMark(heap, argumentNames.begin(), argumentNames.end());
 			gcMark(heap, name);
 			gcMark(heap, selfName);
 			gcMark(heap, source);
-			gcMark(heap, sourceUnit);
 			super::gcMarkReferences(heap);
 		}
 
@@ -1104,8 +1095,8 @@ class Arguments : public LazyJSObject<Object> {
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
-	Value* findProperty(const Value& key) const;
-	const FunctionScope* scope;
+		Value* findProperty(const Value& key) const;
+		const FunctionScope* scope;
 		JSFunction* const function;
 		UInt32 const argumentsCount;
 		Vector<Byte> deletedArguments;
@@ -1291,17 +1282,17 @@ struct ConstStringException : public Exception {
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 struct SourceLocation {
-		SourceLocation() : fileName(0), offset(0), line(0), column(0) { }
-		const String* fileName;
-		UInt32 offset;
-		int line;
-		int column;
+	SourceLocation() : fileName(0), offset(0), line(0), column(0) { }
+	const String* fileName;
+	UInt32 offset;
+	UInt32 line;
+	UInt32 column;
 };
 
 struct StackFrameInfo {
-		StackFrameInfo() : functionName(0), location() { }
-		const String* functionName;
-		SourceLocation location;
+	StackFrameInfo() : functionName(0), location() { }
+	const String* functionName;
+	SourceLocation location;
 };
 #endif
 
@@ -1830,28 +1821,24 @@ class Compiler : public GCItem {
 
 		enum Target { FOR_GLOBAL, FOR_FUNCTION, FOR_EVAL };
 
-		Compiler(GCList& gcList, Code* code, Target compileFor, SourceCodeUnit* sourceUnit = 0, const String* fileName = 0, int initialNestCounter = 0
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
-				, const Char* sourceBegin = 0, UInt32 initialBaseLine = 1
-		#endif
-				);
+		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter);
 		const Char* compile(const Char* b, const Char* e);
-		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName = 0); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
+		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
 		void compile(const String& source);
-		void getStopPosition(size_t& offset, int& lineNumber, int& columnNumber) const;
+		void getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const;
 
 	protected:
 		struct CodeSection {
 			CodeSection(Heap& heap, Int32 initialStackDepth)
 				: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
 				, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth)
-				#if (NUXJS_VERBOSE_EXCEPTIONS)
-				#if (NUXJS_RLE_OFFSETS)
-								, opcodeOffsetRuns(&heap)
-				#else
-								, opcodeOffsets(&heap)
-				#endif
-				#endif
+			#if (NUXJS_VERBOSE_EXCEPTIONS)
+			#if (NUXJS_RLE_OFFSETS)
+				, opcodeOffsetRuns(&heap)
+			#else
+				, opcodeOffsets(&heap)
+			#endif
+			#endif
 		 	{
 			}
 			
@@ -1867,13 +1854,13 @@ class Compiler : public GCItem {
 			const Int32 initialStackDepth;
 			Int32 stackDepth;
 			Int32 maxStackDepth;
-				#if (NUXJS_VERBOSE_EXCEPTIONS)
-				#if (NUXJS_RLE_OFFSETS)
-								Vector<std::pair<UInt32, UInt32> > opcodeOffsetRuns;
-				#else
-								Vector<UInt32> opcodeOffsets;
-				#endif
-				#endif
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
+		#if (NUXJS_RLE_OFFSETS)
+			Vector<std::pair<UInt32, UInt32> > opcodeOffsetRuns;
+		#else
+			Vector<UInt32> opcodeOffsets;
+		#endif
+		#endif
 		};
 
 		struct BranchPoint {
@@ -1922,7 +1909,7 @@ class Compiler : public GCItem {
 		ExpressionResult expression(Precedence precedence);
 		ExpressionResult rvalueExpression(Precedence precedence = LOWEST_PREC);
 		void rvalueGroup();
-		void functionDefinition(const String* functionName, const String* selfName = 0); // selfName is only for named function expressions
+		void functionDefinition(const String* functionName, const String* selfName); // selfName is only for named function expressions, should be 0 otherwise
 		bool optionalExpression(ExpressionResult& xr, Precedence precedence);
 		ExpressionResult declareIdentifier(const String* name, bool func);
 		ExpressionResult varDeclaration();
@@ -1955,9 +1942,6 @@ class Compiler : public GCItem {
 		Char* unescape(Char* buffer, const Char* e);
 		Vector<Char, 64> parseIdentifier(bool limitLeadingChar);
 		const String* identifier(bool required, bool allowKeywords);
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		UInt32 recordSourceOffset();
-	#endif
 
 		Heap& heap;
 		Code* const code;
@@ -1971,13 +1955,6 @@ class Compiler : public GCItem {
 		bool acceptInOperator;
 		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
 		int nestCounter;
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		const Char* absoluteStart;
-		UInt32 baseLineNumber;
-		UInt32 lineScanOffset;
-		bool resetLineScan;
-	#endif
-		SourceCodeUnit* activeSourceUnit;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, code);
@@ -2003,9 +1980,9 @@ struct CompilationError : public ScriptException {
 	#endif
 	}
 	const String* filename;
-	size_t offset;
-	int lineNumber;
-	int columnNumber;
+	UInt32 offset;
+	UInt32 lineNumber;
+	UInt32 columnNumber;
 };
 
 } /* namespace NuXJS */
