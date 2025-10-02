@@ -820,8 +820,41 @@ class Constants : public GCItem, public Vector<Value> {
 };
 
 /**
+	SourceCodeUnit owns the original source string and metadata describing how opcode offsets map back to the
+	programmer's file. Compiler and runtime components now rely on this GC item for filename and line lookups,
+	so opcode offsets are measured relative to the unit's byte offsets.
+**/
+class SourceCodeUnit : public GCItem {
+       public:
+               typedef GCItem super;
+
+               SourceCodeUnit(GCList& gcList, const String* initialSource = 0, const String* initialFileName = 0);
+
+               const String* getSource() const { return source; }
+               const String* getFileName() const;
+               void beginLineScan(UInt32 initialOffset = 0);
+               void recordLineProgress(const Char* basePtr, UInt32 fromOffset, UInt32 toOffset);
+               bool computeLineColumn(UInt32 offset, int& line, int& column) const;
+
+               static SourceCodeUnit* createWithName(Runtime& rt, const String* source, const String* name);
+               static SourceCodeUnit* createAnonymous(Runtime& rt, const String* source);
+               static SourceCodeUnit* createEval(Runtime& rt, const String* source);
+
+       protected:
+               virtual void gcMarkReferences(Heap& heap) const;
+
+               const String* const source;
+               const String* const fileName;
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+               Vector<UInt32> lineStartOffsets;
+#endif
+};
+
+/**
 	Code represents compiled bytecode and associated metadata. It is an Object so that it can be stored as a constant
 	and referenced by multiple functions.
+	Source metadata such as filenames and line/column tables live on the associated `SourceCodeUnit`; full-script
+	code objects keep their legacy `source` pointer in sync with the unit's source string.
 **/
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 struct SourceLocation;
@@ -830,11 +863,11 @@ struct SourceLocation;
 class Code : public Object {
 	friend class FunctionScope;
 	friend class Compiler; // FIX : maybe not one day?
-	
+
 	public:
 		typedef Object super;
 
-		Code(GCList& gcList, Constants* sharedConstants = 0);
+		Code(GCList& gcList, Constants* sharedConstants = 0, SourceCodeUnit* sourceUnit = 0);
 		bool lookupNameIndex(const String* name, Int32& index) const;
 		UInt32 getVarsCount() const { return varNames.size(); }
 		UInt32 getArgumentsCount() const { return argumentNames.size(); }
@@ -843,7 +876,13 @@ class Code : public Object {
 		const CodeWord* getCodeWords() const { return codeWords.begin(); }
 		UInt32 getCodeSize() const { return codeWords.size(); }
 		const String* getName() const { return name; }
-		const String* getSource() const { return source; }
+               const String* getSource() const {
+                       if (source != 0) {
+                               return source;
+                       }
+                       return (sourceUnit != 0 ? sourceUnit->getSource() : 0);
+               }
+		SourceCodeUnit* getSourceUnit() const { return sourceUnit; }
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 		bool lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
 		bool hasSourceLocations() const {
@@ -853,10 +892,7 @@ class Code : public Object {
 			return !opcodeOffsets.empty();
 		#endif
 		}
-		const String* getFileName() const { return fileName; }
-		void setFileName(const String* newFileName) { fileName = newFileName; }
-		UInt32 getLineNumberBase() const { return lineNumberBase; }
-		void setLineNumberBase(UInt32 newBase) { lineNumberBase = (newBase != 0 ? newBase : 1U); }
+		const String* getFileName() const;
 #endif
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
@@ -870,16 +906,14 @@ class Code : public Object {
 		const String* name;
 		const String* selfName;
 		const String* source;
+		SourceCodeUnit* sourceUnit;
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-		const String* fileName;
 #if (NUXJS_RLE_OFFSETS)
 		Vector<std::pair<UInt32, UInt32> > opcodeOffsetRuns;
 		bool hasCompressedOffsets() const { return !opcodeOffsetRuns.empty(); }
 #else
 		Vector<UInt32> opcodeOffsets;
 #endif
-		Vector<UInt32> lineStartOffsets;
-		UInt32 lineNumberBase;
 #endif
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
@@ -892,11 +926,10 @@ class Code : public Object {
 			gcMark(heap, name);
 			gcMark(heap, selfName);
 			gcMark(heap, source);
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
-			gcMark(heap, fileName);
-		#endif
+			gcMark(heap, sourceUnit);
 			super::gcMarkReferences(heap);
 		}
+
 };
 
 /**
@@ -1058,7 +1091,7 @@ class Arguments : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 
-        Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
+	Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
 		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
@@ -1071,8 +1104,8 @@ class Arguments : public LazyJSObject<Object> {
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
-        Value* findProperty(const Value& key) const;
-        const FunctionScope* scope;
+	Value* findProperty(const Value& key) const;
+	const FunctionScope* scope;
 		JSFunction* const function;
 		UInt32 const argumentsCount;
 		Vector<Byte> deletedArguments;
@@ -1797,10 +1830,10 @@ class Compiler : public GCItem {
 
 		enum Target { FOR_GLOBAL, FOR_FUNCTION, FOR_EVAL };
 
-		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0
-			#if (NUXJS_VERBOSE_EXCEPTIONS)
+		Compiler(GCList& gcList, Code* code, Target compileFor, SourceCodeUnit* sourceUnit = 0, const String* fileName = 0, int initialNestCounter = 0
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
 				, const Char* sourceBegin = 0, UInt32 initialBaseLine = 1
-			#endif
+		#endif
 				);
 		const Char* compile(const Char* b, const Char* e);
 		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName = 0); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
@@ -1942,7 +1975,9 @@ class Compiler : public GCItem {
 		const Char* absoluteStart;
 		UInt32 baseLineNumber;
 		UInt32 lineScanOffset;
+		bool resetLineScan;
 	#endif
+		SourceCodeUnit* activeSourceUnit;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, code);
