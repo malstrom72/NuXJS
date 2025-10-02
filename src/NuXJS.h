@@ -874,8 +874,7 @@ class Code : public Object {
 		const String* getSource() const { assert(source != 0); return source; }
 		SourceCodeUnit* getSourceUnit() const { assert(sourceUnit != 0); return sourceUnit; }
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		bool lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
-		const String* getFileName() const;
+		void lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
 	#endif
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }

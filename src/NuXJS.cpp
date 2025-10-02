@@ -193,8 +193,7 @@ static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 		, STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value");
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-static const String STACK_STRING("stack"), ANONYMOUS_SCRIPT_STRING("<anonymous>")
-		, EVAL_CODE_STRING("<eval>");
+static const String STACK_STRING("stack"), ANONYMOUS_SCRIPT_STRING("<anonymous>"), EVAL_CODE_STRING("<eval>");
 #endif
 
 static const String ERROR_NAMES[ERROR_TYPE_COUNT] = {
@@ -1671,39 +1670,34 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
 }
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-const String* Code::getFileName() const
-{
-        assert(sourceUnit != 0);
-        return (sourceUnit != 0 ? sourceUnit->getFileName() : &ANONYMOUS_SCRIPT_STRING);
-}
 
-
-bool Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const {
+void Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const {
 #if (NUXJS_RLE_OFFSETS)
+	assert(instructionIndex < codeWords.size());
 	UInt32 remaining = instructionIndex;
 	for (UInt32 i = 0; i < opcodeOffsetRuns.size(); ++i) {
 		const std::pair<UInt32, UInt32>& run = opcodeOffsetRuns[i];
 		if (remaining < run.second) {
 			out.offset = run.first;
-			goto HAVE_OFFSET_VALUE;
+			const SourceCodeUnit* unit = sourceUnit;
+			assert(unit != 0);
+			out.fileName = unit->getFileName();
+			unit->computeLineColumn(out.offset, out.line, out.column);
+			return;
 		}
 		remaining -= run.second;
 	}
 	assert(0);
-	return false;
 #else
 	if (opcodeOffsets.empty() || instructionIndex >= opcodeOffsets.size()) {
 		assert(0);
-		return false;
 	}
 	out.offset = opcodeOffsets[instructionIndex];
-#endif
-HAVE_OFFSET_VALUE:
 	const SourceCodeUnit* unit = sourceUnit;
 	assert(unit != 0);
 	out.fileName = unit->getFileName();
 	unit->computeLineColumn(out.offset, out.line, out.column);
-	return true;
+#endif
 }
 #endif
 
@@ -2324,10 +2318,7 @@ void Processor::collectStackFrames(std::vector<StackFrameInfo>& frames) const
 		SourceLocation location;
 		const SourceCodeUnit* unit = frameCode->getSourceUnit();
 		location.fileName = unit->getFileName();
-		if (!frameCode->lookupSourceLocation(instructionIndex, location)) {
-			assert(0);
-			break;
-		}
+		frameCode->lookupSourceLocation(instructionIndex, location);
 		assert(location.fileName != 0);
 		location.fileName = unit->getFileName();
 		StackFrameInfo info;
