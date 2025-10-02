@@ -6,7 +6,7 @@ This note captures what we observed while reviewing the NuXJS sources with the g
 
 1. `Processor::collectStackFrames` (src/NuXJS.cpp, lines 2260-2286) walks the interpreter frames, skips entries that do not have source tables, and records the `returnIP` so we do not double count the current instruction. Each captured frame stores the function name and resolved `SourceLocation` in a temporary `std::vector`.
 2. `buildStackTraceText` (src/NuXJS.cpp, lines 2212-2250) formats the captured frames straight into a Node-style string. There is no intermediate `StackTrace` object anymore—the helper writes the final string directly from the iterator.
-3. `Processor::ensureErrorStack` (src/NuXJS.cpp, lines 2671-2726) runs whenever we construct or rethrow an `Error`. It checks whether `.stack` already contains a string, collects frames if needed, calls the formatter once, and writes the resulting string onto the property. If the walk produced metadata, it also populates `fileName`, `lineNumber`, and `columnNumber` directly from the top frame.
+3. `Processor::ensureErrorStack` (src/NuXJS.cpp, lines 2671-2726) runs whenever we construct or rethrow an `Error`. It checks whether `.stack` already contains a string, collects frames if needed, calls the formatter once, and writes the resulting string onto the property.
 4. `Processor::throwVirtualException` (src/NuXJS.cpp, lines 2729-2780) fires whenever control leaves the VM because of an exception. After calling `ensureErrorStack`, it simply reuses the stored string and propagates the top-frame metadata into the native `ScriptException` wrapper so C++ callers can report the error without re-entering JS.
 5. `Compiler` assigns each `Code` object a base line index while compiling nested functions so that `lookupSourceLocation` can report source lines relative to the original script instead of the isolated function body.
 
@@ -18,7 +18,6 @@ Switching to a string-only model removes the legacy `StackTrace` cache while kee
 
 * Walk the VM stack and resolve source locations so the `at file:line:column` entries match the Node layout. We now centralise that in `collectStackFrames`.
 * Decide which frames to omit (native throw helpers, internal trampoline functions, async continuations) so that the formatted output aligns with the observable behaviour today. Those decisions currently live next to the walker.
-* Populate the metadata properties (`fileName`, `lineNumber`, `columnNumber`) that debuggers and the regression suite expect on every error object using the same frame iterator that produced the string.
 * Provide the formatted stack to both the JS-visible `Error` instance *and* the `ScriptException` wrapper that crosses the C++ boundary. The shared coordination point is now the cached string plus the throw-site metadata we derived while formatting it.
 
 In other words, the runtime still performs the same work; the question is whether we do it once in a shared helper or repeat the logic in every throw path. The eager approach keeps the single helper while discarding the structured cache entirely.
