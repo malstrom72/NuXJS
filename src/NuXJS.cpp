@@ -193,8 +193,7 @@ static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 		, STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value");
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-static const String COLUMN_NUMBER_STRING("columnNumber"), FILE_NAME_STRING("fileName")
-		, LINE_NUMBER_STRING("lineNumber"), STACK_STRING("stack"), ANONYMOUS_SCRIPT_STRING("<anonymous>")
+static const String STACK_STRING("stack"), ANONYMOUS_SCRIPT_STRING("<anonymous>")
 		, EVAL_CODE_STRING("<eval>");
 #endif
 
@@ -2735,8 +2734,6 @@ void Processor::ensureErrorStack(Error* errorObject, UInt32 skipFrames, const st
 		stackString = propertyStackString;
 		errorObject->setStackString(stackString);
 	}
-	bool hasLocation = false;
-	SourceLocation topLocation;
 	const std::vector<StackFrameInfo>* framesPointer = cachedFrames;
 	std::vector<StackFrameInfo> localFrames;
 	if (framesPointer == 0 && stackString == 0) {
@@ -2747,8 +2744,6 @@ void Processor::ensureErrorStack(Error* errorObject, UInt32 skipFrames, const st
 		const size_t frameCount = framesPointer->size();
 		const size_t skipIndex = static_cast<size_t>(skipFrames);
 		const size_t firstFrame = (skipIndex < frameCount ? skipIndex : frameCount - 1);
-		topLocation = (*framesPointer)[firstFrame].location;
-		hasLocation = true;
 		if (stackString == 0) {
 			stackString = formatStackString(heap, Value(errorObject), *framesPointer, firstFrame, std::string());
 		}
@@ -2760,23 +2755,6 @@ void Processor::ensureErrorStack(Error* errorObject, UInt32 skipFrames, const st
 	if (!stackPropertyHasString || propertyStackString != stackString) {
 		Value newStackValue(stackString);
 		errorObject->setOwnProperty(rt, Value(&STACK_STRING), newStackValue, DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-	}
-	Value existing(UNDEFINED_VALUE);
-	if (hasLocation) {
-		if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-			const String* fileName = (topLocation.fileName != 0 ? topLocation.fileName : &ANONYMOUS_SCRIPT_STRING);
-			errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(fileName), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-		}
-		if (errorObject->getProperty(rt, &LINE_NUMBER_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-			errorObject->setOwnProperty(rt, Value(&LINE_NUMBER_STRING), Value(static_cast<Int32>(topLocation.line)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-		}
-		if (errorObject->getProperty(rt, &COLUMN_NUMBER_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-			errorObject->setOwnProperty(rt, Value(&COLUMN_NUMBER_STRING), Value(static_cast<Int32>(topLocation.column)), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-		}
-	} else {
-		if (errorObject->getProperty(rt, &FILE_NAME_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-			errorObject->setOwnProperty(rt, Value(&FILE_NAME_STRING), Value(&ANONYMOUS_SCRIPT_STRING), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-		}
 	}
 }
 #endif
