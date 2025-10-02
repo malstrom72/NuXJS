@@ -1,7 +1,4 @@
-> var direct = new Error("direct check"); var directLines = direct.stack.split("\n"); print(typeof direct.stack === "string"); print(direct.stack.indexOf("direct check") >= 0); print(typeof direct.error === "undefined"); print(directLines[0] === "Error: direct check"); print(directLines[1].indexOf("    at ") === 0);
-< true
-< true
-< true
+> var direct = new Error("direct check"); print(typeof direct.stack === "undefined"); print('stack' in direct === false);
 < true
 < true
 -

@@ -5297,24 +5297,7 @@ struct Support {
 		return UNDEFINED_VALUE;
 	}
 
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	static Value captureError(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object*) {
-		(void)rt;
-		if (argc >= 1) {
-			Error* errorObject = argv[0].asError();
-			if (errorObject != 0) {
-				Int32 skip = (argc >= 2 ? argv[1].toInt() : 0);
-				if (skip < 0) {
-					skip = 0;
-				}
-				processor.ensureErrorStack(errorObject, static_cast<UInt32>(skip));
-			}
-		}
-		return UNDEFINED_VALUE;
-	}
-#endif
-
-	static Value distinctConstructor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+static Value distinctConstructor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 1) {
 			Function* regularFunction = argv[0].asFunction();
 			if (regularFunction != 0) {
@@ -5506,11 +5489,7 @@ static struct {
 	FunctorAdapter<NativeFunction> func;
 } SUPPORT_FUNCTIONS[] = {
 	{ "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	{ "captureError", Support::captureError }, { "defineProperty", Support::defineProperty }, { "compileFunction", Support::compileFunction },
-#else
 	{ "defineProperty", Support::defineProperty }, { "compileFunction", Support::compileFunction },
-#endif
 	{ "distinctConstructor", Support::distinctConstructor }, { "callWithArgs", Support::callWithArgs },
 	{ "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
 	{ "isPropertyEnumerable", Support::isPropertyEnumerable }, { "atan2", Support::atan2 },
