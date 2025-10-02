@@ -40,7 +40,7 @@
 #endif
 
 #ifndef NUXJS_RLE_OFFSETS
-#define NUXJS_RLE_OFFSETS 0
+#define NUXJS_RLE_OFFSETS 1
 #endif
 
 /**
@@ -1823,7 +1823,7 @@ class Compiler : public GCItem {
 
 		enum Target { FOR_GLOBAL, FOR_FUNCTION, FOR_EVAL };
 
-		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter);
+		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0);
 		const Char* compile(const Char* b, const Char* e);
 		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
 		void compile(const String& source);

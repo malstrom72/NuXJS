@@ -5485,7 +5485,7 @@ struct Support {
 			const String* source = argv[0].toString(heap);
 			SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), source, &ANONYMOUS_SCRIPT_STRING);
 			Code* code = new(heap) Code(heap.managed(), 0, unit);
-			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION, 1);
+			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
 			compiler.compileFunction(source->begin(), source->end()
 					, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING), 0);
 			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
@@ -5807,7 +5807,7 @@ Code* Runtime::compileEvalCode(const String* expression) {
 	} else {
 		SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), expression, &EVAL_CODE_STRING);
 		Code* code = new(heap) Code(heap.managed(), 0, unit);
-		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL, 1);
+		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
 		compiler.compile(*expression);
 		evalCodeCache.update(evalCodeCache.insert(expression), code);
 		return code;
@@ -5820,7 +5820,7 @@ Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
 			? &source : new(heap) String(heap.managed(), source.begin(), source.end()));
 	SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), retainedSource, effectiveFileName);
 	Code* code = new(heap) Code(heap.managed(), 0, unit);
-	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL, 1);
+	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
 	try {
 		compiler.compile(*retainedSource);
 	}
