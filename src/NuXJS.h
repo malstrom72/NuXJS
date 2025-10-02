@@ -40,7 +40,7 @@
 #endif
 
 #ifndef NUXJS_RLE_OFFSETS
-#define NUXJS_RLE_OFFSETS 1
+#define NUXJS_RLE_OFFSETS 0
 #endif
 
 /**
@@ -830,7 +830,6 @@ class SourceCodeUnit : public GCItem {
 		SourceCodeUnit(GCList& gcList, const String* sourceCode, const String* fileName);
 		const String* getSource() const { assert(source != 0); return source; }
 		const String* getFileName() const { assert(fileName != 0); return fileName; }
-		void recordLineProgress(UInt32 fromOffset, UInt32 toOffset);
 		void computeLineColumn(UInt32 offset, UInt32& line, UInt32& column) const;
 
 	protected:
@@ -1734,7 +1733,10 @@ class Processor : public GCItem {
 			typedef GCItem super;
 			Frame(GCList& gcList, const CodeWord* returnIP, const Code* code, Scope* scope, Object* thisObject
 					, Frame* previousFrame) : super(gcList), returnIP(returnIP), code(code), scope(scope)
-					, thisObject(thisObject), previousFrame(previousFrame) { }
+					, thisObject(thisObject), previousFrame(previousFrame) {
+				assert(code != 0);
+				assert(scope != 0);
+			}
 			const CodeWord* const returnIP;
 			const Code* const code;
 			Scope* const scope;

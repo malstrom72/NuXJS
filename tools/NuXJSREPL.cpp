@@ -518,10 +518,10 @@ int testMain(int argc, const char* argv[]) {
 
 		Object& globals = *rt.getGlobalObject();
 		Var globs = rt.getGlobalsVar();
-                globs["read"] = read;
-                globs["load"] = load;
-                globs["quit"] = quit;
-                globs["help"] = help;
+		globs["read"] = read;
+		globs["load"] = load;
+		globs["quit"] = quit;
+		globs["help"] = help;
 
 		PrintFunction printFunction;
 		globals.setOwnProperty(rt, &PRINT_STRING, &printFunction, DONT_ENUM_FLAG);
@@ -620,16 +620,16 @@ int testMain(int argc, const char* argv[]) {
 				if (execute) {
 					const String* scriptFileName = 0;
 					if (!inputFilePath.empty()) {
-							scriptFileName = String::allocate(heap, inputFilePath.c_str());
+						scriptFileName = String::allocate(heap, inputFilePath.c_str());
 					} else {
-							scriptFileName = rt.newStringConstant("<anonymous>");
+						scriptFileName = rt.newStringConstant("<anonymous>");
 					}
 					Heap& runtimeHeap = rt.getHeap();
 					const Char* scriptBegin = source.begin();
 					const Char* scriptEnd = source.end();
 					const String* scriptSource = new(runtimeHeap) String(runtimeHeap.managed(), scriptBegin, scriptEnd);
-					SourceCodeUnit sourceCodeUnit(heap.roots(), scriptSource, scriptFileName);
-					Code globalCode(heap.roots(), 0, &sourceCodeUnit);
+					SourceCodeUnit* sourceCodeUnit = new(runtimeHeap) SourceCodeUnit(heap.managed(), scriptSource, scriptFileName);
+					Code globalCode(heap.roots(), 0, sourceCodeUnit);
 					Compiler compiler(heap.roots(), &globalCode, (interactive ? Compiler::FOR_EVAL : Compiler::FOR_GLOBAL), 1);
 					try {
 						compiler.compile(*scriptSource);
@@ -658,11 +658,11 @@ int testMain(int argc, const char* argv[]) {
 					bool done = false;
 					rt.resetTimeOut(60);
 					const double start = getCPUSecs();
-						do {
+					do {
 						done = !processor.run(STANDARD_CYCLES_BETWEEN_AUTO_GC);
 						rt.autoGC(true);
 						rt.checkTimeOut();
-							peakMemory = std::max<size_t>(peakMemory, heap.size());
+						peakMemory = std::max<size_t>(peakMemory, heap.size());
 					} while (!done);
 					if (!doSuppressStdErr) {
 						Value v = processor.getResult();
@@ -679,57 +679,57 @@ int testMain(int argc, const char* argv[]) {
 					source = EMPTY_STRING;
 				}
 			}
-		catch (const ScriptException& x) {
-			source = EMPTY_STRING;
-			std::wstring ws = x.value.toString(heap)->toWideString();
-			ws = L"!!!! " + ws;
-			std::wcout << ws << std::endl;
-			bool printMetadata = !useLegacyExceptionOutput;
-			if (!useLegacyExceptionOutput) {
-				Value metadataFlag(Value::UNDEFINED);
-				if (rt.getGlobalObject()->getProperty(rt, Value(&PRINT_EXCEPTION_METADATA_STRING), &metadataFlag) != NONEXISTENT) {
-					printMetadata = metadataFlag.toBool();
-				}
-			}
-			std::string locationLine;
-			std::string stackLine;
-			if (printMetadata) {
-				std::ostringstream locationStream;
-				const String* fileName = x.getFileName();
-				if (fileName != 0) {
-					locationStream << fileName->toUTF8String();
-				} else {
-					locationStream << "<anonymous>";
-				}
-				if (x.getLineNumber() > 0) {
-					locationStream << ':' << x.getLineNumber();
-					if (x.getColumnNumber() > 0) {
-						locationStream << ':' << x.getColumnNumber();
+			catch (const ScriptException& x) {
+				source = EMPTY_STRING;
+				std::wstring ws = x.value.toString(heap)->toWideString();
+				ws = L"!!!! " + ws;
+				std::wcout << ws << std::endl;
+				bool printMetadata = !useLegacyExceptionOutput;
+				if (!useLegacyExceptionOutput) {
+					Value metadataFlag(Value::UNDEFINED);
+					if (rt.getGlobalObject()->getProperty(rt, Value(&PRINT_EXCEPTION_METADATA_STRING), &metadataFlag) != NONEXISTENT) {
+						printMetadata = metadataFlag.toBool();
 					}
 				}
-				locationLine = std::string("!!!! location: ") + locationStream.str();
-				const std::wstring locationWide(locationLine.begin(), locationLine.end());
-				std::wcout << locationWide << std::endl;
-				const char* formattedStack = x.formatStackTrace();
-				if (formattedStack != 0 && formattedStack[0] != '\0') {
-					stackLine = std::string("!!!! stack: ") + formattedStack;
-					const std::wstring stackWide(stackLine.begin(), stackLine.end());
-					std::wcout << stackWide << std::endl;
+				std::string locationLine;
+				std::string stackLine;
+				if (printMetadata) {
+					std::ostringstream locationStream;
+					const String* fileName = x.getFileName();
+					if (fileName != 0) {
+						locationStream << fileName->toUTF8String();
+					} else {
+						locationStream << "<anonymous>";
+					}
+					if (x.getLineNumber() > 0) {
+						locationStream << ':' << x.getLineNumber();
+						if (x.getColumnNumber() > 0) {
+							locationStream << ':' << x.getColumnNumber();
+						}
+					}
+					locationLine = std::string("!!!! location: ") + locationStream.str();
+					const std::wstring locationWide(locationLine.begin(), locationLine.end());
+					std::wcout << locationWide << std::endl;
+					const char* formattedStack = x.formatStackTrace();
+					if (formattedStack != 0 && formattedStack[0] != '\0') {
+						stackLine = std::string("!!!! stack: ") + formattedStack;
+						const std::wstring stackWide(stackLine.begin(), stackLine.end());
+						std::wcout << stackWide << std::endl;
+					}
+				}
+				if (!interactive) {
+					return 1;
+				} else {
+					pushIOLines('!', String(heap.roots(), ws.c_str()));
+					if (printMetadata && !locationLine.empty()) {
+						pushIOLines('!', String(heap.roots(), locationLine.c_str()));
+					}
+					if (printMetadata && !stackLine.empty()) {
+						pushIOLines('!', String(heap.roots(), stackLine.c_str()));
+					}
 				}
 			}
-			if (!interactive) {
-				return 1;
-			} else {
-				pushIOLines('!', String(heap.roots(), ws.c_str()));
-				if (printMetadata && !locationLine.empty()) {
-					pushIOLines('!', String(heap.roots(), locationLine.c_str()));
-				}
-				if (printMetadata && !stackLine.empty()) {
-					pushIOLines('!', String(heap.roots(), stackLine.c_str()));
-				}
-			}
-		}
-		catch (const std::exception& x) {
+			catch (const std::exception& x) {
 				source = EMPTY_STRING;
 				std::cout << "!!!! " << x.what() << std::endl;
 				if (!interactive) {

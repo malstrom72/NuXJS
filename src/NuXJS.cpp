@@ -2414,12 +2414,17 @@ void Processor::collectStackFrames(std::vector<StackFrameInfo>& frames) const
 	const CodeWord* nextIP = ip;
 	while (frameWalker != 0 && nextIP != 0) {
 		const Code* frameCode = frameWalker->code;
+		assert(frameCode != 0);
 		const SourceCodeUnit* unit = (frameCode != 0 ? frameCode->getSourceUnit() : 0);
+		assert(unit != 0);
+		assert(frameCode->hasSourceLocations());
 		if (frameCode == 0 || unit == 0 || !frameCode->hasSourceLocations()) {
+			assert(0);
 			break;
 		}
 		const CodeWord* begin = frameCode->getCodeWords();
 		if (begin == 0 || nextIP <= begin) {
+			assert(0);
 			break;
 		}
 		const UInt32 instructionIndex = static_cast<UInt32>((nextIP - begin) - 1);
@@ -3613,7 +3618,7 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 		}
 	}
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	const UInt32 sourceOffset = compiler.p - compiler.code->getSourceUnit()->getSource()->begin();
+	const UInt32 sourceOffset = static_cast<UInt32>(compiler.p - compiler.code->getSourceUnit()->getSource()->begin());
 	assert(sourceOffset <= compiler.code->getSourceUnit()->getSource()->size());
 #endif
 	code.push(Processor::packInstruction(opcode, operand));
@@ -5253,7 +5258,7 @@ void Compiler::compile(const String& source) {
 }
 
 void Compiler::getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const {
-	offset = p - b;
+	offset = static_cast<UInt32>(p - b);
     code->getSourceUnit()->computeLineColumn(offset, lineNumber, columnNumber);
 }
 
@@ -5432,6 +5437,7 @@ struct Support {
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 	static Value captureError(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object*) {
+		(void)rt;
 		if (argc >= 1) {
 			Error* errorObject = argv[0].asError();
 			if (errorObject != 0) {
@@ -5810,11 +5816,13 @@ Code* Runtime::compileEvalCode(const String* expression) {
 
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
 	const String* effectiveFileName = (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING);
-	SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), &source, effectiveFileName);
+	const String* retainedSource = (heap.managed().owns(&source)
+			? &source : new(heap) String(heap.managed(), source.begin(), source.end()));
+	SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), retainedSource, effectiveFileName);
 	Code* code = new(heap) Code(heap.managed(), 0, unit);
 	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL, 1);
 	try {
-		compiler.compile(source);
+		compiler.compile(*retainedSource);
 	}
 	catch (const ScriptException& x) {
 		throw CompilationError(x, effectiveFileName, compiler);
