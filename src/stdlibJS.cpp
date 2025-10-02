@@ -447,7 +447,7 @@ const char* STDLIB_JS =
 ")}),round:c(function round(G){return(G===0.0?G:(G>=-0.5&&G<0.0?-0.0:f(G+0.5)))}),sin:c(function sin(G){return a.sin(+G"
 ")}),sqrt:c(function sqrt(G){return a.sqrt(+G)}),tan:c(function tan(G){return a.tan(+G)})});function eh(name,prototype)"
 "{return function(message){var aG;a.defineProperty(aG=a.createWrapper(\"Error\",name,prototype),\"message\",(message!=="
-"void 0?P(message):''),false,true,false);a.captureError(aG,1);return aG}};(function(){var ei=[\"Error\",\"EvalError\","
+"void 0?P(message):''),false,true,false);return aG}};(function(){var ei=[\"Error\",\"EvalError\","
 "\"RangeError\",\"ReferenceError\",\"SyntaxError\",\"TypeError\",\"URIError\"];for(var u=ei.length;--u>=0;){var C,au,X;"
 "a.defineProperty(b,C=ei[u],au=eh(C,X=a.prototypes[C]),false,true,false);au.name=C;Q(au,{dontEnum:true,readOnly:true,do"
 "ntDelete:true},{prototype:X});Q(X,{dontEnum:true},{constructor:au});X.name=C}Q(Error.prototype,{dontEnum:true},{messag"
