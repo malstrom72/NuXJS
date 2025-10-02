@@ -787,8 +787,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "2026"
             endingLineNumber = "2026"
-            landmarkName = "JSFunction::toString(heap)"
-            landmarkType = "7">
+            landmarkName = "unknown"
+            landmarkType = "0">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -803,8 +803,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "2025"
             endingLineNumber = "2025"
-            landmarkName = "JSFunction::toString(heap)"
-            landmarkType = "7">
+            landmarkName = "unknown"
+            landmarkType = "0">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -819,8 +819,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "1906"
             endingLineNumber = "1906"
-            landmarkName = "JSArray::setElement(rt, index, v)"
-            landmarkType = "7">
+            landmarkName = "getCompleteObject(rt)"
+            landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy

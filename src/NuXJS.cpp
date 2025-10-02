@@ -78,99 +78,6 @@ void operator delete[](void* ptr, NuXJS::Heap* heap) {
 
 namespace NuXJS {
 
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-namespace {
-	struct OpcodeOffsetProfiler {
-		bool enabled;
-		unsigned long long codeCount;
-		unsigned long long offsetCount;
-		unsigned long long runCount;
-		unsigned long long singletonRuns;
-		unsigned long long repeatedOffsets;
-		unsigned long long hist[33]; // 1..32, 33rd bucket is 33+
-		OpcodeOffsetProfiler() : enabled(false), codeCount(0), offsetCount(0), runCount(0), singletonRuns(0), repeatedOffsets(0) {
-			const char* v = std::getenv("NUXJS_PROFILE_OFFSETS");
-			enabled = (v != 0 && *v != '\0');
-			for (int i = 0; i < 33; ++i) hist[i] = 0;
-		}
-	#if (NUXJS_RLE_OFFSETS)
-		void add(const Vector<std::pair<UInt32, UInt32> >& runs) {
-			if (!enabled || runs.empty()) {
-				return;
-			}
-			++codeCount;
-			for (UInt32 i = 0; i < runs.size(); ++i) {
-				const UInt32 len = runs[i].second;
-				offsetCount += len;
-				const unsigned int bucket = (len <= 32 ? len : 33);
-				++hist[bucket - 1];
-				++runCount;
-				if (len == 1) {
-					++singletonRuns;
-				} else {
-					repeatedOffsets += (len - 1);
-				}
-			}
-		}
-	#else
-		void add(const Vector<UInt32>& offs) {
-			if (!enabled || offs.empty()) {
-				return;
-			}
-			++codeCount;
-			offsetCount += offs.size();
-			UInt32 prev = offs[0];
-			unsigned int runLen = 1;
-			for (UInt32 i = 1; i < offs.size(); ++i) {
-				const UInt32 cur = offs[i];
-				if (cur == prev) {
-					++runLen;
-				} else {
-					const unsigned int bucket = (runLen <= 32 ? runLen : 33);
-					++hist[bucket - 1]; // 0-based index
-					++runCount;
-					if (runLen == 1) {
-						++singletonRuns;
-					} else {
-						repeatedOffsets += (runLen - 1);
-					}
-					runLen = 1;
-					prev = cur;
-				}
-			}
-			const unsigned int bucket = (runLen <= 32 ? runLen : 33);
-			++hist[bucket - 1];
-			++runCount;
-			if (runLen == 1) {
-				++singletonRuns;
-			} else {
-				repeatedOffsets += (runLen - 1);
-			}
-		}
-	#endif
-		~OpcodeOffsetProfiler() {
-			if (!enabled) return;
-			std::cout << std::endl << "***** opcodeOffsets profile *****" << std::endl;
-			std::cout << "code objects: " << codeCount << ", total opcodes: " << offsetCount << std::endl;
-			const double frac = (offsetCount != 0 ? static_cast<double>(repeatedOffsets) / static_cast<double>(offsetCount) : 0.0);
-			std::cout << "repeated opcodes: " << repeatedOffsets << " (" << (frac * 100.0) << "%)" << std::endl;
-			std::cout << "runs: " << runCount << ", singleton runs: " << singletonRuns << std::endl;
-			std::cout << "run length histogram (len : count)" << std::endl;
-			for (unsigned int len = 1; len <= 32; ++len) {
-				if (hist[len - 1] != 0) {
-					std::cout << "  " << len << ": " << hist[len - 1] << std::endl;
-				}
-			}
-			if (hist[32] != 0) {
-				std::cout << "  33+: " << hist[32] << std::endl;
-			}
-			std::cout << std::endl;
-		}
-	};
-	static OpcodeOffsetProfiler gOpcodeOffsetProfiler;
-}
-#endif
-
 // MSVC (at least 2010) doesn't do fmod correctly with infinite divisor
 static double NaN() { return std::numeric_limits<double>::quiet_NaN(); }
 #ifdef _MSC_VER
@@ -5180,7 +5087,6 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	appendOpcodeOffsetRuns(code->opcodeOffsetRuns, mainSection.opcodeOffsetRuns);
 	setupSection.opcodeOffsetRuns.resize(0);
 	mainSection.opcodeOffsetRuns.resize(0);
-	gOpcodeOffsetProfiler.add(code->opcodeOffsetRuns);
 #else
 	code->opcodeOffsets.resize(0);
 	code->opcodeOffsets.reserve(setupSection.opcodeOffsets.size() + mainSection.opcodeOffsets.size());
@@ -5194,7 +5100,6 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	}
 	setupSection.opcodeOffsets.resize(0);
 	mainSection.opcodeOffsets.resize(0);
-	gOpcodeOffsetProfiler.add(code->opcodeOffsets);
 #endif
 #endif
 

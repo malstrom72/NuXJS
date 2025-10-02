@@ -875,13 +875,6 @@ class Code : public Object {
 		SourceCodeUnit* getSourceUnit() const { assert(sourceUnit != 0); return sourceUnit; }
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		bool lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
-		bool hasSourceLocations() const {
-		#if (NUXJS_RLE_OFFSETS)
-			return !opcodeOffsetRuns.empty();
-		#else
-			return !opcodeOffsets.empty();
-		#endif
-		}
 		const String* getFileName() const;
 	#endif
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
@@ -900,7 +893,6 @@ class Code : public Object {
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
 	#if (NUXJS_RLE_OFFSETS)
 		Vector<std::pair<UInt32, UInt32> > opcodeOffsetRuns;
-		bool hasCompressedOffsets() const { return !opcodeOffsetRuns.empty(); }
 	#else
 		Vector<UInt32> opcodeOffsets;
 	#endif

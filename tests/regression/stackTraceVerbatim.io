@@ -21,6 +21,8 @@
 > 'try { ({}).notAFunction(); } catch (err) {\n' +
 > 'print(err.stack);\nprint(err.fileName);\nprint(err.lineNumber);\nprint(err.columnNumber);\n}';
 > eval(SRC);
+> // throw to force this file to only work under -e option
+> throw "done"
 < Error: E_direct
 <     at <eval>:2:34
 <     at <anonymous>:23:10
@@ -61,4 +63,5 @@
 < <eval>
 < 44
 < 26
+! !!!! done
 -
