@@ -1041,10 +1041,9 @@ class Error : public LazyJSObject<Object> {
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		ErrorType getErrorType() const;
 		const String* getErrorName() const;
-		const String* getErrorMessage() const;
+		const String* getErrorMessage() const;	// can be 0
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		const String* getStackString() const;
-		void setStackString(const String* stackString);
+		const String* getStackString() const;	// can be 0
 	#endif
 	
 	protected:

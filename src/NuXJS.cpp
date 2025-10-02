@@ -1675,17 +1675,17 @@ void Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) co
 #if (NUXJS_RLE_OFFSETS)
 	assert(instructionIndex < codeWords.size());
 	UInt32 remaining = instructionIndex;
-	for (UInt32 i = 0; i < opcodeOffsetRuns.size(); ++i) {
+	UInt32 i = 0;
+	while (i < opcodeOffsetRuns.size()) {
 		const std::pair<UInt32, UInt32>& run = opcodeOffsetRuns[i];
 		if (remaining < run.second) {
 			out.offset = run.first;
-			const SourceCodeUnit* unit = sourceUnit;
-			assert(unit != 0);
-			out.fileName = unit->getFileName();
-			unit->computeLineColumn(out.offset, out.line, out.column);
+			out.fileName = sourceUnit->getFileName();
+			sourceUnit->computeLineColumn(out.offset, out.line, out.column);
 			return;
 		}
 		remaining -= run.second;
+		++i;
 	}
 	assert(0);
 #else
@@ -1940,10 +1940,10 @@ void JSFunction::constructCompleteObject(Runtime& rt) const {
 /* --- Error --- */
 
 Error::Error(GCList& gcList, ErrorType type, const String* message)
-		: super(gcList), errorType(type), name(&ERROR_NAMES[errorType]), message(message)
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		, stack(0)
-	#endif
+	: super(gcList), errorType(type), name(&ERROR_NAMES[errorType]), message(message)
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	, stack(0)
+#endif
 {
 	assert(0 <= errorType && errorType < ERROR_TYPE_COUNT);
 }
@@ -1953,7 +1953,7 @@ Error* Error::asError() { return this; }
 Value Error::getInternalValue(Heap&) const { return &ERROR_NAMES[errorType]; }
 Object* Error::getPrototype(Runtime& rt) const { return rt.getErrorPrototype(errorType); }
 ErrorType Error::getErrorType() const { return errorType; }
-const String* Error::getErrorName() const { return name; }
+const String* Error::getErrorName() const { assert(name != 0); return name; }
 const String* Error::getErrorMessage() const { return message; }
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 const String* Error::getStackString() const { return stack; }
@@ -2228,30 +2228,18 @@ static std::string toDecimalString(Int32 value) {
 	return result;
 }
 
-static std::string buildStackHeader(const Value& exceptionValue) {
-	std::string header;
+static std::string buildStackTraceText(const Value& exceptionValue, const std::vector<StackFrameInfo>& frames) {
+	std::string result;
 	Error* errorObject = exceptionValue.asError();
 	if (errorObject != 0) {
 		const String* name = errorObject->getErrorName();
+		result = name->toUTF8String();
 		const String* message = errorObject->getErrorMessage();
-		if (name != 0) {
-			header = name->toUTF8String();
-		}
-		if (header.empty()) {
-			header = E_RROR_STRING.toUTF8String();
-		}
-		if (message != 0 && !message->empty()) {
-			if (!header.empty()) {
-				header.append(": ");
-			}
-			header.append(message->toUTF8String());
+		if (message != 0) {
+			result.append(": ");
+			result.append(message->toUTF8String());
 		}
 	}
-	return header;
-}
-
-static std::string buildStackTraceText(const Value& exceptionValue, const std::vector<StackFrameInfo>& frames) {
-	std::string result = buildStackHeader(exceptionValue);
 	for (size_t i = 0; i < frames.size(); ++i) {
 		result.append("\n    at ");
 		const StackFrameInfo& frame = frames[i];
