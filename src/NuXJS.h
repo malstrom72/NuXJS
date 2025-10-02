@@ -825,33 +825,28 @@ class Constants : public GCItem, public Vector<Value> {
 	so opcode offsets are measured relative to the unit's byte offsets.
 **/
 class SourceCodeUnit : public GCItem {
-	public:
-		typedef GCItem super;
+       public:
+               typedef GCItem super;
 
-		SourceCodeUnit(GCList& gcList);
+               SourceCodeUnit(GCList& gcList, const String* initialSource = 0, const String* initialFileName = 0);
 
-		const String* getSource() const { return source; }
-		void setSource(const String* newSource) { source = newSource; }
-		const String* getFileName() const;
-		void setFileName(const String* newFileName);
-		void beginLineScan(UInt32 initialOffset = 0);
-		void recordLineProgress(const Char* basePtr, UInt32 fromOffset, UInt32 toOffset);
-		bool computeLineColumn(UInt32 offset, int& line, int& column) const;
-		UInt32 getLineNumberBase() const;
-		void setLineNumberBase(UInt32 newBase);
+               const String* getSource() const { return source; }
+               const String* getFileName() const;
+               void beginLineScan(UInt32 initialOffset = 0);
+               void recordLineProgress(const Char* basePtr, UInt32 fromOffset, UInt32 toOffset);
+               bool computeLineColumn(UInt32 offset, int& line, int& column) const;
 
-		static SourceCodeUnit* createWithName(Runtime& rt, const String* source, const String* name);
-		static SourceCodeUnit* createAnonymous(Runtime& rt, const String* source);
-		static SourceCodeUnit* createEval(Runtime& rt, const String* source);
+               static SourceCodeUnit* createWithName(Runtime& rt, const String* source, const String* name);
+               static SourceCodeUnit* createAnonymous(Runtime& rt, const String* source);
+               static SourceCodeUnit* createEval(Runtime& rt, const String* source);
 
-	protected:
-		virtual void gcMarkReferences(Heap& heap) const;
+       protected:
+               virtual void gcMarkReferences(Heap& heap) const;
 
-		const String* source;
-		const String* fileName;
+               const String* const source;
+               const String* const fileName;
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-		Vector<UInt32> lineStartOffsets;
-		UInt32 lineNumberBase;
+               Vector<UInt32> lineStartOffsets;
 #endif
 };
 
@@ -881,7 +876,12 @@ class Code : public Object {
 		const CodeWord* getCodeWords() const { return codeWords.begin(); }
 		UInt32 getCodeSize() const { return codeWords.size(); }
 		const String* getName() const { return name; }
-		const String* getSource() const { return (sourceUnit != 0 && sourceUnit->getSource() != 0 ? sourceUnit->getSource() : source); }
+               const String* getSource() const {
+                       if (source != 0) {
+                               return source;
+                       }
+                       return (sourceUnit != 0 ? sourceUnit->getSource() : 0);
+               }
 		SourceCodeUnit* getSourceUnit() const { return sourceUnit; }
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 		bool lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;

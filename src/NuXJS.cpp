@@ -1690,36 +1690,31 @@ const String* JoiningEnumerator::nextPropertyName() {
 
 /* --- SourceCodeUnit --- */
 
-SourceCodeUnit::SourceCodeUnit(GCList& gcList)
-	: super(gcList)
-	, source(0)
-	, fileName(0)
+SourceCodeUnit::SourceCodeUnit(GCList& gcList, const String* initialSource, const String* initialFileName)
+       : super(gcList)
+       , source(initialSource)
+       , fileName(initialFileName != 0 ? initialFileName : &ANONYMOUS_SCRIPT_STRING)
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	, lineStartOffsets(&gcList.getHeap())
-	, lineNumberBase(1)
+       , lineStartOffsets(&gcList.getHeap())
 #endif
 {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	lineStartOffsets.push(0);
+       lineStartOffsets.push(0);
 #endif
 }
 
 const String* SourceCodeUnit::getFileName() const {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	return (fileName != 0 ? fileName : &ANONYMOUS_SCRIPT_STRING);
+       return (fileName != 0 ? fileName : &ANONYMOUS_SCRIPT_STRING);
 #else
-	return fileName;
+       return fileName;
 #endif
-}
-
-void SourceCodeUnit::setFileName(const String* newFileName) {
-	fileName = newFileName;
 }
 
 void SourceCodeUnit::beginLineScan(UInt32 initialOffset) {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	lineStartOffsets.resize(0);
-	lineStartOffsets.push(initialOffset);
+       lineStartOffsets.resize(0);
+       lineStartOffsets.push(initialOffset);
 #else
 	(void)initialOffset;
 #endif
@@ -1754,50 +1749,31 @@ void SourceCodeUnit::recordLineProgress(const Char* basePtr, UInt32 fromOffset, 
 
 bool SourceCodeUnit::computeLineColumn(UInt32 offset, int& line, int& column) const {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	if (lineStartOffsets.empty()) {
-		return false;
-	}
-	const UInt32* begin = lineStartOffsets.begin();
-	const UInt32* end = lineStartOffsets.end();
-	const UInt32* it = std::upper_bound(begin, end, offset);
-	const UInt32* lineStart = (it == begin ? begin : it - 1);
-	line = static_cast<int>(lineNumberBase + static_cast<UInt32>(lineStart - begin));
-	column = static_cast<int>(offset - *lineStart + 1);
-	return true;
+       if (lineStartOffsets.empty()) {
+               return false;
+       }
+       const UInt32* begin = lineStartOffsets.begin();
+       const UInt32* end = lineStartOffsets.end();
+       const UInt32* it = std::upper_bound(begin, end, offset);
+       const UInt32* lineStart = (it == begin ? begin : it - 1);
+       line = static_cast<int>(static_cast<UInt32>(lineStart - begin) + 1U);
+       column = static_cast<int>(offset - *lineStart + 1);
+       return true;
 #else
-	(void)offset;
-	(void)line;
-	(void)column;
-	return false;
-#endif
-}
-
-UInt32 SourceCodeUnit::getLineNumberBase() const {
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	return lineNumberBase;
-#else
-	return 1U;
-#endif
-}
-
-void SourceCodeUnit::setLineNumberBase(UInt32 newBase) {
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	lineNumberBase = (newBase != 0 ? newBase : 1U);
-#else
-	(void)newBase;
+       (void)offset;
+       (void)line;
+       (void)column;
+       return false;
 #endif
 }
 
 SourceCodeUnit* SourceCodeUnit::createWithName(Runtime& rt, const String* newSource, const String* name) {
-	Heap& heap = rt.getHeap();
-	SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed());
-	unit->setSource(newSource);
-	unit->setFileName(name != 0 ? name : &ANONYMOUS_SCRIPT_STRING);
-	return unit;
+       Heap& heap = rt.getHeap();
+       return new(heap) SourceCodeUnit(heap.managed(), newSource, name);
 }
 
 SourceCodeUnit* SourceCodeUnit::createAnonymous(Runtime& rt, const String* newSource) {
-	return createWithName(rt, newSource, &ANONYMOUS_SCRIPT_STRING);
+       return createWithName(rt, newSource, &ANONYMOUS_SCRIPT_STRING);
 }
 
 SourceCodeUnit* SourceCodeUnit::createEval(Runtime& rt, const String* newSource) {
@@ -1805,9 +1781,9 @@ SourceCodeUnit* SourceCodeUnit::createEval(Runtime& rt, const String* newSource)
 }
 
 void SourceCodeUnit::gcMarkReferences(Heap& heap) const {
-	gcMark(heap, source);
-	gcMark(heap, fileName);
-	super::gcMarkReferences(heap);
+       gcMark(heap, source);
+       gcMark(heap, fileName);
+       super::gcMarkReferences(heap);
 }
 
 /* --- Code --- */
@@ -3591,19 +3567,16 @@ Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, SourceCodeUnit
 	, activeSourceUnit(suppliedUnit)
 {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-        if (activeSourceUnit == 0) {
-                activeSourceUnit = code->getSourceUnit();
-        }
-        assert(activeSourceUnit != 0);
-        if (activeSourceUnit != 0) {
-                const String* effectiveName = (suppliedFileName != 0 ? suppliedFileName : activeSourceUnit->getFileName());
-                activeSourceUnit->setFileName(effectiveName != 0 ? effectiveName : &ANONYMOUS_SCRIPT_STRING);
-        }
-        if (suppliedUnit != 0 && suppliedUnit == activeSourceUnit && initialNestCounter != 0) {
-                resetLineScan = false;
-        }
+       if (activeSourceUnit == 0) {
+               activeSourceUnit = code->getSourceUnit();
+       }
+       assert(activeSourceUnit != 0);
+       (void)suppliedFileName;
+       if (suppliedUnit != 0 && suppliedUnit == activeSourceUnit && initialNestCounter != 0) {
+               resetLineScan = false;
+       }
 #else
-        (void)suppliedFileName;
+       (void)suppliedFileName;
 #endif
 #if (NUXJS_VERBOSE_EXCEPTIONS)
         assert(code->sourceUnit == 0 || code->sourceUnit == activeSourceUnit);
@@ -5309,31 +5282,29 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	p = b;
 	this->e = e;
 	acceptInOperator = true;
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-	lineScanOffset = 0;
-		#if (NUXJS_RLE_OFFSETS)
-	setupSection.opcodeOffsetRuns.resize(0);
-	mainSection.opcodeOffsetRuns.resize(0);
-	code->opcodeOffsetRuns.resize(0);
-		#else
-	setupSection.opcodeOffsets.resize(0);
-	mainSection.opcodeOffsets.resize(0);
-	code->opcodeOffsets.resize(0);
-		#endif
-	if (absoluteStart == 0) {
-		absoluteStart = b;
-	}
-        const UInt32 baseLine = (baseLineNumber != 0 ? baseLineNumber : 1U);
-        SourceCodeUnit* unit = activeSourceUnit;
-        assert(unit != 0);
-        if (unit != 0) {
-                const UInt32 baseOffset = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
-                if (resetLineScan) {
-                        unit->beginLineScan(baseOffset);
-                        unit->setLineNumberBase(baseLine);
-                }
-        }
-        #endif
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+       lineScanOffset = 0;
+               #if (NUXJS_RLE_OFFSETS)
+       setupSection.opcodeOffsetRuns.resize(0);
+       mainSection.opcodeOffsetRuns.resize(0);
+       code->opcodeOffsetRuns.resize(0);
+               #else
+       setupSection.opcodeOffsets.resize(0);
+       mainSection.opcodeOffsets.resize(0);
+       code->opcodeOffsets.resize(0);
+               #endif
+       if (absoluteStart == 0) {
+               absoluteStart = b;
+       }
+       SourceCodeUnit* unit = activeSourceUnit;
+       assert(unit != 0);
+       if (unit != 0) {
+               const UInt32 baseOffset = (absoluteStart != 0 && b >= absoluteStart ? static_cast<UInt32>(b - absoluteStart) : 0U);
+               if (resetLineScan) {
+                       unit->beginLineScan(baseOffset);
+               }
+       }
+#endif
 
 
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
@@ -5426,17 +5397,13 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 	}
 	#endif
 	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
-	expectToken("}", false);
-	code->name = functionName;
-	code->selfName = selfName;
-	const String* functionSource = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
-	if (activeSourceUnit != 0) {
-		activeSourceUnit->setSource(functionSource);
-	} else {
-		code->source = functionSource;
-	}
-	code->bloomSet |= (selfName != 0 ? selfName->createBloomCode() : 0) | ARGUMENTS_STRING.createBloomCode();
-	return p;
+       expectToken("}", false);
+       code->name = functionName;
+       code->selfName = selfName;
+       const String* functionSource = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
+       code->source = functionSource;
+       code->bloomSet |= (selfName != 0 ? selfName->createBloomCode() : 0) | ARGUMENTS_STRING.createBloomCode();
+       return p;
 }
 
 void Compiler::compile(const String& source) {
