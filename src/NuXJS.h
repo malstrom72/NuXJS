@@ -101,14 +101,14 @@ class GCItem {
 		virtual ~GCItem();
 		friend void gcMark(Heap& heap, const GCItem* item);
 
-		GCList* _gcList;
-		GCItem* _gcPrev;
-		GCItem* _gcNext;
-	
+		GCList* _gcList;    // Owning GC list that currently tracks this item.
+		GCItem* _gcPrev;    // Previous item in the intrusive GC list ring.
+		GCItem* _gcNext;    // Next item in the intrusive GC list ring.
+
 	#ifndef NDEBUG
-		/// In debug target we check that sub-classes call gcMarkReferences() all the way up to the GCItem.
-		mutable bool _gcReferenceMarkingComplete;
-	#endif
+	/// In debug target we check that sub-classes call gcMarkReferences() all the way up to the GCItem.
+	mutable bool _gcReferenceMarkingComplete;    // Debug flag confirming gcMarkReferences propagated to GCItem.
+#endif
 
 	private:
 		static void* operator new[](size_t, Heap* heap); // N/A
@@ -132,8 +132,8 @@ class GCList : public GCItem {
 
 	protected:
 		GCList(Heap& heap) : heap(heap), count(0) { }
-		Heap& heap;
-		UInt32 count;
+		Heap& heap;    // Heap that owns and allocates items contained in this list.
+		UInt32 count;  // Number of GCItems currently linked into the list.
 };
 inline Heap& GCItem::gcGetHeap() const { return _gcList->getHeap(); }
 inline GCItem::GCItem(GCList& gcList) throw() : _gcList(0) { _gcPrev = _gcNext = this; gcList.claim(this); }
@@ -166,15 +166,15 @@ class Heap {
 		virtual void* acquireMemory(size_t size);
 		virtual void releaseMemory(void* ptr, size_t size);
 		static int calcPoolIndex(size_t size);
-		void* pools[MAX_POOLED_SIZE / POOL_SIZE_GRANULARITY];
-		UInt32 allocatedCount;
-		size_t allocatedSize;
-		size_t pooledSize;
-		GCList managedListA;
-		GCList managedListB;
-		GCList rootList;
-		GCList* currentList;
-		GCList* newList;
+		void* pools[MAX_POOLED_SIZE / POOL_SIZE_GRANULARITY];    // Free-list buckets for pooled allocations by size class.
+		UInt32 allocatedCount;    // Number of active pooled allocations tracked by the heap.
+		size_t allocatedSize;     // Total bytes currently allocated from the underlying system.
+		size_t pooledSize;        // Bytes retained in pools for reuse between allocations.
+		GCList managedListA;      // Primary list holding GC managed objects during collection.
+		GCList managedListB;      // Secondary list used when swapping during mark-and-sweep.
+		GCList rootList;          // GC list containing root references that must always be retained.
+		GCList* currentList;      // List currently considered live during GC marking.
+		GCList* newList;          // Target list used to collect items that survive a GC pass.
 
 	private:
 		Heap(const Heap& that); // N/A
@@ -351,11 +351,11 @@ template<typename T, UInt32 INTERNAL_COUNT = DEFAULT_INTERNAL_COUNT> class Vecto
 			allocated = newCapacity;
 		}
 
-		Heap* associatedHeap;
-		UInt32 allocated;
-		UInt32 count;
-		T* elements;
-		Byte internal[(INTERNAL_COUNT * sizeof (T) == 0 ? 1 : INTERNAL_COUNT * sizeof (T))];	// Zero-sized arrays are not ok
+		Heap* associatedHeap;	// Heap providing memory for heap-backed allocations (may be null for default allocation).
+		UInt32 allocated;	// Capacity of the backing storage measured in element slots.
+		UInt32 count;	// Number of elements currently constructed in the vector.
+		T* elements;	// Pointer to active storage, either inline buffer or heap allocation.
+		Byte internal[(INTERNAL_COUNT * sizeof (T) == 0 ? 1 : INTERNAL_COUNT * sizeof (T))];	// Inline storage used when the vector stays small.
 };
 
 class String;
@@ -432,13 +432,13 @@ class Value {
 		#ifndef NDEBUG
 			, BAD_TYPE = 0xBAADBAAD		// Only used when NDEBUG is not defined to detect use of uninitialized values.
 		#endif
-		} type;
+		} type;	// Active value type tag selecting which union member is valid.
 		union Variant {
-			bool boolean;
-			double number;
-			const String* string;
-			Object* object;
-		} var;
+			bool boolean;	// Primitive boolean payload.
+			double number;	// Numeric payload for integer and double values.
+			const String* string;	// Pointer to string object when storing text.
+			Object* object;	// Pointer to heap object when holding references.
+		} var;	// Storage for the concrete value associated with this Value instance.
 
 		explicit Value(Type type) throw() : type(type) { }
 		explicit Value(Type type, const Variant& var) throw() : type(type), var(var) { }
@@ -491,13 +491,13 @@ class Table {
 				bool valueExists() const { return (key != 0 && ((flags & EXISTS_FLAG) != 0)); }
 
 			protected:
-				const String* key;
-				Byte flags;
-				Byte type;
-				UInt16 hash16;
+				const String* key;	// Property name stored in this bucket.
+				Byte flags;	// Attribute flags (read-only, dont-delete, etc.) for the property.
+				Byte type;	// Encoded Value::Type identifier for the stored data.
+				UInt16 hash16;	// Truncated hash used to speed up equality checks.
 				union {
-					Value::Variant var;
-					Int32 index;
+					Value::Variant var;	// Stored property value when bucket holds a full Value.
+					Int32 index;	// Cached dense array index when bucket tracks an element position.
 				};
 				bool keyExists() const { return key != 0; }
 		};
@@ -519,8 +519,8 @@ class Table {
 		Bucket* find(const String* key, UInt32 hash);
 		UInt32 rebuild(UInt32 newN);
 
-		Vector<Bucket, 1U << TABLE_BUILT_IN_N> buckets;
-		int bockets[123];
+		Vector<Bucket, 1U << TABLE_BUILT_IN_N> buckets;	// Primary storage of property buckets, including inline capacity.
+		int bockets[123];	// Placeholder array left unused (retained while the table layout is revisited).
 		UInt32 loadCount;													///< Count of buckets with defined keys.
 };
 
@@ -591,9 +591,9 @@ class RangeEnumerator : public Enumerator {
 		virtual const String* nextPropertyName();
 	
 	protected:
-		Heap& heap;
-		const Int32 to;
-		Int32 index;
+		Heap& heap;	// Heap used to allocate strings for enumerated indices.
+		const Int32 to;	// Exclusive upper bound for the numeric range.
+		Int32 index;	// Current position within the range being enumerated.
 };
 
 /**
@@ -607,10 +607,10 @@ class JoiningEnumerator : public Enumerator {
 		virtual const String* nextPropertyName();
 
 	protected:
-		Runtime& rt;
-		const Object* const objectA;
-		Enumerator* const enumeratorA;
-		Enumerator* const enumeratorB;
+		Runtime& rt;	// Runtime providing allocation helpers and cached strings during enumeration.
+		const Object* const objectA;	// First object whose properties are enumerated.
+		Enumerator* const enumeratorA;	// Enumerator traversing properties of objectA.
+		Enumerator* const enumeratorB;	// Enumerator supplying the chained properties that follow objectA.
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, objectA);
@@ -676,9 +676,9 @@ class String : public Object {
 		UInt32 createBloomCode() const;
 
 	protected:
-		Vector<Char> chars;
-		mutable UInt32 hash;
-		mutable UInt32 bloom;
+		Vector<Char> chars;	// UTF-16 character storage owned by the string.
+		mutable UInt32 hash;	// Cached full hash of the string contents (lazily computed).
+		mutable UInt32 bloom;	// Cached bloom filter bits for fast substring rejection.
 };
 
 inline bool Value::equalsString(const String& s) const { return (type == STRING_TYPE && s.isEqualTo(*var.string)); }
@@ -696,8 +696,8 @@ class StringListEnumerator : public Enumerator {
 		virtual const String* nextPropertyName();
 
 	protected:
-		Vector<const String*> stringList;
-		UInt32 nextIndex;
+		Vector<const String*> stringList;	// Collected property names pending enumeration.
+		UInt32 nextIndex;	// Index of the next entry to hand out from stringList.
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, stringList.begin(), stringList.end());
@@ -721,7 +721,7 @@ class JSObject : public Object, public Table {
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 	
 	protected:
-		Object* prototype;
+		Object* prototype;	// Prototype link used when resolving properties.
 		virtual void gcMarkReferences(Heap& heap) const {
 			Table::gcMarkReferences(heap);
 			gcMark(heap, prototype);
@@ -757,7 +757,7 @@ template<class SUPER> class LazyJSObject : public SUPER {
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const = 0;
 		JSObject* getCompleteObject(Runtime& rt) const;
-		mutable JSObject* completeObject;
+		mutable JSObject* completeObject;	// Fully materialised object created on demand for property access.
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, completeObject);
@@ -794,8 +794,8 @@ class JSArray : public LazyJSObject<Object> {
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
 		void sliceDenseVector(Runtime& rt, const Value& key);
-		UInt32 length;
-		Vector<Value> denseVector;
+		UInt32 length;	// Logical array length exposed to JavaScript.
+		Vector<Value> denseVector;	// Packed storage for contiguous elements before object mode is required.
 		virtual void gcMarkReferences(Heap& heap) const {
 			const_cast<JSArray*>(this)->denseVector.shrink(); // FIX : split into two different gc-things? it really *is* different to just mark stuff and actively shrink / compress stuff
 			gcMark(heap, denseVector.begin(), denseVector.end());
@@ -840,13 +840,13 @@ class SourceCodeUnit : public GCItem {
                static SourceCodeUnit* createAnonymous(Runtime& rt, const String* source);
                static SourceCodeUnit* createEval(Runtime& rt, const String* source);
 
-       protected:
-               virtual void gcMarkReferences(Heap& heap) const;
+	protected:
+		virtual void gcMarkReferences(Heap& heap) const;
 
-               const String* const source;
-               const String* const fileName;
+		const String* const source;	// Full source text associated with this compilation unit.
+		const String* const fileName;	// Script filename recorded for diagnostics (may be null).
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-               Vector<UInt32> lineStartOffsets;
+		Vector<UInt32> lineStartOffsets;	// Offsets of each line start for quick line/column lookup.
 #endif
 };
 
@@ -898,25 +898,25 @@ class Code : public Object {
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
 
 	protected:
-		Vector<CodeWord> codeWords;
-		Constants* const constants;
+		Vector<CodeWord> codeWords;	// Bytecode instructions emitted for this script/function.
+		Constants* const constants;	// Shared constant pool referenced by the code stream.
 		Table nameIndexes;							///< < 0 : local variables, >= 0 : arguments, CATCH_PARAMETER == current catch parameter during compile-time only (don't use fast index binding)
 		Vector<const String*> varNames;				///< Notice that this list is reversed in relation to indexes in the "locals" array in FunctionScope.
-		Vector<const String*> argumentNames;
-		const String* name;
-		const String* selfName;
-		const String* source;
-		SourceCodeUnit* sourceUnit;
+		Vector<const String*> argumentNames;	// Parameter names recorded in declaration order.
+		const String* name;	// Display name of the function or script.
+		const String* selfName;	// Optional inner name used for recursion/self references.
+		const String* source;	// Legacy pointer to source text for compatibility.
+		SourceCodeUnit* sourceUnit;	// Rich source metadata shared across compiled artifacts.
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 #if (NUXJS_RLE_OFFSETS)
-		Vector<std::pair<UInt32, UInt32> > opcodeOffsetRuns;
+		Vector<std::pair<UInt32, UInt32> > opcodeOffsetRuns;	// Run-length encoded mapping from bytecode index to source offset.
 		bool hasCompressedOffsets() const { return !opcodeOffsetRuns.empty(); }
 #else
-		Vector<UInt32> opcodeOffsets;
+		Vector<UInt32> opcodeOffsets;	// Direct mapping from bytecode index to source offset.
 #endif
 #endif
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
-		UInt32 maxStackDepth;
+		UInt32 maxStackDepth;	// Maximum operand stack depth required to execute this code.
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, constants);
@@ -966,7 +966,7 @@ template<class F> struct FunctorAdapter : public Function {
 	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
 		return f(rt, processor, argc, argv, thisObject);
 	}
-	F f;
+	F f;	// Stored native callable that implements the function body.
 };
 
 /**
@@ -1000,9 +1000,9 @@ class Scope : public GCItem {
 		void leave() { if (deleteOnPop) { delete this; } }
 		
 	protected:
-		Scope* const parentScope;
-		Value* localsPointer; // Pointer is offset so that negative indexes addresses local variables and positive indexes addresses arguments.
-		mutable bool deleteOnPop;
+		Scope* const parentScope;	// Link to outer lexical environment.
+		Value* localsPointer;	// Base pointer for locals/arguments (negative indices -> locals, positive -> args).
+		mutable bool deleteOnPop;	// Indicates whether scope should self-delete when unwound.
 		
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, parentScope);
@@ -1029,8 +1029,8 @@ class JSFunction : public ExtensibleFunction {
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
 	
-		const Code* const code;
-		Scope* const closure;
+		const Code* const code;	// Compiled bytecode executed when the function runs.
+		Scope* const closure;	// Captured lexical environment for closures.
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, code);
@@ -1070,11 +1070,11 @@ class Error : public LazyJSObject<Object> {
 		virtual void constructCompleteObject(Runtime& rt) const;
 		void updateReflection(Runtime& rt);
 
-		const ErrorType errorType;
-		const String* name; 	// may get updated by script code
-		const String* message; 	// may get updated by script code
+		const ErrorType errorType;	// Specific ECMAScript error category.
+		const String* name;   // Display name exposed as error.name (mutable via script).
+		const String* message;   // Text payload exposed as error.message (mutable via script).
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		const String* stack;
+		const String* stack;	// Captured stack trace string when verbose exceptions are enabled.
 	#endif
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, name);
@@ -1105,11 +1105,11 @@ class Arguments : public LazyJSObject<Object> {
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
 	Value* findProperty(const Value& key) const;
-	const FunctionScope* scope;
-		JSFunction* const function;
-		UInt32 const argumentsCount;
-		Vector<Byte> deletedArguments;
-		Vector<Value> values;	// Contains copied values after the Argument has been detached from its closure.
+	const FunctionScope* scope;	// Owning function scope providing live bindings.
+		JSFunction* const function;	// Function object whose arguments this mirrors.
+		UInt32 const argumentsCount;	// Number of arguments supplied at invocation time.
+		Vector<Byte> deletedArguments;	// Bitmap tracking indices deleted via the arguments object API.
+		Vector<Value> values;	// Detached copy of argument values once the object no longer aliases the scope.
 
 		/**
 			Notice that we do not mark the scope reference, thus creating a "weak" reference that is handled by
@@ -1140,11 +1140,11 @@ class FunctionScope : public Scope {
 	   	virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
 
 	protected:
-		JSFunction* const function;
-		const UInt32 passedArgumentsCount;
-		Vector<Value> locals; // Includes variables and arguments.
-		mutable JSObject* dynamicVars;
-		mutable Arguments* arguments;
+		JSFunction* const function;	// Function object whose arguments this mirrors.
+		const UInt32 passedArgumentsCount;	// Number of arguments originally provided to the call.
+		Vector<Value> locals;   // Storage for locals and arguments resolved by index.
+		mutable JSObject* dynamicVars;	// Object lazily created for "with" or dynamic scope lookups.
+		mutable Arguments* arguments;	// Cached Arguments object associated with this scope.
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, function);
@@ -1237,24 +1237,24 @@ class Runtime : public GCItem {
 		const String* newStringConstantWithHash(UInt32 hash, const char* s);
 		void fetchFunction(const Object* supportObject, const char* name, Function** f);
 	
-		Heap& heap;
-		GlobalScope globalScope;
-		Object* globalObject;
-		UInt32 stackSize;
-		UInt32 callNestCounter;
-		UInt32 checkTimeOutCounter;
-		clock_t timeOut;
-		size_t memoryCap;
-		size_t gcThreshold;
-		mutable Table evalCodeCache; ///< eval() has a cache of source code strings -> functions (as they are neutral to which closure they run in). It is emptied on each big gc sweep.
-		Object* prototypes[PROTOTYPE_COUNT];
+		Heap& heap;	// Memory manager used for allocations owned by the runtime.
+		GlobalScope globalScope;	// Global scope object that exposes top-level bindings.
+		Object* globalObject;	// Root global object exposed to scripts.
+		UInt32 stackSize;	// Maximum operand stack depth for the processor.
+		UInt32 callNestCounter;	// Depth of nested C++ -> JS calls to guard recursion.
+		UInt32 checkTimeOutCounter;	// Counter controlling when to re-evaluate the timeout.
+		clock_t timeOut;	// Absolute deadline for script execution when timeouts are enabled.
+		size_t memoryCap;	// Maximum allowed heap usage before raising OOM.
+		size_t gcThreshold;	// Allocation threshold that triggers automatic GC.
+		mutable Table evalCodeCache;   // Cache mapping eval source strings to compiled functions, cleared after full GC.
+		Object* prototypes[PROTOTYPE_COUNT];	// Table of built-in prototype objects indexed by PrototypeId.
 
-		Function* toPrimitiveFunctions[3]; ///< no preference, number, string
-		Function* createRegExpFunction;
-		Function* evalFunction;
-		double unixEpochTimeDiff;
+		Function* toPrimitiveFunctions[3];   // Built-ins used to coerce objects to primitive values (default/number/string).
+		Function* createRegExpFunction;	// Factory used to create RegExp instances.
+		Function* evalFunction;	// Built-in eval function reference.
+		double unixEpochTimeDiff;	// Adjustment between host clock and Unix epoch in milliseconds.
 
-		mutable const String* stringConstantsCache[STRING_CONSTANTS_CACHE_SIZE];
+		mutable const String* stringConstantsCache[STRING_CONSTANTS_CACHE_SIZE];	// LRU cache for frequently requested small string constants.
 	
 	public:
 		virtual void gcMarkReferences(Heap& heap) const {
@@ -1286,22 +1286,22 @@ struct ConstStringException : public Exception {
 	ConstStringException(const char* s) throw() : stringPointer(s) { }
 	virtual const char* what() const throw() { return stringPointer; }
 	virtual ~ConstStringException() throw() { }
-	const char* stringPointer;
+	const char* stringPointer;	// Pointer to the constant C string backing the exception message.
 };
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 struct SourceLocation {
 		SourceLocation() : fileName(0), offset(0), line(0), column(0) { }
-		const String* fileName;
-		UInt32 offset;
-		int line;
-		int column;
+		const String* fileName;	// Source file containing the instruction.
+		UInt32 offset;	// Character offset from the start of the source.
+		int line;	// 1-based source line number.
+		int column;	// 1-based column number on the reported line.
 };
 
 struct StackFrameInfo {
 		StackFrameInfo() : functionName(0), location() { }
-		const String* functionName;
-		SourceLocation location;
+		const String* functionName;	// Name of the function represented by this frame.
+		SourceLocation location;	// File/line metadata associated with this stack frame.
 };
 #endif
 
@@ -1329,13 +1329,13 @@ class ScriptException : public Exception {
 		bool hasStackString() const;
 		const char* formatStackTrace() const;
 	#endif
-		Value value;
-		std::string utf8String;
+		Value value;	// Thrown JavaScript value associated with the exception.
+		std::string utf8String;	// Cached UTF-8 representation used by what().
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		SourceLocation throwLocation;
-		bool hasThrowLocation;
-		mutable std::string formattedStackCache;
-		mutable bool formattedStackComputed;
+		SourceLocation throwLocation;	// Location metadata captured when the exception was created.
+		bool hasThrowLocation;	// Indicates whether throwLocation currently contains valid data.
+		mutable std::string formattedStackCache;	// Cached formatted stack trace string.
+		mutable bool formattedStackComputed;	// Tracks whether formattedStackCache has been materialized.
 	#endif
 		Error* asErrorObject() const;
 #if (NUXJS_VERBOSE_EXCEPTIONS)
@@ -1426,7 +1426,7 @@ class AccessorBase {
 		Value makeValue(const NativeFunction& f) const { return new(rt.getHeap()) FunctorAdapter<NativeFunction>(rt.getHeap().managed(), f); }
 		Value makeValue(const VarFunction& f) const;
 		template<class C> Value makeValue(Var (C::*const& cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args)) const;
-		Runtime& rt;
+		Runtime& rt;	// Owning runtime controlling execution state.
 };
 template<> inline bool AccessorBase::to<bool>() const { return get().toBool(); }	// operator bool() is ambiguous and notoriously dangerous so we left it out. Use var.to<bool>() instead.
 template<> inline Int32 AccessorBase::to<Int32>() const { return get().toInt(); }	// Adding an operator int() would cause ambiguity with implicit casts, but to<Int32> is still a good idea.
@@ -1448,7 +1448,7 @@ class Var : public GCItem, public AccessorBase {
 		template<typename T> Var& operator+=(const T& r) { this->v = get().add(rt.getHeap(), makeValue(r)); return *this; }
 
 	protected:
-		Value v;
+		Value v;	// Underlying JavaScript value wrapped by this Var handle.
 		virtual Value get() const { return v; }
 		virtual Var call(int argc, const Value* argv) const { return rt.call(*this, argc, argv); }
 		virtual void gcMarkReferences(Heap& heap) const {
@@ -1472,8 +1472,8 @@ class Property : public AccessorBase {
 		Property(Runtime& rt, Object* object, const Var& key) : super(rt), object(object), key(key) { }
 		virtual Value get() const { Value v(UNDEFINED_VALUE); object->getProperty(rt, key, &v); return v; }
 		virtual Var call(int argc, const Value* argv) const { return rt.call(*this, argc, argv, object); }
-		Object* const object;
-		const Var key;
+		Object* const object;	// Target object whose property is accessed.
+		const Var key;	// Key used to reference the property (string or index).
 };
 
 /**
@@ -1498,7 +1498,7 @@ class VarList : public GCItem, public Vector<Value> {
 		Var operator[](ptrdiff_t index) const { return Var(rt, (static_cast<size_t>(index) < size() ? *(begin() + index) : UNDEFINED_VALUE)); }
 
 	protected:
-		Runtime& rt;
+		Runtime& rt;	// Owning runtime controlling execution state.
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, begin(), end());
 			super::gcMarkReferences(heap);
@@ -1520,9 +1520,9 @@ class AccessorBase::const_iterator : public GCItem {
 	protected:
 		const_iterator(Runtime& rt, Enumerator* enumerator) : super(rt.getHeap().roots()), rt(rt)
 				, enumerator(enumerator), currentProperty(0) { }
-		Runtime& rt;
-		Enumerator* enumerator;
-		const String* currentProperty;
+		Runtime& rt;	// Owning runtime controlling execution state.
+		Enumerator* enumerator;	// Enumerator producing property names.
+		const String* currentProperty;	// Property currently pointed to by the iterator.
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, enumerator);
 			gcMark(heap, currentProperty);
@@ -1537,7 +1537,7 @@ template<class F> struct AccessorBase::VarFunctorAdapter : public ExtensibleFunc
 	virtual Value invoke(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object* thisObject) {
 		return f(rt, Var(rt, thisObject), VarList(rt, argc, argv));
 	}
-	const F f;
+	const F f;	// Callable object invoked when bridging to Var-based APIs.
 };
 
 inline AccessorBase::operator Var() const { return Var(rt, get()); }
@@ -1614,7 +1614,7 @@ template<class C> struct AccessorBase::VarMemberFunctionAdapter : public Extensi
 		assert(dynamic_cast<const C*>(thisObject) != 0);
 		return (me->*cppMethod)(rt, Var(rt, thisObject), VarList(rt, argc, argv));
 	}
-	Var (C::*cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args);
+	Var (C::*cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args);	// Member function invoked when bridging the call.
 };
 template<class C> Value AccessorBase::makeValue(Var (C::*const &cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args)) const {
 	return new(rt.getHeap()) VarMemberFunctionAdapter<C>(rt.getHeap().managed(), cppMethod);
@@ -1627,8 +1627,8 @@ template<class C> struct BoundVarMemberFunctionAdapter : public ExtensibleFuncti
 	virtual Value invoke(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object* thisObject) {
 		return (cppObject->*cppMethod)(rt, Var(rt, thisObject), VarList(rt, argc, argv));
 	}
-	C* cppObject;
-	Var (C::*cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args);
+	C* cppObject;	// Native object whose member function is bound.
+	Var (C::*cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args);	// Member function invoked when bridging the call.
 };
 
 template<class C> Var::Var(Runtime& rt, C* cppObject, Var (C::*const& cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args))
@@ -1712,10 +1712,10 @@ class Processor : public GCItem {
 	
 		struct OpcodeInfo {
 			enum { TERMINAL = 1, POP_OPERAND = 2, POP_ON_BRANCH = 4, NO_POP_ON_BRANCH = 8 };
-			Opcode opcode;
-			const char* mnemonic;
-			Int32 stackUse;
-			Byte flags;
+			Opcode opcode;	// Opcode identifier enumerating the instruction.
+			const char* mnemonic;	// Human-readable instruction name used for debugging.
+			Int32 stackUse;	// Net change to the operand stack when executing the opcode.
+			Byte flags;	// Flags describing stack behaviour for the opcode.
 		};
 
 		static CodeWord packInstruction(const Opcode opcode, const Int32 operand);
@@ -1744,11 +1744,11 @@ class Processor : public GCItem {
 			Frame(GCList& gcList, const CodeWord* returnIP, const Code* code, Scope* scope, Object* thisObject
 					, Frame* previousFrame) : super(gcList), returnIP(returnIP), code(code), scope(scope)
 					, thisObject(thisObject), previousFrame(previousFrame) { }
-			const CodeWord* const returnIP;
-			const Code* const code;
-			Scope* const scope;
-			Object* const thisObject;
-			Frame* const previousFrame;
+			const CodeWord* const returnIP;	// Instruction pointer to resume execution after returning.
+			const Code* const code;	// Code object currently executing in this frame.
+			Scope* const scope;	// Lexical environment active for the frame.
+			Object* const thisObject;	// `this` binding in effect for the call.
+			Frame* const previousFrame;	// Link to caller frame for unwinding.
 			virtual void gcMarkReferences(Heap& heap) const {
 				gcMark(heap, code);
 				gcMark(heap, scope);
@@ -1762,10 +1762,10 @@ class Processor : public GCItem {
 			typedef GCItem super;
 			Catcher(GCList& gcList, const CodeWord* ip, Value* sp, Frame* frame, Catcher* nextCatcher)
 					: super(gcList), ip(ip), sp(sp), frame(frame), nextCatcher(nextCatcher) { }
-			const CodeWord* const ip;
-			Value* const sp;
-			Frame* const frame;
-			Catcher* const nextCatcher;
+			const CodeWord* const ip;	// Instruction pointer to jump to when handling the catch.
+			Value* const sp;	// Stack pointer snapshot for unwinding.
+			Frame* const frame;	// Frame active when the catcher was installed.
+			Catcher* const nextCatcher;	// Linked-list pointer to outer catch handlers.
 			virtual void gcMarkReferences(Heap& heap) const {
 				gcMark(heap, frame);
 				gcMark(heap, nextCatcher);
@@ -1793,14 +1793,14 @@ class Processor : public GCItem {
 
 		static const OpcodeInfo opcodeInfo[OP_COUNT];
 
-		Runtime& rt;
-		Heap& heap;
-		Int32 cyclesLeft;
-		Frame* currentFrame;
-		Catcher* firstCatcher;
+		Runtime& rt;	// Owning runtime controlling execution state.
+		Heap& heap;	// Heap used to allocate interpreter stack and temporaries.
+		Int32 cyclesLeft;	// Remaining instruction budget when running with a cycle limit.
+		Frame* currentFrame;	// Top of the interpreter call stack.
+		Catcher* firstCatcher;	// Head of the catch handler stack.
 		const CodeWord* ip;		// 0 = finished (or nothing invoked), run() will return false.
-		Value* sp;
-		Vector<Value> stack;
+		Value* sp;	// Pointer to the current top value on the operand stack.
+		Vector<Value> stack;	// Operand stack backing storage for the interpreter.
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, currentFrame);
@@ -1862,16 +1862,16 @@ class Compiler : public GCItem {
 		#endif
 			void insertSection(const CodeSection& section);
 			bool inDeadCode() const { return stackDepth == DEAD_CODE_STACK_DEPTH; }
-			Vector<CodeWord> code;
-			Processor::Opcode lastEmitted;
-			const Int32 initialStackDepth;
-			Int32 stackDepth;
-			Int32 maxStackDepth;
+			Vector<CodeWord> code;	// Instructions accumulated for this section.
+			Processor::Opcode lastEmitted;	// Last opcode emitted to support compression/optimisation.
+			const Int32 initialStackDepth;	// Stack depth at section entry.
+			Int32 stackDepth;	// Current simulated stack depth while emitting.
+			Int32 maxStackDepth;	// Maximum stack depth observed in this section.
 				#if (NUXJS_VERBOSE_EXCEPTIONS)
 				#if (NUXJS_RLE_OFFSETS)
-								Vector<std::pair<UInt32, UInt32> > opcodeOffsetRuns;
+								Vector<std::pair<UInt32, UInt32> > opcodeOffsetRuns;	// Run-length encoded mapping from bytecode index to source offset.
 				#else
-								Vector<UInt32> opcodeOffsets;
+								Vector<UInt32> opcodeOffsets;	// Direct mapping from bytecode index to source offset.
 				#endif
 				#endif
 		};
@@ -1881,8 +1881,8 @@ class Compiler : public GCItem {
 					: codeOffset(codeOffset), stackDepth(stackDepth) { }
 			bool isValid() const { return codeOffset != INVALID_CODE_OFFSET; };
 			bool inDeadCode() const { return stackDepth == DEAD_CODE_STACK_DEPTH; };
-			Int32 codeOffset;
-			Int32 stackDepth;
+			Int32 codeOffset;	// Offset within the code stream for the branch target.
+			Int32 stackDepth;	// Current simulated stack depth while emitting.
 		};
 
 		struct ExpressionResult;
@@ -1959,25 +1959,25 @@ class Compiler : public GCItem {
 		UInt32 recordSourceOffset();
 	#endif
 
-		Heap& heap;
-		Code* const code;
-		const Target compilingFor;
-		CodeSection setupSection; ///< function declarations (and vars in eval code), inserted at top of function when finalizing
-		CodeSection mainSection;
-		const Char* b;
-		const Char* p;
-		const Char* e;
-		CodeSection* currentSection;
-		bool acceptInOperator;
-		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
-		int nestCounter;
+		Heap& heap;	// Heap used for temporary compiler allocations.
+		Code* const code;	// Output code object being populated.
+		const Target compilingFor;	// Indicates whether we compile for global, function or eval context.
+		CodeSection setupSection;	// Section collecting declarations to emit at function entry.
+		CodeSection mainSection;	// Primary section for executable statements.
+		const Char* b;	// Pointer to start of source being parsed.
+		const Char* p;	// Current parser cursor.
+		const Char* e;	// End pointer for the source being compiled.
+		CodeSection* currentSection;	// Section currently receiving emitted instructions.
+		bool acceptInOperator;	// Tracks whether "in" is allowed in the current expression context.
+		int withScopeCounter;	// Nesting depth of with-scopes requiring dynamic lookup.
+		int nestCounter;	// Current recursion depth for parser re-entrancy checks.
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		const Char* absoluteStart;
-		UInt32 baseLineNumber;
-		UInt32 lineScanOffset;
-		bool resetLineScan;
+		const Char* absoluteStart;	// Absolute pointer to start of entire source buffer.
+		UInt32 baseLineNumber;	// Base line number used when reporting diagnostics.
+		UInt32 lineScanOffset;	// Offset used when tracking line information in verbose mode.
+		bool resetLineScan;	// Signals that the incremental line scanner should restart.
 	#endif
-		SourceCodeUnit* activeSourceUnit;
+		SourceCodeUnit* activeSourceUnit;	// Source unit currently used for location tracking.
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, code);
@@ -1994,7 +1994,7 @@ struct CompilationError : public ScriptException {
 			: ScriptException(sourceException), filename(filename) {
 		fromCompiler.getStopPosition(offset, lineNumber, columnNumber);
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		SourceLocation location;
+		SourceLocation location;	// Captured location describing where the compile error occurred.
 		location.fileName = (filename != 0 ? filename : getFileName());
 		location.offset = static_cast<UInt32>(offset);
 		location.line = lineNumber;
@@ -2002,10 +2002,10 @@ struct CompilationError : public ScriptException {
 		initializeMetadata(location, std::string());
 	#endif
 	}
-	const String* filename;
-	size_t offset;
-	int lineNumber;
-	int columnNumber;
+	const String* filename;	// Name of the source file being compiled.
+	size_t offset;	// Character offset into the source where the error occurred.
+	int lineNumber;	// 1-based line number of the error.
+	int columnNumber;	// 1-based column number of the error.
 };
 
 } /* namespace NuXJS */
