@@ -1774,9 +1774,6 @@ const String* Code::getFileName() const
 
 bool Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const {
 #if (NUXJS_RLE_OFFSETS)
-	if (opcodeOffsetRuns.empty()) {
-		return false;
-	}
 	UInt32 remaining = instructionIndex;
 	for (UInt32 i = 0; i < opcodeOffsetRuns.size(); ++i) {
 		const std::pair<UInt32, UInt32>& run = opcodeOffsetRuns[i];
@@ -1786,19 +1783,21 @@ bool Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) co
 		}
 		remaining -= run.second;
 	}
+	assert(0);
 	return false;
 #else
 	if (opcodeOffsets.empty() || instructionIndex >= opcodeOffsets.size()) {
+		assert(0);
 		return false;
 	}
 	out.offset = opcodeOffsets[instructionIndex];
 #endif
 HAVE_OFFSET_VALUE:
-        const SourceCodeUnit* unit = sourceUnit;
-        assert(unit != 0);
-		out.fileName = unit->getFileName();
-		unit->computeLineColumn(out.offset, out.line, out.column);
-		return true;
+	const SourceCodeUnit* unit = sourceUnit;
+	assert(unit != 0);
+	out.fileName = unit->getFileName();
+	unit->computeLineColumn(out.offset, out.line, out.column);
+	return true;
 }
 #endif
 
@@ -2414,28 +2413,17 @@ void Processor::collectStackFrames(std::vector<StackFrameInfo>& frames) const
 	const CodeWord* nextIP = ip;
 	while (frameWalker != 0 && nextIP != 0) {
 		const Code* frameCode = frameWalker->code;
-		assert(frameCode != 0);
-		const SourceCodeUnit* unit = (frameCode != 0 ? frameCode->getSourceUnit() : 0);
-		assert(unit != 0);
-		assert(frameCode->hasSourceLocations());
-		if (frameCode == 0 || unit == 0 || !frameCode->hasSourceLocations()) {
-			assert(0);
-			break;
-		}
 		const CodeWord* begin = frameCode->getCodeWords();
-		if (begin == 0 || nextIP <= begin) {
-			assert(0);
-			break;
-		}
 		const UInt32 instructionIndex = static_cast<UInt32>((nextIP - begin) - 1);
 		SourceLocation location;
+		const SourceCodeUnit* unit = frameCode->getSourceUnit();
 		location.fileName = unit->getFileName();
 		if (!frameCode->lookupSourceLocation(instructionIndex, location)) {
+			assert(0);
 			break;
 		}
-		if (location.fileName == 0) {
-			location.fileName = unit->getFileName();
-		}
+		assert(location.fileName != 0);
+		location.fileName = unit->getFileName();
 		StackFrameInfo info;
 		info.functionName = (frameCode->hasName() ? frameCode->getName() : 0);
 		info.location = location;
