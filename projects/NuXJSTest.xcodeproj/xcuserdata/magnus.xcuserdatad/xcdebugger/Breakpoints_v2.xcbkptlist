@@ -15,9 +15,9 @@
             timestampString = "624111044.571891"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1149"
-            endingLineNumber = "1149"
-            landmarkName = "readMeSample2()"
+            startingLineNumber = "1131"
+            endingLineNumber = "1131"
+            landmarkName = "testExceptions()"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
@@ -66,9 +66,9 @@
             timestampString = "624111044.572926"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1127"
-            endingLineNumber = "1127"
-            landmarkName = "readMeSample1()"
+            startingLineNumber = "1109"
+            endingLineNumber = "1109"
+            landmarkName = "testExceptions()"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
@@ -100,9 +100,9 @@
             timestampString = "624111044.5735"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1145"
-            endingLineNumber = "1145"
-            landmarkName = "readMeSample2()"
+            startingLineNumber = "1127"
+            endingLineNumber = "1127"
+            landmarkName = "testExceptions()"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
@@ -134,9 +134,9 @@
             timestampString = "624111044.574051"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1236"
-            endingLineNumber = "1236"
-            landmarkName = "selfTest()"
+            startingLineNumber = "1218"
+            endingLineNumber = "1218"
+            landmarkName = "testHighLevelAPI()"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
@@ -170,8 +170,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "686"
             endingLineNumber = "686"
-            landmarkName = "GenericWrapper"
-            landmarkType = "3">
+            landmarkName = "gcMarkReferences(heap)"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -221,8 +221,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "701"
             endingLineNumber = "701"
-            landmarkName = "StringWrapper"
-            landmarkType = "3">
+            landmarkName = "getPrototype(rt)"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -255,7 +255,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "708"
             endingLineNumber = "708"
-            landmarkName = "getOwnProperty(rt, key, v)"
+            landmarkName = "setOwnProperty(rt, key, v, STANDARD_FLAGS)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -270,9 +270,9 @@
             timestampString = "624111044.5748971"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1267"
-            endingLineNumber = "1267"
-            landmarkName = "sizeOfAllocation(bytes)"
+            startingLineNumber = "1249"
+            endingLineNumber = "1249"
+            landmarkName = "readMeSample2()"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
@@ -287,10 +287,10 @@
             timestampString = "624111044.57517"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1268"
-            endingLineNumber = "1268"
-            landmarkName = "unknown"
-            landmarkType = "0">
+            startingLineNumber = "1250"
+            endingLineNumber = "1250"
+            landmarkName = "readMeSample2()"
+            landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -338,9 +338,9 @@
             timestampString = "624111044.575768"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1151"
-            endingLineNumber = "1151"
-            landmarkName = "readMeSample2()"
+            startingLineNumber = "1133"
+            endingLineNumber = "1133"
+            landmarkName = "testExceptions()"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
@@ -355,9 +355,9 @@
             timestampString = "624111044.576054"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1150"
-            endingLineNumber = "1150"
-            landmarkName = "readMeSample2()"
+            startingLineNumber = "1132"
+            endingLineNumber = "1132"
+            landmarkName = "testExceptions()"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
@@ -372,9 +372,9 @@
             timestampString = "624111044.576329"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1148"
-            endingLineNumber = "1148"
-            landmarkName = "readMeSample2()"
+            startingLineNumber = "1130"
+            endingLineNumber = "1130"
+            landmarkName = "testExceptions()"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
@@ -457,10 +457,74 @@
             timestampString = "624111044.577633"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "804"
-            endingLineNumber = "804"
+            startingLineNumber = "806"
+            endingLineNumber = "806"
             landmarkName = "returnFortyTwo()"
             landmarkType = "9">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "8F9C51A3-B530-4E54-9439-AC48678EBFB8"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../src/NuXJS.cpp"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "2703"
+            endingLineNumber = "2703"
+            landmarkName = "Processor::newOperation(argc)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "0CEAD092-84A5-45F0-92BE-A1A66A77259F"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tools/NuXJSTest.cpp"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "862"
+            endingLineNumber = "862"
+            landmarkName = "testExceptionStacks()"
+            landmarkType = "9">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "2B8544FF-3C18-4A9A-AF89-3AC2FF63E5E4"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../src/NuXJS.cpp"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "2698"
+            endingLineNumber = "2698"
+            landmarkName = "Processor::newOperation(argc)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "FE757D30-941D-4119-AF9F-6A8A7FBC34E0"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../src/NuXJS.cpp"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "3084"
+            endingLineNumber = "3084"
+            landmarkName = "unknown"
+            landmarkType = "0">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

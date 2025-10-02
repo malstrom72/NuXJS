@@ -1957,7 +1957,6 @@ const String* Error::getErrorName() const { return name; }
 const String* Error::getErrorMessage() const { return message; }
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 const String* Error::getStackString() const { return stack; }
-void Error::setStackString(const String* stackString) { stack = stackString; }
 #endif
 
 const String* Error::toString(Heap& heap) const {
@@ -1969,11 +1968,7 @@ void Error::updateReflection(Runtime& rt) {
 	name = (getProperty(rt, &NAME_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : &ERROR_NAMES[errorType]);
 	message = (getProperty(rt, &MESSAGE_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	if (getProperty(rt, &STACK_STRING, &v) != NONEXISTENT && !v.isUndefined()) {
-		stack = v.toString(rt.getHeap());
-	} else {
-		stack = 0;
-	}
+	stack = (getProperty(rt, &STACK_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
 #endif
 }
 
@@ -2233,7 +2228,7 @@ static std::string toDecimalString(Int32 value) {
 	return result;
 }
 
-static std::string buildStackHeader(const Value& exceptionValue, const std::string& fallbackHeader) {
+static std::string buildStackHeader(const Value& exceptionValue) {
 	std::string header;
 	Error* errorObject = exceptionValue.asError();
 	if (errorObject != 0) {
@@ -2252,18 +2247,12 @@ static std::string buildStackHeader(const Value& exceptionValue, const std::stri
 			header.append(message->toUTF8String());
 		}
 	}
-	if (header.empty()) {
-		header = fallbackHeader;
-	}
 	return header;
 }
 
-static std::string buildStackTraceText(const Value& exceptionValue, const std::string& fallbackHeader, const std::vector<StackFrameInfo>& frames, size_t firstFrameIndex) {
-	if (frames.empty() || firstFrameIndex >= frames.size()) {
-		return std::string();
-	}
-	std::string result = buildStackHeader(exceptionValue, fallbackHeader);
-	for (size_t i = firstFrameIndex; i < frames.size(); ++i) {
+static std::string buildStackTraceText(const Value& exceptionValue, const std::vector<StackFrameInfo>& frames) {
+	std::string result = buildStackHeader(exceptionValue);
+	for (size_t i = 0; i < frames.size(); ++i) {
 		result.append("\n    at ");
 		const StackFrameInfo& frame = frames[i];
 		std::string location;
@@ -2298,16 +2287,7 @@ static std::string buildStackTraceText(const Value& exceptionValue, const std::s
 	return result;
 }
 
-static const String* formatStackString(Heap& heap, const Value& exceptionValue, const std::vector<StackFrameInfo>& frames, size_t firstFrameIndex, const std::string& fallbackHeader) {
-	if (frames.empty() || firstFrameIndex >= frames.size()) {
-		return 0;
-	}
-	const std::string formatted = buildStackTraceText(exceptionValue, fallbackHeader, frames, firstFrameIndex);
-	return (formatted.empty() ? 0 : new(heap) String(heap.managed(), formatted));
-}
-
-void Processor::collectStackFrames(std::vector<StackFrameInfo>& frames) const
-{
+void Processor::collectStackFrames(std::vector<StackFrameInfo>& frames) const {
 	frames.clear();
 	const Frame* frameWalker = currentFrame;
 	const CodeWord* nextIP = ip;
@@ -2334,11 +2314,7 @@ void Processor::collectStackFrames(std::vector<StackFrameInfo>& frames) const
 /* --- ScriptException --- */
 
 void ScriptException::throwError(Heap& heap, ErrorType type, const String* message) {
-	throw ScriptException(heap, new(heap) Error(heap.managed(), type, message)
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-		, SourceLocation(), std::string()
-#endif
-		);
+	throw ScriptException(heap, new(heap) Error(heap.managed(), type, message));
 }
 
 void ScriptException::throwError(Heap& heap, ErrorType type, const char* message) {
@@ -2348,82 +2324,28 @@ void ScriptException::throwError(Heap& heap, ErrorType type, const char* message
 ScriptException::ScriptException(Heap& heap, const Value& value) throw()
 		: value(value), utf8String(value.toString(heap)->toUTF8String())
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		, throwLocation(), hasThrowLocation(false)
 		, formattedStackCache(), formattedStackComputed(false)
 	#endif
 {
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-	initializeMetadata(SourceLocation(), std::string());
-#endif
 }
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-ScriptException::ScriptException(Heap& heap, const Value& value, const SourceLocation& location) throw()
-: value(value), utf8String(value.toString(heap)->toUTF8String())
-, throwLocation(), hasThrowLocation(false)
-, formattedStackCache(), formattedStackComputed(false)
-{
-initializeMetadata(location, std::string());
-}
-
-ScriptException::ScriptException(Heap& heap, const Value& value, const SourceLocation& location, const std::string& formattedStack) throw()
-: value(value), utf8String(value.toString(heap)->toUTF8String())
-, throwLocation(), hasThrowLocation(false)
-, formattedStackCache(), formattedStackComputed(false)
-{
-initializeMetadata(location, formattedStack);
-}
-
-void ScriptException::initializeMetadata(const SourceLocation& location, const std::string& formattedStack) throw()
-{
-if (location.fileName != 0) {
-throwLocation = location;
-hasThrowLocation = true;
-} else {
-throwLocation = SourceLocation();
-hasThrowLocation = false;
-}
-if (!formattedStack.empty()) {
-formattedStackCache = formattedStack;
-formattedStackComputed = true;
-} else {
-formattedStackCache.clear();
-formattedStackComputed = false;
-}
-}
-
-const String* ScriptException::getFileName() const { return (hasThrowLocation ? throwLocation.fileName : 0); }
-
-int ScriptException::getLineNumber() const { return (hasThrowLocation ? throwLocation.line : 0); }
-
-int ScriptException::getColumnNumber() const { return (hasThrowLocation ? throwLocation.column : 0); }
-
-bool ScriptException::hasStackString() const
-{
-Error* errorObject = value.asError();
-if (errorObject != 0 && errorObject->getStackString() != 0) {
-return true;
-}
-return (formattedStackComputed && !formattedStackCache.empty());
-}
-
-const char* ScriptException::formatStackTrace() const
-{
-if (!formattedStackComputed) {
-formattedStackCache.clear();
-Error* errorObject = value.asError();
-if (errorObject != 0) {
-const String* stackString = errorObject->getStackString();
-if (stackString != 0) {
-formattedStackCache = stackString->toUTF8String();
-formattedStackComputed = true;
-}
-}
-if (!formattedStackComputed) {
-formattedStackComputed = true;
-}
-}
-return (formattedStackCache.empty() ? utf8String.c_str() : formattedStackCache.c_str());
+const char* ScriptException::formatStackTrace() const {
+	if (!formattedStackComputed) {
+		formattedStackCache.clear();
+		Error* errorObject = value.asError();
+		if (errorObject != 0) {
+			const String* stackString = errorObject->getStackString();
+			if (stackString != 0) {
+				formattedStackCache = stackString->toUTF8String();
+				formattedStackComputed = true;
+			}
+		}
+		if (!formattedStackComputed) {
+			formattedStackComputed = true;
+		}
+	}
+	return (formattedStackCache.empty() ? utf8String.c_str() : formattedStackCache.c_str());
 }
 #endif
 
@@ -2711,109 +2633,25 @@ void Processor::popCatcher() {
 	delete killMe;
 }
 
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-void Processor::ensureErrorStack(Error* errorObject, UInt32 skipFrames, const std::vector<StackFrameInfo>* cachedFrames) {
-	if (errorObject == 0) {
-		return;
-	}
-	Heap& heap = rt.getHeap();
-	Value stackValue(UNDEFINED_VALUE);
-	const bool stackPropertyHasString = (errorObject->getProperty(rt, &STACK_STRING, &stackValue) != NONEXISTENT && !stackValue.isUndefined());
-	const String* propertyStackString = (stackPropertyHasString ? stackValue.toString(heap) : 0);
-	const String* stackString = errorObject->getStackString();
-	if (stackString == 0 && propertyStackString != 0) {
-		stackString = propertyStackString;
-		errorObject->setStackString(stackString);
-	}
-	const std::vector<StackFrameInfo>* framesPointer = cachedFrames;
-	std::vector<StackFrameInfo> localFrames;
-	if (framesPointer == 0 && stackString == 0) {
-		collectStackFrames(localFrames);
-		framesPointer = &localFrames;
-	}
-	if (framesPointer != 0 && !framesPointer->empty()) {
-		const size_t frameCount = framesPointer->size();
-		const size_t skipIndex = static_cast<size_t>(skipFrames);
-		const size_t firstFrame = (skipIndex < frameCount ? skipIndex : frameCount - 1);
-		if (stackString == 0) {
-			stackString = formatStackString(heap, Value(errorObject), *framesPointer, firstFrame, std::string());
-		}
-	}
-	if (stackString == 0) {
-		stackString = errorObject->toString(heap);
-	}
-	errorObject->setStackString(stackString);
-	if (!stackPropertyHasString || propertyStackString != stackString) {
-		Value newStackValue(stackString);
-		errorObject->setOwnProperty(rt, Value(&STACK_STRING), newStackValue, DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-	}
-}
-#endif
-
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-
-namespace {
-	struct ThrowSiteInfo {
-		ThrowSiteInfo() : hasThrowLocation(false), throwLocation(), formattedStackString(0) { }
-		bool hasThrowLocation;
-		SourceLocation throwLocation;
-		const String* formattedStackString;
-	};
-
-	static void snapshotThrowSite(Processor& processor, Heap& heap, Runtime& rt, const Value& exception
-			, std::vector<StackFrameInfo>& frames, ThrowSiteInfo& out) {
-		frames.clear();
-		processor.collectStackFrames(frames);
-		Error* errorObject = exception.asError();
-		processor.ensureErrorStack(errorObject, 0, &frames);
-		if (!frames.empty()) {
-			out.throwLocation = frames[0].location;
-			out.hasThrowLocation = true;
-		}
-		const String* formatted = (errorObject != 0 ? errorObject->getStackString() : 0);
-		if (formatted == 0 && !frames.empty()) {
-			std::string fallbackHeader;
-			if (errorObject == 0) {
-				fallbackHeader = exception.toString(heap)->toUTF8String();
-			}
-			formatted = formatStackString(heap, exception, frames, 0, fallbackHeader);
-			if (errorObject != 0 && formatted != 0) {
-				Value existing(UNDEFINED_VALUE);
-				if (errorObject->getProperty(rt, &STACK_STRING, &existing) == NONEXISTENT || existing.isUndefined()) {
-					errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(formatted), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-				}
-				errorObject->setStackString(formatted);
-			}
-		}
-		out.formattedStackString = formatted;
-	}
-}
-
-bool Processor::throwVirtualException(const Value& exception, ScriptException* /*existingException*/) {
-#else
 void Processor::throwVirtualException(const Value& exception) {
-#endif
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	std::vector<StackFrameInfo> frames;
-	ThrowSiteInfo ts;
-	snapshotThrowSite(*this, heap, rt, exception, frames, ts);
+	Error* errorObject = exception.asError();
+	if (errorObject != 0) {
+		const String* stackString = errorObject->getStackString();
+		if (stackString == 0) {
+			std::vector<StackFrameInfo> frames;
+			collectStackFrames(frames);
+			assert(!frames.empty());
+			const std::string formatted = buildStackTraceText(exception, frames);
+			stackString = new(heap) String(heap.managed(), formatted);
+			assert(stackString != 0);
+			errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+		}
+	}
 #endif
 	if (firstCatcher == 0) { // No JS catcher: throw a ScriptException (do not return)
 		reset();
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-		if (ts.hasThrowLocation) {
-			std::string formatted;
-			if (ts.formattedStackString != 0) {
-				formatted = ts.formattedStackString->toUTF8String();
-			}
-			throw ScriptException(heap, exception, ts.throwLocation, formatted);
-		}
-		SourceLocation fallbackLocation;
-		fallbackLocation.fileName = &ANONYMOUS_SCRIPT_STRING;
-		throw ScriptException(heap, exception, fallbackLocation);
-#else
 		throw ScriptException(heap, exception);
-#endif
 	}
 	ip = firstCatcher->ip;
 	assert(ip != 0);
@@ -2821,16 +2659,7 @@ void Processor::throwVirtualException(const Value& exception) {
 	sp = firstCatcher->sp;
 	push(exception);
 	popCatcher();
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	return false;
-#endif
 }
-
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-void Processor::throwVirtualException(const Value& exception) {
-	(void)throwVirtualException(exception, 0);
-}
-#endif
 
 void Processor::error(ErrorType errorType, const String* message) {
 	throwVirtualException(new(heap) Error(heap.managed(), errorType, message));
@@ -3176,16 +3005,9 @@ bool Processor::run(Int32 maxCycles) {
 		try {
 			innerRun();
 		}
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		catch (ScriptException& x) {
-			// Attempt to reinject into JS if a catcher exists; otherwise this throws
-			throwVirtualException(x.value, &x);
-		}
-	#else
 		catch (const ScriptException& x) {
 			throwVirtualException(x.value);
 		}
-	#endif
 	}
 	return (ip != 0);
 }

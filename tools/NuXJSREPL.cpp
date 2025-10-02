@@ -694,22 +694,6 @@ int testMain(int argc, const char* argv[]) {
 				std::string locationLine;
 				std::string stackLine;
 				if (printMetadata) {
-					std::ostringstream locationStream;
-					const String* fileName = x.getFileName();
-					if (fileName != 0) {
-						locationStream << fileName->toUTF8String();
-					} else {
-						locationStream << "<anonymous>";
-					}
-					if (x.getLineNumber() > 0) {
-						locationStream << ':' << x.getLineNumber();
-						if (x.getColumnNumber() > 0) {
-							locationStream << ':' << x.getColumnNumber();
-						}
-					}
-					locationLine = std::string("!!!! location: ") + locationStream.str();
-					const std::wstring locationWide(locationLine.begin(), locationLine.end());
-					std::wcout << locationWide << std::endl;
 					const char* formattedStack = x.formatStackTrace();
 					if (formattedStack != 0 && formattedStack[0] != '\0') {
 						stackLine = std::string("!!!! stack: ") + formattedStack;

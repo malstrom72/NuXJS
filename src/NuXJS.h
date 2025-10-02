@@ -1052,10 +1052,10 @@ class Error : public LazyJSObject<Object> {
 		void updateReflection(Runtime& rt);
 
 		const ErrorType errorType;
-		const String* name; 	// may get updated by script code
-		const String* message; 	// may get updated by script code
+		const String* name; 		// may get updated by script code
+		const String* message; 		// may get updated by script code
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		const String* stack;
+		const String* stack; 		// may get updated by script code
 	#endif
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, name);
@@ -1072,7 +1072,7 @@ class Arguments : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 
-	Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
+		Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
 		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
@@ -1295,34 +1295,18 @@ class ScriptException : public Exception {
 		static void throwError(Heap& heap, ErrorType type, const String* message = 0);
 		static void throwError(Heap& heap, ErrorType type, const char* message);
 		ScriptException(Heap& heap, const Value& value) throw();
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		ScriptException(Heap& heap, const Value& value, const SourceLocation& location) throw();
-		ScriptException(Heap& heap, const Value& value, const SourceLocation& location, const std::string& formattedStack) throw();
-	#endif
 		virtual const char* what() const throw() { return utf8String.c_str(); }
 		virtual ~ScriptException() throw() { }
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		const String* getFileName() const;
-		int getLineNumber() const;
-		int getColumnNumber() const;
-		bool hasLocation() const { return hasThrowLocation; }
-		const SourceLocation& getSourceLocation() const { return throwLocation; }
-		bool hasStackString() const;
 		const char* formatStackTrace() const;
 	#endif
 		Value value;
 		std::string utf8String;
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		SourceLocation throwLocation;
-		bool hasThrowLocation;
 		mutable std::string formattedStackCache;
 		mutable bool formattedStackComputed;
 	#endif
 		Error* asErrorObject() const;
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	protected:
-		void initializeMetadata(const SourceLocation& location, const std::string& formattedStack) throw();
-#endif
 };
 inline Error* ScriptException::asErrorObject() const { return value.asError(); }
 
@@ -1711,8 +1695,6 @@ class Processor : public GCItem {
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
 		void throwVirtualException(const Value& exception);
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		bool throwVirtualException(const Value& exception, ScriptException* existingException);
-		void ensureErrorStack(Error* errorObject, UInt32 skipFrames, const std::vector<StackFrameInfo>* cachedFrames = 0);
 		void collectStackFrames(std::vector<StackFrameInfo>& frames) const;
 	#endif
 		void error(ErrorType errorType, const String* message = 0);
@@ -1963,14 +1945,6 @@ struct CompilationError : public ScriptException {
 	CompilationError(const ScriptException& sourceException, const String* filename, const Compiler& fromCompiler)
 			: ScriptException(sourceException), filename(filename) {
 		fromCompiler.getStopPosition(offset, lineNumber, columnNumber);
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		SourceLocation location;
-		location.fileName = (filename != 0 ? filename : getFileName());
-		location.offset = static_cast<UInt32>(offset);
-		location.line = lineNumber;
-		location.column = columnNumber;
-		initializeMetadata(location, std::string());
-	#endif
 	}
 	const String* filename;
 	UInt32 offset;
