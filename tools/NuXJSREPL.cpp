@@ -64,12 +64,10 @@ static int recursiveStackCheck(const Code& code, Vector<Int32>& stackDepths
 			++errors;
 		}
 		maxStackDepth = std::max(maxStackDepth, currentStackDepth);
-#if (VERIFY_STACK_LOGIC)
-	if (stackDepths[offset] != code.stackDepths[offset]) {
-		std::cerr << "Invalid compile-time stack depth @" << offset << " (" << code.stackDepths[offset] << " vs " << stackDepths[offset] << ")" << std::endl;
-		++errors;
-	}
-#endif
+		if (stackDepths[offset] != code.stackDepths[offset]) {
+			std::cerr << "Invalid compile-time stack depth @" << offset << " (" << code.stackDepths[offset] << " vs " << stackDepths[offset] << ")" << std::endl;
+			++errors;
+		}
 		const Processor::OpcodeInfo& info = Processor::getOpcodeInfo(opcode);
 		const Int32 thisStackUse = info.stackUse + (((info.flags & Processor::OpcodeInfo::POP_OPERAND) != 0) ? -operand : 0);
 		currentStackDepth += thisStackUse;
@@ -220,14 +218,12 @@ static void disassemble(Heap& heap, const Code& code) {
 			std::cerr << stackDepths[offset];
 		}
 		std::cerr << "\t";
-	#if (VERIFY_STACK_LOGIC)
 		if (code.stackDepths[offset] == DEAD_CODE_STACK_DEPTH) {
 			std::cerr << "?";
 		} else {
 			std::cerr << code.stackDepths[offset];
 		}
 		std::cerr << "\t";
-	#endif
 		std::cerr << "@" << offset << ":\t" << Processor::getOpcodeInfo(opcode).mnemonic;
 		
 		switch (opcode) {
@@ -627,12 +623,8 @@ int testMain(int argc, const char* argv[]) {
 					const Char* scriptBegin = source.begin();
 					const Char* scriptEnd = source.end();
 					const String* scriptSource = new(runtimeHeap) String(runtimeHeap.managed(), scriptBegin, scriptEnd);
-				#if (NUXJS_VERBOSE_EXCEPTIONS)
 					SourceCodeUnit* sourceCodeUnit = new(runtimeHeap) SourceCodeUnit(heap.managed(), scriptSource, scriptFileName);
 					Code globalCode(heap.roots(), 0, sourceCodeUnit);
-				#else
-					Code globalCode(heap.roots());
-				#endif
 					Compiler compiler(heap.roots(), &globalCode, (interactive ? Compiler::FOR_EVAL : Compiler::FOR_GLOBAL), 1);
 					try {
 						compiler.compile(*scriptSource);
@@ -688,7 +680,6 @@ int testMain(int argc, const char* argv[]) {
 				std::wcout << ws << std::endl;
 				std::string locationLine;
 				std::string stackLine;
-			#if (NUXJS_VERBOSE_EXCEPTIONS)
 				bool printMetadata = !useLegacyExceptionOutput;
 				if (printMetadata) {
 					const char* stackTrace = x.getStackTrace();
@@ -698,9 +689,6 @@ int testMain(int argc, const char* argv[]) {
 						std::wcout << stackWide << std::endl;
 					}
 				}
-			#else
-				bool printMetadata = false;
-			#endif
 				if (!interactive) {
 					return 1;
 				} else {
