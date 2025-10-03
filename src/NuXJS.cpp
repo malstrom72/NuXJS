@@ -180,8 +180,8 @@ const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_ST
 		, E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
 		, S_TRING_STRING("String");
 
-static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
-		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
+static const String ANONYMOUS_SCRIPT_STRING("<anonymous>"), ANONYMOUS_STRING("anonymous")
+		, ARGUMENTS_STRING("arguments"), BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
 		, CANNOT_CONVERT_TO_OBJECT_STRING("Cannot convert undefined or null to object")
 		, CANNOT_USE_IN_OPERATOR_STRING("Cannot use 'in' operator on "), CLASS_STRING("class"), COLON_SPACE(": ")
 		, CONSTRUCTOR_STRING("constructor"), END_BRACKET_STRING("]"), EVAL_STRING("eval"), FALSE_STRING("false")
@@ -192,7 +192,7 @@ static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 		, STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value");
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-static const String STACK_STRING("stack"), ANONYMOUS_SCRIPT_STRING("<anonymous>"), EVAL_CODE_STRING("<eval>");
+static const String STACK_STRING("stack"), EVAL_CODE_STRING("<eval>");
 #endif
 
 static const String ERROR_NAMES[ERROR_TYPE_COUNT] = {
