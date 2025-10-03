@@ -64,10 +64,6 @@ static int recursiveStackCheck(const Code& code, Vector<Int32>& stackDepths
 			++errors;
 		}
 		maxStackDepth = std::max(maxStackDepth, currentStackDepth);
-		if (stackDepths[offset] != code.stackDepths[offset]) {
-			std::cerr << "Invalid compile-time stack depth @" << offset << " (" << code.stackDepths[offset] << " vs " << stackDepths[offset] << ")" << std::endl;
-			++errors;
-		}
 		const Processor::OpcodeInfo& info = Processor::getOpcodeInfo(opcode);
 		const Int32 thisStackUse = info.stackUse + (((info.flags & Processor::OpcodeInfo::POP_OPERAND) != 0) ? -operand : 0);
 		currentStackDepth += thisStackUse;
@@ -216,12 +212,6 @@ static void disassemble(Heap& heap, const Code& code) {
 			std::cerr << "?";
 		} else {
 			std::cerr << stackDepths[offset];
-		}
-		std::cerr << "\t";
-		if (code.stackDepths[offset] == DEAD_CODE_STACK_DEPTH) {
-			std::cerr << "?";
-		} else {
-			std::cerr << code.stackDepths[offset];
 		}
 		std::cerr << "\t";
 		std::cerr << "@" << offset << ":\t" << Processor::getOpcodeInfo(opcode).mnemonic;
@@ -680,8 +670,7 @@ int testMain(int argc, const char* argv[]) {
 				std::wcout << ws << std::endl;
 				std::string locationLine;
 				std::string stackLine;
-				bool printMetadata = !useLegacyExceptionOutput;
-				if (printMetadata) {
+				if (!useLegacyExceptionOutput) {
 					const char* stackTrace = x.getStackTrace();
 					if (stackTrace[0] != '\0') {
 						stackLine = std::string("!!!! stack: ") + stackTrace;
@@ -693,11 +682,13 @@ int testMain(int argc, const char* argv[]) {
 					return 1;
 				} else {
 					pushIOLines('!', String(heap.roots(), ws.c_str()));
-					if (printMetadata && !locationLine.empty()) {
-						pushIOLines('!', String(heap.roots(), locationLine.c_str()));
-					}
-					if (printMetadata && !stackLine.empty()) {
-						pushIOLines('!', String(heap.roots(), stackLine.c_str()));
+					if (!useLegacyExceptionOutput) {
+						if (!locationLine.empty()) {
+							pushIOLines('!', String(heap.roots(), locationLine.c_str()));
+						}
+						if (!stackLine.empty()) {
+							pushIOLines('!', String(heap.roots(), stackLine.c_str()));
+						}
 					}
 				}
 			}
