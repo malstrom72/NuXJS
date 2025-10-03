@@ -701,6 +701,20 @@ class StringListEnumerator : public Enumerator {
 		}
 };
 
+// easier names for fundamental Value constants
+extern const Value UNDEFINED_VALUE, NULL_VALUE, NAN_VALUE, INFINITY_VALUE, FALSE_VALUE, TRUE_VALUE;
+
+// class names (capitalized)
+extern const String A_RGUMENTS_STRING, A_RRAY_STRING, B_OOLEAN_STRING, D_ATE_STRING, E_RROR_STRING, F_UNCTION_STRING
+		, N_UMBER_STRING, O_BJECT_STRING, S_TRING_STRING;
+
+// typeof names (all lowercase)
+extern const String BOOLEAN_STRING, NUMBER_STRING, OBJECT_STRING, STRING_STRING, FUNCTION_STRING;
+
+// other useful string constants (all lowercase)
+extern const String EMPTY_STRING, LENGTH_STRING, UNDEFINED_STRING, NULL_STRING;
+
+
 /**
 	JSObject represents a standard extensible JavaScript object with its own property table and prototype pointer.
 **/
@@ -820,6 +834,7 @@ class Constants : public GCItem, public Vector<Value> {
 	programmer's file. Compiler and runtime components now rely on this GC item for filename and line lookups,
 	so opcode offsets are measured relative to the unit's byte offsets.
 **/
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 class SourceCodeUnit : public GCItem {
 	public:
 		typedef GCItem super;
@@ -839,6 +854,7 @@ class SourceCodeUnit : public GCItem {
 		const String* const fileName;
 		Vector<UInt32> lineOffsets; 	// Byte offsets of line beginnings in source code. lineOffsets[0] is always 0.
 };
+#endif
 
 /**
 	Code represents compiled bytecode and associated metadata. It is an Object so that it can be stored as a constant
@@ -849,15 +865,18 @@ class SourceCodeUnit : public GCItem {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 struct SourceLocation;
 #endif
-
 class Code : public Object {
 	friend class FunctionScope;
 	friend class Compiler; // FIX : maybe not one day?
-
+	
 	public:
 		typedef Object super;
 
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUnit);
+	#else
+		Code(GCList& gcList, Constants* sharedConstants = 0);
+	#endif
 		bool lookupNameIndex(const String* name, Int32& index) const;
 		UInt32 getVarsCount() const { return varNames.size(); }
 		UInt32 getArgumentsCount() const { return argumentNames.size(); }
@@ -865,11 +884,10 @@ class Code : public Object {
 		const Constants* getConstants() const { return constants; }
 		const CodeWord* getCodeWords() const { return codeWords.begin(); }
 		UInt32 getCodeSize() const { return codeWords.size(); }
-		bool hasName() const { return (name != 0); }
-		const String* getName() const { assert(name != 0); return name; }
+		const String* getName() const { return name; }		// can be 0
 		const String* getSource() const { assert(source != 0); return source; }
-		SourceCodeUnit* getSourceUnit() const { assert(sourceUnit != 0); return sourceUnit; }
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		SourceCodeUnit* getSourceUnit() const { assert(sourceUnit != 0); return sourceUnit; }
 		void lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
 	#endif
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
@@ -878,23 +896,25 @@ class Code : public Object {
 	protected:
 		Vector<CodeWord> codeWords;
 		Constants* const constants;
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		SourceCodeUnit* const sourceUnit;
+		Vector<UInt32> codeOffsets;
+		Vector<UInt32> sourceOffsets;
+	#endif
 		Table nameIndexes;							///< < 0 : local variables, >= 0 : arguments, CATCH_PARAMETER == current catch parameter during compile-time only (don't use fast index binding)
 		Vector<const String*> varNames;				///< Notice that this list is reversed in relation to indexes in the "locals" array in FunctionScope.
 		Vector<const String*> argumentNames;
 		const String* name;
 		const String* selfName;
 		const String* source;
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		Vector<UInt32> codeOffsets;
-		Vector<UInt32> sourceOffsets;
-	#endif
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, constants);
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			gcMark(heap, sourceUnit);
+		#endif
 			nameIndexes.gcMarkReferences(heap);
 			gcMark(heap, varNames.begin(), varNames.end());
 			gcMark(heap, argumentNames.begin(), argumentNames.end());
@@ -903,7 +923,6 @@ class Code : public Object {
 			gcMark(heap, source);
 			super::gcMarkReferences(heap);
 		}
-
 };
 
 /**
@@ -1025,18 +1044,18 @@ class Error : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 		Error(GCList& heap, ErrorType type, const String* message = 0);
-		virtual const String* getClassName() const;	// &E_RROR_STRING
-		virtual Error* asError();
+		virtual const String* getClassName() const { return &E_RROR_STRING; }
+		virtual Error* asError() { return this; }
 		virtual const String* toString(Heap& heap) const;
 		virtual Value getInternalValue(Heap& heap) const; // error type name
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
-		ErrorType getErrorType() const;
-		const String* getErrorName() const;
-		const String* getErrorMessage() const;	// can be 0
+		ErrorType getErrorType() const { return errorType; }
+		const String* getErrorName() const { assert(name != 0); return name; }	// never 0
+		const String* getErrorMessage() const { return message; };	// can be 0
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		const String* getStackString() const;	// can be 0
+		const String* getStackString() const { return stack; }	// can be 0
 	#endif
 	
 	protected:
@@ -1044,8 +1063,8 @@ class Error : public LazyJSObject<Object> {
 		void updateReflection(Runtime& rt);
 
 		const ErrorType errorType;
-		const String* name; 		// may get updated by script code
-		const String* message; 		// may get updated by script code
+		const String* name; 	// may get updated by script code
+		const String* message; 	// may get updated by script code
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		const String* stack; 		// may get updated by script code
 	#endif
@@ -1064,7 +1083,7 @@ class Arguments : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 
-		Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
+        Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
 		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
@@ -1077,8 +1096,8 @@ class Arguments : public LazyJSObject<Object> {
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
-		Value* findProperty(const Value& key) const;
-		const FunctionScope* scope;
+        Value* findProperty(const Value& key) const;
+        const FunctionScope* scope;
 		JSFunction* const function;
 		UInt32 const argumentsCount;
 		Vector<Byte> deletedArguments;
@@ -1278,42 +1297,25 @@ struct StackFrameInfo {
 };
 #endif
 
-class ScriptException : public Exception {
-	public:
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		friend class Processor;
-	#endif
-		typedef Exception super;
-		static void throwError(Heap& heap, ErrorType type, const String* message = 0);
-		static void throwError(Heap& heap, ErrorType type, const char* message);
-		ScriptException(Heap& heap, const Value& value) throw();
-		virtual const char* what() const throw() { return utf8String.c_str(); }
-		virtual ~ScriptException() throw() { }
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		const char* formatStackTrace() const;
-	#endif
-		Value value;
-		std::string utf8String;
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		mutable std::string formattedStackCache;
-		mutable bool formattedStackComputed;
-	#endif
-		Error* asErrorObject() const;
+struct ScriptException : public Exception {
+	typedef Exception super;
+	static void throwError(Heap& heap, ErrorType type, const String* message = 0);
+	static void throwError(Heap& heap, ErrorType type, const char* message);
+	ScriptException(Heap& heap, const Value& value) throw();
+	virtual const char* what() const throw() { return utf8String.c_str(); }
+	virtual ~ScriptException() throw() { }
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	const char* formatStackTrace() const;
+#endif
+	Value value;
+	std::string utf8String;
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	mutable std::string formattedStackCache;
+	mutable bool formattedStackComputed;
+#endif
+	Error* asErrorObject() const;
 };
 inline Error* ScriptException::asErrorObject() const { return value.asError(); }
-
-// easier names for fundamental Value constants
-extern const Value UNDEFINED_VALUE, NULL_VALUE, NAN_VALUE, INFINITY_VALUE, FALSE_VALUE, TRUE_VALUE;
-
-// class names (capitalized)
-extern const String A_RGUMENTS_STRING, A_RRAY_STRING, B_OOLEAN_STRING, D_ATE_STRING, E_RROR_STRING, F_UNCTION_STRING
-		, N_UMBER_STRING, O_BJECT_STRING, S_TRING_STRING;
-
-// typeof names (all lowercase)
-extern const String BOOLEAN_STRING, NUMBER_STRING, OBJECT_STRING, STRING_STRING, FUNCTION_STRING;
-
-// other useful string constants (all lowercase)
-extern const String EMPTY_STRING, LENGTH_STRING, UNDEFINED_STRING, NULL_STRING;
 
 class VarList;
 class Property;
@@ -1697,8 +1699,9 @@ class Processor : public GCItem {
 		struct Frame : public GCItem {
 			typedef GCItem super;
 			Frame(GCList& gcList, const CodeWord* returnIP, const Code* code, Scope* scope, Object* thisObject
-					, Frame* previousFrame) : super(gcList), returnIP(returnIP), code(code), scope(scope)
-					, thisObject(thisObject), previousFrame(previousFrame) {
+				, Frame* previousFrame) : super(gcList), returnIP(returnIP), code(code), scope(scope)
+				, thisObject(thisObject), previousFrame(previousFrame)
+			{
 				assert(code != 0);
 				assert(scope != 0);
 			}

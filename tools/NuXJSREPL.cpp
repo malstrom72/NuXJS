@@ -494,7 +494,6 @@ int testMain(int argc, const char* argv[]) {
 
 		const String LF_STRING("\n");
 		const String PRINT_STRING("print");
-		static const String PRINT_EXCEPTION_METADATA_STRING("__printExceptionMetadata__");
 
 		MyHeap heap;
 		Runtime rt(heap);
@@ -628,8 +627,12 @@ int testMain(int argc, const char* argv[]) {
 					const Char* scriptBegin = source.begin();
 					const Char* scriptEnd = source.end();
 					const String* scriptSource = new(runtimeHeap) String(runtimeHeap.managed(), scriptBegin, scriptEnd);
+				#if (NUXJS_VERBOSE_EXCEPTIONS)
 					SourceCodeUnit* sourceCodeUnit = new(runtimeHeap) SourceCodeUnit(heap.managed(), scriptSource, scriptFileName);
 					Code globalCode(heap.roots(), 0, sourceCodeUnit);
+				#else
+					Code globalCode(heap.roots());
+				#endif
 					Compiler compiler(heap.roots(), &globalCode, (interactive ? Compiler::FOR_EVAL : Compiler::FOR_GLOBAL), 1);
 					try {
 						compiler.compile(*scriptSource);
@@ -643,14 +646,12 @@ int testMain(int argc, const char* argv[]) {
 						{
 							std::wstringstream ss;
 							ss << L"!!!! Line: " << lineNumber;
-							// ss << ", column: " << columnNumber; // FIX : keep or not? if so, need to update all tests:
 							ws = ss.str();
 						}
 						std::wcout << ws << std::endl;
 						if (interactive) {
 							pushIOLines('!', String(heap.roots(), ws.c_str()));
 						}
-	// FIX :						std::wcout << std::wstring(std::max<const Char*>(stopPoint - 8, source.begin()), std::min<const Char*>(stopPoint + 8, source.end())) << std::endl;
 						throw;
 					}
 					processor.enterGlobalCode(&globalCode);
@@ -684,15 +685,10 @@ int testMain(int argc, const char* argv[]) {
 				std::wstring ws = x.value.toString(heap)->toWideString();
 				ws = L"!!!! " + ws;
 				std::wcout << ws << std::endl;
-				bool printMetadata = !useLegacyExceptionOutput;
-				if (!useLegacyExceptionOutput) {
-					Value metadataFlag(Value::UNDEFINED);
-					if (rt.getGlobalObject()->getProperty(rt, Value(&PRINT_EXCEPTION_METADATA_STRING), &metadataFlag) != NONEXISTENT) {
-						printMetadata = metadataFlag.toBool();
-					}
-				}
 				std::string locationLine;
 				std::string stackLine;
+			#if (NUXJS_VERBOSE_EXCEPTIONS)
+				bool printMetadata = !useLegacyExceptionOutput;
 				if (printMetadata) {
 					const char* formattedStack = x.formatStackTrace();
 					if (formattedStack != 0 && formattedStack[0] != '\0') {
@@ -701,6 +697,9 @@ int testMain(int argc, const char* argv[]) {
 						std::wcout << stackWide << std::endl;
 					}
 				}
+			#else
+				bool printMetadata = false;
+			#endif
 				if (!interactive) {
 					return 1;
 				} else {

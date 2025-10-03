@@ -1,5 +1,5 @@
 /**
-NuXJS is released under the BSD 2-Clause License.
+	NuXJS is released under the BSD 2-Clause License.
 
 	Copyright (c) 2018-2025, Magnus Lidström
 
@@ -38,10 +38,9 @@ NuXJS is released under the BSD 2-Clause License.
 #error This code requires IEEE compliant floating point handling. Avoid -Ofast / -ffast-math etc (at least for this source file).
 #endif
 
-#include <stdint.h>
 #include "assert.h"
+#include <stdint.h>
 #include <cmath>
-#include <cstdlib>
 #include "NuXJS.h"
 #ifdef _MSC_VER
 #include <float.h>
@@ -374,26 +373,26 @@ static double scaleAndRound(const DoubleDouble& acc, double factor) {
 	if (acc.high == 0.0 && acc.low == 0.0) {
 		return 0.0;
 	}
-
+	
 	const double fastResult = (acc.high + acc.low) * factor;
 	if (fastResult >= 2.2250738585072014e-308) {
 		return fastResult;												// normal result; fast path is exact here
 	}
-
+	
 	int factorExponent;													// slow path: denormal/transition region
 	frexp(factor, &factorExponent);										// assemble payload then single rounding
-
+	
 	const int t = factorExponent + 1073;								// guaranteed by table construction
 	assert(t >= 0);														// (no right-shift branch needed)	
 	const double bf = ldexp(acc.low, t);								// align (high, low) into the 52-bit subnormal payload scale
 	const double bi = floor(bf);
 	const double fraction = bf - bi;									// fractional contribution
-
+	
 	double ni = ldexp(acc.high, t) + bi;								// integer payload (exact in double)
 	if (fraction > 0.5 || (fraction == 0.5 && fmod(ni, 2.0) != 0.0)) {
 		ni += 1.0;														// round to nearest, ties-to-even
 	}
-
+	
 	return ldexp(ni, -1074);											// subnormal construction (or DBL_MIN when ni == 2^52)
 }
 
@@ -432,7 +431,7 @@ struct QuickConstants {
 			exp10Factors[i - MIN_EXPONENT] = factor;
 			normal = normal * 10;
 		}
-
+	
 		normal = DoubleDouble(WIDTH, 0.0);
 		factor = 1.0 / WIDTH;
 		for (int i = -1; i >= MIN_EXPONENT; --i) {
@@ -461,7 +460,7 @@ static Char* doubleToString(Char buffer[32], const double value) {
 		*p++ = '-';
 		absValue = -value;
 	}
-
+	
 	if (absValue == 0.0) {
 		*p++ = '0';
 		return p;
@@ -482,7 +481,7 @@ static Char* doubleToString(Char buffer[32], const double value) {
 			++exponent;
 		}
 	}
-
+	
 	const bool eNotation = (exponent < NEGATIVE_E_NOTATION_START || exponent >= POSITIVE_E_NOTATION_START);
 	Char* periodPosition = p + (eNotation || exponent < 0 ? 0 : exponent) + 1;
 	if (!eNotation && exponent < 0) {
@@ -503,7 +502,7 @@ static Char* doubleToString(Char buffer[32], const double value) {
 		if (p == periodPosition) {
 			*p++ = '.';
 		}
-
+		
 		// Incrementally find the max digit that keeps accumulator < normalized target (instead of using division).
 		DoubleDouble next = accumulator + magnitude;
 		int digit = 0;
@@ -528,7 +527,7 @@ static Char* doubleToString(Char buffer[32], const double value) {
 
 		*p++ = '0' + digit;
 		magnitude = magnitude / 10;
-
+		
 		// p < buffer + 27 is an extra precaution if the correct value is never reached (e.g. because of too aggressive
 		// optimizations). 27 leaves room for longest exponent.
 	} while (p < buffer + 27 && reconstructed != absValue);
@@ -536,7 +535,7 @@ static Char* doubleToString(Char buffer[32], const double value) {
 	while (p < periodPosition) {
 		*p++ = '0';
 	}
-
+	
 	if (eNotation) {
 		*p++ = 'e';
 		*p++ = (exponent < 0 ? '-' : '+');
@@ -600,7 +599,7 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 				numberEnd = q;
 			}
 		}
-
+		
 		p = significandBegin;
 		while (p != significandEnd && (*p == '0' || *p == '.')) {
 			if (*p == '0') {
@@ -608,7 +607,7 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 			}
 			++p;
 		}
-
+		
 		if (p == significandEnd || exponent < MIN_EXPONENT) {
 			value = 0.0;
 		} else if (exponent > MAX_EXPONENT) {
@@ -1603,6 +1602,8 @@ static bool lineTerminatorInRange(const Char* b, const Char* e) {
 	return (std::find_first_of(b, e, LINE_TERMINATORS, LINE_TERMINATORS + 4) != e);
 }
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+
 /* --- SourceCodeUnit --- */
 
 SourceCodeUnit::SourceCodeUnit(GCList& gcList, const String* sourceCode, const String* fileName)
@@ -1633,28 +1634,29 @@ void SourceCodeUnit::computeLineColumn(UInt32 offset, UInt32& line, UInt32& colu
 	column = static_cast<UInt32>(offset - *(it - 1) + 1);
 }
 
+#endif
+
 /* --- Code --- */
 
-Code::Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUnit)
-	: super(gcList)
-	, codeWords(0, &gcList.getHeap())
-	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
-	, sourceUnit(sourceUnit)
-	, nameIndexes(&gcList.getHeap())
-	, varNames(&gcList.getHeap())
-	, argumentNames(&gcList.getHeap())
-	, name(0)
-	, selfName(0)
-	, source(0)
-	, bloomSet(0)
-	, maxStackDepth(0)
 #if (NUXJS_VERBOSE_EXCEPTIONS)
+Code::Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUnit)
+#else
+Code::Code(GCList& gcList, Constants* sharedConstants)
+#endif
+	: super(gcList), codeWords(0, &gcList.getHeap())
+	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	, sourceUnit(sourceUnit)
 	, codeOffsets(&gcList.getHeap())
 	, sourceOffsets(&gcList.getHeap())
 #endif
+	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
+	, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
 {
 	assert(constants != 0);
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	assert(sourceUnit != 0);
+#endif
 }
 
 bool Code::lookupNameIndex(const String* name, Int32& index) const {
@@ -1666,8 +1668,8 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
 	return true;
 }
 
-#if (NUXJS_VERBOSE_EXCEPTIONS)
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 void Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const {
 	assert(instructionIndex < codeWords.size());
 	assert(!codeOffsets.empty());
@@ -1929,16 +1931,8 @@ Error::Error(GCList& gcList, ErrorType type, const String* message)
 	assert(0 <= errorType && errorType < ERROR_TYPE_COUNT);
 }
 
-const String* Error::getClassName() const { return &E_RROR_STRING; }
-Error* Error::asError() { return this; }
 Value Error::getInternalValue(Heap&) const { return &ERROR_NAMES[errorType]; }
 Object* Error::getPrototype(Runtime& rt) const { return rt.getErrorPrototype(errorType); }
-ErrorType Error::getErrorType() const { return errorType; }
-const String* Error::getErrorName() const { assert(name != 0); return name; }
-const String* Error::getErrorMessage() const { return message; }
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-const String* Error::getStackString() const { return stack; }
-#endif
 
 const String* Error::toString(Heap& heap) const {
 	return (message == 0 ? name : String::concatenate(heap, String(heap.roots(), *name, COLON_SPACE), *message));
@@ -1968,12 +1962,12 @@ bool Error::deleteOwnProperty(Runtime& rt, const Value& key) {
 void Error::constructCompleteObject(Runtime& rt) const {
 	if (message != 0) {
 		completeObject->setOwnProperty(rt, &MESSAGE_STRING, message, DONT_ENUM_FLAG);
-	}
 #if (NUXJS_VERBOSE_EXCEPTIONS)
+	}
 	if (stack != 0) {
 		completeObject->setOwnProperty(rt, &STACK_STRING, stack, DONT_ENUM_FLAG);
-	}
 #endif
+	}
 }
 
 /* --- Arguments --- */
@@ -1994,11 +1988,11 @@ const String* Arguments::toString(Heap& heap) const {
 Object* Arguments::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
 
 void Arguments::detach() {
-	if (scope != 0) {
-		values.resize(argumentsCount);
-		std::copy(scope->getLocalsPointer(), scope->getLocalsPointer() + argumentsCount, values.begin());
-		scope = 0;
-	}
+   if (scope != 0) {
+	   values.resize(argumentsCount);
+	   std::copy(scope->getLocalsPointer(), scope->getLocalsPointer() + argumentsCount, values.begin());
+	   scope = 0;
+   }
 }
 
 Value* Arguments::findProperty(const Value& key) const {
@@ -2269,17 +2263,17 @@ void Processor::collectStackFrames(std::vector<StackFrameInfo>& frames) const {
 		assert(location.fileName != 0);
 		location.fileName = unit->getFileName();
 		StackFrameInfo info;
-		info.functionName = (frameCode->hasName() ? frameCode->getName() : 0);
+		info.functionName = frameCode->getName(); // can be 0
 		info.location = location;
 		frames.push_back(info);
 		nextIP = frameWalker->returnIP;
 		frameWalker = frameWalker->previousFrame;
 	}
 }
+
 #endif
-
 /* --- ScriptException --- */
-
+	
 void ScriptException::throwError(Heap& heap, ErrorType type, const String* message) {
 	throw ScriptException(heap, new(heap) Error(heap.managed(), type, message));
 }
@@ -2289,14 +2283,12 @@ void ScriptException::throwError(Heap& heap, ErrorType type, const char* message
 }
 
 ScriptException::ScriptException(Heap& heap, const Value& value) throw()
-		: value(value), utf8String(value.toString(heap)->toUTF8String())
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		: value(value), utf8String(value.toString(heap)->toUTF8String())
 		, formattedStackCache(), formattedStackComputed(false)
-	#endif
 {
 }
 
-#if (NUXJS_VERBOSE_EXCEPTIONS)
 const char* ScriptException::formatStackTrace() const {
 	if (!formattedStackComputed) {
 		formattedStackCache.clear();
@@ -2314,8 +2306,10 @@ const char* ScriptException::formatStackTrace() const {
 	}
 	return (formattedStackCache.empty() ? utf8String.c_str() : formattedStackCache.c_str());
 }
-#endif
-
+	#else
+		: value(value), utf8String(value.toString(heap)->toUTF8String()) { }
+	#endif
+		
 /* --- EvalFunction --- */
 
 static struct EvalFunction : public Function {
@@ -2443,7 +2437,7 @@ struct Processor::EvalScope : public Scope {
 		parentScope->declareVar(rt, name, initValue, false);
 	}
 };
-
+	
 /*
 	The CatchScope is necessary because within a catch block there is a single extra variable that is local to the catch
 	block. It is created dynamically and pushed on the call stack when entering a catch block and removed at any exit
@@ -2614,8 +2608,10 @@ void Processor::throwVirtualException(const Value& exception) {
                         errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
                 }
         }
-#endif
 	if (firstCatcher == 0) { // No JS catcher: throw a ScriptException (do not return)
+#else
+	if (firstCatcher == 0) { // FIX: what exception to throw here?
+#endif
 		reset();
 		throw ScriptException(heap, exception);
 	}
@@ -2715,7 +2711,7 @@ void Processor::innerRun() {
 				pop(1);
 				break;
 			}
-
+			
 			case SET_PROPERTY_OP: {
 				Object* o = convertToObject(sp[-2], false);
 				if (o == 0) {
@@ -2726,7 +2722,7 @@ void Processor::innerRun() {
 				pop(2);
 				break;
 			}
-
+			
 			case SET_PROPERTY_POP_OP: {
 				Object* o = convertToObject(sp[-2], false);
 				if (o == 0) {
@@ -2748,7 +2744,7 @@ void Processor::innerRun() {
 				}
 				break;
 			}
-
+				
 			case PRE_EQ_OP: {
 				// FIX : doesn't feel totally efficient this...
 				if (sp[-1].isObject() != sp[0].isObject()) {
@@ -2816,7 +2812,7 @@ void Processor::innerRun() {
 				}
 				return;
 			}
-
+			
 			case CALL_METHOD_OP: {
 				Object* const o = convertToObject(sp[-im - 1], true);
 				if (o != 0) {
@@ -2831,7 +2827,7 @@ void Processor::innerRun() {
 				}
 				return;
 			}
-
+			
 			case CALL_EVAL_OP: {
 				Function* f = asFunction(sp[-im]);
 				if (f != 0) {
@@ -2848,7 +2844,7 @@ void Processor::innerRun() {
 			case RETURN_OP:	ip = currentFrame->returnIP; popFrame(); return;
 			case THIS_OP: push(thisObject); break;
 			case VOID_OP: push(UNDEFINED_VALUE); break;
-
+			
 			case GEN_FUNC_OP: {
 				const Object* o = constants[im].getObject();
 				assert(dynamic_cast<const Code*>(o) != 0);
@@ -2856,16 +2852,16 @@ void Processor::innerRun() {
 				push(new(heap) JSFunction(heap.managed(), reinterpret_cast<const Code*>(o), scope));
 				break;
 			}
-
+			
 			case DECLARE_OP: scope->declareVar(rt, constants[im].getString(), sp[0], true); pop(1); break;
-
+			
 			case ADD_PROPERTY_OP: {
 				Object* o = sp[-1].getObject();
 				o->setOwnProperty(rt, constants[im], sp[0]);
 				pop(1);
 				break;
 			}
-
+			
 			case PUSH_ELEMENTS_OP: {
 				Object* o = sp[-im].getObject();
 				assert(dynamic_cast<JSArray*>(o) != 0);
@@ -2873,9 +2869,9 @@ void Processor::innerRun() {
 				pop(im);
 				break;
 			}
-
+			
 			case DELETE_NAMED_OP: push(scope->deleteVar(rt, constants[im].getString())); break;
-
+			
 			case DELETE_OP: {
 				Object* o = convertToObject(sp[-1], true);
 				if (o == 0) {
@@ -2884,13 +2880,13 @@ void Processor::innerRun() {
 				pop2push1(o->deleteOwnProperty(rt, sp[0]));
 				break;
 			}
-
+			
 			case CATCH_SCOPE_OP: {
 				pushFrame(code, new(heap) CatchScope(heap.managed(), scope, constants[im].getString(), sp[0]), thisObject);
 				pop(1);
 				return;
 			}
-
+			
 			case WITH_SCOPE_OP: {
 				Object* o = convertToObject(sp[0], false);
 				if (o != 0) {
@@ -2899,12 +2895,12 @@ void Processor::innerRun() {
 				}
 				return;
 			}
-
+			
 			case POP_FRAME_OP: popFrame(); return;
 			case TRY_OP: firstCatcher = new(heap) Catcher(heap.managed(), ip + im, sp, currentFrame, firstCatcher); break;
 			case TRIED_OP: popCatcher(); break;
 			case THROW_OP: throwVirtualException(sp[0]); return;
-
+			
 			case IN_OP: {
 				const Object* o = sp[0].asObject();
 				if (o == 0) {
@@ -2932,7 +2928,7 @@ void Processor::innerRun() {
 				push(v.typeOfString());
 				break;
 			}
-
+			
 			case GET_ENUMERATOR_OP: {
 				const Object* o = convertToObject(sp[0], false);
 				if (o == 0) {
@@ -2941,12 +2937,12 @@ void Processor::innerRun() {
 				sp[0] = o->getPropertyEnumerator(rt);
 				break;
 			}
-
+			
 			case NEXT_PROPERTY_OP: {
 				Object* o = sp[0].getObject();
 				assert(dynamic_cast<Enumerator*>(o) != 0);
 				const String* name = reinterpret_cast<Enumerator*>(o)->nextPropertyName();
-				if (name != 0) {
+ 				if (name != 0) {
 					sp[0] = name;
 				} else {
 					ip += im;
@@ -2954,7 +2950,7 @@ void Processor::innerRun() {
 				}
 				break;
 			}
-
+			
 			default: assert(0);
 		}
 	}
@@ -3080,24 +3076,24 @@ struct Compiler::ExpressionResult {
 	Type t;
 	Value v;
 };
-
+	
 struct Compiler::SemanticScope {
 	enum Type { ROOT_TYPE, LABEL_TYPE, ITERATOR_LABEL_TYPE, TRY_TYPE, CATCH_TYPE, FINALLY_TYPE, WITH_TYPE };
-
+	
 	SemanticScope(Heap& heap, Type type, Int32 stackDepthOnEntry, SemanticScope* next)
 			: breaks(&heap), continues(&heap), finallys(&heap), type(type), stackDepthOnEntry(stackDepthOnEntry)
 			, next(next) { }
-
+	
 	SemanticScope(Heap& heap, const String& label, Int32 stackDepthOnEntry, SemanticScope* next)
 			: breaks(&heap), continues(&heap), finallys(&heap), type(LABEL_TYPE), label(label)
 			, stackDepthOnEntry(stackDepthOnEntry), next(next) { }
-
+	
 	void makeIteratorScopes(SemanticScope* untilScope) {
 		for (SemanticScope* s = this; s != untilScope; s = s->next) {
 			s->type = ITERATOR_LABEL_TYPE;
 		}
 	}
-
+	
 	Int32 popStack(Compiler& compiler, Int32 currentDepth, Processor::Opcode popOpcode) {
 		if (!compiler.currentSection->inDeadCode()) {
 			const Int32 stackDistance = currentDepth - stackDepthOnEntry;
@@ -3108,7 +3104,7 @@ struct Compiler::SemanticScope {
 		}
 		return currentDepth;
 	}
-
+	
 	Int32 rollback(Compiler& compiler, Int32 rollbackStackDepth, Processor::Opcode popOpcode) {
 		switch (type) {
 			case CATCH_TYPE:
@@ -3129,7 +3125,7 @@ struct Compiler::SemanticScope {
 		}
 		return rollbackStackDepth;
 	}
-
+	
 	Type type;
 	const String label; 				// empty for automatic while, for, case labels
 	SemanticScope* const next;
@@ -3140,11 +3136,17 @@ struct Compiler::SemanticScope {
 };
 
 Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter)
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 	: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor)
 	, setupSection(heap, 1), mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true)
 	, withScopeCounter(0), nestCounter(initialNestCounter)
 {
 }
+	#else
+		: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
+		, mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
+		, nestCounter(initialNestCounter) { }
+	#endif
 
 const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e) {
 	if (b == e) {
@@ -3193,9 +3195,7 @@ static void appendSourceMapping(Vector<UInt32>& toCodeOffsets, Vector<UInt32>& t
 		toSourceOffsets.push(fromSourceOffsets[i]);
 	}
 }
-#endif
 
-#if (NUXJS_VERBOSE_EXCEPTIONS)
 void Compiler::CodeSection::emit(Compiler& compiler, Processor::Opcode opcode, Int32 operand) {
 #else
 void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
@@ -3206,9 +3206,7 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 	const Processor::OpcodeInfo& opcodeInfo = Processor::getOpcodeInfo(opcode);
 	stackDepth += opcodeInfo.stackUse + (((opcodeInfo.flags & Processor::OpcodeInfo::POP_OPERAND) != 0) ? -operand : 0);
 	assert(stackDepth >= 0);
-#if (NUXJS_VERBOSE_EXCEPTIONS)
 	maxStackDepth = std::max(maxStackDepth, stackDepth);		// Yeah, if we eliminate a (void/const/repush, pop) pair this might be one more than necessary, but it never seems to happen from emperical tests and it doesn't really matter in the first place.
-#endif
 	if ((opcodeInfo.flags & Processor::OpcodeInfo::TERMINAL) != 0) {
 		stackDepth = DEAD_CODE_STACK_DEPTH;
 	}
@@ -3218,48 +3216,48 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 			case Processor::WRITE_LOCAL_OP: replacementOpcode = Processor::WRITE_LOCAL_POP_OP; break;
 			case Processor::WRITE_NAMED_OP: replacementOpcode = Processor::WRITE_NAMED_POP_OP; break;
 			case Processor::SET_PROPERTY_OP: replacementOpcode = Processor::SET_PROPERTY_POP_OP; break;
-                        case Processor::REPUSH_OP:
-                        case Processor::CONST_OP:
-                        case Processor::VOID_OP: {
-                                if (!code.empty()) {
+			case Processor::REPUSH_OP:
+			case Processor::CONST_OP:
+			case Processor::VOID_OP: {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
+                                if (!code.empty()) {
                                         const UInt32 removedIndex = static_cast<UInt32>(code.size() - 1);
 #endif
-                                        code.pop();
+				code.pop();
 #if (NUXJS_VERBOSE_EXCEPTIONS)
                                         popOpcodeOffsetRun(codeOffsets, sourceOffsets, removedIndex);
-#endif
                                 }
-                                lastEmitted = Processor::INVALID_OP;
-                                return;
-                        }
+#endif
+				lastEmitted = Processor::INVALID_OP;
+				return;
+			}
 			default: break;
 		}
 		if (replacementOpcode != Processor::INVALID_OP) {
 			const Int32 oldOperand = Processor::unpackInstruction(code.end()[-1]).second;
-                #if (NUXJS_VERBOSE_EXCEPTIONS)
+#if (NUXJS_VERBOSE_EXCEPTIONS)
                         UInt32 lastOffset = 0;
                         if (!code.empty()) {
                                 const UInt32 removedIndex = static_cast<UInt32>(code.size() - 1);
                                 lastOffset = popOpcodeOffsetRun(codeOffsets, sourceOffsets, removedIndex);
-                                code.pop();
-                        }
-#else
-                        code.pop();
 #endif
-                        code.push(Processor::packInstruction(replacementOpcode, oldOperand));
-                #if (NUXJS_VERBOSE_EXCEPTIONS)
+			code.pop();
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+                        }
+#endif
+			code.push(Processor::packInstruction(replacementOpcode, oldOperand));
+#if (NUXJS_VERBOSE_EXCEPTIONS)
                         pushOpcodeOffsetRun(codeOffsets, sourceOffsets, static_cast<UInt32>(code.size() - 1), lastOffset);
-                #endif
-                        lastEmitted = replacementOpcode;
-                        return;
-                }
-        }
+#endif
+			lastEmitted = replacementOpcode;
+			return;
+		}
+	}
 #if (NUXJS_VERBOSE_EXCEPTIONS)
         const UInt32 sourceOffset = static_cast<UInt32>(compiler.p - compiler.code->getSourceUnit()->getSource()->begin());
         assert(sourceOffset <= compiler.code->getSourceUnit()->getSource()->size());
 #endif
-        code.push(Processor::packInstruction(opcode, operand));
+	code.push(Processor::packInstruction(opcode, operand));
 #if (NUXJS_VERBOSE_EXCEPTIONS)
         pushOpcodeOffsetRun(codeOffsets, sourceOffsets, static_cast<UInt32>(code.size() - 1), sourceOffset);
 #endif
@@ -3269,7 +3267,9 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 void Compiler::CodeSection::insertSection(const CodeSection& section) {
 	const Int32 stackAdjust = stackDepth - section.initialStackDepth;
 	lastEmitted = Processor::INVALID_OP;
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	const UInt32 baseIndex = static_cast<UInt32>(code.size());
+#endif
 	code.insert(code.end(), section.code.begin(), section.code.end());
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 	appendSourceMapping(codeOffsets, sourceOffsets, section.codeOffsets, section.sourceOffsets, baseIndex);
@@ -3642,7 +3642,7 @@ Value Compiler::stringOrNumberConstant() {
 
 Compiler::ExpressionResult Compiler::arrayInitialiser() { // FIX : share stuff with functionCall and arrayInitialiser
 	emit(Processor::NEW_ARRAY_OP);
-
+	
 	Int32 index = 0;
 	Int32 pushedCount = 0;
 	Int32 currentLength = 0;
@@ -3685,7 +3685,7 @@ Compiler::ExpressionResult Compiler::arrayInitialiser() { // FIX : share stuff w
 
 Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff with functionCall and arrayInitialiser
 	emit(Processor::NEW_OBJECT_OP);
-
+	
 	white();
 	while (!token("}", false)) {
 		const Char* b = p;
@@ -3741,7 +3741,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = discard(operand(op));
 			break;
 		}
-
+		
 		case GROUP: {
 			const bool didAcceptInOperator = acceptInOperator;
 			acceptInOperator = true;
@@ -3749,7 +3749,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			acceptInOperator = didAcceptInOperator;
 			break;
 		}
-
+		
 		case UNARY: {
 			makeRValue(operand(op), op.primitiveInput);
 			emit(op.vmOp);
@@ -3770,7 +3770,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = ExpressionResult::PUSHED;
 			break;
 		}
-
+		
 		case DELETE_OPERATOR: {
 			assert(!op.primitiveInput);
 			assert(op.primitiveOutput);
@@ -3787,7 +3787,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			}
 			break;
 		}
-
+		
 		case PRE_INC_DEC: {
 			assert(op.primitiveInput);
 			assert(op.primitiveOutput);
@@ -3801,7 +3801,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = ExpressionResult::PUSHED_PRIMITIVE;
 			break;
 		}
-
+		
 		case TYPE_OF: {
 			assert(!op.primitiveInput);
 			assert(op.primitiveOutput);
@@ -3815,7 +3815,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = ExpressionResult::PUSHED_PRIMITIVE;
 			break;
 		}
-
+		
 		default: assert(0);
 	}
 	return true;
@@ -3834,7 +3834,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = operand(op);
 			break;
 		}
-
+			
 		case BINARY: {
 			const Processor::Opcode primitiveOp
 					= (op.vmOp == Processor::ADD_OP ? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
@@ -3844,7 +3844,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = (op.primitiveOutput ? ExpressionResult::PUSHED_PRIMITIVE : ExpressionResult::PUSHED);
 			break;
 		}
-
+		
 		case ABSTRACT_EQUAL: {
 			assert(!op.primitiveInput);
 			assert(op.primitiveOutput);
@@ -3890,7 +3890,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = ExpressionResult::PUSHED_PRIMITIVE;
 			break;
 		}
-
+		
 		case LOGICAL_AND_OR: {
 			assert(!op.primitiveInput);
 			assert(!op.primitiveOutput);
@@ -3901,7 +3901,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = ExpressionResult::PUSHED;
 			break;
 		}
-
+		
 		case CONDITIONAL: {
 			assert(!op.primitiveInput);
 			assert(!op.primitiveOutput);
@@ -3915,7 +3915,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = ExpressionResult::PUSHED;
 			break;
 		}
-
+		
 		case PROPERTY_DOT: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, op.primitiveInput);
@@ -3924,7 +3924,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = ExpressionResult(ExpressionResult::PROPERTY);
 			break;
 		}
-
+		
 		case FUNCTION_CALL: {
 			assert(!op.primitiveInput);
 			assert(!op.primitiveOutput);
@@ -3941,7 +3941,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = ExpressionResult::PUSHED;
 			break;
 		}
-
+		
 		case ASSIGNMENT: {
 			assert(!op.primitiveInput);
 			assert(!op.primitiveOutput);
@@ -3950,7 +3950,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = rxr;
 			break;
 		}
-
+			
 		case COMPOUND_ASSIGNMENT: {
 			assert(op.primitiveInput);
 			assert(op.primitiveOutput);
@@ -3966,7 +3966,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = ExpressionResult::PUSHED_PRIMITIVE;
 			break;
 		}
-
+			
 		case PROPERTY_BRACKETS: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, false);
@@ -3977,7 +3977,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = ExpressionResult(ExpressionResult::PROPERTY);
 			break;
 		}
-
+		
 		default: assert(0);
 	}
 	return true;
@@ -3985,8 +3985,12 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	SourceCodeUnit* unit = code->getSourceUnit();
 	Code* func = new(heap) Code(heap.managed(), code->constants, unit);
+#else
+	Code* func = new(heap) Code(heap.managed(), code->constants);
+#endif
 	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
@@ -4010,7 +4014,7 @@ bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
 		~NestCounter() { --c.nestCounter; };
 		Compiler& c;
 	} nestCounter(*this);
-
+	
 	if (!preOperate(xr, precedence)) {
 		if (eof()) {
 			return false;
@@ -4053,14 +4057,14 @@ bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
 						xr = objectInitialiser();
 						break;
 					}
-
+					
 					case '[': {
 						++p;
 						xr = discard(xr);
 						xr = arrayInitialiser();
 						break;
 					}
-
+					
 					case '/': {
 						bool inClass = false;
 						while (++p != e && !isLineTerminator(*p) && (*p != '/' || inClass)) {
@@ -4088,7 +4092,7 @@ bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
 						}
 						break;
 					}
-
+					
 					default: {
 						const String* name = identifier(false, false);
 						if (name->empty()) {
@@ -4214,7 +4218,7 @@ void Compiler::completeBreaks(const SemanticScope* ofScope) {
 void Compiler::forInStatement(SemanticScope* emptyLabelScope, SemanticScope* scopeLabelsEnd
 		, const CodeSection& iterationSection, const ExpressionResult& iterationXR) {
 	ExpressionResult enumXR(rvalueExpression());
-	emit(Processor::GET_ENUMERATOR_OP);
+ 	emit(Processor::GET_ENUMERATOR_OP);
 	enumXR = safeKeep();
 	expectToken(")", true);
 	for (SemanticScope* s = emptyLabelScope; s != scopeLabelsEnd; s = s->next) {	// we must change stack depth of all labels that point to this scope, otherwise we'll pop the enumerator on continue
@@ -4465,10 +4469,10 @@ void Compiler::block(SemanticScope* scope) {
 	means we must preallocate an entry on the stack for any potential return statements ("space holder"). Also in eval
 	mode we need to always flush eval results to stack before each call to finally() and when setting up try scopes.
 	There is also a rule that eval result from try scope should be rolled back in case of a throw.
-
+	
 							// NO EVAL						// EVAL
 							// ========						// ========
-
+ 
 							// spaceHolder					// (eval)
 	try {
 							// spaceHolder					// rollback (eval)
@@ -4503,7 +4507,7 @@ void Compiler::block(SemanticScope* scope) {
 
 							// NO EVAL						// EVAL
 							// ========						// ========
-
+ 
 							// spaceHolder					// (eval)
 	try {
 							// spaceHolder					// rollback (eval)
@@ -4553,7 +4557,7 @@ void Compiler::tryStatement(SemanticScope* currentScope) {
 	const BranchPoint tryEndPoint = emitForwardBranch(Processor::JMP_OP);
 
 	// Catcher
-
+	
 	BranchPoint catchEndPoint;
 	bool gotCatch = false;
 	if (token("catch", true)) {
@@ -4590,16 +4594,16 @@ void Compiler::tryStatement(SemanticScope* currentScope) {
 			nameIndexes.erase(nameIndexes.lookup(exceptionVarName));
 		}
 	}
-
+	
 	// Re-thrower (could actually be eliminated if we only have catch and no finally, but we don't know yet)
-
+	
 	completeForwardBranch(catchPoint);
 	emit(Processor::PUSH_BACK_OP, currentSection->stackDepth - trySectionEntryStackDepth);
 	BranchPoint finallyRethrowPoint = emitForwardBranch(Processor::JSR_OP);
 	emit(Processor::THROW_OP);
 
 	// Finally
-
+	
 	completeForwardBranches(allFinallys.begin(), allFinallys.end());
 	emit(Processor::TRIED_OP);
 	completeForwardBranch(finallyRethrowPoint);
@@ -4618,7 +4622,7 @@ void Compiler::tryStatement(SemanticScope* currentScope) {
 		}
 	}
 	emit(Processor::RETURN_OP);
-
+	
 	completeForwardBranch(tryEndPoint);
 	completeForwardBranch(catchEndPoint);
 
@@ -4683,7 +4687,7 @@ void Compiler::switchStatement(SemanticScope* currentScope) {
 		firstStatement = false;
 		white();
 	}
-
+	
 	assert(currentSection == &mainSection);
 	const BranchPoint donePoint = emitForwardBranch(Processor::JMP_OP);
 	completeForwardBranch(testsPoint);
@@ -4708,15 +4712,15 @@ void Compiler::switchStatement(SemanticScope* currentScope) {
 */
 void Compiler::statement(SemanticScope* currentScope, SemanticScope* scopeLabelsEnd) {
 	assert(currentSection == &mainSection); // statements must produce into main-section because of breaks etc...
-
+	
 	white();
-
+	
 	if (token("{", false)) {
 		statementList(currentScope);
 		expectToken("}", false);
 		return;
 	}
-
+	
 	const Char* b = p;
 	Vector<Char, 64> parsed = parseIdentifier(true);
 	int statementTokenIndex = findStatementKeyword(p - b, &*b);
@@ -4791,7 +4795,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	code->codeOffsets.resize(0);
 	code->sourceOffsets.resize(0);
 #endif
-
+	
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
 	if (compilingFor == FOR_EVAL) {
 		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
@@ -4799,7 +4803,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	}
 	SemanticScope rootScope(heap, SemanticScope::ROOT_TYPE, 1, 0);
 	statementList(&rootScope);
-	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
+ 	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
 	if (compilingFor != FOR_EVAL) {
 		// FIX : if RETURN_OP took a push back count we could just do void_op here, or even have another RETURN_VOID_OP
 		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
@@ -4819,7 +4823,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	code->codeOffsets.shrink();
 	code->sourceOffsets.shrink();
 #endif
-
+	
 	return p;
 }
 
@@ -4853,8 +4857,12 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 	expectToken("}", false);
 	code->name = functionName;
 	code->selfName = selfName;
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	const String* functionSource = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
 	code->source = functionSource;
+#else
+	code->source = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
+#endif
 	code->bloomSet |= (selfName != 0 ? selfName->createBloomCode() : 0) | ARGUMENTS_STRING.createBloomCode();
 	return p;
 }
@@ -4867,9 +4875,24 @@ void Compiler::compile(const String& source) {
 	}
 }
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 void Compiler::getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const {
 	offset = static_cast<UInt32>(p - b);
     code->getSourceUnit()->computeLineColumn(offset, lineNumber, columnNumber);
+#else
+void Compiler::getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const {
+	lineNumber = 1;
+	columnNumber = 1;
+	offset = p - b;
+	for (const Char* q = b; q != p; ++q) {
+		assert(q != e);
+		if (std::find(LINE_TERMINATORS, LINE_TERMINATORS + 3, *q) != LINE_TERMINATORS + 3) {
+			++lineNumber;
+			columnNumber = 0;
+		}
+		++columnNumber;
+	}
+#endif
 }
 
 /* --- Runtime --- */
@@ -5009,7 +5032,7 @@ struct Support {
 		}
 		return UNDEFINED_VALUE;
 	}
-
+	
 	static Value updateDateValue(Runtime&, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 2) {
 			Object* o = argv[0].asObject();
@@ -5045,7 +5068,7 @@ struct Support {
 		return UNDEFINED_VALUE;
 	}
 
-static Value distinctConstructor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+	static Value distinctConstructor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 1) {
 			Function* regularFunction = argv[0].asFunction();
 			if (regularFunction != 0) {
@@ -5076,8 +5099,12 @@ static Value distinctConstructor(Runtime& rt, Processor&, UInt32 argc, const Val
 		if (argc >= 1) {
 			Heap& heap = rt.getHeap();
 			const String* source = argv[0].toString(heap);
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), source, &ANONYMOUS_SCRIPT_STRING);
 			Code* code = new(heap) Code(heap.managed(), 0, unit);
+		#else
+			Code* code = new(heap) Code(heap.managed());
+		#endif
 			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
 			compiler.compileFunction(source->begin(), source->end()
 					, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING), 0);
@@ -5113,7 +5140,7 @@ static Value distinctConstructor(Runtime& rt, Processor&, UInt32 argc, const Val
 			return callFunction->invoke(rt, processor, args.size(), args.begin(), newThis);
 		}
 	}
-
+	
 	static Value hasOwnProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		Object* object = (argc >= 2 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
 		return (object != 0 ? object->hasOwnProperty(rt, argv[1]) : false);
@@ -5218,7 +5245,7 @@ static Value distinctConstructor(Runtime& rt, Processor&, UInt32 argc, const Val
 		const std::time_t newTime = std::mktime(&newTM);
 		return (newTime == -1 ? NAN_VALUE : Value(t * 1000.0 - newTime * 1000.0));
 	}
-
+	
 	static Value random(Runtime&, Processor&, UInt32, const Value*, Object*) {
 		return rand() / (RAND_MAX + 1.0);
 	}
@@ -5394,8 +5421,12 @@ Code* Runtime::compileEvalCode(const String* expression) {
 		assert(dynamic_cast<Code*>(o) != 0);
 		return reinterpret_cast<Code*>(o);
 	} else {
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), expression, &EVAL_CODE_STRING);
 		Code* code = new(heap) Code(heap.managed(), 0, unit);
+	#else
+		Code* code = new(heap) Code(heap.managed());
+	#endif
 		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
 		compiler.compile(*expression);
 		evalCodeCache.update(evalCodeCache.insert(expression), code);
@@ -5404,17 +5435,27 @@ Code* Runtime::compileEvalCode(const String* expression) {
 }
 
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	const String* effectiveFileName = (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING);
 	const String* retainedSource = (heap.managed().owns(&source)
 			? &source : new(heap) String(heap.managed(), source.begin(), source.end()));
 	SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), retainedSource, effectiveFileName);
 	Code* code = new(heap) Code(heap.managed(), 0, unit);
+#else
+	Code* code = new(heap) Code(heap.managed());
+#endif
 	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
 	try {
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		compiler.compile(*retainedSource);
+	#else
+		compiler.compile(source);
+	#endif
 	}
 	catch (const ScriptException& x) {
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		throw CompilationError(x, effectiveFileName, compiler);
+	#endif
 	}
 	return code;
 }
@@ -5446,7 +5487,7 @@ void Runtime::setupStandardLibrary() {
 		assert(refTime != -1 && refTimeAsUTC != -1);
 		unixEpochTimeDiff = 315532800000.0 - refTime * 2000.0 + refTimeAsUTC * 1000.0;
 	}
-
+	
 	JSObject* supportObject = new(heap) JSObject(heap.managed(), getObjectPrototype());
 	JSObject* prototypesObject = new(heap) JSObject(heap.managed(), getObjectPrototype());
 	const Var protectedSupportObject(*this, supportObject);
@@ -5466,15 +5507,15 @@ void Runtime::setupStandardLibrary() {
 	for (size_t i = 0; i < sizeof (NATIVE_MATH_FUNCTIONS) / sizeof (*NATIVE_MATH_FUNCTIONS); ++i) {
 		supportObject->setOwnProperty(*this, &NATIVE_MATH_FUNCTIONS[i].name, &NATIVE_MATH_FUNCTIONS[i].func);
 	}
-
+	
 	for (int i = 0; i < PROTOTYPE_COUNT; ++i) {
 		prototypesObject->setOwnProperty(*this, PROTOTYPE_NAMES[i], prototypes[i]);
 	}
-
+	
 	const Var func = eval(*String::allocate(heap, STDLIB_JS));
 	Value argv[1] = { protectedSupportObject };
 	call(func, 1, argv);
-
+	
 	fetchFunction(supportObject, "toPrimitive", toPrimitiveFunctions + 0);
 	fetchFunction(supportObject, "toPrimitiveNumber", toPrimitiveFunctions + 1);
 	fetchFunction(supportObject, "toPrimitiveString", toPrimitiveFunctions + 2);

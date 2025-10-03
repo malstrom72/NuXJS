@@ -833,7 +833,7 @@ static Var rethrowNative(Runtime& rt, const Var&, const VarList& args) {
 	try {
 		return args[0]();
 	} catch (const ScriptException& ex) {
-#if (NUXJS_VERBOSE_EXCEPTIONS)
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		Error* errorObject = ex.asErrorObject();
 		if (errorObject != 0) {
 			const String* stackString = errorObject->getStackString();
@@ -843,7 +843,7 @@ static Var rethrowNative(Runtime& rt, const Var&, const VarList& args) {
 				gTrackedStackMismatch = true;
 			}
 		}
-#endif
+	#endif
 		throw;
 	}
 	return Var(rt);
@@ -901,6 +901,7 @@ static void testNativeStackFormatter() {
 	} catch (const ScriptException& ex) {
 		Error* errorObject = ex.asErrorObject();
 		EXPECT(errorObject != 0);
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		const String* stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
 		EXPECT(stackString != 0);
 		if (stackString != 0) {
@@ -908,6 +909,7 @@ static void testNativeStackFormatter() {
 			EXPECT(view.find("TypeError: native type error") != std::string::npos);
 			EXPECT(view.find("\n    at ") != std::string::npos);
 		}
+	#endif
 	}
 }
 
@@ -961,6 +963,7 @@ static void testStackStringRethrows() {
 	Var nestedNativeThrow = globals["nestedNativeThrow"];
 	Var rethrowFn = globals["rethrowNative"];
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	const String* firstStack = 0;
 	try {
 		try {
@@ -980,6 +983,7 @@ static void testStackStringRethrows() {
 			EXPECT(firstStack == errorObject->getStackString());
 		}
 	}
+#endif
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 	gFirstTrackedStackString = 0;
@@ -992,12 +996,14 @@ static void testStackStringRethrows() {
 		Error* errorObject = nested.asErrorObject();
 		EXPECT(errorObject != 0);
 		if (errorObject != 0) {
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			const String* stackString = errorObject->getStackString();
 			EXPECT(stackString != 0);
 			if (stackString != 0) {
 				const std::string view = stackString->toUTF8String();
 				EXPECT(view.find("nested rethrow stable") != std::string::npos);
 			}
+		#endif
 		}
 	}
 #if (NUXJS_VERBOSE_EXCEPTIONS)
@@ -1009,6 +1015,7 @@ static void testStackStringRethrows() {
 
 #endif
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 static void testExceptions() {
 	std::cout << std::endl << "***** Exceptions *****" << std::endl << std::endl;
 
@@ -1116,10 +1123,8 @@ static void testExceptions() {
 		}
 	}
 
-#if (NUXJS_VERBOSE_EXCEPTIONS)
 	gFirstTrackedStackString = 0;
 	gTrackedStackMismatch = false;
-#endif
 	try {
 		rethrowFn(nestedNativeThrow);
 		EXPECT(false);
@@ -1135,12 +1140,11 @@ static void testExceptions() {
 			}
 		}
 	}
-#if (NUXJS_VERBOSE_EXCEPTIONS)
 	EXPECT(!gTrackedStackMismatch);
 	gFirstTrackedStackString = 0;
 	gTrackedStackMismatch = false;
-#endif
 }
+#endif
 
 static void testHighLevelAPI() {
 	std::cout << std::endl << "***** High Level API *****" << std::endl << std::endl;
@@ -2117,7 +2121,7 @@ void testTables() {
 		UInt32 count = 0;
 		for (Table::Bucket* it = table.getFirst(); it != 0; it = table.getNext(it)) {
 			if (it->valueExists()) {
-					++count;
+				++count;
 			}
 		}
 		EXPECT_EQUAL(count, 21);
@@ -2140,10 +2144,13 @@ int main(int argc, const char* argv[]) {
 		testJSON();
 		testCompilation();
 		testLimits();
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		testExceptions();
+	#endif
 		testHighLevelAPI();
 		readMeSample1();
 		readMeSample2();
+		std::cout << std::endl;
 		if (failureCount == 0) {
 			std::cout << "All " << testCount << " checks passed successfully" << std::endl << std::endl;
 			return 0;
