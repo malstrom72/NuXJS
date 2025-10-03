@@ -1673,25 +1673,22 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
 
 void Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const {
 #if (NUXJS_RLE_OFFSETS)
-	assert(instructionIndex < codeWords.size());
-	UInt32 remaining = instructionIndex;
-	UInt32 i = 0;
-	while (i < opcodeOffsetRuns.size()) {
-		const std::pair<UInt32, UInt32>& run = opcodeOffsetRuns[i];
-		if (remaining < run.second) {
-			out.offset = run.first;
-			out.fileName = sourceUnit->getFileName();
-			sourceUnit->computeLineColumn(out.offset, out.line, out.column);
-			return;
-		}
-		remaining -= run.second;
-		++i;
-	}
-	assert(0);
+        assert(instructionIndex < codeWords.size());
+        assert(!opcodeOffsetRuns.empty());
+        const std::pair<UInt32, UInt32>* begin = opcodeOffsetRuns.begin();
+        const std::pair<UInt32, UInt32>* end = opcodeOffsetRuns.end();
+        const std::pair<UInt32, UInt32>* it = std::upper_bound(begin, end, instructionIndex,
+                        [](UInt32 value, const std::pair<UInt32, UInt32>& entry) { return value < entry.first; });
+        assert(it != begin);
+        --it;
+        out.offset = it->second;
+        out.fileName = sourceUnit->getFileName();
+        sourceUnit->computeLineColumn(out.offset, out.line, out.column);
+        return;
 #else
-	if (opcodeOffsets.empty() || instructionIndex >= opcodeOffsets.size()) {
-		assert(0);
-	}
+        if (opcodeOffsets.empty() || instructionIndex >= opcodeOffsets.size()) {
+                assert(0);
+        }
 	out.offset = opcodeOffsets[instructionIndex];
 	const SourceCodeUnit* unit = sourceUnit;
 	assert(unit != 0);
@@ -2217,62 +2214,60 @@ FunctionScope::~FunctionScope() {
 }
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-static std::string toDecimalString(Int32 value) {
-	Char buffer[32];
-	Char* begin = intToString(buffer, value);
-	std::string result;
-	result.reserve(static_cast<size_t>((buffer + 32) - begin));
-	for (const Char* p = begin; p != buffer + 32; ++p) {
-		result.push_back(static_cast<char>(*p));
-	}
-	return result;
+static void appendDecimalString(Vector<Char>& buffer, Int32 value) {
+        Char digits[32];
+        Char* begin = intToString(digits, value);
+        buffer.insert(buffer.end(), begin, digits + 32);
 }
 
-static std::string buildStackTraceText(const Value& exceptionValue, const std::vector<StackFrameInfo>& frames) {
-	std::string result;
-	Error* errorObject = exceptionValue.asError();
-	if (errorObject != 0) {
-		const String* name = errorObject->getErrorName();
-		result = name->toUTF8String();
-		const String* message = errorObject->getErrorMessage();
-		if (message != 0) {
-			result.append(": ");
-			result.append(message->toUTF8String());
-		}
-	}
-	for (size_t i = 0; i < frames.size(); ++i) {
-		result.append("\n    at ");
-		const StackFrameInfo& frame = frames[i];
-		std::string location;
-		if (frame.location.fileName != 0) {
-			location = frame.location.fileName->toUTF8String();
-		}
-		if (location.empty()) {
-			location = ANONYMOUS_SCRIPT_STRING.toUTF8String();
-		}
-		if (frame.location.line > 0) {
-			location.push_back(':');
-			location.append(toDecimalString(frame.location.line));
-			if (frame.location.column > 0) {
-				location.push_back(':');
-				location.append(toDecimalString(frame.location.column));
-			}
-		}
-		if (frame.functionName != 0 && !frame.functionName->empty()) {
-			std::string functionLabel = frame.functionName->toUTF8String();
-			if (!functionLabel.empty()) {
-				result.append(functionLabel);
-				result.append(" (");
-				result.append(location);
-				result.push_back(')');
-			} else {
-				result.append(location);
-			}
-		} else {
-			result.append(location);
-		}
-	}
-	return result;
+static void appendString(Vector<Char>& buffer, const String* value) {
+        if (value != 0 && !value->empty()) {
+                buffer.insert(buffer.end(), value->begin(), value->end());
+        }
+}
+
+static void appendASCII(Vector<Char>& buffer, const char* literal) {
+        while (*literal != 0) {
+                buffer.push(static_cast<Char>(*literal));
+                ++literal;
+        }
+}
+
+static const String* buildStackTraceText(Heap& heap, const Value& exceptionValue, const std::vector<StackFrameInfo>& frames) {
+        Vector<Char> buffer(&heap);
+        Error* errorObject = exceptionValue.asError();
+        if (errorObject != 0) {
+                appendString(buffer, errorObject->getErrorName());
+                const String* message = errorObject->getErrorMessage();
+                if (message != 0 && !message->empty()) {
+                        appendASCII(buffer, ": ");
+                        appendString(buffer, message);
+                }
+        }
+        for (size_t i = 0; i < frames.size(); ++i) {
+                appendASCII(buffer, "\n    at ");
+                const StackFrameInfo& frame = frames[i];
+                const String* fileName = (frame.location.fileName != 0 && !frame.location.fileName->empty())
+                                ? frame.location.fileName : &ANONYMOUS_SCRIPT_STRING;
+                const bool hasFunctionName = (frame.functionName != 0 && !frame.functionName->empty());
+                if (hasFunctionName) {
+                        appendString(buffer, frame.functionName);
+                        appendASCII(buffer, " (");
+                }
+                appendString(buffer, fileName);
+                if (frame.location.line > 0) {
+                        buffer.push(static_cast<Char>(':'));
+                        appendDecimalString(buffer, frame.location.line);
+                        if (frame.location.column > 0) {
+                                buffer.push(static_cast<Char>(':'));
+                                appendDecimalString(buffer, frame.location.column);
+                        }
+                }
+                if (hasFunctionName) {
+                        buffer.push(static_cast<Char>(')'));
+                }
+        }
+        return new(heap) String(heap.managed(), buffer.begin(), buffer.end());
 }
 
 void Processor::collectStackFrames(std::vector<StackFrameInfo>& frames) const {
@@ -2630,12 +2625,11 @@ void Processor::throwVirtualException(const Value& exception) {
 			std::vector<StackFrameInfo> frames;
 			collectStackFrames(frames);
 			assert(!frames.empty());
-			const std::string formatted = buildStackTraceText(exception, frames);
-			stackString = new(heap) String(heap.managed(), formatted);
-			assert(stackString != 0);
-			errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-		}
-	}
+                        stackString = buildStackTraceText(heap, exception, frames);
+                        assert(stackString != 0);
+                        errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+                }
+        }
 #endif
 	if (firstCatcher == 0) { // No JS catcher: throw a ScriptException (do not return)
 		reset();
@@ -3180,43 +3174,35 @@ const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e
 void Compiler::error(ErrorType type, const char* message) { ScriptException::throwError(heap, type, message); }
 
 #if (NUXJS_VERBOSE_EXCEPTIONS) && (NUXJS_RLE_OFFSETS)
-static void pushOpcodeOffsetRun(Vector<std::pair<UInt32, UInt32> >& runs, UInt32 offset) {
-	if (!runs.empty()) {
-		std::pair<UInt32, UInt32>& last = runs[runs.size() - 1];
-		if (last.first == offset) {
-			++last.second;
-			return;
-		}
-	}
-	runs.push(std::pair<UInt32, UInt32>(offset, 1));
+static void pushOpcodeOffsetRun(Vector<std::pair<UInt32, UInt32> >& runs, UInt32 instructionIndex, UInt32 offset) {
+        if (!runs.empty() && runs[runs.size() - 1].second == offset) {
+                return;
+        }
+        runs.push(std::pair<UInt32, UInt32>(instructionIndex, offset));
 }
 
-static UInt32 popOpcodeOffsetRun(Vector<std::pair<UInt32, UInt32> >& runs) {
-	UInt32 value = 0;
-	if (!runs.empty()) {
-		std::pair<UInt32, UInt32>& last = runs[runs.size() - 1];
-		value = last.first;
-		if (last.second > 1) {
-			--last.second;
-		} else {
-			runs.pop();
-		}
-	}
-	return value;
+static UInt32 popOpcodeOffsetRun(Vector<std::pair<UInt32, UInt32> >& runs, UInt32 instructionIndex) {
+        UInt32 value = 0;
+        if (!runs.empty()) {
+                value = runs[runs.size() - 1].second;
+                if (runs[runs.size() - 1].first == instructionIndex) {
+                        runs.pop();
+                }
+        }
+        return value;
 }
 
-static void appendOpcodeOffsetRuns(Vector<std::pair<UInt32, UInt32> >& dest, const Vector<std::pair<UInt32, UInt32> >& src) {
-	if (src.empty()) {
-		return;
-	}
-	UInt32 start = 0;
-	if (!dest.empty() && dest[dest.size() - 1].first == src[0].first) {
-		dest[dest.size() - 1].second += src[0].second;
-		start = 1;
-	}
-	for (UInt32 i = start; i < src.size(); ++i) {
-		dest.push(src[i]);
-	}
+static void appendOpcodeOffsetRuns(Vector<std::pair<UInt32, UInt32> >& dest, const Vector<std::pair<UInt32, UInt32> >& src, UInt32 baseIndex) {
+        if (src.empty()) {
+                return;
+        }
+        UInt32 start = 0;
+        if (!dest.empty() && dest[dest.size() - 1].second == src[0].second) {
+                start = 1;
+        }
+        for (UInt32 i = start; i < src.size(); ++i) {
+                dest.push(std::pair<UInt32, UInt32>(src[i].first + baseIndex, src[i].second));
+        }
 }
 #endif
 
@@ -3243,78 +3229,86 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 			case Processor::WRITE_LOCAL_OP: replacementOpcode = Processor::WRITE_LOCAL_POP_OP; break;
 			case Processor::WRITE_NAMED_OP: replacementOpcode = Processor::WRITE_NAMED_POP_OP; break;
 			case Processor::SET_PROPERTY_OP: replacementOpcode = Processor::SET_PROPERTY_POP_OP; break;
-			case Processor::REPUSH_OP:
-			case Processor::CONST_OP:
-			case Processor::VOID_OP: {
-			#if (NUXJS_VERBOSE_EXCEPTIONS)
-				if (!code.empty()) {
-			#endif
-				code.pop();
-			#if (NUXJS_VERBOSE_EXCEPTIONS)
-				}
-#if (NUXJS_RLE_OFFSETS)
-				popOpcodeOffsetRun(opcodeOffsetRuns);
-#else
-				if (!opcodeOffsets.empty()) {
-					opcodeOffsets.pop();
-				}
+                        case Processor::REPUSH_OP:
+                        case Processor::CONST_OP:
+                        case Processor::VOID_OP: {
+                                if (!code.empty()) {
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+                                        const UInt32 removedIndex = static_cast<UInt32>(code.size() - 1);
 #endif
-			#endif
-				lastEmitted = Processor::INVALID_OP;
-				return;
-			}
+                                        code.pop();
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+#if (NUXJS_RLE_OFFSETS)
+                                        popOpcodeOffsetRun(opcodeOffsetRuns, removedIndex);
+#else
+                                        if (!opcodeOffsets.empty()) {
+                                                opcodeOffsets.pop();
+                                        }
+#endif
+#endif
+                                }
+                                lastEmitted = Processor::INVALID_OP;
+                                return;
+                        }
 			default: break;
 		}
 		if (replacementOpcode != Processor::INVALID_OP) {
 			const Int32 oldOperand = Processor::unpackInstruction(code.end()[-1]).second;
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
-			UInt32 lastOffset = 0;
-		#if (NUXJS_RLE_OFFSETS)
-			lastOffset = popOpcodeOffsetRun(opcodeOffsetRuns);
-		#else
-			if (!opcodeOffsets.empty()) {
-				lastOffset = opcodeOffsets[opcodeOffsets.size() - 1];
-				opcodeOffsets.pop();
-			}
-		#endif
-		#endif
-			code.pop();
-			code.push(Processor::packInstruction(replacementOpcode, oldOperand));
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
-		#if (NUXJS_RLE_OFFSETS)
-			pushOpcodeOffsetRun(opcodeOffsetRuns, lastOffset);
-		#else
-			opcodeOffsets.push(lastOffset);
-		#endif
-		#endif
-			lastEmitted = replacementOpcode;
-			return;
-		}
-	}
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	const UInt32 sourceOffset = static_cast<UInt32>(compiler.p - compiler.code->getSourceUnit()->getSource()->begin());
-	assert(sourceOffset <= compiler.code->getSourceUnit()->getSource()->size());
+                #if (NUXJS_VERBOSE_EXCEPTIONS)
+                        UInt32 lastOffset = 0;
+#if (NUXJS_RLE_OFFSETS)
+                        if (!code.empty()) {
+                                const UInt32 removedIndex = static_cast<UInt32>(code.size() - 1);
+                                lastOffset = popOpcodeOffsetRun(opcodeOffsetRuns, removedIndex);
+                                code.pop();
+                        }
+#else
+                        if (!opcodeOffsets.empty()) {
+                                lastOffset = opcodeOffsets[opcodeOffsets.size() - 1];
+                                opcodeOffsets.pop();
+                        }
+                        code.pop();
 #endif
-	code.push(Processor::packInstruction(opcode, operand));
+#else
+                        code.pop();
+#endif
+                        code.push(Processor::packInstruction(replacementOpcode, oldOperand));
+                #if (NUXJS_VERBOSE_EXCEPTIONS)
+                #if (NUXJS_RLE_OFFSETS)
+                        pushOpcodeOffsetRun(opcodeOffsetRuns, static_cast<UInt32>(code.size() - 1), lastOffset);
+#else
+                        opcodeOffsets.push(lastOffset);
+#endif
+                #endif
+                        lastEmitted = replacementOpcode;
+                        return;
+                }
+        }
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+        const UInt32 sourceOffset = static_cast<UInt32>(compiler.p - compiler.code->getSourceUnit()->getSource()->begin());
+        assert(sourceOffset <= compiler.code->getSourceUnit()->getSource()->size());
+#endif
+        code.push(Processor::packInstruction(opcode, operand));
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 #if (NUXJS_RLE_OFFSETS)
-	pushOpcodeOffsetRun(opcodeOffsetRuns, sourceOffset);
+        pushOpcodeOffsetRun(opcodeOffsetRuns, static_cast<UInt32>(code.size() - 1), sourceOffset);
 #else
-	opcodeOffsets.push(sourceOffset);
+        opcodeOffsets.push(sourceOffset);
 #endif
 #endif
 	lastEmitted = opcode;
 }
 
 void Compiler::CodeSection::insertSection(const CodeSection& section) {
-	const Int32 stackAdjust = stackDepth - section.initialStackDepth;
-	lastEmitted = Processor::INVALID_OP;
-	code.insert(code.end(), section.code.begin(), section.code.end());
+        const Int32 stackAdjust = stackDepth - section.initialStackDepth;
+        lastEmitted = Processor::INVALID_OP;
+        const UInt32 baseIndex = static_cast<UInt32>(code.size());
+        code.insert(code.end(), section.code.begin(), section.code.end());
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 #if (NUXJS_RLE_OFFSETS)
-	appendOpcodeOffsetRuns(opcodeOffsetRuns, section.opcodeOffsetRuns);
+        appendOpcodeOffsetRuns(opcodeOffsetRuns, section.opcodeOffsetRuns, baseIndex);
 #else
-	opcodeOffsets.insert(opcodeOffsets.end(), section.opcodeOffsets.begin(), section.opcodeOffsets.end());
+        opcodeOffsets.insert(opcodeOffsets.end(), section.opcodeOffsets.begin(), section.opcodeOffsets.end());
 #endif
 #endif
 	stackDepth = section.stackDepth + stackAdjust;
@@ -4861,11 +4855,11 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	code->maxStackDepth = std::max(mainSection.maxStackDepth, setupSection.maxStackDepth);
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 #if (NUXJS_RLE_OFFSETS)
-	code->opcodeOffsetRuns.resize(0);
-	appendOpcodeOffsetRuns(code->opcodeOffsetRuns, setupSection.opcodeOffsetRuns);
-	appendOpcodeOffsetRuns(code->opcodeOffsetRuns, mainSection.opcodeOffsetRuns);
-	setupSection.opcodeOffsetRuns.resize(0);
-	mainSection.opcodeOffsetRuns.resize(0);
+        code->opcodeOffsetRuns.resize(0);
+        appendOpcodeOffsetRuns(code->opcodeOffsetRuns, setupSection.opcodeOffsetRuns, 0);
+        appendOpcodeOffsetRuns(code->opcodeOffsetRuns, mainSection.opcodeOffsetRuns, static_cast<UInt32>(setupSection.code.size()));
+        setupSection.opcodeOffsetRuns.resize(0);
+        mainSection.opcodeOffsetRuns.resize(0);
 #else
 	code->opcodeOffsets.resize(0);
 	code->opcodeOffsets.reserve(setupSection.opcodeOffsets.size() + mainSection.opcodeOffsets.size());
