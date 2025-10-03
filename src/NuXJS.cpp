@@ -3212,7 +3212,7 @@ void Compiler::emit(Processor::Opcode opcode, Int32 operand) {
 		error(RANGE_ERROR, "Internal compiler limitations reached. Reduce code complexity.");
 	}
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	currentSection->emit(opcode, operand, p - sourceUnitBase);
+	currentSection->emit(opcode, operand, static_cast<UInt32>(p - sourceUnitBase));
 #else
 	currentSection->emit(opcode, operand);
 #endif
