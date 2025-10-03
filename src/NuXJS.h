@@ -862,15 +862,21 @@ class SourceCodeUnit : public GCItem {
 	Source metadata such as filenames and line/column tables live on the associated `SourceCodeUnit`; full-script
 	code objects keep their legacy `source` pointer in sync with the unit's source string.
 **/
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-struct SourceLocation;
-#endif
 class Code : public Object {
 	friend class FunctionScope;
 	friend class Compiler; // FIX : maybe not one day?
 	
 	public:
 		typedef Object super;
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		struct SourceLocation {
+			const String* fileName; // will not be 0
+			const String* functionName; // can be 0 (if Code is not a function) or empty string (if anonymous function)
+			UInt32 offset;
+			UInt32 line;
+			UInt32 column;
+		};
+	#endif
 
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUnit);
@@ -884,11 +890,11 @@ class Code : public Object {
 		const Constants* getConstants() const { return constants; }
 		const CodeWord* getCodeWords() const { return codeWords.begin(); }
 		UInt32 getCodeSize() const { return codeWords.size(); }
-		const String* getName() const { return name; }		// can be 0
+		const String* getName() const { return name; }		// can be 0 (which means Code is not a function) or empty string (which means anonymous function)
 		const String* getSource() const { assert(source != 0); return source; }
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		SourceCodeUnit* getSourceUnit() const { assert(sourceUnit != 0); return sourceUnit; }
-		void lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const;
+		SourceLocation lookupSourceLocation(const CodeWord* instructionPointer) const;
 	#endif
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
@@ -1281,22 +1287,6 @@ struct ConstStringException : public Exception {
 	const char* stringPointer;
 };
 
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-struct SourceLocation {
-	SourceLocation() : fileName(0), offset(0), line(0), column(0) { }
-	const String* fileName;
-	UInt32 offset;
-	UInt32 line;
-	UInt32 column;
-};
-
-struct StackFrameInfo {
-	StackFrameInfo() : functionName(0), location() { }
-	const String* functionName;
-	SourceLocation location;
-};
-#endif
-
 struct ScriptException : public Exception {
 	typedef Exception super;
 	static void throwError(Heap& heap, ErrorType type, const String* message = 0);
@@ -1305,13 +1295,12 @@ struct ScriptException : public Exception {
 	virtual const char* what() const throw() { return utf8String.c_str(); }
 	virtual ~ScriptException() throw() { }
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	const char* formatStackTrace() const;
+	const char* getStackTrace() const;
 #endif
 	Value value;
 	std::string utf8String;
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	mutable std::string formattedStackCache;
-	mutable bool formattedStackComputed;
+	mutable std::string stackTrace;
 #endif
 	Error* asErrorObject() const;
 };
@@ -1689,7 +1678,7 @@ class Processor : public GCItem {
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
 		void throwVirtualException(const Value& exception);
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		void collectStackFrames(std::vector<StackFrameInfo>& frames) const;
+		void addStackTrace(const Value& exception) const;
 	#endif
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);

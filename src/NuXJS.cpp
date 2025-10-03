@@ -1668,19 +1668,19 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
 	return true;
 }
 
-
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-void Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const {
-	assert(instructionIndex < codeWords.size());
-	assert(!codeOffsets.empty());
+Code::SourceLocation Code::lookupSourceLocation(const CodeWord* instructionPointer) const {
+	assert(instructionPointer >= codeWords.begin() && instructionPointer < codeWords.end());
+	const UInt32 instructionIndex = static_cast<UInt32>(instructionPointer - codeWords.begin());
 	const UInt32* begin = codeOffsets.begin();
-	const UInt32* end = codeOffsets.end();
-	const UInt32* it = std::upper_bound(begin, end, instructionIndex);
-	assert(it != begin);
-	assert(0 <= it - 1 - begin && it - 1 - begin < sourceOffsets.size());
-	out.offset = sourceOffsets[it - 1 - begin];
-	out.fileName = sourceUnit->getFileName();
-	sourceUnit->computeLineColumn(out.offset, out.line, out.column);
+	const UInt32* it = std::upper_bound(begin, const_cast<const UInt32*>(codeOffsets.end()), instructionIndex);
+	SourceLocation location;
+	assert(it != begin && 0 <= it - 1 - begin && it - 1 - begin < sourceOffsets.size());
+	location.offset = sourceOffsets[it - 1 - begin];
+	location.fileName = sourceUnit->getFileName();
+	location.functionName = name;
+	sourceUnit->computeLineColumn(location.offset, location.line, location.column);
+	return location;
 }
 #endif
 
@@ -1962,12 +1962,12 @@ bool Error::deleteOwnProperty(Runtime& rt, const Value& key) {
 void Error::constructCompleteObject(Runtime& rt) const {
 	if (message != 0) {
 		completeObject->setOwnProperty(rt, &MESSAGE_STRING, message, DONT_ENUM_FLAG);
-#if (NUXJS_VERBOSE_EXCEPTIONS)
 	}
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	if (stack != 0) {
 		completeObject->setOwnProperty(rt, &STACK_STRING, stack, DONT_ENUM_FLAG);
-#endif
 	}
+#endif
 }
 
 /* --- Arguments --- */
@@ -2191,87 +2191,6 @@ FunctionScope::~FunctionScope() {
 	}
 }
 
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-static void appendDecimalString(Vector<Char>& buffer, Int32 value) {
-        Char digits[32];
-        Char* begin = intToString(digits, value);
-        buffer.insert(buffer.end(), begin, digits + 32);
-}
-
-static void appendString(Vector<Char>& buffer, const String* value) {
-        if (value != 0 && !value->empty()) {
-                buffer.insert(buffer.end(), value->begin(), value->end());
-        }
-}
-
-static void appendASCII(Vector<Char>& buffer, const char* literal) {
-        while (*literal != 0) {
-                buffer.push(static_cast<Char>(*literal));
-                ++literal;
-        }
-}
-
-static const String* buildStackTraceText(Heap& heap, const Value& exceptionValue, const std::vector<StackFrameInfo>& frames) {
-        Vector<Char> buffer(&heap);
-        Error* errorObject = exceptionValue.asError();
-        if (errorObject != 0) {
-                appendString(buffer, errorObject->getErrorName());
-                const String* message = errorObject->getErrorMessage();
-                if (message != 0 && !message->empty()) {
-                        appendASCII(buffer, ": ");
-                        appendString(buffer, message);
-                }
-        }
-        for (size_t i = 0; i < frames.size(); ++i) {
-                appendASCII(buffer, "\n    at ");
-                const StackFrameInfo& frame = frames[i];
-                const String* fileName = (frame.location.fileName != 0 && !frame.location.fileName->empty())
-                                ? frame.location.fileName : &ANONYMOUS_SCRIPT_STRING;
-                const bool hasFunctionName = (frame.functionName != 0 && !frame.functionName->empty());
-                if (hasFunctionName) {
-                        appendString(buffer, frame.functionName);
-                        appendASCII(buffer, " (");
-                }
-                appendString(buffer, fileName);
-                if (frame.location.line > 0) {
-                        buffer.push(static_cast<Char>(':'));
-                        appendDecimalString(buffer, frame.location.line);
-                        if (frame.location.column > 0) {
-                                buffer.push(static_cast<Char>(':'));
-                                appendDecimalString(buffer, frame.location.column);
-                        }
-                }
-                if (hasFunctionName) {
-                        buffer.push(static_cast<Char>(')'));
-                }
-        }
-        return new(heap) String(heap.managed(), buffer.begin(), buffer.end());
-}
-
-void Processor::collectStackFrames(std::vector<StackFrameInfo>& frames) const {
-	frames.clear();
-	const Frame* frameWalker = currentFrame;
-	const CodeWord* nextIP = ip;
-	while (frameWalker != 0 && nextIP != 0) {
-		const Code* frameCode = frameWalker->code;
-		const CodeWord* begin = frameCode->getCodeWords();
-		const UInt32 instructionIndex = static_cast<UInt32>((nextIP - begin) - 1);
-		SourceLocation location;
-		const SourceCodeUnit* unit = frameCode->getSourceUnit();
-		location.fileName = unit->getFileName();
-		frameCode->lookupSourceLocation(instructionIndex, location);
-		assert(location.fileName != 0);
-		location.fileName = unit->getFileName();
-		StackFrameInfo info;
-		info.functionName = frameCode->getName(); // can be 0
-		info.location = location;
-		frames.push_back(info);
-		nextIP = frameWalker->returnIP;
-		frameWalker = frameWalker->previousFrame;
-	}
-}
-
-#endif
 /* --- ScriptException --- */
 	
 void ScriptException::throwError(Heap& heap, ErrorType type, const String* message) {
@@ -2283,33 +2202,23 @@ void ScriptException::throwError(Heap& heap, ErrorType type, const char* message
 }
 
 ScriptException::ScriptException(Heap& heap, const Value& value) throw()
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		: value(value), utf8String(value.toString(heap)->toUTF8String())
-		, formattedStackCache(), formattedStackComputed(false)
+	: value(value), utf8String(value.toString(heap)->toUTF8String())
 {
 }
 
-const char* ScriptException::formatStackTrace() const {
-	if (!formattedStackComputed) {
-		formattedStackCache.clear();
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+const char* ScriptException::getStackTrace() const {
+	if (stackTrace.empty()) {
 		Error* errorObject = value.asError();
-		if (errorObject != 0) {
-			const String* stackString = errorObject->getStackString();
-			if (stackString != 0) {
-				formattedStackCache = stackString->toUTF8String();
-				formattedStackComputed = true;
-			}
-		}
-		if (!formattedStackComputed) {
-			formattedStackComputed = true;
+		const String* stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
+		if (stackString != 0) {
+			stackTrace = stackString->toUTF8String();
 		}
 	}
-	return (formattedStackCache.empty() ? utf8String.c_str() : formattedStackCache.c_str());
+	return stackTrace.c_str();
 }
-	#else
-		: value(value), utf8String(value.toString(heap)->toUTF8String()) { }
-	#endif
-		
+#endif
+
 /* --- EvalFunction --- */
 
 static struct EvalFunction : public Function {
@@ -2594,24 +2503,73 @@ void Processor::popCatcher() {
 	delete killMe;
 }
 
-void Processor::throwVirtualException(const Value& exception) {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
+static void appendString(Vector<Char>& buffer, const String* value) {
+	buffer.insert(buffer.end(), value->begin(), value->end());
+}
+
+static void appendASCII(Vector<Char>& buffer, const char* literal) {
+	while (*literal != 0) {
+		buffer.push(static_cast<Char>(*literal));
+		++literal;
+	}
+}
+
+void Processor::addStackTrace(const Value& exception) const {
 	Error* errorObject = exception.asError();
 	if (errorObject != 0) {
 		const String* stackString = errorObject->getStackString();
 		if (stackString == 0) {
-			std::vector<StackFrameInfo> frames;
-			collectStackFrames(frames);
-			assert(!frames.empty());
-                        stackString = buildStackTraceText(heap, exception, frames);
-                        assert(stackString != 0);
-                        errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
-                }
-        }
-	if (firstCatcher == 0) { // No JS catcher: throw a ScriptException (do not return)
-#else
-	if (firstCatcher == 0) { // FIX: what exception to throw here?
+			Vector<Char> buffer(&heap);
+			appendString(buffer, errorObject->getErrorName());
+			const String* message = errorObject->getErrorMessage();
+			if (message != 0 && !message->empty()) {
+				appendASCII(buffer, ": ");
+				appendString(buffer, message);
+			}
+
+			Char digits[32];
+			const Frame* frameWalker = currentFrame;
+			const CodeWord* nextIP = ip;
+			while (frameWalker != 0 && nextIP != 0) {
+				const Code::SourceLocation location = frameWalker->code->lookupSourceLocation(nextIP - 1);
+				
+				appendASCII(buffer, "\n    at ");
+				if (location.functionName != 0 && !location.functionName->empty()) {
+					appendString(buffer, location.functionName);
+					appendASCII(buffer, " (");
+				}
+				appendString(buffer, location.fileName);
+				if (location.line > 0) {
+					buffer.push(static_cast<Char>(':'));
+					const Char* digitsBegin = intToString(digits, location.line);
+					buffer.insert(buffer.end(), digitsBegin, digits + 32);
+					if (location.column > 0) {
+						buffer.push(static_cast<Char>(':'));
+						digitsBegin = intToString(digits, location.column);
+						buffer.insert(buffer.end(), digitsBegin, digits + 32);
+					}
+				}
+				if (location.functionName != 0 && !location.functionName->empty()) {
+					buffer.push(static_cast<Char>(')'));
+				}
+
+				nextIP = frameWalker->returnIP;
+				frameWalker = frameWalker->previousFrame;
+			}
+
+			stackString = new(heap) String(heap.managed(), buffer.begin(), buffer.end());
+			errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+		}
+	}
+}
 #endif
+
+void Processor::throwVirtualException(const Value& exception) {
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	addStackTrace(exception);
+#endif
+	if (firstCatcher == 0) { // No JS catcher: throw a ScriptException
 		reset();
 		throw ScriptException(heap, exception);
 	}
@@ -3136,17 +3094,11 @@ struct Compiler::SemanticScope {
 };
 
 Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter)
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-	: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor)
-	, setupSection(heap, 1), mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true)
-	, withScopeCounter(0), nestCounter(initialNestCounter)
+	: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
+	, mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
+	, nestCounter(initialNestCounter)
 {
 }
-	#else
-		: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
-		, mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
-		, nestCounter(initialNestCounter) { }
-	#endif
 
 const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e) {
 	if (b == e) {
@@ -3195,7 +3147,9 @@ static void appendSourceMapping(Vector<UInt32>& toCodeOffsets, Vector<UInt32>& t
 		toSourceOffsets.push(fromSourceOffsets[i]);
 	}
 }
+#endif
 
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 void Compiler::CodeSection::emit(Compiler& compiler, Processor::Opcode opcode, Int32 operand) {
 #else
 void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
@@ -3219,15 +3173,14 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 			case Processor::REPUSH_OP:
 			case Processor::CONST_OP:
 			case Processor::VOID_OP: {
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-                                if (!code.empty()) {
-                                        const UInt32 removedIndex = static_cast<UInt32>(code.size() - 1);
-#endif
+				assert(!code.empty());
+			#if (NUXJS_VERBOSE_EXCEPTIONS)
+				const UInt32 removedIndex = static_cast<UInt32>(code.size() - 1);
+			#endif
 				code.pop();
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-                                        popOpcodeOffsetRun(codeOffsets, sourceOffsets, removedIndex);
-                                }
-#endif
+				#if (NUXJS_VERBOSE_EXCEPTIONS)
+				popOpcodeOffsetRun(codeOffsets, sourceOffsets, removedIndex);
+			#endif
 				lastEmitted = Processor::INVALID_OP;
 				return;
 			}
@@ -3235,31 +3188,25 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 		}
 		if (replacementOpcode != Processor::INVALID_OP) {
 			const Int32 oldOperand = Processor::unpackInstruction(code.end()[-1]).second;
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-                        UInt32 lastOffset = 0;
-                        if (!code.empty()) {
-                                const UInt32 removedIndex = static_cast<UInt32>(code.size() - 1);
-                                lastOffset = popOpcodeOffsetRun(codeOffsets, sourceOffsets, removedIndex);
-#endif
+			assert(!code.empty());
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
+			const UInt32 removedIndex = static_cast<UInt32>(code.size() - 1);
+			const UInt32 lastOffset = popOpcodeOffsetRun(codeOffsets, sourceOffsets, removedIndex);
+		#endif
 			code.pop();
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-                        }
-#endif
 			code.push(Processor::packInstruction(replacementOpcode, oldOperand));
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-                        pushOpcodeOffsetRun(codeOffsets, sourceOffsets, static_cast<UInt32>(code.size() - 1), lastOffset);
-#endif
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
+			pushOpcodeOffsetRun(codeOffsets, sourceOffsets, static_cast<UInt32>(code.size() - 1), lastOffset);
+		#endif
 			lastEmitted = replacementOpcode;
 			return;
 		}
 	}
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-        const UInt32 sourceOffset = static_cast<UInt32>(compiler.p - compiler.code->getSourceUnit()->getSource()->begin());
-        assert(sourceOffset <= compiler.code->getSourceUnit()->getSource()->size());
-#endif
 	code.push(Processor::packInstruction(opcode, operand));
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-        pushOpcodeOffsetRun(codeOffsets, sourceOffsets, static_cast<UInt32>(code.size() - 1), sourceOffset);
+	const UInt32 sourceOffset = static_cast<UInt32>(compiler.p - compiler.code->getSourceUnit()->getSource()->begin());
+	assert(sourceOffset <= compiler.code->getSourceUnit()->getSource()->size());
+	pushOpcodeOffsetRun(codeOffsets, sourceOffsets, static_cast<UInt32>(code.size() - 1), sourceOffset);
 #endif
 	lastEmitted = opcode;
 }
@@ -4787,14 +4734,6 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	p = b;
 	this->e = e;
 	acceptInOperator = true;
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	setupSection.codeOffsets.resize(0);
-	setupSection.sourceOffsets.resize(0);
-	mainSection.codeOffsets.resize(0);
-	mainSection.sourceOffsets.resize(0);
-	code->codeOffsets.resize(0);
-	code->sourceOffsets.resize(0);
-#endif
 	
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
 	if (compilingFor == FOR_EVAL) {
@@ -5435,8 +5374,8 @@ Code* Runtime::compileEvalCode(const String* expression) {
 }
 
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
-#if (NUXJS_VERBOSE_EXCEPTIONS)
 	const String* effectiveFileName = (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING);
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 	const String* retainedSource = (heap.managed().owns(&source)
 			? &source : new(heap) String(heap.managed(), source.begin(), source.end()));
 	SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), retainedSource, effectiveFileName);
@@ -5453,9 +5392,7 @@ Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
 	#endif
 	}
 	catch (const ScriptException& x) {
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		throw CompilationError(x, effectiveFileName, compiler);
-	#endif
 	}
 	return code;
 }

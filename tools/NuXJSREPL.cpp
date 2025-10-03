@@ -665,6 +665,7 @@ int testMain(int argc, const char* argv[]) {
 						rt.checkTimeOut();
 						peakMemory = std::max<size_t>(peakMemory, heap.size());
 					} while (!done);
+					
 					if (!doSuppressStdErr) {
 						Value v = processor.getResult();
 						std::wcerr << L"\t=" << v.toString(heap)->toWideString() << std::endl;
@@ -690,9 +691,9 @@ int testMain(int argc, const char* argv[]) {
 			#if (NUXJS_VERBOSE_EXCEPTIONS)
 				bool printMetadata = !useLegacyExceptionOutput;
 				if (printMetadata) {
-					const char* formattedStack = x.formatStackTrace();
-					if (formattedStack != 0 && formattedStack[0] != '\0') {
-						stackLine = std::string("!!!! stack: ") + formattedStack;
+					const char* stackTrace = x.getStackTrace();
+					if (stackTrace[0] != '\0') {
+						stackLine = std::string("!!!! stack: ") + stackTrace;
 						const std::wstring stackWide(stackLine.begin(), stackLine.end());
 						std::wcout << stackWide << std::endl;
 					}
