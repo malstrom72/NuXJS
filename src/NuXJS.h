@@ -1799,7 +1799,11 @@ class Compiler : public GCItem {
 			}
 			
 		#if (NUXJS_VERBOSE_EXCEPTIONS)
-			void emit(Compiler& compiler, Processor::Opcode opcode, Int32 operand);
+			void emit(Processor::Opcode opcode, Int32 operand, UInt32 sourceOffset);
+			void pushSourceMapping(UInt32 offset);
+			UInt32 popSourceMapping();
+			void exportSourceMapping(Vector<UInt32>& toCodeOffsets, Vector<UInt32>& toSourceOffsets
+					, UInt32 codeBase) const;
 		#else
 			void emit(Processor::Opcode opcode, Int32 operand);
 		#endif
@@ -1904,6 +1908,9 @@ class Compiler : public GCItem {
 		const Char* b;
 		const Char* p;
 		const Char* e;
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		const Char* sourceUnitBase;
+	#endif
 		CodeSection* currentSection;
 		bool acceptInOperator;
 		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter

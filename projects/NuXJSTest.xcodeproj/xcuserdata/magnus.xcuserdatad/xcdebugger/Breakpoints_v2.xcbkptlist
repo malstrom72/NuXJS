@@ -507,8 +507,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "2698"
             endingLineNumber = "2698"
-            landmarkName = "unknown"
-            landmarkType = "0">
+            landmarkName = "Processor::innerRun()"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -523,8 +523,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "3084"
             endingLineNumber = "3084"
-            landmarkName = "Statement"
-            landmarkType = "13">
+            landmarkName = "CompilerSemanticScope"
+            landmarkType = "14">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>
