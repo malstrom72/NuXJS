@@ -39,10 +39,6 @@
 #define NUXJS_VERBOSE_EXCEPTIONS 1
 #endif
 
-#ifndef NUXJS_RLE_OFFSETS
-#define NUXJS_RLE_OFFSETS 1
-#endif
-
 /**
 	These global operator overloads makes it possible to allocate *anything* (and not only GCItems) on Heap. Just
 	remember that (as opposed to GCItems) you need to call the overloaded delete operator explicitly, e.g.
@@ -890,11 +886,7 @@ class Code : public Object {
 		const String* selfName;
 		const String* source;
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-	#if (NUXJS_RLE_OFFSETS)
 		Vector<std::pair<UInt32, UInt32> > opcodeOffsetRuns;
-	#else
-		Vector<UInt32> opcodeOffsets;
-	#endif
 	#endif
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
@@ -1807,11 +1799,7 @@ class Compiler : public GCItem {
 				: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
 				, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth)
 			#if (NUXJS_VERBOSE_EXCEPTIONS)
-			#if (NUXJS_RLE_OFFSETS)
 				, opcodeOffsetRuns(&heap)
-			#else
-				, opcodeOffsets(&heap)
-			#endif
 			#endif
 		 	{
 			}
@@ -1829,11 +1817,7 @@ class Compiler : public GCItem {
 			Int32 stackDepth;
 			Int32 maxStackDepth;
 		#if (NUXJS_VERBOSE_EXCEPTIONS)
-		#if (NUXJS_RLE_OFFSETS)
 			Vector<std::pair<UInt32, UInt32> > opcodeOffsetRuns;
-		#else
-			Vector<UInt32> opcodeOffsets;
-		#endif
 		#endif
 		};
 

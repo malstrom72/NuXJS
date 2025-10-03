@@ -1649,11 +1649,7 @@ Code::Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUni
 	, bloomSet(0)
 	, maxStackDepth(0)
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-#if (NUXJS_RLE_OFFSETS)
 	, opcodeOffsetRuns(&gcList.getHeap())
-#else
-	, opcodeOffsets(&gcList.getHeap())
-#endif
 #endif
 {
 	assert(constants != 0);
@@ -1672,29 +1668,17 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
 #if (NUXJS_VERBOSE_EXCEPTIONS)
 
 void Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const {
-#if (NUXJS_RLE_OFFSETS)
-        assert(instructionIndex < codeWords.size());
-        assert(!opcodeOffsetRuns.empty());
-        const std::pair<UInt32, UInt32>* begin = opcodeOffsetRuns.begin();
-        const std::pair<UInt32, UInt32>* end = opcodeOffsetRuns.end();
-        const std::pair<UInt32, UInt32>* it = std::upper_bound(begin, end, instructionIndex,
-                        [](UInt32 value, const std::pair<UInt32, UInt32>& entry) { return value < entry.first; });
-        assert(it != begin);
-        --it;
-        out.offset = it->second;
-        out.fileName = sourceUnit->getFileName();
-        sourceUnit->computeLineColumn(out.offset, out.line, out.column);
-        return;
-#else
-        if (opcodeOffsets.empty() || instructionIndex >= opcodeOffsets.size()) {
-                assert(0);
-        }
-	out.offset = opcodeOffsets[instructionIndex];
-	const SourceCodeUnit* unit = sourceUnit;
-	assert(unit != 0);
-	out.fileName = unit->getFileName();
-	unit->computeLineColumn(out.offset, out.line, out.column);
-#endif
+	assert(instructionIndex < codeWords.size());
+	assert(!opcodeOffsetRuns.empty());
+	const std::pair<UInt32, UInt32>* begin = opcodeOffsetRuns.begin();
+	const std::pair<UInt32, UInt32>* end = opcodeOffsetRuns.end();
+	const std::pair<UInt32, UInt32>* it = std::upper_bound(begin, end, instructionIndex,
+					[](UInt32 value, const std::pair<UInt32, UInt32>& entry) { return value < entry.first; });
+	assert(it != begin);
+	--it;
+	out.offset = it->second;
+	out.fileName = sourceUnit->getFileName();
+	sourceUnit->computeLineColumn(out.offset, out.line, out.column);
 }
 #endif
 
@@ -3173,7 +3157,7 @@ const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e
 
 void Compiler::error(ErrorType type, const char* message) { ScriptException::throwError(heap, type, message); }
 
-#if (NUXJS_VERBOSE_EXCEPTIONS) && (NUXJS_RLE_OFFSETS)
+#if (NUXJS_VERBOSE_EXCEPTIONS)
 static void pushOpcodeOffsetRun(Vector<std::pair<UInt32, UInt32> >& runs, UInt32 instructionIndex, UInt32 offset) {
         if (!runs.empty() && runs[runs.size() - 1].second == offset) {
                 return;
@@ -3238,13 +3222,7 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 #endif
                                         code.pop();
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-#if (NUXJS_RLE_OFFSETS)
                                         popOpcodeOffsetRun(opcodeOffsetRuns, removedIndex);
-#else
-                                        if (!opcodeOffsets.empty()) {
-                                                opcodeOffsets.pop();
-                                        }
-#endif
 #endif
                                 }
                                 lastEmitted = Processor::INVALID_OP;
@@ -3256,29 +3234,17 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 			const Int32 oldOperand = Processor::unpackInstruction(code.end()[-1]).second;
                 #if (NUXJS_VERBOSE_EXCEPTIONS)
                         UInt32 lastOffset = 0;
-#if (NUXJS_RLE_OFFSETS)
                         if (!code.empty()) {
                                 const UInt32 removedIndex = static_cast<UInt32>(code.size() - 1);
                                 lastOffset = popOpcodeOffsetRun(opcodeOffsetRuns, removedIndex);
                                 code.pop();
                         }
 #else
-                        if (!opcodeOffsets.empty()) {
-                                lastOffset = opcodeOffsets[opcodeOffsets.size() - 1];
-                                opcodeOffsets.pop();
-                        }
-                        code.pop();
-#endif
-#else
                         code.pop();
 #endif
                         code.push(Processor::packInstruction(replacementOpcode, oldOperand));
                 #if (NUXJS_VERBOSE_EXCEPTIONS)
-                #if (NUXJS_RLE_OFFSETS)
                         pushOpcodeOffsetRun(opcodeOffsetRuns, static_cast<UInt32>(code.size() - 1), lastOffset);
-#else
-                        opcodeOffsets.push(lastOffset);
-#endif
                 #endif
                         lastEmitted = replacementOpcode;
                         return;
@@ -3290,11 +3256,7 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 #endif
         code.push(Processor::packInstruction(opcode, operand));
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-#if (NUXJS_RLE_OFFSETS)
         pushOpcodeOffsetRun(opcodeOffsetRuns, static_cast<UInt32>(code.size() - 1), sourceOffset);
-#else
-        opcodeOffsets.push(sourceOffset);
-#endif
 #endif
 	lastEmitted = opcode;
 }
@@ -3305,11 +3267,7 @@ void Compiler::CodeSection::insertSection(const CodeSection& section) {
         const UInt32 baseIndex = static_cast<UInt32>(code.size());
         code.insert(code.end(), section.code.begin(), section.code.end());
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-#if (NUXJS_RLE_OFFSETS)
         appendOpcodeOffsetRuns(opcodeOffsetRuns, section.opcodeOffsetRuns, baseIndex);
-#else
-        opcodeOffsets.insert(opcodeOffsets.end(), section.opcodeOffsets.begin(), section.opcodeOffsets.end());
-#endif
 #endif
 	stackDepth = section.stackDepth + stackAdjust;
 	maxStackDepth = std::max(maxStackDepth, section.maxStackDepth + stackAdjust);
@@ -4821,15 +4779,9 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	this->e = e;
 	acceptInOperator = true;
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-#if (NUXJS_RLE_OFFSETS)
 	setupSection.opcodeOffsetRuns.resize(0);
 	mainSection.opcodeOffsetRuns.resize(0);
 	code->opcodeOffsetRuns.resize(0);
-#else
-	setupSection.opcodeOffsets.resize(0);
-	mainSection.opcodeOffsets.resize(0);
-	code->opcodeOffsets.resize(0);
-#endif
 #endif
 
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
@@ -4854,26 +4806,11 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	code->constants->shrink();
 	code->maxStackDepth = std::max(mainSection.maxStackDepth, setupSection.maxStackDepth);
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-#if (NUXJS_RLE_OFFSETS)
-        code->opcodeOffsetRuns.resize(0);
-        appendOpcodeOffsetRuns(code->opcodeOffsetRuns, setupSection.opcodeOffsetRuns, 0);
-        appendOpcodeOffsetRuns(code->opcodeOffsetRuns, mainSection.opcodeOffsetRuns, static_cast<UInt32>(setupSection.code.size()));
-        setupSection.opcodeOffsetRuns.resize(0);
-        mainSection.opcodeOffsetRuns.resize(0);
-#else
-	code->opcodeOffsets.resize(0);
-	code->opcodeOffsets.reserve(setupSection.opcodeOffsets.size() + mainSection.opcodeOffsets.size());
-	for (UInt32 i = 0; i < setupSection.opcodeOffsets.size(); ++i) {
-		const UInt32 absoluteOffset = setupSection.opcodeOffsets[i];
-		code->opcodeOffsets.push(absoluteOffset);
-	}
-	for (UInt32 i = 0; i < mainSection.opcodeOffsets.size(); ++i) {
-		const UInt32 absoluteOffset = mainSection.opcodeOffsets[i];
-		code->opcodeOffsets.push(absoluteOffset);
-	}
-	setupSection.opcodeOffsets.resize(0);
-	mainSection.opcodeOffsets.resize(0);
-#endif
+	code->opcodeOffsetRuns.resize(0);
+	appendOpcodeOffsetRuns(code->opcodeOffsetRuns, setupSection.opcodeOffsetRuns, 0);
+	appendOpcodeOffsetRuns(code->opcodeOffsetRuns, mainSection.opcodeOffsetRuns, static_cast<UInt32>(setupSection.code.size()));
+	setupSection.opcodeOffsetRuns.resize(0);
+	mainSection.opcodeOffsetRuns.resize(0);
 #endif
 
 	return p;
