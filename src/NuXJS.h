@@ -886,7 +886,8 @@ class Code : public Object {
 		const String* selfName;
 		const String* source;
 	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		Vector<std::pair<UInt32, UInt32> > opcodeOffsetRuns;
+		Vector<UInt32> codeOffsets;
+		Vector<UInt32> sourceOffsets;
 	#endif
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
@@ -1799,7 +1800,8 @@ class Compiler : public GCItem {
 				: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
 				, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth)
 			#if (NUXJS_VERBOSE_EXCEPTIONS)
-				, opcodeOffsetRuns(&heap)
+				, codeOffsets(&heap)
+				, sourceOffsets(&heap)
 			#endif
 		 	{
 			}
@@ -1817,7 +1819,8 @@ class Compiler : public GCItem {
 			Int32 stackDepth;
 			Int32 maxStackDepth;
 		#if (NUXJS_VERBOSE_EXCEPTIONS)
-			Vector<std::pair<UInt32, UInt32> > opcodeOffsetRuns;
+			Vector<UInt32> codeOffsets;
+			Vector<UInt32> sourceOffsets;
 		#endif
 		};
 

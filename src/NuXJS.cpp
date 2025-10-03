@@ -1649,7 +1649,8 @@ Code::Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUni
 	, bloomSet(0)
 	, maxStackDepth(0)
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	, opcodeOffsetRuns(&gcList.getHeap())
+	, codeOffsets(&gcList.getHeap())
+	, sourceOffsets(&gcList.getHeap())
 #endif
 {
 	assert(constants != 0);
@@ -1669,14 +1670,13 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
 
 void Code::lookupSourceLocation(UInt32 instructionIndex, SourceLocation& out) const {
 	assert(instructionIndex < codeWords.size());
-	assert(!opcodeOffsetRuns.empty());
-	const std::pair<UInt32, UInt32>* begin = opcodeOffsetRuns.begin();
-	const std::pair<UInt32, UInt32>* end = opcodeOffsetRuns.end();
-	const std::pair<UInt32, UInt32>* it = std::upper_bound(begin, end, instructionIndex,
-					[](UInt32 value, const std::pair<UInt32, UInt32>& entry) { return value < entry.first; });
+	assert(!codeOffsets.empty());
+	const UInt32* begin = codeOffsets.begin();
+	const UInt32* end = codeOffsets.end();
+	const UInt32* it = std::upper_bound(begin, end, instructionIndex);
 	assert(it != begin);
-	--it;
-	out.offset = it->second;
+	assert(0 <= it - 1 - begin && it - 1 - begin < sourceOffsets.size());
+	out.offset = sourceOffsets[it - 1 - begin];
 	out.fileName = sourceUnit->getFileName();
 	sourceUnit->computeLineColumn(out.offset, out.line, out.column);
 }
@@ -3158,35 +3158,40 @@ const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e
 void Compiler::error(ErrorType type, const char* message) { ScriptException::throwError(heap, type, message); }
 
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-static void pushOpcodeOffsetRun(Vector<std::pair<UInt32, UInt32> >& runs, UInt32 instructionIndex, UInt32 offset) {
-        if (!runs.empty() && runs[runs.size() - 1].second == offset) {
-                return;
-        }
-        runs.push(std::pair<UInt32, UInt32>(instructionIndex, offset));
+static void pushOpcodeOffsetRun(Vector<UInt32>& runInstructionIndices, Vector<UInt32>& runSourceOffsets, UInt32 instructionIndex, UInt32 offset) {
+	if (!runSourceOffsets.empty() && runSourceOffsets[runSourceOffsets.size() - 1] == offset) {
+		return;
+	}
+	runInstructionIndices.push(instructionIndex);
+	runSourceOffsets.push(offset);
 }
 
-static UInt32 popOpcodeOffsetRun(Vector<std::pair<UInt32, UInt32> >& runs, UInt32 instructionIndex) {
-        UInt32 value = 0;
-        if (!runs.empty()) {
-                value = runs[runs.size() - 1].second;
-                if (runs[runs.size() - 1].first == instructionIndex) {
-                        runs.pop();
-                }
-        }
-        return value;
+static UInt32 popOpcodeOffsetRun(Vector<UInt32>& runInstructionIndices, Vector<UInt32>& runSourceOffsets, UInt32 instructionIndex) {
+	UInt32 value = 0;
+	if (!runSourceOffsets.empty()) {
+		value = runSourceOffsets[runSourceOffsets.size() - 1];
+		if (!runInstructionIndices.empty() && runInstructionIndices[runInstructionIndices.size() - 1] == instructionIndex) {
+			runInstructionIndices.pop();
+			runSourceOffsets.pop();
+		}
+	}
+	return value;
 }
 
-static void appendOpcodeOffsetRuns(Vector<std::pair<UInt32, UInt32> >& dest, const Vector<std::pair<UInt32, UInt32> >& src, UInt32 baseIndex) {
-        if (src.empty()) {
-                return;
-        }
-        UInt32 start = 0;
-        if (!dest.empty() && dest[dest.size() - 1].second == src[0].second) {
-                start = 1;
-        }
-        for (UInt32 i = start; i < src.size(); ++i) {
-                dest.push(std::pair<UInt32, UInt32>(src[i].first + baseIndex, src[i].second));
-        }
+static void appendSourceMapping(Vector<UInt32>& toCodeOffsets, Vector<UInt32>& toSourceOffsets
+		, const Vector<UInt32>& fromCodeOffsets, const Vector<UInt32>& fromSourceOffsets, UInt32 codeBase) {
+	assert(fromCodeOffsets.size() == fromSourceOffsets.size());
+	if (fromCodeOffsets.empty()) {
+		return;
+	}
+	UInt32 start = 0;
+	if (!toSourceOffsets.empty() && toSourceOffsets[toSourceOffsets.size() - 1] == fromSourceOffsets[0]) {
+		start = 1;
+	}
+	for (UInt32 i = start; i < fromCodeOffsets.size(); ++i) {
+		toCodeOffsets.push(fromCodeOffsets[i] + codeBase);
+		toSourceOffsets.push(fromSourceOffsets[i]);
+	}
 }
 #endif
 
@@ -3222,7 +3227,7 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 #endif
                                         code.pop();
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-                                        popOpcodeOffsetRun(opcodeOffsetRuns, removedIndex);
+                                        popOpcodeOffsetRun(codeOffsets, sourceOffsets, removedIndex);
 #endif
                                 }
                                 lastEmitted = Processor::INVALID_OP;
@@ -3236,7 +3241,7 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
                         UInt32 lastOffset = 0;
                         if (!code.empty()) {
                                 const UInt32 removedIndex = static_cast<UInt32>(code.size() - 1);
-                                lastOffset = popOpcodeOffsetRun(opcodeOffsetRuns, removedIndex);
+                                lastOffset = popOpcodeOffsetRun(codeOffsets, sourceOffsets, removedIndex);
                                 code.pop();
                         }
 #else
@@ -3244,7 +3249,7 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 #endif
                         code.push(Processor::packInstruction(replacementOpcode, oldOperand));
                 #if (NUXJS_VERBOSE_EXCEPTIONS)
-                        pushOpcodeOffsetRun(opcodeOffsetRuns, static_cast<UInt32>(code.size() - 1), lastOffset);
+                        pushOpcodeOffsetRun(codeOffsets, sourceOffsets, static_cast<UInt32>(code.size() - 1), lastOffset);
                 #endif
                         lastEmitted = replacementOpcode;
                         return;
@@ -3256,18 +3261,18 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 #endif
         code.push(Processor::packInstruction(opcode, operand));
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-        pushOpcodeOffsetRun(opcodeOffsetRuns, static_cast<UInt32>(code.size() - 1), sourceOffset);
+        pushOpcodeOffsetRun(codeOffsets, sourceOffsets, static_cast<UInt32>(code.size() - 1), sourceOffset);
 #endif
 	lastEmitted = opcode;
 }
 
 void Compiler::CodeSection::insertSection(const CodeSection& section) {
-        const Int32 stackAdjust = stackDepth - section.initialStackDepth;
-        lastEmitted = Processor::INVALID_OP;
-        const UInt32 baseIndex = static_cast<UInt32>(code.size());
-        code.insert(code.end(), section.code.begin(), section.code.end());
+	const Int32 stackAdjust = stackDepth - section.initialStackDepth;
+	lastEmitted = Processor::INVALID_OP;
+	const UInt32 baseIndex = static_cast<UInt32>(code.size());
+	code.insert(code.end(), section.code.begin(), section.code.end());
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-        appendOpcodeOffsetRuns(opcodeOffsetRuns, section.opcodeOffsetRuns, baseIndex);
+	appendSourceMapping(codeOffsets, sourceOffsets, section.codeOffsets, section.sourceOffsets, baseIndex);
 #endif
 	stackDepth = section.stackDepth + stackAdjust;
 	maxStackDepth = std::max(maxStackDepth, section.maxStackDepth + stackAdjust);
@@ -4779,9 +4784,12 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	this->e = e;
 	acceptInOperator = true;
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	setupSection.opcodeOffsetRuns.resize(0);
-	mainSection.opcodeOffsetRuns.resize(0);
-	code->opcodeOffsetRuns.resize(0);
+	setupSection.codeOffsets.resize(0);
+	setupSection.sourceOffsets.resize(0);
+	mainSection.codeOffsets.resize(0);
+	mainSection.sourceOffsets.resize(0);
+	code->codeOffsets.resize(0);
+	code->sourceOffsets.resize(0);
 #endif
 
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
@@ -4806,11 +4814,10 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	code->constants->shrink();
 	code->maxStackDepth = std::max(mainSection.maxStackDepth, setupSection.maxStackDepth);
 #if (NUXJS_VERBOSE_EXCEPTIONS)
-	code->opcodeOffsetRuns.resize(0);
-	appendOpcodeOffsetRuns(code->opcodeOffsetRuns, setupSection.opcodeOffsetRuns, 0);
-	appendOpcodeOffsetRuns(code->opcodeOffsetRuns, mainSection.opcodeOffsetRuns, static_cast<UInt32>(setupSection.code.size()));
-	setupSection.opcodeOffsetRuns.resize(0);
-	mainSection.opcodeOffsetRuns.resize(0);
+	appendSourceMapping(code->codeOffsets, code->sourceOffsets, setupSection.codeOffsets, setupSection.sourceOffsets, 0);
+	appendSourceMapping(code->codeOffsets, code->sourceOffsets, mainSection.codeOffsets, mainSection.sourceOffsets, static_cast<UInt32>(setupSection.code.size()));
+	code->codeOffsets.shrink();
+	code->sourceOffsets.shrink();
 #endif
 
 	return p;
