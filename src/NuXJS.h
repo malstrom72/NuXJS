@@ -35,10 +35,6 @@
 #include <cstddef>
 #include <stdint.h>
 
-#ifndef NUXJS_VERBOSE_EXCEPTIONS
-#define NUXJS_VERBOSE_EXCEPTIONS 1
-#endif
-
 /**
 	These global operator overloads makes it possible to allocate *anything* (and not only GCItems) on Heap. Just
 	remember that (as opposed to GCItems) you need to call the overloaded delete operator explicitly, e.g.
@@ -830,11 +826,8 @@ class Constants : public GCItem, public Vector<Value> {
 };
 
 /**
-	SourceCodeUnit owns the original source string and metadata describing how opcode offsets map back to the
-	programmer's file. Compiler and runtime components now rely on this GC item for filename and line lookups,
-	so opcode offsets are measured relative to the unit's byte offsets.
+	SourceCodeUnit owns the original source string, the filename and a fast line-number lookup table.
 **/
-#if (NUXJS_VERBOSE_EXCEPTIONS)
 class SourceCodeUnit : public GCItem {
 	public:
 		typedef GCItem super;
@@ -854,7 +847,6 @@ class SourceCodeUnit : public GCItem {
 		const String* const fileName;
 		Vector<UInt32> lineOffsets; 	// Byte offsets of line beginnings in source code. lineOffsets[0] is always 0.
 };
-#endif
 
 /**
 	Code represents compiled bytecode and associated metadata. It is an Object so that it can be stored as a constant
@@ -868,21 +860,15 @@ class Code : public Object {
 	
 	public:
 		typedef Object super;
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		struct SourceLocation {
-			const String* fileName; // will not be 0
+			const String* fileName; 	// will not be 0
 			const String* functionName; // can be 0 (if Code is not a function) or empty string (if anonymous function)
 			UInt32 offset;
 			UInt32 line;
 			UInt32 column;
 		};
-	#endif
 
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUnit);
-	#else
-		Code(GCList& gcList, Constants* sharedConstants = 0);
-	#endif
 		bool lookupNameIndex(const String* name, Int32& index) const;
 		UInt32 getVarsCount() const { return varNames.size(); }
 		UInt32 getArgumentsCount() const { return argumentNames.size(); }
@@ -892,21 +878,17 @@ class Code : public Object {
 		UInt32 getCodeSize() const { return codeWords.size(); }
 		const String* getName() const { return name; }		// can be 0 (which means Code is not a function) or empty string (which means anonymous function)
 		const String* getSource() const { assert(source != 0); return source; }
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		SourceCodeUnit* getSourceUnit() const { assert(sourceUnit != 0); return sourceUnit; }
 		SourceLocation lookupSourceLocation(const CodeWord* instructionPointer) const;
-	#endif
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
 
 	protected:
 		Vector<CodeWord> codeWords;
 		Constants* const constants;
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		SourceCodeUnit* const sourceUnit;
 		Vector<UInt32> codeOffsets;
 		Vector<UInt32> sourceOffsets;
-	#endif
 		Table nameIndexes;							///< < 0 : local variables, >= 0 : arguments, CATCH_PARAMETER == current catch parameter during compile-time only (don't use fast index binding)
 		Vector<const String*> varNames;				///< Notice that this list is reversed in relation to indexes in the "locals" array in FunctionScope.
 		Vector<const String*> argumentNames;
@@ -918,9 +900,7 @@ class Code : public Object {
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, constants);
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			gcMark(heap, sourceUnit);
-		#endif
 			nameIndexes.gcMarkReferences(heap);
 			gcMark(heap, varNames.begin(), varNames.end());
 			gcMark(heap, argumentNames.begin(), argumentNames.end());
@@ -1060,9 +1040,7 @@ class Error : public LazyJSObject<Object> {
 		ErrorType getErrorType() const { return errorType; }
 		const String* getErrorName() const { assert(name != 0); return name; }	// never 0
 		const String* getErrorMessage() const { return message; };	// can be 0
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		const String* getStackString() const { return stack; }	// can be 0
-	#endif
 	
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
@@ -1071,15 +1049,11 @@ class Error : public LazyJSObject<Object> {
 		const ErrorType errorType;
 		const String* name; 	// may get updated by script code
 		const String* message; 	// may get updated by script code
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		const String* stack; 		// may get updated by script code
-	#endif
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, name);
 			gcMark(heap, message);
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			gcMark(heap, stack);
-		#endif
 			super::gcMarkReferences(heap);
 		}
 };
@@ -1293,18 +1267,14 @@ struct ScriptException : public Exception {
 	static void throwError(Heap& heap, ErrorType type, const char* message);
 	ScriptException(Heap& heap, const Value& value) throw();
 	virtual const char* what() const throw() { return utf8String.c_str(); }
-	virtual ~ScriptException() throw() { }
-#if (NUXJS_VERBOSE_EXCEPTIONS)
+	Error* asErrorObject() const { return value.asError(); }
 	const char* getStackTrace() const;
-#endif
+	virtual ~ScriptException() throw() { }
+
 	Value value;
 	std::string utf8String;
-#if (NUXJS_VERBOSE_EXCEPTIONS)
 	mutable std::string stackTrace;
-#endif
-	Error* asErrorObject() const;
 };
-inline Error* ScriptException::asErrorObject() const { return value.asError(); }
 
 class VarList;
 class Property;
@@ -1677,9 +1647,7 @@ class Processor : public GCItem {
 		void enterEvalCode(const Code* code, bool local = false);
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
 		void throwVirtualException(const Value& exception);
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		void addStackTrace(const Value& exception) const;
-	#endif
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);
 		Value getResult() const;	// make sure you've called run() until it returns false before calling this
@@ -1791,22 +1759,15 @@ class Compiler : public GCItem {
 			CodeSection(Heap& heap, Int32 initialStackDepth)
 				: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
 				, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth)
-			#if (NUXJS_VERBOSE_EXCEPTIONS)
-				, codeOffsets(&heap)
-				, sourceOffsets(&heap)
-			#endif
+				, codeOffsets(&heap), sourceOffsets(&heap)
 		 	{
 			}
 			
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			void emit(Processor::Opcode opcode, Int32 operand, UInt32 sourceOffset);
 			void pushSourceMapping(UInt32 offset);
 			UInt32 popSourceMapping();
 			void exportSourceMapping(Vector<UInt32>& toCodeOffsets, Vector<UInt32>& toSourceOffsets
 					, UInt32 codeBase) const;
-		#else
-			void emit(Processor::Opcode opcode, Int32 operand);
-		#endif
 			void insertSection(const CodeSection& section);
 			bool inDeadCode() const { return stackDepth == DEAD_CODE_STACK_DEPTH; }
 			Vector<CodeWord> code;
@@ -1814,10 +1775,8 @@ class Compiler : public GCItem {
 			const Int32 initialStackDepth;
 			Int32 stackDepth;
 			Int32 maxStackDepth;
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
 			Vector<UInt32> codeOffsets;
 			Vector<UInt32> sourceOffsets;
-		#endif
 		};
 
 		struct BranchPoint {
@@ -1908,9 +1867,7 @@ class Compiler : public GCItem {
 		const Char* b;
 		const Char* p;
 		const Char* e;
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		const Char* sourceUnitBase;
-	#endif
 		CodeSection* currentSection;
 		bool acceptInOperator;
 		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter

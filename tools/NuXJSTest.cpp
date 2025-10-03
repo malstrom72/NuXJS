@@ -823,17 +823,14 @@ static Var throwFromCpp(Runtime& rt, const Var&, const VarList&) {
 	return Var(rt);
 }
 
-#if (NUXJS_VERBOSE_EXCEPTIONS)
 static const String* gFirstTrackedStackString = 0;
 static bool gTrackedStackMismatch = false;
-#endif
 
 static Var rethrowNative(Runtime& rt, const Var&, const VarList& args) {
 	EXPECT(args.size() >= 1);
 	try {
 		return args[0]();
 	} catch (const ScriptException& ex) {
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		Error* errorObject = ex.asErrorObject();
 		if (errorObject != 0) {
 			const String* stackString = errorObject->getStackString();
@@ -843,179 +840,11 @@ static Var rethrowNative(Runtime& rt, const Var&, const VarList& args) {
 				gTrackedStackMismatch = true;
 			}
 		}
-	#endif
 		throw;
 	}
 	return Var(rt);
 }
 
-#if 0
-static void testExceptionStacks() {
-	std::cout << std::endl << "***** Exception stacks *****" << std::endl << std::endl;
-	
-	std::cout << "	- JS -> C++ propagation" << std::endl;
-
-	Heap heap;
-	Runtime rt(heap);
-	rt.setupStandardLibrary();
-
-	try {
-		rt.run("function jsFail(){ throw new Error('cpp catch sample'); }\njsFail();");
-		EXPECT(false);
-	} catch (const ScriptException& ex) {
-		Var errorVar(rt, ex.value);
-		std::wcout << errorVar["stack"].to<std::wstring>() << std::endl;
-		EXPECT(errorVar["stack"].to<std::wstring>().find(L"cpp catch sample") != std::wstring::npos);
-		EXPECT(errorVar["error"].to<Value>().isUndefined());
-	}
-
-	Var globals = rt.getGlobalsVar();
-
-	std::cout << "	- C++ -> JS propagation" << std::endl;
-
-	globals["throwFromCpp"] = throwFromCpp;
-	rt.run("var cppThrown; try { throwFromCpp(); } catch (err) { cppThrown = err; }");
-	Var cppThrown = globals["cppThrown"];
-	EXPECT(cppThrown["stack"].to<std::wstring>().find(L"native type error") != std::wstring::npos);
-	EXPECT(cppThrown["error"].to<Value>().isUndefined());
-
-	std::cout << "	- cross-language rethrows" << std::endl;
-
-	globals["bounceNative"] = bounceThroughCpp;
-	rt.run("var throughCppCaught;\nfunction callBounce(){ var err = bounceNative(function(){ throw new Error('native bounce'); }); if (err) { throw err; } }\ntry { callBounce(); } catch (err) { throughCppCaught = err; }");
-	Var throughCppCaught = globals["throughCppCaught"];
-	EXPECT(throughCppCaught["stack"].to<std::wstring>().find(L"native bounce") != std::wstring::npos);
-	EXPECT(throughCppCaught["error"].to<Value>().isUndefined());
-}
-
-static void testNativeStackFormatter() {
-	std::cout << std::endl << "***** Native stack formatter helper *****" << std::endl << std::endl;
-	Heap heap;
-	Runtime rt(heap);
-	rt.setupStandardLibrary();
-	Var globals = rt.getGlobalsVar();
-	globals["throwFromCpp"] = throwFromCpp;
-	try {
-		rt.run("throwFromCpp();");
-		EXPECT(false);
-	} catch (const ScriptException& ex) {
-		Error* errorObject = ex.asErrorObject();
-		EXPECT(errorObject != 0);
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
-		const String* stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
-		EXPECT(stackString != 0);
-		if (stackString != 0) {
-			const std::string view = stackString->toUTF8String();
-			EXPECT(view.find("TypeError: native type error") != std::string::npos);
-			EXPECT(view.find("\n    at ") != std::string::npos);
-		}
-	#endif
-	}
-}
-
-static void testStackStringRethrows() {
-	std::cout << std::endl << "***** Stack string rethrow stability *****" << std::endl << std::endl;
-	std::cout << "	- JS catch and rethrow" << std::endl;
-	std::cout << "	- C++ errors bounced through JS" << std::endl;
-	std::cout << "	- native crossover rethrows" << std::endl;
-
-	Heap heap;
-	Runtime rt(heap);
-	rt.setupStandardLibrary();
-
-	Var globals = rt.getGlobalsVar();
-	globals["throwFromCpp"] = throwFromCpp;
-	globals["rethrowNative"] = rethrowNative;
-
-	rt.run("var capturedStack; var jsStable = false;\n"
-		"try {\n"
-		"  try {\n"
-		"    throw new Error('js rethrow stable');\n"
-		"  } catch (inner) {\n"
-		"    capturedStack = inner.stack;\n"
-		"    throw inner;\n"
-		"  }\n"
-		"} catch (outer) {\n"
-		"  jsStable = (outer.stack === capturedStack);\n"
-		"}\n");
-	EXPECT(globals["jsStable"].to<bool>());
-
-	rt.run("var cppCaptured; var cppStable = false;\n"
-		"try {\n"
-		"  try {\n"
-		"    throwFromCpp();\n"
-		"  } catch (inner) {\n"
-		"    cppCaptured = inner.stack;\n"
-		"    throw inner;\n"
-		"  }\n"
-		"} catch (outer) {\n"
-		"  cppStable = (outer.stack === cppCaptured);\n"
-		"}\n");
-	EXPECT(globals["cppStable"].to<bool>());
-
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	gFirstTrackedStackString = 0;
-	gTrackedStackMismatch = false;
-#endif
-	rt.run("function throwNativeOnce(){ throw new Error('native bounce stable'); }\n"
-		"function nestedNativeThrow(){ rethrowNative(function(){ throw new Error('nested rethrow stable'); }); }\n");
-	Var throwNativeOnce = globals["throwNativeOnce"];
-	Var nestedNativeThrow = globals["nestedNativeThrow"];
-	Var rethrowFn = globals["rethrowNative"];
-
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	const String* firstStack = 0;
-	try {
-		try {
-			rethrowFn(throwNativeOnce);
-			EXPECT(false);
-		} catch (const ScriptException& first) {
-			Error* errorObject = first.asErrorObject();
-			EXPECT(errorObject != 0);
-			firstStack = (errorObject != 0 ? errorObject->getStackString() : 0);
-			EXPECT(firstStack != 0);
-			throw;
-		}
-	} catch (const ScriptException& second) {
-		Error* errorObject = second.asErrorObject();
-		EXPECT(errorObject != 0);
-		if (errorObject != 0) {
-			EXPECT(firstStack == errorObject->getStackString());
-		}
-	}
-#endif
-
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	gFirstTrackedStackString = 0;
-	gTrackedStackMismatch = false;
-#endif
-	try {
-		rethrowFn(nestedNativeThrow);
-		EXPECT(false);
-	} catch (const ScriptException& nested) {
-		Error* errorObject = nested.asErrorObject();
-		EXPECT(errorObject != 0);
-		if (errorObject != 0) {
-		#if (NUXJS_VERBOSE_EXCEPTIONS)
-			const String* stackString = errorObject->getStackString();
-			EXPECT(stackString != 0);
-			if (stackString != 0) {
-				const std::string view = stackString->toUTF8String();
-				EXPECT(view.find("nested rethrow stable") != std::string::npos);
-			}
-		#endif
-		}
-	}
-#if (NUXJS_VERBOSE_EXCEPTIONS)
-	EXPECT(!gTrackedStackMismatch);
-	gFirstTrackedStackString = 0;
-	gTrackedStackMismatch = false;
-#endif
-}
-
-#endif
-
-#if (NUXJS_VERBOSE_EXCEPTIONS)
 static void testExceptions() {
 	std::cout << std::endl << "***** Exceptions *****" << std::endl << std::endl;
 
@@ -1144,7 +973,6 @@ static void testExceptions() {
 	gFirstTrackedStackString = 0;
 	gTrackedStackMismatch = false;
 }
-#endif
 
 static void testHighLevelAPI() {
 	std::cout << std::endl << "***** High Level API *****" << std::endl << std::endl;
@@ -2144,9 +1972,7 @@ int main(int argc, const char* argv[]) {
 		testJSON();
 		testCompilation();
 		testLimits();
-	#if (NUXJS_VERBOSE_EXCEPTIONS)
 		testExceptions();
-	#endif
 		testHighLevelAPI();
 		readMeSample1();
 		readMeSample2();
