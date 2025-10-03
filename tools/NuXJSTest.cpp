@@ -44,19 +44,19 @@ static void expectationFailed(const char* sourceCode, const char* file, int line
 
 static void unexpectedException(const char* expression, const char* file, int line, const char* s) {
 	expectationFailed(expression, file, line);
-	std::cout << "  Unexpected exception: " << s << std::endl << std::endl;
+	std::cout << "	Unexpected exception: " << s << std::endl << std::endl;
 }
 
 static void expectedException(const char* statement, const char* file, int line, const char* s) {
 	expectationFailed(statement, file, line);
-	std::cout << "  Expected exception: " << s << std::endl << std::endl;
+	std::cout << "	Expected exception: " << s << std::endl << std::endl;
 }
 
 static void checkException(const char* statement, const char* file, int line, const char* got, const char* expected) {
 	if (std::strcmp(got, expected) != 0) {
 		expectationFailed(statement, file, line);
-		std::cout << "  Unexpected exception: " << got << std::endl;
-		std::cout << "  Expected: " << expected << std::endl << std::endl;
+		std::cout << "	Unexpected exception: " << got << std::endl;
+		std::cout << "	Expected: " << expected << std::endl << std::endl;
 	}
 }
 
@@ -306,9 +306,9 @@ Value gcTest(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, 
 
 static void testVars() {
 	std::cout << std::endl << "***** Var *****" << std::endl << std::endl;
-	std::cout << "  - primitives and conversions" << std::endl;
-	std::cout << "  - numeric edge cases" << std::endl;
-	std::cout << "  - objects, arrays and functions" << std::endl;
+	std::cout << "	- primitives and conversions" << std::endl;
+	std::cout << "	- numeric edge cases" << std::endl;
+	std::cout << "	- objects, arrays and functions" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -637,9 +637,9 @@ static void testVars() {
 
 static void testArrayVars() {
 	std::cout << std::endl << "***** Array Vars *****" << std::endl << std::endl;
-	std::cout << "  - element access and insertion" << std::endl;
-	std::cout << "  - length updates" << std::endl;
-	std::cout << "  - iteration" << std::endl;
+	std::cout << "	- element access and insertion" << std::endl;
+	std::cout << "	- length updates" << std::endl;
+	std::cout << "	- iteration" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -694,8 +694,8 @@ static void testArrayVars() {
 
 static void testStandardLibrary() {
 	std::cout << std::endl << "***** Standard Library *****" << std::endl << std::endl;
-	std::cout << "  - array operations" << std::endl;
-	std::cout << "  - string utilities" << std::endl;
+	std::cout << "	- array operations" << std::endl;
+	std::cout << "	- string utilities" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -710,8 +710,8 @@ static void testStandardLibrary() {
 
 static void testJSON() {
 	std::cout << std::endl << "***** JSON *****" << std::endl << std::endl;
-	std::cout << "  - stringify objects" << std::endl;
-	std::cout << "  - parse JSON strings" << std::endl;
+	std::cout << "	- stringify objects" << std::endl;
+	std::cout << "	- parse JSON strings" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -729,9 +729,9 @@ static void testJSON() {
 
 static void testCompilation() {
 	std::cout << std::endl << "***** Compilation *****" << std::endl << std::endl;
-	std::cout << "  - eval compilation" << std::endl;
-	std::cout << "  - global code compilation" << std::endl;
-	std::cout << "  - global object setup" << std::endl;
+	std::cout << "	- eval compilation" << std::endl;
+	std::cout << "	- global code compilation" << std::endl;
+	std::cout << "	- global object setup" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -742,7 +742,7 @@ static void testCompilation() {
 	p.enterEvalCode(rt.compileEvalCode(expr));
 	EXPECT_EQUAL(rt.runUntilReturn(p), 42);
 
-	const String source(heap.managed(), "var x=3; x+4;");
+	const String source(heap.roots(), "var x=3; x+4;");
 	Processor p2(rt);
 	p2.enterGlobalCode(rt.compileGlobalCode(source));
 	Var res = rt.runUntilReturn(p2);
@@ -761,8 +761,8 @@ static void testCompilation() {
 
 static void testLimits() {
 	std::cout << std::endl << "***** Limits *****" << std::endl << std::endl;
-	std::cout << "  - memory limits" << std::endl;
-	std::cout << "  - execution timeouts" << std::endl;
+	
+	std::cout << "	- memory limits" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -770,6 +770,8 @@ static void testLimits() {
 
 	rt.setMemoryCap(8192);
 	EXPECT_EXCEPTION(rt.eval("var a=[]; for(var i=0;i<1e6;i++) a[i]=i;"), "Out of memory");
+
+	std::cout << "	- execution timeouts" << std::endl;
 
 	rt.setMemoryCap(512*1024*1024);
 	rt.resetTimeOut(1);
@@ -784,7 +786,7 @@ static Var sum(Runtime& rt, const Var& thisVar, const VarList& args) {
 	for (int i = 0; i < args.size(); ++i) {
 		sum += args[i];
 	}
-	return Var(rt, sum);    // A `Var` owns its `Value` (sum) and is tied to a `Runtime` (rt)
+	return Var(rt, sum);	// A `Var` owns its `Value` (sum) and is tied to a `Runtime` (rt)
 }
 
 static Var addFunction(Runtime& rt, const Var& thisVar, const VarList& args) {
@@ -804,11 +806,351 @@ static Value returnFortyTwo(Runtime&, Processor&, UInt32, const Value*, Object*)
 	return Value(42);
 }
 
+static Var bounceThroughCpp(Runtime& rt, const Var&, const VarList& args) {
+	EXPECT(args.size() >= 1);
+	try {
+		return args[0]();
+	} catch (const ScriptException& ex) {
+		Var errorVar(rt, ex.value);
+		EXPECT(errorVar["stack"].to<std::wstring>().find(L"native bounce") != std::wstring::npos);
+		EXPECT(errorVar["error"].to<Value>().isUndefined());
+		return errorVar;
+	}
+}
+
+static Var throwFromCpp(Runtime& rt, const Var&, const VarList&) {
+	ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "native type error");
+	return Var(rt);
+}
+
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+static const String* gFirstTrackedStackString = 0;
+static bool gTrackedStackMismatch = false;
+#endif
+
+static Var rethrowNative(Runtime& rt, const Var&, const VarList& args) {
+	EXPECT(args.size() >= 1);
+	try {
+		return args[0]();
+	} catch (const ScriptException& ex) {
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		Error* errorObject = ex.asErrorObject();
+		if (errorObject != 0) {
+			const String* stackString = errorObject->getStackString();
+			if (gFirstTrackedStackString == 0) {
+				gFirstTrackedStackString = stackString;
+			} else if (stackString != gFirstTrackedStackString) {
+				gTrackedStackMismatch = true;
+			}
+		}
+	#endif
+		throw;
+	}
+	return Var(rt);
+}
+
+#if 0
+static void testExceptionStacks() {
+	std::cout << std::endl << "***** Exception stacks *****" << std::endl << std::endl;
+	
+	std::cout << "	- JS -> C++ propagation" << std::endl;
+
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
+
+	try {
+		rt.run("function jsFail(){ throw new Error('cpp catch sample'); }\njsFail();");
+		EXPECT(false);
+	} catch (const ScriptException& ex) {
+		Var errorVar(rt, ex.value);
+		std::wcout << errorVar["stack"].to<std::wstring>() << std::endl;
+		EXPECT(errorVar["stack"].to<std::wstring>().find(L"cpp catch sample") != std::wstring::npos);
+		EXPECT(errorVar["error"].to<Value>().isUndefined());
+	}
+
+	Var globals = rt.getGlobalsVar();
+
+	std::cout << "	- C++ -> JS propagation" << std::endl;
+
+	globals["throwFromCpp"] = throwFromCpp;
+	rt.run("var cppThrown; try { throwFromCpp(); } catch (err) { cppThrown = err; }");
+	Var cppThrown = globals["cppThrown"];
+	EXPECT(cppThrown["stack"].to<std::wstring>().find(L"native type error") != std::wstring::npos);
+	EXPECT(cppThrown["error"].to<Value>().isUndefined());
+
+	std::cout << "	- cross-language rethrows" << std::endl;
+
+	globals["bounceNative"] = bounceThroughCpp;
+	rt.run("var throughCppCaught;\nfunction callBounce(){ var err = bounceNative(function(){ throw new Error('native bounce'); }); if (err) { throw err; } }\ntry { callBounce(); } catch (err) { throughCppCaught = err; }");
+	Var throughCppCaught = globals["throughCppCaught"];
+	EXPECT(throughCppCaught["stack"].to<std::wstring>().find(L"native bounce") != std::wstring::npos);
+	EXPECT(throughCppCaught["error"].to<Value>().isUndefined());
+}
+
+static void testNativeStackFormatter() {
+	std::cout << std::endl << "***** Native stack formatter helper *****" << std::endl << std::endl;
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
+	Var globals = rt.getGlobalsVar();
+	globals["throwFromCpp"] = throwFromCpp;
+	try {
+		rt.run("throwFromCpp();");
+		EXPECT(false);
+	} catch (const ScriptException& ex) {
+		Error* errorObject = ex.asErrorObject();
+		EXPECT(errorObject != 0);
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		const String* stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
+		EXPECT(stackString != 0);
+		if (stackString != 0) {
+			const std::string view = stackString->toUTF8String();
+			EXPECT(view.find("TypeError: native type error") != std::string::npos);
+			EXPECT(view.find("\n    at ") != std::string::npos);
+		}
+	#endif
+	}
+}
+
+static void testStackStringRethrows() {
+	std::cout << std::endl << "***** Stack string rethrow stability *****" << std::endl << std::endl;
+	std::cout << "	- JS catch and rethrow" << std::endl;
+	std::cout << "	- C++ errors bounced through JS" << std::endl;
+	std::cout << "	- native crossover rethrows" << std::endl;
+
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
+
+	Var globals = rt.getGlobalsVar();
+	globals["throwFromCpp"] = throwFromCpp;
+	globals["rethrowNative"] = rethrowNative;
+
+	rt.run("var capturedStack; var jsStable = false;\n"
+		"try {\n"
+		"  try {\n"
+		"    throw new Error('js rethrow stable');\n"
+		"  } catch (inner) {\n"
+		"    capturedStack = inner.stack;\n"
+		"    throw inner;\n"
+		"  }\n"
+		"} catch (outer) {\n"
+		"  jsStable = (outer.stack === capturedStack);\n"
+		"}\n");
+	EXPECT(globals["jsStable"].to<bool>());
+
+	rt.run("var cppCaptured; var cppStable = false;\n"
+		"try {\n"
+		"  try {\n"
+		"    throwFromCpp();\n"
+		"  } catch (inner) {\n"
+		"    cppCaptured = inner.stack;\n"
+		"    throw inner;\n"
+		"  }\n"
+		"} catch (outer) {\n"
+		"  cppStable = (outer.stack === cppCaptured);\n"
+		"}\n");
+	EXPECT(globals["cppStable"].to<bool>());
+
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	gFirstTrackedStackString = 0;
+	gTrackedStackMismatch = false;
+#endif
+	rt.run("function throwNativeOnce(){ throw new Error('native bounce stable'); }\n"
+		"function nestedNativeThrow(){ rethrowNative(function(){ throw new Error('nested rethrow stable'); }); }\n");
+	Var throwNativeOnce = globals["throwNativeOnce"];
+	Var nestedNativeThrow = globals["nestedNativeThrow"];
+	Var rethrowFn = globals["rethrowNative"];
+
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	const String* firstStack = 0;
+	try {
+		try {
+			rethrowFn(throwNativeOnce);
+			EXPECT(false);
+		} catch (const ScriptException& first) {
+			Error* errorObject = first.asErrorObject();
+			EXPECT(errorObject != 0);
+			firstStack = (errorObject != 0 ? errorObject->getStackString() : 0);
+			EXPECT(firstStack != 0);
+			throw;
+		}
+	} catch (const ScriptException& second) {
+		Error* errorObject = second.asErrorObject();
+		EXPECT(errorObject != 0);
+		if (errorObject != 0) {
+			EXPECT(firstStack == errorObject->getStackString());
+		}
+	}
+#endif
+
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	gFirstTrackedStackString = 0;
+	gTrackedStackMismatch = false;
+#endif
+	try {
+		rethrowFn(nestedNativeThrow);
+		EXPECT(false);
+	} catch (const ScriptException& nested) {
+		Error* errorObject = nested.asErrorObject();
+		EXPECT(errorObject != 0);
+		if (errorObject != 0) {
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
+			const String* stackString = errorObject->getStackString();
+			EXPECT(stackString != 0);
+			if (stackString != 0) {
+				const std::string view = stackString->toUTF8String();
+				EXPECT(view.find("nested rethrow stable") != std::string::npos);
+			}
+		#endif
+		}
+	}
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	EXPECT(!gTrackedStackMismatch);
+	gFirstTrackedStackString = 0;
+	gTrackedStackMismatch = false;
+#endif
+}
+
+#endif
+
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+static void testExceptions() {
+	std::cout << std::endl << "***** Exceptions *****" << std::endl << std::endl;
+
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
+
+	Var globals = rt.getGlobalsVar();
+	globals["throwFromCpp"] = throwFromCpp;
+	globals["bounceNative"] = bounceThroughCpp;
+	globals["rethrowNative"] = rethrowNative;
+
+	// JS -> C++ propagation
+	try {
+		rt.run("function jsFail(){ throw new Error('cpp catch sample'); }\njsFail();");
+		EXPECT(false);
+	} catch (const ScriptException& ex) {
+		Var errorVar(rt, ex.value);
+		std::wstring stack = errorVar["stack"].to<std::wstring>();
+		std::wcout << stack << std::endl;
+		EXPECT(stack.find(L"cpp catch sample") != std::wstring::npos);
+		EXPECT(errorVar["error"].to<Value>().isUndefined());
+	}
+
+	// C++ -> JS propagation
+	rt.run("var cppThrown; try { throwFromCpp(); } catch (err) { cppThrown = err; }");
+	Var cppThrown = globals["cppThrown"];
+	EXPECT(cppThrown["stack"].to<std::wstring>().find(L"native type error") != std::wstring::npos);
+	EXPECT(cppThrown["error"].to<Value>().isUndefined());
+
+	// Cross-language rethrows (JS -> C++ -> JS)
+	rt.run("var throughCppCaught;\nfunction callBounce(){ var err = bounceNative(function(){ throw new Error('native bounce'); }); if (err) { throw err; } }\ntry { callBounce(); } catch (err) { throughCppCaught = err; }");
+	Var throughCppCaught = globals["throughCppCaught"];
+	EXPECT(throughCppCaught["stack"].to<std::wstring>().find(L"native bounce") != std::wstring::npos);
+	EXPECT(throughCppCaught["error"].to<Value>().isUndefined());
+
+	// Native stack formatter helper (C++ catch of native error)
+	try {
+		rt.run("throwFromCpp();");
+		EXPECT(false);
+	} catch (const ScriptException& ex) {
+		Error* errorObject = ex.asErrorObject();
+		EXPECT(errorObject != 0);
+		const String* stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
+		EXPECT(stackString != 0);
+		if (stackString != 0) {
+			const std::string view = stackString->toUTF8String();
+			EXPECT(view.find("TypeError: native type error") != std::string::npos);
+			EXPECT(view.find("\n    at ") != std::string::npos);
+		}
+	}
+
+	// Stack string rethrow stability (JS catch and rethrow)
+	rt.run("var capturedStack; var jsStable = false;\n"
+		"try {\n"
+		"  try {\n"
+		"    throw new Error('js rethrow stable');\n"
+		"  } catch (inner) {\n"
+		"    capturedStack = inner.stack;\n"
+		"    throw inner;\n"
+		"  }\n"
+		"} catch (outer) {\n"
+		"  jsStable = (outer.stack === capturedStack);\n"
+		"}\n");
+	EXPECT(globals["jsStable"].to<bool>());
+
+	// Stack string rethrow stability (C++ error bounced through JS)
+	rt.run("var cppCaptured; var cppStable = false;\n"
+		"try {\n"
+		"  try {\n"
+		"    throwFromCpp();\n"
+		"  } catch (inner) {\n"
+		"    cppCaptured = inner.stack;\n"
+		"    throw inner;\n"
+		"  }\n"
+		"} catch (outer) {\n"
+		"  cppStable = (outer.stack === cppCaptured);\n"
+		"}\n");
+	EXPECT(globals["cppStable"].to<bool>());
+
+	// Rethrow across native boundary preserves stack string identity
+	rt.run("function throwNativeOnce(){ throw new Error('native bounce stable'); }\n"
+		"function nestedNativeThrow(){ rethrowNative(function(){ throw new Error('nested rethrow stable'); }); }\n");
+	Var throwNativeOnce = globals["throwNativeOnce"];
+	Var nestedNativeThrow = globals["nestedNativeThrow"];
+	Var rethrowFn = globals["rethrowNative"];
+
+	const String* firstStack = 0;
+	try {
+		try {
+			rethrowFn(throwNativeOnce);
+			EXPECT(false);
+		} catch (const ScriptException& first) {
+			Error* errorObject = first.asErrorObject();
+			EXPECT(errorObject != 0);
+			firstStack = (errorObject != 0 ? errorObject->getStackString() : 0);
+			EXPECT(firstStack != 0);
+			throw;
+		}
+	} catch (const ScriptException& second) {
+		Error* errorObject = second.asErrorObject();
+		EXPECT(errorObject != 0);
+		if (errorObject != 0) {
+			EXPECT(firstStack == errorObject->getStackString());
+		}
+	}
+
+	gFirstTrackedStackString = 0;
+	gTrackedStackMismatch = false;
+	try {
+		rethrowFn(nestedNativeThrow);
+		EXPECT(false);
+	} catch (const ScriptException& nested) {
+		Error* errorObject = nested.asErrorObject();
+		EXPECT(errorObject != 0);
+		if (errorObject != 0) {
+			const String* stackString = errorObject->getStackString();
+			EXPECT(stackString != 0);
+			if (stackString != 0) {
+				const std::string view = stackString->toUTF8String();
+				EXPECT(view.find("nested rethrow stable") != std::string::npos);
+			}
+		}
+	}
+	EXPECT(!gTrackedStackMismatch);
+	gFirstTrackedStackString = 0;
+	gTrackedStackMismatch = false;
+}
+#endif
+
 static void testHighLevelAPI() {
 	std::cout << std::endl << "***** High Level API *****" << std::endl << std::endl;
-	std::cout << "  - C++ to JS binding" << std::endl;
-	std::cout << "  - object and array helpers" << std::endl;
-	std::cout << "  - type conversions" << std::endl;
+	std::cout << "	- C++ to JS binding" << std::endl;
+	std::cout << "	- object and array helpers" << std::endl;
+	std::cout << "	- type conversions" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -896,10 +1238,10 @@ static void testHighLevelAPI() {
 static void readMeSample1() {
 	std::wstringstream strout;
 
-	Heap heap;                                          // We use the standard heap.
-	Runtime rt(heap);                                   // Construct an empty engine.
-	rt.setupStandardLibrary();                          // Install the ES3 standard library.
-	Var helloWorld = rt.eval("'hello ' + 'world'");     // Evaluate a JS expression.
+	Heap heap;											// We use the standard heap.
+	Runtime rt(heap);									// Construct an empty engine.
+	rt.setupStandardLibrary();							// Install the ES3 standard library.
+	Var helloWorld = rt.eval("'hello ' + 'world'");		// Evaluate a JS expression.
 	strout << helloWorld << std::endl;
 
 	const std::wstring result = strout.str();
@@ -909,11 +1251,11 @@ static void readMeSample1() {
 static void readMeSample2() {
 	std::wstringstream strout;
 
-	Heap heap;                                          // We use the standard heap.
-	Runtime rt(heap);                                   // Construct an empty engine.
-	rt.setupStandardLibrary();                          // Install the ES3 standard library.
-	rt.setMemoryCap(1024 * 1024);                       // Max 1MB of memory please.
-	rt.resetTimeOut(10);                                // Time-out JS code after 10 seconds.
+	Heap heap;											// We use the standard heap.
+	Runtime rt(heap);									// Construct an empty engine.
+	rt.setupStandardLibrary();							// Install the ES3 standard library.
+	rt.setMemoryCap(1024 * 1024);						// Max 1MB of memory please.
+	rt.resetTimeOut(10);								// Time-out JS code after 10 seconds.
 	Var globals = rt.getGlobalsVar();
 	
 	// Set up the native function and a JS demo function that calls it.
@@ -1195,7 +1537,7 @@ static void testHeap() {
 					for (int edgeIndex = 0; edgeIndex < EDGE_COUNT; ++edgeIndex) {
 						GraphNode* linkedNode = thisNode->edges[edgeIndex];
 						if (linkedNode != 0 && linkedNode->iteration != currentIteration) {
-							EXPECT(linkedNode->iteration >= 0);	// < 0 = already deleted by gc()
+							EXPECT(linkedNode->iteration >= 0); // < 0 = already deleted by gc()
 							EXPECT(heap.managed().owns(linkedNode));
 							linkedNode->iteration = currentIteration;
 							EXPECT(reachableCount < MAX_NODE_COUNT);
@@ -1470,7 +1812,7 @@ void testValues() {
 	{
 		EXPECT(Value::UNDEFINED.isUndefined());
 		EXPECT(Value::NUL.isNull());
-		EXPECT(Value::NOT_A_NUMBER.isNumber());	// lol
+		EXPECT(Value::NOT_A_NUMBER.isNumber()); // lol
 		EXPECT(Value::INFINITE_NUMBER.isNumber());
 		EXPECT_EQUAL(Value::UNDEFINED.toObjectOrNull(heap, false), (Object*)(0));
 		EXPECT_EXCEPTION(Value::UNDEFINED.toObject(heap, false), "TypeError: Cannot convert undefined or null to object");
@@ -1651,10 +1993,10 @@ void testValues() {
 
 void testStrings() {
 	std::cout << std::endl << "***** String *****" << std::endl << std::endl;
-	std::cout << "  - construction and comparison" << std::endl;
-	std::cout << "  - wide/UTF-8 conversions" << std::endl;
-	std::cout << "  - surrogate pair handling" << std::endl;
-	std::cout << "  - character arrays" << std::endl;
+	std::cout << "	- construction and comparison" << std::endl;
+	std::cout << "	- wide/UTF-8 conversions" << std::endl;
+	std::cout << "	- surrogate pair handling" << std::endl;
+	std::cout << "	- character arrays" << std::endl;
 
 	Heap heap;
 	
@@ -1667,9 +2009,9 @@ void testStrings() {
 		EXPECT_EQUAL(STRING_FROM_CSTRING.size(), 11);
 		EXPECT_EQUAL(STRING_FROM_CSTRING.end() - STRING_FROM_CSTRING.begin(), 11);
 		EXPECT(std::equal(STRING_FROM_CSTRING.begin(), STRING_FROM_CSTRING.end(), "fromCString"));
-		const String stringOnHeap(heap.managed(), "fromCString");
+		const String stringOnHeap(heap.roots(), "fromCString");
 		EXPECT(stringOnHeap.isEqualTo(STRING_FROM_CSTRING));
-		const String stringFromStdString(heap.managed(), std::string("fromCString"));
+		const String stringFromStdString(heap.roots(), std::string("fromCString"));
 		EXPECT(stringFromStdString.isEqualTo(STRING_FROM_CSTRING));
 	}
 	{
@@ -1685,9 +2027,9 @@ void testStrings() {
 		const std::wstring wideString = STRING_FROM_WIDE_CSTRING.toWideString();
 		EXPECT_EQUAL(wideString.size(), 16);
 		EXPECT(std::equal(wideString.begin(), wideString.end(), L"fromWideCString\u4711"));
-		const String stringOnHeap(heap.managed(), L"fromWideCString\u4711");
+		const String stringOnHeap(heap.roots(), L"fromWideCString\u4711");
 		EXPECT(stringOnHeap.isEqualTo(STRING_FROM_WIDE_CSTRING));
-		const String stringFromStdString(heap.managed(), std::wstring(L"fromWideCString\u4711"));
+		const String stringFromStdString(heap.roots(), std::wstring(L"fromWideCString\u4711"));
 		EXPECT(stringFromStdString.isEqualTo(STRING_FROM_WIDE_CSTRING));
 	}
 	{
@@ -1700,14 +2042,14 @@ void testStrings() {
 		EXPECT(std::equal(surrogatePairUTF8String.begin(), surrogatePairUTF8String.end(), "surrogatePair: \xF0\x9F\x98\x80"));
 		const std::wstring surrogatePairWideString = SURROGATE_PAIR_STRING.toWideString();
 		EXPECT(std::equal(surrogatePairWideString.begin(), surrogatePairWideString.end(), L"surrogatePair: \U0001F600"));
-		const String stringOnHeap(heap.managed(), L"surrogatePair: \U0001F600");
+		const String stringOnHeap(heap.roots(), L"surrogatePair: \U0001F600");
 		EXPECT(stringOnHeap.isEqualTo(SURROGATE_PAIR_STRING));
-		const String stringFromStdString(heap.managed(), std::wstring(L"surrogatePair: \U0001F600"));
+		const String stringFromStdString(heap.roots(), std::wstring(L"surrogatePair: \U0001F600"));
 		EXPECT(stringFromStdString.isEqualTo(SURROGATE_PAIR_STRING));
 	}
 	{
 		const std::wstring isolatedSurrogate(1, static_cast<std::wstring::value_type>(0xD83D));
-		const String isolatedSurrogateString(heap.managed(), isolatedSurrogate);
+		const String isolatedSurrogateString(heap.roots(), isolatedSurrogate);
 		EXPECT_EQUAL(isolatedSurrogateString.size(), 1);
 		EXPECT_EQUAL(isolatedSurrogateString.toWideString(), isolatedSurrogate);
 	}
@@ -1729,9 +2071,9 @@ void testStrings() {
 
 void testTables() {
 	std::cout << std::endl << "***** Table *****" << std::endl << std::endl;
-	std::cout << "  - insertion and lookup" << std::endl;
-	std::cout << "  - flag handling" << std::endl;
-	std::cout << "  - iteration" << std::endl;
+	std::cout << "	- insertion and lookup" << std::endl;
+	std::cout << "	- flag handling" << std::endl;
+	std::cout << "	- iteration" << std::endl;
 
 	Heap heap;
 	{
@@ -1779,7 +2121,7 @@ void testTables() {
 		UInt32 count = 0;
 		for (Table::Bucket* it = table.getFirst(); it != 0; it = table.getNext(it)) {
 			if (it->valueExists()) {
-			        ++count;
+				++count;
 			}
 		}
 		EXPECT_EQUAL(count, 21);
@@ -1802,9 +2144,13 @@ int main(int argc, const char* argv[]) {
 		testJSON();
 		testCompilation();
 		testLimits();
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		testExceptions();
+	#endif
 		testHighLevelAPI();
 		readMeSample1();
 		readMeSample2();
+		std::cout << std::endl;
 		if (failureCount == 0) {
 			std::cout << "All " << testCount << " checks passed successfully" << std::endl << std::endl;
 			return 0;

@@ -471,11 +471,13 @@ int testMain(int argc, const char* argv[]) {
 		size_t peakMemory = 0;
 		bool doSuppressStdErr = false;
 		bool loadStdLib = true;
+		bool useLegacyExceptionOutput = false;
 		for (int argi = 1; argi < argc; ++argi) {
 			if (strcmp(argv[argi], "-t") == 0) doTime = true;
 			else if (strcmp(argv[argi], "-s") == 0) doSuppressStdErr = true;
 			else if (strcmp(argv[argi], "-p") == 0) pauseBeforeQuit = true;
 			else if (strcmp(argv[argi], "-n") == 0) loadStdLib = false;
+			else if (strcmp(argv[argi], "--legacy-exceptions") == 0 || strcmp(argv[argi], "-E") == 0) useLegacyExceptionOutput = true;
 			else if (inputFilePath.empty()) {
 				inputFilePath = argv[argi];
 				interactive = false;
@@ -515,10 +517,10 @@ int testMain(int argc, const char* argv[]) {
 
 		Object& globals = *rt.getGlobalObject();
 		Var globs = rt.getGlobalsVar();
-                globs["read"] = read;
-                globs["load"] = load;
-                globs["quit"] = quit;
-                globs["help"] = help;
+		globs["read"] = read;
+		globs["load"] = load;
+		globs["quit"] = quit;
+		globs["help"] = help;
 
 		PrintFunction printFunction;
 		globals.setOwnProperty(rt, &PRINT_STRING, &printFunction, DONT_ENUM_FLAG);
@@ -615,28 +617,41 @@ int testMain(int argc, const char* argv[]) {
 				}
 				
 				if (execute) {
+					const String* scriptFileName = 0;
+					if (!inputFilePath.empty()) {
+						scriptFileName = String::allocate(heap, inputFilePath.c_str());
+					} else {
+						scriptFileName = rt.newStringConstant("<anonymous>");
+					}
+					Heap& runtimeHeap = rt.getHeap();
+					const Char* scriptBegin = source.begin();
+					const Char* scriptEnd = source.end();
+					const String* scriptSource = new(runtimeHeap) String(runtimeHeap.managed(), scriptBegin, scriptEnd);
+				#if (NUXJS_VERBOSE_EXCEPTIONS)
+					SourceCodeUnit* sourceCodeUnit = new(runtimeHeap) SourceCodeUnit(heap.managed(), scriptSource, scriptFileName);
+					Code globalCode(heap.roots(), 0, sourceCodeUnit);
+				#else
 					Code globalCode(heap.roots());
-					Compiler compiler(heap.roots(), &globalCode, (interactive ? Compiler::FOR_EVAL : Compiler::FOR_GLOBAL));
+				#endif
+					Compiler compiler(heap.roots(), &globalCode, (interactive ? Compiler::FOR_EVAL : Compiler::FOR_GLOBAL), 1);
 					try {
-						compiler.compile(source);
+						compiler.compile(*scriptSource);
 					}
 					catch (const Exception&) {
-						size_t offset;
-						int lineNumber;
-						int columnNumber;
+						UInt32 offset;
+						UInt32 lineNumber;
+						UInt32 columnNumber;
 						compiler.getStopPosition(offset, lineNumber, columnNumber);
 						std::wstring ws;
 						{
 							std::wstringstream ss;
 							ss << L"!!!! Line: " << lineNumber;
-							// ss << ", column: " << columnNumber; // FIX : keep or not? if so, need to update all tests:
 							ws = ss.str();
 						}
 						std::wcout << ws << std::endl;
 						if (interactive) {
 							pushIOLines('!', String(heap.roots(), ws.c_str()));
 						}
-	// FIX :						std::wcout << std::wstring(std::max<const Char*>(stopPoint - 8, source.begin()), std::min<const Char*>(stopPoint + 8, source.end())) << std::endl;
 						throw;
 					}
 					processor.enterGlobalCode(&globalCode);
@@ -644,12 +659,13 @@ int testMain(int argc, const char* argv[]) {
 					bool done = false;
 					rt.resetTimeOut(60);
 					const double start = getCPUSecs();
-						do {
+					do {
 						done = !processor.run(STANDARD_CYCLES_BETWEEN_AUTO_GC);
 						rt.autoGC(true);
 						rt.checkTimeOut();
-							peakMemory = std::max<size_t>(peakMemory, heap.size());
+						peakMemory = std::max<size_t>(peakMemory, heap.size());
 					} while (!done);
+					
 					if (!doSuppressStdErr) {
 						Value v = processor.getResult();
 						std::wcerr << L"\t=" << v.toString(heap)->toWideString() << std::endl;
@@ -670,10 +686,31 @@ int testMain(int argc, const char* argv[]) {
 				std::wstring ws = x.value.toString(heap)->toWideString();
 				ws = L"!!!! " + ws;
 				std::wcout << ws << std::endl;
+				std::string locationLine;
+				std::string stackLine;
+			#if (NUXJS_VERBOSE_EXCEPTIONS)
+				bool printMetadata = !useLegacyExceptionOutput;
+				if (printMetadata) {
+					const char* stackTrace = x.getStackTrace();
+					if (stackTrace[0] != '\0') {
+						stackLine = std::string("!!!! stack: ") + stackTrace;
+						const std::wstring stackWide(stackLine.begin(), stackLine.end());
+						std::wcout << stackWide << std::endl;
+					}
+				}
+			#else
+				bool printMetadata = false;
+			#endif
 				if (!interactive) {
 					return 1;
 				} else {
 					pushIOLines('!', String(heap.roots(), ws.c_str()));
+					if (printMetadata && !locationLine.empty()) {
+						pushIOLines('!', String(heap.roots(), locationLine.c_str()));
+					}
+					if (printMetadata && !stackLine.empty()) {
+						pushIOLines('!', String(heap.roots(), stackLine.c_str()));
+					}
 				}
 			}
 			catch (const std::exception& x) {

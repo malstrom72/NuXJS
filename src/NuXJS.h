@@ -35,6 +35,10 @@
 #include <cstddef>
 #include <stdint.h>
 
+#ifndef NUXJS_VERBOSE_EXCEPTIONS
+#define NUXJS_VERBOSE_EXCEPTIONS 1
+#endif
+
 /**
 	These global operator overloads makes it possible to allocate *anything* (and not only GCItems) on Heap. Just
 	remember that (as opposed to GCItems) you need to call the overloaded delete operator explicitly, e.g.
@@ -697,6 +701,20 @@ class StringListEnumerator : public Enumerator {
 		}
 };
 
+// easier names for fundamental Value constants
+extern const Value UNDEFINED_VALUE, NULL_VALUE, NAN_VALUE, INFINITY_VALUE, FALSE_VALUE, TRUE_VALUE;
+
+// class names (capitalized)
+extern const String A_RGUMENTS_STRING, A_RRAY_STRING, B_OOLEAN_STRING, D_ATE_STRING, E_RROR_STRING, F_UNCTION_STRING
+		, N_UMBER_STRING, O_BJECT_STRING, S_TRING_STRING;
+
+// typeof names (all lowercase)
+extern const String BOOLEAN_STRING, NUMBER_STRING, OBJECT_STRING, STRING_STRING, FUNCTION_STRING;
+
+// other useful string constants (all lowercase)
+extern const String EMPTY_STRING, LENGTH_STRING, UNDEFINED_STRING, NULL_STRING;
+
+
 /**
 	JSObject represents a standard extensible JavaScript object with its own property table and prototype pointer.
 **/
@@ -812,8 +830,37 @@ class Constants : public GCItem, public Vector<Value> {
 };
 
 /**
+	SourceCodeUnit owns the original source string and metadata describing how opcode offsets map back to the
+	programmer's file. Compiler and runtime components now rely on this GC item for filename and line lookups,
+	so opcode offsets are measured relative to the unit's byte offsets.
+**/
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+class SourceCodeUnit : public GCItem {
+	public:
+		typedef GCItem super;
+		SourceCodeUnit(GCList& gcList, const String* sourceCode, const String* fileName);
+		const String* getSource() const { assert(source != 0); return source; }
+		const String* getFileName() const { assert(fileName != 0); return fileName; }
+		void computeLineColumn(UInt32 offset, UInt32& line, UInt32& column) const;
+
+	protected:
+		virtual void gcMarkReferences(Heap& heap) const {
+			gcMark(heap, source);
+			gcMark(heap, fileName);
+       		super::gcMarkReferences(heap);
+		}
+
+		const String* const source;
+		const String* const fileName;
+		Vector<UInt32> lineOffsets; 	// Byte offsets of line beginnings in source code. lineOffsets[0] is always 0.
+};
+#endif
+
+/**
 	Code represents compiled bytecode and associated metadata. It is an Object so that it can be stored as a constant
 	and referenced by multiple functions.
+	Source metadata such as filenames and line/column tables live on the associated `SourceCodeUnit`; full-script
+	code objects keep their legacy `source` pointer in sync with the unit's source string.
 **/
 class Code : public Object {
 	friend class FunctionScope;
@@ -821,8 +868,21 @@ class Code : public Object {
 	
 	public:
 		typedef Object super;
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		struct SourceLocation {
+			const String* fileName; // will not be 0
+			const String* functionName; // can be 0 (if Code is not a function) or empty string (if anonymous function)
+			UInt32 offset;
+			UInt32 line;
+			UInt32 column;
+		};
+	#endif
 
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUnit);
+	#else
 		Code(GCList& gcList, Constants* sharedConstants = 0);
+	#endif
 		bool lookupNameIndex(const String* name, Int32& index) const;
 		UInt32 getVarsCount() const { return varNames.size(); }
 		UInt32 getArgumentsCount() const { return argumentNames.size(); }
@@ -830,14 +890,23 @@ class Code : public Object {
 		const Constants* getConstants() const { return constants; }
 		const CodeWord* getCodeWords() const { return codeWords.begin(); }
 		UInt32 getCodeSize() const { return codeWords.size(); }
-		const String* getName() const { return name; }
-		const String* getSource() const { return source; }
+		const String* getName() const { return name; }		// can be 0 (which means Code is not a function) or empty string (which means anonymous function)
+		const String* getSource() const { assert(source != 0); return source; }
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		SourceCodeUnit* getSourceUnit() const { assert(sourceUnit != 0); return sourceUnit; }
+		SourceLocation lookupSourceLocation(const CodeWord* instructionPointer) const;
+	#endif
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
 
 	protected:
 		Vector<CodeWord> codeWords;
 		Constants* const constants;
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		SourceCodeUnit* const sourceUnit;
+		Vector<UInt32> codeOffsets;
+		Vector<UInt32> sourceOffsets;
+	#endif
 		Table nameIndexes;							///< < 0 : local variables, >= 0 : arguments, CATCH_PARAMETER == current catch parameter during compile-time only (don't use fast index binding)
 		Vector<const String*> varNames;				///< Notice that this list is reversed in relation to indexes in the "locals" array in FunctionScope.
 		Vector<const String*> argumentNames;
@@ -849,6 +918,9 @@ class Code : public Object {
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, constants);
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
+			gcMark(heap, sourceUnit);
+		#endif
 			nameIndexes.gcMarkReferences(heap);
 			gcMark(heap, varNames.begin(), varNames.end());
 			gcMark(heap, argumentNames.begin(), argumentNames.end());
@@ -978,16 +1050,19 @@ class Error : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 		Error(GCList& heap, ErrorType type, const String* message = 0);
-		virtual const String* getClassName() const;	// &E_RROR_STRING
-		virtual Error* asError();
+		virtual const String* getClassName() const { return &E_RROR_STRING; }
+		virtual Error* asError() { return this; }
 		virtual const String* toString(Heap& heap) const;
 		virtual Value getInternalValue(Heap& heap) const; // error type name
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
-		ErrorType getErrorType() const;
-		const String* getErrorName() const;
-		const String* getErrorMessage() const;
+		ErrorType getErrorType() const { return errorType; }
+		const String* getErrorName() const { assert(name != 0); return name; }	// never 0
+		const String* getErrorMessage() const { return message; };	// can be 0
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		const String* getStackString() const { return stack; }	// can be 0
+	#endif
 	
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
@@ -996,9 +1071,15 @@ class Error : public LazyJSObject<Object> {
 		const ErrorType errorType;
 		const String* name; 	// may get updated by script code
 		const String* message; 	// may get updated by script code
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		const String* stack; 		// may get updated by script code
+	#endif
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, name);
 			gcMark(heap, message);
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
+			gcMark(heap, stack);
+		#endif
 			super::gcMarkReferences(heap);
 		}
 };
@@ -1213,24 +1294,17 @@ struct ScriptException : public Exception {
 	ScriptException(Heap& heap, const Value& value) throw();
 	virtual const char* what() const throw() { return utf8String.c_str(); }
 	virtual ~ScriptException() throw() { }
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	const char* getStackTrace() const;
+#endif
 	Value value;
 	std::string utf8String;
+#if (NUXJS_VERBOSE_EXCEPTIONS)
+	mutable std::string stackTrace;
+#endif
 	Error* asErrorObject() const;
 };
 inline Error* ScriptException::asErrorObject() const { return value.asError(); }
-
-// easier names for fundamental Value constants
-extern const Value UNDEFINED_VALUE, NULL_VALUE, NAN_VALUE, INFINITY_VALUE, FALSE_VALUE, TRUE_VALUE;
-
-// class names (capitalized)
-extern const String A_RGUMENTS_STRING, A_RRAY_STRING, B_OOLEAN_STRING, D_ATE_STRING, E_RROR_STRING, F_UNCTION_STRING
-		, N_UMBER_STRING, O_BJECT_STRING, S_TRING_STRING;
-
-// typeof names (all lowercase)
-extern const String BOOLEAN_STRING, NUMBER_STRING, OBJECT_STRING, STRING_STRING, FUNCTION_STRING;
-
-// other useful string constants (all lowercase)
-extern const String EMPTY_STRING, LENGTH_STRING, UNDEFINED_STRING, NULL_STRING;
 
 class VarList;
 class Property;
@@ -1603,6 +1677,9 @@ class Processor : public GCItem {
 		void enterEvalCode(const Code* code, bool local = false);
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
 		void throwVirtualException(const Value& exception);
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		void addStackTrace(const Value& exception) const;
+	#endif
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);
 		Value getResult() const;	// make sure you've called run() until it returns false before calling this
@@ -1611,8 +1688,12 @@ class Processor : public GCItem {
 		struct Frame : public GCItem {
 			typedef GCItem super;
 			Frame(GCList& gcList, const CodeWord* returnIP, const Code* code, Scope* scope, Object* thisObject
-					, Frame* previousFrame) : super(gcList), returnIP(returnIP), code(code), scope(scope)
-					, thisObject(thisObject), previousFrame(previousFrame) { }
+				, Frame* previousFrame) : super(gcList), returnIP(returnIP), code(code), scope(scope)
+				, thisObject(thisObject), previousFrame(previousFrame)
+			{
+				assert(code != 0);
+				assert(scope != 0);
+			}
 			const CodeWord* const returnIP;
 			const Code* const code;
 			Scope* const scope;
@@ -1701,16 +1782,31 @@ class Compiler : public GCItem {
 
 		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0);
 		const Char* compile(const Char* b, const Char* e);
-		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName = 0); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
+		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
 		void compile(const String& source);
-		void getStopPosition(size_t& offset, int& lineNumber, int& columnNumber) const;
+		void getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const;
 
 	protected:
 		struct CodeSection {
 			CodeSection(Heap& heap, Int32 initialStackDepth)
-					: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
-					, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth) { }
+				: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
+				, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth)
+			#if (NUXJS_VERBOSE_EXCEPTIONS)
+				, codeOffsets(&heap)
+				, sourceOffsets(&heap)
+			#endif
+		 	{
+			}
+			
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
+			void emit(Processor::Opcode opcode, Int32 operand, UInt32 sourceOffset);
+			void pushSourceMapping(UInt32 offset);
+			UInt32 popSourceMapping();
+			void exportSourceMapping(Vector<UInt32>& toCodeOffsets, Vector<UInt32>& toSourceOffsets
+					, UInt32 codeBase) const;
+		#else
 			void emit(Processor::Opcode opcode, Int32 operand);
+		#endif
 			void insertSection(const CodeSection& section);
 			bool inDeadCode() const { return stackDepth == DEAD_CODE_STACK_DEPTH; }
 			Vector<CodeWord> code;
@@ -1718,6 +1814,10 @@ class Compiler : public GCItem {
 			const Int32 initialStackDepth;
 			Int32 stackDepth;
 			Int32 maxStackDepth;
+		#if (NUXJS_VERBOSE_EXCEPTIONS)
+			Vector<UInt32> codeOffsets;
+			Vector<UInt32> sourceOffsets;
+		#endif
 		};
 
 		struct BranchPoint {
@@ -1766,7 +1866,7 @@ class Compiler : public GCItem {
 		ExpressionResult expression(Precedence precedence);
 		ExpressionResult rvalueExpression(Precedence precedence = LOWEST_PREC);
 		void rvalueGroup();
-		void functionDefinition(const String* functionName, const String* selfName = 0); // selfName is only for named function expressions
+		void functionDefinition(const String* functionName, const String* selfName); // selfName is only for named function expressions, should be 0 otherwise
 		bool optionalExpression(ExpressionResult& xr, Precedence precedence);
 		ExpressionResult declareIdentifier(const String* name, bool func);
 		ExpressionResult varDeclaration();
@@ -1808,6 +1908,9 @@ class Compiler : public GCItem {
 		const Char* b;
 		const Char* p;
 		const Char* e;
+	#if (NUXJS_VERBOSE_EXCEPTIONS)
+		const Char* sourceUnitBase;
+	#endif
 		CodeSection* currentSection;
 		bool acceptInOperator;
 		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
@@ -1829,9 +1932,9 @@ struct CompilationError : public ScriptException {
 		fromCompiler.getStopPosition(offset, lineNumber, columnNumber);
 	}
 	const String* filename;
-	size_t offset;
-	int lineNumber;
-	int columnNumber;
+	UInt32 offset;
+	UInt32 lineNumber;
+	UInt32 columnNumber;
 };
 
 } /* namespace NuXJS */
