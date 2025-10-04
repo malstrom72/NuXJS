@@ -7,10 +7,10 @@ usage() {
 Usage: guardAgainstMain.sh [OPTIONS] [DIFFGUARD_ARGS...]
 
 Options:
-	--branch <branch>	Use <branch> as the baseline instead of "main".
-	--macro <macro>		Set the guard macro (default: NUXJS_NOT_MAIN).
-	--remove		Remove existing guards from the destination files.
-	--help			Show this help message and exit.
+	--branch <branch>   Use <branch> as the baseline instead of "main".
+	--macro <macro>     Set the guard macro (default: NUXJS_NOT_MAIN).
+	--remove            Remove existing guards from the destination files.
+	--help              Show this help message and exit.
 EOF
 }
 
