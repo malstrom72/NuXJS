@@ -742,7 +742,7 @@ static void testCompilation() {
 	p.enterEvalCode(rt.compileEvalCode(expr));
 	EXPECT_EQUAL(rt.runUntilReturn(p), 42);
 
-	const String source(heap.managed(), "var x=3; x+4;");
+	const String source(heap.roots(), "var x=3; x+4;");
 	Processor p2(rt);
 	p2.enterGlobalCode(rt.compileGlobalCode(source));
 	Var res = rt.runUntilReturn(p2);
@@ -761,8 +761,8 @@ static void testCompilation() {
 
 static void testLimits() {
 	std::cout << std::endl << "***** Limits *****" << std::endl << std::endl;
+	
 	std::cout << "	- memory limits" << std::endl;
-	std::cout << "	- execution timeouts" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -770,6 +770,8 @@ static void testLimits() {
 
 	rt.setMemoryCap(8192);
 	EXPECT_EXCEPTION(rt.eval("var a=[]; for(var i=0;i<1e6;i++) a[i]=i;"), "Out of memory");
+
+	std::cout << "	- execution timeouts" << std::endl;
 
 	rt.setMemoryCap(512*1024*1024);
 	rt.resetTimeOut(1);
@@ -802,6 +804,174 @@ static Var countArguments(Runtime& rt, const Var&, const VarList& args) {
 
 static Value returnFortyTwo(Runtime&, Processor&, UInt32, const Value*, Object*) {
 	return Value(42);
+}
+
+static Var bounceThroughCpp(Runtime& rt, const Var&, const VarList& args) {
+	EXPECT(args.size() >= 1);
+	try {
+		return args[0]();
+	} catch (const ScriptException& ex) {
+		Var errorVar(rt, ex.value);
+		EXPECT(errorVar["stack"].to<std::wstring>().find(L"native bounce") != std::wstring::npos);
+		EXPECT(errorVar["error"].to<Value>().isUndefined());
+		return errorVar;
+	}
+}
+
+static Var throwFromCpp(Runtime& rt, const Var&, const VarList&) {
+	ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "native type error");
+	return Var(rt);
+}
+
+static const String* gFirstTrackedStackString = 0;
+static bool gTrackedStackMismatch = false;
+
+static Var rethrowNative(Runtime& rt, const Var&, const VarList& args) {
+	EXPECT(args.size() >= 1);
+	try {
+		return args[0]();
+	} catch (const ScriptException& ex) {
+		Error* errorObject = ex.asErrorObject();
+		if (errorObject != 0) {
+			const String* stackString = errorObject->getStackString();
+			if (gFirstTrackedStackString == 0) {
+				gFirstTrackedStackString = stackString;
+			} else if (stackString != gFirstTrackedStackString) {
+				gTrackedStackMismatch = true;
+			}
+		}
+		throw;
+	}
+	return Var(rt);
+}
+
+static void testExceptions() {
+	std::cout << std::endl << "***** Exceptions *****" << std::endl << std::endl;
+
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
+
+	Var globals = rt.getGlobalsVar();
+	globals["throwFromCpp"] = throwFromCpp;
+	globals["bounceNative"] = bounceThroughCpp;
+	globals["rethrowNative"] = rethrowNative;
+
+	// JS -> C++ propagation
+	try {
+		rt.run("function jsFail(){ throw new Error('cpp catch sample'); }\njsFail();");
+		EXPECT(false);
+	} catch (const ScriptException& ex) {
+		Var errorVar(rt, ex.value);
+		std::wstring stack = errorVar["stack"].to<std::wstring>();
+		std::wcout << stack << std::endl;
+		EXPECT(stack.find(L"cpp catch sample") != std::wstring::npos);
+		EXPECT(errorVar["error"].to<Value>().isUndefined());
+	}
+
+	// C++ -> JS propagation
+	rt.run("var cppThrown; try { throwFromCpp(); } catch (err) { cppThrown = err; }");
+	Var cppThrown = globals["cppThrown"];
+	EXPECT(cppThrown["stack"].to<std::wstring>().find(L"native type error") != std::wstring::npos);
+	EXPECT(cppThrown["error"].to<Value>().isUndefined());
+
+	// Cross-language rethrows (JS -> C++ -> JS)
+	rt.run("var throughCppCaught;\nfunction callBounce(){ var err = bounceNative(function(){ throw new Error('native bounce'); }); if (err) { throw err; } }\ntry { callBounce(); } catch (err) { throughCppCaught = err; }");
+	Var throughCppCaught = globals["throughCppCaught"];
+	EXPECT(throughCppCaught["stack"].to<std::wstring>().find(L"native bounce") != std::wstring::npos);
+	EXPECT(throughCppCaught["error"].to<Value>().isUndefined());
+
+	// Native stack formatter helper (C++ catch of native error)
+	try {
+		rt.run("throwFromCpp();");
+		EXPECT(false);
+	} catch (const ScriptException& ex) {
+		Error* errorObject = ex.asErrorObject();
+		EXPECT(errorObject != 0);
+		const String* stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
+		EXPECT(stackString != 0);
+		if (stackString != 0) {
+			const std::string view = stackString->toUTF8String();
+			EXPECT(view.find("TypeError: native type error") != std::string::npos);
+			EXPECT(view.find("\n    at ") != std::string::npos);
+		}
+	}
+
+	// Stack string rethrow stability (JS catch and rethrow)
+	rt.run("var capturedStack; var jsStable = false;\n"
+		"try {\n"
+		"  try {\n"
+		"    throw new Error('js rethrow stable');\n"
+		"  } catch (inner) {\n"
+		"    capturedStack = inner.stack;\n"
+		"    throw inner;\n"
+		"  }\n"
+		"} catch (outer) {\n"
+		"  jsStable = (outer.stack === capturedStack);\n"
+		"}\n");
+	EXPECT(globals["jsStable"].to<bool>());
+
+	// Stack string rethrow stability (C++ error bounced through JS)
+	rt.run("var cppCaptured; var cppStable = false;\n"
+		"try {\n"
+		"  try {\n"
+		"    throwFromCpp();\n"
+		"  } catch (inner) {\n"
+		"    cppCaptured = inner.stack;\n"
+		"    throw inner;\n"
+		"  }\n"
+		"} catch (outer) {\n"
+		"  cppStable = (outer.stack === cppCaptured);\n"
+		"}\n");
+	EXPECT(globals["cppStable"].to<bool>());
+
+	// Rethrow across native boundary preserves stack string identity
+	rt.run("function throwNativeOnce(){ throw new Error('native bounce stable'); }\n"
+		"function nestedNativeThrow(){ rethrowNative(function(){ throw new Error('nested rethrow stable'); }); }\n");
+	Var throwNativeOnce = globals["throwNativeOnce"];
+	Var nestedNativeThrow = globals["nestedNativeThrow"];
+	Var rethrowFn = globals["rethrowNative"];
+
+	const String* firstStack = 0;
+	try {
+		try {
+			rethrowFn(throwNativeOnce);
+			EXPECT(false);
+		} catch (const ScriptException& first) {
+			Error* errorObject = first.asErrorObject();
+			EXPECT(errorObject != 0);
+			firstStack = (errorObject != 0 ? errorObject->getStackString() : 0);
+			EXPECT(firstStack != 0);
+			throw;
+		}
+	} catch (const ScriptException& second) {
+		Error* errorObject = second.asErrorObject();
+		EXPECT(errorObject != 0);
+		if (errorObject != 0) {
+			EXPECT(firstStack == errorObject->getStackString());
+		}
+	}
+
+	gFirstTrackedStackString = 0;
+	gTrackedStackMismatch = false;
+	try {
+		rethrowFn(nestedNativeThrow);
+		EXPECT(false);
+	} catch (const ScriptException& nested) {
+		Error* errorObject = nested.asErrorObject();
+		EXPECT(errorObject != 0);
+		if (errorObject != 0) {
+			const String* stackString = errorObject->getStackString();
+			EXPECT(stackString != 0);
+			if (stackString != 0) {
+				const std::string view = stackString->toUTF8String();
+				EXPECT(view.find("nested rethrow stable") != std::string::npos);
+			}
+		}
+	}
+	EXPECT(!gTrackedStackMismatch);
+	gFirstTrackedStackString = 0;
+	gTrackedStackMismatch = false;
 }
 
 static void testHighLevelAPI() {
@@ -1666,9 +1836,9 @@ void testStrings() {
 		EXPECT_EQUAL(STRING_FROM_CSTRING.size(), 11);
 		EXPECT_EQUAL(STRING_FROM_CSTRING.end() - STRING_FROM_CSTRING.begin(), 11);
 		EXPECT(std::equal(STRING_FROM_CSTRING.begin(), STRING_FROM_CSTRING.end(), "fromCString"));
-		const String stringOnHeap(heap.managed(), "fromCString");
+		const String stringOnHeap(heap.roots(), "fromCString");
 		EXPECT(stringOnHeap.isEqualTo(STRING_FROM_CSTRING));
-		const String stringFromStdString(heap.managed(), std::string("fromCString"));
+		const String stringFromStdString(heap.roots(), std::string("fromCString"));
 		EXPECT(stringFromStdString.isEqualTo(STRING_FROM_CSTRING));
 	}
 	{
@@ -1684,9 +1854,9 @@ void testStrings() {
 		const std::wstring wideString = STRING_FROM_WIDE_CSTRING.toWideString();
 		EXPECT_EQUAL(wideString.size(), 16);
 		EXPECT(std::equal(wideString.begin(), wideString.end(), L"fromWideCString\u4711"));
-		const String stringOnHeap(heap.managed(), L"fromWideCString\u4711");
+		const String stringOnHeap(heap.roots(), L"fromWideCString\u4711");
 		EXPECT(stringOnHeap.isEqualTo(STRING_FROM_WIDE_CSTRING));
-		const String stringFromStdString(heap.managed(), std::wstring(L"fromWideCString\u4711"));
+		const String stringFromStdString(heap.roots(), std::wstring(L"fromWideCString\u4711"));
 		EXPECT(stringFromStdString.isEqualTo(STRING_FROM_WIDE_CSTRING));
 	}
 	{
@@ -1699,14 +1869,14 @@ void testStrings() {
 		EXPECT(std::equal(surrogatePairUTF8String.begin(), surrogatePairUTF8String.end(), "surrogatePair: \xF0\x9F\x98\x80"));
 		const std::wstring surrogatePairWideString = SURROGATE_PAIR_STRING.toWideString();
 		EXPECT(std::equal(surrogatePairWideString.begin(), surrogatePairWideString.end(), L"surrogatePair: \U0001F600"));
-		const String stringOnHeap(heap.managed(), L"surrogatePair: \U0001F600");
+		const String stringOnHeap(heap.roots(), L"surrogatePair: \U0001F600");
 		EXPECT(stringOnHeap.isEqualTo(SURROGATE_PAIR_STRING));
-		const String stringFromStdString(heap.managed(), std::wstring(L"surrogatePair: \U0001F600"));
+		const String stringFromStdString(heap.roots(), std::wstring(L"surrogatePair: \U0001F600"));
 		EXPECT(stringFromStdString.isEqualTo(SURROGATE_PAIR_STRING));
 	}
 	{
 		const std::wstring isolatedSurrogate(1, static_cast<std::wstring::value_type>(0xD83D));
-		const String isolatedSurrogateString(heap.managed(), isolatedSurrogate);
+		const String isolatedSurrogateString(heap.roots(), isolatedSurrogate);
 		EXPECT_EQUAL(isolatedSurrogateString.size(), 1);
 		EXPECT_EQUAL(isolatedSurrogateString.toWideString(), isolatedSurrogate);
 	}
@@ -1778,7 +1948,7 @@ void testTables() {
 		UInt32 count = 0;
 		for (Table::Bucket* it = table.getFirst(); it != 0; it = table.getNext(it)) {
 			if (it->valueExists()) {
-					++count;
+				++count;
 			}
 		}
 		EXPECT_EQUAL(count, 21);
@@ -1801,9 +1971,11 @@ int main(int argc, const char* argv[]) {
 		testJSON();
 		testCompilation();
 		testLimits();
+		testExceptions();
 		testHighLevelAPI();
 		readMeSample1();
 		readMeSample2();
+		std::cout << std::endl;
 		if (failureCount == 0) {
 			std::cout << "All " << testCount << " checks passed successfully" << std::endl << std::endl;
 			return 0;
