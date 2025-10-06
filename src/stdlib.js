@@ -674,19 +674,15 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return this;
 	}),
 	shift: unconstructable(function shift() {
-		var len = uint32(this.length);
-		var elementZero;
-		if (len === 0) {
-			this.length = 0;
-			return void 0;
+		var len, elementZero = void 0;
+		if (len = uint32(this.length)) {
+			elementZero = this[0];
+			for (var i = 1; i < len; ++i) {
+				if (i in this) this[i - 1] = this[i];
+				else delete this[i - 1];
+			}
+			delete this[--len];
 		}
-		elementZero = this[0];
-		for (var i = 1; i < len; ++i) {
-			if (i in this) this[i - 1] = this[i];
-			else delete this[i - 1];
-		}
-		delete this[len - 1];
-		--len;
 		this.length = len;
 		return elementZero;
 	}),
@@ -770,13 +766,10 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return a;
 	}),
 	toLocaleString: unconstructable(function toLocaleString() {
-		var len = uint32(this.length), builder = new StringBuilder, element, elementObject;
+		var len = uint32(this.length), builder = new StringBuilder, element;
 		for (var k = 0; k < len; ++k) {
 			if (k > 0) builder.append(',');
-			if ((element = this[k]) != null) {
-				elementObject = Object(element);
-				builder.append(str(elementObject.toLocaleString()));
-			}
+			if ((element = this[k]) != null) builder.append(str(Object(element).toLocaleString()));
 		}
 		return builder.build();
 	}),
@@ -813,9 +806,7 @@ function localTimeDiff(z) { var l = support.localTimeDifference(z); return ($isN
 function toLocalTime(z) { return $isNaN(z) ? z : z + localTimeDiff(z) }
 
 function checkDateClass(object) {
-	if ($getInternalProperty(object, "class") !== "Date"
-		|| object === support.prototypes.Date
-		|| $getInternalProperty(object, "value") === void 0) {
+	if ($getInternalProperty(object, "class") !== "Date" || object === support.prototypes.Date) {
 		throw typeError("this is not a Date object");
 	}
 }
@@ -836,7 +827,7 @@ function hourFromTime(z) { return floorMod($floor(z / 36e5), 24) }
 function minFromTime(z) { return floorMod($floor(z / 6e4), 60) }
 function secFromTime(z) { return floorMod($floor(z / 1e3), 60) }
 function msFromTime(z) { return floorMod(z, 1e3) }
-function timeClip(z) { return (!$isFinite(z) || abs(z) > 8.64e15) ? $NaN : int(z) }
+function timeClip(z) { return (!$isFinite(z) || abs(z) > 8.64e15 ? $NaN : int(z)) }
 function timeClipLocal(z) { return fromLocalTime(timeClip(z)); }
 
 function dateFromEpoch(z) {
@@ -1365,17 +1356,18 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 							n = (n - 1) * 2;
 				// TODO: $match should take two additional optional params: start, end in match-string, thus eliminating need for substring here
 					quantity = parseQuantifier();
-					var stepSize = 'c' + (n + 1) + "-c" + n
-					, backMatchOffset = positionToCode(quantity ? 0 : offset)
-					, backMatchCode = "$match(s," + backMatchOffset + ",$sub(s, c" + n + ",c" + (n + 1) + "))";
+							var stepSize = 'c' + (n + 1) + "-c" + n
+									, backMatchCode = "$match(s," + positionToCode(quantity ? 0 : offset) + ",$sub(s, c" + n + ",c" + (n + 1) + "))";
 							tail = compileTerms(0, junction);
 							var tailName = 't' + (++functionCounter);
 							addFunction(tailName, "return " + tail);
 							return quantity ? quantify(code, offset, backMatchCode, tailName + '(' + positionToCode(0) + ')', quantity, stepSize)
-									: and(code, '(c' + n + "<c" + (n + 1) + " ? " + and(backMatchCode, tailName + '(' + positionToCode(offset) + '+' + stepSize + ')') + " : " + tailName + '(' + positionToCode(offset) + "))");
+									: and(code, '(c' + n + "<c" + (n + 1) + " ? " + and(backMatchCode, tailName + '(' + positionToCode(offset) + '+'
+									+ stepSize + ')') + " : " + tailName + '(' + positionToCode(offset) + "))");
 						} else if ((c = s[p]) === 'b' || c === 'B') {
 							++p;
-							code = and(code, (c === 'b' ? "!!((CC[s[" : "!((CC[s[") + positionToCode(offset - 1) + "]]^CC[s[" + positionToCode(offset) + "]])&" + WORD_CHAR + ')');
+							code = and(code, (c === 'b' ? "!!((CC[s[" : "!((CC[s[") + positionToCode(offset - 1) + "]]^CC[s[" + positionToCode(offset)
+									+ "]])&" + WORD_CHAR + ')');
 							break;
 						}
 						// fall-through
@@ -1595,11 +1587,11 @@ defineProperties(globals, { dontEnum: true }, {
 			case '-': sign = -1;
 			case '+': ++i;
 		}
-				if (((radix = int32(radix)) === 0 || radix === 16) && string[i] === '0'
-						&& (string[i + 1] === 'x' || string[i + 1] === 'X')) {
-					i += 2;
-					radix = 16;
-				}
+		if (((radix = int32(radix)) === 0 || radix === 16) && string[i] === '0'
+				&& (string[i + 1] === 'x' || string[i + 1] === 'X')) {
+			i += 2;
+			radix = 16;
+		}
 		if (radix === 0) radix = 10;
 		else if (radix < 2 || radix > 36) return $NaN;
 		var v = 0, b, e = string.length, n;
