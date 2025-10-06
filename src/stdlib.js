@@ -649,26 +649,18 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return s.build();
 	}),
 	pop: unconstructable(function pop() {
-		var raw = +this.length;
-		var len = ($isNaN(raw) || raw <= 0 || !$isFinite(raw) ? 0 : uint32(raw));
-		var index, result = void 0;
-		if (len > 0) {
-			index = len - 1;
-			result = this[index];
-			delete this[index];
-			len = index;
+		var len, result = void 0;
+		if (len = uint32(this.length)) {
+			result = this[--len];
+			delete this[len];
 		}
 		this.length = len;
 		return result;
 	}),
 	push: unconstructable(function push(item) {
-		var argv = arguments, raw = +this.length;
-		if (raw === $Infinity) throw typeError("Invalid array length");
-		var offset = uint32(raw);
-		var argc = argv.length, end = offset + argc;
+		var len, argv, offset, argc = (argv = arguments).length, end = (offset = uint32(len = +this.length)) + argc;
 		for (var i = 0; i < argc; ++i) this[offset + i] = argv[i];
-		this.length = end;
-		return end;
+		return (this.length = end);
 	}),
 	reverse: unconstructable(function reverse() {
 		var len, mid = $floor((len = uint32(this.length)) / 2);
@@ -682,8 +674,7 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return this;
 	}),
 	shift: unconstructable(function shift() {
-		var raw = +this.length;
-		var len = ($isNaN(raw) || raw <= 0 || !$isFinite(raw) ? 0 : uint32(raw));
+		var len = uint32(this.length);
 		var elementZero;
 		if (len === 0) {
 			this.length = 0;
