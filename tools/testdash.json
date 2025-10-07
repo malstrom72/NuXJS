@@ -24616,7 +24616,7 @@
 	},
 	"language/expressions/assignment/destructuring/obj-prop-nested-obj-invalid": {
 		"category": "not_es3"
-	},	
+	},
 	"language/expressions/assignment/destructuring/obj-prop-nested-obj-null": {
 		"category": "not_es3"
 	},
@@ -28270,5 +28270,14 @@
 	},
 	"unconforming/rightSideBeforeAssignmentRef": {
 		"category": "by_design"
+	},
+	"built-ins/Array/prototype/pop/S15.4.4.6_A3_T3": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/push/S15.4.4.7_A2_T2": {
+		"category": "not_es3"
+	},
+	"built-ins/Array/prototype/shift/S15.4.4.9_A3_T3": {
+		"category": "not_es3"
 	}
 }

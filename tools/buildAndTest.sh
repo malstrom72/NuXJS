@@ -28,13 +28,13 @@ mkdir -p ../output/examples
 exe=../output/examples/examples
 
 echo "Building examples"
-bash ./BuildCpp.sh "$target" "$exe" ../examples/examples.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
+bash ./BuildCpp.sh "$target" "$exe" ../docs/examples/examples.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
 
 echo "Running examples"
 "$exe" > ../output/examples/all.log 2>&1
 
-if [ -f ../examples/expected_examples.txt ]; then
-	diff -u ../examples/expected_examples.txt ../output/examples/all.log
+if [ -f ../docs/examples/expected_examples.txt ]; then
+	diff -u ../docs/examples/expected_examples.txt ../output/examples/all.log
 fi
 
 echo Success!
