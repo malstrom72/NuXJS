@@ -25,13 +25,13 @@ IF NOT EXIST ..\output\examples MKDIR ..\output\examples
 SET "examplesExe=..\output\examples\examples.exe"
 
 ECHO Building examples
-CALL .\BuildCpp.cmd %target% "%examplesExe%" ..\examples\examples.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
+CALL .\BuildCpp.cmd %target% "%examplesExe%" ..\docs\examples\examples.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
 
 ECHO Running examples
 %examplesExe% > ..\output\examples\all.log 2>&1 || GOTO error
 
-IF EXIST ..\examples\expected_examples.txt (
-	FC ..\examples\expected_examples.txt ..\output\examples\all.log || GOTO error
+IF EXIST ..\docs\examples\expected_examples.txt (
+	FC ..\docs\examples\expected_examples.txt ..\output\examples\all.log || GOTO error
 )
 
 ECHO Success!

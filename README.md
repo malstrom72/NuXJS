@@ -157,13 +157,6 @@ The resulting binary is placed in `output/NuXJSFuzz` and can be run with a direc
 ./output/NuXJSFuzz corpus/
 ```
 
-On macOS the default clang from Xcode does not ship the libFuzzer runtime. Install the `llvm` package via Homebrew and
-invoke the script with that compiler:
-
-```bash
-CPP_COMPILER=$(brew --prefix llvm)/bin/clang++ bash tools/buildReplFuzz.sh
-```
-
 To seed the fuzzer with inputs derived from the existing test suite, generate a corpus from the `.io` files:
 
 ```bash
