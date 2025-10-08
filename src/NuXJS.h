@@ -35,9 +35,6 @@
 #include <cstddef>
 #include <stdint.h>
 
-#define NUXJS_NOT_MAIN 1
-#define NUXJS_IMPROVED_EVALUATION_ORDER 1
-
 /**
 	These global operator overloads makes it possible to allocate *anything* (and not only GCItems) on Heap. Just
 	remember that (as opposed to GCItems) you need to call the overloaded delete operator explicitly, e.g.
@@ -803,9 +800,7 @@ class JSArray : public LazyJSObject<Object> {
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
 		void sliceDenseVector(Runtime& rt, const Value& key);
-	#if (NUXJS_NOT_MAIN)
 		bool setOwnPropertyInternal(Runtime& rt, const Value& key, const Value& v, Flags flags, bool& result);
-	#endif
 		UInt32 length;
 		Vector<Value> denseVector;
 		virtual void gcMarkReferences(Heap& heap) const {
@@ -1577,10 +1572,8 @@ class Processor : public GCItem {
 			, READ_NAMED_OP									// operand: const_index (name), stack: -> value
 			, WRITE_NAMED_OP								// operand: const_index (name), stack: value -> value
 			, WRITE_NAMED_POP_OP							// operand: const_index (name), stack: value ->
-		#if (NUXJS_IMPROVED_EVALUATION_ORDER)
 			, CHECK_OBJECT_COERCIBLE_OP						// stack: value -> value
 			, CHECK_RESOLVE_PROPERTY_OP						// stack: object, name -> object, name	// check coercible, then resolve object
-		#endif
 			, GET_PROPERTY_OP								// stack: object, name -> value
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
 			, SET_PROPERTY_POP_OP							// stack: object, name, value ->

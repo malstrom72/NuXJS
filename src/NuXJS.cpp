@@ -777,19 +777,9 @@ Int32 Value::toInt() const {
 
 bool Value::toArrayIndex(UInt32& index) const {
 	switch (type) {
-	#if (!NUXJS_NOT_MAIN)
-		case BOOLEAN_TYPE: {
-			index = (var.boolean ? 1 : 0);
-			return true;
-		}
-	#endif
 		case NUMBER_TYPE: {
 			const double n = var.number;
-		#if (NUXJS_NOT_MAIN)
 			if (n < 0.0 || n >= 4294967295.0) {
-		#else
-			if (n < 0.0 || n >= 4294967296.0) {
-		#endif
 				return false;
 			}
 			index = static_cast<UInt32>(n);
@@ -798,15 +788,6 @@ bool Value::toArrayIndex(UInt32& index) const {
 		case STRING_TYPE: {
 			const Char* p = var.string->begin();
 			const Char* const e = var.string->end();
-		#if (!NUXJS_NOT_MAIN)
-			if (p != e && *p == '0') {
-				index = 0;
-				++p;
-			} else {
-				p = parseUnsignedInt(p, e, index);
-			}
-			return p == e;
-		#else
 			index = 0;
 			if (p == e || (*p == '0' && p + 1 != e)) {
 				return false;
@@ -820,7 +801,6 @@ bool Value::toArrayIndex(UInt32& index) const {
 				++p;
 			}
 			return (p == e);
-		#endif
 		}
 		default: return false;
 	}
@@ -1786,7 +1766,6 @@ void JSArray::sliceDenseVector(Runtime& rt, const Value& key) {
 	}
 }
 
-#if (NUXJS_NOT_MAIN)
 bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value& v, Flags flags, bool& result) {
 	result = false;
 	UInt32 index;
@@ -1811,7 +1790,6 @@ bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value&
 	}
 	return false;
 }
-#endif
 
 bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 	if (index >= length) {
@@ -1844,37 +1822,13 @@ bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 }
 
 bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
-#if (NUXJS_NOT_MAIN)
 	bool result;
 	return (setOwnPropertyInternal(rt, key, v, flags, result) ? result : super::setOwnProperty(rt, key, v, flags));
-#else
-	UInt32 index;
-	if (key.toArrayIndex(index) && index != 0xFFFFFFFFU) {
-		if ((flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) == 0) {
-			assert(flags == STANDARD_FLAGS);
-			return setElement(rt, index, v);
-		}
-		sliceDenseVector(rt, key);
-	} else if (key.equalsString(LENGTH_STRING)) {
-		UInt32 newLength;
-		if (!v.toArrayIndex(newLength)) {
-			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
-		}
-		return updateLength(newLength);
-	}
-	return super::setOwnProperty(rt, key, v, flags);
-#endif
 }
 
 bool JSArray::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
-#if (NUXJS_NOT_MAIN)
 	bool result;
 	return (setOwnPropertyInternal(rt, key, v, STANDARD_FLAGS, result) ? result : super::updateOwnProperty(rt, key, v));
-#else
-	UInt32 index;
-	return (key.toArrayIndex(index) && index != 0xFFFFFFFFU ? setOwnProperty(rt, key, v)
-			: super::updateOwnProperty(rt, key, v));
-#endif
 }
 
 bool JSArray::deleteOwnProperty(Runtime& rt, const Value& key) {
@@ -2284,10 +2238,8 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ READ_NAMED_OP              , "READ_NAMED"              , 1      , 0 },
 	{ WRITE_NAMED_OP             , "WRITE_NAMED"             , 0      , 0 },
 	{ WRITE_NAMED_POP_OP         , "WRITE_NAMED_POP"         , -1     , 0 },
-#if (NUXJS_IMPROVED_EVALUATION_ORDER)
 	{ CHECK_OBJECT_COERCIBLE_OP	 , "CHECK_OBJECT_COERCIBLE"  , 0	  , 0 },
 	{ CHECK_RESOLVE_PROPERTY_OP	 , "CHECK_RESOLVE_PROPERTY"	 , 0	  , 0 },
-#endif
 	{ GET_PROPERTY_OP            , "GET_PROPERTY"            , -1     , 0 },
 	{ SET_PROPERTY_OP            , "SET_PROPERTY"            , -2     , 0 },
 	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -3     , 0 },
@@ -2688,7 +2640,6 @@ void Processor::innerRun() {
 			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
 			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
 
-		#if (NUXJS_IMPROVED_EVALUATION_ORDER)
 			case CHECK_OBJECT_COERCIBLE_OP: {
 				if (sp[0].isUndefined() || sp[0].isNull()) {
 					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
@@ -2705,7 +2656,6 @@ void Processor::innerRun() {
 				sp[-1] = convertToObject(sp[-1], false);
 				break;
 			}
-		#endif
 
 			case GET_PROPERTY_OP: {
 				const Object* o = convertToObject(sp[-1], false);
@@ -2720,30 +2670,14 @@ void Processor::innerRun() {
 			}
 			
 			case SET_PROPERTY_OP: {
-			#if (NUXJS_IMPROVED_EVALUATION_ORDER)
-				Object* const o = sp[-2].getObject();
-			#else
-				Object* o = convertToObject(sp[-2], false);
-				if (o == 0) {
-					return;
-				}
-			#endif
-				o->setProperty(rt, sp[-1], sp[0]);
+				sp[-2].getObject()->setProperty(rt, sp[-1], sp[0]);
 				sp[-2] = sp[0];
 				pop(2);
 				break;
 			}
 			
 			case SET_PROPERTY_POP_OP: {
-			#if (NUXJS_IMPROVED_EVALUATION_ORDER)
-				Object* const o = sp[-2].getObject();
-			#else
-				Object* o = convertToObject(sp[-2], false);
-				if (o == 0) {
-					return;
-				}
-			#endif
-				o->setProperty(rt, sp[-1], sp[0]);
+				sp[-2].getObject()->setProperty(rt, sp[-1], sp[0]);
 				pop(3);
 				break;
 			}
@@ -3759,9 +3693,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			assert(op.primitiveOutput);
 			xr = operand(op);
 			if (xr.t == ExpressionResult::PROPERTY) {
-			#if (NUXJS_IMPROVED_EVALUATION_ORDER)
 				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
-			#endif
 				emit(Processor::REPUSH_2_OP);
 			}
 			makeRValue(xr, true);
@@ -3848,9 +3780,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				return false;
 			}
 			if (xr.t == ExpressionResult::PROPERTY) {
-			#if (NUXJS_IMPROVED_EVALUATION_ORDER)
 				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
-			#endif
 				emit(Processor::REPUSH_2_OP);
 			}
 			makeRValue(xr, true);
@@ -3891,9 +3821,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case PROPERTY_DOT: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, op.primitiveInput);
-		#if (NUXJS_IMPROVED_EVALUATION_ORDER)
 			emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
-		#endif
 			white();
 			emitWithConstant(Processor::CONST_OP, identifier(true, true));
 			xr = ExpressionResult(ExpressionResult::PROPERTY);
@@ -3920,11 +3848,9 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case ASSIGNMENT: {
 			assert(!op.primitiveInput);
 			assert(!op.primitiveOutput);
-		#if (NUXJS_IMPROVED_EVALUATION_ORDER)
 			if (xr.t == ExpressionResult::PROPERTY) {
 				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
 			}
-		#endif
 			const ExpressionResult rxr = makeRValue(operand(op), false);
 			makeAssignment(xr);
 			xr = rxr;
@@ -3937,9 +3863,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			const Processor::Opcode primitiveOp = (op.vmOp == Processor::ADD_OP
 					? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
 			if (xr.t == ExpressionResult::PROPERTY) {
-			#if (NUXJS_IMPROVED_EVALUATION_ORDER)
 				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
-			#endif
 				emit(Processor::REPUSH_2_OP);
 			}
 			makeRValue(xr, true, primitiveOp);
@@ -3953,9 +3877,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case PROPERTY_BRACKETS: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, false);
-		#if (NUXJS_IMPROVED_EVALUATION_ORDER)
 			emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
-		#endif
 			const bool didAcceptInOperator = acceptInOperator;
 			acceptInOperator = true;
 			makeRValue(operand(op), true, Processor::OBJ_TO_STRING_OP); // left doesn't need to be primitive, but right does (and preferred string!)
@@ -4888,9 +4810,7 @@ struct Runtime::FunctionPrototypeFunction : public ExtensibleFunction {
 	typedef ExtensibleFunction super;
 	FunctionPrototypeFunction(GCList& gcList) : super(gcList) { }
 	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
-#if (NUXJS_NOT_MAIN)
 	virtual Value construct(Runtime& rt, Processor&, UInt32, const Value*, Object*);
-#endif
 	virtual Object* getPrototype(Runtime& rt) const;
 	virtual void constructCompleteObject(Runtime& rt) const;
 };
@@ -4899,12 +4819,10 @@ Value Runtime::FunctionPrototypeFunction::invoke(Runtime&, Processor&, UInt32, c
 	return UNDEFINED_VALUE;
 }
 
-#if (NUXJS_NOT_MAIN)
 Value Runtime::FunctionPrototypeFunction::construct(Runtime& rt, Processor&, UInt32, const Value*, Object*) {
 	ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Function.prototype is not a constructor");
 	return UNDEFINED_VALUE;
 }
-#endif
 
 Object* Runtime::FunctionPrototypeFunction::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
 
