@@ -139,13 +139,14 @@ int main(int argc, const char* argv[]) {
 
 - `build.sh` / `build.cmd` – build both the **beta** and **release** targets and run all tests
 - `tools/buildAndTest.sh` / `.cmd` – build and test a single configuration, including the examples
-- `tools/BuildCpp.sh` / `.cmd` – low-level wrapper around the C++ compiler
-
-## Benchmarking
-
 - `tools/benchmark.node.js` – run NuXJS micro benchmarks or generate golden results
-- `tools/compareEngines.sh` / `.cmd` – download Duktape and QuickJS and compare their performance to NuXJS
  
+## Documentation
+
+- [NuXJS Documentation](docs/NuXJS%20Documentation.md)
+- [ECMAScript Compatibility Notes](docs/notes/ECMAScript%20Compatibility%20Notes.md)
+- [TypeScript Compatibility](docs/notes/TypeScript%20Compatibility.md)
+
 ## Building the fuzz target
 
 The `tools/buildReplFuzz.sh` script compiles `tools/NuXJSREPL.cpp` using clang and libFuzzer:
@@ -167,12 +168,6 @@ PikaCmd tools/makeCorpus.pika corpus
 ```
 
 Each section of every test file is written as a separate entry in the specified directory.
-
-## Documentation
-
-- [NuXJS Documentation](docs/NuXJS%20Documentation.md)
-- [ECMAScript Compatibility Notes](docs/notes/ECMAScript%20Compatibility%20Notes.md)
-- [TypeScript Compatibility](docs/notes/TypeScript%20Compatibility.md)
 
 ## AI Usage
 
