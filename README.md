@@ -135,8 +135,7 @@ int main(int argc, const char* argv[]) {
 ## Helper Scripts
 
 - `build.sh` / `build.cmd` – build both the **beta** and **release** targets and run all tests
-- `tools/buildAndTest.sh` / `.cmd` – build and test a single configuration
-- `tools/runExamples.sh` / `.cmd` – compile and run all example programs
+- `tools/buildAndTest.sh` / `.cmd` – build and test a single configuration, including the examples
 - `tools/BuildCpp.sh` / `.cmd` – low-level wrapper around the C++ compiler
 
 ## Benchmarking
@@ -156,13 +155,6 @@ The resulting binary is placed in `output/NuXJSFuzz` and can be run with a direc
 
 ```bash
 ./output/NuXJSFuzz corpus/
-```
-
-On macOS the default clang from Xcode does not ship the libFuzzer runtime. Install the `llvm` package via Homebrew and
-invoke the script with that compiler:
-
-```bash
-CPP_COMPILER=$(brew --prefix llvm)/bin/clang++ bash tools/buildReplFuzz.sh
 ```
 
 To seed the fuzzer with inputs derived from the existing test suite, generate a corpus from the `.io` files:

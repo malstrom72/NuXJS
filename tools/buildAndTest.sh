@@ -23,6 +23,18 @@ bash ./BuildCpp.sh $target $model ../output/NuXJSTest_${target}_${model} ../tool
 ../output/NuXJSTest_${target}_${model}
 bash ./BuildCpp.sh $target $model ../output/NuXJS_${target}_${model} ../tools/NuXJSREPL.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
 ../externals/PikaCmd/PikaCmd ./test.pika -e -x "../output/NuXJS_${target}_${model} -s --legacy-exceptions" ../tests/
-bash ./runExamples.sh "$target"
+
+mkdir -p ../output/examples
+exe=../output/examples/examples
+
+echo "Building examples"
+bash ./BuildCpp.sh "$target" "$exe" ../docs/examples/examples.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
+
+echo "Running examples"
+"$exe" > ../output/examples/all.log 2>&1
+
+if [ -f ../docs/examples/expected_examples.txt ]; then
+	diff -u ../docs/examples/expected_examples.txt ../output/examples/all.log
+fi
 
 echo Success!

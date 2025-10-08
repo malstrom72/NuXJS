@@ -777,28 +777,30 @@ Int32 Value::toInt() const {
 
 bool Value::toArrayIndex(UInt32& index) const {
 	switch (type) {
-		case BOOLEAN_TYPE: {
-			index = (var.boolean ? 1 : 0);
-			return true;
-		}
 		case NUMBER_TYPE: {
 			const double n = var.number;
-			if (n < 0.0 || n >= 4294967296.0) {
+			if (n < 0.0 || n >= 4294967295.0) {
 				return false;
 			}
 			index = static_cast<UInt32>(n);
 			return index == n;
 		}
 		case STRING_TYPE: {
-			const Char* const e = var.string->end();
 			const Char* p = var.string->begin();
-			if (p != e && *p == '0') {
-				index = 0;
-				++p;
-			} else {
-				p = parseUnsignedInt(p, e, index);
+			const Char* const e = var.string->end();
+			index = 0;
+			if (p == e || (*p == '0' && p + 1 != e)) {
+				return false;
 			}
-			return p == e;
+			while (p != e && *p >= '0' && *p <= '9') {
+				const UInt32 digit = static_cast<UInt32>(*p - '0');
+				if (index > 429496729U || (index == 429496729U && digit >= 5U)) {
+					return false;
+				}
+				index = index * 10 + digit;
+				++p;
+			}
+			return (p == e);
 		}
 		default: return false;
 	}
@@ -1764,6 +1766,31 @@ void JSArray::sliceDenseVector(Runtime& rt, const Value& key) {
 	}
 }
 
+bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value& v, Flags flags, bool& result) {
+	result = false;
+	UInt32 index;
+	if (key.toArrayIndex(index)) {
+		if ((flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) == 0) {
+			assert(flags == STANDARD_FLAGS);
+			result = setElement(rt, index, v);
+			return true;
+		}
+		sliceDenseVector(rt, key);
+		return false;
+	}
+	if (key.equalsString(LENGTH_STRING)) {
+		const double rawLength = v.toDouble();
+		const UInt32 coercedLength = static_cast<UInt32>(rawLength);
+		if (isNaN(rawLength) || rawLength < 0.0 || rawLength > 4294967295.0
+				|| rawLength != static_cast<double>(coercedLength)) {
+			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
+		}
+		result = updateLength(coercedLength);
+		return true;
+	}
+	return false;
+}
+
 bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 	if (index >= length) {
 		length = index + 1;
@@ -1795,27 +1822,13 @@ bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 }
 
 bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
-	UInt32 index;
-	if (key.toArrayIndex(index) && index != 0xFFFFFFFFU) {
-		if ((flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) == 0) {
-			assert(flags == STANDARD_FLAGS);
-			return setElement(rt, index, v);
-		}
-		sliceDenseVector(rt, key);
-	} else if (key.equalsString(LENGTH_STRING)) {
-		UInt32 newLength;
-		if (!v.toArrayIndex(newLength)) {
-			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
-		}
-		return updateLength(newLength);
-	}
-	return super::setOwnProperty(rt, key, v, flags);
+	bool result;
+	return (setOwnPropertyInternal(rt, key, v, flags, result) ? result : super::setOwnProperty(rt, key, v, flags));
 }
 
 bool JSArray::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
-	UInt32 index;
-	return (key.toArrayIndex(index) && index != 0xFFFFFFFFU ? setOwnProperty(rt, key, v)
-			: super::updateOwnProperty(rt, key, v));
+	bool result;
+	return (setOwnPropertyInternal(rt, key, v, STANDARD_FLAGS, result) ? result : super::updateOwnProperty(rt, key, v));
 }
 
 bool JSArray::deleteOwnProperty(Runtime& rt, const Value& key) {
@@ -2225,6 +2238,8 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ READ_NAMED_OP              , "READ_NAMED"              , 1      , 0 },
 	{ WRITE_NAMED_OP             , "WRITE_NAMED"             , 0      , 0 },
 	{ WRITE_NAMED_POP_OP         , "WRITE_NAMED_POP"         , -1     , 0 },
+	{ CHECK_OBJECT_COERCIBLE_OP	 , "CHECK_OBJECT_COERCIBLE"  , 0	  , 0 },
+	{ CHECK_RESOLVE_PROPERTY_OP	 , "CHECK_RESOLVE_PROPERTY"	 , 0	  , 0 },
 	{ GET_PROPERTY_OP            , "GET_PROPERTY"            , -1     , 0 },
 	{ SET_PROPERTY_OP            , "SET_PROPERTY"            , -2     , 0 },
 	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -3     , 0 },
@@ -2625,6 +2640,23 @@ void Processor::innerRun() {
 			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
 			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
 
+			case CHECK_OBJECT_COERCIBLE_OP: {
+				if (sp[0].isUndefined() || sp[0].isNull()) {
+					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
+					return;
+				}
+				break;
+			}
+
+			case CHECK_RESOLVE_PROPERTY_OP: {
+				if (sp[-1].isUndefined() || sp[-1].isNull()) {
+					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
+					return;
+				}
+				sp[-1] = convertToObject(sp[-1], false);
+				break;
+			}
+
 			case GET_PROPERTY_OP: {
 				const Object* o = convertToObject(sp[-1], false);
 				if (o == 0) {
@@ -2638,22 +2670,14 @@ void Processor::innerRun() {
 			}
 			
 			case SET_PROPERTY_OP: {
-				Object* o = convertToObject(sp[-2], false);
-				if (o == 0) {
-					return;
-				}
-				o->setProperty(rt, sp[-1], sp[0]);
+				sp[-2].getObject()->setProperty(rt, sp[-1], sp[0]);
 				sp[-2] = sp[0];
 				pop(2);
 				break;
 			}
 			
 			case SET_PROPERTY_POP_OP: {
-				Object* o = convertToObject(sp[-2], false);
-				if (o == 0) {
-					return;
-				}
-				o->setProperty(rt, sp[-1], sp[0]);
+				sp[-2].getObject()->setProperty(rt, sp[-1], sp[0]);
 				pop(3);
 				break;
 			}
@@ -3669,6 +3693,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			assert(op.primitiveOutput);
 			xr = operand(op);
 			if (xr.t == ExpressionResult::PROPERTY) {
+				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
 				emit(Processor::REPUSH_2_OP);
 			}
 			makeRValue(xr, true);
@@ -3712,8 +3737,8 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		}
 			
 		case BINARY: {
-			const Processor::Opcode primitiveOp
-					= (op.vmOp == Processor::ADD_OP ? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
+			const Processor::Opcode primitiveOp = (op.vmOp == Processor::ADD_OP
+					? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
 			makeRValue(xr, op.primitiveInput, primitiveOp);
 			makeRValue(operand(op), op.primitiveInput, primitiveOp);
 			emit(op.vmOp);
@@ -3755,6 +3780,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				return false;
 			}
 			if (xr.t == ExpressionResult::PROPERTY) {
+				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
 				emit(Processor::REPUSH_2_OP);
 			}
 			makeRValue(xr, true);
@@ -3795,6 +3821,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case PROPERTY_DOT: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, op.primitiveInput);
+			emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
 			white();
 			emitWithConstant(Processor::CONST_OP, identifier(true, true));
 			xr = ExpressionResult(ExpressionResult::PROPERTY);
@@ -3821,6 +3848,9 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case ASSIGNMENT: {
 			assert(!op.primitiveInput);
 			assert(!op.primitiveOutput);
+			if (xr.t == ExpressionResult::PROPERTY) {
+				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
+			}
 			const ExpressionResult rxr = makeRValue(operand(op), false);
 			makeAssignment(xr);
 			xr = rxr;
@@ -3830,9 +3860,10 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case COMPOUND_ASSIGNMENT: {
 			assert(op.primitiveInput);
 			assert(op.primitiveOutput);
-			const Processor::Opcode primitiveOp
-					= (op.vmOp == Processor::ADD_OP ? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
+			const Processor::Opcode primitiveOp = (op.vmOp == Processor::ADD_OP
+					? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
 			if (xr.t == ExpressionResult::PROPERTY) {
+				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
 				emit(Processor::REPUSH_2_OP);
 			}
 			makeRValue(xr, true, primitiveOp);
@@ -3846,6 +3877,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case PROPERTY_BRACKETS: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, false);
+			emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
 			const bool didAcceptInOperator = acceptInOperator;
 			acceptInOperator = true;
 			makeRValue(operand(op), true, Processor::OBJ_TO_STRING_OP); // left doesn't need to be primitive, but right does (and preferred string!)
@@ -4778,11 +4810,17 @@ struct Runtime::FunctionPrototypeFunction : public ExtensibleFunction {
 	typedef ExtensibleFunction super;
 	FunctionPrototypeFunction(GCList& gcList) : super(gcList) { }
 	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
+	virtual Value construct(Runtime& rt, Processor&, UInt32, const Value*, Object*);
 	virtual Object* getPrototype(Runtime& rt) const;
 	virtual void constructCompleteObject(Runtime& rt) const;
 };
 
 Value Runtime::FunctionPrototypeFunction::invoke(Runtime&, Processor&, UInt32, const Value*, Object*) {
+	return UNDEFINED_VALUE;
+}
+
+Value Runtime::FunctionPrototypeFunction::construct(Runtime& rt, Processor&, UInt32, const Value*, Object*) {
+	ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Function.prototype is not a constructor");
 	return UNDEFINED_VALUE;
 }
 

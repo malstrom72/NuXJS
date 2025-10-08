@@ -1,3 +1,20 @@
-> print("abcd"[""])
+> print("abcd"[0])
 < a
--
+> print("abcd"["0"])
+< a
+> print("abcd"[-0])
+< a
+> print("abcd"[1])
+< b
+> print("abcd"["01"])
+< undefined
+> print("abcd"[""])
+< undefined
+> print("abcd"[4294967295])
+< undefined
+> print("abcd"["4294967295"])
+< undefined
+> print("abcd"["4294967296"])
+< undefined
+> print("abcd"[Infinity])
+< undefined

@@ -863,8 +863,8 @@ static void testExceptions() {
 		EXPECT(false);
 	} catch (const ScriptException& ex) {
 		Var errorVar(rt, ex.value);
-		std::wstring stack = errorVar["stack"].to<std::wstring>();
-		std::wcout << stack << std::endl;
+		const std::wstring stack = errorVar["stack"].to<std::wstring>();
+		// std::wcout << stack << std::endl;
 		EXPECT(stack.find(L"cpp catch sample") != std::wstring::npos);
 		EXPECT(errorVar["error"].to<Value>().isUndefined());
 	}
@@ -1665,8 +1665,7 @@ void testValues() {
 		EXPECT_EQUAL(falseBoolValue.toDouble(), 0.0);
 		EXPECT_EQUAL(trueBoolValue.toDouble(), 1.0);
 		UInt32 index;
-		EXPECT(trueBoolValue.toArrayIndex(index));
-		EXPECT_EQUAL(index, 1);
+		EXPECT(!trueBoolValue.toArrayIndex(index));
 		EXPECT_EXCEPTION(trueBoolValue.toFunction(heap), "TypeError: true is not a function");
 		static const String FALSE_STRING("false");
 		static const String TRUE_STRING("true");
