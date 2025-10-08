@@ -75,16 +75,19 @@ commands.
 
 ## ECMAScript 3 Compliance
 
-- Zero failures across 3,242 applicable ES3 tests (Test262).
-- 1,349 tests are excluded by category and not counted toward ES3 support:
-  - ES >3: 1,218 (modern features not targeted)
-  - TBD: 112 (pending triage or harness compatibility)
-  - BY DESIGN: 19 (intentional, documented deviations)
+- Zero failures across 6542 applicable ES3 tests (Test262).
+- 9224 tests are excluded by category and not counted toward ES3 support:
+  - ES >3: 8933 (modern features not targeted for ES3, main)
+	- BAD TEST: 101 (tests depend on features not available in ES3)
+  - BY DESIGN: 190 (intentional, documented deviations)
 
 These results come from the Test262 harness included in this repo; see the dashboard below to reproduce.
 
 About Test262: we use an older snapshot, the newest one we found that still runs ES3 engines. Newer Test262 assumes ES5+
 semantics and a different harness, so it would mark out‑of‑scope features as failures.
+
+In addition, the build script performs regression tests written in C++ and JavaScript (over 4500 source code files with
+various tests at the moment).
 
 ## Test262 Dashboard
 
