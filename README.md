@@ -78,7 +78,7 @@ commands.
 - Zero failures across 6542 applicable ES3 tests (Test262).
 - 9224 tests are excluded by category and not counted toward ES3 support:
   - ES >3: 8933 (modern features not targeted for ES3, main)
-	- BAD TEST: 101 (tests depend on features not available in ES3)
+  - BAD TEST: 101 (tests depend on features not available in ES3)
   - BY DESIGN: 190 (intentional, documented deviations)
 
 These results come from the Test262 harness included in this repo; see the dashboard below to reproduce.
