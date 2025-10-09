@@ -81,41 +81,14 @@ commands.
   - BAD TEST: 101 (tests depend on features not available in ES3)
   - BY DESIGN: 190 (intentional, documented deviations)
 
-These results come from the Test262 harness included in this repo; see the dashboard below to reproduce.
+These results come from the Test262 harness included in this repo; see `docs/Test262 Dashboard.md` for the developer-focused
+dashboard that reproduces them.
 
 About Test262: we use an older snapshot, the newest one we found that still runs ES3 engines. Newer Test262 assumes ES5+
-semantics and a different harness, so it would mark out‑of‑scope features as failures.
+semantics and a different harness, so it would mark out-of-scope features as failures.
 
 In addition, the build script performs regression tests written in C++ and JavaScript (over 4500 source code files with
 various tests at the moment).
-
-## Test262 Dashboard
-
-The Test262 suite is stored as an archive in `externals/` and extracted to `externals/test262-master/` on first use.
-
-- Manual unpack (optional): `tar -xzf externals/test262-master.tar.gz -C externals`
-- Start the dashboard server: `node tools/testdash.node.js` (opens a browser)
-- CLI mode (headless summary): `node tools/testdash.node.js --cli`
-- Include ignored categories in the summary: `node tools/testdash.node.js --cli --include-ignored`
-- Reset category for all passing tests (does not touch failures; also includes ignored):
-  `node tools/testdash.node.js --cli --reset-passed`
-
-Python 2 requirement (for the Test262 harness):
-
-- Install a self-contained Python 2 shim: `bash tools/setupPython2.sh`
-- Add the shim to PATH in this terminal: `export PATH="$HOME/.local/bin:$PATH"`
-- The script appends this to `~/.zshrc`/`~/.bashrc` for future shells.
-- Verify: `python2 -V` → prints Python 2.7.x
-- One-off run without editing PATH: `PATH="$HOME/.local/bin:$PATH" node tools/testdash.node.js --cli`
-
-Apple Silicon note: Python 2 packages are only available for x86_64. The setup script creates an `osx-64` conda env that
-runs under Rosetta 2. If needed, install Rosetta: `softwareupdate --install-rosetta --agree-to-license`.
-
-Windows: use `tools/setupPython2.cmd` (wraps the bash script) and run the Node commands in a shell where `python2` resolves.
-
-Notes:
-
-- The dashboard auto-extracts `externals/test262-master.tar.gz` if `externals/test262-master/` is missing.
 
 ## Example
 
