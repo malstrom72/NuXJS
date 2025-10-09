@@ -2827,7 +2827,6 @@ void Processor::innerRun() {
 				}
 				break;
 			}
-			break;
 			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
 			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
 
@@ -2938,6 +2937,7 @@ void Processor::innerRun() {
 			case JT_OR_POP_OP:		if (sp[0].toBool()) ip += im; else pop(1); break;
 			case JF_OR_POP_OP:		if (!sp[0].toBool()) ip += im; else pop(1); break;
 
+			case POP_OP:			assert(im >= 0); pop(im); break;
 			case PUSH_BACK_OP:		assert(im >= 0); sp[-im] = sp[0]; pop(im); break;
 			case REPUSH_OP:			assert(im <= 0); push(sp[im]); break;
 			case SWAP_OP:			std::swap(sp[-1], sp[0]); break;
