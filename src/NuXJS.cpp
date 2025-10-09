@@ -2938,11 +2938,42 @@ void Processor::innerRun() {
 			case JT_OR_POP_OP:		if (sp[0].toBool()) ip += im; else pop(1); break;
 			case JF_OR_POP_OP:		if (!sp[0].toBool()) ip += im; else pop(1); break;
 
-			case PUSH_BACK_OP:	assert(im >= 0); sp[-im] = sp[0]; pop(im); break;
+			case PUSH_BACK_OP:		assert(im >= 0); sp[-im] = sp[0]; pop(im); break;
 			case REPUSH_OP:			assert(im <= 0); push(sp[im]); break;
 			case SWAP_OP:			std::swap(sp[-1], sp[0]); break;
 			case REPUSH_2_OP:		push(sp[-1]); push(sp[-1]); break;
 			case POST_SHUFFLE_OP:	push(sp[0]); sp[-1] = sp[-2]; sp[-2] = sp[-3]; sp[-3] = sp[0]; break;
+
+			case CALL_OP: {
+				Function* const f = asFunction(sp[-im]);
+				if (f != 0) {
+					invokeFunction(f, im, im);
+				}
+				return;
+			}
+			
+			case CALL_METHOD_OP: {
+				Object* const o = convertToObject(sp[-im - 1], true);
+				if (o != 0) {
+					Value v(UNDEFINED_VALUE);
+					Function* f;
+					const Value& name = sp[-im];
+					if (o->getProperty(rt, name, &v) == NONEXISTENT || (f = v.asFunction()) == 0) {
+						error(TYPE_ERROR, new(heap) String(heap.managed(), *name.toString(heap), IS_NOT_A_FUNCTION_STRING));
+					} else {
+						invokeFunction(f, im + 1, im, o);
+					}
+				}
+				return;
+			}
+			
+			case CALL_EVAL_OP: {
+				Function* f = asFunction(sp[-im]);
+				if (f != 0) {
+					invokeFunction((f == rt.evalFunction ? &DIRECT_EVAL_FUNCTION : f), im, im);
+				}
+				return;
+			}
 
 			case NEW_OP: newOperation(im); return;
 			case NEW_RESULT_OP: pop2push1(sp[0].isObject() ? sp[0] : sp[-1]); break;
