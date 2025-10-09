@@ -2860,57 +2860,6 @@ void Processor::innerRun() {
 				break;
 			}
 
-				case GET_PROPERTY_TO_PRIMITIVE_OP: {
-					const Object* o = convertToObject(sp[-1], false);
-					if (o == 0) {
-						return;
-					}
-					if (o->getProperty(rt, sp[0], sp - 1) == NONEXISTENT) {
-						sp[-1] = UNDEFINED_VALUE;
-					}
-					pop(1);
-					const Value& value = sp[0];
-					if (value.isObject()) {
-						invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_PRIMITIVE_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
-						return;
-					}
-					break;
-				}
-
-				case GET_PROPERTY_TO_NUMBER_OP: {
-					const Object* o = convertToObject(sp[-1], false);
-					if (o == 0) {
-						return;
-					}
-					if (o->getProperty(rt, sp[0], sp - 1) == NONEXISTENT) {
-						sp[-1] = UNDEFINED_VALUE;
-					}
-					pop(1);
-					const Value& value = sp[0];
-					if (value.isObject()) {
-						invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_NUMBER_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
-						return;
-					}
-					break;
-				}
-
-				case GET_PROPERTY_TO_STRING_OP: {
-					const Object* o = convertToObject(sp[-1], false);
-					if (o == 0) {
-						return;
-					}
-					if (o->getProperty(rt, sp[0], sp - 1) == NONEXISTENT) {
-						sp[-1] = UNDEFINED_VALUE;
-					}
-					pop(1);
-					const Value& value = sp[0];
-					if (value.isObject()) {
-						invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_STRING_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
-						return;
-					}
-					break;
-				}
-
 			case SET_PROPERTY_OP: {
 				sp[-2].getObject()->setProperty(rt, sp[-1], sp[0]);
 				sp[-2] = sp[0];
@@ -3619,54 +3568,9 @@ Compiler::ExpressionResult Compiler::makeRValue(const ExpressionResult& xr, bool
 		case ExpressionResult::PUSHED_PRIMITIVE: return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
 		case ExpressionResult::NONE: emit(Processor::VOID_OP); return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
 		case ExpressionResult::CONSTANT: emitWithConstant(Processor::CONST_OP, xr.v); return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
-		case ExpressionResult::LOCAL:
-			if (toPrimitive) {
-				if (toPrimitiveOp == Processor::OBJ_TO_PRIMITIVE_OP) {
-					emit(Processor::READ_LOCAL_TO_PRIMITIVE_OP, xr.v.toInt());
-					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
-				}
-				if (toPrimitiveOp == Processor::OBJ_TO_NUMBER_OP) {
-					emit(Processor::READ_LOCAL_TO_NUMBER_OP, xr.v.toInt());
-					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
-				}
-				if (toPrimitiveOp == Processor::OBJ_TO_STRING_OP) {
-					emit(Processor::READ_LOCAL_TO_STRING_OP, xr.v.toInt());
-					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
-				}
-			}
-			emit(Processor::READ_LOCAL_OP, xr.v.toInt()); break;
-		case ExpressionResult::NAMED:
-			if (toPrimitive) {
-				if (toPrimitiveOp == Processor::OBJ_TO_PRIMITIVE_OP) {
-					emitWithConstant(Processor::READ_NAMED_TO_PRIMITIVE_OP, xr.v);
-					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
-				}
-				if (toPrimitiveOp == Processor::OBJ_TO_NUMBER_OP) {
-					emitWithConstant(Processor::READ_NAMED_TO_NUMBER_OP, xr.v);
-					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
-				}
-				if (toPrimitiveOp == Processor::OBJ_TO_STRING_OP) {
-					emitWithConstant(Processor::READ_NAMED_TO_STRING_OP, xr.v);
-					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
-				}
-			}
-			emitWithConstant(Processor::READ_NAMED_OP, xr.v); break;
-		case ExpressionResult::PROPERTY:
-			if (toPrimitive) {
-				if (toPrimitiveOp == Processor::OBJ_TO_PRIMITIVE_OP) {
-					emit(Processor::GET_PROPERTY_TO_PRIMITIVE_OP);
-					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
-				}
-				if (toPrimitiveOp == Processor::OBJ_TO_NUMBER_OP) {
-					emit(Processor::GET_PROPERTY_TO_NUMBER_OP);
-					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
-				}
-				if (toPrimitiveOp == Processor::OBJ_TO_STRING_OP) {
-					emit(Processor::GET_PROPERTY_TO_STRING_OP);
-					return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
-				}
-			}
-			emit(Processor::GET_PROPERTY_OP); break;
+		case ExpressionResult::LOCAL: emit(Processor::READ_LOCAL_OP, xr.v.toInt()); break;
+		case ExpressionResult::NAMED: emitWithConstant(Processor::READ_NAMED_OP, xr.v); break;
+		case ExpressionResult::PROPERTY: emit(Processor::GET_PROPERTY_OP); break;
 		case ExpressionResult::SAFEKEPT: emit(Processor::REPUSH_OP
 				, (currentSection->inDeadCode() ? 0 : xr.v.toInt() - currentSection->stackDepth + 1)); break;
 		default: assert(0);

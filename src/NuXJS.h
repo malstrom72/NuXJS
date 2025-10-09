@@ -1579,23 +1579,14 @@ class Processor : public GCItem {
 			INVALID_OP = -1 // FIX : why?!
 			, CONST_OP										// operand: const_index, stack: -> constant
 			, READ_LOCAL_OP									// operand: local_index, stack: -> value
-			, READ_LOCAL_TO_PRIMITIVE_OP						// operand: local_index, stack: -> value (+1)
-			, READ_LOCAL_TO_NUMBER_OP									// operand: local_index, stack: -> value (+1)
-			, READ_LOCAL_TO_STRING_OP									// operand: local_index, stack: -> value (+1)
 			, WRITE_LOCAL_OP								// operand: local_index, stack: value -> value
 			, WRITE_LOCAL_POP_OP							// operand: local_index, stack: value ->
 			, READ_NAMED_OP									// operand: const_index (name), stack: -> value
-			, READ_NAMED_TO_PRIMITIVE_OP	// operand: const_index (name), stack: -> value (+1)
-			, READ_NAMED_TO_NUMBER_OP		// operand: const_index (name), stack: -> value (+1)
-			, READ_NAMED_TO_STRING_OP		// operand: const_index (name), stack: -> value (+1)
 			, WRITE_NAMED_OP								// operand: const_index (name), stack: value -> value
 			, WRITE_NAMED_POP_OP							// operand: const_index (name), stack: value ->
 			, CHECK_OBJECT_COERCIBLE_OP						// stack: value -> value
 			, CHECK_RESOLVE_PROPERTY_OP						// stack: object, name -> object, name	// check coercible, then resolve object
 			, GET_PROPERTY_OP								// stack: object, name -> value
-			, GET_PROPERTY_TO_PRIMITIVE_OP								// stack: object, name -> primitive_value
-			, GET_PROPERTY_TO_NUMBER_OP								// stack: object, name -> primitive_value
-			, GET_PROPERTY_TO_STRING_OP								// stack: object, name -> primitive_value
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
 			, SET_PROPERTY_POP_OP							// stack: object, name, value ->
 			, ADD_PROPERTY_OP								// operand: const_index (name), stack: object, value -> object
