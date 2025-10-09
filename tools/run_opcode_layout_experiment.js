@@ -28,8 +28,8 @@ const BUILD_COMMANDS = {
         },
 };
 const BENCHMARK_COMMAND = {
-	command: path.resolve(REPO_ROOT, "externals/PikaCmd/PikaCmd"),
-	args: ["tools/benchmark.pika", "-", "--runs"],
+	command: "node",
+	script: path.resolve(REPO_ROOT, "tools/benchmark.node.js"),
 };
 
 function fail(message) {
@@ -257,13 +257,17 @@ function runBuild(buildMode) {
 }
 
 function runBenchmark(runsPerBenchmark, testsPattern) {
-        const args = BENCHMARK_COMMAND.args.slice();
-        args[1] = testsPattern;
-        args.push(String(runsPerBenchmark));
-        if (!fs.existsSync(BENCHMARK_COMMAND.command)) {
-                fail(`Benchmark executable not found: ${BENCHMARK_COMMAND.command}. Build the project first.`);
-        }
-        return runCommand(BENCHMARK_COMMAND.command, args);
+	if (!fs.existsSync(BENCHMARK_COMMAND.script)) {
+		fail(`Benchmark harness not found: ${BENCHMARK_COMMAND.script}.`);
+	}
+	const args = [
+		BENCHMARK_COMMAND.script,
+		testsPattern,
+		"--horizontal",
+		"--runs",
+		String(runsPerBenchmark),
+	];
+	return runCommand(BENCHMARK_COMMAND.command, args);
 }
 
 function describeBuildCommand(mode) {
@@ -278,8 +282,7 @@ function describeBuildCommand(mode) {
 }
 
 function describeBenchmarkCommand(runsPerBenchmark, testsPattern) {
-        const args = [testsPattern, "--runs", String(runsPerBenchmark)].join(" ");
-        return `${BENCHMARK_COMMAND.command} ${BENCHMARK_COMMAND.args[0]} ${args}`;
+	return `${BENCHMARK_COMMAND.command} ${BENCHMARK_COMMAND.script} ${testsPattern} --horizontal --runs ${runsPerBenchmark}`;
 }
 
 function main() {

@@ -230,12 +230,18 @@ function runBuild(options) {
 }
 
 function profileOpcodes(options, paths) {
-	const env = {
-		...process.env,
-		NUXJS_OPCODE_PROFILE_OUT: paths.profile,
-	};
-	const args = ["tools/benchmark.pika", options.profileTests, "--runs", String(options.profileRuns)];
-	const result = runCommand(path.resolve(REPO_ROOT, "externals/PikaCmd/PikaCmd"), args, {env});
+        const env = {
+                ...process.env,
+                NUXJS_OPCODE_PROFILE_OUT: paths.profile,
+        };
+        const args = [
+                path.resolve(REPO_ROOT, "tools/benchmark.node.js"),
+                options.profileTests,
+                "--horizontal",
+                "--runs",
+                String(options.profileRuns),
+        ];
+        const result = runCommand("node", args, {env});
 	if (result.status !== 0) {
 		fail("Benchmark harness failed while gathering opcode profile.");
 	}
@@ -334,6 +340,39 @@ function buildPaths(options) {
 	};
 }
 
+
+function recordArtifactState(paths) {
+	const state = [];
+	for (const [key, value] of Object.entries(paths)) {
+		state.push({
+			key,
+			path: value,
+			existed: fs.existsSync(value),
+		});
+	}
+	return state;
+}
+
+function cleanupArtifacts(artifactState) {
+	let cleanedAny = false;
+	for (const entry of artifactState) {
+		if (entry.existed) {
+			continue;
+		}
+		try {
+			if (fs.existsSync(entry.path)) {
+				fs.unlinkSync(entry.path);
+				cleanedAny = true;
+			}
+		} catch (error) {
+			console.warn(`Warning: failed to remove ${entry.path}: ${error.message}`);
+		}
+	}
+	if (cleanedAny) {
+		console.warn("Removed partially generated artifacts after pipeline failure.");
+	}
+}
+
 function main() {
 	ensureRepoRoot();
 	const options = parseArgs(process.argv.slice(2));
@@ -343,6 +382,22 @@ function main() {
 		console.warn("Warning: running pipeline with a dirty working tree.");
 	}
 	const paths = buildPaths(options);
+	const artifactState = recordArtifactState(paths);
+	let cleanupNeeded = true;
+	const exitHandler = (code) => {
+		if (cleanupNeeded && code !== 0) {
+			cleanupArtifacts(artifactState);
+		}
+	};
+	const signalHandler = (signal) => {
+		console.warn(`\nReceived ${signal}, aborting pipeline.`);
+		cleanupArtifacts(artifactState);
+		cleanupNeeded = false;
+		process.exit(1);
+	};
+	process.on("exit", exitHandler);
+	process.once("SIGINT", signalHandler);
+	process.once("SIGTERM", signalHandler);
 	console.log("Artifacts will be written to:");
 	Object.entries(paths).forEach(([key, value]) => {
 		console.log(`  ${key}: ${value}`);
@@ -352,6 +407,10 @@ function main() {
 	analyzeProfile(options, paths);
 	runExperiments(options, paths);
 	summarizeExperiments(paths);
+	cleanupNeeded = false;
+	process.removeListener("exit", exitHandler);
+	process.removeListener("SIGINT", signalHandler);
+	process.removeListener("SIGTERM", signalHandler);
 	console.log("\nOpcode layout pipeline completed successfully.");
 	console.log(`Profile: ${paths.profile}`);
 	console.log(`Analysis report: ${paths.analysisReport}`);

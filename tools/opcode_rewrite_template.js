@@ -41,17 +41,17 @@ function findSwitchBounds(source) {
 			continue;
 		}
 		if (inDoubleQuote) {
-			if (!escape && ch === """) {
+			if (!escape && ch === '"') {
 				inDoubleQuote = false;
 			}
-			escape = !escape && ch === "\\";
+			escape = !escape && ch === '\\';
 			continue;
 		}
 		if (inSingleQuote) {
 			if (!escape && ch === "'") {
 				inSingleQuote = false;
 			}
-			escape = !escape && ch === "\\";
+			escape = !escape && ch === '\\';
 			continue;
 		}
 		escape = false;
@@ -65,7 +65,7 @@ function findSwitchBounds(source) {
 			++i;
 			continue;
 		}
-		if (ch === """) {
+		if (ch === '"') {
 			inDoubleQuote = true;
 			continue;
 		}
@@ -94,22 +94,52 @@ function splitSwitchCases(block) {
 	const cases = [];
 	let current = null;
 	let seenCase = false;
+
+	function startEntry() {
+		return { labels: [], lines: [], hasBody: false };
+	}
+
 	for (const line of lines) {
 		const caseMatch = line.match(/^\s*case\s+([A-Z0-9_]+)\s*:/);
 		const defaultMatch = line.match(/^\s*default\s*:/);
 		if (caseMatch || defaultMatch) {
-			if (current) {
-				cases.push(current);
-			}
-			seenCase = true;
 			const label = caseMatch ? caseMatch[1] : "default";
-			current = { label, lines: [] };
+			const colonIndex = line.indexOf(":");
+			let inlineBody = false;
+			if (colonIndex !== -1) {
+				const after = line.slice(colonIndex + 1).trim();
+				if (after.length !== 0 && !after.startsWith("//") && !after.startsWith("/*")) {
+					inlineBody = true;
+				}
+			}
+			if (!seenCase) {
+				seenCase = true;
+			}
+			if (current === null || current.hasBody) {
+				if (current) {
+					cases.push(current);
+				}
+				current = startEntry();
+			}
+			current.labels.push(label);
+			current.lines.push(line);
+			if (inlineBody) {
+				current.hasBody = true;
+			}
+			continue;
 		}
 		if (!seenCase) {
 			prefix.push(line);
-		} else if (current) {
-			current.lines.push(line);
+			continue;
 		}
+		if (current === null) {
+			current = startEntry();
+		}
+		const trimmed = line.trim();
+		if (trimmed.length !== 0 && !trimmed.startsWith("//") && !trimmed.startsWith("/*") && !trimmed.startsWith("*") && !trimmed.startsWith("*/")) {
+			current.hasBody = true;
+		}
+		current.lines.push(line);
 	}
 	if (current) {
 		cases.push(current);
@@ -118,28 +148,32 @@ function splitSwitchCases(block) {
 }
 
 function reorderCases(existingCases, desiredOrder) {
-	const map = new Map();
-	const existingOrder = [];
+	const labelToEntry = new Map();
+	const ordered = [];
+	const seenEntries = new Set();
+	const remaining = [];
 	let defaultCase = null;
 	for (const entry of existingCases) {
-		if (entry.label === "default") {
+		if (entry.labels.includes("default")) {
 			defaultCase = entry;
 			continue;
 		}
-		map.set(entry.label, entry);
-		existingOrder.push(entry.label);
-	}
-	const ordered = [];
-	const seen = new Set();
-	for (const label of desiredOrder) {
-		if (map.has(label) && !seen.has(label)) {
-			ordered.push(map.get(label));
-			seen.add(label);
+		remaining.push(entry);
+		for (const label of entry.labels) {
+			labelToEntry.set(label, entry);
 		}
 	}
-	for (const label of existingOrder) {
-		if (!seen.has(label)) {
-			ordered.push(map.get(label));
+	for (const label of desiredOrder) {
+		const entry = labelToEntry.get(label);
+		if (entry && !seenEntries.has(entry)) {
+			ordered.push(entry);
+			seenEntries.add(entry);
+		}
+	}
+	for (const entry of remaining) {
+		if (!seenEntries.has(entry)) {
+			ordered.push(entry);
+			seenEntries.add(entry);
 		}
 	}
 	if (defaultCase) {
@@ -147,7 +181,6 @@ function reorderCases(existingCases, desiredOrder) {
 	}
 	return ordered;
 }
-
 function renderSwitchBlock(prefix, cases, trailingNewline) {
 	const lines = prefix.slice();
 	for (const entry of cases) {
