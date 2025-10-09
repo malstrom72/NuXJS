@@ -81,7 +81,7 @@ class GCItem {
 	public:
 		static void* operator new(size_t n, Heap& heap);	///< Will store a secret pointer to Heap in allocated memory.
 		static void operator delete(void* ptr);				///< Will use the secret pointer to delete from correct Heap.
-		static void operator delete(void* ptr, Heap& heap); ///< C++ calls this (only) if constructor throws.
+		static void operator delete(void* ptr, Heap& heap);	///< C++ calls this (only) if constructor throws.
 	
 	protected:
 		GCItem() throw() : _gcList(0) { _gcPrev = _gcNext = this; }
@@ -146,7 +146,7 @@ class Heap {
 		GCList& roots() throw() { return rootList; }
 		void* allocate(size_t size);					///< Notice that allocated memory is *not* automatically released when Heap is destroyed (unless it is indirectly freed via the deletion of all managed GCItems).
 		void free(void* ptr);							///< Null pointer is not ok, and naturally you must not free an already freed pointer.
-		void drain();									///< Frees pooled blocks. Suggestion: call before each gc to only hold on to as much memory as we required since last gc.
+		void drain(); 									///< Frees pooled blocks. Suggestion: call before each gc to only hold on to as much memory as we required since last gc.
 		UInt32 count() const { return allocatedCount; }
 		size_t size() const { return allocatedSize; }
 		size_t pooled() const { return pooledSize; }
@@ -251,7 +251,7 @@ template<typename T, UInt32 INTERNAL_COUNT = DEFAULT_INTERNAL_COUNT> class Vecto
 
 		void insert(T* p, const T* b, const T* e) {
 			assert(begin() <= p && p <= end());
-			assert(!(b <= p && p < e)); // can't insert from itself
+			assert(!(b <= p && p < e));	// can't insert from itself
 			const UInt32 o = distance(begin(), p);
 			const UInt32 n = distance(b, e);
 			resize(count + n);
@@ -393,7 +393,7 @@ class Value {
 		bool toArrayIndex(UInt32& index) const;				///< returns false if value is outside valid array index range (0..2^32-1)
 		double toDouble() const;							///< Will *not* convert objects to numbers (as this would require running JS code).
 		Function* toFunction(Heap& heap) const;
-		const String* toString(Heap& heap) const;			///< this toString() method does not run any script code, so it doesn't honor any user toString or valueOf implementations.
+		const String* toString(Heap& heap) const; 			///< this toString() method does not run any script code, so it doesn't honor any user toString or valueOf implementations.
 		std::wstring toWideString(Heap& heap) const;
 		Object* toObjectOrNull(Heap& heap, bool requireExtensible) const;
 		Object* toObject(Heap& heap, bool requireExtensible) const;
@@ -534,7 +534,7 @@ class Object : public GCItem {
 		virtual Error* asError();								///< Default returns 0. (Errors return `this`.)
 		virtual const String* typeOfString() const;				///< Default returns "object". (Strings and functions override.)
 		virtual const String* getClassName() const;				///< Default returns &O_BJECT_STRING ("Object"). Override if you implement custom native objects. Must return the same string pointer everytime.
-		virtual const String* toString(Heap& heap) const;		///< this toString() method does not run any script code, so it doesn't honor any user toString or valueOf implementations.
+		virtual const String* toString(Heap& heap) const; 		///< this toString() method does not run any script code, so it doesn't honor any user toString or valueOf implementations.
 		virtual Value getInternalValue(Heap& heap) const;		///< Used by the standard library to retrieve internal value for wrappers (Number, String etc), source code for functions and parser function for RegExp. Default returns UNDEFINED_VALUE.
 		virtual Object* getPrototype(Runtime& rt) const;		///< Default returns the Object prototype.
 
@@ -544,10 +544,10 @@ class Object : public GCItem {
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);												///< Default returns false.
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;											///< Default returns an empty enumerator.
 
-		Flags getProperty(Runtime& rt, const Value& key, Value* v) const;	///< Searches prototype chain.
-		bool setProperty(Runtime& rt, const Value& key, const Value& v);	///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
+		Flags getProperty(Runtime& rt, const Value& key, Value* v) const; 	///< Searches prototype chain.
+		bool setProperty(Runtime& rt, const Value& key, const Value& v); 	///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
 		bool isOwnPropertyEnumerable(Runtime& rt, const Value& key) const;
-		bool hasOwnProperty(Runtime& rt, const Value& key) const;			///< Checks via getOwnProperty().
+		bool hasOwnProperty(Runtime& rt, const Value& key) const; 			///< Checks via getOwnProperty().
 		bool hasProperty(Runtime& rt, const Value& key) const;				///< Checks via getProperty().
 		Enumerator* getPropertyEnumerator(Runtime& rt) const;				///< Unlike getOwnPropertyEnumerator() this one also enumerates all prototype properties.
 
@@ -646,7 +646,7 @@ class String : public Object {
 		String(GCList& gcList, const std::string& s);
 		String(GCList& gcList, const std::wstring& s);									///< If wchar_t is 16-bit, this constructor assumes the wstring is already in UTF16 format and simply copies all characters. If it is 32-bit, it will be converted to UTF16 accordingly.
 		virtual const String* typeOfString() const;
-		virtual const String* getClassName() const; // &S_TRING_STRING
+		virtual const String* getClassName() const;	// &S_TRING_STRING
 		virtual const String* toString(Heap&) const { return this; }
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
@@ -698,6 +698,20 @@ class StringListEnumerator : public Enumerator {
 		}
 };
 
+// easier names for fundamental Value constants
+extern const Value UNDEFINED_VALUE, NULL_VALUE, NAN_VALUE, INFINITY_VALUE, FALSE_VALUE, TRUE_VALUE;
+
+// class names (capitalized)
+extern const String A_RGUMENTS_STRING, A_RRAY_STRING, B_OOLEAN_STRING, D_ATE_STRING, E_RROR_STRING, F_UNCTION_STRING
+		, N_UMBER_STRING, O_BJECT_STRING, S_TRING_STRING;
+
+// typeof names (all lowercase)
+extern const String BOOLEAN_STRING, NUMBER_STRING, OBJECT_STRING, STRING_STRING, FUNCTION_STRING;
+
+// other useful string constants (all lowercase)
+extern const String EMPTY_STRING, LENGTH_STRING, UNDEFINED_STRING, NULL_STRING;
+
+
 /**
 	JSObject represents a standard extensible JavaScript object with its own property table and prototype pointer.
 **/
@@ -730,10 +744,10 @@ class JSObject : public Object, public Table {
 		user accesses properties or extends the object(but you still need an object reference). Example are Functions
 		which are most often not treated as objects by the user.
 	
-	2)	Memory: until the user accesses or adds properties, LazyJSObjects can be super tiny (vtable pointer + pointer
+	2) 	Memory: until the user accesses or adds properties, LazyJSObjects can be super tiny (vtable pointer + pointer
 		to complete object + whatever internal fields are needed).
 	
-	3)	Doesn't require a Runtime or even a Heap to be constructed. Although they are required to be placed on the
+	3) 	Doesn't require a Runtime or even a Heap to be constructed. Although they are required to be placed on the
 		heap since they contain a reference.
 	
 	This class is a template so this concept can be used with different super classes.
@@ -769,7 +783,7 @@ class JSArray : public LazyJSObject<Object> {
 		JSArray(GCList& gcList);
 		JSArray(GCList& gcList, UInt32 initialLength);	// Will fill with UNDEFINED_VALUE. Just an optimization if you know the final array length beforehand.
 		JSArray(GCList& gcList, UInt32 initialLength, const Value* initialElements);
-		virtual const String* getClassName() const; // &A_RRAY_STRING
+		virtual const String* getClassName() const;	// &A_RRAY_STRING
 		virtual JSArray* asArray();
 		virtual Object* getPrototype(Runtime& rt) const;
 		// FIX : toString too?
@@ -779,7 +793,7 @@ class JSArray : public LazyJSObject<Object> {
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 		void pushElements(Runtime& rt, Int32 count, const Value* elements);
-		UInt32 getLength() const { return length; } // fix: make virtual and have for all objects?
+		UInt32 getLength() const { return length; }	// fix: make virtual and have for all objects?
 		bool updateLength(UInt32 newLength);	// fix: make virtual and have for all objects?
 		Value getElement(Runtime& rt, UInt32 index) const;
 		bool setElement(Runtime& rt, UInt32 index, const Value& v);
@@ -787,6 +801,7 @@ class JSArray : public LazyJSObject<Object> {
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
 		void sliceDenseVector(Runtime& rt, const Value& key);
+		bool setOwnPropertyInternal(Runtime& rt, const Value& key, const Value& v, Flags flags, bool& result);
 		UInt32 length;
 		Vector<Value> denseVector;
 		virtual void gcMarkReferences(Heap& heap) const {
@@ -813,8 +828,33 @@ class Constants : public GCItem, public Vector<Value> {
 };
 
 /**
+	SourceCodeUnit owns the original source string, the filename and a fast line-number lookup table.
+**/
+class SourceCodeUnit : public GCItem {
+	public:
+		typedef GCItem super;
+		SourceCodeUnit(GCList& gcList, const String* sourceCode, const String* fileName);
+		const String* getSource() const { assert(source != 0); return source; }
+		const String* getFileName() const { assert(fileName != 0); return fileName; }
+		void computeLineColumn(UInt32 offset, UInt32& line, UInt32& column) const;
+
+	protected:
+		virtual void gcMarkReferences(Heap& heap) const {
+			gcMark(heap, source);
+			gcMark(heap, fileName);
+       		super::gcMarkReferences(heap);
+		}
+
+		const String* const source;
+		const String* const fileName;
+		Vector<UInt32> lineOffsets; 	// Byte offsets of line beginnings in source code. lineOffsets[0] is always 0.
+};
+
+/**
 	Code represents compiled bytecode and associated metadata. It is an Object so that it can be stored as a constant
 	and referenced by multiple functions.
+	Source metadata such as filenames and line/column tables live on the associated `SourceCodeUnit`; full-script
+	code objects keep their legacy `source` pointer in sync with the unit's source string.
 **/
 class Code : public Object {
 	friend class FunctionScope;
@@ -822,8 +862,15 @@ class Code : public Object {
 	
 	public:
 		typedef Object super;
+		struct SourceLocation {
+			const String* fileName; 	// will not be 0
+			const String* functionName; // can be 0 (if Code is not a function) or empty string (if anonymous function)
+			UInt32 offset;
+			UInt32 line;
+			UInt32 column;
+		};
 
-		Code(GCList& gcList, Constants* sharedConstants = 0);
+		Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUnit);
 		bool lookupNameIndex(const String* name, Int32& index) const;
 		UInt32 getVarsCount() const { return varNames.size(); }
 		UInt32 getArgumentsCount() const { return argumentNames.size(); }
@@ -831,14 +878,19 @@ class Code : public Object {
 		const Constants* getConstants() const { return constants; }
 		const CodeWord* getCodeWords() const { return codeWords.begin(); }
 		UInt32 getCodeSize() const { return codeWords.size(); }
-		const String* getName() const { return name; }
-		const String* getSource() const { return source; }
+		const String* getName() const { return name; }		// can be 0 (which means Code is not a function) or empty string (which means anonymous function)
+		const String* getSource() const { assert(source != 0); return source; }
+		SourceCodeUnit* getSourceUnit() const { assert(sourceUnit != 0); return sourceUnit; }
+		SourceLocation lookupSourceLocation(const CodeWord* instructionPointer) const;
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 		UInt32 calcLocalsSize(UInt32 argc) const { return getVarsCount() + std::max(getArgumentsCount(), argc); }
 
 	protected:
 		Vector<CodeWord> codeWords;
 		Constants* const constants;
+		SourceCodeUnit* const sourceUnit;
+		Vector<UInt32> codeOffsets;
+		Vector<UInt32> sourceOffsets;
 		Table nameIndexes;							///< < 0 : local variables, >= 0 : arguments, CATCH_PARAMETER == current catch parameter during compile-time only (don't use fast index binding)
 		Vector<const String*> varNames;				///< Notice that this list is reversed in relation to indexes in the "locals" array in FunctionScope.
 		Vector<const String*> argumentNames;
@@ -850,6 +902,7 @@ class Code : public Object {
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, constants);
+			gcMark(heap, sourceUnit);
 			nameIndexes.gcMarkReferences(heap);
 			gcMark(heap, varNames.begin(), varNames.end());
 			gcMark(heap, argumentNames.begin(), argumentNames.end());
@@ -870,7 +923,7 @@ class Function : public Object {
 	
 		virtual Function* asFunction();
 		virtual const String* typeOfString() const;
-		virtual const String* getClassName() const; // &F_UNCTION_STRING
+		virtual const String* getClassName() const;	// &F_UNCTION_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Value getInternalValue(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
@@ -979,27 +1032,30 @@ class Error : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 		Error(GCList& heap, ErrorType type, const String* message = 0);
-		virtual const String* getClassName() const; // &E_RROR_STRING
-		virtual Error* asError();
+		virtual const String* getClassName() const { return &E_RROR_STRING; }
+		virtual Error* asError() { return this; }
 		virtual const String* toString(Heap& heap) const;
 		virtual Value getInternalValue(Heap& heap) const; // error type name
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
-		ErrorType getErrorType() const;
-		const String* getErrorName() const;
-		const String* getErrorMessage() const;
+		ErrorType getErrorType() const { return errorType; }
+		const String* getErrorName() const { assert(name != 0); return name; }	// never 0
+		const String* getErrorMessage() const { return message; };	// can be 0
+		const String* getStackString() const { return stack; }	// can be 0
 	
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
 		void updateReflection(Runtime& rt);
 
 		const ErrorType errorType;
-		const String* name;		// may get updated by script code
-		const String* message;	// may get updated by script code
+		const String* name; 	// may get updated by script code
+		const String* message; 	// may get updated by script code
+		const String* stack; 		// may get updated by script code
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, name);
 			gcMark(heap, message);
+			gcMark(heap, stack);
 			super::gcMarkReferences(heap);
 		}
 };
@@ -1009,8 +1065,8 @@ class Arguments : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 
-		Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
-		virtual const String* getClassName() const; // &A_RGUMENTS_STRING
+        Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
+		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
@@ -1022,8 +1078,8 @@ class Arguments : public LazyJSObject<Object> {
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
-		Value* findProperty(const Value& key) const;
-		const FunctionScope* scope;
+        Value* findProperty(const Value& key) const;
+        const FunctionScope* scope;
 		JSFunction* const function;
 		UInt32 const argumentsCount;
 		Vector<Byte> deletedArguments;
@@ -1055,7 +1111,7 @@ class FunctionScope : public Scope {
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		JSObject* getDynamicVars(Runtime& rt) const;
-		virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
+	   	virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
 
 	protected:
 		JSFunction* const function;
@@ -1131,7 +1187,7 @@ class Runtime : public GCItem {
 		Object* getErrorPrototype(ErrorType error) const;
 		Object* getGlobalObject() const { assert(globalObject != 0); return globalObject; }
 		Runtime::GlobalScope* getGlobalScope() { return &globalScope; }
-		JSObject* newJSObject() const;							///< Convenience routine for `new(heap) JSObject(heap.managed(), rt.getObjectPrototype())`
+		JSObject* newJSObject() const; 							///< Convenience routine for `new(heap) JSObject(heap.managed(), rt.getObjectPrototype())`
 		JSArray* newJSArray(UInt32 initialLength = 0) const;	///< Convenience routine for `new(heap) JSArray(heap.managed(), initialLength)`
 		const String* newStringConstant(const char* s);
 
@@ -1224,25 +1280,14 @@ struct ScriptException : public Exception {
 	static void throwError(Heap& heap, ErrorType type, const char* message);
 	ScriptException(Heap& heap, const Value& value) throw();
 	virtual const char* what() const throw() { return utf8String.c_str(); }
+	Error* asErrorObject() const { return value.asError(); }
+	const char* getStackTrace() const;
 	virtual ~ScriptException() throw() { }
+
 	Value value;
 	std::string utf8String;
-	Error* asErrorObject() const;
+	mutable std::string stackTrace;
 };
-inline Error* ScriptException::asErrorObject() const { return value.asError(); }
-
-// easier names for fundamental Value constants
-extern const Value UNDEFINED_VALUE, NULL_VALUE, NAN_VALUE, INFINITY_VALUE, FALSE_VALUE, TRUE_VALUE;
-
-// class names (capitalized)
-extern const String A_RGUMENTS_STRING, A_RRAY_STRING, B_OOLEAN_STRING, D_ATE_STRING, E_RROR_STRING, F_UNCTION_STRING
-		, N_UMBER_STRING, O_BJECT_STRING, S_TRING_STRING;
-
-// typeof names (all lowercase)
-extern const String BOOLEAN_STRING, NUMBER_STRING, OBJECT_STRING, STRING_STRING, FUNCTION_STRING;
-
-// other useful string constants (all lowercase)
-extern const String EMPTY_STRING, LENGTH_STRING, UNDEFINED_STRING, NULL_STRING;
 
 class VarList;
 class Property;
@@ -1317,7 +1362,7 @@ class AccessorBase {
 template<> inline bool AccessorBase::to<bool>() const { return get().toBool(); }	// operator bool() is ambiguous and notoriously dangerous so we left it out. Use var.to<bool>() instead.
 template<> inline Int32 AccessorBase::to<Int32>() const { return get().toInt(); }	// Adding an operator int() would cause ambiguity with implicit casts, but to<Int32> is still a good idea.
 template<> inline UInt32 AccessorBase::to<UInt32>() const { return static_cast<UInt32>(get().toInt()); }	// Adding an operator unsigned int() would cause ambiguity with implicit casts, but to<UInt32> is still a good idea.
-template<> inline Value AccessorBase::to<Value>() const { return get(); }			// to<Value> ends up ambigious without this.
+template<> inline Value AccessorBase::to<Value>() const { return get(); } 			// to<Value> ends up ambigious without this.
 
 /**
 	Var is a garbage collected wrapper that exposes convenient C++ access to JavaScript values.
@@ -1546,13 +1591,13 @@ class Processor : public GCItem {
 			, WRITE_NAMED_OP								// operand: const_index (name), stack: value -> value
 			, WRITE_NAMED_POP_OP							// operand: const_index (name), stack: value ->
 			, CHECK_OBJECT_COERCIBLE_OP						// stack: value -> value
+			, CHECK_RESOLVE_PROPERTY_OP						// stack: object, name -> object, name	// check coercible, then resolve object
 			, GET_PROPERTY_OP								// stack: object, name -> value
 			, GET_PROPERTY_TO_PRIMITIVE_OP								// stack: object, name -> primitive_value
 			, GET_PROPERTY_TO_NUMBER_OP								// stack: object, name -> primitive_value
 			, GET_PROPERTY_TO_STRING_OP								// stack: object, name -> primitive_value
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
 			, SET_PROPERTY_POP_OP							// stack: object, name, value ->
-			, CHECK_RESOLVE_PROPERTY_OP						// stack: object, name -> object, name	// check coercible, then resolve object
 			, ADD_PROPERTY_OP								// operand: const_index (name), stack: object, value -> object
 			, PUSH_ELEMENTS_OP								// operand: count, stack: object, count * elements ... -> object
 			, OBJ_TO_PRIMITIVE_OP							// stack: value -> primitive_value (no preference)	// these three must be in this exact order
@@ -1626,6 +1671,7 @@ class Processor : public GCItem {
 		void enterEvalCode(const Code* code, bool local = false);
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
 		void throwVirtualException(const Value& exception);
+		void addStackTrace(const Value& exception) const;
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);
 		Value getResult() const;	// make sure you've called run() until it returns false before calling this
@@ -1634,8 +1680,12 @@ class Processor : public GCItem {
 		struct Frame : public GCItem {
 			typedef GCItem super;
 			Frame(GCList& gcList, const CodeWord* returnIP, const Code* code, Scope* scope, Object* thisObject
-					, Frame* previousFrame) : super(gcList), returnIP(returnIP), code(code), scope(scope)
-					, thisObject(thisObject), previousFrame(previousFrame) { }
+				, Frame* previousFrame) : super(gcList), returnIP(returnIP), code(code), scope(scope)
+				, thisObject(thisObject), previousFrame(previousFrame)
+			{
+				assert(code != 0);
+				assert(scope != 0);
+			}
 			const CodeWord* const returnIP;
 			const Code* const code;
 			Scope* const scope;
@@ -1725,16 +1775,24 @@ class Compiler : public GCItem {
 
 		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0);
 		const Char* compile(const Char* b, const Char* e);
-		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName = 0); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
+		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
 		void compile(const String& source);
-		void getStopPosition(size_t& offset, int& lineNumber, int& columnNumber) const;
+		void getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const;
 
 	protected:
 		struct CodeSection {
 			CodeSection(Heap& heap, Int32 initialStackDepth)
-					: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
-					, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth) { }
-			void emit(Processor::Opcode opcode, Int32 operand);
+				: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
+				, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth)
+				, codeOffsets(&heap), sourceOffsets(&heap)
+		 	{
+			}
+			
+			void emit(Processor::Opcode opcode, Int32 operand, UInt32 sourceOffset);
+			void pushSourceMapping(UInt32 offset);
+			UInt32 popSourceMapping();
+			void exportSourceMapping(Vector<UInt32>& toCodeOffsets, Vector<UInt32>& toSourceOffsets
+					, UInt32 codeBase) const;
 			void insertSection(const CodeSection& section);
 			bool inDeadCode() const { return stackDepth == DEAD_CODE_STACK_DEPTH; }
 			Vector<CodeWord> code;
@@ -1742,6 +1800,8 @@ class Compiler : public GCItem {
 			const Int32 initialStackDepth;
 			Int32 stackDepth;
 			Int32 maxStackDepth;
+			Vector<UInt32> codeOffsets;
+			Vector<UInt32> sourceOffsets;
 		};
 
 		struct BranchPoint {
@@ -1790,7 +1850,7 @@ class Compiler : public GCItem {
 		ExpressionResult expression(Precedence precedence);
 		ExpressionResult rvalueExpression(Precedence precedence = LOWEST_PREC);
 		void rvalueGroup();
-		void functionDefinition(const String* functionName, const String* selfName = 0); // selfName is only for named function expressions
+		void functionDefinition(const String* functionName, const String* selfName); // selfName is only for named function expressions, should be 0 otherwise
 		bool optionalExpression(ExpressionResult& xr, Precedence precedence);
 		ExpressionResult declareIdentifier(const String* name, bool func);
 		ExpressionResult varDeclaration();
@@ -1832,6 +1892,7 @@ class Compiler : public GCItem {
 		const Char* b;
 		const Char* p;
 		const Char* e;
+		const Char* sourceUnitBase;
 		CodeSection* currentSection;
 		bool acceptInOperator;
 		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
@@ -1853,9 +1914,9 @@ struct CompilationError : public ScriptException {
 		fromCompiler.getStopPosition(offset, lineNumber, columnNumber);
 	}
 	const String* filename;
-	size_t offset;
-	int lineNumber;
-	int columnNumber;
+	UInt32 offset;
+	UInt32 lineNumber;
+	UInt32 columnNumber;
 };
 
 } /* namespace NuXJS */

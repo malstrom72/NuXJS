@@ -33,6 +33,33 @@ const TEST_ARGS_BASE = [
 	"--command=" + (process.platform === "win32" ? '"' + path.resolve(ENGINE) + '"' : ENGINE) + " -s",
 ];
 
+// Simple arg helpers to support both "--name value" and "--name=value"
+function findArg(name) {
+	const eq = "--" + name + "=";
+	for (let i = 0; i < process.argv.length; i++) {
+		const a = process.argv[i];
+		if (a === "--" + name) return { type: "separate", index: i };
+		if (a.indexOf(eq) === 0) return { type: "equals", value: a.substr(eq.length) };
+	}
+	return null;
+}
+function getBool(name) {
+	const hit = findArg(name);
+	if (!hit) return false;
+	if (hit.type === "equals") {
+		const v = hit.value.trim().toLowerCase();
+		return v === "1" || v === "true" || v === "yes";
+	}
+	return true;
+}
+function getInt(name, def) {
+	const hit = findArg(name);
+	if (!hit) return def;
+	const raw = hit.type === "separate" ? process.argv[hit.index + 1] : hit.value;
+	const n = parseInt(raw, 10);
+	return isFinite(n) ? n : def;
+}
+
 // Resolve a Python 2 interpreter robustly:
 // 1) Respect NUXJS_PYTHON2 if provided
 // 2) Prefer the repo's portable env created by tools/setupPython2.*
@@ -95,12 +122,38 @@ function extend(target, obj) {
 
 var runningTest = false;
 var currentTest = undefined;
+function listSubdirs(relRoot) {
+	const abs = path.join(TEST_PATH, "test", relRoot);
+	try {
+		const entries = fs.readdirSync(abs, { withFileTypes: true });
+		return entries
+			.filter((e) => e.isDirectory())
+			.map((e) => path.join(relRoot, e.name));
+	} catch (e) {
+		// Fallback if the path doesn't exist on a given snapshot
+		return [];
+	}
+}
+
+function buildWorkList(limit) {
+	// Keep the small, fast subset for quick limit runs
+	if (limit) return [path.join("language", "arguments")];
+	// Fan out across first-level subdirectories for better parallelism
+	let work = [];
+	["language", "built-ins"].forEach((root) => {
+		const subs = listSubdirs(root);
+		if (subs.length) work = work.concat(subs);
+		else work.push(root); // fallback to root if no subdirs found
+	});
+	return work;
+}
+
 function runTests(callback, limit, jobs) {
 	runningTest = true;
 	currentTest = undefined;
 	console.log("Running tests");
 	var count = 0;
-	const dirArgs = limit ? [path.join("language", "arguments")] : ["language", "built-ins"];
+	const dirArgs = buildWorkList(limit);
 	jobs = Math.max(1, jobs | 0);
 
 	const chunks = [];
@@ -111,6 +164,7 @@ function runTests(callback, limit, jobs) {
 	const captureMode = [];
 	const currentTests = [];
 	let remaining = chunks.filter((c) => c.length > 0).length;
+	console.log("starting " + remaining + " jobs");
 
 	function onClose() {
 		if (--remaining === 0) {
@@ -127,11 +181,23 @@ function runTests(callback, limit, jobs) {
 		children.push(child);
 		captureMode[idx] = false;
 		currentTests[idx] = undefined;
+		child.stderr && child.stderr.on("data", (d) => {
+			const s = d.toString();
+			if (s.trim()) console.error("[worker " + idx + "] STDERR: " + s.trim());
+		});
+		child.on("error", (e) => {
+			console.error("Child process error [" + idx + "]: " + e.message);
+		});
 		readline
 			.createInterface({
 				input: child.stdout,
 			})
 			.on("line", (line) => {
+				// Some chunks may legitimately contain no tests; ignore such notices early
+				if (/^\s*(?:Error:\s+)?No tests to run\b/i.test(line)) {
+					console.warn("[worker " + idx + "] " + line.trim());
+					return;
+				}
 				if (captureMode[idx]) {
 					if (line.substr(-3) === "===") {
 						line = line.slice(0, -3);
@@ -151,10 +217,6 @@ function runTests(callback, limit, jobs) {
 						if (count % 100 === 0) console.log("... " + count + " tests run");
 						if (limit && count >= limit) children.forEach((c) => c.kill("SIGKILL"));
 					} else if (line) {
-						if (/^Error:\s+No tests to run/i.test(line)) {
-							console.error(line);
-							return;
-						}
 						console.warn("Unknown output: " + line);
 					}
 				}
@@ -212,13 +274,11 @@ var server = http.createServer(function (req, res) {
 
 loadConfig();
 
-var cliMode = process.argv.indexOf("--cli") !== -1;
-var limitIndex = process.argv.indexOf("--limit");
-var maxTests = limitIndex !== -1 ? parseInt(process.argv[limitIndex + 1]) : undefined;
-var jobsIndex = process.argv.indexOf("--jobs");
-var jobs = jobsIndex !== -1 ? parseInt(process.argv[jobsIndex + 1]) : 1;
-var includeIgnored = process.argv.indexOf("--include-ignored") !== -1;
-var resetPassed = process.argv.indexOf("--reset-passed") !== -1; // implies include-ignored
+var cliMode = getBool("cli");
+var maxTests = getInt("limit", undefined);
+var jobs = getInt("jobs", 1);
+var includeIgnored = getBool("include-ignored");
+var resetPassed = getBool("reset-passed"); // implies include-ignored
 if (resetPassed) includeIgnored = true;
 
 if (cliMode) {

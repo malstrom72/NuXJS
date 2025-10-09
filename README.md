@@ -75,44 +75,20 @@ commands.
 
 ## ECMAScript 3 Compliance
 
-- Zero failures across 3,242 applicable ES3 tests (Test262).
-- 1,349 tests are excluded by category and not counted toward ES3 support:
-  - ES >3: 1,218 (modern features not targeted)
-  - TBD: 112 (pending triage or harness compatibility)
-  - BY DESIGN: 19 (intentional, documented deviations)
+- Zero failures across 6542 applicable ES3 tests (Test262).
+- 9224 tests are excluded by category and not counted toward ES3 support:
+  - ES >3: 8933 (modern features not targeted for ES3, main)
+  - BAD TEST: 101 (tests depend on features not available in ES3)
+  - BY DESIGN: 190 (intentional, documented deviations)
 
-These results come from the Test262 harness included in this repo; see the dashboard below to reproduce.
+These results come from the Test262 harness included in this repo; see `docs/Test262 Dashboard.md` for the developer-focused
+dashboard that reproduces them.
 
 About Test262: we use an older snapshot, the newest one we found that still runs ES3 engines. Newer Test262 assumes ES5+
-semantics and a different harness, so it would mark out‑of‑scope features as failures.
+semantics and a different harness, so it would mark out-of-scope features as failures.
 
-## Test262 Dashboard
-
-The Test262 suite is stored as an archive in `externals/` and extracted to `externals/test262-master/` on first use.
-
-- Manual unpack (optional): `tar -xzf externals/test262-master.tar.gz -C externals`
-- Start the dashboard server: `node tools/testdash.node.js` (opens a browser)
-- CLI mode (headless summary): `node tools/testdash.node.js --cli`
-- Include ignored categories in the summary: `node tools/testdash.node.js --cli --include-ignored`
-- Reset category for all passing tests (does not touch failures; also includes ignored):
-  `node tools/testdash.node.js --cli --reset-passed`
-
-Python 2 requirement (for the Test262 harness):
-
-- Install a self-contained Python 2 shim: `bash tools/setupPython2.sh`
-- Add the shim to PATH in this terminal: `export PATH="$HOME/.local/bin:$PATH"`
-- The script appends this to `~/.zshrc`/`~/.bashrc` for future shells.
-- Verify: `python2 -V` → prints Python 2.7.x
-- One-off run without editing PATH: `PATH="$HOME/.local/bin:$PATH" node tools/testdash.node.js --cli`
-
-Apple Silicon note: Python 2 packages are only available for x86_64. The setup script creates an `osx-64` conda env that
-runs under Rosetta 2. If needed, install Rosetta: `softwareupdate --install-rosetta --agree-to-license`.
-
-Windows: use `tools/setupPython2.cmd` (wraps the bash script) and run the Node commands in a shell where `python2` resolves.
-
-Notes:
-
-- The dashboard auto-extracts `externals/test262-master.tar.gz` if `externals/test262-master/` is missing.
+In addition, the build script performs regression tests written in C++ and JavaScript (over 4500 source code files with
+various tests at the moment).
 
 ## Example
 
@@ -136,13 +112,14 @@ int main(int argc, const char* argv[]) {
 
 - `build.sh` / `build.cmd` – build both the **beta** and **release** targets and run all tests
 - `tools/buildAndTest.sh` / `.cmd` – build and test a single configuration, including the examples
-- `tools/BuildCpp.sh` / `.cmd` – low-level wrapper around the C++ compiler
-
-## Benchmarking
-
 - `tools/benchmark.node.js` – run NuXJS micro benchmarks or generate golden results
-- `tools/compareEngines.sh` / `.cmd` – download Duktape and QuickJS and compare their performance to NuXJS
  
+## Documentation
+
+- [NuXJS Documentation](docs/NuXJS%20Documentation.md)
+- [ECMAScript Compatibility Notes](docs/notes/ECMAScript%20Compatibility%20Notes.md)
+- [TypeScript Compatibility](docs/notes/TypeScript%20Compatibility.md)
+
 ## Building the fuzz target
 
 The `tools/buildReplFuzz.sh` script compiles `tools/NuXJSREPL.cpp` using clang and libFuzzer:
@@ -157,13 +134,6 @@ The resulting binary is placed in `output/NuXJSFuzz` and can be run with a direc
 ./output/NuXJSFuzz corpus/
 ```
 
-On macOS the default clang from Xcode does not ship the libFuzzer runtime. Install the `llvm` package via Homebrew and
-invoke the script with that compiler:
-
-```bash
-CPP_COMPILER=$(brew --prefix llvm)/bin/clang++ bash tools/buildReplFuzz.sh
-```
-
 To seed the fuzzer with inputs derived from the existing test suite, generate a corpus from the `.io` files:
 
 ```bash
@@ -171,12 +141,6 @@ PikaCmd tools/makeCorpus.pika corpus
 ```
 
 Each section of every test file is written as a separate entry in the specified directory.
-
-## Documentation
-
-- [NuXJS Documentation](docs/NuXJS%20Documentation.md)
-- [ECMAScript Compatibility Notes](docs/notes/ECMAScript%20Compatibility%20Notes.md)
-- [TypeScript Compatibility](docs/notes/TypeScript%20Compatibility.md)
 
 ## AI Usage
 

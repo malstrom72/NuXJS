@@ -38,8 +38,8 @@
 #error This code requires IEEE compliant floating point handling. Avoid -Ofast / -ffast-math etc (at least for this source file).
 #endif
 
-#include <stdint.h>
 #include "assert.h"
+#include <stdint.h>
 #include <cmath>
 #include "NuXJS.h"
 #include <algorithm>
@@ -363,16 +363,17 @@ const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_ST
 		, E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
 		, S_TRING_STRING("String");
 
-static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
-		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
+static const String ANONYMOUS_SCRIPT_STRING("<anonymous>"), ANONYMOUS_STRING("anonymous")
+		, ARGUMENTS_STRING("arguments"), BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
 		, CANNOT_CONVERT_TO_OBJECT_STRING("Cannot convert undefined or null to object")
 		, CANNOT_USE_IN_OPERATOR_STRING("Cannot use 'in' operator on "), CLASS_STRING("class"), COLON_SPACE(": ")
-		, CONSTRUCTOR_STRING("constructor"), END_BRACKET_STRING("]"), EVAL_STRING("eval"), FALSE_STRING("false")
-		, FUNCTION_SPACE("function "), INFINITY_STRING("Infinity"), IS_NOT_A_FUNCTION_STRING(" is not a function")
-		, IS_NOT_DEFINED_STRING(" is not defined"), MESSAGE_STRING("message"), MINUS_INFINITY_STRING("-Infinity")
-		, NAME_STRING("name"), NAN_STRING("NaN"), NATIVE_FUNCTION_STRING("function() { [native code] }")
-		, PROTOTYPE_CHAIN_TOO_LONG("Prototype chain too long"), PROTOTYPE_STRING("prototype")
-		, STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value");
+		, CONSTRUCTOR_STRING("constructor"), END_BRACKET_STRING("]"), EVAL_CODE_STRING("<eval>"), EVAL_STRING("eval")
+		, FALSE_STRING("false"), FUNCTION_SPACE("function "), INFINITY_STRING("Infinity")
+		, IS_NOT_A_FUNCTION_STRING(" is not a function"), IS_NOT_DEFINED_STRING(" is not defined")
+		, MESSAGE_STRING("message"), MINUS_INFINITY_STRING("-Infinity"), NAME_STRING("name"), NAN_STRING("NaN")
+		, NATIVE_FUNCTION_STRING("function() { [native code] }"), PROTOTYPE_CHAIN_TOO_LONG("Prototype chain too long")
+		, PROTOTYPE_STRING("prototype"), STACK_STRING("stack"), STACK_OVERFLOW_STRING("Stack overflow")
+		, TRUE_STRING("true"), VALUE_STRING("value");
 
 static const String ERROR_NAMES[ERROR_TYPE_COUNT] = {
 	"Error", "EvalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError", "URIError"
@@ -937,7 +938,7 @@ double Value::toDouble() const {
 	switch (type) {
 		default: assert(0);
 		case UNDEFINED_TYPE:
-		case OBJECT_TYPE: return NaN();	 // Notice, you shouldn't normally call toDouble on an object as proper ToNumber requires conversion to a primitive type
+		case OBJECT_TYPE: return NaN();  // Notice, you shouldn't normally call toDouble on an object as proper ToNumber requires conversion to a primitive type
 		case NULL_TYPE: return 0.0;
 		case BOOLEAN_TYPE: return var.boolean ? 1.0 : 0.0;
 		case NUMBER_TYPE: return var.number;
@@ -969,12 +970,12 @@ bool Value::toArrayIndex(UInt32& index) const {
 		}
 		case STRING_TYPE: {
 			const Char* p = var.string->begin();
-			const Char* const end = var.string->end();
+			const Char* const e = var.string->end();
 			index = 0;
-			if (p == end || (*p == '0' && p + 1 != end)) {
+			if (p == e || (*p == '0' && p + 1 != e)) {
 				return false;
 			}
-			while (p != end && *p >= '0' && *p <= '9') {
+			while (p != e && *p >= '0' && *p <= '9') {
 				const UInt32 digit = static_cast<UInt32>(*p - '0');
 				if (index > 429496729U || (index == 429496729U && digit >= 5U)) {
 					return false;
@@ -982,7 +983,7 @@ bool Value::toArrayIndex(UInt32& index) const {
 				index = index * 10 + digit;
 				++p;
 			}
-			return (p == end);
+			return (p == e);
 		}
 		default: return false;
 	}
@@ -1046,7 +1047,7 @@ bool Value::compareStrictly(const Value& r) const {
 bool Value::isEqualTo(const Value& r) const {
 	if (type == r.type) {
 		return compareStrictly(r);
-	} else if (type < r.type) { // Symmetrical operation, flip for simpler logic.
+	} else if (type < r.type) {	// Symmetrical operation, flip for simpler logic.
 		return r.isEqualTo(*this);
 	} else {
 		switch (type) {
@@ -1258,8 +1259,8 @@ Enumerator* String::getOwnPropertyEnumerator(Runtime& rt) const {
 const String* String::fromInt(Heap& heap, Int32 i) {
 	Char buffer[32];
 	return (i >= -QUICK_CONSTANTS_INTEGERS_RANGE && i <= QUICK_CONSTANTS_INTEGERS_RANGE)
-			? &QUICK_CONSTANTS.integers[i + QUICK_CONSTANTS_INTEGERS_RANGE]
-			: new(heap) String(heap.managed(), intToString(buffer, i), buffer + 32);
+		 	? &QUICK_CONSTANTS.integers[i + QUICK_CONSTANTS_INTEGERS_RANGE]
+		 	: new(heap) String(heap.managed(), intToString(buffer, i), buffer + 32);
 }
 
 const String* String::fromDouble(Heap& heap, double d) {
@@ -1773,15 +1774,56 @@ const String* JoiningEnumerator::nextPropertyName() {
 	return name;
 }
 
+static const Char LINE_TERMINATORS[] = { '\n', 0x2028, 0x2029, '\r' }; // FIX : '\r' must be last for line count to work, but I think we should change line counting algo in the future, a single '\r' without '\n' should count too really
+
+static bool isLineTerminator(Char c) {
+	return (std::find(LINE_TERMINATORS, LINE_TERMINATORS + 4, c) != LINE_TERMINATORS + 4);
+}
+
+static bool lineTerminatorInRange(const Char* b, const Char* e) {
+	return (std::find_first_of(b, e, LINE_TERMINATORS, LINE_TERMINATORS + 4) != e);
+}
+
+/* --- SourceCodeUnit --- */
+
+SourceCodeUnit::SourceCodeUnit(GCList& gcList, const String* sourceCode, const String* fileName)
+	: super(gcList), source(sourceCode), fileName(fileName), lineOffsets(&gcList.getHeap())
+{
+	assert(sourceCode != 0);
+	assert(fileName != 0);
+	lineOffsets.push(0);
+	const Char* const e = source->end();
+	for (const Char* p = source->begin(); p != e; ++p) {
+		if (isLineTerminator(*p)) {
+			if (*p == '\r' && p + 1 != e && *(p + 1) == '\n') {
+				++p;
+			}
+			lineOffsets.push(static_cast<UInt32>(p + 1 - source->begin()));
+		}
+	}
+	lineOffsets.shrink();
+}
+
+void SourceCodeUnit::computeLineColumn(UInt32 offset, UInt32& line, UInt32& column) const {
+	assert(offset <= source->size());
+	const UInt32* begin = lineOffsets.begin();
+	const UInt32* it = std::upper_bound(begin, const_cast<const UInt32*>(lineOffsets.end()), offset);
+	assert(it != begin);
+	line = static_cast<UInt32>(it - begin);
+	column = static_cast<UInt32>(offset - *(it - 1) + 1);
+}
+
 /* --- Code --- */
 
-Code::Code(GCList& gcList, Constants* sharedConstants)
+Code::Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUnit)
 	: super(gcList), codeWords(0, &gcList.getHeap())
 	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
+	, sourceUnit(sourceUnit), codeOffsets(&gcList.getHeap()), sourceOffsets(&gcList.getHeap())
 	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
 	, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
 {
 	assert(constants != 0);
+	assert(sourceUnit != 0);
 }
 
 bool Code::lookupNameIndex(const String* name, Int32& index) const {
@@ -1791,6 +1833,20 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
 	}
 	index = bucket->getIndexValue();
 	return true;
+}
+
+Code::SourceLocation Code::lookupSourceLocation(const CodeWord* instructionPointer) const {
+	assert(instructionPointer >= codeWords.begin() && instructionPointer < codeWords.end());
+	const UInt32 instructionIndex = static_cast<UInt32>(instructionPointer - codeWords.begin());
+	const UInt32* begin = codeOffsets.begin();
+	const UInt32* it = std::upper_bound(begin, const_cast<const UInt32*>(codeOffsets.end()), instructionIndex);
+	SourceLocation location;
+	assert(it != begin);
+	location.offset = sourceOffsets[it - 1 - begin];
+	location.fileName = sourceUnit->getFileName();
+	location.functionName = name;
+	sourceUnit->computeLineColumn(location.offset, location.line, location.column);
+	return location;
 }
 
 /* --- Function --- */
@@ -1893,6 +1949,31 @@ void JSArray::sliceDenseVector(Runtime& rt, const Value& key) {
 	}
 }
 
+bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value& v, Flags flags, bool& result) {
+	result = false;
+	UInt32 index;
+	if (key.toArrayIndex(index)) {
+		if ((flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) == 0) {
+			assert(flags == STANDARD_FLAGS);
+			result = setElement(rt, index, v);
+			return true;
+		}
+		sliceDenseVector(rt, key);
+		return false;
+	}
+	if (key.equalsString(LENGTH_STRING)) {
+		const double rawLength = v.toDouble();
+		const UInt32 coercedLength = static_cast<UInt32>(rawLength);
+		if (isNaN(rawLength) || rawLength < 0.0 || rawLength > 4294967295.0
+				|| rawLength != static_cast<double>(coercedLength)) {
+			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
+		}
+		result = updateLength(coercedLength);
+		return true;
+	}
+	return false;
+}
+
 bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 	if (index >= length) {
 		length = index + 1;
@@ -1924,28 +2005,13 @@ bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 }
 
 bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
-	UInt32 index;
-	if (key.toArrayIndex(index)) {
-		if ((flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) == 0) {
-			assert(flags == STANDARD_FLAGS);
-			return setElement(rt, index, v);
-		}
-		sliceDenseVector(rt, key);
-	} else if (key.equalsString(LENGTH_STRING)) {
-		const double rawLength = v.toDouble();
-		const UInt32 coercedLength = static_cast<UInt32>(rawLength);
-		if (isNaN(rawLength) || rawLength < 0.0 || rawLength > 4294967295.0
-				|| rawLength != static_cast<double>(coercedLength)) {
-			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
-		}
-		return updateLength(coercedLength);
-	}
-	return super::setOwnProperty(rt, key, v, flags);
+	bool result;
+	return (setOwnPropertyInternal(rt, key, v, flags, result) ? result : super::setOwnProperty(rt, key, v, flags));
 }
 
 bool JSArray::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
-	UInt32 index;
-	return (key.toArrayIndex(index) ? setOwnProperty(rt, key, v) : super::updateOwnProperty(rt, key, v));
+	bool result;
+	return (setOwnPropertyInternal(rt, key, v, STANDARD_FLAGS, result) ? result : super::updateOwnProperty(rt, key, v));
 }
 
 bool JSArray::deleteOwnProperty(Runtime& rt, const Value& key) {
@@ -2033,17 +2099,13 @@ void JSFunction::constructCompleteObject(Runtime& rt) const {
 /* --- Error --- */
 
 Error::Error(GCList& gcList, ErrorType type, const String* message)
-		: super(gcList), errorType(type), name(&ERROR_NAMES[errorType]), message(message) {
+	: super(gcList), errorType(type), name(&ERROR_NAMES[errorType]), message(message), stack(0)
+{
 	assert(0 <= errorType && errorType < ERROR_TYPE_COUNT);
 }
 
-const String* Error::getClassName() const { return &E_RROR_STRING; }
-Error* Error::asError() { return this; }
 Value Error::getInternalValue(Heap&) const { return &ERROR_NAMES[errorType]; }
 Object* Error::getPrototype(Runtime& rt) const { return rt.getErrorPrototype(errorType); }
-ErrorType Error::getErrorType() const { return errorType; }
-const String* Error::getErrorName() const { return name; }
-const String* Error::getErrorMessage() const { return message; }
 
 const String* Error::toString(Heap& heap) const {
 	return (message == 0 ? name : String::concatenate(heap, String(heap.roots(), *name, COLON_SPACE), *message));
@@ -2053,6 +2115,7 @@ void Error::updateReflection(Runtime& rt) {
 	Value v;
 	name = (getProperty(rt, &NAME_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : &ERROR_NAMES[errorType]);
 	message = (getProperty(rt, &MESSAGE_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
+	stack = (getProperty(rt, &STACK_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
 }
 
 bool Error::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
@@ -2070,6 +2133,9 @@ bool Error::deleteOwnProperty(Runtime& rt, const Value& key) {
 void Error::constructCompleteObject(Runtime& rt) const {
 	if (message != 0) {
 		completeObject->setOwnProperty(rt, &MESSAGE_STRING, message, DONT_ENUM_FLAG);
+	}
+	if (stack != 0) {
+		completeObject->setOwnProperty(rt, &STACK_STRING, stack, DONT_ENUM_FLAG);
 	}
 }
 
@@ -2305,8 +2371,21 @@ void ScriptException::throwError(Heap& heap, ErrorType type, const char* message
 }
 
 ScriptException::ScriptException(Heap& heap, const Value& value) throw()
-		: value(value), utf8String(value.toString(heap)->toUTF8String()) { }
-		
+	: value(value), utf8String(value.toString(heap)->toUTF8String())
+{
+}
+
+const char* ScriptException::getStackTrace() const {
+	if (stackTrace.empty()) {
+		Error* errorObject = value.asError();
+		const String* stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
+		if (stackString != 0) {
+			stackTrace = stackString->toUTF8String();
+		}
+	}
+	return stackTrace.c_str();
+}
+
 /* --- EvalFunction --- */
 
 static struct EvalFunction : public Function {
@@ -2335,97 +2414,88 @@ const Int32 MAX_OPERAND_VALUE = (1 << 23) - 1;
 
 // This list must be in enum order
 const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
-	{ CONST_OP					 , "CONST"					 , +1	  , 0 },
-	{ READ_LOCAL_OP				 , "READ_LOCAL"				 , +1	  , 0 },
-	{ READ_LOCAL_TO_PRIMITIVE_OP		, "READ_LOCAL_TO_PRIMITIVE"		, +1	  , 0 },
-	{ READ_LOCAL_TO_NUMBER_OP				, "READ_LOCAL_TO_NUMBER"				, +1	  , 0 },
-	{ READ_LOCAL_TO_STRING_OP				, "READ_LOCAL_TO_STRING"				, +1	  , 0 },
-	{ WRITE_LOCAL_OP			 , "WRITE_LOCAL"			 , 0	  , 0 },
-	{ WRITE_LOCAL_POP_OP		 , "WRITE_LOCAL_POP"		 , -1	  , 0 },
-	{ READ_NAMED_OP				 , "READ_NAMED"				 , +1	  , 0 },
-	{ READ_NAMED_TO_PRIMITIVE_OP		 , "READ_NAMED_TO_PRIMITIVE"	 , +1	  , 0 },
-	{ READ_NAMED_TO_NUMBER_OP			 , "READ_NAMED_TO_NUMBER"		 , +1	  , 0 },
-	{ READ_NAMED_TO_STRING_OP			 , "READ_NAMED_TO_STRING"		 , +1	  , 0 },
-	{ WRITE_NAMED_OP			 , "WRITE_NAMED"			 , 0	  , 0 },
-	{ WRITE_NAMED_POP_OP		 , "WRITE_NAMED_POP"		 , -1	  , 0 },
+	{ CONST_OP                   , "CONST"                   , +1     , 0 },
+	{ READ_LOCAL_OP              , "READ_LOCAL"              , +1     , 0 },
+	{ WRITE_LOCAL_OP             , "WRITE_LOCAL"             , 0      , 0 },
+	{ WRITE_LOCAL_POP_OP         , "WRITE_LOCAL_POP"         , -1     , 0 },
+	{ READ_NAMED_OP              , "READ_NAMED"              , 1      , 0 },
+	{ WRITE_NAMED_OP             , "WRITE_NAMED"             , 0      , 0 },
+	{ WRITE_NAMED_POP_OP         , "WRITE_NAMED_POP"         , -1     , 0 },
 	{ CHECK_OBJECT_COERCIBLE_OP	 , "CHECK_OBJECT_COERCIBLE"  , 0	  , 0 },
-	{ GET_PROPERTY_OP			 , "GET_PROPERTY"			 , -1	  , 0 },
-	{ GET_PROPERTY_TO_PRIMITIVE_OP		, "GET_PROPERTY_TO_PRIMITIVE"		, -1	     , 0 },
-	{ GET_PROPERTY_TO_NUMBER_OP			, "GET_PROPERTY_TO_NUMBER"			, -1	     , 0 },
-	{ GET_PROPERTY_TO_STRING_OP			, "GET_PROPERTY_TO_STRING"			, -1	     , 0 },
-	{ SET_PROPERTY_OP			 , "SET_PROPERTY"			 , -2	  , 0 },
-	{ SET_PROPERTY_POP_OP		 , "SET_PROPERTY_POP"		 , -3	  , 0 },
 	{ CHECK_RESOLVE_PROPERTY_OP	 , "CHECK_RESOLVE_PROPERTY"	 , 0	  , 0 },
-	{ ADD_PROPERTY_OP			 , "ADD_PROPERTY"			 , -1	  , 0 },
-	{ PUSH_ELEMENTS_OP			 , "PUSH_ELEMENTS_OP"		 , 0	  , OpcodeInfo::POP_OPERAND },
-	{ OBJ_TO_PRIMITIVE_OP		 , "OBJ_TO_PRIMITIVE"		 , 0	  , 0 },
-	{ OBJ_TO_NUMBER_OP			 , "OBJ_TO_NUMBER"			 , 0	  , 0 },
-	{ OBJ_TO_STRING_OP			 , "OBJ_TO_STRING"			 , 0	  , 0 },
-	{ PRE_EQ_OP					 , "PRE_EQ"					 , 0	  , 0 },
-	{ INC_OP					 , "INC"					 , 0	  , 0 },
-	{ DEC_OP					 , "DEC"					 , 0	  , 0 },
-	{ ADD_OP					 , "ADD"					 , -1	  , 0 },
-	{ SUB_OP					 , "SUB"					 , -1	  , 0 },
-	{ MUL_OP					 , "MUL"					 , -1	  , 0 },
-	{ DIV_OP					 , "DIV"					 , -1	  , 0 },
-	{ MOD_OP					 , "MOD"					 , -1	  , 0 },
-	{ OR_OP						 , "OR"						 , -1	  , 0 },
-	{ XOR_OP					 , "XOR"					 , -1	  , 0 },
-	{ AND_OP					 , "AND"					 , -1	  , 0 },
-	{ SHL_OP					 , "SHL"					 , -1	  , 0 },
-	{ SHR_OP					 , "SHR"					 , -1	  , 0 },
-	{ USHR_OP					 , "USHR"					 , -1	  , 0 },
-	{ PLUS_OP					 , "PLUS"					 , 0	  , 0 },
-	{ MINUS_OP					 , "MINUS"					 , 0	  , 0 },
-	{ INV_OP					 , "INV"					 , 0	  , 0 },
-	{ NOT_OP					 , "NOT"					 , 0	  , 0 },
-	{ X_EQ_OP					 , "X_EQ"					 , -1	  , 0 },
-	{ X_NEQ_OP					 , "X_NEQ"					 , -1	  , 0 },
-	{ EQ_OP						 , "EQ"						 , -1	  , 0 },
-	{ NEQ_OP					 , "NEQ"					 , -1	  , 0 },
-	{ LT_OP						 , "LT"						 , -1	  , 0 },
-	{ LEQ_OP					 , "LEQ"					 , -1	  , 0 },
-	{ GT_OP						 , "GT"						 , -1	  , 0 },
-	{ GEQ_OP					 , "GEQ"					 , -1	  , 0 },
-	{ JMP_OP					 , "JMP"					 , 0	  , OpcodeInfo::TERMINAL },
-	{ JSR_OP					 , "JSR"					 , 0	  , 0 },
-	{ JT_OP						 , "JT"						 , -1	  , 0 },
-	{ JF_OP						 , "JF"						 , -1	  , 0 },
-	{ JT_OR_POP_OP				 , "JT_OR_POP"				 , -1	  , OpcodeInfo::NO_POP_ON_BRANCH },
-	{ JF_OR_POP_OP				 , "JF_OR_POP"				 , -1	  , OpcodeInfo::NO_POP_ON_BRANCH },
-	{ POP_OP					 , "POP"					 , 0	  , OpcodeInfo::POP_OPERAND },
-	{ PUSH_BACK_OP				 , "PUSH_BACK"				 , 0	  , OpcodeInfo::POP_OPERAND },
-	{ REPUSH_OP					 , "REPUSH"					 , 1	  , 0 },
-	{ SWAP_OP					 , "SWAP"					 , 0	  , 0 },
-	{ REPUSH_2_OP				 , "REPUSH_2"				 , +2	  , 0 },
-	{ POST_SHUFFLE_OP			 , "POST_SHUFFLE"			 , +1	  , 0 },
-	{ CALL_OP					 , "CALL"					 , 0	  , OpcodeInfo::POP_OPERAND },
-	{ CALL_METHOD_OP			 , "CALL_METHOD"			 , -1	  , OpcodeInfo::POP_OPERAND },
-	{ CALL_EVAL_OP				 , "CALL_EVAL"				 , 0	  , OpcodeInfo::POP_OPERAND },
-	{ NEW_OP					 , "NEW"					 , +1	  , OpcodeInfo::POP_OPERAND },
-	{ NEW_RESULT_OP				 , "NEW_RESULT"				 , -1	  , 0 },
-	{ NEW_OBJECT_OP				 , "NEW_OBJECT"				 , +1	  , 0 },
-	{ NEW_ARRAY_OP				 , "NEW_ARRAY"				 , +1	  , 0 },
-	{ NEW_REG_EXP_OP			 , "NEW_REG_EXP"			 , -1	  , 0 },
-	{ RETURN_OP					 , "RETURN"					 , -1	  , OpcodeInfo::TERMINAL },
-	{ THIS_OP					 , "THIS"					 , +1	  , 0 },
-	{ VOID_OP					 , "VOID"					 , +1	  , 0 },
-	{ DELETE_OP					 , "DELETE"					 , -1	  , 0 },
-	{ DELETE_NAMED_OP			 , "DELETE_NAMED"			 , 1	  , 0 },
-	{ GEN_FUNC_OP				 , "GEN_FUNC"				 , +1	  , 0 },
-	{ DECLARE_OP				 , "DECLARE"				 , -1	  , 0 },
-	{ CATCH_SCOPE_OP			 , "CATCH_SCOPE"			 , -1	  , 0 },
-	{ WITH_SCOPE_OP				 , "WITH_SCOPE"				 , -1	  , 0 },
-	{ POP_FRAME_OP				 , "POP_FRAME"				 , 0	  , 0 },
-	{ TRY_OP					 , "TRY"					 , 0	  , OpcodeInfo::NO_POP_ON_BRANCH },
-	{ TRIED_OP					 , "TRIED"					 , 0	  , 0 },
-	{ THROW_OP					 , "THROW"					 , -1	  , OpcodeInfo::TERMINAL },
-	{ IN_OP						 , "IN"						 , -1	  , 0 },
-	{ INSTANCE_OF_OP			 , "INSTANCE_OF"			 , -1	  , 0 },
-	{ TYPEOF_OP					 , "TYPEOF"					 , 0	  , 0 },
-	{ TYPEOF_NAMED_OP			 , "TYPEOF_NAMED"			 , 1	  , 0 },
-	{ GET_ENUMERATOR_OP			 , "GET_ENUMERATOR"			 , 0	  , 0 },
-	{ NEXT_PROPERTY_OP			 , "NEXT_PROPERTY"			 , 0	  , OpcodeInfo::POP_ON_BRANCH }
+	{ GET_PROPERTY_OP            , "GET_PROPERTY"            , -1     , 0 },
+	{ SET_PROPERTY_OP            , "SET_PROPERTY"            , -2     , 0 },
+	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -3     , 0 },
+	{ ADD_PROPERTY_OP            , "ADD_PROPERTY"            , -1     , 0 },
+	{ PUSH_ELEMENTS_OP           , "PUSH_ELEMENTS_OP"        , 0      , OpcodeInfo::POP_OPERAND },
+	{ OBJ_TO_PRIMITIVE_OP        , "OBJ_TO_PRIMITIVE"        , 0      , 0 },
+	{ OBJ_TO_NUMBER_OP           , "OBJ_TO_NUMBER"           , 0      , 0 },
+	{ OBJ_TO_STRING_OP           , "OBJ_TO_STRING"           , 0      , 0 },
+	{ PRE_EQ_OP                  , "PRE_EQ"                  , 0      , 0 },
+	{ INC_OP                     , "INC"                     , 0      , 0 },
+	{ DEC_OP                     , "DEC"                     , 0      , 0 },
+	{ ADD_OP                     , "ADD"                     , -1     , 0 },
+	{ SUB_OP                     , "SUB"                     , -1     , 0 },
+	{ MUL_OP                     , "MUL"                     , -1     , 0 },
+	{ DIV_OP                     , "DIV"                     , -1     , 0 },
+	{ MOD_OP                     , "MOD"                     , -1     , 0 },
+	{ OR_OP                      , "OR"                      , -1     , 0 },
+	{ XOR_OP                     , "XOR"                     , -1     , 0 },
+	{ AND_OP                     , "AND"                     , -1     , 0 },
+	{ SHL_OP                     , "SHL"                     , -1     , 0 },
+	{ SHR_OP                     , "SHR"                     , -1     , 0 },
+	{ USHR_OP                    , "USHR"                    , -1     , 0 },
+	{ PLUS_OP                    , "PLUS"                    , 0      , 0 },
+	{ MINUS_OP                   , "MINUS"                   , 0      , 0 },
+	{ INV_OP                     , "INV"                     , 0      , 0 },
+	{ NOT_OP                     , "NOT"                     , 0      , 0 },
+	{ X_EQ_OP                    , "X_EQ"                    , -1     , 0 },
+	{ X_NEQ_OP                   , "X_NEQ"                   , -1     , 0 },
+	{ EQ_OP                      , "EQ"                      , -1     , 0 },
+	{ NEQ_OP                     , "NEQ"                     , -1     , 0 },
+	{ LT_OP                      , "LT"                      , -1     , 0 },
+	{ LEQ_OP                     , "LEQ"                     , -1     , 0 },
+	{ GT_OP                      , "GT"                      , -1     , 0 },
+	{ GEQ_OP                     , "GEQ"                     , -1     , 0 },
+	{ JMP_OP                     , "JMP"                     , 0      , OpcodeInfo::TERMINAL },
+	{ JSR_OP                     , "JSR"                     , 0      , 0 },
+	{ JT_OP                      , "JT"                      , -1     , 0 },
+	{ JF_OP                      , "JF"                      , -1     , 0 },
+	{ JT_OR_POP_OP               , "JT_OR_POP"               , -1     , OpcodeInfo::NO_POP_ON_BRANCH },
+	{ JF_OR_POP_OP               , "JF_OR_POP"               , -1     , OpcodeInfo::NO_POP_ON_BRANCH },
+	{ POP_OP                     , "POP"                     , 0      , OpcodeInfo::POP_OPERAND },
+	{ PUSH_BACK_OP               , "PUSH_BACK"               , 0      , OpcodeInfo::POP_OPERAND },
+	{ REPUSH_OP                  , "REPUSH"                  , 1      , 0 },
+	{ SWAP_OP                    , "SWAP"                    , 0      , 0 },
+	{ REPUSH_2_OP                , "REPUSH_2"                , +2     , 0 },
+	{ POST_SHUFFLE_OP            , "POST_SHUFFLE"            , +1     , 0 },
+	{ CALL_OP                    , "CALL"                    , 0      , OpcodeInfo::POP_OPERAND },
+	{ CALL_METHOD_OP             , "CALL_METHOD"             , -1     , OpcodeInfo::POP_OPERAND },
+	{ CALL_EVAL_OP               , "CALL_EVAL"               , 0      , OpcodeInfo::POP_OPERAND },
+	{ NEW_OP                     , "NEW"                     , +1     , OpcodeInfo::POP_OPERAND },
+	{ NEW_RESULT_OP              , "NEW_RESULT"              , -1     , 0 },
+	{ NEW_OBJECT_OP              , "NEW_OBJECT"              , +1     , 0 },
+	{ NEW_ARRAY_OP               , "NEW_ARRAY"               , +1     , 0 },
+	{ NEW_REG_EXP_OP             , "NEW_REG_EXP"             , -1     , 0 },
+	{ RETURN_OP                  , "RETURN"                  , -1     , OpcodeInfo::TERMINAL },
+	{ THIS_OP                    , "THIS"                    , +1     , 0 },
+	{ VOID_OP                    , "VOID"                    , +1     , 0 },
+	{ DELETE_OP                  , "DELETE"                  , -1     , 0 },
+	{ DELETE_NAMED_OP            , "DELETE_NAMED"            , 1      , 0 },
+	{ GEN_FUNC_OP                , "GEN_FUNC"                , +1     , 0 },
+	{ DECLARE_OP                 , "DECLARE"                 , -1     , 0 },
+	{ CATCH_SCOPE_OP             , "CATCH_SCOPE"             , -1     , 0 },
+	{ WITH_SCOPE_OP              , "WITH_SCOPE"              , -1     , 0 },
+	{ POP_FRAME_OP               , "POP_FRAME"               , 0      , 0 },
+	{ TRY_OP                     , "TRY"                     , 0      , OpcodeInfo::NO_POP_ON_BRANCH },
+	{ TRIED_OP                   , "TRIED"                   , 0      , 0 },
+	{ THROW_OP                   , "THROW"                   , -1     , OpcodeInfo::TERMINAL },
+	{ IN_OP                      , "IN"                      , -1     , 0 },
+	{ INSTANCE_OF_OP             , "INSTANCE_OF"             , -1     , 0 },
+	{ TYPEOF_OP                  , "TYPEOF"                  , 0      , 0 },
+	{ TYPEOF_NAMED_OP            , "TYPEOF_NAMED"            , 1      , 0 },
+	{ GET_ENUMERATOR_OP          , "GET_ENUMERATOR"          , 0      , 0 },
+	{ NEXT_PROPERTY_OP           , "NEXT_PROPERTY"           , 0      , OpcodeInfo::POP_ON_BRANCH }
 };
 
 const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
@@ -2457,7 +2527,7 @@ struct Processor::CatchScope : public Scope {
 
 	CatchScope(GCList& gcList, Scope* parentScope, const String* exceptionName, const Value& exceptionValue)
 			: super(gcList, parentScope), exceptionName(exceptionName), exceptionValue(exceptionValue) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const	{
+	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const  {
 		if (name->isEqualTo(*exceptionName)) {
 			*v = exceptionValue;
 			return DONT_DELETE_FLAG | EXISTS_FLAG;
@@ -2493,7 +2563,7 @@ struct Processor::CatchScope : public Scope {
 struct Processor::WithScope : public Scope {
 	typedef Scope super;
 	WithScope(GCList& gcList, Scope* parentScope, Object* withObject)
-			: super(gcList, parentScope), withObject(withObject) { }
+	 		: super(gcList, parentScope), withObject(withObject) { }
 	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
 		Flags flags = withObject->getProperty(rt, name, v);
 		return (flags != NONEXISTENT ? flags : parentScope->readVar(rt, name, v));
@@ -2526,7 +2596,7 @@ struct Processor::WithScope : public Scope {
 };
 
 Processor::Processor(Runtime& rt) : super(rt.heap.roots()), rt(rt), heap(rt.heap), currentFrame(0), firstCatcher(0)
-, stack(rt.stackSize, &heap), profileLastOpcode(INVALID_OP) {
+		, stack(rt.stackSize, &heap), profileLastOpcode(INVALID_OP) {
 	stack[0] = UNDEFINED_VALUE;
 	reset();
 }
@@ -2604,8 +2674,69 @@ void Processor::popCatcher() {
 	delete killMe;
 }
 
+static void appendString(Vector<Char>& buffer, const String* value) {
+	buffer.insert(buffer.end(), value->begin(), value->end());
+}
+
+static void appendASCII(Vector<Char>& buffer, const char* literal) {
+	while (*literal != 0) {
+		buffer.push(static_cast<Char>(*literal));
+		++literal;
+	}
+}
+
+void Processor::addStackTrace(const Value& exception) const {
+	Error* errorObject = exception.asError();
+	if (errorObject != 0) {
+		const String* stackString = errorObject->getStackString();
+		if (stackString == 0) {
+			Vector<Char> buffer(&heap);
+			appendString(buffer, errorObject->getErrorName());
+			const String* message = errorObject->getErrorMessage();
+			if (message != 0 && !message->empty()) {
+				appendASCII(buffer, ": ");
+				appendString(buffer, message);
+			}
+
+			Char digits[32];
+			const Frame* frameWalker = currentFrame;
+			const CodeWord* nextIP = ip;
+			while (frameWalker != 0 && nextIP != 0) {
+				const Code::SourceLocation location = frameWalker->code->lookupSourceLocation(nextIP - 1);
+				
+				appendASCII(buffer, "\n    at ");
+				if (location.functionName != 0 && !location.functionName->empty()) {
+					appendString(buffer, location.functionName);
+					appendASCII(buffer, " (");
+				}
+				appendString(buffer, location.fileName);
+				if (location.line > 0) {
+					buffer.push(static_cast<Char>(':'));
+					const Char* digitsBegin = intToString(digits, location.line);
+					buffer.insert(buffer.end(), digitsBegin, digits + 32);
+					if (location.column > 0) {
+						buffer.push(static_cast<Char>(':'));
+						digitsBegin = intToString(digits, location.column);
+						buffer.insert(buffer.end(), digitsBegin, digits + 32);
+					}
+				}
+				if (location.functionName != 0 && !location.functionName->empty()) {
+					buffer.push(static_cast<Char>(')'));
+				}
+
+				nextIP = frameWalker->returnIP;
+				frameWalker = frameWalker->previousFrame;
+			}
+
+			stackString = new(heap) String(heap.managed(), buffer.begin(), buffer.end());
+			errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+		}
+	}
+}
+
 void Processor::throwVirtualException(const Value& exception) {
-	if (firstCatcher == 0) { // FIX: what exception to throw here?
+	addStackTrace(exception);
+	if (firstCatcher == 0) { // No JS catcher: throw a ScriptException
 		reset();
 		throw ScriptException(heap, exception);
 	}
@@ -2639,8 +2770,8 @@ Function* Processor::asFunction(const Value& v) {
 }
 
 void Processor::invokeFunction(Function* f, Int32 popCount, Int32 argc, Object* thisObject) {
-sp[-popCount] = f->invoke(rt, *this, argc, sp - argc + 1, thisObject);
-pop(popCount);
+	sp[-popCount] = f->invoke(rt, *this, argc, sp - argc + 1, thisObject);
+	pop(popCount);
 }
 
 void Processor::newOperation(const Int32 argc) {
@@ -2684,61 +2815,10 @@ void Processor::innerRun() {
 		}
 		profileLastOpcode = opcode;
 		switch (opcode) {
-			case READ_LOCAL_OP: {
-				assert(locals != 0);
-				push(locals[im]);
-				break;
-			}
-			case READ_LOCAL_TO_NUMBER_OP: {
-				assert(locals != 0);
-				const Value& value = locals[im];
-				push(value);
-				if (value.isObject()) {
-					invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_NUMBER_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
-					return;
-				}
-				break;
-			}
-			case READ_LOCAL_TO_PRIMITIVE_OP: {
-				assert(locals != 0);
-				const Value& value = locals[im];
-				push(value);
-				if (value.isObject()) {
-					invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_PRIMITIVE_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
-					return;
-				}
-				break;
-			}
-			case READ_LOCAL_TO_STRING_OP: {
-				assert(locals != 0);
-				const Value& value = locals[im];
-				push(value);
-				if (value.isObject()) {
-					invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_STRING_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
-					return;
-				}
-				break;
-			}
-			case WRITE_LOCAL_OP: {
-				assert(locals != 0);
-				locals[im] = sp[0];
-				break;
-			}
-			case WRITE_LOCAL_POP_OP: {
-				assert(locals != 0);
-				locals[im] = sp[0];
-				pop(1);
-				break;
-			}
-			case CONST_OP: {
-				push(constants[im]);
-				break;
-			}
-			case POP_OP: {
-				assert(im >= 0);
-				pop(im);
-				break;
-			}
+			case CONST_OP:				push(constants[im]); break;
+			case READ_LOCAL_OP:			assert(locals != 0); push(locals[im]); break;
+			case WRITE_LOCAL_OP:		assert(locals != 0); locals[im] = sp[0]; break;
+			case WRITE_LOCAL_POP_OP:	assert(locals != 0); locals[im] = sp[0]; pop(1); break;
 			case READ_NAMED_OP: {
 				const String* name = constants[im].getString();
 				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
@@ -2747,57 +2827,9 @@ void Processor::innerRun() {
 				}
 				break;
 			}
-			case READ_NAMED_TO_PRIMITIVE_OP: {
-				const String* name = constants[im].getString();
-				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
-					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
-					return;
-				}
-				const Value& value = sp[0];
-				if (value.isObject()) {
-					invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_PRIMITIVE_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
-					return;
-				}
-				break;
-			}
-			case READ_NAMED_TO_NUMBER_OP: {
-				const String* name = constants[im].getString();
-				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
-					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
-					return;
-				}
-				const Value& value = sp[0];
-				if (value.isObject()) {
-					invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_NUMBER_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
-					return;
-				}
-				break;
-			}
-			case READ_NAMED_TO_STRING_OP: {
-				const String* name = constants[im].getString();
-				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
-					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
-					return;
-				}
-				const Value& value = sp[0];
-				if (value.isObject()) {
-					invokeFunction(rt.toPrimitiveFunctions[Processor::OBJ_TO_STRING_OP - Processor::OBJ_TO_PRIMITIVE_OP], 0, 1);
-					return;
-				}
-				break;
-			}
-
-			case OBJ_TO_PRIMITIVE_OP:
-			case OBJ_TO_NUMBER_OP:
-			case OBJ_TO_STRING_OP: {
-				const Object* o = sp[0].asObject();
-				if (o != 0) {
-					assert(0 <= opcode - OBJ_TO_PRIMITIVE_OP && opcode - OBJ_TO_PRIMITIVE_OP < 3);
-					invokeFunction(rt.toPrimitiveFunctions[opcode - OBJ_TO_PRIMITIVE_OP], 0, 1);
-					return;
-				}
-				break;
-			}
+			break;
+			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
+			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
 
 			case CHECK_OBJECT_COERCIBLE_OP: {
 				if (sp[0].isUndefined() || sp[0].isNull()) {
@@ -2807,37 +2839,14 @@ void Processor::innerRun() {
 				break;
 			}
 
-			case CALL_OP: {
-				Function* const f = asFunction(sp[-im]);
-				if (f != 0) {
-					invokeFunction(f, im, im);
+			case CHECK_RESOLVE_PROPERTY_OP: {
+				if (sp[-1].isUndefined() || sp[-1].isNull()) {
+					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
+					return;
 				}
-				return;
+				sp[-1] = convertToObject(sp[-1], false);
+				break;
 			}
-			case CALL_METHOD_OP: {
-				Object* const o = convertToObject(sp[-im - 1], true);
-				if (o != 0) {
-					Value v(UNDEFINED_VALUE);
-					Function* f;
-					const Value& name = sp[-im];
-					if (o->getProperty(rt, name, &v) == NONEXISTENT || (f = v.asFunction()) == 0) {
-						error(TYPE_ERROR, new(heap) String(heap.managed(), *name.toString(heap), IS_NOT_A_FUNCTION_STRING));
-					} else {
-						invokeFunction(f, im + 1, im, o);
-					}
-				}
-				return;
-			}
-			case CALL_EVAL_OP: {
-				Function* f = asFunction(sp[-im]);
-				if (f != 0) {
-					invokeFunction((f == rt.evalFunction ? &DIRECT_EVAL_FUNCTION : f), im, im);
-				}
-				return;
-			}
-
-			case WRITE_NAMED_OP:	    scope->writeVar(rt, constants[im].getString(), sp[0]); break;
-			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
 
 			case GET_PROPERTY_OP: {
 				const Object* o = convertToObject(sp[-1], false);
@@ -2903,29 +2912,30 @@ void Processor::innerRun() {
 				}
 
 			case SET_PROPERTY_OP: {
-				Object* const o = sp[-2].getObject();
-				o->setProperty(rt, sp[-1], sp[0]);
+				sp[-2].getObject()->setProperty(rt, sp[-1], sp[0]);
 				sp[-2] = sp[0];
 				pop(2);
 				break;
 			}
 			
 			case SET_PROPERTY_POP_OP: {
-				Object* const o = sp[-2].getObject();
-				o->setProperty(rt, sp[-1], sp[0]);
+				sp[-2].getObject()->setProperty(rt, sp[-1], sp[0]);
 				pop(3);
 				break;
 			}
 
-			case CHECK_RESOLVE_PROPERTY_OP: {
-				if (sp[-1].isUndefined() || sp[-1].isNull()) {
-					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
+			case OBJ_TO_PRIMITIVE_OP:
+			case OBJ_TO_NUMBER_OP:
+			case OBJ_TO_STRING_OP: {
+				const Object* o = sp[0].asObject();
+				if (o != 0) {
+					assert(0 <= opcode - OBJ_TO_PRIMITIVE_OP && opcode - OBJ_TO_PRIMITIVE_OP < 3);
+					invokeFunction(rt.toPrimitiveFunctions[opcode - OBJ_TO_PRIMITIVE_OP], 0, 1);
 					return;
 				}
-				sp[-1] = convertToObject(sp[-1], false);
 				break;
 			}
-
+				
 			case PRE_EQ_OP: {
 				// FIX : doesn't feel totally efficient this...
 				if (sp[-1].isObject() != sp[0].isObject()) {
@@ -2990,7 +3000,7 @@ void Processor::innerRun() {
 			case NEW_OBJECT_OP: push(new(heap) JSObject(heap.managed(), rt.getObjectPrototype())); break;
 			case NEW_ARRAY_OP: push(new(heap) JSArray(heap.managed())); break;
 			case NEW_REG_EXP_OP: invokeFunction(rt.createRegExpFunction, 1, 2); return;
-			case RETURN_OP: ip = currentFrame->returnIP; popFrame(); return;
+			case RETURN_OP:	ip = currentFrame->returnIP; popFrame(); return;
 			case THIS_OP: push(thisObject); break;
 			case VOID_OP: push(UNDEFINED_VALUE); break;
 			
@@ -3039,7 +3049,7 @@ void Processor::innerRun() {
 			case WITH_SCOPE_OP: {
 				Object* o = convertToObject(sp[0], false);
 				if (o != 0) {
-				pushFrame(code, new(heap) WithScope(heap.managed(), scope, o), thisObject);
+					pushFrame(code, new(heap) WithScope(heap.managed(), scope, o), thisObject);
 					pop(1);
 				}
 				return;
@@ -3091,7 +3101,7 @@ void Processor::innerRun() {
 				Object* o = sp[0].getObject();
 				assert(dynamic_cast<Enumerator*>(o) != 0);
 				const String* name = reinterpret_cast<Enumerator*>(o)->nextPropertyName();
-				if (name != 0) {
+ 				if (name != 0) {
 					sp[0] = name;
 				} else {
 					ip += im;
@@ -3276,18 +3286,20 @@ struct Compiler::SemanticScope {
 	}
 	
 	Type type;
-	const String label;					// empty for automatic while, for, case labels
+	const String label; 				// empty for automatic while, for, case labels
 	SemanticScope* const next;
 	Int32 stackDepthOnEntry;
-	Vector<BranchPoint> breaks;			// source points for break jmp's
-	Vector<BranchPoint> continues;		// source points for continue jmp's
-	Vector<BranchPoint> finallys;		// source points for finally jsr's
+	Vector<BranchPoint> breaks; 		// source points for break jmp's
+	Vector<BranchPoint> continues; 		// source points for continue jmp's
+	Vector<BranchPoint> finallys; 		// source points for finally jsr's
 };
 
 Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter)
-		: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
-		, mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
-		, nestCounter(initialNestCounter) { }
+	: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
+	, mainSection(heap, 1), b(0), p(0), e(0), sourceUnitBase(code->getSourceUnit()->getSource()->begin())
+	, currentSection(0), acceptInOperator(true), withScopeCounter(0), nestCounter(initialNestCounter)
+{
+}
 
 const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e) {
 	if (b == e) {
@@ -3300,8 +3312,38 @@ const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e
 
 void Compiler::error(ErrorType type, const char* message) { ScriptException::throwError(heap, type, message); }
 
-void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
-	if (inDeadCode()) { // unknown stack depth = dead code
+void Compiler::CodeSection::pushSourceMapping(UInt32 offset) {
+	if (sourceOffsets.empty() || sourceOffsets[sourceOffsets.size() - 1] != offset) {
+		codeOffsets.push(static_cast<UInt32>(code.size()));
+		sourceOffsets.push(offset);
+	}
+	assert(sourceOffsets.size() == codeOffsets.size());
+}
+
+UInt32 Compiler::CodeSection::popSourceMapping() {
+	assert(!sourceOffsets.empty() && !codeOffsets.empty());
+	const UInt32 popped = sourceOffsets[sourceOffsets.size() - 1];
+	if (codeOffsets[codeOffsets.size() - 1] == static_cast<UInt32>(code.size())) {
+		codeOffsets.pop();
+		sourceOffsets.pop();
+	}
+	return popped;
+}
+
+void Compiler::CodeSection::exportSourceMapping(Vector<UInt32>& toCodeOffsets, Vector<UInt32>& toSourceOffsets
+		, UInt32 codeBase) const {
+	assert(codeOffsets.size() == sourceOffsets.size() && toCodeOffsets.size() == toSourceOffsets.size());
+	if (!sourceOffsets.empty()) {
+		const UInt32 start = (!toSourceOffsets.empty() && toSourceOffsets[toSourceOffsets.size() - 1] == sourceOffsets[0] ? 1 : 0);
+		for (UInt32 i = start; i < codeOffsets.size(); ++i) {
+			toCodeOffsets.push(codeOffsets[i] + codeBase);
+			toSourceOffsets.push(sourceOffsets[i]);
+		}
+	}
+}
+
+void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand, UInt32 sourceOffset) {
+	if (inDeadCode()) {	// unknown stack depth = dead code
 		return;
 	}
 	const Processor::OpcodeInfo& opcodeInfo = Processor::getOpcodeInfo(opcode);
@@ -3321,6 +3363,7 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 			case Processor::CONST_OP:
 			case Processor::VOID_OP: {
 				code.pop();
+				popSourceMapping();
 				lastEmitted = Processor::INVALID_OP;
 				return;
 			}
@@ -3329,11 +3372,13 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 		if (replacementOpcode != Processor::INVALID_OP) {
 			const Int32 oldOperand = Processor::unpackInstruction(code.end()[-1]).second;
 			code.pop();
+			pushSourceMapping(popSourceMapping());
 			code.push(Processor::packInstruction(replacementOpcode, oldOperand));
 			lastEmitted = replacementOpcode;
 			return;
 		}
 	}
+	pushSourceMapping(sourceOffset);
 	code.push(Processor::packInstruction(opcode, operand));
 	lastEmitted = opcode;
 }
@@ -3341,6 +3386,7 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 void Compiler::CodeSection::insertSection(const CodeSection& section) {
 	const Int32 stackAdjust = stackDepth - section.initialStackDepth;
 	lastEmitted = Processor::INVALID_OP;
+	section.exportSourceMapping(codeOffsets, sourceOffsets, static_cast<UInt32>(code.size()));
 	code.insert(code.end(), section.code.begin(), section.code.end());
 	stackDepth = section.stackDepth + stackAdjust;
 	maxStackDepth = std::max(maxStackDepth, section.maxStackDepth + stackAdjust);
@@ -3350,7 +3396,7 @@ void Compiler::emit(Processor::Opcode opcode, Int32 operand) {
 	if (operand < MIN_OPERAND_VALUE || operand > MAX_OPERAND_VALUE) { // Highly hypothetical, but correctness!
 		error(RANGE_ERROR, "Internal compiler limitations reached. Reduce code complexity.");
 	}
-	currentSection->emit(opcode, operand);
+	currentSection->emit(opcode, operand, static_cast<UInt32>(p - sourceUnitBase));
 }
 
 Compiler::CodeSection* Compiler::changeSection(CodeSection* newOutputSection) {
@@ -3414,16 +3460,6 @@ UInt32 Compiler::addConstant(const Value& constant) {
 
 void Compiler::emitWithConstant(Processor::Opcode opcode, const Value& constant) {
 	emit(opcode, addConstant(constant));
-}
-
-static const Char LINE_TERMINATORS[] = { '\n', 0x2028, 0x2029, '\r' }; // FIX : '\r' must be last for line count to work, but I think we should change line counting algo in the future, a single '\r' without '\n' should count too really
-
-static bool isLineTerminator(Char c) {
-	return (std::find(LINE_TERMINATORS, LINE_TERMINATORS + 4, c) != LINE_TERMINATORS + 4);
-}
-
-static bool lineTerminatorInRange(const Char* b, const Char* e) {
-	return (std::find_first_of(b, e, LINE_TERMINATORS, LINE_TERMINATORS + 4) != e);
 }
 
 void Compiler::white() {
@@ -3534,11 +3570,11 @@ static UInt32 unescapedMaxLength(const Char* p, const Char* e) {
 	return l;
 }
 
-static const Char ESCAPE_CHARS[] = { '\\', '\"', '\'', 'b',	 'f',  'n',	 'r',  't',	 'v', '0' };
+static const Char ESCAPE_CHARS[] = { '\\', '\"', '\'', 'b',  'f',  'n',  'r',  't',  'v', '0' };
 static const Char ESCAPE_CODES[] = { '\\', '\"', '\'', '\b', '\f', '\n', '\r', '\t', '\v', '\0' };
 const int ESCAPE_CODE_COUNT = sizeof (ESCAPE_CHARS) / sizeof (*ESCAPE_CHARS);
 
-Char* Compiler::unescape(Char* buffer, const Char* e) { 
+Char* Compiler::unescape(Char* buffer, const Char* e) {	
 	assert(!eof() && (*p == '"' || *p == '\''));
 	Char endChar = *p;
 	++p;
@@ -4069,18 +4105,13 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			assert(!op.primitiveOutput);
 			if (xr.t == ExpressionResult::PROPERTY) {
 				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
-			} else if (xr.t == ExpressionResult::NAMED) {
-				emitWithConstant(Processor::TYPEOF_NAMED_OP, xr.v);
-				emit(Processor::POP_OP, 1);
-			} else if (xr.t == ExpressionResult::LOCAL) {
-				emit(Processor::READ_LOCAL_OP, xr.v.toInt());
-				emit(Processor::POP_OP, 1);
 			}
 			const ExpressionResult rxr = makeRValue(operand(op), false);
 			makeAssignment(xr);
 			xr = rxr;
 			break;
 		}
+			
 		case COMPOUND_ASSIGNMENT: {
 			assert(op.primitiveInput);
 			assert(op.primitiveOutput);
@@ -4097,13 +4128,14 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = ExpressionResult::PUSHED_PRIMITIVE;
 			break;
 		}
+			
 		case PROPERTY_BRACKETS: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, false);
 			emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
 			const bool didAcceptInOperator = acceptInOperator;
 			acceptInOperator = true;
-			makeRValue(operand(op), true, Processor::OBJ_TO_STRING_OP);
+			makeRValue(operand(op), true, Processor::OBJ_TO_STRING_OP); // left doesn't need to be primitive, but right does (and preferred string!)
 			acceptInOperator = didAcceptInOperator;
 			xr = ExpressionResult(ExpressionResult::PROPERTY);
 			break;
@@ -4116,7 +4148,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
-	Code* func = new(heap) Code(heap.managed(), code->constants);
+	Code* func = new(heap) Code(heap.managed(), code->constants, code->getSourceUnit());
 	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
@@ -4344,7 +4376,7 @@ void Compiler::completeBreaks(const SemanticScope* ofScope) {
 void Compiler::forInStatement(SemanticScope* emptyLabelScope, SemanticScope* scopeLabelsEnd
 		, const CodeSection& iterationSection, const ExpressionResult& iterationXR) {
 	ExpressionResult enumXR(rvalueExpression());
-	emit(Processor::GET_ENUMERATOR_OP);
+ 	emit(Processor::GET_ENUMERATOR_OP);
 	enumXR = safeKeep();
 	expectToken(")", true);
 	for (SemanticScope* s = emptyLabelScope; s != scopeLabelsEnd; s = s->next) {	// we must change stack depth of all labels that point to this scope, otherwise we'll pop the enumerator on continue
@@ -4420,7 +4452,7 @@ void Compiler::functionStatement() {
 	white();
 	const String* name = identifier(true, false);
 	CodeSection* previousSection = changeSection(&setupSection);
-	functionDefinition(name);
+	functionDefinition(name, 0);
 	declareIdentifier(name, true);
 	changeSection(previousSection);
 }
@@ -4735,7 +4767,7 @@ void Compiler::tryStatement(SemanticScope* currentScope) {
 	completeForwardBranch(finallyRethrowPoint);
 	if (token("finally", true)) {
 		SemanticScope finallyScope(heap, SemanticScope::FINALLY_TYPE, currentSection->stackDepth, currentScope);
-		if (compilingFor == FOR_EVAL) { // Ecmascript dictates that finally block should never change completion value.
+		if (compilingFor == FOR_EVAL) {	// Ecmascript dictates that finally block should never change completion value.
 			emit(Processor::VOID_OP);
 		}
 		block(&finallyScope);
@@ -4916,15 +4948,15 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
 	if (compilingFor == FOR_EVAL) {
-		emit(Processor::POP_OP, 1); // FIX : only if we reserve one element for return like we do now
+		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
 		emit(Processor::VOID_OP);
 	}
 	SemanticScope rootScope(heap, SemanticScope::ROOT_TYPE, 1, 0);
 	statementList(&rootScope);
-	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
+ 	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
 	if (compilingFor != FOR_EVAL) {
 		// FIX : if RETURN_OP took a push back count we could just do void_op here, or even have another RETURN_VOID_OP
-		emit(Processor::POP_OP, 1); // FIX : only if we reserve one element for return like we do now
+		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
 		emit(Processor::VOID_OP);
 	}
 	emit(Processor::RETURN_OP);
@@ -4935,6 +4967,10 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	std::copy(mainSection.code.begin(), mainSection.code.end(), code->codeWords.begin() + setupSection.code.size());
 	code->constants->shrink();
 	code->maxStackDepth = std::max(mainSection.maxStackDepth, setupSection.maxStackDepth);
+	setupSection.exportSourceMapping(code->codeOffsets, code->sourceOffsets, 0);
+	mainSection.exportSourceMapping(code->codeOffsets, code->sourceOffsets, static_cast<UInt32>(setupSection.code.size()));
+	code->codeOffsets.shrink();
+	code->sourceOffsets.shrink();
 	
 	return p;
 }
@@ -4982,18 +5018,9 @@ void Compiler::compile(const String& source) {
 	}
 }
 
-void Compiler::getStopPosition(size_t& offset, int& lineNumber, int& columnNumber) const {
-	lineNumber = 1;
-	columnNumber = 1;
-	offset = p - b;
-	for (const Char* q = b; q != p; ++q) {
-		assert(q != e);
-		if (std::find(LINE_TERMINATORS, LINE_TERMINATORS + 3, *q) != LINE_TERMINATORS + 3) {
-			++lineNumber;
-			columnNumber = 0;
-		}
-		++columnNumber;
-	}
+void Compiler::getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const {
+	offset = static_cast<UInt32>(p - b);
+    code->getSourceUnit()->computeLineColumn(offset, lineNumber, columnNumber);
 }
 
 /* --- Runtime --- */
@@ -5206,10 +5233,11 @@ struct Support {
 		if (argc >= 1) {
 			Heap& heap = rt.getHeap();
 			const String* source = argv[0].toString(heap);
-			Code* code = new(heap) Code(heap.managed());
+			SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), source, &ANONYMOUS_SCRIPT_STRING);
+			Code* code = new(heap) Code(heap.managed(), 0, unit);
 			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
 			compiler.compileFunction(source->begin(), source->end()
-					, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING));
+					, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING), 0);
 			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
 		}
 		return UNDEFINED_VALUE;
@@ -5263,9 +5291,9 @@ struct Support {
 		return (argc >= 2 ? Value(std::atan2(argv[0].toDouble(), argv[1].toDouble())) : NAN_VALUE);
 	}
 
-	   static Value pow(Runtime&, Processor&, UInt32 argc, const Value* argv, Object*) {
-			   return (argc >= 2 ? Value(std::pow(argv[0].toDouble(), argv[1].toDouble())) : NAN_VALUE);
-	   }
+	static Value pow(Runtime&, Processor&, UInt32 argc, const Value* argv, Object*) {
+		return (argc >= 2 ? Value(std::pow(argv[0].toDouble(), argv[1].toDouble())) : NAN_VALUE);
+	}
 
 	static Value parseFloat(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 1) {
@@ -5349,7 +5377,7 @@ struct Support {
 	}
 	
 	static Value random(Runtime&, Processor&, UInt32, const Value*, Object*) {
-			return rand() / (RAND_MAX + 1.0);
+		return rand() / (RAND_MAX + 1.0);
 	}
 };
 
@@ -5373,7 +5401,7 @@ static struct {
 	{ "pow", Support::pow }, { "parseFloat", Support::parseFloat }, { "charCodeAt", Support::charCodeAt },
 	{ "substring", Support::substring }, { "submatch", Support::submatch },
 	{ "getCurrentTime", Support::getCurrentTime }, { "localTimeDifference", Support::localTimeDifference },
-{ "random", Support::random }, { "updateDateValue", Support::updateDateValue }
+	{ "random", Support::random }, { "updateDateValue", Support::updateDateValue }
 };
 
 static UnaryMathFunction<bool (double)> IS_NAN_FUNCTION(isNaN);
@@ -5564,7 +5592,7 @@ Var Runtime::call(Function* function, UInt32 argc, const Value* argv, Object* th
 		Runtime& rt;
 	} nestCounter(*this);
 	Processor processor(*this);
-processor.invokeFunction(function, argc, argv, thisObject);
+	processor.invokeFunction(function, argc, argv, thisObject);
 	return runUntilReturn(processor);
 }
 
@@ -5572,6 +5600,22 @@ void Runtime::run(const String& source, const String* filename) {
 	Processor processor(*this);
 	processor.enterGlobalCode(compileGlobalCode(source, filename));
 	runUntilReturn(processor);
+}
+
+Code* Runtime::compileEvalCode(const String* expression) {
+	const Table::Bucket* bucket = evalCodeCache.lookup(expression);
+	if (bucket != 0) {
+		Object* o = bucket->getValue().getObject();
+		assert(dynamic_cast<Code*>(o) != 0);
+		return reinterpret_cast<Code*>(o);
+	} else {
+		SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), expression, &EVAL_CODE_STRING);
+		Code* code = new(heap) Code(heap.managed(), 0, unit);
+		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
+		compiler.compile(*expression);
+		evalCodeCache.update(evalCodeCache.insert(expression), code);
+		return code;
+	}
 }
 
 Var Runtime::eval(const String& expression) {
@@ -5582,29 +5626,18 @@ Var Runtime::eval(const String& expression) {
 	return runUntilReturn(processor);
 }
 
-Code* Runtime::compileEvalCode(const String* expression) {
-	const Table::Bucket* bucket = evalCodeCache.lookup(expression);
-	if (bucket != 0) {
-		Object* o = bucket->getValue().getObject();
-		assert(dynamic_cast<Code*>(o) != 0);
-		return reinterpret_cast<Code*>(o);
-	} else {
-		Code* code = new(heap) Code(heap.managed());
-		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
-		compiler.compile(*expression);
-		evalCodeCache.update(evalCodeCache.insert(expression), code);
-		return code;
-	}
-}
-
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
-	Code* code = new(heap) Code(heap.managed());
+	const String* effectiveFileName = (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING);
+	const String* retainedSource = (heap.managed().owns(&source)
+			? &source : new(heap) String(heap.managed(), source.begin(), source.end()));
+	SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), retainedSource, effectiveFileName);
+	Code* code = new(heap) Code(heap.managed(), 0, unit);
 	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
 	try {
-		compiler.compile(source);
+		compiler.compile(*retainedSource);
 	}
 	catch (const ScriptException& x) {
-		throw CompilationError(x, filename, compiler);
+		throw CompilationError(x, effectiveFileName, compiler);
 	}
 	return code;
 }
@@ -5693,5 +5726,5 @@ void Runtime::resetTimeOut(Int32 timeOutSeconds) {
 #endif
 
 #ifdef _MSC_VER
-#pragma float_control(pop)	
+#pragma float_control(pop)  
 #endif
