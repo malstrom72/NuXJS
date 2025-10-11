@@ -42,7 +42,7 @@ function ensureRepoRoot() {
 }
 
 function ensureCleanWorktree() {
-	const status = spawnSync("git", ["status", "--porcelain"], {
+	const status = spawnSync("git", ["status", "--porcelain", "--untracked-files=no"], {
 		cwd: REPO_ROOT,
 		encoding: "utf8",
 		maxBuffer: 1024 * 1024,
@@ -53,8 +53,13 @@ function ensureCleanWorktree() {
 	if (status.status !== 0) {
 		fail(`git status returned ${status.status}: ${status.stderr}`);
 	}
-	if (status.stdout.trim().length !== 0) {
-		fail("Working tree is dirty. Commit or stash changes before running experiments.");
+	const output = status.stdout ? status.stdout.trim() : "";
+	if (output.length !== 0) {
+		const dirtyEntries = output.split(/\r?\n/).filter(Boolean).map((line) => {
+			return line.length > 3 ? line.substring(3).trim() : line.trim();
+		});
+		const details = dirtyEntries.length > 0 ? ` Dirty entries:\n  ${dirtyEntries.join("\n  ")}` : "";
+		fail(`Working tree has modifications to tracked files. Commit or stash changes before running experiments.${details}`);
 	}
 }
 
