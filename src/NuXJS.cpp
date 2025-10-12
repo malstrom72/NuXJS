@@ -1279,43 +1279,42 @@ void Heap::free(void* ptr) {
 
 // file-local helper (C++03)
 inline bool performMarking(GCItem*& it, GCItem* stop, bool forward, int& processed, int limit, Heap& heap) {
-		while (processed < limit && it != stop) {
-				assert((it->_gcReferenceMarkingComplete = false, true));
-				it->gcMarkReferences(heap);
-				assert(it->_gcReferenceMarkingComplete);
-				it = forward ? it->_gcNext : it->_gcPrev;
-				++processed;
-		}
-		return processed >= limit;
+	while (processed < limit && it != stop) {
+		assert((it->_gcReferenceMarkingComplete = false, true));
+		it->gcMarkReferences(heap);
+		assert(it->_gcReferenceMarkingComplete);
+		it = forward ? it->_gcNext : it->_gcPrev;
+		++processed;
+	}
+	return processed >= limit;
 }
 
 bool Heap::gc(int maxIterations) {
-		if (gcPhase == GCPhase::Idle) {
-				gcPhase = GCPhase::MarkRoots;
-				markIt = rootList._gcNext;
-		}
-		int processed = 0;
-		const int limit = (maxIterations < 0) ? INT_MAX : maxIterations;
-		switch (gcPhase) {
+	if (gcPhase == GCPhase::Idle) {
+		gcPhase = GCPhase::MarkRoots;
+		markIt = rootList._gcNext;
+	}
+	int processed = 0;
+	const int limit = (maxIterations < 0) ? INT_MAX : maxIterations;
+	switch (gcPhase) {
+		default: assert(0); // should never happen
 		case GCPhase::MarkRoots:
-				if (performMarking(markIt, &rootList, true, processed, limit, *this)) break;
-				markIt = newList->_gcPrev;
-				gcPhase = GCPhase::MarkNews;
-				/* fall through */
+			if (performMarking(markIt, &rootList, true, processed, limit, *this)) break;
+			markIt = newList->_gcPrev;
+			gcPhase = GCPhase::MarkNews;
+			/* fall through */
 		case GCPhase::MarkNews:
-				if (performMarking(markIt, newList, false, processed, limit, *this)) break;
-				std::swap(currentList, newList);
-				gcPhase = GCPhase::Sweep;
-				/* fall through */
+			if (performMarking(markIt, newList, false, processed, limit, *this)) break;
+			std::swap(currentList, newList);
+			gcPhase = GCPhase::Sweep;
+			/* fall through */
 		case GCPhase::Sweep:
-				processed += newList->sweep(limit - processed);
-				if (processed >= limit || newList->_gcNext != newList) break;
-				gcPhase = GCPhase::Idle;
-				break;
-		default:
-				break;
-		}
-		return gcPhase != GCPhase::Idle;
+			processed += newList->sweep(limit - processed);
+			if (processed >= limit || newList->_gcNext != newList) break;
+			gcPhase = GCPhase::Idle;
+			break;
+	}
+	return gcPhase != GCPhase::Idle;
 }
 
 void Heap::gcReset() {
@@ -4803,7 +4802,7 @@ void Compiler::compile(const String& source) {
 
 void Compiler::getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const {
 	offset = static_cast<UInt32>(p - b);
-    code->getSourceUnit()->computeLineColumn(offset, lineNumber, columnNumber);
+	code->getSourceUnit()->computeLineColumn(offset, lineNumber, columnNumber);
 }
 
 /* --- Runtime --- */
@@ -5227,26 +5226,26 @@ Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap
 bool Runtime::gc(int maxIterations) { return heap.gc(maxIterations); }
 
 void Runtime::gc() {
-	   while (gc(-1)) {
-			   checkTimeOut();
-	   }
+	while (gc(-1)) {
+		checkTimeOut();
+	}
 }
 
 void Runtime::gcReset() { heap.gcReset(); }
 
 void Runtime::autoGC(bool checkOutOfMemory) {
-	   if (heap.size() >= gcThreshold) {
-			   heap.drain();
-			   while (gc(-1)) {
-					   checkTimeOut();
-			   }
-			   const size_t inUse = heap.size() - heap.pooled();
-			   gcThreshold = std::min(std::max(inUse * AUTO_GC_GROWTH_FACTOR, AUTO_GC_MIN_SIZE), memoryCap);
-			   checkTimeOutCounter = std::min(checkTimeOutCounter, 1U);
-			   if (checkOutOfMemory && heap.size() >= memoryCap) {
-					   throw ConstStringException("Out of memory");
-			   }
-	   }
+	if (heap.size() >= gcThreshold) {
+		heap.drain();
+		while (gc(-1)) {
+			checkTimeOut();
+		}
+		const size_t inUse = heap.size() - heap.pooled();
+		gcThreshold = std::min(std::max(inUse * AUTO_GC_GROWTH_FACTOR, AUTO_GC_MIN_SIZE), memoryCap);
+		checkTimeOutCounter = std::min(checkTimeOutCounter, 1U);
+		if (checkOutOfMemory && heap.size() >= memoryCap) {
+			throw ConstStringException("Out of memory");
+		}
+	}
 }
 
 // Handle wrapping if clock_t is an integer type but not if it is a double.

@@ -119,9 +119,9 @@ class GCList : public GCItem {
 	public:
 		Heap& getHeap() const throw() { return heap; }
 		bool owns(const GCItem* item) throw() { return item->_gcList == this; }
-				void claim(GCItem* item) throw();
-				void relinquish(GCItem* item) throw();
-				bool sweep(std::size_t maxItems = std::numeric_limits<std::size_t>::max()) throw();
+		void claim(GCItem* item) throw();
+		void relinquish(GCItem* item) throw();
+		bool sweep(std::size_t maxItems = std::numeric_limits<std::size_t>::max()) throw();
 
 	protected:
 		GCList(Heap& heap) : heap(heap), count(0) { }
