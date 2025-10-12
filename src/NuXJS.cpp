@@ -38,8 +38,8 @@
 #error This code requires IEEE compliant floating point handling. Avoid -Ofast / -ffast-math etc (at least for this source file).
 #endif
 
-#include <stdint.h>
 #include "assert.h"
+#include <stdint.h>
 #include <cmath>
 #include "NuXJS.h"
 #include <climits>
@@ -181,16 +181,17 @@ const String A_RGUMENTS_STRING("Arguments"), A_RRAY_STRING("Array"), B_OOLEAN_ST
 		, E_RROR_STRING("Error"), F_UNCTION_STRING("Function"), N_UMBER_STRING("Number"), O_BJECT_STRING("Object")
 		, S_TRING_STRING("String");
 
-static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
-		, BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
+static const String ANONYMOUS_SCRIPT_STRING("<anonymous>"), ANONYMOUS_STRING("anonymous")
+		, ARGUMENTS_STRING("arguments"), BRACKET_OBJECT_STRING("[object "), CALLEE_STRING("callee")
 		, CANNOT_CONVERT_TO_OBJECT_STRING("Cannot convert undefined or null to object")
 		, CANNOT_USE_IN_OPERATOR_STRING("Cannot use 'in' operator on "), CLASS_STRING("class"), COLON_SPACE(": ")
-		, CONSTRUCTOR_STRING("constructor"), END_BRACKET_STRING("]"), EVAL_STRING("eval"), FALSE_STRING("false")
-		, FUNCTION_SPACE("function "), INFINITY_STRING("Infinity"), IS_NOT_A_FUNCTION_STRING(" is not a function")
-		, IS_NOT_DEFINED_STRING(" is not defined"), MESSAGE_STRING("message"), MINUS_INFINITY_STRING("-Infinity")
-		, NAME_STRING("name"), NAN_STRING("NaN"), NATIVE_FUNCTION_STRING("function() { [native code] }")
-		, PROTOTYPE_CHAIN_TOO_LONG("Prototype chain too long"), PROTOTYPE_STRING("prototype")
-		, STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value");
+		, CONSTRUCTOR_STRING("constructor"), END_BRACKET_STRING("]"), EVAL_CODE_STRING("<eval>"), EVAL_STRING("eval")
+		, FALSE_STRING("false"), FUNCTION_SPACE("function "), INFINITY_STRING("Infinity")
+		, IS_NOT_A_FUNCTION_STRING(" is not a function"), IS_NOT_DEFINED_STRING(" is not defined")
+		, MESSAGE_STRING("message"), MINUS_INFINITY_STRING("-Infinity"), NAME_STRING("name"), NAN_STRING("NaN")
+		, NATIVE_FUNCTION_STRING("function() { [native code] }"), PROTOTYPE_CHAIN_TOO_LONG("Prototype chain too long")
+		, PROTOTYPE_STRING("prototype"), STACK_STRING("stack"), STACK_OVERFLOW_STRING("Stack overflow")
+		, TRUE_STRING("true"), VALUE_STRING("value");
 
 static const String ERROR_NAMES[ERROR_TYPE_COUNT] = {
 	"Error", "EvalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError", "URIError"
@@ -350,6 +351,49 @@ static DoubleDouble multiplyAndAdd(const DoubleDouble& term, const DoubleDouble&
 	return DoubleDouble(factorA.high * factorB + term.high + overflow, fmaLow - overflow);
 }
 
+/**
+	If we just do (high + low) first, that sum is rounded to 53 bits once, possibly nudging the result slightly upward.
+	Then when we scale down into the subnormal range (right-shift the mantissa) we hit what looks like an exact halfway
+	case — and since the current mantissa is odd, IEEE-754 rounds up again. In reality, the exact (high+low) value was
+	just below that halfway point, so it should have rounded down to the even mantissa. This is a classic "double
+	rounding" problem.
+
+	scaleAndRound avoids this by combining high and low at full precision under the final exponent window and
+	performing a *single* correct round-to-nearest-even step. This matches the Decimal oracle and fixes all denormal
+	boundary mismatches.
+
+	Assumptions:
+	- 'factor' is an exact power-of-two (normal or subnormal) from the table.
+	- 'acc.high' is integral in [0, 2^53) and 'acc.low' ∈ [0,1).
+	- Table ensures factorExponent >= -1073 so T = factorExponent + 1073 >= 0.
+**/
+static double scaleAndRound(const DoubleDouble& acc, double factor) {
+	if (acc.high == 0.0 && acc.low == 0.0) {
+		return 0.0;
+	}
+	
+	const double fastResult = (acc.high + acc.low) * factor;
+	if (fastResult >= 2.2250738585072014e-308) {
+		return fastResult;												// normal result; fast path is exact here
+	}
+	
+	int factorExponent;													// slow path: denormal/transition region
+	frexp(factor, &factorExponent);										// assemble payload then single rounding
+	
+	const int t = factorExponent + 1073;								// guaranteed by table construction
+	assert(t >= 0);														// (no right-shift branch needed)	
+	const double bf = ldexp(acc.low, t);								// align (high, low) into the 52-bit subnormal payload scale
+	const double bi = floor(bf);
+	const double fraction = bf - bi;									// fractional contribution
+	
+	double ni = ldexp(acc.high, t) + bi;								// integer payload (exact in double)
+	if (fraction > 0.5 || (fraction == 0.5 && fmod(ni, 2.0) != 0.0)) {
+		ni += 1.0;														// round to nearest, ties-to-even
+	}
+	
+	return ldexp(ni, -1074);											// subnormal construction (or DBL_MIN when ni == 2^52)
+}
+
 const int QUICK_CONSTANTS_INTEGERS_RANGE = 1000;
 struct QuickConstants {
 	QuickConstants() {
@@ -468,9 +512,9 @@ static Char* doubleToString(Char buffer[32], const double value) {
 		assert(next >= normalized); // Correct behavior is to never reach higher than digit 9.
 
 		// Do we hit goal with digit or digit + 1? If so, is next digit >= 5 (magnitude / 2) then increment it.
-		reconstructed = static_cast<double>(accumulator) * factor;
+		reconstructed = scaleAndRound(accumulator, factor);
 		if (reconstructed != absValue) {
-			reconstructed = static_cast<double>(accumulator + magnitude) * factor;
+			reconstructed = scaleAndRound(accumulator + magnitude, factor);
 		}
 		if (reconstructed == absValue && accumulator + magnitude / 2 < normalized) {
 			++digit;
@@ -577,7 +621,7 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 				++p;
 			}
 			const double factor = QUICK_CONSTANTS.exp10Factors[exponent - MIN_EXPONENT];
-			value = static_cast<double>(accumulator) * factor;
+			value = scaleAndRound(accumulator, factor);
 		}
 	}
 	value *= sign;
@@ -734,28 +778,30 @@ Int32 Value::toInt() const {
 
 bool Value::toArrayIndex(UInt32& index) const {
 	switch (type) {
-		case BOOLEAN_TYPE: {
-			index = (var.boolean ? 1 : 0);
-			return true;
-		}
 		case NUMBER_TYPE: {
 			const double n = var.number;
-			if (n < 0.0 || n >= 4294967296.0) {
+			if (n < 0.0 || n >= 4294967295.0) {
 				return false;
 			}
 			index = static_cast<UInt32>(n);
 			return index == n;
 		}
 		case STRING_TYPE: {
-			const Char* const e = var.string->end();
 			const Char* p = var.string->begin();
-			if (p != e && *p == '0') {
-				index = 0;
-				++p;
-			} else {
-				p = parseUnsignedInt(p, e, index);
+			const Char* const e = var.string->end();
+			index = 0;
+			if (p == e || (*p == '0' && p + 1 != e)) {
+				return false;
 			}
-			return p == e;
+			while (p != e && *p >= '0' && *p <= '9') {
+				const UInt32 digit = static_cast<UInt32>(*p - '0');
+				if (index > 429496729U || (index == 429496729U && digit >= 5U)) {
+					return false;
+				}
+				index = index * 10 + digit;
+				++p;
+			}
+			return (p == e);
 		}
 		default: return false;
 	}
@@ -885,8 +931,8 @@ static UInt32 utf16Length(size_t l, const wchar_t* s) {
 		const wchar_t* e = s + l;
 		for (const wchar_t* p = s; p != e; ++p) {
 			const UInt32 c = static_cast<UInt32>(*p);
-			assert(c < 0xD800 || c >= 0xE000);	// Surrogate code points inside UTF32 string are not legal!
-			n += ((c >> 16) != 0 ? 1 : 0);
+			assert(c <= 0x10FFFF);
+			n += (c >= 0x10000 ? 1 : 0);
 		}
 	}
 	return n;
@@ -1057,56 +1103,54 @@ std::string String::toUTF8String() const {
 	std::string s;
 	s.reserve(size());
 	for (const Char* p = begin(); p != end(); ++p) {
-		if (*p < 0x80) {
-			s.push_back(static_cast<char>(*p));
-		} else if (*p < 0x800) {
-			s.push_back(static_cast<char>(0xC0 | (*p >> 6)));
-			s.push_back(static_cast<char>(0x80 | (*p & 0x3F)));
-		} else if (*p < 0xD800 || *p >= 0xE000) {
-			s.push_back(static_cast<char>(0xE0 | (*p >> 12)));
-			s.push_back(static_cast<char>(0x80 | ((*p >> 6) & 0x3F)));
-			s.push_back(static_cast<char>(0x80 | (*p & 0x3F)));
+		const Char c = *p;
+		if (c < 0x80) {
+			s.push_back(static_cast<char>(c));
+		} else if (c < 0x800) {
+			s.push_back(static_cast<char>(0xC0 | (c >> 6)));
+			s.push_back(static_cast<char>(0x80 | (c & 0x3F)));
+		} else if (c >= 0xD800 && c <= 0xDBFF && p + 1 != end() && *(p + 1) >= 0xDC00 && *(p + 1) <= 0xDFFF) {
+			++p;
+			const UInt32 codePoint = 0x10000
+					+ ((static_cast<UInt32>(c) - 0xD800) << 10)
+					+ (static_cast<UInt32>(*p) - 0xDC00);
+			s.push_back(static_cast<char>(0xF0 | (codePoint >> 18)));
+			s.push_back(static_cast<char>(0x80 | ((codePoint >> 12) & 0x3F)));
+			s.push_back(static_cast<char>(0x80 | ((codePoint >> 6) & 0x3F)));
+			s.push_back(static_cast<char>(0x80 | (codePoint & 0x3F)));
 		} else {
-			assert(p + 1 != end() && p[1] >= 0xDC00 && p[1] < 0xE000);
-			const UInt32 c = 0x10000 + ((*p - 0xD800) << 10) + (p[1] - 0xDC00);
-			s.push_back(static_cast<char>(0xF0 | (c >> 18)));
-			s.push_back(static_cast<char>(0x80 | ((c >> 12) & 0x3F)));
+			s.push_back(static_cast<char>(0xE0 | (c >> 12)));
 			s.push_back(static_cast<char>(0x80 | ((c >> 6) & 0x3F)));
 			s.push_back(static_cast<char>(0x80 | (c & 0x3F)));
-			++p;
 		}
 	}
 	return s;
 }
 
 std::wstring String::toWideString() const {
+	const Char* b = begin();
+	const Char* e = end();
 	if (sizeof (std::wstring::value_type) != 2) {
-		assert(sizeof (std::wstring::value_type) == 4);
-		const Char* e = end();
-		UInt32 n = size();
-		for (const Char* p = begin(); p != e; ++p) {
-			assert(*p < 0xDC00 || *p >= 0xE000);	// Surrogate code points inside UTF32 string are not legal!
-			if (*p >= 0xD800 && *p <= 0xDBFF) {
-				assert(p + 1 != e && p[1] >= 0xDC00 && p[1] < 0xE000);	// Next should be low surrogate.
-				++p;
-				--n;
-			}
+		assert(sizeof (std::wstring::value_type) == 4); 
+		const Char* p = b;
+		while (p != e && (*p < 0xD800 || *p > 0xDFFF)) {
+			++p;
 		}
-		if (n != size()) {
-			std::wstring s(n, L'\0');
-			const Char* p = begin();
-			for (std::wstring::iterator it = s.begin(); it != s.end(); ++it) {
-				*it = *p;
-				++p;
-				if (*it >= 0xD800 && *it <= 0xDBFF) {
-					*it = 0x10000 + ((*it - 0xD800) << 10) + (*p - 0xDC00);
+		if (p != e) {
+			std::wstring s;
+			s.reserve(size());
+			for (p = b; p != e; ++p) {
+				UInt32 c = *p;
+				if (c >= 0xD800 && c <= 0xDBFF && p + 1 != e && *(p + 1) >= 0xDC00 && *(p + 1) <= 0xDFFF) {
 					++p;
+					c = 0x10000 + ((static_cast<UInt32>(c) - 0xD800) << 10) + (static_cast<UInt32>(*p) - 0xDC00);
 				}
+				s.push_back(static_cast<std::wstring::value_type>(c));
 			}
 			return s;
 		}
 	}
-	return std::wstring(begin(), end());
+	return std::wstring(b, e);
 }
 
 /* --- GCItem --- */
@@ -1585,15 +1629,56 @@ const String* JoiningEnumerator::nextPropertyName() {
 	return name;
 }
 
+static const Char LINE_TERMINATORS[] = { '\n', 0x2028, 0x2029, '\r' }; // FIX : '\r' must be last for line count to work, but I think we should change line counting algo in the future, a single '\r' without '\n' should count too really
+
+static bool isLineTerminator(Char c) {
+	return (std::find(LINE_TERMINATORS, LINE_TERMINATORS + 4, c) != LINE_TERMINATORS + 4);
+}
+
+static bool lineTerminatorInRange(const Char* b, const Char* e) {
+	return (std::find_first_of(b, e, LINE_TERMINATORS, LINE_TERMINATORS + 4) != e);
+}
+
+/* --- SourceCodeUnit --- */
+
+SourceCodeUnit::SourceCodeUnit(GCList& gcList, const String* sourceCode, const String* fileName)
+	: super(gcList), source(sourceCode), fileName(fileName), lineOffsets(&gcList.getHeap())
+{
+	assert(sourceCode != 0);
+	assert(fileName != 0);
+	lineOffsets.push(0);
+	const Char* const e = source->end();
+	for (const Char* p = source->begin(); p != e; ++p) {
+		if (isLineTerminator(*p)) {
+			if (*p == '\r' && p + 1 != e && *(p + 1) == '\n') {
+				++p;
+			}
+			lineOffsets.push(static_cast<UInt32>(p + 1 - source->begin()));
+		}
+	}
+	lineOffsets.shrink();
+}
+
+void SourceCodeUnit::computeLineColumn(UInt32 offset, UInt32& line, UInt32& column) const {
+	assert(offset <= source->size());
+	const UInt32* begin = lineOffsets.begin();
+	const UInt32* it = std::upper_bound(begin, const_cast<const UInt32*>(lineOffsets.end()), offset);
+	assert(it != begin);
+	line = static_cast<UInt32>(it - begin);
+	column = static_cast<UInt32>(offset - *(it - 1) + 1);
+}
+
 /* --- Code --- */
 
-Code::Code(GCList& gcList, Constants* sharedConstants)
+Code::Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUnit)
 	: super(gcList), codeWords(0, &gcList.getHeap())
 	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
+	, sourceUnit(sourceUnit), codeOffsets(&gcList.getHeap()), sourceOffsets(&gcList.getHeap())
 	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
 	, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
 {
 	assert(constants != 0);
+	assert(sourceUnit != 0);
 }
 
 bool Code::lookupNameIndex(const String* name, Int32& index) const {
@@ -1603,6 +1688,20 @@ bool Code::lookupNameIndex(const String* name, Int32& index) const {
 	}
 	index = bucket->getIndexValue();
 	return true;
+}
+
+Code::SourceLocation Code::lookupSourceLocation(const CodeWord* instructionPointer) const {
+	assert(instructionPointer >= codeWords.begin() && instructionPointer < codeWords.end());
+	const UInt32 instructionIndex = static_cast<UInt32>(instructionPointer - codeWords.begin());
+	const UInt32* begin = codeOffsets.begin();
+	const UInt32* it = std::upper_bound(begin, const_cast<const UInt32*>(codeOffsets.end()), instructionIndex);
+	SourceLocation location;
+	assert(it != begin);
+	location.offset = sourceOffsets[it - 1 - begin];
+	location.fileName = sourceUnit->getFileName();
+	location.functionName = name;
+	sourceUnit->computeLineColumn(location.offset, location.line, location.column);
+	return location;
 }
 
 /* --- Function --- */
@@ -1705,6 +1804,31 @@ void JSArray::sliceDenseVector(Runtime& rt, const Value& key) {
 	}
 }
 
+bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value& v, Flags flags, bool& result) {
+	result = false;
+	UInt32 index;
+	if (key.toArrayIndex(index)) {
+		if ((flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) == 0) {
+			assert(flags == STANDARD_FLAGS);
+			result = setElement(rt, index, v);
+			return true;
+		}
+		sliceDenseVector(rt, key);
+		return false;
+	}
+	if (key.equalsString(LENGTH_STRING)) {
+		const double rawLength = v.toDouble();
+		const UInt32 coercedLength = static_cast<UInt32>(rawLength);
+		if (isNaN(rawLength) || rawLength < 0.0 || rawLength > 4294967295.0
+				|| rawLength != static_cast<double>(coercedLength)) {
+			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
+		}
+		result = updateLength(coercedLength);
+		return true;
+	}
+	return false;
+}
+
 bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 	if (index >= length) {
 		length = index + 1;
@@ -1736,27 +1860,13 @@ bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 }
 
 bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
-	UInt32 index;
-	if (key.toArrayIndex(index) && index != 0xFFFFFFFFU) {
-		if ((flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) == 0) {
-			assert(flags == STANDARD_FLAGS);
-			return setElement(rt, index, v);
-		}
-		sliceDenseVector(rt, key);
-	} else if (key.equalsString(LENGTH_STRING)) {
-		UInt32 newLength;
-		if (!v.toArrayIndex(newLength)) {
-			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
-		}
-		return updateLength(newLength);
-	}
-	return super::setOwnProperty(rt, key, v, flags);
+	bool result;
+	return (setOwnPropertyInternal(rt, key, v, flags, result) ? result : super::setOwnProperty(rt, key, v, flags));
 }
 
 bool JSArray::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
-	UInt32 index;
-	return (key.toArrayIndex(index) && index != 0xFFFFFFFFU ? setOwnProperty(rt, key, v)
-			: super::updateOwnProperty(rt, key, v));
+	bool result;
+	return (setOwnPropertyInternal(rt, key, v, STANDARD_FLAGS, result) ? result : super::updateOwnProperty(rt, key, v));
 }
 
 bool JSArray::deleteOwnProperty(Runtime& rt, const Value& key) {
@@ -1844,17 +1954,13 @@ void JSFunction::constructCompleteObject(Runtime& rt) const {
 /* --- Error --- */
 
 Error::Error(GCList& gcList, ErrorType type, const String* message)
-		: super(gcList), errorType(type), name(&ERROR_NAMES[errorType]), message(message) {
+	: super(gcList), errorType(type), name(&ERROR_NAMES[errorType]), message(message), stack(0)
+{
 	assert(0 <= errorType && errorType < ERROR_TYPE_COUNT);
 }
 
-const String* Error::getClassName() const { return &E_RROR_STRING; }
-Error* Error::asError() { return this; }
 Value Error::getInternalValue(Heap&) const { return &ERROR_NAMES[errorType]; }
 Object* Error::getPrototype(Runtime& rt) const { return rt.getErrorPrototype(errorType); }
-ErrorType Error::getErrorType() const { return errorType; }
-const String* Error::getErrorName() const { return name; }
-const String* Error::getErrorMessage() const { return message; }
 
 const String* Error::toString(Heap& heap) const {
 	return (message == 0 ? name : String::concatenate(heap, String(heap.roots(), *name, COLON_SPACE), *message));
@@ -1864,6 +1970,7 @@ void Error::updateReflection(Runtime& rt) {
 	Value v;
 	name = (getProperty(rt, &NAME_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : &ERROR_NAMES[errorType]);
 	message = (getProperty(rt, &MESSAGE_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
+	stack = (getProperty(rt, &STACK_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
 }
 
 bool Error::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
@@ -1881,6 +1988,9 @@ bool Error::deleteOwnProperty(Runtime& rt, const Value& key) {
 void Error::constructCompleteObject(Runtime& rt) const {
 	if (message != 0) {
 		completeObject->setOwnProperty(rt, &MESSAGE_STRING, message, DONT_ENUM_FLAG);
+	}
+	if (stack != 0) {
+		completeObject->setOwnProperty(rt, &STACK_STRING, stack, DONT_ENUM_FLAG);
 	}
 }
 
@@ -2116,8 +2226,21 @@ void ScriptException::throwError(Heap& heap, ErrorType type, const char* message
 }
 
 ScriptException::ScriptException(Heap& heap, const Value& value) throw()
-		: value(value), utf8String(value.toString(heap)->toUTF8String()) { }
-		
+	: value(value), utf8String(value.toString(heap)->toUTF8String())
+{
+}
+
+const char* ScriptException::getStackTrace() const {
+	if (stackTrace.empty()) {
+		Error* errorObject = value.asError();
+		const String* stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
+		if (stackString != 0) {
+			stackTrace = stackString->toUTF8String();
+		}
+	}
+	return stackTrace.c_str();
+}
+
 /* --- EvalFunction --- */
 
 static struct EvalFunction : public Function {
@@ -2146,86 +2269,88 @@ const Int32 MAX_OPERAND_VALUE = (1 << 23) - 1;
 
 // This list must be in enum order
 const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
-	{ CONST_OP					 , "CONST"					 , +1	  , 0 },
-	{ READ_LOCAL_OP				 , "READ_LOCAL"				 , +1	  , 0 },
-	{ WRITE_LOCAL_OP			 , "WRITE_LOCAL"			 , 0	  , 0 },
-	{ WRITE_LOCAL_POP_OP		 , "WRITE_LOCAL_POP"		 , -1	  , 0 },
-	{ READ_NAMED_OP				 , "READ_NAMED"				 , 1	  , 0 },
-	{ WRITE_NAMED_OP			 , "WRITE_NAMED"			 , 0	  , 0 },
-	{ WRITE_NAMED_POP_OP		 , "WRITE_NAMED_POP"		 , -1	  , 0 },
-	{ GET_PROPERTY_OP			 , "GET_PROPERTY"			 , -1	  , 0 },
-	{ SET_PROPERTY_OP			 , "SET_PROPERTY"			 , -2	  , 0 },
-	{ SET_PROPERTY_POP_OP		 , "SET_PROPERTY_POP"		 , -3	  , 0 },
-	{ ADD_PROPERTY_OP			 , "ADD_PROPERTY"			 , -1	  , 0 },
-	{ PUSH_ELEMENTS_OP			 , "PUSH_ELEMENTS_OP"		 , 0	  , OpcodeInfo::POP_OPERAND },
-	{ OBJ_TO_PRIMITIVE_OP		 , "OBJ_TO_PRIMITIVE"		 , 0	  , 0 },
-	{ OBJ_TO_NUMBER_OP			 , "OBJ_TO_NUMBER"			 , 0	  , 0 },
-	{ OBJ_TO_STRING_OP			 , "OBJ_TO_STRING"			 , 0	  , 0 },
-	{ PRE_EQ_OP					 , "PRE_EQ"					 , 0	  , 0 },
-	{ INC_OP					 , "INC"					 , 0	  , 0 },
-	{ DEC_OP					 , "DEC"					 , 0	  , 0 },
-	{ ADD_OP					 , "ADD"					 , -1	  , 0 },
-	{ SUB_OP					 , "SUB"					 , -1	  , 0 },
-	{ MUL_OP					 , "MUL"					 , -1	  , 0 },
-	{ DIV_OP					 , "DIV"					 , -1	  , 0 },
-	{ MOD_OP					 , "MOD"					 , -1	  , 0 },
-	{ OR_OP						 , "OR"						 , -1	  , 0 },
-	{ XOR_OP					 , "XOR"					 , -1	  , 0 },
-	{ AND_OP					 , "AND"					 , -1	  , 0 },
-	{ SHL_OP					 , "SHL"					 , -1	  , 0 },
-	{ SHR_OP					 , "SHR"					 , -1	  , 0 },
-	{ USHR_OP					 , "USHR"					 , -1	  , 0 },
-	{ PLUS_OP					 , "PLUS"					 , 0	  , 0 },
-	{ MINUS_OP					 , "MINUS"					 , 0	  , 0 },
-	{ INV_OP					 , "INV"					 , 0	  , 0 },
-	{ NOT_OP					 , "NOT"					 , 0	  , 0 },
-	{ X_EQ_OP					 , "X_EQ"					 , -1	  , 0 },
-	{ X_NEQ_OP					 , "X_NEQ"					 , -1	  , 0 },
-	{ EQ_OP						 , "EQ"						 , -1	  , 0 },
-	{ NEQ_OP					 , "NEQ"					 , -1	  , 0 },
-	{ LT_OP						 , "LT"						 , -1	  , 0 },
-	{ LEQ_OP					 , "LEQ"					 , -1	  , 0 },
-	{ GT_OP						 , "GT"						 , -1	  , 0 },
-	{ GEQ_OP					 , "GEQ"					 , -1	  , 0 },
-	{ JMP_OP					 , "JMP"					 , 0	  , OpcodeInfo::TERMINAL },
-	{ JSR_OP					 , "JSR"					 , 0	  , 0 },
-	{ JT_OP						 , "JT"						 , -1	  , 0 },
-	{ JF_OP						 , "JF"						 , -1	  , 0 },
-	{ JT_OR_POP_OP				 , "JT_OR_POP"				 , -1	  , OpcodeInfo::NO_POP_ON_BRANCH },
-	{ JF_OR_POP_OP				 , "JF_OR_POP"				 , -1	  , OpcodeInfo::NO_POP_ON_BRANCH },
-	{ POP_OP					 , "POP"					 , 0	  , OpcodeInfo::POP_OPERAND },
-	{ PUSH_BACK_OP				 , "PUSH_BACK"				 , 0	  , OpcodeInfo::POP_OPERAND },
-	{ REPUSH_OP					 , "REPUSH"					 , 1	  , 0 },
-	{ SWAP_OP					 , "SWAP"					 , 0	  , 0 },
-	{ REPUSH_2_OP				 , "REPUSH_2"				 , +2	  , 0 },
-	{ POST_SHUFFLE_OP			 , "POST_SHUFFLE"			 , +1	  , 0 },
-	{ CALL_OP					 , "CALL"					 , 0	  , OpcodeInfo::POP_OPERAND },
-	{ CALL_METHOD_OP			 , "CALL_METHOD"			 , -1	  , OpcodeInfo::POP_OPERAND },
-	{ CALL_EVAL_OP				 , "CALL_EVAL"				 , 0	  , OpcodeInfo::POP_OPERAND },
-	{ NEW_OP					 , "NEW"					 , +1	  , OpcodeInfo::POP_OPERAND },
-	{ NEW_RESULT_OP				 , "NEW_RESULT"				 , -1	  , 0 },
-	{ NEW_OBJECT_OP				 , "NEW_OBJECT"				 , +1	  , 0 },
-	{ NEW_ARRAY_OP				 , "NEW_ARRAY"				 , +1	  , 0 },
-	{ NEW_REG_EXP_OP			 , "NEW_REG_EXP"			 , -1	  , 0 },
-	{ RETURN_OP					 , "RETURN"					 , -1	  , OpcodeInfo::TERMINAL },
-	{ THIS_OP					 , "THIS"					 , +1	  , 0 },
-	{ VOID_OP					 , "VOID"					 , +1	  , 0 },
-	{ DELETE_OP					 , "DELETE"					 , -1	  , 0 },
-	{ DELETE_NAMED_OP			 , "DELETE_NAMED"			 , 1	  , 0 },
-	{ GEN_FUNC_OP				 , "GEN_FUNC"				 , +1	  , 0 },
-	{ DECLARE_OP				 , "DECLARE"				 , -1	  , 0 },
-	{ CATCH_SCOPE_OP			 , "CATCH_SCOPE"			 , -1	  , 0 },
-	{ WITH_SCOPE_OP				 , "WITH_SCOPE"				 , -1	  , 0 },
-	{ POP_FRAME_OP				 , "POP_FRAME"				 , 0	  , 0 },
-	{ TRY_OP					 , "TRY"					 , 0	  , OpcodeInfo::NO_POP_ON_BRANCH },
-	{ TRIED_OP					 , "TRIED"					 , 0	  , 0 },
-	{ THROW_OP					 , "THROW"					 , -1	  , OpcodeInfo::TERMINAL },
-	{ IN_OP						 , "IN"						 , -1	  , 0 },
-	{ INSTANCE_OF_OP			 , "INSTANCE_OF"			 , -1	  , 0 },
-	{ TYPEOF_OP					 , "TYPEOF"					 , 0	  , 0 },
-	{ TYPEOF_NAMED_OP			 , "TYPEOF_NAMED"			 , 1	  , 0 },
-	{ GET_ENUMERATOR_OP			 , "GET_ENUMERATOR"			 , 0	  , 0 },
-	{ NEXT_PROPERTY_OP			 , "NEXT_PROPERTY"			 , 0	  , OpcodeInfo::POP_ON_BRANCH }
+	{ CONST_OP                   , "CONST"                   , +1     , 0 },
+	{ READ_LOCAL_OP              , "READ_LOCAL"              , +1     , 0 },
+	{ WRITE_LOCAL_OP             , "WRITE_LOCAL"             , 0      , 0 },
+	{ WRITE_LOCAL_POP_OP         , "WRITE_LOCAL_POP"         , -1     , 0 },
+	{ READ_NAMED_OP              , "READ_NAMED"              , 1      , 0 },
+	{ WRITE_NAMED_OP             , "WRITE_NAMED"             , 0      , 0 },
+	{ WRITE_NAMED_POP_OP         , "WRITE_NAMED_POP"         , -1     , 0 },
+	{ CHECK_OBJECT_COERCIBLE_OP	 , "CHECK_OBJECT_COERCIBLE"  , 0	  , 0 },
+	{ CHECK_RESOLVE_PROPERTY_OP	 , "CHECK_RESOLVE_PROPERTY"	 , 0	  , 0 },
+	{ GET_PROPERTY_OP            , "GET_PROPERTY"            , -1     , 0 },
+	{ SET_PROPERTY_OP            , "SET_PROPERTY"            , -2     , 0 },
+	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -3     , 0 },
+	{ ADD_PROPERTY_OP            , "ADD_PROPERTY"            , -1     , 0 },
+	{ PUSH_ELEMENTS_OP           , "PUSH_ELEMENTS_OP"        , 0      , OpcodeInfo::POP_OPERAND },
+	{ OBJ_TO_PRIMITIVE_OP        , "OBJ_TO_PRIMITIVE"        , 0      , 0 },
+	{ OBJ_TO_NUMBER_OP           , "OBJ_TO_NUMBER"           , 0      , 0 },
+	{ OBJ_TO_STRING_OP           , "OBJ_TO_STRING"           , 0      , 0 },
+	{ PRE_EQ_OP                  , "PRE_EQ"                  , 0      , 0 },
+	{ INC_OP                     , "INC"                     , 0      , 0 },
+	{ DEC_OP                     , "DEC"                     , 0      , 0 },
+	{ ADD_OP                     , "ADD"                     , -1     , 0 },
+	{ SUB_OP                     , "SUB"                     , -1     , 0 },
+	{ MUL_OP                     , "MUL"                     , -1     , 0 },
+	{ DIV_OP                     , "DIV"                     , -1     , 0 },
+	{ MOD_OP                     , "MOD"                     , -1     , 0 },
+	{ OR_OP                      , "OR"                      , -1     , 0 },
+	{ XOR_OP                     , "XOR"                     , -1     , 0 },
+	{ AND_OP                     , "AND"                     , -1     , 0 },
+	{ SHL_OP                     , "SHL"                     , -1     , 0 },
+	{ SHR_OP                     , "SHR"                     , -1     , 0 },
+	{ USHR_OP                    , "USHR"                    , -1     , 0 },
+	{ PLUS_OP                    , "PLUS"                    , 0      , 0 },
+	{ MINUS_OP                   , "MINUS"                   , 0      , 0 },
+	{ INV_OP                     , "INV"                     , 0      , 0 },
+	{ NOT_OP                     , "NOT"                     , 0      , 0 },
+	{ X_EQ_OP                    , "X_EQ"                    , -1     , 0 },
+	{ X_NEQ_OP                   , "X_NEQ"                   , -1     , 0 },
+	{ EQ_OP                      , "EQ"                      , -1     , 0 },
+	{ NEQ_OP                     , "NEQ"                     , -1     , 0 },
+	{ LT_OP                      , "LT"                      , -1     , 0 },
+	{ LEQ_OP                     , "LEQ"                     , -1     , 0 },
+	{ GT_OP                      , "GT"                      , -1     , 0 },
+	{ GEQ_OP                     , "GEQ"                     , -1     , 0 },
+	{ JMP_OP                     , "JMP"                     , 0      , OpcodeInfo::TERMINAL },
+	{ JSR_OP                     , "JSR"                     , 0      , 0 },
+	{ JT_OP                      , "JT"                      , -1     , 0 },
+	{ JF_OP                      , "JF"                      , -1     , 0 },
+	{ JT_OR_POP_OP               , "JT_OR_POP"               , -1     , OpcodeInfo::NO_POP_ON_BRANCH },
+	{ JF_OR_POP_OP               , "JF_OR_POP"               , -1     , OpcodeInfo::NO_POP_ON_BRANCH },
+	{ POP_OP                     , "POP"                     , 0      , OpcodeInfo::POP_OPERAND },
+	{ PUSH_BACK_OP               , "PUSH_BACK"               , 0      , OpcodeInfo::POP_OPERAND },
+	{ REPUSH_OP                  , "REPUSH"                  , 1      , 0 },
+	{ SWAP_OP                    , "SWAP"                    , 0      , 0 },
+	{ REPUSH_2_OP                , "REPUSH_2"                , +2     , 0 },
+	{ POST_SHUFFLE_OP            , "POST_SHUFFLE"            , +1     , 0 },
+	{ CALL_OP                    , "CALL"                    , 0      , OpcodeInfo::POP_OPERAND },
+	{ CALL_METHOD_OP             , "CALL_METHOD"             , -1     , OpcodeInfo::POP_OPERAND },
+	{ CALL_EVAL_OP               , "CALL_EVAL"               , 0      , OpcodeInfo::POP_OPERAND },
+	{ NEW_OP                     , "NEW"                     , +1     , OpcodeInfo::POP_OPERAND },
+	{ NEW_RESULT_OP              , "NEW_RESULT"              , -1     , 0 },
+	{ NEW_OBJECT_OP              , "NEW_OBJECT"              , +1     , 0 },
+	{ NEW_ARRAY_OP               , "NEW_ARRAY"               , +1     , 0 },
+	{ NEW_REG_EXP_OP             , "NEW_REG_EXP"             , -1     , 0 },
+	{ RETURN_OP                  , "RETURN"                  , -1     , OpcodeInfo::TERMINAL },
+	{ THIS_OP                    , "THIS"                    , +1     , 0 },
+	{ VOID_OP                    , "VOID"                    , +1     , 0 },
+	{ DELETE_OP                  , "DELETE"                  , -1     , 0 },
+	{ DELETE_NAMED_OP            , "DELETE_NAMED"            , 1      , 0 },
+	{ GEN_FUNC_OP                , "GEN_FUNC"                , +1     , 0 },
+	{ DECLARE_OP                 , "DECLARE"                 , -1     , 0 },
+	{ CATCH_SCOPE_OP             , "CATCH_SCOPE"             , -1     , 0 },
+	{ WITH_SCOPE_OP              , "WITH_SCOPE"              , -1     , 0 },
+	{ POP_FRAME_OP               , "POP_FRAME"               , 0      , 0 },
+	{ TRY_OP                     , "TRY"                     , 0      , OpcodeInfo::NO_POP_ON_BRANCH },
+	{ TRIED_OP                   , "TRIED"                   , 0      , 0 },
+	{ THROW_OP                   , "THROW"                   , -1     , OpcodeInfo::TERMINAL },
+	{ IN_OP                      , "IN"                      , -1     , 0 },
+	{ INSTANCE_OF_OP             , "INSTANCE_OF"             , -1     , 0 },
+	{ TYPEOF_OP                  , "TYPEOF"                  , 0      , 0 },
+	{ TYPEOF_NAMED_OP            , "TYPEOF_NAMED"            , 1      , 0 },
+	{ GET_ENUMERATOR_OP          , "GET_ENUMERATOR"          , 0      , 0 },
+	{ NEXT_PROPERTY_OP           , "NEXT_PROPERTY"           , 0      , OpcodeInfo::POP_ON_BRANCH }
 };
 
 const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
@@ -2402,8 +2527,69 @@ void Processor::popCatcher() {
 	delete killMe;
 }
 
+static void appendString(Vector<Char>& buffer, const String* value) {
+	buffer.insert(buffer.end(), value->begin(), value->end());
+}
+
+static void appendASCII(Vector<Char>& buffer, const char* literal) {
+	while (*literal != 0) {
+		buffer.push(static_cast<Char>(*literal));
+		++literal;
+	}
+}
+
+void Processor::addStackTrace(const Value& exception) const {
+	Error* errorObject = exception.asError();
+	if (errorObject != 0) {
+		const String* stackString = errorObject->getStackString();
+		if (stackString == 0) {
+			Vector<Char> buffer(&heap);
+			appendString(buffer, errorObject->getErrorName());
+			const String* message = errorObject->getErrorMessage();
+			if (message != 0 && !message->empty()) {
+				appendASCII(buffer, ": ");
+				appendString(buffer, message);
+			}
+
+			Char digits[32];
+			const Frame* frameWalker = currentFrame;
+			const CodeWord* nextIP = ip;
+			while (frameWalker != 0 && nextIP != 0) {
+				const Code::SourceLocation location = frameWalker->code->lookupSourceLocation(nextIP - 1);
+				
+				appendASCII(buffer, "\n    at ");
+				if (location.functionName != 0 && !location.functionName->empty()) {
+					appendString(buffer, location.functionName);
+					appendASCII(buffer, " (");
+				}
+				appendString(buffer, location.fileName);
+				if (location.line > 0) {
+					buffer.push(static_cast<Char>(':'));
+					const Char* digitsBegin = intToString(digits, location.line);
+					buffer.insert(buffer.end(), digitsBegin, digits + 32);
+					if (location.column > 0) {
+						buffer.push(static_cast<Char>(':'));
+						digitsBegin = intToString(digits, location.column);
+						buffer.insert(buffer.end(), digitsBegin, digits + 32);
+					}
+				}
+				if (location.functionName != 0 && !location.functionName->empty()) {
+					buffer.push(static_cast<Char>(')'));
+				}
+
+				nextIP = frameWalker->returnIP;
+				frameWalker = frameWalker->previousFrame;
+			}
+
+			stackString = new(heap) String(heap.managed(), buffer.begin(), buffer.end());
+			errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+		}
+	}
+}
+
 void Processor::throwVirtualException(const Value& exception) {
-	if (firstCatcher == 0) { // FIX: what exception to throw here?
+	addStackTrace(exception);
+	if (firstCatcher == 0) { // No JS catcher: throw a ScriptException
 		reset();
 		throw ScriptException(heap, exception);
 	}
@@ -2487,10 +2673,27 @@ void Processor::innerRun() {
 					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
 					return;
 				}
+				break;
 			}
-			break;
 			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
 			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
+
+			case CHECK_OBJECT_COERCIBLE_OP: {
+				if (sp[0].isUndefined() || sp[0].isNull()) {
+					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
+					return;
+				}
+				break;
+			}
+
+			case CHECK_RESOLVE_PROPERTY_OP: {
+				if (sp[-1].isUndefined() || sp[-1].isNull()) {
+					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
+					return;
+				}
+				sp[-1] = convertToObject(sp[-1], false);
+				break;
+			}
 
 			case GET_PROPERTY_OP: {
 				const Object* o = convertToObject(sp[-1], false);
@@ -2505,22 +2708,14 @@ void Processor::innerRun() {
 			}
 			
 			case SET_PROPERTY_OP: {
-				Object* o = convertToObject(sp[-2], false);
-				if (o == 0) {
-					return;
-				}
-				o->setProperty(rt, sp[-1], sp[0]);
+				sp[-2].getObject()->setProperty(rt, sp[-1], sp[0]);
 				sp[-2] = sp[0];
 				pop(2);
 				break;
 			}
 			
 			case SET_PROPERTY_POP_OP: {
-				Object* o = convertToObject(sp[-2], false);
-				if (o == 0) {
-					return;
-				}
-				o->setProperty(rt, sp[-1], sp[0]);
+				sp[-2].getObject()->setProperty(rt, sp[-1], sp[0]);
 				pop(3);
 				break;
 			}
@@ -2928,9 +3123,11 @@ struct Compiler::SemanticScope {
 };
 
 Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter)
-		: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
-		, mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
-		, nestCounter(initialNestCounter) { }
+	: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
+	, mainSection(heap, 1), b(0), p(0), e(0), sourceUnitBase(code->getSourceUnit()->getSource()->begin())
+	, currentSection(0), acceptInOperator(true), withScopeCounter(0), nestCounter(initialNestCounter)
+{
+}
 
 const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e) {
 	if (b == e) {
@@ -2943,8 +3140,38 @@ const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e
 
 void Compiler::error(ErrorType type, const char* message) { ScriptException::throwError(heap, type, message); }
 
-void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
-	if (inDeadCode()) { // unknown stack depth = dead code
+void Compiler::CodeSection::pushSourceMapping(UInt32 offset) {
+	if (sourceOffsets.empty() || sourceOffsets[sourceOffsets.size() - 1] != offset) {
+		codeOffsets.push(static_cast<UInt32>(code.size()));
+		sourceOffsets.push(offset);
+	}
+	assert(sourceOffsets.size() == codeOffsets.size());
+}
+
+UInt32 Compiler::CodeSection::popSourceMapping() {
+	assert(!sourceOffsets.empty() && !codeOffsets.empty());
+	const UInt32 popped = sourceOffsets[sourceOffsets.size() - 1];
+	if (codeOffsets[codeOffsets.size() - 1] == static_cast<UInt32>(code.size())) {
+		codeOffsets.pop();
+		sourceOffsets.pop();
+	}
+	return popped;
+}
+
+void Compiler::CodeSection::exportSourceMapping(Vector<UInt32>& toCodeOffsets, Vector<UInt32>& toSourceOffsets
+		, UInt32 codeBase) const {
+	assert(codeOffsets.size() == sourceOffsets.size() && toCodeOffsets.size() == toSourceOffsets.size());
+	if (!sourceOffsets.empty()) {
+		const UInt32 start = (!toSourceOffsets.empty() && toSourceOffsets[toSourceOffsets.size() - 1] == sourceOffsets[0] ? 1 : 0);
+		for (UInt32 i = start; i < codeOffsets.size(); ++i) {
+			toCodeOffsets.push(codeOffsets[i] + codeBase);
+			toSourceOffsets.push(sourceOffsets[i]);
+		}
+	}
+}
+
+void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand, UInt32 sourceOffset) {
+	if (inDeadCode()) {	// unknown stack depth = dead code
 		return;
 	}
 	const Processor::OpcodeInfo& opcodeInfo = Processor::getOpcodeInfo(opcode);
@@ -2964,6 +3191,7 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 			case Processor::CONST_OP:
 			case Processor::VOID_OP: {
 				code.pop();
+				popSourceMapping();
 				lastEmitted = Processor::INVALID_OP;
 				return;
 			}
@@ -2972,11 +3200,13 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 		if (replacementOpcode != Processor::INVALID_OP) {
 			const Int32 oldOperand = Processor::unpackInstruction(code.end()[-1]).second;
 			code.pop();
+			pushSourceMapping(popSourceMapping());
 			code.push(Processor::packInstruction(replacementOpcode, oldOperand));
 			lastEmitted = replacementOpcode;
 			return;
 		}
 	}
+	pushSourceMapping(sourceOffset);
 	code.push(Processor::packInstruction(opcode, operand));
 	lastEmitted = opcode;
 }
@@ -2984,6 +3214,7 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 void Compiler::CodeSection::insertSection(const CodeSection& section) {
 	const Int32 stackAdjust = stackDepth - section.initialStackDepth;
 	lastEmitted = Processor::INVALID_OP;
+	section.exportSourceMapping(codeOffsets, sourceOffsets, static_cast<UInt32>(code.size()));
 	code.insert(code.end(), section.code.begin(), section.code.end());
 	stackDepth = section.stackDepth + stackAdjust;
 	maxStackDepth = std::max(maxStackDepth, section.maxStackDepth + stackAdjust);
@@ -2993,7 +3224,7 @@ void Compiler::emit(Processor::Opcode opcode, Int32 operand) {
 	if (operand < MIN_OPERAND_VALUE || operand > MAX_OPERAND_VALUE) { // Highly hypothetical, but correctness!
 		error(RANGE_ERROR, "Internal compiler limitations reached. Reduce code complexity.");
 	}
-	currentSection->emit(opcode, operand);
+	currentSection->emit(opcode, operand, static_cast<UInt32>(p - sourceUnitBase));
 }
 
 Compiler::CodeSection* Compiler::changeSection(CodeSection* newOutputSection) {
@@ -3057,16 +3288,6 @@ UInt32 Compiler::addConstant(const Value& constant) {
 
 void Compiler::emitWithConstant(Processor::Opcode opcode, const Value& constant) {
 	emit(opcode, addConstant(constant));
-}
-
-static const Char LINE_TERMINATORS[] = { '\n', 0x2028, 0x2029, '\r' }; // FIX : '\r' must be last for line count to work, but I think we should change line counting algo in the future, a single '\r' without '\n' should count too really
-
-static bool isLineTerminator(Char c) {
-	return (std::find(LINE_TERMINATORS, LINE_TERMINATORS + 4, c) != LINE_TERMINATORS + 4);
-}
-
-static bool lineTerminatorInRange(const Char* b, const Char* e) {
-	return (std::find_first_of(b, e, LINE_TERMINATORS, LINE_TERMINATORS + 4) != e);
 }
 
 void Compiler::white() {
@@ -3510,6 +3731,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			assert(op.primitiveOutput);
 			xr = operand(op);
 			if (xr.t == ExpressionResult::PROPERTY) {
+				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
 				emit(Processor::REPUSH_2_OP);
 			}
 			makeRValue(xr, true);
@@ -3553,8 +3775,8 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		}
 			
 		case BINARY: {
-			const Processor::Opcode primitiveOp
-					= (op.vmOp == Processor::ADD_OP ? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
+			const Processor::Opcode primitiveOp = (op.vmOp == Processor::ADD_OP
+					? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
 			makeRValue(xr, op.primitiveInput, primitiveOp);
 			makeRValue(operand(op), op.primitiveInput, primitiveOp);
 			emit(op.vmOp);
@@ -3596,6 +3818,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				return false;
 			}
 			if (xr.t == ExpressionResult::PROPERTY) {
+				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
 				emit(Processor::REPUSH_2_OP);
 			}
 			makeRValue(xr, true);
@@ -3636,6 +3859,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case PROPERTY_DOT: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, op.primitiveInput);
+			emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
 			white();
 			emitWithConstant(Processor::CONST_OP, identifier(true, true));
 			xr = ExpressionResult(ExpressionResult::PROPERTY);
@@ -3662,6 +3886,9 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case ASSIGNMENT: {
 			assert(!op.primitiveInput);
 			assert(!op.primitiveOutput);
+			if (xr.t == ExpressionResult::PROPERTY) {
+				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
+			}
 			const ExpressionResult rxr = makeRValue(operand(op), false);
 			makeAssignment(xr);
 			xr = rxr;
@@ -3671,9 +3898,10 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case COMPOUND_ASSIGNMENT: {
 			assert(op.primitiveInput);
 			assert(op.primitiveOutput);
-			const Processor::Opcode primitiveOp
-					= (op.vmOp == Processor::ADD_OP ? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
+			const Processor::Opcode primitiveOp = (op.vmOp == Processor::ADD_OP
+					? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
 			if (xr.t == ExpressionResult::PROPERTY) {
+				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
 				emit(Processor::REPUSH_2_OP);
 			}
 			makeRValue(xr, true, primitiveOp);
@@ -3687,6 +3915,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case PROPERTY_BRACKETS: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, false);
+			emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
 			const bool didAcceptInOperator = acceptInOperator;
 			acceptInOperator = true;
 			makeRValue(operand(op), true, Processor::OBJ_TO_STRING_OP); // left doesn't need to be primitive, but right does (and preferred string!)
@@ -3702,7 +3931,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
-	Code* func = new(heap) Code(heap.managed(), code->constants);
+	Code* func = new(heap) Code(heap.managed(), code->constants, code->getSourceUnit());
 	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
@@ -4006,7 +4235,7 @@ void Compiler::functionStatement() {
 	white();
 	const String* name = identifier(true, false);
 	CodeSection* previousSection = changeSection(&setupSection);
-	functionDefinition(name);
+	functionDefinition(name, 0);
 	declareIdentifier(name, true);
 	changeSection(previousSection);
 }
@@ -4521,6 +4750,10 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	std::copy(mainSection.code.begin(), mainSection.code.end(), code->codeWords.begin() + setupSection.code.size());
 	code->constants->shrink();
 	code->maxStackDepth = std::max(mainSection.maxStackDepth, setupSection.maxStackDepth);
+	setupSection.exportSourceMapping(code->codeOffsets, code->sourceOffsets, 0);
+	mainSection.exportSourceMapping(code->codeOffsets, code->sourceOffsets, static_cast<UInt32>(setupSection.code.size()));
+	code->codeOffsets.shrink();
+	code->sourceOffsets.shrink();
 	
 	return p;
 }
@@ -4568,18 +4801,9 @@ void Compiler::compile(const String& source) {
 	}
 }
 
-void Compiler::getStopPosition(size_t& offset, int& lineNumber, int& columnNumber) const {
-	lineNumber = 1;
-	columnNumber = 1;
-	offset = p - b;
-	for (const Char* q = b; q != p; ++q) {
-		assert(q != e);
-		if (std::find(LINE_TERMINATORS, LINE_TERMINATORS + 3, *q) != LINE_TERMINATORS + 3) {
-			++lineNumber;
-			columnNumber = 0;
-		}
-		++columnNumber;
-	}
+void Compiler::getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const {
+	offset = static_cast<UInt32>(p - b);
+    code->getSourceUnit()->computeLineColumn(offset, lineNumber, columnNumber);
 }
 
 /* --- Runtime --- */
@@ -4624,11 +4848,17 @@ struct Runtime::FunctionPrototypeFunction : public ExtensibleFunction {
 	typedef ExtensibleFunction super;
 	FunctionPrototypeFunction(GCList& gcList) : super(gcList) { }
 	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
+	virtual Value construct(Runtime& rt, Processor&, UInt32, const Value*, Object*);
 	virtual Object* getPrototype(Runtime& rt) const;
 	virtual void constructCompleteObject(Runtime& rt) const;
 };
 
 Value Runtime::FunctionPrototypeFunction::invoke(Runtime&, Processor&, UInt32, const Value*, Object*) {
+	return UNDEFINED_VALUE;
+}
+
+Value Runtime::FunctionPrototypeFunction::construct(Runtime& rt, Processor&, UInt32, const Value*, Object*) {
+	ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Function.prototype is not a constructor");
 	return UNDEFINED_VALUE;
 }
 
@@ -4786,10 +5016,11 @@ struct Support {
 		if (argc >= 1) {
 			Heap& heap = rt.getHeap();
 			const String* source = argv[0].toString(heap);
-			Code* code = new(heap) Code(heap.managed());
+			SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), source, &ANONYMOUS_SCRIPT_STRING);
+			Code* code = new(heap) Code(heap.managed(), 0, unit);
 			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
 			compiler.compileFunction(source->begin(), source->end()
-					, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING));
+					, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING), 0);
 			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
 		}
 		return UNDEFINED_VALUE;
@@ -5100,6 +5331,22 @@ void Runtime::run(const String& source, const String* filename) {
 	runUntilReturn(processor);
 }
 
+Code* Runtime::compileEvalCode(const String* expression) {
+	const Table::Bucket* bucket = evalCodeCache.lookup(expression);
+	if (bucket != 0) {
+		Object* o = bucket->getValue().getObject();
+		assert(dynamic_cast<Code*>(o) != 0);
+		return reinterpret_cast<Code*>(o);
+	} else {
+		SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), expression, &EVAL_CODE_STRING);
+		Code* code = new(heap) Code(heap.managed(), 0, unit);
+		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
+		compiler.compile(*expression);
+		evalCodeCache.update(evalCodeCache.insert(expression), code);
+		return code;
+	}
+}
+
 Var Runtime::eval(const String& expression) {
 	Processor processor(*this);
 	const String* retainedExpression = (heap.managed().owns(&expression)
@@ -5108,29 +5355,18 @@ Var Runtime::eval(const String& expression) {
 	return runUntilReturn(processor);
 }
 
-Code* Runtime::compileEvalCode(const String* expression) {
-	const Table::Bucket* bucket = evalCodeCache.lookup(expression);
-	if (bucket != 0) {
-		Object* o = bucket->getValue().getObject();
-		assert(dynamic_cast<Code*>(o) != 0);
-		return reinterpret_cast<Code*>(o);
-	} else {
-		Code* code = new(heap) Code(heap.managed());
-		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
-		compiler.compile(*expression);
-		evalCodeCache.update(evalCodeCache.insert(expression), code);
-		return code;
-	}
-}
-
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
-	Code* code = new(heap) Code(heap.managed());
+	const String* effectiveFileName = (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING);
+	const String* retainedSource = (heap.managed().owns(&source)
+			? &source : new(heap) String(heap.managed(), source.begin(), source.end()));
+	SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), retainedSource, effectiveFileName);
+	Code* code = new(heap) Code(heap.managed(), 0, unit);
 	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
 	try {
-		compiler.compile(source);
+		compiler.compile(*retainedSource);
 	}
 	catch (const ScriptException& x) {
-		throw CompilationError(x, filename, compiler);
+		throw CompilationError(x, effectiveFileName, compiler);
 	}
 	return code;
 }

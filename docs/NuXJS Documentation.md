@@ -104,6 +104,89 @@ int main() {
 
 This mirrors the JavaScript idioms used in the engine's high‑level API and illustrates how `Var` and `VarList` manage lifetime and conversions between the two languages.
 
+### Implementing Custom Native Objects
+
+Embedding applications often need richer objects than plain functions. Every scriptable entity in NuXJS ultimately derives from `Object`, which defines the contract for property lookups, mutation, and enumeration. Property access uses a compact set of attribute flags – `EXISTS_FLAG`, `READ_ONLY_FLAG`, `DONT_ENUM_FLAG`, and `DONT_DELETE_FLAG` – together with the `STANDARD_FLAGS` helper constant for ordinary writable properties.
+
+`Object` exposes five virtuals that host objects may override. Understanding how they interact is key to building a class that behaves just like its JavaScript counterparts:
+
+* `getOwnProperty(Runtime&, const Value&, Value*)` returns a `Flags` bitmask describing the slot and, on success, writes the current value through the output pointer. Return `NONEXISTENT` (zero) when the key is unknown; in that case the engine will leave the output untouched and fall back to the prototype chain.
+* `setOwnProperty(Runtime&, const Value&, const Value&, Flags)` creates or replaces a property on the object itself. Return `true` once the write has been applied, or `false` to refuse it (for example, when a read-only slot is already present). The caller supplies the attribute flags so native code can mark properties read-only, non-enumerable, or non-deletable by OR-ing the appropriate bits. Implementations should reject requests that conflict with existing storage by returning `false`.
+* `updateOwnProperty(Runtime&, const Value&, const Value&)` updates an existing property while preserving its flags. Return `true` only when the property existed and the new value has been stored; return `false` otherwise. The default implementation simply checks `hasOwnProperty` and then defers to `setOwnProperty`, but custom classes often override it to short-circuit lookups or to report failures without disturbing `setOwnProperty`.
+* `deleteOwnProperty(Runtime&, const Value&)` decides whether `delete obj[key]` succeeds. Return `true` once the property has been removed. Returning `false` leaves the property intact, mirroring JavaScript's semantics for `configurable: false` slots.
+* `getOwnPropertyEnumerator(Runtime&)` hands back an `Enumerator` that yields enumerable keys; the pointer should reference a GC-managed enumerator allocated by the callee. NuXJS automatically chains enumerators from the prototype chain by calling `getPropertyEnumerator`. Returning an empty enumerator (never `nullptr`) signals that the object contributes no own properties.
+
+All other property helpers funnel through these hooks. A write performed from JavaScript—or from C++ via `globals["name"] = value`—ultimately lands on `Object::setProperty`. That helper first calls `updateOwnProperty`, then checks the prototype chain for a read-only shadow, and finally falls back to `setOwnProperty` to insert a new slot. The assignment helpers in `Var` and `Property` call the same path, so custom classes see identical behaviour whether a script or the host performs the mutation.
+
+Because `setOwnProperty` receives the attribute flags, it is responsible for enforcing the invariants attached to a slot. `JSObject`, the dictionary-style object NuXJS uses for ordinary JavaScript values, provides the canonical example: it interns the key as a string, updates an internal hash table, and refuses writes when a bucket already carries `READ_ONLY_FLAG` or `DONT_DELETE_FLAG`. Host objects can employ the same pattern when exposing selective mutability.
+
+#### Reusing the built-in storage helpers
+
+Deriving from `JSObject` is the quickest way to obtain a full ECMAScript property bag. `JSObject` couples `Object` with the internal `Table`, automatically handles key canonicalisation, and allocates enumerators that honour the `DONT_ENUM` bit. Passing `STANDARD_FLAGS` to `setOwnProperty` yields a normal writable, enumerable property; additional flags add const-like semantics. If you only need to materialise the property table lazily (for example, when exposing a large native object with rare script interaction) you can inherit from `LazyJSObject` instead and build the backing `JSObject` the first time a property hook fires.
+
+When the host manages its own backing state and does not need `JSObject`'s hash table, overriding the base `Object` hooks directly avoids the bookkeeping overhead. Returning `NONEXISTENT` from `getOwnProperty` delegates the lookup to the prototype chain, while returning `false` from `setOwnProperty` causes assignments to silently do nothing—matching JavaScript's behaviour for read-only properties on non-strict code paths. Deletions mirror this pattern: `delete` succeeds only if your implementation returns `true` and the stored flags did not include `DONT_DELETE_FLAG`.
+
+#### Example: exposing a mutable point
+
+The snippet below sketches a small native class that surfaces `x`/`y` fields with read–write semantics and participates in property enumeration. It relies on the common `StringListEnumerator` helper to report its keys:
+
+```cpp
+using namespace NuXJS;
+
+static const String X_STRING("x");
+static const String Y_STRING("y");
+
+class NativePoint : public Object {
+public:
+    NativePoint(GCList& gcList, double x, double y)
+        : Object(gcList), x(x), y(y) { }
+
+    Object* getPrototype(Runtime& rt) const override { return rt.getObjectPrototype(); }
+
+    Flags getOwnProperty(Runtime&, const Value& key, Value* out) const override {
+        if (key.equalsString(X_STRING)) { *out = x; return STANDARD_FLAGS; }
+        if (key.equalsString(Y_STRING)) { *out = y; return STANDARD_FLAGS; }
+        return NONEXISTENT;
+    }
+
+    bool setOwnProperty(Runtime&, const Value& key, const Value& v, Flags flags) override {
+        if ((flags & READ_ONLY_FLAG) != 0) {
+            return false;        // refuse read-only redefinitions
+        }
+        if (key.equalsString(X_STRING)) { x = v.toDouble(); return true; }
+        if (key.equalsString(Y_STRING)) { y = v.toDouble(); return true; }
+        return false;
+    }
+
+    bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v) override {
+        return setOwnProperty(rt, key, v, STANDARD_FLAGS);
+    }
+
+    bool deleteOwnProperty(Runtime&, const Value&) override { return false; }
+
+    Enumerator* getOwnPropertyEnumerator(Runtime& rt) const override {
+        Heap& heap = rt.getHeap();
+        StringListEnumerator* e = new(heap) StringListEnumerator(heap.managed(), 2);
+        e->add(&X_STRING);
+        e->add(&Y_STRING);
+        return e;
+    }
+
+private:
+    double x;
+    double y;
+};
+
+void exposePoint(Runtime& rt) {
+    Heap& heap = rt.getHeap();
+    Object* globals = rt.getGlobalObject();
+    NativePoint* p = new(heap) NativePoint(heap.managed(), 3.0, 4.0);
+    globals->setOwnProperty(rt, String::allocate(heap, "point"), p, STANDARD_FLAGS);
+}
+```
+
+Because `Property::operator=` also routes through `Object::setProperty`, the same object can be updated from C++ in a fluent style – for example `rt.getGlobalsVar()["point"]["x"] = 7.5;` – and those writes still flow through the overrides above. This keeps host-side and script-side interactions consistent without duplicating bookkeeping.
+
 ## Runtime Architecture
 
 NuXJS utilizes a simple stack machine that runs bytecode generated by a single-pass compiler. `Processor` objects interpret the code on behalf of a `Runtime`. You can create multiple processors for the same runtime, for instance, when a C++ callback calls back into JavaScript. Because the interpreter is asynchronous, applications can call `Processor::run(maxCycles)` repeatedly to interleave JavaScript execution with other tasks.
@@ -195,6 +278,9 @@ Var loadFile(Runtime& rt, const Var&, const VarList& args) {
 }
 ```
 
+> **Note:** `String::toUTF8String()` preserves every ECMAScript code unit by returning WTF-8. Embedders that hand the
+> resulting buffer to strict-Unicode facilities should validate or sanitise before bridging across the boundary.
+
 ## Standard Library and JavaScript Features
 
 The engine ships with a standard library implemented in JavaScript, providing the objects described in ECMAScript&nbsp;3. It also offers selected ECMAScript&nbsp;5 functionality including JSON and string indexing.
@@ -211,7 +297,10 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 - Implicit `valueOf` and `toString` conversions may happen earlier than specified, for example, `v[o]++` only invokes `toString()` once.
 - Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers.
 - The `arguments` object follows ES3 mapping semantics; changing element attributes does not fully emulate the ES5 behaviour.
-- Every created function has a writable, enumerable, and configurable `name` property.
+- `Object.defineProperty` only accepts plain data descriptors (`value`, `writable`, `enumerable`, `configurable`). Missing
+  fields default to `false`, accessors are ignored, failures return `false` instead of throwing, and descriptor invariant checks
+  are not performed.
+- Every created function has a writable, enumerable, and configurable `name` property, and a function's `length` property cannot be deleted.
 - Evaluation order of member expressions follows the ES3 order (object and arguments evaluated before selecting the member).
 - When the identifier of a `catch` clause is called as a function, its `this` value is the global object.
 - Assignments evaluate the right-hand side before resolving the reference on the left-hand side.
@@ -221,29 +310,46 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 - A semicolon is required after `do ... while` statements. This matches the ES3 and ES5 grammar, even though ES6 made the semicolon optional.
 - Creating a numeric property on an object can shadow a read-only numeric property in the prototype chain.
 - Several tests under `tests/unconforming` demonstrate additional corner cases.
-- Assigning an object to an array's `length` property is unsupported.
+- Assigning an object to an array's `length` property is unsupported; attempts throw `RangeError` instead of converting the value.
 - Recursive grammar constructs are limited to 64 levels to avoid a C++ stack overflow.
 
 ### Partial ES5 features
 
-| Feature							| Support			   |
-| --------------------------------- | -------------------- |
-| `Array.isArray`					| yes				   |
-| `Object.prototype.hasOwnProperty` | yes				   |
-| `Object.prototype.isPrototypeOf`	| yes				   |
-| `Object.getPrototypeOf`			| yes				   |
-| `Object.defineProperty`			| data properties only |
-| `JSON.parse` / `JSON.stringify`	| yes				   |
-| String indexing					| yes				   |
-| `eval()` direct vs indirect		| yes				   |
-| `String.prototype.match`			| ES5 behaviour		   |
-| `Date` object						| most ES5 methods	   |
-| Unicode format control			| preserved			   |
+NuXJS implements a subset of ECMAScript 5 functionality that covers the most widely used browser behaviours:
+
+- `Array.isArray`.
+- `Object.prototype.hasOwnProperty`.
+- `Object.prototype.isPrototypeOf`.
+- `Object.getPrototypeOf`.
+- `Object.defineProperty` accepts only data descriptors (`value`, `writable`, `enumerable`, `configurable`). Missing fields default to `false`, accessors are ignored, failures return `false` instead of throwing, and descriptor invariants are not enforced.
+- `JSON.parse` and `JSON.stringify`.
+- String objects allow indexed access to individual characters.
+- `String.prototype.match` returns `null` for global patterns with no match and always uses the built-in `RegExp.prototype.exec` implementation.
+- `eval()` distinguishes between direct and indirect calls.
+- Many `Date` object features introduced in ES5 are available.
+- Unicode format control characters are preserved in source text.
+
+### Unsupported ES5 features
+
+NuXJS still follows ES3 semantics for several constructs that changed in ES5:
+
+- `for...in` throws a `TypeError` when the object is `null` or `undefined`.
+- Function `prototype` properties are enumerable on user-defined functions.
+- `Object.prototype.toString` reports `[object Object]` for the `arguments` object.
+- Elements of the `arguments` object do not appear in `for...in` enumeration.
 
 ### ES6-inspired extras
 
 - `Array.prototype.splice` with a single argument deletes the rest of the array.
 - Regular expression flags cannot contain Unicode escapes.
+
+### ECMAScript oddities
+
+NuXJS also implements several spec corner cases that are easy to overlook when embedding the engine:
+
+- **Hidden `ToObject` on every property access.** The specification converts primitive bases to objects before retrieving a property. Strings would therefore need a wrapper object for every indexed read. The engine uses _shallow_ string wrappers so indexing does not allocate, while method calls still turn `this` into a full `String` object as required.
+- **`catch (x)` really is its own scope.** A catch clause introduces a new declarative environment that shadows outer bindings and must be visible to `eval`. NuXJS creates a transient `CatchScope` at run time so dynamic code inside the block sees the correct variable.
+- **Built-ins can distinguish call vs construct.** Native functions may have separate `[[Call]]` and `[[Construct]]` paths. User-defined functions cannot emulate this because they share one body. Built-ins in `stdlib.js` use `support.distinctConstructor` to implement behaviours like `String` where the result differs when invoked with `new`.
 
 ## Testing and Benchmarking
 

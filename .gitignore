@@ -8,3 +8,5 @@
 /externals/._test262-master
 /temp
 *.pdb
+/corpus
+/.vscode

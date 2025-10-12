@@ -123,7 +123,7 @@ support.toPrimitive = function(o) {
 	return support[$getInternalProperty(o, "class") === "Date" ? "toPrimitiveString" : "toPrimitiveNumber"](o);
 };
 
-function int(v) { return $isNaN(v = +v) ? 0 : (!$isFinite(v) ? v : (v < 0 ? -$floor(-v) : $floor(v))); }
+function int(v) { return ($isNaN(v = +v) || v === 0) ? 0 : (!$isFinite(v) ? v : (v < 0 ? -$floor(-v) : $floor(v))); }
 function int32(v) { return int(v) | 0; }
 function uint32(v) { return int(v) >>> 0; }
 
@@ -480,11 +480,10 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		} while (true);
 	}),
 	replace: unconstructable(function replace(searchValue, replaceValue) {
-		var s, sLength = (s = str(this)).length, replaceFunction = replaceValue, matches, i, p, t, l, e;
-		if (typeof replaceFunction !== "function") {
-			var r = str(replaceValue);
-			for (i = r.length; --i >= 0 && r[i] != '$';);
-			replaceFunction = (i < 0 ? function() { return r; } : function(m) {
+		var s, sLength = (s = str(this)).length, matches, i, p, t, l, e, replaceFunction = replaceValue, replacementValue;
+		function makeStringReplacer(r) {
+			for (var scan = r.length; --scan >= 0 && r[scan] != '$';);
+			return (scan < 0 ? function() { return r; } : function(m) {
 				var t = '', p, ch, ch2, c, n;
 				for (p = 0; ch = r[p]; ++p) {
 					if (ch !== '$') t += ch;
@@ -495,10 +494,17 @@ defineProperties(String.prototype, { dontEnum: true }, {
 						case "'": t += $sub(s, arguments[arguments.length - 2] + m.length, sLength); break;
 						default: {
 							if (ch >= '0' && ch <= '9') {
-								if (!(ch2 = r[p + 1]) || ch2 < '0' || ch2 > '9') ch2 = '';
-								if ((n = +(ch + ch2)) >= 1 && n < arguments.length - 2) {
+								n = ch - '0';
+								if ((ch2 = r[p + 1]) && ch2 >= '0' && ch2 <= '9') {
+									var twoDigit = n * 10 + (ch2 - '0');
+									if (twoDigit >= 1 && twoDigit < arguments.length - 2) {
+										t += ((c = arguments[twoDigit]) === void 0 ? '' : c);
+										++p;
+										break;
+									}
+								}
+								if (n >= 1 && n < arguments.length - 2) {
 									t += ((c = arguments[n]) === void 0 ? '' : c);
-									p += ch2.length;
 									break;
 								}
 							}
@@ -508,9 +514,14 @@ defineProperties(String.prototype, { dontEnum: true }, {
 					}
 				}
 				return t;
-			})
-		};
+			});
+		}
+		if (typeof replaceFunction !== "function") {
+			replacementValue = replaceValue;
+			replaceFunction = null;
+		}
 		if ($getInternalProperty(searchValue, "class") === "RegExp") {
+			if (!replaceFunction) replaceFunction = makeStringReplacer(str(replacementValue));
 			p = 0;
 			t = new StringBuilder;
 			if (searchValue.global) searchValue.lastIndex = 0;
@@ -524,7 +535,9 @@ defineProperties(String.prototype, { dontEnum: true }, {
 			}
 			return (t.append($sub(s, p, sLength))).build();
 		} else {
-			e = sLength - (l = (t = str(searchValue)).length);
+			t = str(searchValue);
+			if (!replaceFunction) replaceFunction = makeStringReplacer(str(replacementValue));
+			e = sLength - (l = t.length);
 			for (var p = 0; !$match(s, p, t); ++p) if (p >= e) return s;
 			return $sub(s, 0, p) + str($callWithArgs(replaceFunction, null, [ t, p, s ])) + $sub(s, p + l, sLength);
 		}
@@ -636,14 +649,17 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return s.build();
 	}),
 	pop: unconstructable(function pop() {
-		var v = void 0, len;
-		if ((len = uint32(this.length)) > 0) v = this[--len];
+		var len, result = void 0;
+		if (len = uint32(this.length)) {
+			result = this[--len];
+			delete this[len];
+		}
 		this.length = len;
-		return v;
+		return result;
 	}),
 	push: unconstructable(function push(item) {
-		var argv, offset = uint32(this.length), end = (argv = arguments).length + offset;
-		for (var i = offset; i < end; ++i) this[i] = argv[i - offset];
+		var len, argv, offset, argc = (argv = arguments).length, end = (offset = uint32(len = +this.length)) + argc;
+		for (var i = 0; i < argc; ++i) this[offset + i] = argv[i];
 		return (this.length = end);
 	}),
 	reverse: unconstructable(function reverse() {
@@ -658,15 +674,15 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return this;
 	}),
 	shift: unconstructable(function shift() {
-		var len, elementZero;
+		var len, elementZero = void 0;
 		if (len = uint32(this.length)) {
 			elementZero = this[0];
 			for (var i = 1; i < len; ++i) {
 				if (i in this) this[i - 1] = this[i];
 				else delete this[i - 1];
 			}
-			--len;
-		};
+			delete this[--len];
+		}
 		this.length = len;
 		return elementZero;
 	}),
@@ -749,7 +765,14 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		this.length = len + move;
 		return a;
 	}),
-	toLocaleString: Object.prototype.toLocaleString,
+	toLocaleString: unconstructable(function toLocaleString() {
+		var len = uint32(this.length), builder = new StringBuilder, element;
+		for (var k = 0; k < len; ++k) {
+			if (k > 0) builder.append(',');
+			if ((element = this[k]) != null) builder.append(str(Object(element).toLocaleString()));
+		}
+		return builder.build();
+	}),
 	toString: unconstructable(function toString() {
 		checkClass(this, "Array", "toString");
 		return this.join();
@@ -783,7 +806,9 @@ function localTimeDiff(z) { var l = support.localTimeDifference(z); return ($isN
 function toLocalTime(z) { return $isNaN(z) ? z : z + localTimeDiff(z) }
 
 function checkDateClass(object) {
-	if ($getInternalProperty(object, "class") !== "Date") throw typeError("this is not a Date object");
+	if ($getInternalProperty(object, "class") !== "Date" || object === support.prototypes.Date) {
+		throw typeError("this is not a Date object");
+	}
 }
 
 function getDateValue(object) { checkDateClass(object); return $getInternalProperty(object, "value"); }
@@ -811,11 +836,11 @@ function dateFromEpoch(z) {
 	var doe = z - era * 146097;
 	var yoe = int( (doe - int(doe / 1460) + int(doe / 36524) - int(doe / 146096)) / 365 );
 	var y = yoe + era * 400;
-    var doy = doe - (365 * yoe + int(yoe / 4) - int(yoe/100) );
-    var mp = int( (5 * doy + 2) / 153);
-    var m = mp + (mp < 10 ? 2 : -10);
-    var d = doy - int( (153 * mp + 2) / 5 ) + 1;
-    return [ (y + (m <= 1)), m, d ];
+	var doy = doe - (365 * yoe + int(yoe / 4) - int(yoe/100) );
+	var mp = int( (5 * doy + 2) / 153);
+	var m = mp + (mp < 10 ? 2 : -10);
+	var d = doy - int( (153 * mp + 2) / 5 ) + 1;
+	return [ (y + (m <= 1)), m, d ];
 }
 
 function epochToDateString(z) {
@@ -852,10 +877,16 @@ function setTimeParts(z, n, a) {
 }
 
 function makeDateTime(year, month, date, hours, minutes, seconds, ms) {
-	var argc = arguments.length;
-	return epochFromDate( (year = int(year)) + (0 <= year && year <= 99 ? 1900 : 0),
-			int(month), (argc > 2 ? int(date) : 1)) + epochFromTime( argc > 3 ? int(hours) : 0,
-			argc > 4 ? int(minutes) : 0, argc > 5 ? int(seconds) : 0, argc > 6 ? int(ms) : 0);
+	var argc = arguments.length, y, m, d, h, M, s, milli;
+	return (!$isFinite(y = +year)
+			|| !$isFinite(m = (argc > 1 ? +month : 0))
+			|| !$isFinite(d = (argc > 2 ? +date : 1))
+			|| !$isFinite(h = (argc > 3 ? +hours : 0))
+			|| !$isFinite(M = (argc > 4 ? +minutes : 0))
+			|| !$isFinite(s = (argc > 5 ? +seconds : 0))
+			|| !$isFinite(milli = (argc > 6 ? +ms : 0)))
+			? $NaN : epochFromDate(int(y) + (0 <= y && y <= 99 ? 1900 : 0), int(m), int(d))
+			+ epochFromTime(int(h), int(M), int(s), int(milli));
 }
 
 function isoDate(d) {
@@ -899,7 +930,7 @@ defineProperties(Date, { dontEnum: true }, {
 			++i, tzh = readPart(2) * 36e5,
 			s[i] === ":" && ++i, tzh += $isNaN(tzm = readPart(2)) ? 0 : tzm * 6e4,
 			$isNaN(tzh) || (tz = ch === "-" ? -tzh : tzh);
-	    }
+		}
 		return (tz === void 0 ? fromLocalTime(z) : z - tz)
 	}),
 	UTC: unconstructable(function UTC(year, month, date, hours, minutes, seconds, ms) { 
@@ -1324,18 +1355,19 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 							if (n > maxBackReference) maxBackReference = n;
 							n = (n - 1) * 2;
 				// TODO: $match should take two additional optional params: start, end in match-string, thus eliminating need for substring here
-							quantity = parseQuantifier();
+					quantity = parseQuantifier();
 							var stepSize = 'c' + (n + 1) + "-c" + n
-									, backMatchCode = "$match(s,"
-									+ positionToCode(offset) + ",$sub(s, c" + n + ",c" + (n + 1) + "))";
+									, backMatchCode = "$match(s," + positionToCode(quantity ? 0 : offset) + ",$sub(s, c" + n + ",c" + (n + 1) + "))";
 							tail = compileTerms(0, junction);
 							var tailName = 't' + (++functionCounter);
 							addFunction(tailName, "return " + tail);
 							return quantity ? quantify(code, offset, backMatchCode, tailName + '(' + positionToCode(0) + ')', quantity, stepSize)
-									: and(code, '(c' + n + "<c" + (n + 1) + " ? " + and(backMatchCode, tailName + '(' + positionToCode(offset) + '+' + stepSize + ')') + " : " + tailName + '(' + positionToCode(offset) + "))");
+									: and(code, '(c' + n + "<c" + (n + 1) + " ? " + and(backMatchCode, tailName + '(' + positionToCode(offset) + '+'
+									+ stepSize + ')') + " : " + tailName + '(' + positionToCode(offset) + "))");
 						} else if ((c = s[p]) === 'b' || c === 'B') {
 							++p;
-							code = and(code, (c === 'b' ? "!!((CC[s[" : "!((CC[s[") + positionToCode(offset - 1) + "]]^CC[s[" + positionToCode(offset) + "]])&" + WORD_CHAR + ')');
+							code = and(code, (c === 'b' ? "!!((CC[s[" : "!((CC[s[") + positionToCode(offset - 1) + "]]^CC[s[" + positionToCode(offset)
+									+ "]])&" + WORD_CHAR + ')');
 							break;
 						}
 						// fall-through
@@ -1479,6 +1511,7 @@ function execRegExp(re, string) {
 
 function regExpExecMethod(re, string) {
 	var m, a = null;
+	string = str(string);
 	if (m = execRegExp(re, string)) {
 		(a = [ ]).input = string;
 		a.index = m[0];
@@ -1554,7 +1587,8 @@ defineProperties(globals, { dontEnum: true }, {
 			case '-': sign = -1;
 			case '+': ++i;
 		}
-		if (((radix = int32(radix)) === 0 || radix === 16) && (string[i] === '0' && string[i + 1] === 'x')) {
+		if (((radix = int32(radix)) === 0 || radix === 16) && string[i] === '0'
+				&& (string[i + 1] === 'x' || string[i + 1] === 'X')) {
 			i += 2;
 			radix = 16;
 		}
@@ -1596,7 +1630,7 @@ defineProperties(Math, { dontEnum: true }, {
 	log: unconstructable(function log(v) { return support.log(+v) }),
 	max: unconstructable(function max(x, y) { var m = -$Infinity, v, argv; for (var i = (argv = arguments).length - 1; i >= 0; --i) if ((v = +argv[i]) > m || $isNaN(v)) m = v; return m }),
 	min: unconstructable(function min(x, y) { var m = $Infinity, v, argv; for (var i = (argv = arguments).length - 1; i >= 0; --i) if ((v = +argv[i]) < m || $isNaN(v)) m = v; return m }),
-	pow: unconstructable(function pow(x, y) { return support.pow(+x, +y) }),
+	pow: unconstructable(function pow(x, y) { x = +x; y = +y; return (!$isFinite(y) && abs(x) === 1 ? $NaN : support.pow(x, y)) }),
 	random: unconstructable(function random() { return support.random() }),
 	round: unconstructable(function round(v) { return (v === 0.0 ? v : (v >= -0.5 && v < 0.0 ? -0.0 : $floor(v + 0.5))) }),
 	sin: unconstructable(function sin(v) { return support.sin(+v) }),
@@ -1608,9 +1642,10 @@ defineProperties(Math, { dontEnum: true }, {
 
 function createErrorConstructor(name, prototype) {
 	return function(message) {
-		var e;
-		support.defineProperty(e = support.createWrapper("Error", name, prototype), "message"
-				, (message !== void 0 ? str(message) : ''), false, true, false);
+		var e = support.createWrapper("Error", name, prototype);
+		if (message !== void 0) {
+			support.defineProperty(e, "message", str(message), false, true, false);
+		}
 		return e
 	}
 };
@@ -1622,10 +1657,9 @@ function createErrorConstructor(name, prototype) {
 		var n, c, p;
 		support.defineProperty(globals, n = ERROR_NAMES[i], c = createErrorConstructor(n, p = support.prototypes[n])
 				, false, true, false);
-		c.name = n;	// Notice: from ES6 and upwards "name" is read-only (and you would have to delete it to modify here), but it isn't in this implementation
+		c.name = n; // Notice: from ES6 and upwards "name" is read-only (and you would have to delete it to modify here), but it isn't in this implementation
 		defineProperties(c, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: p });
-		defineProperties(p, { dontEnum: true }, { constructor: c });
-		p.name = n;
+		defineProperties(p, { dontEnum: true }, { constructor: c, name: n });
 	}
 
 	defineProperties(Error.prototype, { dontEnum: true }, {
@@ -1645,7 +1679,7 @@ function createErrorConstructor(name, prototype) {
 // These are not guaranteed to be 100% compatible
 
 var JSON_ESCAPE_SEQUENCES = { '\\': "\\\\", '"': "\\\"", '\b': "\\b", '\f': "\\f", '\n': "\\n", '\r': "\\r", '\t': "\\t" };
-var MAX_JSON_DEPTH = 61;	// compiler internal recursion limit is 64 (as of 20180610), we must stick under this for eval() to work and 61 gives us enough margin
+var MAX_JSON_DEPTH = 61;	// compiler internal recursion limit is 64 (as of 20240219); keeping this walker far below the ceiling ensures eval() stays safe
 
 // TODO : use StringBuilder?
 defineProperties(JSON, { dontEnum: true }, {
@@ -1657,12 +1691,12 @@ defineProperties(JSON, { dontEnum: true }, {
 			for (var i = replacer.length; --i >= 0;) includeProps[replacer[i]] = true;
 		}
 
-        if (typeof space === "number" || (typeof space === "object" && $getInternalProperty(space, "class") === "Number")) {
-        	space = +space;
-            for (var i = (space > 10 ? 10 : space); --i >= 0;) gap += ' ';
-        } else if (typeof space === "string" || (typeof space === "object" && $getInternalProperty(space, "class") === "String")) {
-            gap = $sub(str(space), 0, 10);
-        }
+		if (typeof space === "number" || (typeof space === "object" && $getInternalProperty(space, "class") === "Number")) {
+			space = +space;
+			for (var i = (space > 10 ? 10 : space); --i >= 0;) gap += ' ';
+		} else if (typeof space === "string" || (typeof space === "object" && $getInternalProperty(space, "class") === "String")) {
+			gap = $sub(str(space), 0, 10);
+		}
 
 		function quote(s) {
 			var t = '"', len = s.length;
@@ -1677,17 +1711,17 @@ defineProperties(JSON, { dontEnum: true }, {
 
 		function string(key, holder, indent) {
 			var val;
-	        if ((val = holder[key]) && typeof val === "object" && typeof val.toJSON === "function") val = val.toJSON(key);
-	        if (replacerFunction) val = $callWithArgs(replacerFunction, holder, [ key, val ]);
+			if ((val = holder[key]) && typeof val === "object" && typeof val.toJSON === "function") val = val.toJSON(key);
+			if (replacerFunction) val = $callWithArgs(replacerFunction, holder, [ key, val ]);
 
-	        var lineEnd = (gap ? '\n' + indent : '');
-	        if (typeof val === "object") {
-	        	switch ($getInternalProperty(val, "class")) {
-	        		case "Number": val = +val; break;
-	        		case "String": val = str(val); break;
-	        		case "Boolean": val = $getInternalProperty(val, "value"); break;
-	        	}
-	        }
+			var lineEnd = (gap ? '\n' + indent : '');
+			if (typeof val === "object") {
+				switch ($getInternalProperty(val, "class")) {
+					case "Number": val = +val; break;
+					case "String": val = str(val); break;
+					case "Boolean": val = $getInternalProperty(val, "value"); break;
+				}
+			}
 			switch (typeof val) {
 				case "object": {
 					if (!val) return "null";
@@ -1811,19 +1845,19 @@ defineProperties(JSON, { dontEnum: true }, {
 		if ((parser = PARSERS[text[p = space(text, 0)]]) && (p = parser(text, p))
 				&& space(text, p) === text.length) {
 			var val = eval('(' + text + ')');
-            if (typeof reviver === "function") {
-            	function walk(holder, key) {
-	                var k, v, o;
-	                if (typeof (o = holder[key]) === "object" && o) {
-	                    for (k in o) {
-	                        if (support.hasOwnProperty(o, k)) {
-	                            if ((v = walk(o, k)) !== void 0) o[k] = v;
-	                            else delete o[k];
-	                        }
-	                    }
-	                }
-	                return $callWithArgs(reviver, holder, [ key, o ]);
-	            }
+			if (typeof reviver === "function") {
+				function walk(holder, key) {
+					var k, v, o;
+					if (typeof (o = holder[key]) === "object" && o) {
+						for (k in o) {
+							if (support.hasOwnProperty(o, k)) {
+								if ((v = walk(o, k)) !== void 0) o[k] = v;
+								else delete o[k];
+							}
+						}
+					}
+					return $callWithArgs(reviver, holder, [ key, o ]);
+				}
 				val = walk({ "": val }, "");
 			}
 			return val;

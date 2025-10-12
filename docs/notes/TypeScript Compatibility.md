@@ -2,7 +2,7 @@
 
 NuXJS targets ECMAScript 3 with a few ES5 additions. When compiling TypeScript code for the engine you must emit ES3 output. The last TypeScript release that supports `--target ES3` is **4.4.4**, which still optimizes template string literals into efficient concatenations so you can freely use the `${}` syntax in your sources.
 
-The file `examples/lib.NuXJS.d.ts` contains a trimmed version of the standard library declarations that match the runtime features of NuXJS. Add it to your build with the `--lib` option to get accurate type checking.
+The file `docs/examples/lib.NuXJS.d.ts` contains a trimmed version of the standard library declarations that match the runtime features of NuXJS. Add it to your build with the `--lib` option to get accurate type checking.
 
 NuXJS itself does not provide modern built‑ins such as `Object.assign` or `Array.prototype.map`. These helpers are not referenced by `lib.NuXJS.d.ts`, so TypeScript does not require them, but you may want them for compatibility with third‑party code. The following polyfills work well:
 

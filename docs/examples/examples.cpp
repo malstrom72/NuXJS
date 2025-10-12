@@ -8,7 +8,7 @@ and runs them sequentially for faster builds.
 #include <iostream>
 #include <stdexcept>
 #include <string>
-#include "../src/NuXJS.h"
+#include "../../src/NuXJS.h"
 
 using namespace NuXJS;
 
