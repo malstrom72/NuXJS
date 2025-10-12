@@ -1404,10 +1404,10 @@ static void testHeap() {
 				rt.gc();
 			}
 		}
-		heap.gc();
-		heap.drain();
-		EXPECT_EQUAL(heap.size(), 0);
 	}
+	heap.gc();
+	heap.drain();
+	EXPECT_EQUAL(heap.size(), 0);
 
 	{
 		EXPECT_EXCEPTION(heap.allocate(MAX_SINGLE_ALLOCATION_SIZE), "Memory allocation failure (size too large)");
