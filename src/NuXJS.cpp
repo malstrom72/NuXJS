@@ -1205,7 +1205,7 @@ bool GCList::sweep(std::size_t maxItems) throw() {
 
 Heap::Heap() : allocatedCount(0), allocatedSize(0), pooledSize(0), managedListA(*this), managedListB(*this)
 	, rootList(*this), currentList(&managedListA), newList(&managedListB)
-	, gcPhase(GCPhase::Idle), markIt(0) {
+	, gcPhase(GC_IDLE), markIt(0) {
 	std::fill(pools + 0, pools + MAX_POOLED_SIZE / POOL_SIZE_GRANULARITY, (void*)(0));
 }
 
@@ -1290,39 +1290,38 @@ inline bool performMarking(GCItem*& it, GCItem* stop, bool forward, int& process
 }
 
 bool Heap::gc(int maxIterations) {
-	if (gcPhase == GCPhase::Idle) {
-		gcPhase = GCPhase::MarkRoots;
-		markIt = rootList._gcNext;
-	}
 	int processed = 0;
 	const int limit = (maxIterations < 0) ? INT_MAX : maxIterations;
 	switch (gcPhase) {
 		default: assert(0); // should never happen
-		case GCPhase::MarkRoots:
+		case GC_IDLE:
+			gcPhase = GC_MARK_ROOTS;
+			markIt = rootList._gcNext;
+			/* fall through */
+		case GC_MARK_ROOTS:
 			if (performMarking(markIt, &rootList, true, processed, limit, *this)) break;
 			markIt = newList->_gcPrev;
-			gcPhase = GCPhase::MarkNews;
+			gcPhase = GC_MARK_NEW;
 			/* fall through */
-		case GCPhase::MarkNews:
+		case GC_MARK_NEW:
 			if (performMarking(markIt, newList, false, processed, limit, *this)) break;
 			std::swap(currentList, newList);
-			gcPhase = GCPhase::Sweep;
+			gcPhase = GC_SWEEP;
 			/* fall through */
-		case GCPhase::Sweep:
+		case GC_SWEEP:
 			processed += newList->sweep(limit - processed);
 			if (processed >= limit || newList->_gcNext != newList) break;
-			gcPhase = GCPhase::Idle;
+			gcPhase = GC_IDLE;
 			break;
 	}
-	return gcPhase != GCPhase::Idle;
+	return gcPhase != GC_IDLE;
 }
 
 void Heap::gcReset() {
 	while (newList->_gcNext != newList) {
 		currentList->claim(newList->_gcNext);
 	}
-	gcPhase = GCPhase::Idle;
-	markIt = 0;
+	gcPhase = GC_IDLE;
 }
 
 void Heap::drain() {
@@ -5225,20 +5224,12 @@ Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap
 
 bool Runtime::gc(int maxIterations) { return heap.gc(maxIterations); }
 
-void Runtime::gc() {
-	while (gc(-1)) {
-		checkTimeOut();
-	}
-}
-
 void Runtime::gcReset() { heap.gcReset(); }
 
 void Runtime::autoGC(bool checkOutOfMemory) {
 	if (heap.size() >= gcThreshold) {
 		heap.drain();
-		while (gc(-1)) {
-			checkTimeOut();
-		}
+		gc();
 		const size_t inUse = heap.size() - heap.pooled();
 		gcThreshold = std::min(std::max(inUse * AUTO_GC_GROWTH_FACTOR, AUTO_GC_MIN_SIZE), memoryCap);
 		checkTimeOutCounter = std::min(checkTimeOutCounter, 1U);

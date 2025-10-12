@@ -207,7 +207,7 @@ When a `GCItem` is destructed (regardless of whether it is from automatic garbag
 
 Every sub-class of `GCItem` is responsible for overriding `gcMarkReferences(Heap& heap)` to mark all `GCItem`s it references (via the overloaded `gcMark(heap, ...)` functions). Remember also to call the super-class's `gcMarkReferences` in the overridden method. If `gcMarkReferences` is implemented incorrectly, items that are still in use may get garbage collected (= deadly sin).
 
-Garbage collection runs in slices. Call `Runtime::gc(int maxIterations = -1)` to process at most that many objects and return `true` while work remains. A zero-argument `Runtime::gc()` helper advances the collector until the current cycle finishes, calling `checkTimeOut()` between slices. Automatic garbage collection via `Runtime::autoGC()` invokes the helper when the heap exceeds its threshold. To abort a collection and merge all objects back into a single list before restarting, use `Runtime::gcReset()`.
+Garbage collection runs in slices. Call `Runtime::gc(int maxIterations)` to process at most that many objects and return `true` while work remains. A zero-argument `Runtime::gc()` helper advances the collector until the current cycle finishes, calling `checkTimeOut()` between slices. Automatic garbage collection via `Runtime::autoGC()` invokes the helper when the heap exceeds its threshold. To abort a collection and merge all objects back into a single list before restarting, use `Runtime::gcReset()`.
 
 Example:
 

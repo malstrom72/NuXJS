@@ -169,7 +169,7 @@ class Heap {
 		GCList rootList;
 		GCList* currentList;
 		GCList* newList;
-		enum class GCPhase { Idle, MarkRoots, MarkNews, Sweep };
+		enum GCPhase { GC_IDLE, GC_MARK_ROOTS, GC_MARK_NEW, GC_SWEEP };
 		GCPhase gcPhase;
 		GCItem* markIt;
 
@@ -1206,8 +1206,7 @@ class Runtime : public GCItem {
 		void run(const String& source, const String* filename = 0);
 		void checkTimeOut();
 		bool gc(int maxIterations = -1);
-		void gc();
-		void gcReset();
+		void gcReset();									///< Resets all GC state (used after aborting gc).
 		void autoGC(bool checkOutOfMemory);
 
 		virtual Var runUntilReturn(Processor& processor);

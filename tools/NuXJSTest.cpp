@@ -1272,9 +1272,9 @@ static void testHeap() {
 			++totalCount;
 			totalSize += thisSize;
 		}
-	heap.drain();
-	EXPECT_EQUAL(heap.count(), totalCount);
-	EXPECT_EQUAL(heap.size(), totalSize);
+		heap.drain();
+		EXPECT_EQUAL(heap.count(), totalCount);
+		EXPECT_EQUAL(heap.size(), totalSize);
 		std::cout << "allocated " << totalCount << " blocks with a total of " << totalSize << " bytes" << std::endl;
 
 		for (int i = 0; i < RANDOM_ALLOCATION_COUNT / 2; ++i) {
@@ -1286,7 +1286,7 @@ static void testHeap() {
 				totalSize -= sizeOfAllocation(sizes[freeIndex]);
 			}
 		}
-	heap.drain();
+		heap.drain();
 		EXPECT_EQUAL(heap.count(), totalCount);
 		EXPECT_EQUAL(heap.size(), totalSize);
 		std::cout << "now: " << totalCount << " blocks with a total of " << totalSize << " bytes" << std::endl;
@@ -1311,7 +1311,7 @@ static void testHeap() {
 			++totalCount;
 			totalSize += thisSize;
 		}
-	heap.drain();
+		heap.drain();
 		EXPECT_EQUAL(heap.count(), totalCount);
 		EXPECT_EQUAL(heap.size(), totalSize);
 		std::cout << "now: " << totalCount << " blocks with a total of " << totalSize << " bytes" << std::endl;
@@ -1330,7 +1330,7 @@ static void testHeap() {
 				sizes[i] = 0;
 			}
 		}
-	heap.drain();
+		heap.drain();
 		EXPECT_EQUAL(heap.count(), 0);
 		EXPECT_EQUAL(heap.size(), 0);
 		EXPECT_EQUAL(fails, 0);
@@ -1376,16 +1376,16 @@ static void testHeap() {
 					thisNode->edges[prng(EDGE_COUNT - 1)] = 0; // kill a random edge for next iteration
 					++traverseIndex;
 				}
+				heap.drain();
+				EXPECT_EQUAL(reachableCount, heap.count());
+				std::cout << "gc iteration: " << currentIteration << ", reachable: " << reachableCount << std::endl;
+			}
+			heap.managed().claim(reachableNodes[0]);
+			heap.gc();
 			heap.drain();
-			EXPECT_EQUAL(reachableCount, heap.count());
-			std::cout << "gc iteration: " << currentIteration << ", reachable: " << reachableCount << std::endl;
+			EXPECT_EQUAL(heap.count(), 0);
 		}
-		heap.managed().claim(reachableNodes[0]);
-		heap.gc();
-		heap.drain();
-		EXPECT_EQUAL(heap.count(), 0);
 	}
-}
 
 	// Test incremental GC
 	{
@@ -1401,16 +1401,13 @@ static void testHeap() {
 				rt.run("({d:4,e:5,f:6});");
 			}
 			if ((cycle & 1) == 0) {
-				while (rt.gc(-1)) {
-				}
+				rt.gc();
 			}
 		}
-		while (rt.gc(-1)) {
-		}
-	}
-	heap.gc();
+		heap.gc();
 		heap.drain();
 		EXPECT_EQUAL(heap.size(), 0);
+	}
 
 	{
 		EXPECT_EXCEPTION(heap.allocate(MAX_SINGLE_ALLOCATION_SIZE), "Memory allocation failure (size too large)");
@@ -1915,8 +1912,8 @@ void testStrings() {
 		EXPECT(std::equal(stringFromChars2->begin(), stringFromChars2->end(), L"AbCdeFgHIjklm"));
 	}
 	heap.gc();
-		heap.drain();
-		EXPECT_EQUAL(heap.size(), 0);
+	heap.drain();
+	EXPECT_EQUAL(heap.size(), 0);
 }
 
 /* --- Table tests --- */
