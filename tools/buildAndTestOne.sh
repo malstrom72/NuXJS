@@ -44,7 +44,7 @@ if [[ "$ES5_ENABLED" == "1" ]]; then
 fi
 TEST_DIRS+=(../tests/migrated/ ../tests/regression/ ../tests/stdlib/ ../tests/unconforming/ ../tests/unsorted/)
 
-../externals/PikaCmd/PikaCmd ./test.pika -e -x ../output/NuXJS_${target}_${model} "${TEST_DIRS[@]}"
+../externals/PikaCmd/PikaCmd ./test.pika -e -x "../output/NuXJS_${target}_${model} -s --legacy-exceptions" "${TEST_DIRS[@]}"
 bash ./runExamples.sh "$target"
 
 if [[ -n "$es5" ]]; then
