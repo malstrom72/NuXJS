@@ -9,3 +9,5 @@
 /temp
 /externals/PikaScriptTmp
 *.pdb
+/corpus
+/.vscode

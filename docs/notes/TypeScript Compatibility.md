@@ -2,7 +2,7 @@
 
 NuXJS now implements most of ECMAScript 5.1. When compiling TypeScript code for the engine you should emit ES5 output. The TypeScript compiler supports `--target ES5` in current releases, so you can use the latest version.
 
-The file `examples/lib.NuXJS.d.ts` contains a trimmed version of the standard library declarations that match the runtime features of NuXJS. Add it to your build with the `--lib` option to get accurate type checking.
+The file `docs/examples/lib.NuXJS.d.ts` contains a trimmed version of the standard library declarations that match the runtime features of NuXJS. Add it to your build with the `--lib` option to get accurate type checking.
 
 NuXJS now ships ES5.1 built‑ins like `Array.prototype.map` and `Date.now`, but still lacks newer helpers such as `Object.assign` or `Math.sign`. These functions are not referenced by `lib.NuXJS.d.ts`, so TypeScript does not require them, but you may want them for compatibility with third‑party code. The following polyfills cover a few ES6 conveniences:
 

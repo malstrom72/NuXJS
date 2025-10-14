@@ -1071,6 +1071,7 @@ class Error : public LazyJSObject<Object> {
 		ErrorType getErrorType() const;
 		const String* getErrorName() const;
 		const String* getErrorMessage() const;
+		const String* getStackString() const;
 	
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
@@ -1079,9 +1080,11 @@ class Error : public LazyJSObject<Object> {
 		const ErrorType errorType;
 		const String* name;		// may get updated by script code
 		const String* message;	// may get updated by script code
+		const String* stack;		// may get updated by script code
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, name);
 			gcMark(heap, message);
+			gcMark(heap, stack);
 			super::gcMarkReferences(heap);
 		}
 };
@@ -1308,9 +1311,11 @@ struct ScriptException : public Exception {
 	static void throwError(Heap& heap, ErrorType type, const char* message);
 	ScriptException(Heap& heap, const Value& value) throw();
 	virtual const char* what() const throw() { return utf8String.c_str(); }
+	const char* getStackTrace() const;
 	virtual ~ScriptException() throw() { }
 	Value value;
 	std::string utf8String;
+	mutable std::string stackTrace;
 	Error* asErrorObject() const;
 };
 inline Error* ScriptException::asErrorObject() const { return value.asError(); }
@@ -1754,6 +1759,7 @@ class Processor : public GCItem {
 	#endif
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
 		void throwVirtualException(const Value& exception);
+		void addStackTrace(const Value& exception) const;
 		void error(ErrorType errorType, const String* message = 0);
 		bool run(Int32 maxCycles);
 		Value getResult() const;	// make sure you've called run() until it returns false before calling this

@@ -193,7 +193,7 @@ static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 , IS_NOT_DEFINED_STRING(" is not defined"), MESSAGE_STRING("message"), MINUS_INFINITY_STRING("-Infinity")
 , BOUND_STRING("bound "), NAME_STRING("name"), NAN_STRING("NaN"), NATIVE_FUNCTION_STRING("function() { [native code] }")
 , PROTOTYPE_CHAIN_TOO_LONG("Prototype chain too long"), PROTOTYPE_STRING("prototype")
-, STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value")
+, STACK_STRING("stack"), STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value")
 , ENUMERABLE_STRING("enumerable"), CONFIGURABLE_STRING("configurable"), WRITABLE_STRING("writable");
 
 static const String ERROR_NAMES[ERROR_TYPE_COUNT] = {
@@ -743,10 +743,12 @@ Int32 Value::toInt() const {
 
 bool Value::toArrayIndex(UInt32& index) const {
 	switch (type) {
+#if (NUXJS_ES5)
 		case BOOLEAN_TYPE: {
 			index = (var.boolean ? 1 : 0);
 			return true;
 		}
+#endif
 		case NUMBER_TYPE: {
 			const double n = var.number;
 			if (n < 0.0 || n >= 4294967296.0) {
@@ -894,8 +896,8 @@ static UInt32 utf16Length(size_t l, const wchar_t* s) {
 		const wchar_t* e = s + l;
 		for (const wchar_t* p = s; p != e; ++p) {
 			const UInt32 c = static_cast<UInt32>(*p);
-			assert(c < 0xD800 || c >= 0xE000);	// Surrogate code points inside UTF32 string are not legal!
-			n += ((c >> 16) != 0 ? 1 : 0);
+			assert(c <= 0x10FFFF);
+			n += (c >= 0x10000 ? 1 : 0);
 		}
 	}
 	return n;
@@ -911,7 +913,7 @@ static void toUTF16Chars(const wchar_t* s, UInt32 n, Char* d) {
 			const UInt32 c = static_cast<UInt32>(*s++);
 			if ((c >> 16) == 0) {
 				*d++ = static_cast<Char>(c);
-				} else {
+			} else {
 				*d++ = static_cast<Char>(0xD800 | ((c - 0x10000) >> 10));
 				assert(d != e);
 				*d++ = static_cast<Char>(0xDC00 | ((c - 0x10000) & 0x3FF));
@@ -1066,56 +1068,54 @@ std::string String::toUTF8String() const {
 	std::string s;
 	s.reserve(size());
 	for (const Char* p = begin(); p != end(); ++p) {
-		if (*p < 0x80) {
-			s.push_back(static_cast<char>(*p));
-		} else if (*p < 0x800) {
-			s.push_back(static_cast<char>(0xC0 | (*p >> 6)));
-			s.push_back(static_cast<char>(0x80 | (*p & 0x3F)));
-		} else if (*p < 0xD800 || *p >= 0xE000) {
-			s.push_back(static_cast<char>(0xE0 | (*p >> 12)));
-			s.push_back(static_cast<char>(0x80 | ((*p >> 6) & 0x3F)));
-			s.push_back(static_cast<char>(0x80 | (*p & 0x3F)));
+		const Char c = *p;
+		if (c < 0x80) {
+			s.push_back(static_cast<char>(c));
+		} else if (c < 0x800) {
+			s.push_back(static_cast<char>(0xC0 | (c >> 6)));
+			s.push_back(static_cast<char>(0x80 | (c & 0x3F)));
+		} else if (c >= 0xD800 && c <= 0xDBFF && p + 1 != end() && *(p + 1) >= 0xDC00 && *(p + 1) <= 0xDFFF) {
+			++p;
+			const UInt32 codePoint = 0x10000
+					+ ((static_cast<UInt32>(c) - 0xD800) << 10)
+					+ (static_cast<UInt32>(*p) - 0xDC00);
+			s.push_back(static_cast<char>(0xF0 | (codePoint >> 18)));
+			s.push_back(static_cast<char>(0x80 | ((codePoint >> 12) & 0x3F)));
+			s.push_back(static_cast<char>(0x80 | ((codePoint >> 6) & 0x3F)));
+			s.push_back(static_cast<char>(0x80 | (codePoint & 0x3F)));
 		} else {
-			assert(p + 1 != end() && p[1] >= 0xDC00 && p[1] < 0xE000);
-			const UInt32 c = 0x10000 + ((*p - 0xD800) << 10) + (p[1] - 0xDC00);
-			s.push_back(static_cast<char>(0xF0 | (c >> 18)));
-			s.push_back(static_cast<char>(0x80 | ((c >> 12) & 0x3F)));
+			s.push_back(static_cast<char>(0xE0 | (c >> 12)));
 			s.push_back(static_cast<char>(0x80 | ((c >> 6) & 0x3F)));
 			s.push_back(static_cast<char>(0x80 | (c & 0x3F)));
-			++p;
 		}
 	}
 	return s;
 }
 
 std::wstring String::toWideString() const {
+	const Char* b = begin();
+	const Char* e = end();
 	if (sizeof (std::wstring::value_type) != 2) {
 		assert(sizeof (std::wstring::value_type) == 4);
-		const Char* e = end();
-		UInt32 n = size();
-		for (const Char* p = begin(); p != e; ++p) {
-			assert(*p < 0xDC00 || *p >= 0xE000);	// Surrogate code points inside UTF32 string are not legal!
-			if (*p >= 0xD800 && *p <= 0xDBFF) {
-				assert(p + 1 != e && p[1] >= 0xDC00 && p[1] < 0xE000);	// Next should be low surrogate.
-				++p;
-				--n;
-			}
+		const Char* p = b;
+		while (p != e && (*p < 0xD800 || *p > 0xDFFF)) {
+			++p;
 		}
-		if (n != size()) {
-			std::wstring s(n, L'\0');
-			const Char* p = begin();
-			for (std::wstring::iterator it = s.begin(); it != s.end(); ++it) {
-				*it = *p;
-				++p;
-				if (*it >= 0xD800 && *it <= 0xDBFF) {
-					*it = 0x10000 + ((*it - 0xD800) << 10) + (*p - 0xDC00);
+		if (p != e) {
+			std::wstring s;
+			s.reserve(size());
+			for (p = b; p != e; ++p) {
+				UInt32 c = *p;
+				if (c >= 0xD800 && c <= 0xDBFF && p + 1 != e && *(p + 1) >= 0xDC00 && *(p + 1) <= 0xDFFF) {
 					++p;
+					c = 0x10000 + ((static_cast<UInt32>(c) - 0xD800) << 10) + (static_cast<UInt32>(*p) - 0xDC00);
 				}
+				s.push_back(static_cast<std::wstring::value_type>(c));
 			}
 			return s;
 		}
 	}
-	return std::wstring(begin(), end());
+	return std::wstring(b, e);
 }
 
 /* --- GCItem --- */
@@ -1924,7 +1924,7 @@ completeObject->setOwnProperty(rt, &LENGTH_STRING, code->getArgumentsCount(), RE
 /* --- Error --- */
 
 Error::Error(GCList& gcList, ErrorType type, const String* message)
-		: super(gcList), errorType(type), name(&ERROR_NAMES[errorType]), message(message) {
+		: super(gcList), errorType(type), name(&ERROR_NAMES[errorType]), message(message), stack(0) {
 	assert(0 <= errorType && errorType < ERROR_TYPE_COUNT);
 }
 
@@ -1935,6 +1935,7 @@ Object* Error::getPrototype(Runtime& rt) const { return rt.getErrorPrototype(err
 ErrorType Error::getErrorType() const { return errorType; }
 const String* Error::getErrorName() const { return name; }
 const String* Error::getErrorMessage() const { return message; }
+const String* Error::getStackString() const { return stack; }
 
 const String* Error::toString(Heap& heap) const {
 	return (message == 0 ? name : String::concatenate(heap, String(heap.roots(), *name, COLON_SPACE), *message));
@@ -1944,6 +1945,7 @@ void Error::updateReflection(Runtime& rt) {
 	Value v;
 	name = (getProperty(rt, &NAME_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : &ERROR_NAMES[errorType]);
 	message = (getProperty(rt, &MESSAGE_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
+	stack = (getProperty(rt, &STACK_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
 }
 
 #if (NUXJS_ES5)
@@ -1969,6 +1971,9 @@ bool Error::deleteOwnProperty(Runtime& rt, const Value& key) {
 void Error::constructCompleteObject(Runtime& rt) const {
 	if (message != 0) {
 		completeObject->setOwnProperty(rt, &MESSAGE_STRING, message, DONT_ENUM_FLAG);
+	}
+	if (stack != 0) {
+		completeObject->setOwnProperty(rt, &STACK_STRING, stack, DONT_ENUM_FLAG);
 	}
 }
 
@@ -2305,6 +2310,19 @@ void ScriptException::throwError(Heap& heap, ErrorType type, const char* message
 ScriptException::ScriptException(Heap& heap, const Value& value) throw()
 		: value(value), utf8String(value.toString(heap)->toUTF8String()) { }
 		
+const char* ScriptException::getStackTrace() const {
+	if (stackTrace.empty()) {
+		const Error* errorObject = value.asError();
+		if (errorObject != 0) {
+			const String* stackString = errorObject->getStackString();
+			if (stackString != 0) {
+				stackTrace = stackString->toUTF8String();
+			}
+		}
+	}
+	return stackTrace.c_str();
+}
+
 /* --- EvalFunction --- */
 
 static struct EvalFunction : public Function {
@@ -2663,7 +2681,51 @@ void Processor::popCatcher() {
 	delete killMe;
 }
 
+static void appendString(Vector<Char>& buffer, const String* value) {
+	buffer.insert(buffer.end(), value->begin(), value->end());
+}
+
+static void appendASCII(Vector<Char>& buffer, const char* literal) {
+	while (*literal != 0) {
+		buffer.push(static_cast<Char>(*literal));
+		++literal;
+	}
+}
+
+
+void Processor::addStackTrace(const Value& exception) const {
+	Error* errorObject = exception.asError();
+	if (errorObject != 0) {
+		const String* stackString = errorObject->getStackString();
+		if (stackString == 0) {
+			Vector<Char> buffer(&heap);
+			appendString(buffer, errorObject->getErrorName());
+			const String* message = errorObject->getErrorMessage();
+			if (message != 0 && !message->empty()) {
+				appendASCII(buffer, ": ");
+				appendString(buffer, message);
+			}
+
+			const Frame* frameWalker = currentFrame;
+			while (frameWalker != 0) {
+				appendASCII(buffer, "\n    at ");
+				const String* functionName = frameWalker->code->getName();
+				if (functionName != 0 && !functionName->empty()) {
+					appendString(buffer, functionName);
+				} else {
+					appendASCII(buffer, "<anonymous>");
+				}
+				frameWalker = frameWalker->previousFrame;
+			}
+
+			stackString = new(heap) String(heap.managed(), buffer.begin(), buffer.end());
+			errorObject->setOwnProperty(rt, Value(&STACK_STRING), Value(stackString), DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+		}
+	}
+}
+
 void Processor::throwVirtualException(const Value& exception) {
+	addStackTrace(exception);
 	if (firstCatcher == 0) { // FIX: what exception to throw here?
 		reset();
 		throw ScriptException(heap, exception);

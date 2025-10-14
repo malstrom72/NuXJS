@@ -2,19 +2,41 @@
 
 This directory contains micro benchmarks used to measure NuXJS performance.
 
-## Running `tools/benchmark.pika`
+## Running `tools/benchmark.node.js`
 
-Use `PikaCmd` to run the script:
+Run the Node.js benchmark harness from the repository root:
 
 ```
-./tools/benchmark.pika <test(s)> <exe>|<rev-range>|makegold ignoregold
+node tools/benchmark.node.js <test(s)> <exe>|makegold ignoregold [--runs <count>]
 ```
 
 - `<test(s)>` is a file name or glob pattern for the benchmarks.
   Use `-` or omit the parameter to run every `*.js` file.
-- `<exe>|<rev-range>|makegold` can be the path to the
-  already compiled `NuXJS` binary, a single revision number or revision range (e.g. `12345-12350`) checked out and built prior to running, or the literal `makegold` to generate reference output.
+- `<exe>|makegold` can be the path to the already compiled `NuXJS` binary
+  or the literal `makegold` to generate reference output.
 - `ignoregold` is optional and skips output comparison.
+- `--runs <count>` (or `-r <count>`) overrides the number of
+  executions collected before computing the median. The default is 5.
+- `--horizontal` keeps the legacy layout with benchmarks as columns and
+  the metrics as rows.
+
+## Output
+
+Each benchmark prints its runtime and the memory statistics reported by
+running `NuXJS` with the `-t` flag:
+
+- `median` – median CPU time from the collected samples.
+- `mem1` – heap usage (MiB) when the benchmark finished.
+- `mem2` – peak heap usage (MiB) observed during the run.
+- `mem3` – peak memory reserved by the allocator (MiB), including pooled blocks.
+
+By default the summary table prints one row per benchmark, followed by
+the individual run samples, and then the median and memory columns. The
+`--horizontal` flag restores the original layout with benchmarks as
+columns and metrics as rows.
+
+After the table the harness prints both the overall median and the
+arithmetic mean across all benchmark medians.
 
 ## Golden results
 
@@ -47,3 +69,8 @@ bash tools/compareEngines.sh benchmarks/bigArray.js benchmarks/bigObject.js
 ```
 
 The script downloads and builds Duktape and QuickJS, runs each benchmark, and reports execution times alongside NuXJS.
+
+
+## JSON round-trip benchmark
+
+`benchmarks/jsonRoundtrip_bm.js` measures repeated `JSON.parse`/`JSON.stringify` operations on procedurally generated payloads with varying depth and size. The iteration counts (1,000 / 200 / 40 / 27 round-trips per payload) keep the run comfortably within NuXJS's default execution time window while still exercising the parser and serializer. The script prints a checksum and string length for each payload so the harness can verify correct behavior. The expected output lives in `benchmarks/golden/jsonRoundtrip_bm.txt`, and the benchmark does not require any external dataset files.
