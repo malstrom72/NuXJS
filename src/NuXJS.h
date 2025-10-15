@@ -1675,9 +1675,10 @@ class Processor : public GCItem {
 						, ADD_SETTER_OP							 // operand: const_index(name), stack: object, function -> object
 					#endif
 			, PUSH_ELEMENTS_OP								// operand: count, stack: object, count * elements ... -> object
-			, OBJ_TO_PRIMITIVE_OP							// stack: value -> primitive_value (no preference)	// these three must be in this exact order
+			, OBJ_TO_PRIMITIVE_OP							// stack: value -> primitive_value (no preference)	// the OBJ_TO_* opcodes must be in this exact order
 			, OBJ_TO_NUMBER_OP								// stack: value -> primitive_value (number preferred)
 			, OBJ_TO_STRING_OP								// stack: value -> primitive_value (string preferred)
+			, CHECK_OBJECT_COERCIBLE_OP		// stack: value -> value (throws on null/undefined)
 			, PRE_EQ_OP										// stack: value, value -> value, value				// if first *or* second is object (and not both) and the other is string or number, convert object to primitive value
 			, INC_OP, DEC_OP								// stack: value -> number
 			, ADD_OP, SUB_OP, MUL_OP, DIV_OP, MOD_OP		// stack: left_value, right_value -> result_value

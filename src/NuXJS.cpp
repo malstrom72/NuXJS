@@ -2375,6 +2375,7 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ OBJ_TO_PRIMITIVE_OP		 , "OBJ_TO_PRIMITIVE"		 , 0	  , 0 },
 	{ OBJ_TO_NUMBER_OP			 , "OBJ_TO_NUMBER"			 , 0	  , 0 },
 	{ OBJ_TO_STRING_OP			 , "OBJ_TO_STRING"			 , 0	  , 0 },
+	{ CHECK_OBJECT_COERCIBLE_OP	, "CHECK_OBJECT_COERCIBLE"	, 0	  , 0 },
 	{ PRE_EQ_OP					 , "PRE_EQ"					 , 0	  , 0 },
 	{ INC_OP					 , "INC"					 , 0	  , 0 },
 	{ DEC_OP					 , "DEC"					 , 0	  , 0 },
@@ -2928,17 +2929,24 @@ void Processor::innerRun() {
 			}
 			#endif
 
-			case OBJ_TO_PRIMITIVE_OP:
-			case OBJ_TO_NUMBER_OP:
-			case OBJ_TO_STRING_OP: {
-				const Object* o = sp[0].asObject();
-				if (o != 0) {
-					assert(0 <= opcode - OBJ_TO_PRIMITIVE_OP && opcode - OBJ_TO_PRIMITIVE_OP < 3);
-					invokeFunction(rt.toPrimitiveFunctions[opcode - OBJ_TO_PRIMITIVE_OP], 0, 1);
-					return;
+				case OBJ_TO_PRIMITIVE_OP:
+				case OBJ_TO_NUMBER_OP:
+				case OBJ_TO_STRING_OP: {
+					const Object* o = sp[0].asObject();
+					if (o != 0) {
+						assert(0 <= opcode - OBJ_TO_PRIMITIVE_OP && opcode - OBJ_TO_PRIMITIVE_OP < 3);
+						invokeFunction(rt.toPrimitiveFunctions[opcode - OBJ_TO_PRIMITIVE_OP], 0, 1);
+						return;
+					}
+					break;
 				}
-				break;
-			}
+
+				case CHECK_OBJECT_COERCIBLE_OP:
+					if (sp[0].isNull() || sp[0].isUndefined()) {
+						error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
+						return;
+					}
+					break;
 				
 			case PRE_EQ_OP: {
 				// FIX : doesn't feel totally efficient this...
@@ -4160,6 +4168,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case PROPERTY_DOT: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, op.primitiveInput);
+			emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
 			white();
 			emitWithConstant(Processor::CONST_OP, identifier(true, true));
 			xr = ExpressionResult(ExpressionResult::PROPERTY);
@@ -4208,16 +4217,17 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			break;
 		}
 			
-		case PROPERTY_BRACKETS: {
-			assert(!op.primitiveInput);
-			makeRValue(xr, false);
-			const bool didAcceptInOperator = acceptInOperator;
-			acceptInOperator = true;
-			makeRValue(operand(op), true, Processor::OBJ_TO_STRING_OP); // left doesn't need to be primitive, but right does (and preferred string!)
-			acceptInOperator = didAcceptInOperator;
-			xr = ExpressionResult(ExpressionResult::PROPERTY);
-			break;
-		}
+				case PROPERTY_BRACKETS: {
+					assert(!op.primitiveInput);
+					makeRValue(xr, false);
+					emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
+					const bool didAcceptInOperator = acceptInOperator;
+					acceptInOperator = true;
+					makeRValue(operand(op), true, Processor::OBJ_TO_STRING_OP); // left doesn't need to be primitive, but right does (and preferred string!)
+					acceptInOperator = didAcceptInOperator;
+					xr = ExpressionResult(ExpressionResult::PROPERTY);
+					break;
+				}
 		
 		default: assert(0);
 	}
@@ -5210,11 +5220,17 @@ struct Runtime::FunctionPrototypeFunction : public ExtensibleFunction {
 	typedef ExtensibleFunction super;
 	FunctionPrototypeFunction(GCList& gcList) : super(gcList) { }
 	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
+	virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
 	virtual Object* getPrototype(Runtime& rt) const;
 	virtual void constructCompleteObject(Runtime& rt) const;
 };
 
 Value Runtime::FunctionPrototypeFunction::invoke(Runtime&, Processor&, UInt32, const Value*, Object*) {
+	return UNDEFINED_VALUE;
+}
+
+Value Runtime::FunctionPrototypeFunction::construct(Runtime& rt, Processor&, UInt32, const Value*, Object*) {
+	ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Function.prototype is not a constructor");
 	return UNDEFINED_VALUE;
 }
 

@@ -638,17 +638,23 @@ defProps(Array.prototype, { dontEnum: true }, {
 		}
 		return s.build();
 	}),
-	pop: unconstructable(function pop() {
-		var v = void 0, len;
-		if ((len = uint32(this.length)) > 0) v = this[--len];
-		this.length = len;
-		return v;
-	}),
-	push: unconstructable(function push(item) {
-		var argv, offset = uint32(this.length), end = (argv = arguments).length + offset;
-		for (var i = offset; i < end; ++i) this[i] = argv[i - offset];
-		return (this.length = end);
-	}),
+       pop: unconstructable(function pop() {
+               var o = Object(this), len = uint32(o.length);
+               if (len === 0) {
+                       o.length = 0;
+                       return void 0;
+               }
+               var index = len - 1, element = o[index];
+               delete o[index];
+               o.length = index;
+               return element;
+       }),
+       push: unconstructable(function push(item) {
+               var o = Object(this), argv = arguments, argc = argv.length, offset = uint32(o.length), end = offset + argc;
+               for (var i = 0; i < argc; ++i) o[offset + i] = argv[i];
+               o.length = end;
+               return end;
+       }),
 	reverse: unconstructable(function reverse() {
 		var len, mid = $floor((len = uint32(this.length)) / 2);
 		--len;
@@ -660,19 +666,21 @@ defProps(Array.prototype, { dontEnum: true }, {
 		}
 		return this;
 	}),
-	shift: unconstructable(function shift() {
-		var len, elementZero;
-		if (len = uint32(this.length)) {
-			elementZero = this[0];
-			for (var i = 1; i < len; ++i) {
-				if (i in this) this[i - 1] = this[i];
-				else delete this[i - 1];
-			}
-			--len;
-		};
-		this.length = len;
-		return elementZero;
-	}),
+       shift: unconstructable(function shift() {
+               var o = Object(this), len = uint32(o.length);
+               if (len === 0) {
+                       o.length = 0;
+                       return void 0;
+               }
+               var elementZero = o[0];
+               for (var i = 1; i < len; ++i) {
+                       if (i in o) o[i - 1] = o[i];
+                       else delete o[i - 1];
+               }
+               delete o[len - 1];
+               o.length = len - 1;
+               return elementZero;
+       }),
 	slice: unconstructable(function slice(start, end) {
 		var a = [ ], len = uint32(this.length);
 		if ((start = int(start)) < 0) { start += len; if (start < 0) start = 0; }
@@ -1562,9 +1570,13 @@ defProps(globals, { dontEnum: true }, {
 			case '-': sign = -1;
 			case '+': ++i;
 		}
-		if (((radix = int32(radix)) === 0 || radix === 16) && (string[i] === '0' && string[i + 1] === 'x')) {
-			i += 2;
-			radix = 16;
+		radix = int32(radix);
+		if ((radix === 0 || radix === 16) && string[i] === '0') {
+			var prefix = string[i + 1];
+			if (prefix === 'x' || prefix === 'X') {
+				i += 2;
+				radix = 16;
+			}
 		}
 		if (radix === 0) radix = 10;
 		else if (radix < 2 || radix > 36) return $NaN;
@@ -1629,9 +1641,11 @@ defProps(Math, { dontEnum: true }, {
 
 function createErrorConstructor(name, prototype) {
 	return function(message) {
-		var e;
-			support.defineProperty(e = support.createWrapper("Error", name, prototype), "message",
-				{ value: (message !== void 0 ? str(message) : ''), writable: true, enumerable: false, configurable: true });
+		var e = support.createWrapper("Error", name, prototype);
+		if (message !== void 0) {
+			support.defineProperty(e, "message",
+				{ value: str(message), writable: true, enumerable: false, configurable: true });
+		}
 		return e
 	}
 };
@@ -1647,7 +1661,7 @@ function createErrorConstructor(name, prototype) {
 		support.defineProperty(c, "name", { value: n, writable: false, enumerable: false, configurable: true });
 		defProps(c, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: p });
 		defProps(p, { dontEnum: true }, { constructor: c });
-		p.name = n;
+		support.defineProperty(p, "name", { value: n, writable: true, enumerable: false, configurable: true });
 	}
 
 	   defProps(Error.prototype, { dontEnum: true }, {
