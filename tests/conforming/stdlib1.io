@@ -83,7 +83,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < Object.length: 1
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 -
 > testConstructor("Boolean");
 < Boolean: function
@@ -94,7 +94,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < Boolean.length: 1
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 -
 > testConstructor("Number");
 < Number: function
@@ -105,7 +105,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < Number.length: 1
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 -
 > testConstructor("String");
 < String: function
@@ -116,7 +116,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < String.length: 1
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 -
 > testConstructor("Function");
 < Function: function
@@ -127,7 +127,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < Function.length: 1
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 -
 > testConstructor("Error");
 < Error: function
@@ -138,7 +138,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < Error.length: 1
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 -
 > testConstructor("EvalError");
 < EvalError: function
@@ -149,7 +149,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < EvalError.length: 1
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 -
 > testConstructor("RangeError");
 < RangeError: function
@@ -160,7 +160,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < RangeError.length: 1
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 -
 > testConstructor("ReferenceError");
 < ReferenceError: function
@@ -171,7 +171,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < ReferenceError.length: 1
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 -
 > testConstructor("SyntaxError");
 < SyntaxError: function
@@ -182,7 +182,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < SyntaxError.length: 1
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 -
 > testConstructor("TypeError"); 
 < TypeError: function
@@ -193,7 +193,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < TypeError.length: 1
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 -
 > testConstructor("URIError");
 < URIError: function
@@ -204,7 +204,7 @@
 < constructor : dontEnum, (deleted:true)
 < true
 < URIError.length: 1
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 -
 >	  
 >	  // FIX : test that all functions in all standard library objects are not constructable and that they don't have prototype fields

@@ -1227,6 +1227,7 @@ class Runtime : public GCItem {
 		JSObject* newJSObject() const;							///< Convenience routine for `new(heap) JSObject(heap.managed(), rt.getObjectPrototype())`
 		JSArray* newJSArray(UInt32 initialLength = 0) const;	///< Convenience routine for `new(heap) JSArray(heap.managed(), initialLength)`
 		const String* newStringConstant(const char* s);
+		double toNumber(const Value& v);
 
 	#if (NUXJS_ES5)
 Code* compileEvalCode(const String* expression, bool strict = false);

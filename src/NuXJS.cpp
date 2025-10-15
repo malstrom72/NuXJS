@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include "assert.h"
 #include <cmath>
+#include <cstdlib>
 #include "NuXJS.h"
 #ifdef _MSC_VER
 #include <float.h>
@@ -506,10 +507,9 @@ static Char* doubleToString(Char buffer[32], const double value) {
 }
 
 static const Char* parseDouble(const Char* const b, const Char* const e, double& value) {
-	int exponent = -1;
 	double sign = 1.0;
 	const Char* significandBegin = b;
-	const Char* numberEnd;
+	const Char* numberEnd = b;
 
 	const Char* p = b;
 	if (p != e && (*p == '-' || *p == '+')) {
@@ -522,72 +522,47 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 		value = std::numeric_limits<double>::infinity();
 		numberEnd = p;
 	} else {
+		bool hasDigits = false;
 		while (p != e && *p >= '0' && *p <= '9') {
-			++exponent;
+			hasDigits = true;
 			++p;
 		}
 		if (p != e && *p == '.') {
-			if (p == significandBegin) {
-				++significandBegin;
-			}
 			++p;
 			while (p != e && *p >= '0' && *p <= '9') {
+				hasDigits = true;
 				++p;
 			}
 		}
-
-		if (p == significandBegin) {
+		if (!hasDigits) {
 			value = 0.0;
 			return b;
 		}
-
-		const Char* significandEnd = p;
 		numberEnd = p;
-
-		if (e - p >= 2 && (*p == 'e' || *p == 'E')) {
-			++p;
-			Int32 sign = (*p == '-' ? -1 : 1);
-			if (*p == '+' || *p == '-') {
-				++p;
+		if (p != e && (*p == 'e' || *p == 'E')) {
+			const Char* exponentBegin = p + 1;
+			if (exponentBegin != e && (*exponentBegin == '+' || *exponentBegin == '-')) {
+				++exponentBegin;
 			}
-			UInt32 ui;
-			const Char* q = parseUnsignedInt(p, e, ui);
-			if (q != p) {
-				exponent += sign * wrapToInt32(ui);
-				numberEnd = q;
+			const Char* exponentEnd = exponentBegin;
+			while (exponentEnd != e && *exponentEnd >= '0' && *exponentEnd <= '9') {
+				++exponentEnd;
+			}
+			if (exponentEnd != exponentBegin) {
+				numberEnd = exponentEnd;
 			}
 		}
-		
-		p = significandBegin;
-		while (p != significandEnd && (*p == '0' || *p == '.')) {
-			if (*p == '0') {
-				--exponent;
-			}
-			++p;
+		std::string ascii;
+		ascii.reserve(static_cast<size_t>(numberEnd - significandBegin));
+		for (const Char* q = significandBegin; q != numberEnd; ++q) {
+			ascii.push_back(static_cast<char>(*q));
 		}
-		
-		if (p == significandEnd || exponent < MIN_EXPONENT) {
-			value = 0.0;
-		} else if (exponent > MAX_EXPONENT) {
-			value = std::numeric_limits<double>::infinity();
-		} else {
-			DoubleDouble magnitude = QUICK_CONSTANTS.exp10Normals[exponent - MIN_EXPONENT];
-			DoubleDouble accumulator(0.0, 0.0);
-			while (p != significandEnd) {
-				if (*p != '.') {
-					accumulator = multiplyAndAdd(accumulator, magnitude, (*p - '0'));
-					magnitude = magnitude / 10;
-				}
-				++p;
-			}
-			const double factor = QUICK_CONSTANTS.exp10Factors[exponent - MIN_EXPONENT];
-			value = static_cast<double>(accumulator) * factor;
-		}
+		ascii.push_back('\0');
+		value = std::strtod(ascii.c_str(), 0);
 	}
 	value *= sign;
 	return numberEnd;
 }
-
 static const Char* eatStringWhite(const Char* p, const Char* e) {
 while (p != e) {
 switch (*p) {
@@ -742,34 +717,46 @@ Int32 Value::toInt() const {
 }
 
 bool Value::toArrayIndex(UInt32& index) const {
-	switch (type) {
-#if (NUXJS_ES5)
-		case BOOLEAN_TYPE: {
-			index = (var.boolean ? 1 : 0);
-			return true;
-		}
-#endif
-		case NUMBER_TYPE: {
-			const double n = var.number;
-			if (n < 0.0 || n >= 4294967296.0) {
-				return false;
+		switch (type) {
+			case NUMBER_TYPE: {
+				const double n = var.number;
+				if (n < 0.0 || n >= 4294967296.0) {
+					return false;
+				}
+				index = static_cast<UInt32>(n);
+				return (index == n && index != 0xFFFFFFFFU);
 			}
-			index = static_cast<UInt32>(n);
-			return index == n;
-		}
-		case STRING_TYPE: {
+			case STRING_TYPE: {
 			const Char* const e = var.string->end();
 			const Char* p = var.string->begin();
-			if (p != e && *p == '0') {
-				index = 0;
-				++p;
-				} else {
-				p = parseUnsignedInt(p, e, index);
+			if (p == e) {
+				return false;
 			}
-			return p == e;
+			if (*p == '0') {
+				++p;
+				if (p != e) {
+					return false;
+				}
+				index = 0;
+				return true;
+			}
+			UInt32 value = 0;
+			while (p != e && *p >= '0' && *p <= '9') {
+				const UInt32 digit = static_cast<UInt32>(*p - '0');
+				if (value > 429496729U || (value == 429496729U && digit > 5U)) {
+					return false;
+				}
+				value = value * 10 + digit;
+				++p;
+			}
+			if (p != e || value == 0xFFFFFFFFU) {
+				return false;
+			}
+			index = value;
+			return true;
 		}
 		default: return false;
-	}
+}
 }
 
 const String* Value::toString(Heap& heap) const {
@@ -1811,13 +1798,17 @@ bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flag
 			assert(flags == STANDARD_FLAGS);
 			return setElement(rt, index, v);
 		}
-		sliceDenseVector(rt, key);
+			sliceDenseVector(rt, key);
 	} else if (key.equalsString(LENGTH_STRING)) {
-		UInt32 newLength;
-		if (!v.toArrayIndex(newLength)) {
+		const double numberLength = rt.toNumber(v);
+		if (!std::isfinite(numberLength) || numberLength < 0.0) {
 			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
 		}
-		return updateLength(newLength);
+		const double integerLength = std::floor(numberLength);
+		if (integerLength != numberLength || integerLength > 4294967295.0) {
+			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
+		}
+		return updateLength(static_cast<UInt32>(integerLength));
 	}
 	return super::setOwnProperty(rt, key, v, flags);
 }
@@ -1918,7 +1909,7 @@ createPrototypeObject(rt, completeObject, true);
 createPrototypeObject(rt, completeObject, false);
 #endif
 completeObject->setOwnProperty(rt, &NAME_STRING, code->getName(), READ_ONLY_FLAG | DONT_ENUM_FLAG);
-completeObject->setOwnProperty(rt, &LENGTH_STRING, code->getArgumentsCount(), READ_ONLY_FLAG | DONT_ENUM_FLAG);
+completeObject->setOwnProperty(rt, &LENGTH_STRING, code->getArgumentsCount(), READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG);
 }
 
 /* --- Error --- */
@@ -5238,7 +5229,7 @@ Object* Runtime::FunctionPrototypeFunction::getPrototype(Runtime& rt) const { re
 
 void Runtime::FunctionPrototypeFunction::constructCompleteObject(Runtime& rt) const {
 completeObject->setOwnProperty(rt, &NAME_STRING, &EMPTY_STRING, READ_ONLY_FLAG | DONT_ENUM_FLAG);
-completeObject->setOwnProperty(rt, &LENGTH_STRING, Value(0.0), READ_ONLY_FLAG | DONT_ENUM_FLAG);
+completeObject->setOwnProperty(rt, &LENGTH_STRING, Value(0.0), READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG);
 #if (NUXJS_ES5)
 Heap& heap = rt.getHeap();
 	Function* thrower = new(heap) FunctorAdapter<NativeFunction>(heap.managed(), callerCalleeThrower);
@@ -5385,7 +5376,7 @@ void BoundFunction::constructCompleteObject(Runtime& rt) const {
 		l = v.toDouble() - boundArgc;
 		if (l < 0) l = 0;
 	}
-completeObject->setOwnProperty(rt, &LENGTH_STRING, Value(l), READ_ONLY_FLAG | DONT_ENUM_FLAG);
+completeObject->setOwnProperty(rt, &LENGTH_STRING, Value(l), READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG);
 }
 
 void BoundFunction::gcMarkReferences(Heap& heap) const {
@@ -5736,9 +5727,57 @@ static Value hasOwnProperty(Runtime& rt, Processor&, UInt32 argc, const Value* a
 		return (argc >= 2 ? Value(std::atan2(argv[0].toDouble(), argv[1].toDouble())) : NAN_VALUE);
 	}
 
-	static Value pow(Runtime&, Processor&, UInt32 argc, const Value* argv, Object*) {
-		return (argc >= 2 ? Value(std::pow(argv[0].toDouble(), argv[1].toDouble())) : NAN_VALUE);
+static bool isInteger(double value) {
+	if (!isFinite(value)) return false;
+	double integerPart = 0.0;
+	return (modf(value, &integerPart) == 0.0);
+}
+
+static bool isOddInteger(double value) {
+	if (!isFinite(value)) return false;
+	double integerPart = 0.0;
+	if (modf(value, &integerPart) != 0.0) return false;
+	return (fmod(fabs(integerPart), 2.0) == 1.0);
+}
+
+static Value pow(Runtime&, Processor&, UInt32 argc, const Value* argv, Object*) {
+	if (argc < 2) return NAN_VALUE;
+	double x = argv[0].toDouble();
+	double y = argv[1].toDouble();
+	const double infinity = std::numeric_limits<double>::infinity();
+	if (isNaN(y)) return NAN_VALUE;
+	if (y == 0.0) return 1.0;
+	if (isNaN(x)) return NAN_VALUE;
+	double absX = fabs(x);
+	if (!isFinite(y)) {
+		if (y > 0.0) {
+			if (absX == 1.0) return NAN_VALUE;
+			return (absX > 1.0 ? infinity : 0.0);
+		}
+		if (absX == 1.0) return NAN_VALUE;
+		return (absX > 1.0 ? 0.0 : infinity);
 	}
+	if (!isFinite(x)) {
+		if (x > 0.0) {
+			return (y > 0.0 ? infinity : 0.0);
+		}
+		if (y > 0.0) {
+			return (isOddInteger(y) ? Value(-infinity) : Value(infinity));
+		}
+		return (isOddInteger(y) ? Value(-0.0) : Value(0.0));
+	}
+	if (x == 0.0) {
+		if (std::signbit(x)) {
+			if (y > 0.0) {
+				return (isOddInteger(y) ? Value(-0.0) : Value(0.0));
+			}
+			return (isOddInteger(y) ? Value(-infinity) : Value(infinity));
+		}
+		return (y > 0.0 ? Value(0.0) : Value(infinity));
+	}
+	if (x < 0.0 && isFinite(y) && !isInteger(y)) return NAN_VALUE;
+	return Value(std::pow(x, y));
+}
 
 	static Value parseFloat(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 1) {
@@ -5944,6 +5983,15 @@ Object* Runtime::getErrorPrototype(ErrorType error) const {
 
 JSObject* Runtime::newJSObject() const { return new(heap) JSObject(heap.managed(), getObjectPrototype()); }
 JSArray* Runtime::newJSArray(UInt32 initialLength) const { return new(heap) JSArray(heap.managed(), initialLength); }
+double Runtime::toNumber(const Value& value) {
+	Value primitive(value);
+	if (primitive.isObject()) {
+		const Value argument(primitive);
+		Var primitiveVar = call(toPrimitiveFunctions[1], 1, &argument);
+		primitive = primitiveVar;
+	}
+	return primitive.toDouble();
+}
 Var Runtime::getGlobalsVar() { return Var(*this, globalObject); }
 Var Runtime::newObjectVar() { return Var(*this, newJSObject()); }
 Var Runtime::newArrayVar(UInt32 initialLength) { return Var(*this, newJSArray(initialLength)); }

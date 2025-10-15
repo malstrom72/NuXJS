@@ -54,7 +54,7 @@
 >	flags = analyzeFlags(f, 'name');
 >	ok = ok && flags.dontEnum && flags.readOnly && !flags.dontDelete;
 >	flags = analyzeFlags(f, 'length');
->		ok = ok && flags.dontEnum && flags.readOnly && !flags.dontDelete;
+>		ok = ok && flags.dontEnum && flags.readOnly && flags.dontDelete;
 >	try { var o = new f; print("constructable"); ok = false; } catch (x) { print("unconstructable: " + x.name); }
 >	print("OK: " + ok);
 >	print("--------");
@@ -80,7 +80,7 @@
 >	flags = analyzeFlags(f, 'name');
 >	ok = ok && flags.dontEnum && flags.readOnly && !flags.dontDelete;
 >	flags = analyzeFlags(f, 'length');
->		ok = ok && flags.dontEnum && flags.readOnly && !flags.dontDelete;
+>		ok = ok && flags.dontEnum && flags.readOnly && flags.dontDelete;
 >	try { var o = new f; print("constructable"); ok = false; } catch (x) { print("unconstructable: " + x.name); }
 >	print("OK: " + ok);
 >	print("--------");
@@ -123,7 +123,7 @@
 >	flags = analyzeFlags(f, 'name');
 >	ok = ok && flags.dontEnum && flags.readOnly && !flags.dontDelete;
 >	flags = analyzeFlags(f, 'length');
->		ok = ok && flags.dontEnum && flags.readOnly && !flags.dontDelete;
+>		ok = ok && flags.dontEnum && flags.readOnly && flags.dontDelete;
 >	try { var o = new f; print("constructable"); if (!isConstructor) ok = false; } catch (x) { print("unconstructable: " + x.name); if (isConstructor) ok = false }
 >	print("OK: " + ok);
 >	print("--------");
@@ -137,7 +137,7 @@
 < 'Array' in global: true
 < Array : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < constructable
 < OK: true
 < --------
@@ -152,7 +152,7 @@
 < 'toString' in Array.prototype: true
 < toString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -167,7 +167,7 @@
 < 'toLocaleString' in Array.prototype: true
 < toLocaleString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -182,7 +182,7 @@
 < 'concat' in Array.prototype: true
 < concat : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -197,7 +197,7 @@
 < 'join' in Array.prototype: true
 < join : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -212,7 +212,7 @@
 < 'pop' in Array.prototype: true
 < pop : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -227,7 +227,7 @@
 < 'push' in Array.prototype: true
 < push : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -242,7 +242,7 @@
 < 'reverse' in Array.prototype: true
 < reverse : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -257,7 +257,7 @@
 < 'shift' in Array.prototype: true
 < shift : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -272,7 +272,7 @@
 < 'slice' in Array.prototype: true
 < slice : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -287,7 +287,7 @@
 < 'sort' in Array.prototype: true
 < sort : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -302,7 +302,7 @@
 < 'splice' in Array.prototype: true
 < splice : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -317,7 +317,7 @@
 < 'unshift' in Array.prototype: true
 < unshift : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -330,7 +330,7 @@
 < 'isArray' in Array: true
 < isArray : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -343,7 +343,7 @@
 < 'Function' in global: true
 < Function : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < constructable
 < OK: true
 < --------
@@ -358,7 +358,7 @@
 < 'toString' in Function.prototype: true
 < toString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -373,7 +373,7 @@
 < 'apply' in Function.prototype: true
 < apply : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -388,7 +388,7 @@
 < 'call' in Function.prototype: true
 < call : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -401,7 +401,7 @@
 < 'abs' in Math: true
 < abs : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -414,7 +414,7 @@
 < 'acos' in Math: true
 < acos : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -427,7 +427,7 @@
 < 'asin' in Math: true
 < asin : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -440,7 +440,7 @@
 < 'atan' in Math: true
 < atan : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -453,7 +453,7 @@
 < 'atan2' in Math: true
 < atan2 : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -466,7 +466,7 @@
 < 'ceil' in Math: true
 < ceil : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -479,7 +479,7 @@
 < 'cos' in Math: true
 < cos : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -492,7 +492,7 @@
 < 'exp' in Math: true
 < exp : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -505,7 +505,7 @@
 < 'floor' in Math: true
 < floor : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -518,7 +518,7 @@
 < 'log' in Math: true
 < log : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -531,7 +531,7 @@
 < 'max' in Math: true
 < max : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -544,7 +544,7 @@
 < 'min' in Math: true
 < min : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -557,7 +557,7 @@
 < 'pow' in Math: true
 < pow : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -570,7 +570,7 @@
 < 'random' in Math: true
 < random : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -583,7 +583,7 @@
 < 'round' in Math: true
 < round : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -596,7 +596,7 @@
 < 'sin' in Math: true
 < sin : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -609,7 +609,7 @@
 < 'sqrt' in Math: true
 < sqrt : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -622,7 +622,7 @@
 < 'tan' in Math: true
 < tan : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -707,7 +707,7 @@
 < 'Number' in global: true
 < Number : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < constructable
 < OK: true
 < --------
@@ -722,7 +722,7 @@
 < 'toString' in Number.prototype: true
 < toString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -737,7 +737,7 @@
 < 'toLocaleString' in Number.prototype: true
 < toLocaleString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -752,7 +752,7 @@
 < 'valueOf' in Number.prototype: true
 < valueOf : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -767,7 +767,7 @@
 < 'toFixed' in Number.prototype: true
 < toFixed : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -782,7 +782,7 @@
 < 'toExponential' in Number.prototype: true
 < toExponential : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -797,7 +797,7 @@
 < 'toPrecision' in Number.prototype: true
 < toPrecision : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -855,7 +855,7 @@
 < 'Object' in global: true
 < Object : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < constructable
 < OK: true
 < --------
@@ -870,7 +870,7 @@
 < 'toString' in Object.prototype: true
 < toString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -885,7 +885,7 @@
 < 'toLocaleString' in Object.prototype: true
 < toLocaleString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -900,7 +900,7 @@
 < 'valueOf' in Object.prototype: true
 < valueOf : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -915,7 +915,7 @@
 < 'hasOwnProperty' in Object.prototype: true
 < hasOwnProperty : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -930,7 +930,7 @@
 < 'isPrototypeOf' in Object.prototype: true
 < isPrototypeOf : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -943,7 +943,7 @@
 < 'defineProperty' in Object: true
 < defineProperty : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -956,7 +956,7 @@
 < 'getPrototypeOf' in Object: true
 < getPrototypeOf : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -969,7 +969,7 @@
 < 'RegExp' in global: true
 < RegExp : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < constructable
 < OK: true
 < --------
@@ -984,7 +984,7 @@
 < 'exec' in RegExp.prototype: true
 < exec : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -999,7 +999,7 @@
 < 'test' in RegExp.prototype: true
 < test : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1014,7 +1014,7 @@
 < 'toString' in RegExp.prototype: true
 < toString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1027,7 +1027,7 @@
 < 'String' in global: true
 < String : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < constructable
 < OK: true
 < --------
@@ -1042,7 +1042,7 @@
 < 'toString' in String.prototype: true
 < toString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1057,7 +1057,7 @@
 < 'valueOf' in String.prototype: true
 < valueOf : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1072,7 +1072,7 @@
 < 'charAt' in String.prototype: true
 < charAt : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1087,7 +1087,7 @@
 < 'concat' in String.prototype: true
 < concat : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1102,7 +1102,7 @@
 < 'indexOf' in String.prototype: true
 < indexOf : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1117,7 +1117,7 @@
 < 'lastIndexOf' in String.prototype: true
 < lastIndexOf : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1132,7 +1132,7 @@
 < 'localeCompare' in String.prototype: true
 < localeCompare : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1147,7 +1147,7 @@
 < 'match' in String.prototype: true
 < match : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1162,7 +1162,7 @@
 < 'replace' in String.prototype: true
 < replace : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1177,7 +1177,7 @@
 < 'search' in String.prototype: true
 < search : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1192,7 +1192,7 @@
 < 'slice' in String.prototype: true
 < slice : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1207,7 +1207,7 @@
 < 'split' in String.prototype: true
 < split : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1222,7 +1222,7 @@
 < 'substring' in String.prototype: true
 < substring : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1237,7 +1237,7 @@
 < 'toLowerCase' in String.prototype: true
 < toLowerCase : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1252,7 +1252,7 @@
 < 'toLocaleLowerCase' in String.prototype: true
 < toLocaleLowerCase : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1267,7 +1267,7 @@
 < 'toUpperCase' in String.prototype: true
 < toUpperCase : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1282,7 +1282,7 @@
 < 'toLocaleUpperCase' in String.prototype: true
 < toLocaleUpperCase : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1295,7 +1295,7 @@
 < 'Date' in global: true
 < Date : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < constructable
 < OK: true
 < --------
@@ -1310,7 +1310,7 @@
 < 'toISOString' in Date.prototype: true
 < toISOString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1325,7 +1325,7 @@
 < 'toUTCString' in Date.prototype: true
 < toUTCString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1340,7 +1340,7 @@
 < 'toString' in Date.prototype: true
 < toString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1355,7 +1355,7 @@
 < 'toDateString' in Date.prototype: true
 < toDateString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1370,7 +1370,7 @@
 < 'toTimeString' in Date.prototype: true
 < toTimeString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1385,7 +1385,7 @@
 < 'toLocaleString' in Date.prototype: true
 < toLocaleString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1400,7 +1400,7 @@
 < 'toLocaleDateString' in Date.prototype: true
 < toLocaleDateString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1415,7 +1415,7 @@
 < 'toLocaleTimeString' in Date.prototype: true
 < toLocaleTimeString : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1430,7 +1430,7 @@
 < 'valueOf' in Date.prototype: true
 < valueOf : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1445,7 +1445,7 @@
 < 'getTime' in Date.prototype: true
 < getTime : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1460,7 +1460,7 @@
 < 'getFullYear' in Date.prototype: true
 < getFullYear : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1475,7 +1475,7 @@
 < 'getUTCFullYear' in Date.prototype: true
 < getUTCFullYear : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1490,7 +1490,7 @@
 < 'getMonth' in Date.prototype: true
 < getMonth : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1505,7 +1505,7 @@
 < 'getUTCMonth' in Date.prototype: true
 < getUTCMonth : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1520,7 +1520,7 @@
 < 'getDate' in Date.prototype: true
 < getDate : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1535,7 +1535,7 @@
 < 'getUTCDate' in Date.prototype: true
 < getUTCDate : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1550,7 +1550,7 @@
 < 'getDay' in Date.prototype: true
 < getDay : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1565,7 +1565,7 @@
 < 'getUTCDay' in Date.prototype: true
 < getUTCDay : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1580,7 +1580,7 @@
 < 'getHours' in Date.prototype: true
 < getHours : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1595,7 +1595,7 @@
 < 'getUTCHours' in Date.prototype: true
 < getUTCHours : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1610,7 +1610,7 @@
 < 'getMinutes' in Date.prototype: true
 < getMinutes : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1625,7 +1625,7 @@
 < 'getUTCMinutes' in Date.prototype: true
 < getUTCMinutes : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1640,7 +1640,7 @@
 < 'getSeconds' in Date.prototype: true
 < getSeconds : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1655,7 +1655,7 @@
 < 'getUTCSeconds' in Date.prototype: true
 < getUTCSeconds : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1670,7 +1670,7 @@
 < 'getMilliseconds' in Date.prototype: true
 < getMilliseconds : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1685,7 +1685,7 @@
 < 'getUTCMilliseconds' in Date.prototype: true
 < getUTCMilliseconds : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1700,7 +1700,7 @@
 < 'getTimezoneOffset' in Date.prototype: true
 < getTimezoneOffset : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1715,7 +1715,7 @@
 < 'setTime' in Date.prototype: true
 < setTime : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1730,7 +1730,7 @@
 < 'setMilliseconds' in Date.prototype: true
 < setMilliseconds : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1745,7 +1745,7 @@
 < 'setUTCMilliseconds' in Date.prototype: true
 < setUTCMilliseconds : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1760,7 +1760,7 @@
 < 'setSeconds' in Date.prototype: true
 < setSeconds : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1775,7 +1775,7 @@
 < 'setUTCSeconds' in Date.prototype: true
 < setUTCSeconds : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1790,7 +1790,7 @@
 < 'setMinutes' in Date.prototype: true
 < setMinutes : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1805,7 +1805,7 @@
 < 'setUTCMinutes' in Date.prototype: true
 < setUTCMinutes : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1820,7 +1820,7 @@
 < 'setHours' in Date.prototype: true
 < setHours : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1835,7 +1835,7 @@
 < 'setUTCHours' in Date.prototype: true
 < setUTCHours : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1850,7 +1850,7 @@
 < 'setDate' in Date.prototype: true
 < setDate : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1865,7 +1865,7 @@
 < 'setUTCDate' in Date.prototype: true
 < setUTCDate : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1880,7 +1880,7 @@
 < 'setMonth' in Date.prototype: true
 < setMonth : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1895,7 +1895,7 @@
 < 'setUTCMonth' in Date.prototype: true
 < setUTCMonth : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1910,7 +1910,7 @@
 < 'setFullYear' in Date.prototype: true
 < setFullYear : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1925,7 +1925,7 @@
 < 'setUTCFullYear' in Date.prototype: true
 < setUTCFullYear : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1965,7 +1965,7 @@
 < 'eval' in global: true
 < eval : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1978,7 +1978,7 @@
 < 'parseInt' in global: true
 < parseInt : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -1991,7 +1991,7 @@
 < 'parseFloat' in global: true
 < parseFloat : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -2004,7 +2004,7 @@
 < 'isNaN' in global: true
 < isNaN : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -2017,7 +2017,7 @@
 < 'isFinite' in global: true
 < isFinite : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -2031,7 +2031,7 @@
 < 'decodeURI' in global: true
 < decodeURI : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -2045,7 +2045,7 @@
 < 'decodeURIComponent' in global: true
 < decodeURIComponent : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -2059,7 +2059,7 @@
 < 'encodeURI' in global: true
 < encodeURI : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -2073,7 +2073,7 @@
 < 'encodeURIComponent' in global: true
 < encodeURIComponent : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -2086,7 +2086,7 @@
 < 'stringify' in JSON: true
 < stringify : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------
@@ -2099,7 +2099,7 @@
 < 'parse' in JSON: true
 < parse : dontEnum, (deleted:true)
 < name : dontEnum,readOnly, (deleted:true)
-< length : dontEnum,readOnly, (deleted:true)
+< length : dontEnum,readOnly,dontDelete, (deleted:false)
 < unconstructable: TypeError
 < OK: true
 < --------

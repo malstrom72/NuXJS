@@ -649,12 +649,16 @@ defProps(Array.prototype, { dontEnum: true }, {
                o.length = index;
                return element;
        }),
-       push: unconstructable(function push(item) {
-               var o = Object(this), argv = arguments, argc = argv.length, offset = uint32(o.length), end = offset + argc;
-               for (var i = 0; i < argc; ++i) o[offset + i] = argv[i];
-               o.length = end;
-               return end;
-       }),
+	push: unconstructable(function push(item) {
+		var o = Object(this), argv = arguments, argc = argv.length, offset = uint32(o.length), end = offset + argc;
+		for (var i = 0; i < argc; ++i) o[offset + i] = argv[i];
+		o.length = end;
+		if (end > 4294967295) {
+			o.length = offset;
+			throw rangeError("Invalid array length");
+		}
+		return end;
+	}),
 	reverse: unconstructable(function reverse() {
 		var len, mid = $floor((len = uint32(this.length)) / 2);
 		--len;
@@ -760,7 +764,17 @@ defProps(Array.prototype, { dontEnum: true }, {
 		this.length = len + move;
 		return a;
 	}),
-	toLocaleString: Object.prototype.toLocaleString,
+	toLocaleString: unconstructable(function toLocaleString() {
+		var o = Object(this), builder = new StringBuilder, element, func, len = uint32(o.length);
+		for (var i = 0; i < len; ++i) {
+			if (i > 0) builder.append(',');
+			if ((element = o[i]) != null) {
+				if (typeof (func = element.toLocaleString) !== 'function') throw typeError('Array element toLocaleString is not callable');
+				builder.append(str($callWithArgs(func, element)));
+			}
+		}
+		return builder.build();
+	}),
 	toString: unconstructable(function toString() {
 		checkClass(this, "Array", "toString");
 		return this.join();
@@ -794,7 +808,9 @@ function localTimeDiff(z) { var l = support.localTimeDifference(z); return ($isN
 function toLocalTime(z) { return $isNaN(z) ? z : z + localTimeDiff(z) }
 
 function checkDateClass(object) {
-	if ($getInternalProperty(object, "class") !== "Date") throw typeError("this is not a Date object");
+	if ($getInternalProperty(object, "class") !== "Date" || object === support.prototypes.Date) {
+		throw typeError("this is not a Date object");
+	}
 }
 
 function getDateValue(object) { checkDateClass(object); return $getInternalProperty(object, "value"); }
@@ -813,7 +829,11 @@ function hourFromTime(z) { return floorMod($floor(z / 36e5), 24) }
 function minFromTime(z) { return floorMod($floor(z / 6e4), 60) }
 function secFromTime(z) { return floorMod($floor(z / 1e3), 60) }
 function msFromTime(z) { return floorMod(z, 1e3) }
-function timeClip(z) { return (!$isFinite(z) || abs(z) > 8.64e15 ? $NaN : int(z)) }
+function timeClip(z) {
+	if (!$isFinite(z) || abs(z) > 8.64e15) return $NaN;
+	z = int(z);
+	return (z === 0 ? 0 : z);
+}
 function timeClipLocal(z) { return fromLocalTime(timeClip(z)); }
 
 function dateFromEpoch(z) {
@@ -851,22 +871,31 @@ function epochFromDate(year, month, day) {
 }
 
 function setDateParts(z, n, a) {
-	var i, d = dateFromEpoch(z), r = floorMod(z, 864e5);
-	for (i = 0; i < a.length; ++i, ++n) d[n] = int(a[i]);
+	var i, d = dateFromEpoch(z), r = floorMod(z, 864e5), part;
+	for (i = 0; i < a.length; ++i, ++n) {
+		if ($isNaN(part = +a[i])) return $NaN;
+		d[n] = int(part);
+	}
 	return $callWithArgs(epochFromDate, null, d) + r;
 }
 
 function setTimeParts(z, n, a) {
-	var i, t = timeFromEpoch(z), r = $floor(z / 864e5) * 864e5;
-	for (i = 0; i < a.length; ++i, ++n) t[n] = int(a[i]);
+	var i, t = timeFromEpoch(z), r = $floor(z / 864e5) * 864e5, part;
+	for (i = 0; i < a.length; ++i, ++n) {
+		if ($isNaN(part = +a[i])) return $NaN;
+		t[n] = int(part);
+	}
 	return $callWithArgs(epochFromTime, null, t) + r;
 }
 
 function makeDateTime(year, month, date, hours, minutes, seconds, ms) {
-	var argc = arguments.length;
-	return epochFromDate( (year = int(year)) + (0 <= year && year <= 99 ? 1900 : 0),
-			int(month), (argc > 2 ? int(date) : 1)) + epochFromTime( argc > 3 ? int(hours) : 0,
-			argc > 4 ? int(minutes) : 0, argc > 5 ? int(seconds) : 0, argc > 6 ? int(ms) : 0);
+	var argc = arguments.length, y = +year, m = +month, dt = (argc > 2 ? +date : 1);
+	var h = (argc > 3 ? +hours : 0), min = (argc > 4 ? +minutes : 0);
+	var sec = (argc > 5 ? +seconds : 0), milli = (argc > 6 ? +ms : 0);
+	if ($isNaN(y) || $isNaN(m) || $isNaN(dt) || $isNaN(h) || $isNaN(min) || $isNaN(sec) || $isNaN(milli)) return $NaN;
+	y = int(y);
+	return epochFromDate(y + (0 <= y && y <= 99 ? 1900 : 0), int(m), int(dt)) +
+		epochFromTime(int(h), int(min), int(sec), int(milli));
 }
 
 function isoDate(d) {
