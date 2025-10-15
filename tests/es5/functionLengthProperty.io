@@ -7,8 +7,8 @@
 < 2
 -
 > print(delete f.length);
-< true
+< false
 -
 > print(f.length);
-< 0
+< 2
 -

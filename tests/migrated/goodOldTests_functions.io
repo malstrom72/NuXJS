@@ -39,10 +39,10 @@
 < f.length=3
 -
 > print("delete f.length=" + delete f.length);
-< delete f.length=true
+< delete f.length=false
 -
 > print("f.length=" + f.length);
-< f.length=0
+< f.length=3
 -
 > f = function() { }
 > print(f.length);

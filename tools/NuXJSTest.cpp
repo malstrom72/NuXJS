@@ -1665,6 +1665,7 @@ void testValues() {
 		EXPECT_EQUAL(falseBoolValue.toDouble(), 0.0);
 		EXPECT_EQUAL(trueBoolValue.toDouble(), 1.0);
 		UInt32 index;
+		EXPECT(!falseBoolValue.toArrayIndex(index));
 		EXPECT(!trueBoolValue.toArrayIndex(index));
 		EXPECT_EXCEPTION(trueBoolValue.toFunction(heap), "TypeError: true is not a function");
 		static const String FALSE_STRING("false");
