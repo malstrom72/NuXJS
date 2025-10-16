@@ -64,14 +64,14 @@ The following regression tests currently fail. Each item links the observed mism
 - [x] `parseIntRadix16Uppercase.io` – Hexadecimal parsing is case-insensitive when the radix is 16. 【F:docs/specs/ECMA-262 5.1.md†L5719】
 
 ## Regular expression exec semantics
-- [ ] `regExpExecBooleanObject.io` – `RegExp.prototype.exec` coerces the argument with `ToString`, so Boolean objects must unwrap before matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
-- [ ] `regExpExecNestedCaptures.io` – The exec result array must include nested captures per the matching algorithm. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
-- [ ] `regExpExecNumberObject.io` – Number objects must be stringified before matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
-- [ ] `regExpExecObjectString.io` – Objects providing `toString` must be coerced to strings for the search. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
-- [ ] `regExpExecToStringFalse.io` – Custom `toString` return values need to drive the input string for matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
-- [ ] `regExpExecToStringObject.io` – Exec must use the string returned by `toString`, not `[object Object]`. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
-- [ ] `regExpExecToStringPi.io` – Numbers produced by `toString` must be matched verbatim. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
-- [ ] `regExpExecValueOfObject.io` – If `toString` returns a non-string, `valueOf` provides the fallback string for matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecBooleanObject.io` – `RegExp.prototype.exec` coerces the argument with `ToString`, so Boolean objects must unwrap before matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecNestedCaptures.io` – The exec result array must include nested captures per the matching algorithm. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecNumberObject.io` – Number objects must be stringified before matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecObjectString.io` – Objects providing `toString` must be coerced to strings for the search. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecToStringFalse.io` – Custom `toString` return values need to drive the input string for matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecToStringObject.io` – Exec must use the string returned by `toString`, not `[object Object]`. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecToStringPi.io` – Numbers produced by `toString` must be matched verbatim. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecValueOfObject.io` – If `toString` returns a non-string, `valueOf` provides the fallback string for matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
 
 ## String replacement placeholders
 - [x] `stringReplace11Concat.io` – Replacement text must honour `$n` and related substitution patterns. 【F:docs/specs/ECMA-262 5.1.md†L7830-L7853】
