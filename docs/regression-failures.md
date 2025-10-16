@@ -51,9 +51,9 @@ The following regression tests currently fail. Each item links the observed mism
 - [x] `errorConstructorUndefinedMessage.io` – `new Error()` only creates a `message` own property when the argument is provided. 【F:docs/specs/ECMA-262 5.1.md†L10999-L11010】
 - [x] `errorFunctionUndefinedMessage.io` – Calling `Error()` as a function follows the same rule for the optional `message`. 【F:docs/specs/ECMA-262 5.1.md†L10979-L10992】
 - [x] `errorPrototypeNameEnumerable.io` – `Error.prototype` only defines the non-enumerable `name` and `message` defaults, so iteration should not observe `name`. 【F:docs/specs/ECMA-262 5.1.md†L11031-L11052】
-- [ ] `stackLineNumbers.io` – ES5.1 does not standardise `Error.prototype.stack`; the engine-specific stack trace should still surface accurate function names and source coordinates. 【F:docs/specs/ECMA-262 5.1.md†L11031-L11052】
-- [ ] `stackPropertyNames.io` – The non-standard `stack` string should still include callee names in the expected format. 【F:docs/specs/ECMA-262 5.1.md†L11031-L11052】
-- [ ] `stackTraceVerbatim.io` – Stack traces should preserve exact naming and punctuation even though `stack` is implementation-defined. 【F:docs/specs/ECMA-262 5.1.md†L11031-L11052】
+- [x] `stackLineNumbers.io` – ES5.1 does not standardise `Error.prototype.stack`; the engine-specific stack trace should still surface accurate function names and source coordinates. 【F:docs/specs/ECMA-262 5.1.md†L11031-L11052】
+- [x] `stackPropertyNames.io` – The non-standard `stack` string should still include callee names in the expected format. 【F:docs/specs/ECMA-262 5.1.md†L11031-L11052】
+- [x] `stackTraceVerbatim.io` – Stack traces should preserve exact naming and punctuation even though `stack` is implementation-defined. 【F:docs/specs/ECMA-262 5.1.md†L11031-L11052】
 
 ## Function prototype construction
 - [x] `functionPrototypeConstructible.io` – `Function.prototype` is callable but not constructible; `new Function.prototype()` must throw. 【F:docs/specs/ECMA-262 5.1.md†L6362-L6368】
@@ -74,10 +74,10 @@ The following regression tests currently fail. Each item links the observed mism
 - [ ] `regExpExecValueOfObject.io` – If `toString` returns a non-string, `valueOf` provides the fallback string for matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
 
 ## String replacement placeholders
-- [ ] `stringReplace11Concat.io` – Replacement text must honour `$n` and related substitution patterns. 【F:docs/specs/ECMA-262 5.1.md†L7830-L7853】
-- [ ] `stringReplace11Plus15.io` – Double-digit capture substitutions such as `$11` and `$15` must resolve to the correct captures. 【F:docs/specs/ECMA-262 5.1.md†L7830-L7853】
-- [ ] `stringReplace11PlusA15.io` – Literal characters adjoining `$nn` tokens should not alter capture resolution. 【F:docs/specs/ECMA-262 5.1.md†L7830-L7853】
-- [ ] `stringReplaceBackreference.io` – `$&`, `$'`, and related tokens must behave per Table 22 in the spec. 【F:docs/specs/ECMA-262 5.1.md†L7830-L7853】
-- [ ] `stringReplaceSearchToStringOrder.io` – Search values must be coerced with `ToString` prior to matching. 【F:docs/specs/ECMA-262 5.1.md†L7832-L7841】
-- [ ] `stringReplaceTwoDigitBackreference.io` – `$nn` references should bind to the nth capture or remain literal if out of range. 【F:docs/specs/ECMA-262 5.1.md†L7830-L7853】
+- [x] `stringReplace11Concat.io` – Replacement text must honour `$n` and related substitution patterns. 【F:docs/specs/ECMA-262 5.1.md†L7830-L7853】
+- [x] `stringReplace11Plus15.io` – Double-digit capture substitutions such as `$11` and `$15` must resolve to the correct captures. 【F:docs/specs/ECMA-262 5.1.md†L7830-L7853】
+- [x] `stringReplace11PlusA15.io` – Literal characters adjoining `$nn` tokens should not alter capture resolution. 【F:docs/specs/ECMA-262 5.1.md†L7830-L7853】
+- [x] `stringReplaceBackreference.io` – `$&`, `$'`, and related tokens must behave per Table 22 in the spec. 【F:docs/specs/ECMA-262 5.1.md†L7830-L7853】
+- [x] `stringReplaceSearchToStringOrder.io` – Search values must be coerced with `ToString` prior to matching. 【F:docs/specs/ECMA-262 5.1.md†L7832-L7841】
+- [x] `stringReplaceTwoDigitBackreference.io` – `$nn` references should bind to the nth capture or remain literal if out of range. 【F:docs/specs/ECMA-262 5.1.md†L7830-L7853】
 

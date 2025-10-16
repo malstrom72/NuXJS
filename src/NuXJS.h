@@ -886,6 +886,11 @@ class Code : public Object {
 		UInt32 getCodeSize() const { return codeWords.size(); }
 		const String* getName() const { return name; }
 		const String* getSource() const { return source; }
+		const Vector<UInt32>& getSourceOffsets() const { return sourceOffsets; }
+		const String* getScriptSource() const { return scriptSource; }
+		void setScriptSource(const String* s) { scriptSource = s; }
+		const String* getSourceName() const { return sourceName; }
+		void setSourceName(const String* s) { sourceName = s; }
 		UInt32 getMaxStackDepth() const { return maxStackDepth; }
 	#if (NUXJS_ES5)
 		bool isStrict() const { return strict; }
@@ -895,6 +900,7 @@ class Code : public Object {
 
 	protected:
 		Vector<CodeWord> codeWords;
+		Vector<UInt32> sourceOffsets;
 		Constants* const constants;
 		Table nameIndexes;							///< < 0 : local variables, >= 0 : arguments, CATCH_PARAMETER == current catch parameter during compile-time only (don't use fast index binding)
 		Vector<const String*> varNames;				///< Notice that this list is reversed in relation to indexes in the "locals" array in FunctionScope.
@@ -902,6 +908,8 @@ class Code : public Object {
 		const String* name;
 		const String* selfName;
 		const String* source;
+		const String* scriptSource;
+		const String* sourceName;
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
 	#if (NUXJS_ES5)
@@ -916,6 +924,8 @@ class Code : public Object {
 			gcMark(heap, name);
 			gcMark(heap, selfName);
 			gcMark(heap, source);
+			gcMark(heap, scriptSource);
+			gcMark(heap, sourceName);
 			super::gcMarkReferences(heap);
 		}
 };
@@ -1861,7 +1871,7 @@ class Compiler : public GCItem {
 
 		enum Target { FOR_GLOBAL, FOR_FUNCTION, FOR_EVAL };
 
-		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0);
+		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0, const Char* scriptStart = 0);
 		const Char* compile(const Char* b, const Char* e);
 		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName = 0); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
 		void compile(const String& source);
@@ -1870,12 +1880,14 @@ class Compiler : public GCItem {
 	protected:
 		struct CodeSection {
 			CodeSection(Heap& heap, Int32 initialStackDepth)
-					: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
-					, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth) { }
-			void emit(Processor::Opcode opcode, Int32 operand);
+				: code(&heap), sourceOffsets(&heap)
+				, lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
+				, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth) { }
+			void emit(Processor::Opcode opcode, Int32 operand, UInt32 sourceOffset);
 			void insertSection(const CodeSection& section);
 			bool inDeadCode() const { return stackDepth == DEAD_CODE_STACK_DEPTH; }
 			Vector<CodeWord> code;
+			Vector<UInt32> sourceOffsets;
 			Processor::Opcode lastEmitted;
 			const Int32 initialStackDepth;
 			Int32 stackDepth;
@@ -1974,6 +1986,7 @@ class Compiler : public GCItem {
 		bool acceptInOperator;
 		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
 		int nestCounter;
+		const Char* scriptStart;
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, code);
