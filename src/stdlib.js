@@ -483,37 +483,57 @@ defProps(String.prototype, { dontEnum: true }, {
 		} while (true);
 	}),
 	replace: unconstructable(function replace(searchValue, replaceValue) {
-		var s, sLength = (s = str(this)).length, replaceFunction = replaceValue, matches, i, p, t, l, e;
-		if (typeof replaceFunction !== "function") {
-			var r = str(replaceValue);
-			for (i = r.length; --i >= 0 && r[i] != '$';);
-			replaceFunction = (i < 0 ? function() { return r; } : function(m) {
-				var t = '', p, ch, ch2, c, n;
-				for (p = 0; ch = r[p]; ++p) {
-					if (ch !== '$') t += ch;
-					else switch (ch = r[++p]) {
-						case (void 0): case '$': t += '$'; break;
-						case '&': t += m; break;
-						case '`': t += $sub(s, 0, arguments[arguments.length - 2]); break;
-						case "'": t += $sub(s, arguments[arguments.length - 2] + m.length, sLength); break;
-						default: {
-							if (ch >= '0' && ch <= '9') {
-								if (!(ch2 = r[p + 1]) || ch2 < '0' || ch2 > '9') ch2 = '';
-								if ((n = +(ch + ch2)) >= 1 && n < arguments.length - 2) {
-									t += ((c = arguments[n]) === void 0 ? '' : c);
-									p += ch2.length;
-									break;
-								}
-							}
-							t += '$' + ch;
+		var s, sLength = (s = str(this)).length, matches, i, p, t, l, e;
+		function createSubstitutionFunction(replacementText) {
+			return function(matched) {
+				var args = arguments, positionIndex = args.length - 2, position = args[positionIndex], tailPos = position + matched.length,
+							captureCount = args.length - 3, result = '', cursor, ch, next, combined, consumeNext, capture;
+				for (cursor = 0; cursor < replacementText.length; ++cursor) {
+					ch = replacementText[cursor];
+					if (ch === '$') {
+						if (++cursor >= replacementText.length) {
+							result += '$';
 							break;
 						}
+						switch (next = replacementText[cursor]) {
+							case '$': result += '$'; break;
+							case '&': result += matched; break;
+							case '`': result += $sub(s, 0, position); break;
+							case "'": result += $sub(s, tailPos, sLength); break;
+							default: {
+								if (next >= '0' && next <= '9') {
+									combined = next.charCodeAt(0) - 48;
+									consumeNext = false;
+									if (combined !== 0 && cursor + 1 < replacementText.length) {
+										var lookAhead = replacementText[cursor + 1];
+										if (lookAhead >= '0' && lookAhead <= '9') {
+											var candidate = combined * 10 + lookAhead.charCodeAt(0) - 48;
+											if (candidate <= captureCount) {
+												combined = candidate;
+												consumeNext = true;
+											}
+										}
+									}
+									if (combined === 0 || combined > captureCount) {
+										result += '$' + next;
+										break;
+									}
+									if (consumeNext) ++cursor;
+									capture = args[combined];
+									result += (capture === void 0 ? '' : capture);
+									break;
+								}
+								result += '$' + next;
+							}
+					} else {
+						result += ch;
 					}
 				}
-				return t;
-			})
-		};
+				return result;
+			};
+		}
 		if ($getInternalProperty(searchValue, "class") === "RegExp") {
+			var replaceFunction = (typeof replaceValue === "function" ? replaceValue : createSubstitutionFunction(str(replaceValue)));
 			p = 0;
 			t = new StringBuilder;
 			if (searchValue.global) searchValue.lastIndex = 0;
@@ -527,8 +547,10 @@ defProps(String.prototype, { dontEnum: true }, {
 			}
 			return (t.append($sub(s, p, sLength))).build();
 		} else {
-			e = sLength - (l = (t = str(searchValue)).length);
-			for (var p = 0; !$match(s, p, t); ++p) if (p >= e) return s;
+			t = str(searchValue);
+			var replaceFunction = (typeof replaceValue === "function" ? replaceValue : createSubstitutionFunction(str(replaceValue)));
+			e = sLength - (l = t.length);
+			for (p = 0; !$match(s, p, t); ++p) if (p >= e) return s;
 			return $sub(s, 0, p) + str($callWithArgs(replaceFunction, null, [ t, p, s ])) + $sub(s, p + l, sLength);
 		}
 	}),

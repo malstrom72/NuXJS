@@ -602,12 +602,16 @@ int testMain(int argc, const char* argv[]) {
 					doQuit = true; // FIX : we shouldn't use the same loop for interactive and non-interactive
 				}
 				
-				if (execute) {
-					Code globalCode(heap.roots());
-					Compiler compiler(heap.roots(), &globalCode, (interactive ? Compiler::FOR_EVAL : Compiler::FOR_GLOBAL), 1);
-					try {
-						compiler.compile(source);
-					}
+			if (execute) {
+				Code globalCode(heap.roots());
+				const String* scriptSource = new(heap) String(heap.managed(), source.begin(), source.end());
+				globalCode.setScriptSource(scriptSource);
+				const String* scriptName = (interactive ? rt.newStringConstant("<eval>") : rt.newStringConstant("<anonymous>"));
+				globalCode.setSourceName(scriptName);
+				Compiler compiler(heap.roots(), &globalCode, (interactive ? Compiler::FOR_EVAL : Compiler::FOR_GLOBAL), 1, scriptSource->begin());
+				try {
+					compiler.compile(*scriptSource);
+				}
 					catch (const Exception&) {
 						size_t offset;
 						int lineNumber;

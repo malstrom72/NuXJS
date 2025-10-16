@@ -195,7 +195,7 @@ static const String ANONYMOUS_STRING("anonymous"), ARGUMENTS_STRING("arguments")
 , BOUND_STRING("bound "), NAME_STRING("name"), NAN_STRING("NaN"), NATIVE_FUNCTION_STRING("function() { [native code] }")
 , PROTOTYPE_CHAIN_TOO_LONG("Prototype chain too long"), PROTOTYPE_STRING("prototype")
 , STACK_STRING("stack"), STACK_OVERFLOW_STRING("Stack overflow"), TRUE_STRING("true"), VALUE_STRING("value")
-, ENUMERABLE_STRING("enumerable"), CONFIGURABLE_STRING("configurable"), WRITABLE_STRING("writable");
+, ENUMERABLE_STRING("enumerable"), CONFIGURABLE_STRING("configurable"), WRITABLE_STRING("writable"), ANGLE_ANONYMOUS_STRING("<anonymous>"), ANGLE_EVAL_STRING("<eval>");
 
 static const String ERROR_NAMES[ERROR_TYPE_COUNT] = {
 	"Error", "EvalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError", "URIError"
@@ -355,6 +355,49 @@ static DoubleDouble multiplyAndAdd(const DoubleDouble& term, const DoubleDouble&
 	return DoubleDouble(factorA.high * factorB + term.high + overflow, fmaLow - overflow);
 }
 
+/**
+	If we just do (high + low) first, that sum is rounded to 53 bits once, possibly nudging the result slightly upward.
+	Then when we scale down into the subnormal range (right-shift the mantissa) we hit what looks like an exact halfway
+	case — and since the current mantissa is odd, IEEE-754 rounds up again. In reality, the exact (high+low) value was
+	just below that halfway point, so it should have rounded down to the even mantissa. This is a classic "double
+	rounding" problem.
+
+	scaleAndRound avoids this by combining high and low at full precision under the final exponent window and
+	performing a *single* correct round-to-nearest-even step. This matches the Decimal oracle and fixes all denormal
+	boundary mismatches.
+
+	Assumptions:
+	- 'factor' is an exact power-of-two (normal or subnormal) from the table.
+	- 'acc.high' is integral in [0, 2^53) and 'acc.low' ∈ [0,1).
+	- Table ensures factorExponent >= -1073 so T = factorExponent + 1073 >= 0.
+**/
+static double scaleAndRound(const DoubleDouble& acc, double factor) {
+	if (acc.high == 0.0 && acc.low == 0.0) {
+		return 0.0;
+	}
+
+	const double fastResult = (acc.high + acc.low) * factor;
+	if (fastResult >= 2.2250738585072014e-308) {
+		return fastResult;						// normal result; fast path is exact here
+	}
+
+	int factorExponent;						// slow path: denormal/transition region
+	frexp(factor, &factorExponent);					// assemble payload then single rounding
+
+	const int t = factorExponent + 1073;				// guaranteed by table construction
+	assert(t >= 0);						// (no right-shift branch needed)
+	const double bf = ldexp(acc.low, t);				// align (high, low) into the 52-bit subnormal payload scale
+	const double bi = floor(bf);
+	const double fraction = bf - bi;				// fractional contribution
+
+	double ni = ldexp(acc.high, t) + bi;				// integer payload (exact in double)
+	if (fraction > 0.5 || (fraction == 0.5 && fmod(ni, 2.0) != 0.0)) {
+		ni += 1.0;						// round to nearest, ties-to-even
+	}
+
+	return ldexp(ni, -1074);					// subnormal construction (or DBL_MIN when ni == 2^52)
+}
+
 const int QUICK_CONSTANTS_INTEGERS_RANGE = 1000;
 struct QuickConstants {
 	QuickConstants() {
@@ -507,9 +550,10 @@ static Char* doubleToString(Char buffer[32], const double value) {
 }
 
 static const Char* parseDouble(const Char* const b, const Char* const e, double& value) {
+	int exponent = -1;
 	double sign = 1.0;
 	const Char* significandBegin = b;
-	const Char* numberEnd = b;
+	const Char* numberEnd;
 
 	const Char* p = b;
 	if (p != e && (*p == '-' || *p == '+')) {
@@ -522,61 +566,85 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 		value = std::numeric_limits<double>::infinity();
 		numberEnd = p;
 	} else {
-		bool hasDigits = false;
 		while (p != e && *p >= '0' && *p <= '9') {
-			hasDigits = true;
+			++exponent;
 			++p;
 		}
 		if (p != e && *p == '.') {
+			if (p == significandBegin) {
+				++significandBegin;
+			}
 			++p;
 			while (p != e && *p >= '0' && *p <= '9') {
-				hasDigits = true;
 				++p;
 			}
 		}
-		if (!hasDigits) {
+
+		if (p == significandBegin) {
 			value = 0.0;
 			return b;
 		}
+
+		const Char* significandEnd = p;
 		numberEnd = p;
-		if (p != e && (*p == 'e' || *p == 'E')) {
-			const Char* exponentBegin = p + 1;
-			if (exponentBegin != e && (*exponentBegin == '+' || *exponentBegin == '-')) {
-				++exponentBegin;
+
+		if (e - p >= 2 && (*p == 'e' || *p == 'E')) {
+			++p;
+			Int32 sign = (*p == '-' ? -1 : 1);
+			if (*p == '+' || *p == '-') {
+				++p;
 			}
-			const Char* exponentEnd = exponentBegin;
-			while (exponentEnd != e && *exponentEnd >= '0' && *exponentEnd <= '9') {
-				++exponentEnd;
-			}
-			if (exponentEnd != exponentBegin) {
-				numberEnd = exponentEnd;
+			UInt32 ui;
+			const Char* q = parseUnsignedInt(p, e, ui);
+			if (q != p) {
+				exponent += sign * wrapToInt32(ui);
+				numberEnd = q;
 			}
 		}
-		std::string ascii;
-		ascii.reserve(static_cast<size_t>(numberEnd - significandBegin));
-		for (const Char* q = significandBegin; q != numberEnd; ++q) {
-			ascii.push_back(static_cast<char>(*q));
+		
+		p = significandBegin;
+		while (p != significandEnd && (*p == '0' || *p == '.')) {
+			if (*p == '0') {
+				--exponent;
+			}
+			++p;
 		}
-		ascii.push_back('\0');
-		value = std::strtod(ascii.c_str(), 0);
+		
+		if (p == significandEnd || exponent < MIN_EXPONENT) {
+			value = 0.0;
+		} else if (exponent > MAX_EXPONENT) {
+			value = std::numeric_limits<double>::infinity();
+		} else {
+			DoubleDouble magnitude = QUICK_CONSTANTS.exp10Normals[exponent - MIN_EXPONENT];
+			DoubleDouble accumulator(0.0, 0.0);
+			while (p != significandEnd) {
+				if (*p != '.') {
+					accumulator = multiplyAndAdd(accumulator, magnitude, (*p - '0'));
+					magnitude = magnitude / 10;
+				}
+				++p;
+			}
+			const double factor = QUICK_CONSTANTS.exp10Factors[exponent - MIN_EXPONENT];
+			value = scaleAndRound(accumulator, factor);
+		}
 	}
 	value *= sign;
 	return numberEnd;
 }
 static const Char* eatStringWhite(const Char* p, const Char* e) {
-while (p != e) {
-switch (*p) {
-case ' ': case '\f': case '\n': case '\r': case '\t': case '\v':
-case 0x00A0: case 0x1680: case 0x180E:
-case 0x2000: case 0x2001: case 0x2002: case 0x2003: case 0x2004: case 0x2005: case 0x2006: case 0x2007: case 0x2008: case 0x2009: case 0x200A:
-case 0x2028: case 0x2029: case 0x202F: case 0x205F: case 0x3000: case 0xFEFF:
-break;
-default:
-return p;
-}
-++p;
-}
-return p;
+	while (p != e) {
+		switch (*p) {
+			case ' ': case '\f': case '\n': case '\r': case '\t': case '\v':
+			case 0x00A0: case 0x1680: case 0x180E:
+			case 0x2000: case 0x2001: case 0x2002: case 0x2003: case 0x2004: case 0x2005: case 0x2006: case 0x2007: case 0x2008: case 0x2009: case 0x200A:
+			case 0x2028: case 0x2029: case 0x202F: case 0x205F: case 0x3000: case 0xFEFF:
+				break;
+			default:
+				return p;
+		}
+		++p;
+	}
+	return p;
 }
 
 static double stringToDouble(const String& s) {
@@ -1629,13 +1697,13 @@ const String* JoiningEnumerator::nextPropertyName() {
 /* --- Code --- */
 
 Code::Code(GCList& gcList, Constants* sharedConstants)
-	: super(gcList), codeWords(0, &gcList.getHeap())
+	: super(gcList), codeWords(0, &gcList.getHeap()), sourceOffsets(0, &gcList.getHeap())
 	, constants(sharedConstants ? sharedConstants : new(gcList.getHeap()) Constants(gcList.getHeap().managed()))
 	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
-	, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
-	#if (NUXJS_ES5)
+	, selfName(0), source(0), scriptSource(0), sourceName(0), bloomSet(0), maxStackDepth(0)
+#if (NUXJS_ES5)
 		, strict(false)
-	#endif
+#endif
 {
 	assert(constants != 0);
 }
@@ -2677,6 +2745,7 @@ static void appendString(Vector<Char>& buffer, const String* value) {
 	buffer.insert(buffer.end(), value->begin(), value->end());
 }
 
+
 static void appendASCII(Vector<Char>& buffer, const char* literal) {
 	while (*literal != 0) {
 		buffer.push(static_cast<Char>(*literal));
@@ -2684,6 +2753,14 @@ static void appendASCII(Vector<Char>& buffer, const char* literal) {
 	}
 }
 
+
+static void appendInt(Vector<Char>& buffer, Int32 value) {
+	Char digits[32];
+	const Char* start = intToString(digits, value);
+	buffer.insert(buffer.end(), start, digits + 32);
+}
+
+static void computeLineAndColumn(const String* source, UInt32 offset, int& line, int& column);
 
 void Processor::addStackTrace(const Value& exception) const {
 	Error* errorObject = exception.asError();
@@ -2699,14 +2776,56 @@ void Processor::addStackTrace(const Value& exception) const {
 			}
 
 			const Frame* frameWalker = currentFrame;
+			const CodeWord* instructionPointer = ip;
 			while (frameWalker != 0) {
 				appendASCII(buffer, "\n    at ");
-				const String* functionName = frameWalker->code->getName();
-				if (functionName != 0 && !functionName->empty()) {
+				const Code* code = frameWalker->code;
+				const String* functionName = code->getName();
+				const bool hasFunctionName = (functionName != 0 && !functionName->empty());
+				if (hasFunctionName) {
 					appendString(buffer, functionName);
-				} else {
-					appendASCII(buffer, "<anonymous>");
+					appendASCII(buffer, " (");
 				}
+				const String* scriptName = code->getSourceName();
+				if (scriptName == 0 || scriptName->empty()) {
+					scriptName = &ANGLE_ANONYMOUS_STRING;
+				}
+				appendString(buffer, scriptName);
+
+				const Vector<UInt32>& sourceOffsets = code->getSourceOffsets();
+				const String* scriptSource = code->getScriptSource();
+				if (scriptSource == 0) {
+					scriptSource = code->getSource();
+				}
+				if (!sourceOffsets.empty() && scriptSource != 0) {
+					UInt32 instructionIndex = 0;
+					if (instructionPointer != 0) {
+						const CodeWord* const codeWords = code->getCodeWords();
+						if (instructionPointer > codeWords) {
+							instructionIndex = static_cast<UInt32>((instructionPointer - codeWords) - 1);
+						}
+					} else {
+						instructionIndex = sourceOffsets.size() - 1;
+					}
+					if (instructionIndex >= sourceOffsets.size()) {
+						instructionIndex = sourceOffsets.size() - 1;
+					}
+					UInt32 sourceOffset = sourceOffsets[instructionIndex];
+					if (sourceOffset < scriptSource->size()) {
+						++sourceOffset;
+					}
+					int line = 1;
+					int column = 1;
+					computeLineAndColumn(scriptSource, sourceOffset, line, column);
+					appendASCII(buffer, ":");
+					appendInt(buffer, line);
+					appendASCII(buffer, ":");
+					appendInt(buffer, column);
+				}
+				if (hasFunctionName) {
+					appendASCII(buffer, ")");
+				}
+				instructionPointer = frameWalker->returnIP;
 				frameWalker = frameWalker->previousFrame;
 			}
 
@@ -2715,6 +2834,7 @@ void Processor::addStackTrace(const Value& exception) const {
 		}
 	}
 }
+
 
 void Processor::throwVirtualException(const Value& exception) {
 	addStackTrace(exception);
@@ -3355,10 +3475,10 @@ struct Compiler::SemanticScope {
 	Vector<BranchPoint> finallys;		// source points for finally jsr's
 };
 
-Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter)
+Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter, const Char* scriptStart)
 		: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
 		, mainSection(heap, 1), b(0), p(0), e(0), currentSection(0), acceptInOperator(true), withScopeCounter(0)
-		, nestCounter(initialNestCounter) { }
+		, nestCounter(initialNestCounter), scriptStart(scriptStart) { }
 
 const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e) {
 	if (b == e) {
@@ -3371,7 +3491,7 @@ const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e
 
 void Compiler::error(ErrorType type, const char* message) { ScriptException::throwError(heap, type, message); }
 
-void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
+void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand, UInt32 sourceOffset) {
 	if (inDeadCode()) { // unknown stack depth = dead code
 		return;
 	}
@@ -3392,6 +3512,7 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 			case Processor::CONST_OP:
 			case Processor::VOID_OP: {
 				code.pop();
+				sourceOffsets.pop();
 				lastEmitted = Processor::INVALID_OP;
 				return;
 			}
@@ -3399,20 +3520,26 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand) {
 		}
 		if (replacementOpcode != Processor::INVALID_OP) {
 			const Int32 oldOperand = Processor::unpackInstruction(code.end()[-1]).second;
+			const UInt32 oldOffset = sourceOffsets[sourceOffsets.size() - 1];
 			code.pop();
+			sourceOffsets.pop();
 			code.push(Processor::packInstruction(replacementOpcode, oldOperand));
+			sourceOffsets.push(oldOffset);
 			lastEmitted = replacementOpcode;
 			return;
 		}
 	}
 	code.push(Processor::packInstruction(opcode, operand));
+	sourceOffsets.push(sourceOffset);
 	lastEmitted = opcode;
 }
+
 
 void Compiler::CodeSection::insertSection(const CodeSection& section) {
 	const Int32 stackAdjust = stackDepth - section.initialStackDepth;
 	lastEmitted = Processor::INVALID_OP;
 	code.insert(code.end(), section.code.begin(), section.code.end());
+	sourceOffsets.insert(sourceOffsets.end(), section.sourceOffsets.begin(), section.sourceOffsets.end());
 	stackDepth = section.stackDepth + stackAdjust;
 	maxStackDepth = std::max(maxStackDepth, section.maxStackDepth + stackAdjust);
 }
@@ -3421,7 +3548,17 @@ void Compiler::emit(Processor::Opcode opcode, Int32 operand) {
 	if (operand < MIN_OPERAND_VALUE || operand > MAX_OPERAND_VALUE) { // Highly hypothetical, but correctness!
 		error(RANGE_ERROR, "Internal compiler limitations reached. Reduce code complexity.");
 	}
-	currentSection->emit(opcode, operand);
+	UInt32 sourceOffset = 0;
+	if (scriptStart != 0 && p != 0) {
+		const Char* pos = p;
+		if (pos > scriptStart) {
+			--pos;
+		}
+		if (pos >= scriptStart) {
+			sourceOffset = static_cast<UInt32>(pos - scriptStart);
+		}
+	}
+	currentSection->emit(opcode, operand, sourceOffset);
 }
 
 Compiler::CodeSection* Compiler::changeSection(CodeSection* newOutputSection) {
@@ -3495,6 +3632,27 @@ static bool isLineTerminator(Char c) {
 
 static bool lineTerminatorInRange(const Char* b, const Char* e) {
 	return (std::find_first_of(b, e, LINE_TERMINATORS, LINE_TERMINATORS + 4) != e);
+}
+
+static void computeLineAndColumn(const String* source, UInt32 offset, int& line, int& column) {
+	line = 1;
+	column = 1;
+	if (source == 0) {
+		return;
+	}
+	const UInt32 length = source->size();
+	if (offset > length) {
+		offset = length;
+	}
+	const Char* const begin = source->begin();
+	const Char* const stop = begin + offset;
+	for (const Char* q = begin; q != stop; ++q) {
+		if (std::find(LINE_TERMINATORS, LINE_TERMINATORS + 3, *q) != LINE_TERMINATORS + 3) {
+			++line;
+			column = 0;
+		}
+		++column;
+	}
 }
 
 void Compiler::white() {
@@ -4228,10 +4386,12 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
 	Code* func = new(heap) Code(heap.managed(), code->constants);
+	func->setScriptSource(code->getScriptSource());
+	func->setSourceName(code->getSourceName());
 	#if (NUXJS_ES5)
 		func->strict = code->strict;
 	#endif
-	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
+	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter, scriptStart);
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
 	}
@@ -5084,11 +5244,14 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	emit(Processor::RETURN_OP);
 
 	assert(currentSection == &mainSection);
-	code->codeWords.resize(setupSection.code.size() + mainSection.code.size());
-	std::copy(setupSection.code.begin(), setupSection.code.end(), code->codeWords.begin());
-	std::copy(mainSection.code.begin(), mainSection.code.end(), code->codeWords.begin() + setupSection.code.size());
-	code->constants->shrink();
-	code->maxStackDepth = std::max(mainSection.maxStackDepth, setupSection.maxStackDepth);
+code->codeWords.resize(setupSection.code.size() + mainSection.code.size());
+std::copy(setupSection.code.begin(), setupSection.code.end(), code->codeWords.begin());
+std::copy(mainSection.code.begin(), mainSection.code.end(), code->codeWords.begin() + setupSection.code.size());
+code->sourceOffsets.resize(setupSection.sourceOffsets.size() + mainSection.sourceOffsets.size());
+std::copy(setupSection.sourceOffsets.begin(), setupSection.sourceOffsets.end(), code->sourceOffsets.begin());
+std::copy(mainSection.sourceOffsets.begin(), mainSection.sourceOffsets.end(), code->sourceOffsets.begin() + setupSection.sourceOffsets.size());
+code->constants->shrink();
+code->maxStackDepth = std::max(mainSection.maxStackDepth, setupSection.maxStackDepth);
 	
 	return p;
 }
@@ -5539,7 +5702,9 @@ static Value bind(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Objec
 			Heap& heap = rt.getHeap();
 			const String* source = argv[0].toString(heap);
 			Code* code = new(heap) Code(heap.managed());
-			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
+			code->setScriptSource(source);
+			code->setSourceName(&ANGLE_ANONYMOUS_STRING);
+			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION, 0, source->begin());
 			compiler.compileFunction(source->begin(), source->end()
 					, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING));
 			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
@@ -6051,7 +6216,7 @@ Var Runtime::eval(const String& expression) {
 
 #if (NUXJS_ES5)
 Code* Runtime::compileEvalCode(const String* expression, bool strict) {
-const Table::Bucket* bucket = (strict ? 0 : evalCodeCache.lookup(expression));
+	const Table::Bucket* bucket = (strict ? 0 : evalCodeCache.lookup(expression));
 #else
 Code* Runtime::compileEvalCode(const String* expression) {
 	const Table::Bucket* bucket = evalCodeCache.lookup(expression);
@@ -6063,22 +6228,26 @@ Code* Runtime::compileEvalCode(const String* expression) {
 	} else {
 		Code* code = new(heap) Code(heap.managed());
 #if (NUXJS_ES5)
-if (strict) { code->setStrict(true); }
+		if (strict) { code->setStrict(true); }
 #endif
-		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
+		code->setScriptSource(expression);
+		code->setSourceName(&ANGLE_EVAL_STRING);
+		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL, 0, expression->begin());
 		compiler.compile(*expression);
-	#if (NUXJS_ES5)
-if (!strict) { evalCodeCache.update(evalCodeCache.insert(expression), code); }
-	#else
+#if (NUXJS_ES5)
+		if (!strict) { evalCodeCache.update(evalCodeCache.insert(expression), code); }
+#else
 		evalCodeCache.update(evalCodeCache.insert(expression), code);
-	#endif
+#endif
 		return code;
 	}
 }
 
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
 	Code* code = new(heap) Code(heap.managed());
-	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
+	code->setScriptSource(&source);
+	code->setSourceName(filename != 0 ? filename : &ANGLE_ANONYMOUS_STRING);
+	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL, 0, source.begin());
 	try {
 		compiler.compile(source);
 	}
