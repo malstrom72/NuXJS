@@ -63,7 +63,20 @@ The following regression tests currently fail. Each item links the observed mism
 - [x] `parseInt0XPrefix.io` – `parseInt` must treat `0x`/`0X` prefixes as hexadecimal even when no radix is supplied. 【F:docs/specs/ECMA-262 5.1.md†L5719】
 - [x] `parseIntRadix16Uppercase.io` – Hexadecimal parsing is case-insensitive when the radix is 16. 【F:docs/specs/ECMA-262 5.1.md†L5719】
 - [ ] `numberConversionMania2.io` – The stress test still bottoms out at `199 985` matches because `ToNumber("9.82193523685991e-309")` lands on the next-lower subnormal `0x0.7100f166d2066p-1022`, while `Number#toString` formats the higher neighbour `0x0.7100f166d2067p-1022`. The gap is exactly `5e-324`, so the decimal is closer to the upper value and should round there, but the `scaleAndRound` slow path leaves `fraction == 0.5` after `ldexp(acc.low, t)` and declines to bump the payload. Reproduced at iteration 5165 of `tests/conforming/numberConversionMania2.io`. Investigate the tie-breaking branch in `scaleAndRound` for denormal exponents. 【035011†L1-L22】【0039ac†L1-L7】【F:src/NuXJS.cpp†L365-L399】
-- Investigation workflow: run the test in isolation with `./externals/PikaCmd/PikaCmd tools/test.pika -k dump ./tests/conforming/numberConversionMania2.io` so the generated harness stops after each failing iteration. While the repro loops, temporarily extend `tools/NuXJSREPL.cpp` with a debug-only intrinsic (not committed) that calls `std::memcpy(&bits, &value, sizeof bits)` and prints `printf("0x%016llx %a\n", bits, value)` to expose the mantissa. Calling that helper from JS as `__dumpBits(ToNumber(literal))` shows `0x07100f166d2066 0x0.7100f166d2066p-1022`, confirming the runtime rounds toward the lower neighbour even though formatting the literal with `String::fromDouble` prints `0x0.7100f166d2067p-1022`. The discrepant mantissas differ by exactly one ULP, matching the 5e-324 delta captured above.
+- Investigation workflow: run the test in isolation with `./externals/PikaCmd/PikaCmd tools/test.pika -k dump ./tests/conforming/numberConversionMania2.io` so the generated harness stops after each failing iteration. While the repro loops, temporarily extend `tools/NuXJSREPL.cpp` with a debug-only intrinsic (not committed) that calls `std::memcpy(&bits, &value, sizeof bits)` and prints `printf("0x%016llx %a\n", bits, value)` to expose the mantissa.
+
+ Example session once the intrinsic is registered:
+
+ ```text
+ // Captured at iteration 5165 where numberConversionMania2 diverges
+ __dumpBits(v);                 // → 0x07100f166d2067 0x0.7100f166d2067p-1022
+ v.toString();                  // → "9.82193523685991e-309"
+ parsed = +('' + v);
+ __dumpBits(parsed);            // → 0x07100f166d2066 0x0.7100f166d2066p-1022
+ parsed === v;                  // → false
+ ```
+
+ The `__dumpBits` output proves that `Number#toString` emits the decimal for the upper neighbour, yet `ToNumber` of that same decimal falls to the lower neighbour. The discrepant mantissas differ by exactly one ULP, matching the `5e-324` delta captured above.
 
 ## Regular expression exec semantics
 - [x] `regExpExecBooleanObject.io` – `RegExp.prototype.exec` coerces the argument with `ToString`, so Boolean objects must unwrap before matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
