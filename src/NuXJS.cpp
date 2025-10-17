@@ -38,10 +38,9 @@
 #error This code requires IEEE compliant floating point handling. Avoid -Ofast / -ffast-math etc (at least for this source file).
 #endif
 
-#include <stdint.h>
 #include "assert.h"
+#include <stdint.h>
 #include <cmath>
-#include <cstdlib>
 #include "NuXJS.h"
 #ifdef _MSC_VER
 #include <float.h>
@@ -516,9 +515,9 @@ static Char* doubleToString(Char buffer[32], const double value) {
 		assert(next >= normalized); // Correct behavior is to never reach higher than digit 9.
 
 		// Do we hit goal with digit or digit + 1? If so, is next digit >= 5 (magnitude / 2) then increment it.
-		reconstructed = static_cast<double>(accumulator) * factor;
+		reconstructed = scaleAndRound(accumulator, factor);
 		if (reconstructed != absValue) {
-			reconstructed = static_cast<double>(accumulator + magnitude) * factor;
+			reconstructed = scaleAndRound(accumulator + magnitude, factor);
 		}
 		if (reconstructed == absValue && accumulator + magnitude / 2 < normalized) {
 			++digit;
@@ -634,13 +633,8 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 static const Char* eatStringWhite(const Char* p, const Char* e) {
 	while (p != e) {
 		switch (*p) {
-			case ' ': case '\f': case '\n': case '\r': case '\t': case '\v':
-			case 0x00A0: case 0x1680: case 0x180E:
-			case 0x2000: case 0x2001: case 0x2002: case 0x2003: case 0x2004: case 0x2005: case 0x2006: case 0x2007: case 0x2008: case 0x2009: case 0x200A:
-			case 0x2028: case 0x2029: case 0x202F: case 0x205F: case 0x3000: case 0xFEFF:
-				break;
-			default:
-				return p;
+			case ' ': case '\f': case '\n': case '\r': case '\t': case '\v': case 0xA0: case 0x2028: case 0x2029: break;
+			default: return p;
 		}
 		++p;
 	}
