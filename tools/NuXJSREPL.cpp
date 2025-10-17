@@ -33,6 +33,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <ctime>
+#include <cstring>
+#include <iomanip>
 
 using namespace NuXJS;
 
@@ -166,23 +168,41 @@ struct PrintFunction : public Function {
 	}
 };
 
+struct DumpBitsFunction : public Function {
+	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+		const Value& argument = (argc >= 1 ? argv[0] : Value::UNDEFINED);
+		const double number = rt.toNumber(argument);
+		uint64_t bits;
+		std::memcpy(&bits, &number, sizeof(bits));
+
+		std::ostringstream stream;
+		stream << "0x" << std::hex << std::setfill('0') << std::setw(16)
+				<< static_cast<unsigned long long>(bits);
+		stream << ' ' << std::hexfloat << number;
+
+		Heap& heap = rt.getHeap();
+		const String* result = new(heap) String(heap.managed(), stream.str());
+		return Value(result);
+	}
+};
+
 struct GCFunction : public Function {
 	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
-	   Heap& heap = rt.getHeap();
-	   const UInt32 preCount = heap.count();
-	   const size_t preSize = heap.size();
-	   heap.gc();
-	   const UInt32 postCount = heap.count();
-	   const size_t postSize = heap.size();
-	   const size_t pooled = heap.pooled();
-	   heap.drain();
-	   JSObject* o = new(heap) JSObject(heap.managed(), rt.getObjectPrototype());
-	   o->setOwnProperty(rt, String::allocate(heap, "preCount"), preCount);
-	   o->setOwnProperty(rt, String::allocate(heap, "preSize"), static_cast<double>(preSize));
-	   o->setOwnProperty(rt, String::allocate(heap, "postCount"), postCount);
-	   o->setOwnProperty(rt, String::allocate(heap, "postSize"), static_cast<double>(postSize));
-	   o->setOwnProperty(rt, String::allocate(heap, "pooled"), static_cast<double>(pooled));
-	   return o;
+		Heap& heap = rt.getHeap();
+		const UInt32 preCount = heap.count();
+		const size_t preSize = heap.size();
+		heap.gc();
+		const UInt32 postCount = heap.count();
+		const size_t postSize = heap.size();
+		const size_t pooled = heap.pooled();
+		heap.drain();
+		JSObject* o = new(heap) JSObject(heap.managed(), rt.getObjectPrototype());
+		o->setOwnProperty(rt, String::allocate(heap, "preCount"), preCount);
+		o->setOwnProperty(rt, String::allocate(heap, "preSize"), static_cast<double>(preSize));
+		o->setOwnProperty(rt, String::allocate(heap, "postCount"), postCount);
+		o->setOwnProperty(rt, String::allocate(heap, "postSize"), static_cast<double>(postSize));
+		o->setOwnProperty(rt, String::allocate(heap, "pooled"), static_cast<double>(pooled));
+		return o;
 	}
 };
 
@@ -391,6 +411,7 @@ Var help(Runtime& rt, const Var& thisVar, const VarList& args) {
                         << L"  load(file)   - execute a UTF-8 JavaScript file" << std::endl
                         << L"  quit()       - exit the REPL" << std::endl
                         << L"  gc()         - run garbage collection" << std::endl
+                        << L"  __dumpBits(v)- return bit pattern and hexfloat for `Number(v)`" << std::endl
                         << L"  dasm(func)   - disassemble a compiled function" << std::endl
                         << L"Special commands:" << std::endl
                         << L"  #save [name] - save the current session" << std::endl
@@ -507,9 +528,11 @@ int testMain(int argc, const char* argv[]) {
 		globs["load"] = load;
 		globs["quit"] = quit;
 		globs["help"] = help;
-
+		
 		PrintFunction printFunction;
 		globals.setOwnProperty(rt, &PRINT_STRING, &printFunction, DONT_ENUM_FLAG);
+		DumpBitsFunction dumpBitsFunction;
+		globals.setOwnProperty(rt, String::allocate(heap, "__dumpBits"), &dumpBitsFunction, DONT_ENUM_FLAG);
 		GCFunction gcFunction;
 		const String GC_STRING("gc");
 		globals.setOwnProperty(rt, &GC_STRING, &gcFunction, DONT_ENUM_FLAG);
