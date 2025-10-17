@@ -42,7 +42,6 @@
 #include "assert.h"
 #include <cmath>
 #include <cstdlib>
-#include <algorithm>
 #include "NuXJS.h"
 #ifdef _MSC_VER
 #include <float.h>
@@ -629,47 +628,7 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 			value = scaleAndRound(accumulator, factor);
 		}
 	}
-		double signedValue = value * sign;
-		value = signedValue;
-		if (!std::isnan(signedValue) && !std::isinf(signedValue)) {
-			const Char* comparisonBegin = b;
-			size_t comparisonLength = static_cast<size_t>(numberEnd - b);
-			if (comparisonLength != 0 && *comparisonBegin == '+') {
-				++comparisonBegin;
-				--comparisonLength;
-			}
-			if (comparisonLength != 0) {
-				auto matchesOriginal = [&](double candidate) {
-					Char buffer[32];
-					Char* bufferEnd = doubleToString(buffer, candidate);
-					const size_t candidateLength = static_cast<size_t>(bufferEnd - buffer);
-					if (candidateLength != comparisonLength) {
-						return false;
-					}
-					for (size_t i = 0; i < candidateLength; ++i) {
-						Char expected = comparisonBegin[i];
-						if (expected == 'E') {
-							expected = 'e';
-						}
-						if (buffer[i] != expected) {
-							return false;
-						}
-					}
-					return true;
-				};
-				if (!matchesOriginal(signedValue)) {
-					const double up = std::nextafter(signedValue, std::numeric_limits<double>::infinity());
-					if (std::isfinite(up) && matchesOriginal(up)) {
-						value = up;
-					} else {
-						const double down = std::nextafter(signedValue, -std::numeric_limits<double>::infinity());
-						if (std::isfinite(down) && matchesOriginal(down)) {
-							value = down;
-						}
-					}
-				}
-			}
-		}
+	value *= sign;
 	return numberEnd;
 }
 static const Char* eatStringWhite(const Char* p, const Char* e) {
@@ -5857,60 +5816,60 @@ Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
 if (object == 0) {
 ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Object.seal called on non-object");
 }
-	if (object != 0) {
-	if (JSObject* o = object->toJSObject(rt)) {
-	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
-	b->flags |= DONT_DELETE_FLAG;
-	}
-	}
-	object->preventExtensions();
-	return object;
-	}
-	return UNDEFINED_VALUE;
-	}
+        if (object != 0) {
+        if (JSObject* o = object->toJSObject(rt)) {
+        for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+        b->flags |= DONT_DELETE_FLAG;
+        }
+        }
+        object->preventExtensions();
+        return object;
+        }
+        return UNDEFINED_VALUE;
+        }
 
-	static Value freeze(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
-	if (object == 0) {
-	ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Object.freeze called on non-object");
-	}
-	if (object != 0) {
-	if (JSObject* o = object->toJSObject(rt)) {
-	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
-	b->flags |= DONT_DELETE_FLAG | READ_ONLY_FLAG;
-	}
-	}
-	object->preventExtensions();
-	return object;
-	}
-	return UNDEFINED_VALUE;
-	}
+        static Value freeze(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+        Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+        if (object == 0) {
+        ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Object.freeze called on non-object");
+        }
+        if (object != 0) {
+        if (JSObject* o = object->toJSObject(rt)) {
+        for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+        b->flags |= DONT_DELETE_FLAG | READ_ONLY_FLAG;
+        }
+        }
+        object->preventExtensions();
+        return object;
+        }
+        return UNDEFINED_VALUE;
+        }
 
-	static Value isSealed(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
-	if (object == 0) return true;
-	if (object->isExtensible()) return false;
-	if (JSObject* o = object->toJSObject(rt)) {
-	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
-	if ((b->flags & DONT_DELETE_FLAG) == 0) return false;
-	}
-	}
-	return true;
-	}
+        static Value isSealed(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+        Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+        if (object == 0) return true;
+        if (object->isExtensible()) return false;
+        if (JSObject* o = object->toJSObject(rt)) {
+        for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+        if ((b->flags & DONT_DELETE_FLAG) == 0) return false;
+        }
+        }
+        return true;
+        }
 
-	static Value isFrozen(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-	Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
-	if (object == 0) return true;
-	if (object->isExtensible()) return false;
-	if (JSObject* o = object->toJSObject(rt)) {
-	for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
-	Flags f = b->flags;
-	if ((f & DONT_DELETE_FLAG) == 0) return false;
-	if ((f & ACCESSOR_FLAG) == 0 && (f & READ_ONLY_FLAG) == 0) return false;
-	}
-	}
-	return true;
-	}
+        static Value isFrozen(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+        Object* object = (argc >= 1 ? argv[0].toObjectOrNull(rt.getHeap(), false) : 0);
+        if (object == 0) return true;
+        if (object->isExtensible()) return false;
+        if (JSObject* o = object->toJSObject(rt)) {
+        for (Table::Bucket* b = o->getFirst(); b != 0; b = o->getNext(b)) {
+        Flags f = b->flags;
+        if ((f & DONT_DELETE_FLAG) == 0) return false;
+        if ((f & ACCESSOR_FLAG) == 0 && (f & READ_ONLY_FLAG) == 0) return false;
+        }
+        }
+        return true;
+        }
 #endif
 
 static Value hasOwnProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {

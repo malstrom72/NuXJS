@@ -524,7 +524,6 @@ defProps(String.prototype, { dontEnum: true }, {
 									break;
 								}
 								result += '$' + next;
-						}
 							}
 					} else {
 						result += ch;
@@ -1399,43 +1398,15 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 							if (n > maxBackReference) maxBackReference = n;
 							n = (n - 1) * 2;
 				// TODO: $match should take two additional optional params: start, end in match-string, thus eliminating need for substring here
-					quantity = parseQuantifier();
-					var stepSize = 'c' + (n + 1) + "-c" + n
-					, sliceCode = "$sub(s, c" + n + ",c" + (n + 1) + ")"
-					, backMatchCode = "$match(s,"
-					+ positionToCode(offset) + ',' + sliceCode + ')';
-					tail = compileTerms(0, junction);
-					var tailName = 't' + (++functionCounter);
-					addFunction(tailName, "return " + tail);
-					if (quantity) {
-						var helperIndex = ++functionCounter
-						, helperName = 'b' + helperIndex
-						, segmentVar = 'm' + helperIndex
-						, startVar = 's' + helperIndex
-						, minVar = 'n' + helperIndex
-						, maxVar = 'x' + helperIndex
-						, minExpr = startVar + (quantity.mini ? '+' + quantity.mini + "*h" : '')
-						, maxExpr = (quantity.maxi < $Infinity ? startVar + '+' + quantity.maxi + "*h" : 'l')
-						, tailCall = tailName + "(p)";
-						var functionBody = "var h=" + stepSize + ',' + segmentVar + '=' + sliceCode + ',' + startVar + "=p," + minVar + '=' + minExpr + ',' + maxVar + '=' + maxExpr + ';';
-						functionBody += "if(h<=0||h!==h)return " + tailCall + ';';
-						if (quantity.maxi < $Infinity) functionBody += "if(" + maxVar + ">l)" + maxVar + "=l;";
-						functionBody += "if(" + minVar + ">" + maxVar + ")return (p=" + startVar + ",false);";
-						if (quantity.greedy) {
-						functionBody += "while(p+h<=" + maxVar + "&&$match(s,p," + segmentVar + "))p+=h;";
-						functionBody += "if(p<" + minVar + ")return (p=" + startVar + ",false);";
-						functionBody += "do{if(" + tailCall + ")return true;p-=h;}while(p>=" + minVar + ");";
-						functionBody += "return (p=" + startVar + ",false);";
-						} else {
-						functionBody += "while(p<" + minVar + "){if(!$match(s,p," + segmentVar + "))return (p=" + startVar + ",false);p+=h;}";
-						functionBody += "if(p>" + maxVar + ")return (p=" + startVar + ",false);";
-						functionBody += "do{if(" + tailCall + ")return true;if(p+h>" + maxVar + "||!$match(s,p," + segmentVar + "))break;p+=h;}while(true);";
-						functionBody += "return (p=" + startVar + ",false);";
-						}
-						addFunction(helperName, functionBody);
-						return and(code, helperName + '(' + positionToCode(offset) + ')');
-					}
-					return and(code, '(c' + n + "<c" + (n + 1) + " ? " + and(backMatchCode, tailName + '(' + positionToCode(offset) + '+' + stepSize + ')') + " : " + tailName + '(' + positionToCode(offset) + "))");
+							quantity = parseQuantifier();
+							var stepSize = 'c' + (n + 1) + "-c" + n
+									, backMatchCode = "$match(s,"
+									+ positionToCode(offset) + ",$sub(s, c" + n + ",c" + (n + 1) + "))";
+							tail = compileTerms(0, junction);
+							var tailName = 't' + (++functionCounter);
+							addFunction(tailName, "return " + tail);
+							return quantity ? quantify(code, offset, backMatchCode, tailName + '(' + positionToCode(0) + ')', quantity, stepSize)
+									: and(code, '(c' + n + "<c" + (n + 1) + " ? " + and(backMatchCode, tailName + '(' + positionToCode(offset) + '+' + stepSize + ')') + " : " + tailName + '(' + positionToCode(offset) + "))");
 						} else if ((c = s[p]) === 'b' || c === 'B') {
 							++p;
 							code = and(code, (c === 'b' ? "!!((CC[s[" : "!((CC[s[") + positionToCode(offset - 1) + "]]^CC[s[" + positionToCode(offset) + "]])&" + WORD_CHAR + ')');
@@ -1567,11 +1538,12 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 var REG_EXP_FLAG_TO_PROPERTY = { 'g': "global", 'i': "ignoreCase", 'm': "multiline" }, regExpCache = { }, regExpPrototype;
 
 function execRegExp(re, string) {
-        var i;
-        if ((i = (re.global ? int(re.lastIndex) : 0)) >= 0) {
-                var f = $getInternalProperty(re, "value"), len = string.length, m;
-                for (; i <= len; ++i)
-                        if (m = f(string, i)) {
+	string = str(string);
+	var i;
+	if ((i = (re.global ? int(re.lastIndex) : 0)) >= 0) {
+		var f = $getInternalProperty(re, "value"), len = string.length, m;
+		for (; i <= len; ++i)
+			if (m = f(string, i)) {
 				if (re.global) re.lastIndex = m[1];
 				return m;
 			}
@@ -1580,13 +1552,12 @@ function execRegExp(re, string) {
 }
 
 function regExpExecMethod(re, string) {
-        string = str(string);
-        var m, a = null;
-        if (m = execRegExp(re, string)) {
-                (a = [ ]).input = string;
-                a.index = m[0];
-                for (var j = 0; j < m.length; j += 2)
-                        a[a.length] = ((m[j] === void 0) ? void 0 : $sub(string, m[j], m[j + 1]));
+	var m, a = null;
+	if (m = execRegExp(re, string)) {
+		(a = [ ]).input = string;
+		a.index = m[0];
+		for (var j = 0; j < m.length; j += 2)
+			a[a.length] = ((m[j] === void 0) ? void 0 : $sub(string, m[j], m[j + 1]));
 	}
 	return a;
 }
@@ -1676,7 +1647,7 @@ defProps(RegExp, { dontEnum: true, readOnly: true, dontDelete: true }, { prototy
 defProps(regExpPrototype, { dontEnum: true }, {
 constructor: RegExp,
 exec: unconstructable(function exec(string) { checkClass(this, "RegExp", "exec"); return regExpExecMethod(this, string); }),
-test: unconstructable(function test(string) { checkClass(this, "RegExp", "test"); string = str(string); return execRegExp(this, string) !== void 0; }),
+test: unconstructable(function test(string) { checkClass(this, "RegExp", "test"); return execRegExp(this, string) !== void 0; }),
 toString: unconstructable(function toString() {
 checkClass(this, "RegExp", "toString");
 return '/' + this.source + '/' + convertFlagsToText(this);
