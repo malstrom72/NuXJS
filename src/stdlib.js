@@ -524,7 +524,9 @@ defProps(String.prototype, { dontEnum: true }, {
 									break;
 								}
 								result += '$' + next;
+								break;
 							}
+						}
 					} else {
 						result += ch;
 					}
@@ -672,13 +674,14 @@ defProps(Array.prototype, { dontEnum: true }, {
                return element;
        }),
 	push: unconstructable(function push(item) {
-		var o = Object(this), argv = arguments, argc = argv.length, offset = uint32(o.length), end = offset + argc;
+		var o = Object(this), argv = arguments, argc = argv.length, offset = uint32(o.length), end = offset + argc,
+			isArray = ($getInternalProperty(o, "class") === "Array");
 		for (var i = 0; i < argc; ++i) o[offset + i] = argv[i];
-		o.length = end;
-		if (end > 4294967295) {
+		if (isArray && end > 4294967295) {
 			o.length = offset;
 			throw rangeError("Invalid array length");
 		}
+		o.length = end;
 		return end;
 	}),
 	reverse: unconstructable(function reverse() {
@@ -1398,18 +1401,19 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 							if (n > maxBackReference) maxBackReference = n;
 							n = (n - 1) * 2;
 				// TODO: $match should take two additional optional params: start, end in match-string, thus eliminating need for substring here
-							quantity = parseQuantifier();
+					quantity = parseQuantifier();
 							var stepSize = 'c' + (n + 1) + "-c" + n
-									, backMatchCode = "$match(s,"
-									+ positionToCode(offset) + ",$sub(s, c" + n + ",c" + (n + 1) + "))";
+									, backMatchCode = "$match(s," + positionToCode(quantity ? 0 : offset) + ",$sub(s, c" + n + ",c" + (n + 1) + "))";
 							tail = compileTerms(0, junction);
 							var tailName = 't' + (++functionCounter);
 							addFunction(tailName, "return " + tail);
 							return quantity ? quantify(code, offset, backMatchCode, tailName + '(' + positionToCode(0) + ')', quantity, stepSize)
-									: and(code, '(c' + n + "<c" + (n + 1) + " ? " + and(backMatchCode, tailName + '(' + positionToCode(offset) + '+' + stepSize + ')') + " : " + tailName + '(' + positionToCode(offset) + "))");
+									: and(code, '(c' + n + "<c" + (n + 1) + " ? " + and(backMatchCode, tailName + '(' + positionToCode(offset) + '+'
+									+ stepSize + ')') + " : " + tailName + '(' + positionToCode(offset) + "))");
 						} else if ((c = s[p]) === 'b' || c === 'B') {
 							++p;
-							code = and(code, (c === 'b' ? "!!((CC[s[" : "!((CC[s[") + positionToCode(offset - 1) + "]]^CC[s[" + positionToCode(offset) + "]])&" + WORD_CHAR + ')');
+							code = and(code, (c === 'b' ? "!!((CC[s[" : "!((CC[s[") + positionToCode(offset - 1) + "]]^CC[s[" + positionToCode(offset)
+									+ "]])&" + WORD_CHAR + ')');
 							break;
 						}
 						// fall-through
@@ -1552,6 +1556,7 @@ function execRegExp(re, string) {
 }
 
 function regExpExecMethod(re, string) {
+	string = str(string);
 	var m, a = null;
 	if (m = execRegExp(re, string)) {
 		(a = [ ]).input = string;

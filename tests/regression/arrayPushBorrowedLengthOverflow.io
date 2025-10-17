@@ -1,8 +1,8 @@
 > var target = { length: 0xFFFFFFFF, push: Array.prototype.push }
-> try { target.push("a", "b", "c"); print("push succeeded unexpectedly") } catch (e) { print(e.name) }
-< RangeError
+> print(target.push("a", "b", "c"))
+< 4294967298
 > print(target.length)
-< 4294967295
+< 4294967298
 > print(target[4294967295])
 < a
 > print(target[4294967296])

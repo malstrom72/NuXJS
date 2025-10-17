@@ -17,7 +17,7 @@ The following regression tests currently fail. Each item links the observed mism
 - [x] `arrayShiftNegativeLength.io` – `Array.prototype.shift` must use `ToUint32(length)` so negative lengths coerce to valid counters. 【F:docs/specs/ECMA-262 5.1.md†L6879-L6903】
 - [x] `arrayShiftPrototypeDelete.io` – `shift` must delete vacated indices so inherited values are revealed. 【F:docs/specs/ECMA-262 5.1.md†L6879-L6903】
 - [x] `arrayShiftPrototypeExposure.io` – Prototype elements must surface after shifting removes own entries. 【F:docs/specs/ECMA-262 5.1.md†L6879-L6903】
-- [x] `arrayPushBorrowedLengthOverflow.io` – `Array.prototype.push` must honour 32-bit length limits and throw once the array index space is exhausted. 【F:docs/specs/ECMA-262 5.1.md†L6817-L6832】【F:docs/specs/ECMA-262 5.1.md†L7496-L7544】
+- [x] `arrayPushBorrowedLengthOverflow.io` – Borrowed `Array.prototype.push` calls operate on ordinary objects, so they continue appending elements and report the new numeric length even when it crosses 2^32−1; only true Arrays trigger the RangeError cap. 【F:docs/specs/ECMA-262 5.1.md†L6817-L6832】【F:docs/specs/ECMA-262 5.1.md†L7496-L7544】
 - [x] `validArrayLengths.io` – Assigning `length` must apply `ToUint32`, rejecting non-integer values and enforcing range checks. 【F:docs/specs/ECMA-262 5.1.md†L7509-L7534】
 - [x] `variousInvalidArrayIndices.io` – Only canonical array index strings below 2^32−1 affect length; other keys stay as ordinary properties. 【F:docs/specs/ECMA-262 5.1.md†L7536-L7544】
 
@@ -62,16 +62,17 @@ The following regression tests currently fail. Each item links the observed mism
 ## Numeric parsing
 - [x] `parseInt0XPrefix.io` – `parseInt` must treat `0x`/`0X` prefixes as hexadecimal even when no radix is supplied. 【F:docs/specs/ECMA-262 5.1.md†L5719】
 - [x] `parseIntRadix16Uppercase.io` – Hexadecimal parsing is case-insensitive when the radix is 16. 【F:docs/specs/ECMA-262 5.1.md†L5719】
+- [x] `numberConversionMania2.io` – Restoring the main-branch floating-point helpers brings `scaleAndRound` back in line with ES5.1 round-to-nearest-even semantics, so `ToNumber("9.82193523685991e-309")` and `Number#toString` now agree and the stress test completes. 【F:docs/specs/ECMA-262 5.1.md†L2204-L2238】【F:src/NuXJS.cpp†L365-L399】
 
 ## Regular expression exec semantics
-- [ ] `regExpExecBooleanObject.io` – `RegExp.prototype.exec` coerces the argument with `ToString`, so Boolean objects must unwrap before matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
-- [ ] `regExpExecNestedCaptures.io` – The exec result array must include nested captures per the matching algorithm. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
-- [ ] `regExpExecNumberObject.io` – Number objects must be stringified before matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
-- [ ] `regExpExecObjectString.io` – Objects providing `toString` must be coerced to strings for the search. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
-- [ ] `regExpExecToStringFalse.io` – Custom `toString` return values need to drive the input string for matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
-- [ ] `regExpExecToStringObject.io` – Exec must use the string returned by `toString`, not `[object Object]`. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
-- [ ] `regExpExecToStringPi.io` – Numbers produced by `toString` must be matched verbatim. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
-- [ ] `regExpExecValueOfObject.io` – If `toString` returns a non-string, `valueOf` provides the fallback string for matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecBooleanObject.io` – `RegExp.prototype.exec` coerces the argument with `ToString`, so Boolean objects must unwrap before matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecNestedCaptures.io` – The exec result array must include nested captures per the matching algorithm. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecNumberObject.io` – Number objects must be stringified before matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecObjectString.io` – Objects providing `toString` must be coerced to strings for the search. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecToStringFalse.io` – Custom `toString` return values need to drive the input string for matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecToStringObject.io` – Exec must use the string returned by `toString`, not `[object Object]`. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecToStringPi.io` – Numbers produced by `toString` must be matched verbatim. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
+- [x] `regExpExecValueOfObject.io` – If `toString` returns a non-string, `valueOf` provides the fallback string for matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
 
 ## String replacement placeholders
 - [x] `stringReplace11Concat.io` – Replacement text must honour `$n` and related substitution patterns. 【F:docs/specs/ECMA-262 5.1.md†L7830-L7853】

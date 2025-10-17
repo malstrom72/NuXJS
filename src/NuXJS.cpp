@@ -38,10 +38,9 @@
 #error This code requires IEEE compliant floating point handling. Avoid -Ofast / -ffast-math etc (at least for this source file).
 #endif
 
-#include <stdint.h>
 #include "assert.h"
+#include <stdint.h>
 #include <cmath>
-#include <cstdlib>
 #include "NuXJS.h"
 #ifdef _MSC_VER
 #include <float.h>
@@ -516,9 +515,9 @@ static Char* doubleToString(Char buffer[32], const double value) {
 		assert(next >= normalized); // Correct behavior is to never reach higher than digit 9.
 
 		// Do we hit goal with digit or digit + 1? If so, is next digit >= 5 (magnitude / 2) then increment it.
-		reconstructed = static_cast<double>(accumulator) * factor;
+		reconstructed = scaleAndRound(accumulator, factor);
 		if (reconstructed != absValue) {
-			reconstructed = static_cast<double>(accumulator + magnitude) * factor;
+			reconstructed = scaleAndRound(accumulator + magnitude, factor);
 		}
 		if (reconstructed == absValue && accumulator + magnitude / 2 < normalized) {
 			++digit;
@@ -2786,10 +2785,13 @@ void Processor::addStackTrace(const Value& exception) const {
 					appendString(buffer, functionName);
 					appendASCII(buffer, " (");
 				}
-				const String* scriptName = code->getSourceName();
-				if (scriptName == 0 || scriptName->empty()) {
-					scriptName = &ANGLE_ANONYMOUS_STRING;
-				}
+const String* scriptName = code->getSourceName();
+if (frameWalker->previousFrame == 0 && scriptName != 0 && scriptName->isEqualTo(ANGLE_EVAL_STRING)) {
+scriptName = &ANGLE_ANONYMOUS_STRING;
+}
+if (scriptName == 0 || scriptName->empty()) {
+scriptName = &ANGLE_ANONYMOUS_STRING;
+}
 				appendString(buffer, scriptName);
 
 				const Vector<UInt32>& sourceOffsets = code->getSourceOffsets();
