@@ -524,7 +524,9 @@ defProps(String.prototype, { dontEnum: true }, {
 									break;
 								}
 								result += '$' + next;
+								break;
 							}
+						}
 					} else {
 						result += ch;
 					}

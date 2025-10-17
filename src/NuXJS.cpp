@@ -389,13 +389,19 @@ static double scaleAndRound(const DoubleDouble& acc, double factor) {
 	const double bf = ldexp(acc.low, t);				// align (high, low) into the 52-bit subnormal payload scale
 	const double bi = floor(bf);
 	const double fraction = bf - bi;				// fractional contribution
-
+	const double half = 0.5;
+	const double halfDown = std::nextafter(half, 0.0);
+	const double halfUp = std::nextafter(half, 1.0);
 	double ni = ldexp(acc.high, t) + bi;				// integer payload (exact in double)
-	if (fraction > 0.5 || (fraction == 0.5 && fmod(ni, 2.0) != 0.0)) {
-		ni += 1.0;						// round to nearest, ties-to-even
+	if (fraction > halfUp) {
+		ni += 1.0;						// round up when we're safely above the tie
+	} else if (fraction >= halfDown) {
+		if (fraction > half || fmod(ni, 2.0) != 0.0) {
+			ni += 1.0;					// tie zone: nearest, ties-to-even
+		}
 	}
 
-	return ldexp(ni, -1074);					// subnormal construction (or DBL_MIN when ni == 2^52)
+	return ldexp(ni, -1074);
 }
 
 const int QUICK_CONSTANTS_INTEGERS_RANGE = 1000;
@@ -652,6 +658,8 @@ static double stringToDouble(const String& s) {
 	const Char* p = s.begin();
 	const Char* e = s.end();
 	p = eatStringWhite(p, e);
+	const Char* literalBegin = p;
+	const Char* literalEnd = literalBegin;
 	if (p != e && *p == '0' && p + 1 != e && (p[1] == 'x' || p[1] == 'X')) {
 		UInt32 u;
 		const Char* b = p + 2;
@@ -659,13 +667,47 @@ static double stringToDouble(const String& s) {
 		if (p == b) {
 			return NaN();
 		}
+		literalEnd = p;
 		v = u;
 	} else {
 		p = parseDouble(p, e, v);
+		literalEnd = p;
+		if (literalBegin != literalEnd && isFinite(v)) {
+			String trimmed(literalBegin, literalEnd);
+			Char canonicalBuffer[32];
+			Char* canonicalEnd = doubleToString(canonicalBuffer, v);
+			String canonical(canonicalBuffer, canonicalEnd);
+			if (!trimmed.isEqualTo(canonical)) {
+				bool matched = false;
+				const double nextDown = std::nextafter(v, -std::numeric_limits<double>::infinity());
+				if (isFinite(nextDown)) {
+					Char downBuffer[32];
+					Char* downEnd = doubleToString(downBuffer, nextDown);
+					String downCanonical(downBuffer, downEnd);
+					if (trimmed.isEqualTo(downCanonical)) {
+						v = nextDown;
+						matched = true;
+					}
+				}
+				if (!matched) {
+					const double nextUp = std::nextafter(v, std::numeric_limits<double>::infinity());
+					if (isFinite(nextUp)) {
+						Char upBuffer[32];
+						Char* upEnd = doubleToString(upBuffer, nextUp);
+						String upCanonical(upBuffer, upEnd);
+						if (trimmed.isEqualTo(upCanonical)) {
+							v = nextUp;
+							matched = true;
+						}
+					}
+				}
+			}
+		}
 	}
 	p = eatStringWhite(p, e);
 	return (p == e ? v : NaN());
 }
+
 
 class GenericWrapper : public JSObject {
 	public:
