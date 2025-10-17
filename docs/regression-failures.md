@@ -62,7 +62,7 @@ The following regression tests currently fail. Each item links the observed mism
 ## Numeric parsing
 - [x] `parseInt0XPrefix.io` – `parseInt` must treat `0x`/`0X` prefixes as hexadecimal even when no radix is supplied. 【F:docs/specs/ECMA-262 5.1.md†L5719】
 - [x] `parseIntRadix16Uppercase.io` – Hexadecimal parsing is case-insensitive when the radix is 16. 【F:docs/specs/ECMA-262 5.1.md†L5719】
-- [x] `numberConversionMania2.io` – `ToNumber` now rounds decimal strings to the nearest IEEE-754 double by guarding the denormal path in `scaleAndRound` and retrying adjacent neighbours when the formatted literal disagrees, so converting through `Number` preserves the shortest `toString` form. 【F:docs/specs/ECMA-262 5.1.md†L2236-L2244】【F:docs/specs/ECMA-262 5.1.md†L3132-L3135】
+- [ ] `numberConversionMania2.io` – `ToNumber("9.82193523685991e-309")` produces `9.821935236859908e-309`, one ULP below the source string that `Number#toString` emits for the same value, so the 200 000-round-trip stress test only counts 199 985 matches. The mismatch stems from the subnormal rounding step in `scaleAndRound`, which still double-rounds certain mantissas after the denormal fast-path hands off to the slow path. 【F:docs/specs/ECMA-262 5.1.md†L2236-L2244】【F:docs/specs/ECMA-262 5.1.md†L3132-L3135】
 
 ## Regular expression exec semantics
 - [x] `regExpExecBooleanObject.io` – `RegExp.prototype.exec` coerces the argument with `ToString`, so Boolean objects must unwrap before matching. 【F:docs/specs/ECMA-262 5.1.md†L10867-L10905】
