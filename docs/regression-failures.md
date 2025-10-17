@@ -17,7 +17,7 @@ The following regression tests currently fail. Each item links the observed mism
 - [x] `arrayShiftNegativeLength.io` – `Array.prototype.shift` must use `ToUint32(length)` so negative lengths coerce to valid counters. 【F:docs/specs/ECMA-262 5.1.md†L6879-L6903】
 - [x] `arrayShiftPrototypeDelete.io` – `shift` must delete vacated indices so inherited values are revealed. 【F:docs/specs/ECMA-262 5.1.md†L6879-L6903】
 - [x] `arrayShiftPrototypeExposure.io` – Prototype elements must surface after shifting removes own entries. 【F:docs/specs/ECMA-262 5.1.md†L6879-L6903】
-- [x] `arrayPushBorrowedLengthOverflow.io` – `Array.prototype.push` must honour 32-bit length limits and throw once the array index space is exhausted. 【F:docs/specs/ECMA-262 5.1.md†L6817-L6832】【F:docs/specs/ECMA-262 5.1.md†L7496-L7544】
+- [x] `arrayPushBorrowedLengthOverflow.io` – Borrowed `Array.prototype.push` calls operate on ordinary objects, so they continue appending elements and report the new numeric length even when it crosses 2^32−1; only true Arrays trigger the RangeError cap. 【F:docs/specs/ECMA-262 5.1.md†L6817-L6832】【F:docs/specs/ECMA-262 5.1.md†L7496-L7544】
 - [x] `validArrayLengths.io` – Assigning `length` must apply `ToUint32`, rejecting non-integer values and enforcing range checks. 【F:docs/specs/ECMA-262 5.1.md†L7509-L7534】
 - [x] `variousInvalidArrayIndices.io` – Only canonical array index strings below 2^32−1 affect length; other keys stay as ordinary properties. 【F:docs/specs/ECMA-262 5.1.md†L7536-L7544】
 

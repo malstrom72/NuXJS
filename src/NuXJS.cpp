@@ -2785,10 +2785,13 @@ void Processor::addStackTrace(const Value& exception) const {
 					appendString(buffer, functionName);
 					appendASCII(buffer, " (");
 				}
-				const String* scriptName = code->getSourceName();
-				if (scriptName == 0 || scriptName->empty()) {
-					scriptName = &ANGLE_ANONYMOUS_STRING;
-				}
+const String* scriptName = code->getSourceName();
+if (frameWalker->previousFrame == 0 && scriptName != 0 && scriptName->isEqualTo(ANGLE_EVAL_STRING)) {
+scriptName = &ANGLE_ANONYMOUS_STRING;
+}
+if (scriptName == 0 || scriptName->empty()) {
+scriptName = &ANGLE_ANONYMOUS_STRING;
+}
 				appendString(buffer, scriptName);
 
 				const Vector<UInt32>& sourceOffsets = code->getSourceOffsets();
