@@ -90,21 +90,6 @@ semantics and a different harness, so it would mark out-of-scope features as fai
 In addition, the build script performs regression tests written in C++ and JavaScript (over 4500 source code files with
 various tests at the moment).
 
-## ES3 vs ES5.1 Builds
-
-This branch layers an ES5.1 feature set on top of the stable ES3 core.
-
-`build.sh` and `build.cmd` accept an optional first argument selecting the ECMAScript variant:
-
-- `es5` – build and test with ES5.1 features enabled.
-- `es3` – disable ES5.1 features and tests.
-- `both` (default) – run the full suite for both ES3 and ES5.1.
-
-A second argument may specify the model (e.g. architecture); it defaults to `native` on Unix and `x64` on Windows.
-
-See `docs/ES5.1 Roadmap.md` for current coverage, open items, and semantic notes (e.g. `Function.prototype.bind`, strict mode,
-accessors, and `Object.create`/`Object.defineProperties`).
-
 ## Example
 
 Here’s a minimal example of embedding NuXJS using the high-level API:
@@ -132,12 +117,8 @@ int main(int argc, const char* argv[]) {
 ## Documentation
 
 - [NuXJS Documentation](docs/NuXJS%20Documentation.md)
-- [Standard Library Guidelines](docs/Standard%20Library%20Guidelines.md)
-- [stdlib.js Authoring Guide](docs/stdlib.js%20Authoring%20Guide.md)
 - [ECMAScript Compatibility Notes](docs/notes/ECMAScript%20Compatibility%20Notes.md)
 - [TypeScript Compatibility](docs/notes/TypeScript%20Compatibility.md)
-- [ES5.1 Implementation Roadmap](docs/ES5.1%20Roadmap.md)
-- [Test262 Dashboard](docs/Test262%20Dashboard.md)
 
 ## Building the fuzz target
 

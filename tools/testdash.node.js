@@ -33,6 +33,33 @@ const TEST_ARGS_BASE = [
 	"--command=" + (process.platform === "win32" ? '"' + path.resolve(ENGINE) + '"' : ENGINE) + " -s",
 ];
 
+// Simple arg helpers to support both "--name value" and "--name=value"
+function findArg(name) {
+	const eq = "--" + name + "=";
+	for (let i = 0; i < process.argv.length; i++) {
+		const a = process.argv[i];
+		if (a === "--" + name) return { type: "separate", index: i };
+		if (a.indexOf(eq) === 0) return { type: "equals", value: a.substr(eq.length) };
+	}
+	return null;
+}
+function getBool(name) {
+	const hit = findArg(name);
+	if (!hit) return false;
+	if (hit.type === "equals") {
+		const v = hit.value.trim().toLowerCase();
+		return v === "1" || v === "true" || v === "yes";
+	}
+	return true;
+}
+function getInt(name, def) {
+	const hit = findArg(name);
+	if (!hit) return def;
+	const raw = hit.type === "separate" ? process.argv[hit.index + 1] : hit.value;
+	const n = parseInt(raw, 10);
+	return isFinite(n) ? n : def;
+}
+
 // Resolve a Python 2 interpreter robustly:
 // 1) Respect NUXJS_PYTHON2 if provided
 // 2) Prefer the repo's portable env created by tools/setupPython2.*
@@ -95,55 +122,107 @@ function extend(target, obj) {
 
 var runningTest = false;
 var currentTest = undefined;
-function runTests(callback, limit) {
+function listSubdirs(relRoot) {
+	const abs = path.join(TEST_PATH, "test", relRoot);
+	try {
+		const entries = fs.readdirSync(abs, { withFileTypes: true });
+		return entries
+			.filter((e) => e.isDirectory())
+			.map((e) => path.join(relRoot, e.name));
+	} catch (e) {
+		// Fallback if the path doesn't exist on a given snapshot
+		return [];
+	}
+}
+
+function buildWorkList(limit) {
+	// Keep the small, fast subset for quick limit runs
+	if (limit) return [path.join("language", "arguments")];
+	// Fan out across first-level subdirectories for better parallelism
+	let work = [];
+	["language", "built-ins"].forEach((root) => {
+		const subs = listSubdirs(root);
+		if (subs.length) work = work.concat(subs);
+		else work.push(root); // fallback to root if no subdirs found
+	});
+	return work;
+}
+
+function runTests(callback, limit, jobs) {
 	runningTest = true;
 	currentTest = undefined;
 	console.log("Running tests");
-	var captureMode = false;
 	var count = 0;
-	const dirArg = limit ? path.join("language", "arguments") : ".";
-	var args = TEST_ARGS_BASE.concat([dirArg]);
-	var child = child_process.spawn(PY2, args);
-	var rl = readline
-		.createInterface({
-			input: child.stdout,
-		})
-		.on("line", (line) => {
-			if (captureMode) {
-				if (line.substr(-3) === "===") {
-					line = line.slice(0, -3);
-					captureMode = false;
-				}
-				currentTest.output += line + "\n";
-			} else {
-				var m = line.match(/(=== )?(\S+) (.+?)( ===)?$/);
-				if (m) {
-					var testName = m[2];
-					// Normalize to forward slashes so keys match tools/testdash.json across platforms
-					testName = testName.replace(/\\/g, "/");
-					var passed = interpretResult(m[3]);
-					tests[testName] = extend({ name: testName, passed: passed, output: "" }, config[testName]);
-					currentTest = tests[testName];
-					captureMode = m[4] === " ===";
-					count++;
-					if (limit && count >= limit) child.kill("SIGKILL");
-				} else if (line) {
-					// Handle runner messages gracefully (e.g., "Error: No tests to run")
-					if (/^Error:\s+No tests to run/i.test(line)) {
-						console.error(line);
-						return;
-					}
-					console.warn("Unknown output: " + line);
-				}
-			}
-			// console.log("> ", line);
-		})
-		.on("close", () => {
+	const dirArgs = buildWorkList(limit);
+	jobs = Math.max(1, jobs | 0);
+
+	const chunks = [];
+	for (let i = 0; i < jobs; i++) chunks[i] = [];
+	for (let i = 0; i < dirArgs.length; i++) chunks[i % jobs].push(dirArgs[i]);
+
+	const children = [];
+	const captureMode = [];
+	const currentTests = [];
+	let remaining = chunks.filter((c) => c.length > 0).length;
+	console.log("starting " + remaining + " jobs");
+
+	function onClose() {
+		if (--remaining === 0) {
 			console.log("Completed");
 			runningTest = false;
 			if (callback) callback();
-			// console.log(tests);
+		}
+	}
+
+	chunks.forEach((chunk, idx) => {
+		if (chunk.length === 0) return;
+		var args = TEST_ARGS_BASE.concat(chunk);
+		var child = child_process.spawn(PY2, args);
+		children.push(child);
+		captureMode[idx] = false;
+		currentTests[idx] = undefined;
+		child.stderr && child.stderr.on("data", (d) => {
+			const s = d.toString();
+			if (s.trim()) console.error("[worker " + idx + "] STDERR: " + s.trim());
 		});
+		child.on("error", (e) => {
+			console.error("Child process error [" + idx + "]: " + e.message);
+		});
+		readline
+			.createInterface({
+				input: child.stdout,
+			})
+			.on("line", (line) => {
+				// Some chunks may legitimately contain no tests; ignore such notices early
+				if (/^\s*(?:Error:\s+)?No tests to run\b/i.test(line)) {
+					console.warn("[worker " + idx + "] " + line.trim());
+					return;
+				}
+				if (captureMode[idx]) {
+					if (line.substr(-3) === "===") {
+						line = line.slice(0, -3);
+						captureMode[idx] = false;
+					}
+					currentTests[idx].output += line + "\n";
+				} else {
+					var m = line.match(/(=== )?(\S+) (.+?)( ===)?$/);
+					if (m) {
+						var testName = m[2];
+						testName = testName.replace(/\\/g, "/");
+						var passed = interpretResult(m[3]);
+						tests[testName] = extend({ name: testName, passed: passed, output: "" }, config[testName]);
+						currentTest = currentTests[idx] = tests[testName];
+						captureMode[idx] = m[4] === " ===";
+						count++;
+						if (count % 100 === 0) console.log("... " + count + " tests run");
+						if (limit && count >= limit) children.forEach((c) => c.kill("SIGKILL"));
+					} else if (line) {
+						console.warn("Unknown output: " + line);
+					}
+				}
+			})
+			.on("close", onClose);
+	});
 }
 
 var server = http.createServer(function (req, res) {
@@ -160,7 +239,7 @@ var server = http.createServer(function (req, res) {
 				if (runningTest) output = { mode: "running", currentTest: currentTest };
 				else output = { mode: "report", tests: tests };
 			} else if (method === "runTests") {
-				if (!runningTest) runTests(undefined, maxTests);
+				if (!runningTest) runTests(undefined, maxTests, jobs);
 				output = { ok: true };
 			} else if (method === "setCategory") {
 				var testName = u.query.test;
@@ -195,61 +274,70 @@ var server = http.createServer(function (req, res) {
 
 loadConfig();
 
-var cliMode = process.argv.indexOf("--cli") !== -1;
-var limitIndex = process.argv.indexOf("--limit");
-var maxTests = limitIndex !== -1 ? parseInt(process.argv[limitIndex + 1]) : undefined;
-var includeIgnored = process.argv.indexOf("--include-ignored") !== -1;
-var resetPassed = process.argv.indexOf("--reset-passed") !== -1; // implies include-ignored
+var cliMode = getBool("cli");
+var maxTests = getInt("limit", undefined);
+var jobs = getInt("jobs", 1);
+var includeIgnored = getBool("include-ignored");
+var resetPassed = getBool("reset-passed"); // implies include-ignored
 if (resetPassed) includeIgnored = true;
 
 if (cliMode) {
-	runTests(() => {
-		var totals = { total: 0, passed: 0, failed: 0, ignored: 0 };
-		var ignored = {};
-		for (var testName in tests) {
-			if (tests.hasOwnProperty(testName)) {
-				var t = tests[testName];
-				totals.total++;
-				if (!includeIgnored && CATEGORIES_TO_IGNORE[t.category]) {
-					totals.ignored++;
-					ignored[t.category] = (ignored[t.category] || 0) + 1;
-				} else if (t.passed) {
-					totals.passed++;
-				} else {
-					totals.failed++;
-					console.log("FAIL " + testName);
-				}
-			}
-		}
-
-		// Optionally clear categories for passing tests (no changes for failures)
-		if (resetPassed) {
-			var changed = 0;
+	runTests(
+		() => {
+			var totals = { total: 0, passed: 0, failed: 0, ignored: 0 };
+			var ignored = {};
 			for (var testName in tests) {
 				if (tests.hasOwnProperty(testName)) {
 					var t = tests[testName];
-					if (t.passed && config[testName] && config[testName].category) {
-						delete config[testName].category;
-						if (Object.keys(config[testName]).length === 0) delete config[testName];
-						changed++;
+					totals.total++;
+					if (!includeIgnored && CATEGORIES_TO_IGNORE[t.category]) {
+						totals.ignored++;
+						ignored[t.category] = (ignored[t.category] || 0) + 1;
+					} else if (t.passed) {
+						totals.passed++;
+					} else {
+						totals.failed++;
+						console.log(testName);
+						console.log("source");
+						console.log("--- output ---");
+						process.stdout.write(t.output);
+						if (t.output.substr(-1) !== "\n") console.log();
+						console.log();
 					}
 				}
 			}
-			if (changed) {
-				saveConfig();
-				console.log("Reset categories on " + changed + " passing test(s).");
-			} else console.log("No categories to reset.");
-		}
 
-		console.log("Total: " + totals.total);
-		console.log("  Passed: " + totals.passed);
-		console.log("  Failed: " + totals.failed);
-		console.log("  Ignored: " + totals.ignored);
-		for (var c in ignored) {
-			console.log("	 " + (CATEGORY_LABELS[c] || c) + ": " + ignored[c]);
-		}
-		process.exit(totals.failed);
-	}, maxTests);
+			// Optionally clear categories for passing tests (no changes for failures)
+			if (resetPassed) {
+				var changed = 0;
+				for (var testName in tests) {
+					if (tests.hasOwnProperty(testName)) {
+						var t = tests[testName];
+						if (t.passed && config[testName] && config[testName].category) {
+							delete config[testName].category;
+							if (Object.keys(config[testName]).length === 0) delete config[testName];
+							changed++;
+						}
+					}
+				}
+				if (changed) {
+					saveConfig();
+					console.log("Reset categories on " + changed + " passing test(s).");
+				} else console.log("No categories to reset.");
+			}
+
+			console.log("Total: " + totals.total);
+			console.log("  Passed: " + totals.passed);
+			console.log("  Failed: " + totals.failed);
+			console.log("  Ignored: " + totals.ignored);
+			for (var c in ignored) {
+				console.log("	 " + (CATEGORY_LABELS[c] || c) + ": " + ignored[c]);
+			}
+			process.exit(totals.failed);
+		},
+		maxTests,
+		jobs,
+	);
 } else {
 	server.listen(12345, () => {
 		const address = server.address();
@@ -276,5 +364,5 @@ if (cliMode) {
 			console.warn("Failed to open browser: " + e.message);
 		}
 	});
-	runTests(undefined, maxTests);
+	runTests(undefined, maxTests, jobs);
 }

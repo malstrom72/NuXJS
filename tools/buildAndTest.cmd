@@ -7,27 +7,31 @@ SET target=%~1
 SET model=%~2
 IF "%target%"=="" SET target=debug
 IF "%model%"=="" SET model=x64
-IF "%CPP_OPTIONS%"=="" SET CPP_OPTIONS=/FS
+SET CPP_OPTIONS=/FS
 
-REM Build PikaCmd and update stdlibJS.cpp
-PUSHD ..\externals\PikaCmd
+CD ..\externals\PikaCmd
 CALL .\BuildPikaCmd.cmd || GOTO error
-POPD
+CD ..\..\tools
 ..\externals\PikaCmd\PikaCmd.exe .\stdlibToCpp.pika ..\src\stdlib.js ..\src\stdlibJS.cpp || GOTO error
+IF "%target%"=="release" SET CPP_OPTIONS=/GR- %CPP_OPTIONS%
+MKDIR ..\output >NUL 2>&1
+CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJSTest_%target%_%model%.exe .\NuXJSTest.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
+..\output\NuXJSTest_%target%_%model% -s >NUL 2>&1 || GOTO error
+..\output\NuXJSTest_%target%_%model% || GOTO error
+CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJS_%target%_%model%.exe .\NuXJSREPL.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
+..\externals\PikaCmd\PikaCmd.exe .\test.pika -e -x "..\output\NuXJS_%target%_%model% -s --legacy-exceptions" ..\tests\ || GOTO error
 
-REM Optional dual-variant test mode
-IF "%NUXJS_TEST_ES5_VARIANTS%"=="1" (
-	IF /I "%target%"=="release" IF "%NUXJS_SKIP_RELEASE%"=="1" (
-		ECHO Skipping release per NUXJS_SKIP_RELEASE=1
-		POPD
-		EXIT /b 0
-	)
-	FOR %%E IN (0 1) DO (
-		ECHO Building and testing with NUXJS_ES5=%%E (%target% %model%)
-		CALL .\buildAndTestOne.cmd %target% %model% %%E || GOTO error
-	)
-) ELSE (
-	CALL .\buildAndTestOne.cmd %target% %model% || GOTO error
+IF NOT EXIST ..\output\examples MKDIR ..\output\examples
+SET "examplesExe=..\output\examples\examples.exe"
+
+ECHO Building examples
+CALL .\BuildCpp.cmd %target% "%examplesExe%" ..\docs\examples\examples.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
+
+ECHO Running examples
+%examplesExe% > ..\output\examples\all.log 2>&1 || GOTO error
+
+IF EXIST ..\docs\examples\expected_examples.txt (
+	FC ..\docs\examples\expected_examples.txt ..\output\examples\all.log || GOTO error
 )
 
 ECHO Success!

@@ -1,20 +1,23 @@
-// NuXJS now follows the ES5.1 semantics for Array#length assignments and consults
-// user-defined `valueOf` hooks when the new length comes from an object.
+// NuXJS keeps Array#length side-effect free by bypassing user-defined valueOf hooks.
+// Assigning objects therefore triggers the RangeError guard instead of consulting valueOf.
 > var invokeLengthValueOf = false;
 > var a = [];
 > var first = { valueOf: function() { invokeLengthValueOf = true; return 23; } };
-> a.length = first;
+> a.length = first
+! !!!! RangeError: Invalid array length
+-
 > print(invokeLengthValueOf)
-< true
-> print(a.length)
-< 23
+< false
 -
 > var invokeBracketValueOf = false;
 > var second = { valueOf: function() { invokeBracketValueOf = true; return 47; } };
 > var key = 'length';
-> a[key] = second;
+> a[key] = second
+! !!!! RangeError: Invalid array length
+-
 > print(invokeBracketValueOf)
-< true
+< false
+-
 > print(a.length)
-< 47
+< 0
 -
