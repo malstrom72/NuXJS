@@ -7,6 +7,6 @@
 /externals/test262-master
 /externals/._test262-master
 /temp
-*.pdb
-/corpus
 /.vscode
+/corpus
+*.pdb
