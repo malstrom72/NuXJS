@@ -7,7 +7,7 @@
 	@preserve: getDate,getDay,getFullYear,getHours,getInternalProperty,getMilliseconds,getMinutes,getMonth
 	@preserve: getPrototypeOf,getSeconds,getTime,getTimezoneOffset,getUTCDate,getUTCDay,getUTCFullYear,getUTCHours
 	@preserve: getUTCMilliseconds,getUTCMinutes,getUTCMonth,getUTCSeconds,hasOwnProperty,if,ignoreCase,in,index,indexOf
-	@preserve: input,isArray,isFinite,isNaN,isPropertyEnumerable,join,lastIndex,lastIndexOf,length,localeCompare,log
+@preserve: input,isArray,isExtensible,isFinite,isNaN,isPropertyEnumerable,join,lastIndex,lastIndexOf,length,localeCompare,log
 	@preserve: match,max,maxNumber,message,min,minNumber,multiline,name,new,null,parseFloat,parseInt,pow
 	@preserve: propertyIsEnumerable,prototype,push,readOnly,regExpCanonicalize,return,reverse,round,setDate
 	@preserve: setFullYear,setHours,setMilliseconds,setMinutes,setMonth,setSeconds,setTime,setUTCDate
@@ -16,7 +16,7 @@
 	@preserve: toFixed,toISOString,toLocaleDateString,toLocaleLowerCase,toLocaleString,toLocaleTimeString
 	@preserve: toLocaleUpperCase,toLowerCase,toPrecision,toString,toTimeString,toUTCString,toUpperCase,true,try,typeof
 	@preserve: undefined,upperToLower,value,valueOf,var,void,while,writable,pop,parse,toDateString,instanceof,test
-	@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,$match
+@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,createObject,$match
 	@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
 	@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
 
@@ -27,7 +27,7 @@
 		eval(code: string): any
 		asin(), atan() etc..
 		isNaN(), isFinite()
-		defineProperty(o: object, property: string, value: any, readOnly: boolean, dontEnum: boolean, dontDelete: boolean): boolean
+			   defineProperty(o: object, property: string, descriptor: object): boolean
 		compileFunction(sourceCode: string, name: string): function
 		createWrapper(className: string, internalValue: any, prototype: object): object
 		distinctConstructor(regularCall: function): function									// = exception on construction and no .prototype either
@@ -61,7 +61,7 @@
 	}
 */
 
-(function(support) {
+(function(support, es5) {
 
 var globals = this;
 var unconstructable = support.distinctConstructor; // these are the same now, but not guaranteed in the future
@@ -71,7 +71,7 @@ var $isNaN = support.isNaN, $isFinite = support.isFinite, $floor = support.floor
 		, $getInternalProperty = support.getInternalProperty, $callWithArgs = support.callWithArgs
 		, $charCodeAt = support.charCodeAt, abs, syntaxError, rangeError, typeError
 		, ALPHA_DIGITS_LOWER = "0123456789abcdefghijklmnopqrstuvwxyz", ALPHA_DIGITS_UPPER = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		, WHITE_SPACES = " \f\n\r\t\v\xA0\u2028\u2029";
+, WHITE_SPACES = " \f\n\r\t\v\xA0\u1680\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF";
 
 var PARSE_INT_CHARS = (function() {
 	var pic = { }, ws = WHITE_SPACES;
@@ -123,16 +123,16 @@ support.toPrimitive = function(o) {
 	return support[$getInternalProperty(o, "class") === "Date" ? "toPrimitiveString" : "toPrimitiveNumber"](o);
 };
 
-function int(v) { return ($isNaN(v = +v) || v === 0) ? 0 : (!$isFinite(v) ? v : (v < 0 ? -$floor(-v) : $floor(v))); }
+function int(v) { return $isNaN(v = +v) ? 0 : (!$isFinite(v) ? v : (v < 0 ? -$floor(-v) : $floor(v))); }
 function int32(v) { return int(v) | 0; }
 function uint32(v) { return int(v) >>> 0; }
 
 // TODO : what a waste of cycles, could be a simple OBJ_TO_STRING, problem with ''+s is that it uses OBJ_TO_NUMBER which only affects the priority of toString vs valueOf... so subtle!
 function str(o) { return '' + (isPrimitive(o) ? o : support.toPrimitiveString(o)) }
 
-function defineProperties(object, attribs, props) {
-	var ro = attribs.readOnly, de = attribs.dontEnum, dd = attribs.dontDelete;
-	for (var p in props) support.defineProperty(object, p, props[p], ro, de, dd);
+function defProps(object, attribs, props) {
+	var w = !attribs.readOnly, e = !attribs.dontEnum, c = !attribs.dontDelete;
+	for (var p in props) support.defineProperty(object, p, { value: props[p], writable: w, enumerable: e, configurable: c });
 	return object
 }
 
@@ -217,8 +217,8 @@ var Object = function Object(v) {
 		case "string": return new String(v);
 	}
 };
-defineProperties(Object, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Object });
-defineProperties(Object.prototype, { dontEnum: true }, {
+defProps(Object, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Object });
+defProps(Object.prototype, { dontEnum: true }, {
 	constructor: Object,
 	valueOf: unconstructable(function valueOf() { return this }),
 	toLocaleString: unconstructable(function toLocaleString() { return this.toString() }),
@@ -248,16 +248,19 @@ var Function = function Function(body) {
 	if (n >= 0) src += argv[n];
 	return support.compileFunction(src + "\n}", "anonymous")
 };
-defineProperties(Function, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Function });
-defineProperties(Function.prototype, { dontEnum: true }, {
+defProps(Function, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Function });
+defProps(Function.prototype, { dontEnum: true }, {
 	constructor: Function,
-	apply: unconstructable(function apply(thisArg, argArray) { // FIX : <- 100% native version in the future I think
-		var theClass;
-		if (argArray == null) argArray = [ ];
-		else if ((theClass = $getInternalProperty(argArray, "class")) !== "Array" && theClass !== "Arguments") {
-			throw typeError("Argument list has wrong type");
-		};
-		return $callWithArgs(this, thisArg, argArray);
+	   apply: unconstructable(function apply(thisArg, argArray) { // FIX : <- 100% native version in the future I think
+			   var args, obj, len;
+			   if (argArray == null) args = [ ];
+			   else {
+					   obj = Object(argArray);
+					   len = obj.length >>> 0;
+					   args = new Array(len);
+					   for (var i = 0; i < len; ++i) args[i] = obj[i];
+			   };
+			   return $callWithArgs(this, thisArg, args);
 	}),
 	call: unconstructable(function call(thisArg) { // FIX : <- 100% native version in the future I think
 		return $callWithArgs(this, thisArg, arguments, 1);
@@ -275,8 +278,8 @@ var Boolean = support.distinctConstructor(function Boolean(v) {
 }, function Boolean(v) {
 	return support.createWrapper("Boolean", !!v, support.prototypes.Boolean);
 });
-defineProperties(Boolean, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Boolean });
-defineProperties(Boolean.prototype, { dontEnum: true }, {
+defProps(Boolean, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Boolean });
+defProps(Boolean.prototype, { dontEnum: true }, {
 	constructor: Boolean,
 	valueOf: unconstructable(function valueOf() {
 		checkClass(this, "Boolean", "valueOf");
@@ -300,15 +303,15 @@ var Number = support.distinctConstructor(function Number(v) {
 }, function Number(v) {
 	return support.createWrapper("Number", arguments.length ? +v : 0, support.prototypes.Number);
 });
-defineProperties(Number, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Number });
-defineProperties(Number, { dontEnum: true, readOnly: true, dontDelete: true }, {
+defProps(Number, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Number });
+defProps(Number, { dontEnum: true, readOnly: true, dontDelete: true }, {
 	MAX_VALUE: support.maxNumber,
 	MIN_VALUE: support.minNumber,
 	NaN: $NaN,
 	NEGATIVE_INFINITY: -$Infinity,
 	POSITIVE_INFINITY: $Infinity
 });
-defineProperties(Number.prototype, { dontEnum: true }, {
+defProps(Number.prototype, { dontEnum: true }, {
 	constructor: Number,
 	valueOf: unconstructable(function valueOf() { return getInternalNumber(this, "valueOf") }),
 	toLocaleString: Object.prototype.toLocaleString,
@@ -426,12 +429,12 @@ var String = support.distinctConstructor(function String(v) {
 	return (arguments.length ? str(v) : '');
 }, function String(v) {
 	var s;
-	return defineProperties(
+	return defProps(
 			support.createWrapper("String", (s = (arguments.length ? str(v) : '')), support.prototypes.String)
 			,  { readOnly: true, dontEnum: true, dontDelete: true }, { length: s.length });
 });
-defineProperties(String, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.String });
-defineProperties(String, { dontEnum: true }, {
+defProps(String, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.String });
+defProps(String, { dontEnum: true }, {
 	fromCharCode: unconstructable(function fromCharCode(v) {
 		var argc, argv;
 		if ((argc = (argv = arguments).length) === 1) return support.fromCharCode(v & 65535);
@@ -439,7 +442,7 @@ defineProperties(String, { dontEnum: true }, {
 		return s;
 	})
 });
-defineProperties(String.prototype, { dontEnum: true }, {
+defProps(String.prototype, { dontEnum: true }, {
 	constructor: String,
 	charAt: unconstructable(function charAt(pos) {
 		var s;
@@ -480,48 +483,59 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		} while (true);
 	}),
 	replace: unconstructable(function replace(searchValue, replaceValue) {
-		var s, sLength = (s = str(this)).length, matches, i, p, t, l, e, replaceFunction = replaceValue, replacementValue;
-		function makeStringReplacer(r) {
-			for (var scan = r.length; --scan >= 0 && r[scan] != '$';);
-			return (scan < 0 ? function() { return r; } : function(m) {
-				var t = '', p, ch, ch2, c, n;
-				for (p = 0; ch = r[p]; ++p) {
-					if (ch !== '$') t += ch;
-					else switch (ch = r[++p]) {
-						case (void 0): case '$': t += '$'; break;
-						case '&': t += m; break;
-						case '`': t += $sub(s, 0, arguments[arguments.length - 2]); break;
-						case "'": t += $sub(s, arguments[arguments.length - 2] + m.length, sLength); break;
-						default: {
-							if (ch >= '0' && ch <= '9') {
-								n = ch - '0';
-								if ((ch2 = r[p + 1]) && ch2 >= '0' && ch2 <= '9') {
-									var twoDigit = n * 10 + (ch2 - '0');
-									if (twoDigit >= 1 && twoDigit < arguments.length - 2) {
-										t += ((c = arguments[twoDigit]) === void 0 ? '' : c);
-										++p;
-										break;
-									}
-								}
-								if (n >= 1 && n < arguments.length - 2) {
-									t += ((c = arguments[n]) === void 0 ? '' : c);
-									break;
-								}
-							}
-							t += '$' + ch;
+		var s, sLength = (s = str(this)).length, matches, i, p, t, l, e;
+		function createSubstitutionFunction(replacementText) {
+			return function(matched) {
+				var args = arguments, positionIndex = args.length - 2, position = args[positionIndex], tailPos = position + matched.length,
+							captureCount = args.length - 3, result = '', cursor, ch, next, combined, consumeNext, capture;
+				for (cursor = 0; cursor < replacementText.length; ++cursor) {
+					ch = replacementText[cursor];
+					if (ch === '$') {
+						if (++cursor >= replacementText.length) {
+							result += '$';
 							break;
 						}
+						switch (next = replacementText[cursor]) {
+							case '$': result += '$'; break;
+							case '&': result += matched; break;
+							case '`': result += $sub(s, 0, position); break;
+							case "'": result += $sub(s, tailPos, sLength); break;
+							default: {
+								if (next >= '0' && next <= '9') {
+									combined = next.charCodeAt(0) - 48;
+									consumeNext = false;
+									if (combined !== 0 && cursor + 1 < replacementText.length) {
+										var lookAhead = replacementText[cursor + 1];
+										if (lookAhead >= '0' && lookAhead <= '9') {
+											var candidate = combined * 10 + lookAhead.charCodeAt(0) - 48;
+											if (candidate <= captureCount) {
+												combined = candidate;
+												consumeNext = true;
+											}
+										}
+									}
+									if (combined === 0 || combined > captureCount) {
+										result += '$' + next;
+										break;
+									}
+									if (consumeNext) ++cursor;
+									capture = args[combined];
+									result += (capture === void 0 ? '' : capture);
+									break;
+								}
+								result += '$' + next;
+								break;
+							}
+						}
+					} else {
+						result += ch;
 					}
 				}
-				return t;
-			});
-		}
-		if (typeof replaceFunction !== "function") {
-			replacementValue = replaceValue;
-			replaceFunction = null;
+				return result;
+			};
 		}
 		if ($getInternalProperty(searchValue, "class") === "RegExp") {
-			if (!replaceFunction) replaceFunction = makeStringReplacer(str(replacementValue));
+			var replaceFunction = (typeof replaceValue === "function" ? replaceValue : createSubstitutionFunction(str(replaceValue)));
 			p = 0;
 			t = new StringBuilder;
 			if (searchValue.global) searchValue.lastIndex = 0;
@@ -536,9 +550,9 @@ defineProperties(String.prototype, { dontEnum: true }, {
 			return (t.append($sub(s, p, sLength))).build();
 		} else {
 			t = str(searchValue);
-			if (!replaceFunction) replaceFunction = makeStringReplacer(str(replacementValue));
+			var replaceFunction = (typeof replaceValue === "function" ? replaceValue : createSubstitutionFunction(str(replaceValue)));
 			e = sLength - (l = t.length);
-			for (var p = 0; !$match(s, p, t); ++p) if (p >= e) return s;
+			for (p = 0; !$match(s, p, t); ++p) if (p >= e) return s;
 			return $sub(s, 0, p) + str($callWithArgs(replaceFunction, null, [ t, p, s ])) + $sub(s, p + l, sLength);
 		}
 	}),
@@ -624,8 +638,8 @@ var Array = function Array(v) {
 	}
 	return a
 };
-defineProperties(Array, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Array });
-defineProperties(Array.prototype, { dontEnum: true }, {
+defProps(Array, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Array });
+defProps(Array.prototype, { dontEnum: true }, {
 	constructor: Array,
 	concat: unconstructable(function concat(item1) {
 		var a = [ ], argv, argc = (argv = arguments).length, n = 0, v = this;
@@ -648,19 +662,27 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		}
 		return s.build();
 	}),
-	pop: unconstructable(function pop() {
-		var len, result = void 0;
-		if (len = uint32(this.length)) {
-			result = this[--len];
-			delete this[len];
-		}
-		this.length = len;
-		return result;
-	}),
+       pop: unconstructable(function pop() {
+               var o = Object(this), len = uint32(o.length);
+               if (len === 0) {
+                       o.length = 0;
+                       return void 0;
+               }
+               var index = len - 1, element = o[index];
+               delete o[index];
+               o.length = index;
+               return element;
+       }),
 	push: unconstructable(function push(item) {
-		var len, argv, offset, argc = (argv = arguments).length, end = (offset = uint32(len = +this.length)) + argc;
-		for (var i = 0; i < argc; ++i) this[offset + i] = argv[i];
-		return (this.length = end);
+		var o = Object(this), argv = arguments, argc = argv.length, offset = uint32(o.length), end = offset + argc,
+			isArray = ($getInternalProperty(o, "class") === "Array");
+		for (var i = 0; i < argc; ++i) o[offset + i] = argv[i];
+		if (isArray && end > 4294967295) {
+			o.length = offset;
+			throw rangeError("Invalid array length");
+		}
+		o.length = end;
+		return end;
 	}),
 	reverse: unconstructable(function reverse() {
 		var len, mid = $floor((len = uint32(this.length)) / 2);
@@ -673,19 +695,21 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		}
 		return this;
 	}),
-	shift: unconstructable(function shift() {
-		var len, elementZero = void 0;
-		if (len = uint32(this.length)) {
-			elementZero = this[0];
-			for (var i = 1; i < len; ++i) {
-				if (i in this) this[i - 1] = this[i];
-				else delete this[i - 1];
-			}
-			delete this[--len];
-		}
-		this.length = len;
-		return elementZero;
-	}),
+       shift: unconstructable(function shift() {
+               var o = Object(this), len = uint32(o.length);
+               if (len === 0) {
+                       o.length = 0;
+                       return void 0;
+               }
+               var elementZero = o[0];
+               for (var i = 1; i < len; ++i) {
+                       if (i in o) o[i - 1] = o[i];
+                       else delete o[i - 1];
+               }
+               delete o[len - 1];
+               o.length = len - 1;
+               return elementZero;
+       }),
 	slice: unconstructable(function slice(start, end) {
 		var a = [ ], len = uint32(this.length);
 		if ((start = int(start)) < 0) { start += len; if (start < 0) start = 0; }
@@ -766,10 +790,13 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return a;
 	}),
 	toLocaleString: unconstructable(function toLocaleString() {
-		var len = uint32(this.length), builder = new StringBuilder, element;
-		for (var k = 0; k < len; ++k) {
-			if (k > 0) builder.append(',');
-			if ((element = this[k]) != null) builder.append(str(Object(element).toLocaleString()));
+		var o = Object(this), builder = new StringBuilder, element, func, len = uint32(o.length);
+		for (var i = 0; i < len; ++i) {
+			if (i > 0) builder.append(',');
+			if ((element = o[i]) != null) {
+				if (typeof (func = element.toLocaleString) !== 'function') throw typeError('Array element toLocaleString is not callable');
+				builder.append(str($callWithArgs(func, element)));
+			}
 		}
 		return builder.build();
 	}),
@@ -827,7 +854,11 @@ function hourFromTime(z) { return floorMod($floor(z / 36e5), 24) }
 function minFromTime(z) { return floorMod($floor(z / 6e4), 60) }
 function secFromTime(z) { return floorMod($floor(z / 1e3), 60) }
 function msFromTime(z) { return floorMod(z, 1e3) }
-function timeClip(z) { return (!$isFinite(z) || abs(z) > 8.64e15 ? $NaN : int(z)) }
+function timeClip(z) {
+	if (!$isFinite(z) || abs(z) > 8.64e15) return $NaN;
+	z = int(z);
+	return (z === 0 ? 0 : z);
+}
 function timeClipLocal(z) { return fromLocalTime(timeClip(z)); }
 
 function dateFromEpoch(z) {
@@ -865,28 +896,31 @@ function epochFromDate(year, month, day) {
 }
 
 function setDateParts(z, n, a) {
-	var i, d = dateFromEpoch(z), r = floorMod(z, 864e5);
-	for (i = 0; i < a.length; ++i, ++n) d[n] = int(a[i]);
+	var i, d = dateFromEpoch(z), r = floorMod(z, 864e5), part;
+	for (i = 0; i < a.length; ++i, ++n) {
+		if ($isNaN(part = +a[i])) return $NaN;
+		d[n] = int(part);
+	}
 	return $callWithArgs(epochFromDate, null, d) + r;
 }
 
 function setTimeParts(z, n, a) {
-	var i, t = timeFromEpoch(z), r = $floor(z / 864e5) * 864e5;
-	for (i = 0; i < a.length; ++i, ++n) t[n] = int(a[i]);
+	var i, t = timeFromEpoch(z), r = $floor(z / 864e5) * 864e5, part;
+	for (i = 0; i < a.length; ++i, ++n) {
+		if ($isNaN(part = +a[i])) return $NaN;
+		t[n] = int(part);
+	}
 	return $callWithArgs(epochFromTime, null, t) + r;
 }
 
 function makeDateTime(year, month, date, hours, minutes, seconds, ms) {
-	var argc = arguments.length, y, m, d, h, M, s, milli;
-	return (!$isFinite(y = +year)
-			|| !$isFinite(m = (argc > 1 ? +month : 0))
-			|| !$isFinite(d = (argc > 2 ? +date : 1))
-			|| !$isFinite(h = (argc > 3 ? +hours : 0))
-			|| !$isFinite(M = (argc > 4 ? +minutes : 0))
-			|| !$isFinite(s = (argc > 5 ? +seconds : 0))
-			|| !$isFinite(milli = (argc > 6 ? +ms : 0)))
-			? $NaN : epochFromDate(int(y) + (0 <= y && y <= 99 ? 1900 : 0), int(m), int(d))
-			+ epochFromTime(int(h), int(M), int(s), int(milli));
+	var argc = arguments.length, y = +year, m = +month, dt = (argc > 2 ? +date : 1);
+	var h = (argc > 3 ? +hours : 0), min = (argc > 4 ? +minutes : 0);
+	var sec = (argc > 5 ? +seconds : 0), milli = (argc > 6 ? +ms : 0);
+	if ($isNaN(y) || $isNaN(m) || $isNaN(dt) || $isNaN(h) || $isNaN(min) || $isNaN(sec) || $isNaN(milli)) return $NaN;
+	y = int(y);
+	return epochFromDate(y + (0 <= y && y <= 99 ? 1900 : 0), int(m), int(dt)) +
+		epochFromTime(int(h), int(min), int(sec), int(milli));
 }
 
 function isoDate(d) {
@@ -904,8 +938,8 @@ var parseDate, Date = support.distinctConstructor(function Date() {
 	return support.createWrapper("Date", v, support.prototypes.Date);
 });
 
-defineProperties(Date, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Date });
-defineProperties(Date, { dontEnum: true }, {
+defProps(Date, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Date });
+defProps(Date, { dontEnum: true }, {
 	parse: unconstructable(parseDate = function parse(s) {
 		var z, y, i, ch, tz, tzh, tzm, i = 0;
 		function readPart(len) {
@@ -923,22 +957,30 @@ defineProperties(Date, { dontEnum: true }, {
 				s[i] === ":" && (++i, readPart(2)) || 0,
 				s[i] === "." && (++i, readPart(3)) || 0);
 
-		while ((ch = s[i]) !== void 0 && ch !== "Z" && ch !== "z" && ch !== "+" && ch !== "-") ++i;
-
-		if (ch === "Z" || ch === "z") tz = 0;
-		else if (ch === "+" || ch === "-") {
-			++i, tzh = readPart(2) * 36e5,
-			s[i] === ":" && ++i, tzh += $isNaN(tzm = readPart(2)) ? 0 : tzm * 6e4,
-			$isNaN(tzh) || (tz = ch === "-" ? -tzh : tzh);
-		}
-		return (tz === void 0 ? fromLocalTime(z) : z - tz)
+var i0 = i;
+while ((ch = s[i]) !== void 0 && ch !== "Z" && ch !== "z" && ch !== "+" && ch !== "-") ++i;
+if (ch === void 0) {
+if (i !== i0) return $NaN;
+} else if (ch === "Z" || ch === "z") {
+++i; tz = 0;
+} else {
+++i;
+tzh = readPart(2) * 36e5;
+if ($isNaN(tzh)) return $NaN;
+if (s[i] === ":") ++i;
+tzm = readPart(2);
+tz = tzh + ($isNaN(tzm) ? 0 : tzm * 6e4);
+tz = ch === "-" ? -tz : tz;
+}
+if (i !== s.length) return $NaN;
+return (tz === void 0 ? fromLocalTime(z) : z - tz)
 	}),
 	UTC: unconstructable(function UTC(year, month, date, hours, minutes, seconds, ms) { 
 		return timeClip(makeDateTime(year, month, date, hours, minutes, seconds, ms))
 	})
 });
 
-defineProperties(Date.prototype, { dontEnum: true }, {
+defProps(Date.prototype, { dontEnum: true }, {
 	constructor: Date,
 	toISOString: unconstructable(function toISOString() {
 		var s;
@@ -998,8 +1040,12 @@ defineProperties(Date.prototype, { dontEnum: true }, {
 	setUTCMonth: unconstructable(function setUTCMonth(month, date) { return setDateValue(this, timeClip(setDateParts(getDateValue(this), 1, arguments))) }),
 	setFullYear: unconstructable(function setFullYear(year, month, date) { var v; return setDateValue(this, timeClipLocal(setDateParts($isNaN(v = getDateValue(this)) ? 0 : toLocalTime(v), 0, arguments))) }),
 	setUTCFullYear: unconstructable(function setUTCFullYear(year, month, date) { var v; return setDateValue(this, timeClip(setDateParts($isNaN(v = getDateValue(this)) ? 0 : v, 0, arguments))) }),
-	// TODO: this isn't as generic as in the ES5 spec, e.g. not converting this to object, not going via the objects reassignable `toISOString`.
-	toJSON: unconstructable(function toJSON() { return isoDate(this); })
+	   toJSON: unconstructable(function toJSON() {
+			   var o = Object(this), tv = +o, toISO;
+			   if (!$isFinite(tv)) return null;
+			   if (typeof (toISO = o.toISOString) !== "function") throw TypeError();
+			   return toISO.call(o);
+	   })
 });
 
 /* --- RegExp --- */
@@ -1017,7 +1063,7 @@ var CC = { }; // "CC" is used from within regexps, so the name has to be preserv
 	setupCharClass(HEX_CHAR | LETTER_CHAR | WORD_CHAR, "abcdefABCDEF");
 	setupCharClass(LETTER_CHAR | WORD_CHAR, "ghijklmnopqrstuvwxyzGHIJKLMNOPQRSTUVWXYZ");
 	setupCharClass(NEWLINE_CHAR | SPACE_CHAR, "\n\r\u2028\u2029");
-	setupCharClass(SPACE_CHAR, " \t\v\f\xA0");
+	   setupCharClass(SPACE_CHAR, " \t\v\f\xA0\uFEFF");
 	CC['_'] |= WORD_CHAR;
 	CC["undefined"] |= EMPTY_CHAR;
 	CC[''] |= EMPTY_CHAR;
@@ -1510,8 +1556,8 @@ function execRegExp(re, string) {
 }
 
 function regExpExecMethod(re, string) {
-	var m, a = null;
 	string = str(string);
+	var m, a = null;
 	if (m = execRegExp(re, string)) {
 		(a = [ ]).input = string;
 		a.index = m[0];
@@ -1523,48 +1569,41 @@ function regExpExecMethod(re, string) {
 
 function convertFlagsToText(re) { return (re.global ? 'g' : '') + (re.ignoreCase ? 'i' : '') + (re.multiline ? 'm' : ''); }
 
-var RegExp = support.distinctConstructor(function RegExp(pattern, flags) {
-	return ($getInternalProperty(pattern, "class") === "RegExp" && flags === void 0 ? pattern : new support.createRegExp(pattern, flags));
-}, support.createRegExp = function RegExp(pattern, flags) {
-	if ($getInternalProperty(pattern, "class") === "RegExp") {
-		if (flags !== void 0) throw typeError("Cannot supply flags when constructing one RegExp from another");
-		flags = convertFlagsToText(pattern);
-		pattern = pattern.source;
-	}
-	
-	// TODO : short-cut most of this through cache instead of only the func def.
-	// TODO : limit number of entries in cache
-	pattern = (pattern === void 0 ? '' : str(pattern));
-	flags = (flags === void 0 ? '' : str(flags));
-	var template = { global: false, ignoreCase: false, multiline: false, source: pattern };
-	for (var i = flags.length - 1; i >= 0; --i) {
-		var p;
-		if (!(p = REG_EXP_FLAG_TO_PROPERTY[flags[i]]) || template[p])
-			throw syntaxError("Invalid regular expression flags");
-		template[p] = true;
-	}
-	var key, func;
-	if (!(func = regExpCache[key = pattern + ',' + template.ignoreCase + ',' + template.multiline]))
-		regExpCache[key] = func = evalThere(compileRegExp(pattern, template.ignoreCase, template.multiline));
-	var re = support.createWrapper("RegExp", func, regExpPrototype);
-	defineProperties(re, { dontEnum: true, readOnly: true, dontDelete: true }, template);
-	defineProperties(re, { dontEnum: true, dontDelete: true }, { lastIndex: 0 });
-	return re;
-});
+function constructRegExp(pattern, flags) {
+	   if ($getInternalProperty(pattern, "class") === "RegExp") {
+			   if (flags !== void 0) throw typeError("Cannot supply flags when constructing one RegExp from another");
+			   flags = convertFlagsToText(pattern);
+			   pattern = pattern.source;
+	   }
 
-defineProperties(RegExp, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: regExpPrototype = RegExp.prototype });
-defineProperties(RegExp.prototype, { dontEnum: true }, {
-	exec: unconstructable(function exec(string) { checkClass(this, "RegExp", "exec"); return regExpExecMethod(this, string); }),
-	test: unconstructable(function test(string) { checkClass(this, "RegExp", "test"); return execRegExp(this, string) !== void 0; }),
-	toString: unconstructable(function toString() {
-		checkClass(this, "RegExp", "toString");
-		return '/' + this.source + '/' + convertFlagsToText(this);
-	})
-});
+	   // TODO : short-cut most of this through cache instead of only the func def.
+	   // TODO : limit number of entries in cache
+	   pattern = (pattern === void 0 ? '' : str(pattern));
+	   flags = (flags === void 0 ? '' : str(flags));
+	   var template = { global: false, ignoreCase: false, multiline: false, source: pattern };
+	   for (var i = flags.length - 1; i >= 0; --i) {
+			   var p;
+			   if (!(p = REG_EXP_FLAG_TO_PROPERTY[flags[i]]) || template[p])
+					   throw syntaxError("Invalid regular expression flags");
+			   template[p] = true;
+	   }
+	   var key, func;
+	   if (!(func = regExpCache[key = pattern + ',' + template.ignoreCase + ',' + template.multiline]))
+			   regExpCache[key] = func = evalThere(compileRegExp(pattern, template.ignoreCase, template.multiline));
+	   var re = support.createWrapper("RegExp", func, regExpPrototype);
+	   defProps(re, { dontEnum: true, readOnly: true, dontDelete: true }, template);
+	   defProps(re, { dontEnum: true, dontDelete: true }, { lastIndex: 0 });
+	   return re;
+}
+support.createRegExp = constructRegExp;
+
+var RegExp = support.distinctConstructor(function RegExp(pattern, flags) {
+	   return ($getInternalProperty(pattern, "class") === "RegExp" && flags === void 0 ? pattern : constructRegExp(pattern, flags));
+}, function RegExp(pattern, flags) { return constructRegExp(pattern, flags); });
 
 /* --- Set up globals --- */
 
-defineProperties(globals, { dontEnum: true }, {
+defProps(globals, { dontEnum: true }, {
 	Array: Array,
 	Boolean: Boolean,
 	Date: Date,
@@ -1587,10 +1626,13 @@ defineProperties(globals, { dontEnum: true }, {
 			case '-': sign = -1;
 			case '+': ++i;
 		}
-		if (((radix = int32(radix)) === 0 || radix === 16) && string[i] === '0'
-				&& (string[i + 1] === 'x' || string[i + 1] === 'X')) {
-			i += 2;
-			radix = 16;
+		radix = int32(radix);
+		if ((radix === 0 || radix === 16) && string[i] === '0') {
+			var prefix = string[i + 1];
+			if (prefix === 'x' || prefix === 'X') {
+				i += 2;
+				radix = 16;
+			}
 		}
 		if (radix === 0) radix = 10;
 		else if (radix < 2 || radix > 36) return $NaN;
@@ -1600,13 +1642,26 @@ defineProperties(globals, { dontEnum: true }, {
 	})
 });
 
-defineProperties(globals, { dontEnum: true, dontDelete: true }, {
-	NaN: $NaN, Infinity: $Infinity, undefined: support.undefined
+defProps(globals, { readOnly: true, dontEnum: true, dontDelete: true }, {
+NaN: $NaN, Infinity: $Infinity, undefined: support.undefined
+});
+
+regExpPrototype = support.prototypes.object;
+regExpPrototype = constructRegExp("(?:)", "");
+defProps(RegExp, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: regExpPrototype });
+defProps(regExpPrototype, { dontEnum: true }, {
+constructor: RegExp,
+exec: unconstructable(function exec(string) { checkClass(this, "RegExp", "exec"); return regExpExecMethod(this, string); }),
+test: unconstructable(function test(string) { checkClass(this, "RegExp", "test"); return execRegExp(this, string) !== void 0; }),
+toString: unconstructable(function toString() {
+checkClass(this, "RegExp", "toString");
+return '/' + this.source + '/' + convertFlagsToText(this);
+})
 });
 
 /* --- Math --- */
 
-defineProperties(Math, { readOnly: true, dontEnum: true, dontDelete: true }, {
+defProps(Math, { readOnly: true, dontEnum: true, dontDelete: true }, {
 	E: 2.718281828459045235360,
 	LN10: 2.302585092994045684018,
 	LN2: 0.6931471805599453094172,
@@ -1617,7 +1672,7 @@ defineProperties(Math, { readOnly: true, dontEnum: true, dontDelete: true }, {
 	SQRT2: 1.414213562373095048802
 });
 
-defineProperties(Math, { dontEnum: true }, {
+defProps(Math, { dontEnum: true }, {
 	abs: unconstructable(abs = function abs(v) { return ((v = +v) < 0 ? -v : v) }),
 	acos: unconstructable(function acos(v) { return support.acos(+v) }),
 	asin: unconstructable(function asin(v) { return support.asin(+v) }),
@@ -1630,7 +1685,7 @@ defineProperties(Math, { dontEnum: true }, {
 	log: unconstructable(function log(v) { return support.log(+v) }),
 	max: unconstructable(function max(x, y) { var m = -$Infinity, v, argv; for (var i = (argv = arguments).length - 1; i >= 0; --i) if ((v = +argv[i]) > m || $isNaN(v)) m = v; return m }),
 	min: unconstructable(function min(x, y) { var m = $Infinity, v, argv; for (var i = (argv = arguments).length - 1; i >= 0; --i) if ((v = +argv[i]) < m || $isNaN(v)) m = v; return m }),
-	pow: unconstructable(function pow(x, y) { x = +x; y = +y; return (!$isFinite(y) && abs(x) === 1 ? $NaN : support.pow(x, y)) }),
+	pow: unconstructable(function pow(x, y) { return support.pow(+x, +y) }),
 	random: unconstructable(function random() { return support.random() }),
 	round: unconstructable(function round(v) { return (v === 0.0 ? v : (v >= -0.5 && v < 0.0 ? -0.0 : $floor(v + 0.5))) }),
 	sin: unconstructable(function sin(v) { return support.sin(+v) }),
@@ -1644,7 +1699,8 @@ function createErrorConstructor(name, prototype) {
 	return function(message) {
 		var e = support.createWrapper("Error", name, prototype);
 		if (message !== void 0) {
-			support.defineProperty(e, "message", str(message), false, true, false);
+			support.defineProperty(e, "message",
+				{ value: str(message), writable: true, enumerable: false, configurable: true });
 		}
 		return e
 	}
@@ -1655,19 +1711,27 @@ function createErrorConstructor(name, prototype) {
 
 	for (var i = ERROR_NAMES.length; --i >= 0;) {
 		var n, c, p;
-		support.defineProperty(globals, n = ERROR_NAMES[i], c = createErrorConstructor(n, p = support.prototypes[n])
-				, false, true, false);
-		c.name = n; // Notice: from ES6 and upwards "name" is read-only (and you would have to delete it to modify here), but it isn't in this implementation
-		defineProperties(c, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: p });
-		defineProperties(p, { dontEnum: true }, { constructor: c, name: n });
+		support.defineProperty(globals, n = ERROR_NAMES[i],
+			{ value: c = createErrorConstructor(n, p = support.prototypes[n]), writable: true, enumerable: false, configurable: true });
+		delete c.name;
+		support.defineProperty(c, "name", { value: n, writable: false, enumerable: false, configurable: true });
+		defProps(c, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: p });
+		defProps(p, { dontEnum: true }, { constructor: c });
+		support.defineProperty(p, "name", { value: n, writable: true, enumerable: false, configurable: true });
 	}
 
-	defineProperties(Error.prototype, { dontEnum: true }, {
-		message: '',
-		toString: unconstructable(function toString() {
-			return (this.name === void 0 ? "Error" : this.name) + (this.message ? (": " + this.message) : '');
-		})
-	});
+	   defProps(Error.prototype, { dontEnum: true }, {
+			   message: '',
+			   toString: unconstructable(function toString() {
+					   "use strict";
+					   if (isPrimitive(this)) throw typeError("Error.prototype.toString is not generic");
+					   var name = this.name;
+					   name = name === void 0 ? "Error" : str(name);
+					   var msg = this.message;
+					   msg = msg === void 0 ? "" : str(msg);
+					   return name === "" ? msg : (msg === "" ? name : name + ": " + msg);
+			   })
+	   });
 
 	syntaxError = SyntaxError;
 	rangeError = RangeError;
@@ -1679,10 +1743,10 @@ function createErrorConstructor(name, prototype) {
 // These are not guaranteed to be 100% compatible
 
 var JSON_ESCAPE_SEQUENCES = { '\\': "\\\\", '"': "\\\"", '\b': "\\b", '\f': "\\f", '\n': "\\n", '\r': "\\r", '\t': "\\t" };
-var MAX_JSON_DEPTH = 61;	// compiler internal recursion limit is 64 (as of 20240219); keeping this walker far below the ceiling ensures eval() stays safe
+var MAX_JSON_DEPTH = 61;	// compiler internal recursion limit is 64 (as of 20180610), we must stick under this for eval() to work and 61 gives us enough margin
 
 // TODO : use StringBuilder?
-defineProperties(JSON, { dontEnum: true }, {
+defProps(JSON, { dontEnum: true }, {
 	stringify: unconstructable(function stringify(val, replacer, space) {
 		var stack = [ ], replacerFunction = (typeof replacer === "function" ? replacer : null), gap = '', includeProps;
 
@@ -1866,16 +1930,33 @@ defineProperties(JSON, { dontEnum: true }, {
 	})
 });
 
-defineProperties(Array, { dontEnum: true }, {
+defProps(Array, { dontEnum: true }, {
 	isArray: unconstructable(function isArray(o) { return $getInternalProperty(o, "class") === "Array"; })
 });
 
-defineProperties(Object, { dontEnum: true }, {
+defProps(Object, { dontEnum: true }, {
 	defineProperty: unconstructable(function defineProperty(o, p, d) {
-		support.defineProperty(o, str(p), d.value, !d.writable, !d.enumerable, !d.configurable);
+		var t;
+		if (o === undefined || o === null || ((t = typeof o) !== "object" && t !== "function"))
+			throw typeError("Object.defineProperty called on non-object");
+		if (!support.defineProperty(o, str(p), d) && Object.isExtensible && !Object.isExtensible(o)) throw TypeError();
+		return o;
 	}),
-	getPrototypeOf: unconstructable(function getPrototypeOf(o) { return $getInternalProperty(o, "prototype"); })
+	getPrototypeOf: unconstructable(function getPrototypeOf(o) {
+		if (o === null || (typeof o !== "object" && typeof o !== "function"))
+			throw typeError("Object.getPrototypeOf called on non-object");
+		return $getInternalProperty(o, "prototype");
+	})
 });
+
+// Evaluate ES5 add-ons only when explicitly enabled; bracket form avoids minifier renaming
+if (es5) {
+	// At the time of this call, the "recognized" direct eval function is support.eval, not support.evalFunction
+	// support.evalFunction will be recognized after stdlib is setup
+	eval = support.eval;
+	eval(es5);
+	eval = support.evalFunction;
+}
 
 if ($NaN.toString() !== "NaN") throw Error("Internal self test failed. Check C++ compiler options concerning IEEE 754 compliance.");
 

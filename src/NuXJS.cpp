@@ -1867,15 +1867,13 @@ bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flag
 		}
 			sliceDenseVector(rt, key);
 	} else if (key.equalsString(LENGTH_STRING)) {
-		const double numberLength = rt.toNumber(v);
-		if (!std::isfinite(numberLength) || numberLength < 0.0) {
+		const double rawLength = v.toDouble();
+		const UInt32 coercedLength = static_cast<UInt32>(rawLength);
+		if (std::isnan(rawLength) || rawLength < 0.0 || rawLength > 4294967295.0
+				|| rawLength != static_cast<double>(coercedLength)) {
 			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
 		}
-		const double integerLength = std::floor(numberLength);
-		if (integerLength != numberLength || integerLength > 4294967295.0) {
-			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
-		}
-		return updateLength(static_cast<UInt32>(integerLength));
+		return updateLength(coercedLength);
 	}
 	return super::setOwnProperty(rt, key, v, flags);
 }
