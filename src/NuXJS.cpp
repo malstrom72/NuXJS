@@ -4765,7 +4765,7 @@ void Compiler::compile(const String& source) {
 
 void Compiler::getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const {
 	offset = static_cast<UInt32>(p - b);
-    code->getSourceUnit()->computeLineColumn(offset, lineNumber, columnNumber);
+	code->getSourceUnit()->computeLineColumn(offset, lineNumber, columnNumber);
 }
 
 /* --- Runtime --- */
