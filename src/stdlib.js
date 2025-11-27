@@ -879,7 +879,7 @@ function setTimeParts(z, n, a) {
 function makeDateTime(year, month, date, hours, minutes, seconds, ms) {
 	var argc = arguments.length, y, m, d, h, M, s, milli;
 	return (!$isFinite(y = +year)
-			|| !$isFinite(m = (argc > 1 ? +month : 0))
+			|| !$isFinite(m = +month)
 			|| !$isFinite(d = (argc > 2 ? +date : 1))
 			|| !$isFinite(h = (argc > 3 ? +hours : 0))
 			|| !$isFinite(M = (argc > 4 ? +minutes : 0))
@@ -934,7 +934,7 @@ defineProperties(Date, { dontEnum: true }, {
 		return (tz === void 0 ? fromLocalTime(z) : z - tz)
 	}),
 	UTC: unconstructable(function UTC(year, month, date, hours, minutes, seconds, ms) { 
-		return timeClip(makeDateTime(year, month, date, hours, minutes, seconds, ms))
+		return timeClip($callWithArgs(makeDateTime, null, arguments));
 	})
 });
 
