@@ -122,7 +122,7 @@ Because `setOwnProperty` receives the attribute flags, it is responsible for enf
 
 #### Reusing the built-in storage helpers
 
-Deriving from `JSObject` is the quickest way to obtain a full ECMAScript property bag. `JSObject` couples `Object` with the internal `Table`, automatically handles key canonicalisation, and allocates enumerators that honour the `DONT_ENUM` bit. Passing `STANDARD_FLAGS` to `setOwnProperty` yields a normal writable, enumerable property; additional flags add const-like semantics. If you only need to materialise the property table lazily (for example, when exposing a large native object with rare script interaction) you can inherit from `LazyJSObject` instead and build the backing `JSObject` the first time a property hook fires.
+Deriving from `JSObject` is the quickest way to obtain a full ECMAScript property bag. `JSObject` couples `Object` with the internal `Table`, automatically handles key canonicalisation, and allocates enumerators that honour the `DONT_ENUM` bit. Passing `STANDARD_FLAGS` to `setOwnProperty` yields a normal writable, enumerable property; additional flags add const-like semantics. If you only need to materialise the property table lazily (for example, when exposing a large native object with rare script interaction) you can inherit from `LazyJSObject` instead and build the backing `JSObject` the first time a property hook fires. `LazyJSObject` is a class template parameterised on its own super-class, so it is used as `LazyJSObject<Object>` (the form `JSArray`, `Error` and `Arguments` take) or `LazyJSObject<Function>` (the form `ExtensibleFunction` takes), and the subclass supplies the deferred construction by implementing `constructCompleteObject`.
 
 When the host manages its own backing state and does not need `JSObject`'s hash table, overriding the base `Object` hooks directly avoids the bookkeeping overhead. Returning `NONEXISTENT` from `getOwnProperty` delegates the lookup to the prototype chain, while returning `false` from `setOwnProperty` causes assignments to silently do nothing-matching JavaScript's behaviour for read-only properties on non-strict code paths. Deletions mirror this pattern: `delete` succeeds only if your implementation returns `true` and the stored flags did not include `DONT_DELETE_FLAG`.
 
@@ -186,6 +186,50 @@ void exposePoint(Runtime& rt) {
 ```
 
 Because `Property::operator=` also routes through `Object::setProperty`, the same object can be updated from C++ in a fluent style - for example `rt.getGlobalsVar()["point"]["x"] = 7.5;` - and those writes still flow through the overrides above. This keeps host-side and script-side interactions consistent without duplicating bookkeeping.
+
+#### Exposing methods: hooks versus the prototype chain
+
+A native class that carries bulk data - a sample buffer, a matrix, a decoded image - usually needs fast indexed access from C++ as well as a set of methods callable from script. It is tempting to answer the method names directly in `getOwnProperty` alongside the indices, but the two cases pull in opposite directions. Answering a key is precisely what suppresses the prototype chain, so a method resolved inside `getOwnProperty` permanently shadows whatever the prototype offers: scripts cannot override it, cannot wrap it, and cannot delete it to fall back on something else. String-comparing each candidate method name on every property access also costs more than one hashed lookup.
+
+`JSArray` demonstrates the alternative. Its `getOwnProperty` resolves an array index against a dense `Vector` and returns `STANDARD_FLAGS`, answers `length` with `HIDDEN_CONST_FLAGS`, and defers everything else to `super::getOwnProperty` - which, because `JSArray` derives from `LazyJSObject<Object>`, consults the lazily built property table and then the prototype chain. The methods themselves live in `src/stdlib.js` on `Array.prototype` and are found by ordinary prototype resolution. `String::getOwnProperty` follows the same shape for indexed character access.
+
+The rule that generalises: let the hooks answer indices and a small fixed set of internal slots, return `NONEXISTENT` for everything else, and install the methods on a prototype. Test `Value::toArrayIndex` first so the common case exits early. The performance-critical paths stay in C++ while method lookup, shadowing and overriding remain ordinary JavaScript. When script must be able to replace the visible surface wholesale, the further step is to keep the native object out of script's hands entirely and have a JavaScript wrapper hold it in a property; NuXJS has no symbols, so such a slot is an ordinary string key made unobtrusive with `DONT_ENUM_FLAG` rather than genuinely private.
+
+A prototype built in C++ is a heap reference like any other. Whichever object owns it - the `Runtime`, a shared holder, or each instance - must mark it in `gcMarkReferences` and chain to the super-class implementation. Note also that a class whose hooks expose indices has to report them from `getOwnPropertyEnumerator` as well, or `for...in` will disagree with direct property access.
+
+#### Validating `this` in native methods
+
+A method installed on a prototype can be invoked with any receiver, so it has to confirm that `this` really is the native class before casting. NuXJS offers three ways to do that.
+
+Assigning a pointer to a member function with the signature `Var (C::*)(Runtime&, const Var&, const VarList&)` wraps it in an adapter that performs the check automatically. Before dispatching, the adapter compares the statically resolved `C::getClassName()` against the virtual `getClassName()` on the receiver, and throws a `TypeError` carrying the message `Invalid class` when the two differ:
+
+```cpp
+static const String VECTOR_CLASS_NAME("NativeVector");
+
+class NativeVector : public JSObject {
+public:
+    typedef JSObject super;
+    NativeVector(Heap& heap, Object* proto) : super(heap.managed(), proto), samples(&heap) { }
+
+    const String* getClassName() const override { return &VECTOR_CLASS_NAME; }
+
+    Var scale(Runtime& rt, const Var& thisObject, const VarList& args);
+
+private:
+    Vector<double> samples;        // `Vector` takes its heap explicitly; there is no default constructor
+};
+
+Var protoVar(rt, rt.newJSObject());
+protoVar["scale"] = &NativeVector::scale;        // receiver checked on every call
+```
+
+Calling `scale` on a `NativeVector` runs the method; calling it on any other object - `var o = {}; o.scale = v.scale; o.scale(21);` - throws `TypeError: Invalid class` before the body is entered.
+
+This is the least error-prone binding. It relies on the class overriding `getClassName` to return a unique pointer that stays the same for the lifetime of the class, which `Object::getClassName` requires in any case.
+
+For checked downcasts outside a call, the engine's own idiom is a virtual accessor: `Object::asFunction`, `asArray` and `asError` return `0` by default and the class that owns the type overrides it to return `this`. Giving a custom class an equivalent yields a cheap, safe conversion from an arbitrary `Object*`.
+
+Where no adapter is involved - inside a plain `NativeFunction`, or a static function matching the `VarFunction` signature such as `Counter::increment` in `docs/examples/examples.cpp` - the same test has to be written by hand, comparing `getClassName()` against the class's own `String*` by pointer identity. Static functions receive the receiver unvalidated, so a bare `static_cast` is only safe when nothing else can reach the prototype, as in a self-contained example.
 
 ## Runtime Architecture
 
