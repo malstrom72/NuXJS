@@ -902,10 +902,12 @@ Value Value::add(Heap& heap, const Value& y) const {
 }
 
 const Value Value::UNDEFINED(Value::UNDEFINED_TYPE), Value::NUL(Value::NULL_TYPE), Value::NOT_A_NUMBER(NaN())
-		, Value::INFINITE_NUMBER(std::numeric_limits<double>::infinity());
+		, Value::INFINITE_NUMBER(std::numeric_limits<double>::infinity())
+		, Value::NEG_INFINITE_NUMBER(-std::numeric_limits<double>::infinity());
 
 const Value UNDEFINED_VALUE(Value::UNDEFINED), NULL_VALUE(Value::NUL), NAN_VALUE(Value::NOT_A_NUMBER)
-		, INFINITY_VALUE(Value::INFINITE_NUMBER), FALSE_VALUE(false), TRUE_VALUE(true);
+		, INFINITY_VALUE(Value::INFINITE_NUMBER), NEG_INFINITY_VALUE(Value::NEG_INFINITE_NUMBER)
+		, FALSE_VALUE(false), TRUE_VALUE(true);
 
 std::wostream& operator<<(std::wostream& out, const Value& v) {
 	Heap heap; // ok to use a temporary heap here for the string conversion as we discard the string immediately
@@ -5194,7 +5196,10 @@ void Runtime::autoGC(bool checkOutOfMemory) {
 		gcThreshold = std::min(std::max(inUse * AUTO_GC_GROWTH_FACTOR, AUTO_GC_MIN_SIZE), memoryCap);
 		checkTimeOutCounter = std::min(checkTimeOutCounter, 1U);
 		if (checkOutOfMemory && heap.size() >= memoryCap) {
-			throw ConstStringException("Out of memory");
+			heap.drain(); // release pool first and check again
+			if (heap.size() >= memoryCap) {
+				throw ConstStringException("Out of memory");
+			}
 		}
 	}
 }

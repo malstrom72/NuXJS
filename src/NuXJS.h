@@ -411,6 +411,7 @@ class Value {
 		static const Value NUL;					///< Sorry, NULL is a sensitive word, e.g. macro in Windows
 		static const Value NOT_A_NUMBER;		///< Sorry, NAN is sensitive, defined by some math.h
 		static const Value INFINITE_NUMBER;		///< Sorry, INFINITY is also sensitive
+		static const Value NEG_INFINITE_NUMBER;
 
 	protected:
 		// Do NOT change order of elements in Type enum.
@@ -698,7 +699,7 @@ class StringListEnumerator : public Enumerator {
 };
 
 // easier names for fundamental Value constants
-extern const Value UNDEFINED_VALUE, NULL_VALUE, NAN_VALUE, INFINITY_VALUE, FALSE_VALUE, TRUE_VALUE;
+extern const Value UNDEFINED_VALUE, NULL_VALUE, NAN_VALUE, INFINITY_VALUE, NEG_INFINITY_VALUE, FALSE_VALUE, TRUE_VALUE;
 
 // class names (capitalized)
 extern const String A_RGUMENTS_STRING, A_RRAY_STRING, B_OOLEAN_STRING, D_ATE_STRING, E_RROR_STRING, F_UNCTION_STRING
