@@ -459,7 +459,7 @@ void printUsage() {
 			<< "  -h, --help: show this usage" << std::endl
 			<< std::endl
 			<< "NuXJS options must appear before the script file name." << std::endl
-			<< "Tokens after the script file name are exposed to JS as global `arguments`." << std::endl;
+			<< "JS receives global `arguments`: [script.js, arguments...]." << std::endl;
 }
 
 int testMain(int argc, const char* argv[]) {
@@ -526,9 +526,14 @@ int testMain(int argc, const char* argv[]) {
 		globs["quit"] = quit;
 		globs["help"] = help;
 		{
-			Var argumentsVar = rt.newArrayVar(static_cast<UInt32>(scriptArguments.size()));
-			for (UInt32 i = 0; i < static_cast<UInt32>(scriptArguments.size()); ++i) {
-				argumentsVar[i] = scriptArguments[i];
+			Var argumentsVar = inputFilePath.empty()
+					? rt.newArrayVar()
+					: rt.newArrayVar(static_cast<UInt32>(scriptArguments.size()) + 1);
+			if (!inputFilePath.empty()) {
+				argumentsVar[0] = inputFilePath;
+				for (UInt32 i = 0; i < static_cast<UInt32>(scriptArguments.size()); ++i) {
+					argumentsVar[i + 1] = scriptArguments[i];
+				}
 			}
 			globs["arguments"] = argumentsVar;
 		}
