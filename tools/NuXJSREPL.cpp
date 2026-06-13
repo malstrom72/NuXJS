@@ -448,10 +448,25 @@ void randomSeed() {
 	srand(seed);
 }
 
+void printUsage() {
+	std::cout << "Usage: NuXJS [options] [script.js [arguments...]]" << std::endl
+			<< "Options:" << std::endl
+			<< "  -s: suppress result output" << std::endl
+			<< "  -t: print timing and memory stats" << std::endl
+			<< "  -p: pause before quitting" << std::endl
+			<< "  -n: do not load the standard library" << std::endl
+			<< "  -E, --legacy-exceptions: use legacy exception output" << std::endl
+			<< "  -h, --help: show this usage" << std::endl
+			<< std::endl
+			<< "NuXJS options must appear before the script file name." << std::endl
+			<< "Tokens after the script file name are exposed to JS as global `arguments`." << std::endl;
+}
+
 int testMain(int argc, const char* argv[]) {
 	try {
 		String source(EMPTY_STRING);
 		std::string inputFilePath;
+		std::vector<std::string> scriptArguments;
 		std::istream* inStream = &std::cin;
 		bool doTime = false;
 		size_t peakMemory = 0;
@@ -459,17 +474,20 @@ int testMain(int argc, const char* argv[]) {
 		bool loadStdLib = true;
 		bool useLegacyExceptionOutput = false;
 		for (int argi = 1; argi < argc; ++argi) {
-			if (strcmp(argv[argi], "-t") == 0) doTime = true;
+			if (!inputFilePath.empty()) {
+				scriptArguments.push_back(argv[argi]);
+			} else if (strcmp(argv[argi], "-t") == 0) doTime = true;
 			else if (strcmp(argv[argi], "-s") == 0) doSuppressStdErr = true;
 			else if (strcmp(argv[argi], "-p") == 0) pauseBeforeQuit = true;
 			else if (strcmp(argv[argi], "-n") == 0) loadStdLib = false;
 			else if (strcmp(argv[argi], "--legacy-exceptions") == 0 || strcmp(argv[argi], "-E") == 0) useLegacyExceptionOutput = true;
-			else if (inputFilePath.empty()) {
+			else if (strcmp(argv[argi], "--help") == 0 || strcmp(argv[argi], "-h") == 0) {
+				printUsage();
+				return 0;
+			}
+			else {
 				inputFilePath = argv[argi];
 				interactive = false;
-			} else {
-				std::cout << "Too many arguments" << std::endl;
-				return 1;
 			}
 		}
 
@@ -507,6 +525,13 @@ int testMain(int argc, const char* argv[]) {
 		globs["load"] = load;
 		globs["quit"] = quit;
 		globs["help"] = help;
+		{
+			Var argumentsVar = rt.newArrayVar(static_cast<UInt32>(scriptArguments.size()));
+			for (UInt32 i = 0; i < static_cast<UInt32>(scriptArguments.size()); ++i) {
+				argumentsVar[i] = scriptArguments[i];
+			}
+			globs["arguments"] = argumentsVar;
+		}
 
 		PrintFunction printFunction;
 		globals.setOwnProperty(rt, &PRINT_STRING, &printFunction, DONT_ENUM_FLAG);
