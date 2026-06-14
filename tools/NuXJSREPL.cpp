@@ -450,17 +450,17 @@ Var help(Runtime& rt, const Var& thisVar, const VarList& args) {
 	(void)thisVar;
 	(void)args;
 	std::wcout << L"Available REPL helpers:" << std::endl
+			<< L"  quit()             - exit the REPL" << std::endl
 			<< L"  read(file)         - return UTF-8 file as string" << std::endl
 			<< L"  write(file, text)  - write text to a UTF-8 file" << std::endl
 			<< L"  load(file)         - execute a UTF-8 JavaScript file" << std::endl
 			<< L"  system(command)    - run a shell command, return its status" << std::endl
 			<< L"  getenv(name)       - return an environment variable (or undefined)" << std::endl
-			<< L"  quit()             - exit the REPL" << std::endl
 			<< L"  gc()               - run garbage collection" << std::endl
 			<< L"  dasm(func)         - disassemble a compiled function" << std::endl
+			<< std::endl
 			<< L"Special commands:" << std::endl
-			<< L"  #save [name]       - save the current session" << std::endl
-			<< L"                       (no name uses a timestamp in tests/)" << std::endl
+			<< L"  #save [name]       - save the current session (no name uses a timestamp in tests/)" << std::endl
 			<< L"  #undo              - drop the last entered (unexecuted) line" << std::endl
 			<< L"  #purge             - clear the session log" << std::endl
 			<< L"  ?expr              - shortcut for print(expr)" << std::endl;
