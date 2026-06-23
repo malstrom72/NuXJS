@@ -1632,7 +1632,7 @@ defineProperties(Math, { dontEnum: true }, {
 	min: unconstructable(function min(x, y) { var m = $Infinity, v, argv; for (var i = (argv = arguments).length - 1; i >= 0; --i) if ((v = +argv[i]) < m || $isNaN(v)) m = v; return m }),
 	pow: unconstructable(function pow(x, y) { x = +x; y = +y; return (!$isFinite(y) && abs(x) === 1 ? $NaN : support.pow(x, y)) }),
 	random: unconstructable(function random() { return support.random() }),
-	round: unconstructable(function round(v) { return (v === 0.0 ? v : (v >= -0.5 && v < 0.0 ? -0.0 : $floor(v + 0.5))) }),
+	round: unconstructable(function round(v) { return ((v = +v) === 0.0 ? v : (v >= -0.5 && v < 0.0 ? -0.0 : $floor(v + 0.5))) }),
 	sin: unconstructable(function sin(v) { return support.sin(+v) }),
 	sqrt: unconstructable(function sqrt(v) { return support.sqrt(+v) }),
 	tan: unconstructable(function tan(v) { return support.tan(+v) })

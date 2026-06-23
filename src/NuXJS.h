@@ -24,6 +24,8 @@
 #ifndef NuXJS_h
 #define NuXJS_h
 
+#define NUXJS_VERSION 101
+
 #include "assert.h"
 #include <algorithm>
 #include <string>

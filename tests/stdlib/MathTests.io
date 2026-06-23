@@ -97,6 +97,30 @@
 > print(Math.round(-0.51))
 < -1
 -
+> print(Math.round("5"))
+< 5
+-
+> print(Math.round("5.6"))
+< 6
+-
+> print(Math.round("2.4"))
+< 2
+-
+> print(Math.round("-3.2"))
+< -3
+-
+> print(Math.round("0.5"))
+< 1
+-
+> print(Math.round(new Number(7.5)))
+< 8
+-
+> print(Math.round("abc"))
+< NaN
+-
+> print(1.0 / Math.round("-0.4"))
+< -Infinity
+-
 > print(Math.sin(1.0).toPrecision(15))
 < 0.841470984807897
 -
