@@ -779,7 +779,7 @@ bool Value::toArrayIndex(UInt32& index) const {
 	switch (type) {
 		case NUMBER_TYPE: {
 			const double n = var.number;
-			if (n < 0.0 || n >= 4294967295.0) {
+			if (!(n >= 0.0 && n < 4294967295.0)) {	// NaN fails this test and is correctly rejected (avoids UB float->UInt32 cast)
 				return false;
 			}
 			index = static_cast<UInt32>(n);
@@ -1782,9 +1782,11 @@ bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value&
 	}
 	if (key.equalsString(LENGTH_STRING)) {
 		const double rawLength = v.toDouble();
+		if (!(rawLength >= 0.0 && rawLength <= 4294967295.0)) {	// NaN-safe range check *before* the cast (avoids UB float->UInt32 cast)
+			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
+		}
 		const UInt32 coercedLength = static_cast<UInt32>(rawLength);
-		if (isNaN(rawLength) || rawLength < 0.0 || rawLength > 4294967295.0
-				|| rawLength != static_cast<double>(coercedLength)) {
+		if (rawLength != static_cast<double>(coercedLength)) {
 			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
 		}
 		result = updateLength(coercedLength);
