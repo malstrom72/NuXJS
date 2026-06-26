@@ -515,7 +515,6 @@ class Table {
 		UInt32 rebuild(UInt32 newN);
 
 		Vector<Bucket, 1U << TABLE_BUILT_IN_N> buckets;
-		int bockets[123];
 		UInt32 loadCount;													///< Count of buckets with defined keys.
 };
 
