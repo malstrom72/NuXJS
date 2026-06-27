@@ -712,7 +712,7 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 				if (a === void 0 && b === void 0) return 0;
 				else if (a === void 0) return 1;
 				else if (b === void 0) return -1;
-				else return comparefn(a, b);
+				else { var v = +comparefn(a, b); return (v === v ? v : 0); } // NaN result must be treated as +0 (else qsort can loop forever)
 			}
 		};
 		function qsort(from, to) {
