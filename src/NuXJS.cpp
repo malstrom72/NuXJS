@@ -2607,7 +2607,11 @@ void Processor::newOperation(const Int32 argc) {
 			}
 		}
 		Object* newObject = new(heap) JSObject(heap.managed(), prototype != 0 ? prototype : rt.getObjectPrototype());
-		++sp;	// if we have 0 args we make room for the new object
+		++sp;	// make room for the new object
+		// The slot just exposed by `++sp` is now inside the gc-marked stack range, so it must hold a valid Value
+		// before `construct()` runs (a re-entrant native constructor could trigger a gc). Storing `newObject` both
+		// initialises the slot and keeps `newObject` reachable across the call.
+		*sp = newObject;
 		sp[-argc] = f->construct(rt, *this, argc, sp - argc, newObject);
 		sp[-argc - 1] = newObject;
 		pop(argc);
