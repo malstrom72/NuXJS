@@ -13,14 +13,22 @@ Run-time
 
 	* CompilationError is a hack to get access to error line number when using the high-level API. It is problematic because if you catch a compilation error in Javascript you lose this information. Also, it would be neat to have a full stack trace in exceptions for run-time errors. But this is not a standard part of ES3 of course.
 
+	* setMemoryCap is only enforced inside autoGC, which only runs at the STANDARD_CYCLES_BETWEEN_AUTO_GC batch boundary. Within one batch the heap can grow unboundedly: a single op that allocates a lot (e.g. `s += s` doubling a string) reached ~2 GB *live* with a 16 MB cap before the next check fired (it only stopped on MAX_SINGLE_ALLOCATION_SIZE, not the cap). No host crash (nothrow new -> managed "Out of memory"), but the cap on *running load* isn't really honored for bursts.
+		- the contract is that running (live, retained) load must not overshoot the cap; transient spikes are fine. The existing autoGC check (gc + drain, then heap.size() >= memoryCap) measures live load correctly - the only defect is timing.
+		- safe fix A (general): charge cyclesLeft for bytes allocated so a burst ends the batch early and the existing post-gc live-load check runs promptly. Reuses the cyclesLeft exit path (no new flag). Catches accumulation of many sub-cap chunks too. Wiring cost: Heap needs a `Int32* activeCyclesLeft` that Processor::run sets/restores via RAII; correct because only one Processor runs per heap at a time (nested rt.call suspends the outer) and heaps aren't shared across threads. Downside: Heap gains a back-reference into VM execution (no longer a pure allocator).
+		- safe fix B (cheap, Heap-local): reject a *single* allocation with `size > cap` in acquireMemory (cap pushed down from setMemoryCap). A lone object bigger than the cap can never be valid running load, so this is correct, no false positive, and no Processor coupling. Kills the dramatic single-alloc case (s += s) but does not bound intra-batch accumulation.
+		- DANGEROUS / rejected: a cumulative hard ceiling `allocatedSize + size > cap` in acquireMemory - it counts transient + uncollected garbage, so it would spuriously OOM legitimate programs whose steady-state is under the cap.
+		- also rejected: GC inside allocate (would bound it tightest, no false positives) - breaks the "GC only at cycle boundaries when the VM stack is consistent" invariant; would need every allocation site audited for unrooted live pointers.
+		- decision: deferred for now (reviewed 2026-06-28). B is the clean, coupling-free win; A adds the Heap<->Processor wiring needed to also bound accumulation.
+
 
 Compiler
 ========
 
 	
-	* strip LEFT-TO-RIGHT MARK or RIGHT-TO-LEFT MARK from source-code according to 7.1 in ES3 spec.
+	* 7.1: strip Unicode format-control (Cf) characters - LRM (U+200E), RLM (U+200F), ZWNJ (U+200C), ZWJ (U+200D), BOM (U+FEFF) - from the source before lexing. ES3 removes them *everywhere*, even inside string/regexp literals (so they'd need \uXXXX to appear in a string). Currently NOT done: a BOM/LRM etc. in code gives a SyntaxError, and they survive as chars inside string literals (e.g. "a<BOM>b".length is 3, should be 2).
 
-	* do we support all whitespaces as described in 7.2?
+	* 7.2 whitespace: the explicitly-listed chars are handled and tested (tests/conforming/variousUnicodeSpaces.io covers TAB/VT/FF/SP/NBSP plus the 7.3 terminators LF/CR/LS/PS). The only thing not covered is the open-ended "Other category Zs" catch-all (the rare U+2000..U+200A, U+3000, U+1680, U+202F); those currently SyntaxError between tokens. Marginal - low priority.
 
 GC
 ==
@@ -40,9 +48,8 @@ Run-time
 
 	* perhaps it would have been better to split Frame into different pointers (more similar to ES-spec): one for running code (not changed by catch and with), one for variable object (not changed by catch, with or eval) and "current scope object" (changed by them all). This way we wouldn't have to declare so many dummy virtuals that just passes stuff upwards the Frame chain.
 
-	* array object (length property support, optimized for numerical indexes?)
-		- ok, one thought: normally an array only contains a continuous array (with start and end)... when too many items are (or are to become) undefined, or when non-integer elements are added, convert to a normal ScriptObject (accessed as through a proxy now)
-		- more thoughts: use different compressed variations (templates) when type is homogenous over all the array, e.g. number array, object array, string array. One could even consider an int array.
+	* array object: type-specialized storage. (DONE: length property + a dense continuous-vector that falls back to a normal ScriptObject when the array becomes sparse or gets non-integer keys - see JSArray denseVector / sliceDenseVector / constructCompleteObject.)
+		- still open: use different compressed variations (templates) when the type is homogenous over the whole array, e.g. number array, object array, string array. One could even consider an int array.
 
 	* unprintable strings, strings with lf etc does not look so nice in exceptions, e.g. when trying to convert to a function, e.g. ("")(): TypeError:  is not a function
 		- also extremely long strings create absurd exceptions this way
