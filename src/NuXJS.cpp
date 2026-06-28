@@ -510,16 +510,17 @@ static Char* doubleToString(Char buffer[32], const double value) {
 		}
 		assert(next >= normalized); // Correct behavior is to never reach higher than digit 9.
 
-		// Do we hit goal with digit or digit + 1? If so, is next digit >= 5 (magnitude / 2) then increment it.
+		// Decide between digit and digit + 1 under final rounding; bump the digit if the lower one doesn't reconstruct
+		// to the exact value, or if we are strictly past the half-step. (Ported from Numbstrict's realToString. The
+		// previous version overwrote `reconstructed` and so missed the "lower digit doesn't round-trip but the higher
+		// one does" case, emitting a last digit one too low for some values, e.g. String(7.120236347223045e-307).)
 		reconstructed = scaleAndRound(accumulator, factor);
-		if (reconstructed != absValue) {
-			reconstructed = scaleAndRound(accumulator + magnitude, factor);
-		}
-		if (reconstructed == absValue && accumulator + magnitude / 2 < normalized) {
+		const double r1 = scaleAndRound(accumulator + magnitude, factor);
+		if ((reconstructed != absValue && r1 == absValue) || (reconstructed == absValue
+				&& accumulator + magnitude / 2 < normalized && absValue != std::numeric_limits<double>::max())) {
+			reconstructed = r1;
 			++digit;
 			assert(digit < 10); // If this happens we have failed to calculate the correct exponent above.
-		} else {
-			assert(accumulator > 0.0); // If this happens we have failed to calculate the correct exponent above.
 		}
 
 		*p++ = '0' + digit;
