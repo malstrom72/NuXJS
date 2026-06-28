@@ -3913,19 +3913,27 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 	emitWithConstant(Processor::GEN_FUNC_OP, func);
 }
 
+/*
+	Caps total live compile-time recursion depth. Expressions and statements share this one counter (it is threaded
+	into nested function compilers), so deeply nested source cannot overflow the C++ stack during compilation. It must
+	stay well below the real stack ceiling - nested function definitions, the largest frames, overflow at a few thousand
+	levels - while leaving ample room for real code and for JSON.parse(), which eval()s validated input that is already
+	bounded far below this by MAX_JSON_DEPTH in stdlib.js.
+*/
+const Int32 MAX_NESTED_COMPILE_DEPTH = 256;
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
-const Int32 MAX_NESTED_EXPRESSION_DEPTH = 64;
+
+Compiler::NestGuard::NestGuard(Compiler& compiler) : compiler(compiler) {
+	if (compiler.nestCounter >= MAX_NESTED_COMPILE_DEPTH) {
+		compiler.error(RANGE_ERROR, "Internal compiler limitations reached. Reduce code complexity.");
+	}
+	++compiler.nestCounter;
+}
+Compiler::NestGuard::~NestGuard() { --compiler.nestCounter; }
 
 bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
-	if (nestCounter >= MAX_NESTED_EXPRESSION_DEPTH) {
-		error(RANGE_ERROR, "Internal compiler limitations reached. Reduce code complexity.");
-	}
-	struct NestCounter {
-		NestCounter(Compiler& c) : c(c) { ++c.nestCounter; };
-		~NestCounter() { --c.nestCounter; };
-		Compiler& c;
-	} nestCounter(*this);
-	
+	NestGuard nestGuard(*this);
+
 	if (!preOperate(xr, precedence)) {
 		if (eof()) {
 			return false;
@@ -4623,7 +4631,9 @@ void Compiler::switchStatement(SemanticScope* currentScope) {
 */
 void Compiler::statement(SemanticScope* currentScope, SemanticScope* scopeLabelsEnd) {
 	assert(currentSection == &mainSection); // statements must produce into main-section because of breaks etc...
-	
+
+	NestGuard nestGuard(*this);
+
 	white();
 	
 	if (token("{", false)) {

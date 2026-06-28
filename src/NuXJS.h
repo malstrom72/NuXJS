@@ -1793,6 +1793,13 @@ class Compiler : public GCItem {
 			Int32 stackDepth;
 		};
 
+		/// RAII guard bounding compile-time recursion depth; throws a RangeError if `MAX_NESTED_COMPILE_DEPTH` is reached.
+		struct NestGuard {
+			NestGuard(Compiler& compiler);
+			~NestGuard();
+			Compiler& compiler;
+		};
+
 		struct ExpressionResult;
 		struct SemanticScope;
 
