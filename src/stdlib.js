@@ -316,6 +316,7 @@ defineProperties(Number.prototype, { dontEnum: true }, {
 		var val = getInternalNumber(this, "toString");
 		if (radix === void 0 || !$isFinite(val)) return '' + val;
 		else if ((radix = int(radix)) < 2 || radix > 36) throw rangeError("Illegal radix for toString()");
+		else if (radix === 10) return '' + val; // 15.7.4.2: radix 10 must use ToString (shortest decimal), not numberToRadix
 		else return numberToRadix(val, radix);
 	}),
 	toExponential: unconstructable(function toExponential(fractionDigits) {
