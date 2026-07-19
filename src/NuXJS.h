@@ -26,6 +26,12 @@
 
 #define NUXJS_VERSION 101
 
+/**
+	NUXJS_ES5: define to 1 (e.g. -DNUXJS_ES5=1, the `es5` build variant) to compile the ECMAScript 5.1 extensions.
+	Left undefined, the engine builds as the pristine ECMAScript 3 engine, byte for byte. Every ES5.1 change in the
+	source is bracketed by `#if NUXJS_ES5` and must be strictly additive. See docs/ES5.1 Roadmap.md.
+*/
+
 #include "assert.h"
 #include <algorithm>
 #include <string>

@@ -62,13 +62,15 @@ the change is wrong, not the principle.
 
 Pure plumbing — lands before any feature so the guard discipline exists from commit one.
 
-- [ ] Define the `NUXJS_ES5` macro and wire `es3` / `es5` / `both` variants into `build.sh`, `build.cmd`, and
-      `tools/buildAndTest.sh` (the current `build.sh` takes only `model`; the variant arg must be restored).
-      `both` builds and tests every gate combination and is the CI default.
-- [ ] Create `tests/es5/` (auto-discovered by `tools/test.pika`); add a trivial guarded smoke test proving the
-      `es5` build sees an ES5-only feature and the `es3` build does not.
-- [ ] Confirm the `es3` build is byte-identical (or behavior-identical) to pre-lift `main` — this is the baseline
-      the whole roadmap must not disturb.
+- [x] Define the `NUXJS_ES5` macro and wire `es3` / `es5` / `both` variants into `build.sh`, `build.cmd`, and
+      `tools/buildAndTest.sh`/`.cmd`. `both` is the default. The `es5` variant compiles with `-DNUXJS_ES5=1`,
+      names its binaries `NuXJS_es5_*` (release installed as `output/NuXJS_ES5`), runs `tests/es5/` and skips
+      `tests/es3only/`; the `es3` variant does the reverse.
+- [x] Create `tests/es5/`; smoke feature is a real conformance item — ES5.1 §12.6.4 `for-in` over `null`/
+      `undefined` enumerates nothing (guarded in `GET_ENUMERATOR_OP`). ES3 expectation moved to
+      `tests/es3only/forInNullUndefined.io`; ES5 expectation in `tests/es5/forInNullUndefined.io`.
+- [x] Confirmed the `es3` release binary is **byte-identical** to one built from pre-lift `main` — this is the
+      baseline the whole roadmap must not disturb.
 
 **Gate:** `es3` and `es5` both green; ES3 binary unchanged.
 
