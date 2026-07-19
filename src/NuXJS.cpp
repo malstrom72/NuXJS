@@ -2888,6 +2888,13 @@ void Processor::innerRun() {
 			}
 			
 			case GET_ENUMERATOR_OP: {
+			#if NUXJS_ES5
+				// ES5.1 12.6.4: for-in over null or undefined enumerates nothing (ES3 threw a TypeError).
+				if (sp[0].isUndefined() || sp[0].isNull()) {
+					sp[0] = new(heap) RangeEnumerator(heap.managed(), 0, 0);
+					break;
+				}
+			#endif
 				const Object* o = convertToObject(sp[0], false);
 				if (o == 0) {
 					return;
