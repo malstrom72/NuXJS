@@ -5,8 +5,8 @@ A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with prec
 ## Features
 
 - **Fully ECMAScript 3 compliant** with focused ECMAScript 5 additions (string indexing, JSON).
-- Entire engine fits in **one .cpp file, one .h file, and a `stdlib.js`** (~7 000 LOC of C++).
-- Written in standard, architecture-agnostic **C++03** – _no_ platform-specific code.
+- Entire engine fits in **one .cpp file, one .h file, and a `stdlib.js`** (~7 000 LOC of C++); the `stdlib.js` is also generated into a `stdlibJS.cpp` array for embedding.
+- Written in portable, standard **C++03** – no OS-specific code, just a few small compiler shims (e.g. MSVC math intrinsics). Tested with GCC and Clang (x86-64 and ARM) and MSVC.
 - Fully asynchronous, **non-blocking VM**; run as many cycles as you like between host calls.
 - Simple but **fast stack machine**; competitive with other interpreted JS engines.
 - **Sandboxed and secure** – guest JS cannot crash the host process.
@@ -15,7 +15,7 @@ A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with prec
 - **Fast single-pass compiler** (hand-written recursive-descent / precedence parser).
 - Mark-and-sweep, stop-the-world **GC** with adaptive trigger rate and memory cap.
 - Uses the standard C++ heap with **object pools** for quick allocation of small blocks.
-- **Zero external dependencies** (even STL containers are avoided).
+- **Zero external dependencies** – the engine core uses its own containers; STL types (`std::string`/`std::vector`) appear only at the C++ API boundary.
 - **Standard library and regexp compiler written in JavaScript** for safety and smaller footprint.
 - **Easy-to-use high-level C++ API** for integrating and embedding the engine.
 - **Extensive automated tests** – zero-tolerance for bugs.
@@ -76,10 +76,10 @@ commands.
 ## ECMAScript 3 Compliance
 
 - Zero failures across 6542 applicable ES3 tests (Test262).
-- 9224 tests are excluded by category and not counted toward ES3 support:
-  - ES >3: 8933 (modern features not targeted for ES3, main)
+- 9239 tests are excluded by category and not counted toward ES3 support:
+  - ES >3: 8943 (modern features not targeted for ES3, main)
   - BAD TEST: 101 (tests depend on features not available in ES3)
-  - BY DESIGN: 190 (intentional, documented deviations)
+  - BY DESIGN: 195 (intentional, documented deviations)
 
 These results come from the Test262 harness included in this repo; see `docs/Test262 Dashboard.md` for the developer-focused
 dashboard that reproduces them.
@@ -117,7 +117,6 @@ int main(int argc, const char* argv[]) {
 ## Documentation
 
 - [NuXJS Documentation](docs/NuXJS%20Documentation.md)
-- [ECMAScript Compatibility Notes](docs/notes/ECMAScript%20Compatibility%20Notes.md)
 - [TypeScript Compatibility](docs/notes/TypeScript%20Compatibility.md)
 
 ## Building the fuzz target
