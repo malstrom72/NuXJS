@@ -2333,11 +2333,11 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ CHECK_OBJECT_COERCIBLE_OP	 , "CHECK_OBJECT_COERCIBLE"  , 0	  , 0 },
 	{ CHECK_RESOLVE_PROPERTY_OP	 , "CHECK_RESOLVE_PROPERTY"	 , 0	  , 0 },
 	{ GET_PROPERTY_OP            , "GET_PROPERTY"            , -1     , 0 },
+#if !NUXJS_ES5
 	{ SET_PROPERTY_OP            , "SET_PROPERTY"            , -2     , 0 },
-#if NUXJS_ES5
-	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -2     , 0 },	// es5: leaves junk / the setter's return value on top; the compiler always follows with POP_OP
-#else
 	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -3     , 0 },
+#else
+	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -2     , 0 },	// es5: leaves junk / the setter's return value on top; the compiler always follows with POP_OP
 #endif
 	{ ADD_PROPERTY_OP            , "ADD_PROPERTY"            , -1     , 0 },
 	{ PUSH_ELEMENTS_OP           , "PUSH_ELEMENTS_OP"        , 0      , OpcodeInfo::POP_OPERAND },
@@ -2383,7 +2383,9 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ REPUSH_2_OP                , "REPUSH_2"                , +2     , 0 },
 	{ POST_SHUFFLE_OP            , "POST_SHUFFLE"            , +1     , 0 },
 	{ CALL_OP                    , "CALL"                    , 0      , OpcodeInfo::POP_OPERAND },
+#if !NUXJS_ES5
 	{ CALL_METHOD_OP             , "CALL_METHOD"             , -1     , OpcodeInfo::POP_OPERAND },
+#endif
 	{ CALL_EVAL_OP               , "CALL_EVAL"               , 0      , OpcodeInfo::POP_OPERAND },
 	{ NEW_OP                     , "NEW"                     , +1     , OpcodeInfo::POP_OPERAND },
 	{ NEW_RESULT_OP              , "NEW_RESULT"              , -1     , 0 },
@@ -2799,12 +2801,14 @@ void Processor::innerRun() {
 			#endif
 			}
 
+		#if !NUXJS_ES5
 			case SET_PROPERTY_OP: {
 				sp[-2].getObject()->setProperty(rt, sp[-1], sp[0]);
 				sp[-2] = sp[0];
 				pop(2);
 				break;
 			}
+		#endif
 
 			case SET_PROPERTY_POP_OP: {
 			#if NUXJS_ES5
@@ -2915,6 +2919,7 @@ void Processor::innerRun() {
 				return;
 			}
 			
+		#if !NUXJS_ES5
 			case CALL_METHOD_OP: {
 				Object* const o = convertToObject(sp[-im - 1], true);
 				if (o != 0) {
@@ -2929,7 +2934,8 @@ void Processor::innerRun() {
 				}
 				return;
 			}
-			
+		#endif
+
 			case CALL_EVAL_OP: {
 				Function* f = asFunction(sp[-im]);
 				if (f != 0) {
@@ -3356,7 +3362,9 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand, UInt32
 		switch (lastEmitted) {
 			case Processor::WRITE_LOCAL_OP: replacementOpcode = Processor::WRITE_LOCAL_POP_OP; break;
 			case Processor::WRITE_NAMED_OP: replacementOpcode = Processor::WRITE_NAMED_POP_OP; break;
+		#if !NUXJS_ES5
 			case Processor::SET_PROPERTY_OP: replacementOpcode = Processor::SET_PROPERTY_POP_OP; break;
+		#endif
 			case Processor::REPUSH_OP:
 			case Processor::CONST_OP:
 			case Processor::VOID_OP: {
