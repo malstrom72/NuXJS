@@ -604,6 +604,7 @@ class Object : public GCItem {
 		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;	///< Pure lookup like getOwnProperty but also reports the accessor pair (or null). Never runs script.
 		Flags getPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;				///< Prototype-chain walking version of getOwnPropertySlot. Never runs script.
 		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);	///< 8.12.9 [[DefineOwnProperty]]. Default rejects (throws TypeError when doThrow). Returns false on a rejected non-throwing call.
+		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;	///< Appends every own property name (including non-enumerable) as a String value, for 15.2.3.4. Default: none.
 	#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);								///< Update existing property. Return false if it doesn't exist or can't be updated (e.g. read-only property exists). Can be overriden for optimization. (Default implementation checks existence with hasOwnProperty() first.)
@@ -811,6 +812,7 @@ class JSObject : public Object, public Table {
 		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;
 		bool defineOwnAccessor(Runtime& rt, const Value& key, Function* f, bool isSetter);	///< Installs (or completes) an accessor property, as for a `get` / `set` object literal entry.
 		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);
+		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;
 	#endif
 	
 	protected:
@@ -863,6 +865,9 @@ template<class SUPER> class LazyJSObject : public SUPER {
 		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow) {
 			return getCompleteObject(rt)->defineOwnProperty(rt, key, desc, doThrow);
 		}
+		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const {
+			getCompleteObject(rt)->collectOwnPropertyNames(rt, out);	// materializes name/length/prototype etc. into the table
+		}
 	#endif
 
 	protected:
@@ -896,6 +901,7 @@ class JSArray : public LazyJSObject<Object> {
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
 	#if NUXJS_ES5
 		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);	// index/length (15.4.5.1) not yet implemented; named properties delegate to the complete object
+		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;
 	#endif
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;

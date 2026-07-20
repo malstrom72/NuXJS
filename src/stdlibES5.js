@@ -7,7 +7,8 @@
 	hooks and the globals stdlib.js has already installed, but not stdlib.js's private (closure-local) helpers.
 
 	@preserve: trim,preventExtensions,isExtensible,defineProperties,defineOwnProperty,get,set
-	@preserve: getOwnPropertyDescriptor,keys
+	@preserve: getOwnPropertyDescriptor,keys,getOwnPropertyNames,createObject,create
+	@preserve: seal,freeze,isSealed,isFrozen
 */
 (function (support) {
 
@@ -114,6 +115,12 @@ method(Object, "getOwnPropertyDescriptor", function getOwnPropertyDescriptor(o, 
 	return support.getOwnPropertyDescriptor(o, "" + p);
 });
 
+// 15.2.3.4 Object.getOwnPropertyNames: all own string-keyed names, including non-enumerable ones.
+method(Object, "getOwnPropertyNames", function getOwnPropertyNames(o) {
+	requireObject(o, "getOwnPropertyNames");
+	return support.getOwnPropertyNames(o);
+});
+
 // 15.2.3.14 Object.keys: own enumerable string-keyed property names, in for-in order.
 method(Object, "keys", function keys(o) {
 	requireObject(o, "keys");
@@ -122,6 +129,62 @@ method(Object, "keys", function keys(o) {
 		if (support.hasOwnProperty(o, k)) result.push(k);
 	}
 	return result;
+});
+
+// 15.2.3.5 Object.create
+method(Object, "create", function create(o, properties) {
+	if (o !== null && typeof o !== "object" && typeof o !== "function") {
+		throw new TypeError("Object.create: prototype must be an object or null");
+	}
+	var obj = support.createObject(o);
+	if (properties !== undefined) Object.defineProperties(obj, properties);
+	return obj;
+});
+
+// 15.2.3.8 Object.seal: make every own property non-configurable, then prevent extensions. The full current
+// descriptor is re-supplied (value/enumerable kept) so the deferred array-index path does not clobber elements.
+method(Object, "seal", function seal(o) {
+	requireObject(o, "seal");
+	var names = Object.getOwnPropertyNames(o);
+	for (var i = 0; i < names.length; ++i) {
+		var d = Object.getOwnPropertyDescriptor(o, names[i]);
+		if (d.configurable) { d.configurable = false; Object.defineProperty(o, names[i], d); }
+	}
+	return Object.preventExtensions(o);
+});
+
+// 15.2.3.9 Object.freeze: seal, and additionally make data properties non-writable.
+method(Object, "freeze", function freeze(o) {
+	requireObject(o, "freeze");
+	var names = Object.getOwnPropertyNames(o);
+	for (var i = 0; i < names.length; ++i) {
+		var d = Object.getOwnPropertyDescriptor(o, names[i]);
+		if ("value" in d) d.writable = false;
+		d.configurable = false;
+		Object.defineProperty(o, names[i], d);
+	}
+	return Object.preventExtensions(o);
+});
+
+// 15.2.3.11 Object.isSealed
+method(Object, "isSealed", function isSealed(o) {
+	requireObject(o, "isSealed");
+	var names = Object.getOwnPropertyNames(o);
+	for (var i = 0; i < names.length; ++i) {
+		if (Object.getOwnPropertyDescriptor(o, names[i]).configurable) return false;
+	}
+	return !Object.isExtensible(o);
+});
+
+// 15.2.3.12 Object.isFrozen
+method(Object, "isFrozen", function isFrozen(o) {
+	requireObject(o, "isFrozen");
+	var names = Object.getOwnPropertyNames(o);
+	for (var i = 0; i < names.length; ++i) {
+		var d = Object.getOwnPropertyDescriptor(o, names[i]);
+		if (d.configurable || (("value" in d) && d.writable)) return false;
+	}
+	return !Object.isExtensible(o);
 });
 
 })

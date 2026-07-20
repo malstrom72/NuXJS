@@ -716,6 +716,17 @@ class StringWrapper : public JSObject {
 			Heap& heap = rt.getHeap();
 			return new(heap) JoiningEnumerator(heap.managed(), rt, wrapped, super::getOwnPropertyEnumerator(rt));
 		}
+	#if NUXJS_ES5
+		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const {
+			Heap& heap = rt.getHeap();
+			const UInt32 len = wrapped->size();
+			for (UInt32 i = 0; i < len; ++i) {
+				out.push(Value(String::fromInt(heap, static_cast<Int32>(i))));	// 15.5.5.2 character indices
+			}
+			out.push(Value(&LENGTH_STRING));
+			super::collectOwnPropertyNames(rt, out);	// any extra own properties in the table
+		}
+	#endif
 
 	protected:
 		const String* wrapped;
@@ -1418,6 +1429,8 @@ static bool rejectDefine(Runtime& rt, bool doThrow) {
 bool Object::defineOwnProperty(Runtime& rt, const Value&, const PropertyDescriptor&, bool doThrow) {
 	return rejectDefine(rt, doThrow);
 }
+
+void Object::collectOwnPropertyNames(Runtime&, Vector<Value>&) const { }
 #endif
 
 bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
@@ -1673,6 +1686,12 @@ bool JSObject::defineOwnAccessor(Runtime& rt, const Value& key, Function* f, boo
 				, EXISTS_FLAG | ACCESSOR_FLAG);	// object literals: enumerable and configurable
 	}
 	return true;
+}
+
+void JSObject::collectOwnPropertyNames(Runtime&, Vector<Value>& out) const {
+	for (Table::Bucket* bucket = getFirst(); bucket != 0; bucket = getNext(bucket)) {
+		out.push(Value(bucket->getKey()));
+	}
 }
 
 // 8.12.9 [[DefineOwnProperty]] for an ordinary object. `desc` carries presence bits so an absent field means
@@ -2008,6 +2027,17 @@ bool JSArray::defineOwnProperty(Runtime& rt, const Value& key, const PropertyDes
 		return setOwnProperty(rt, key, desc.has(PropertyDescriptor::HAS_VALUE) ? desc.value : Value::UNDEFINED, f);
 	}
 	return super::defineOwnProperty(rt, key, desc, doThrow);
+}
+
+void JSArray::collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const {
+	Heap& heap = rt.getHeap();
+	for (UInt32 i = 0; i < denseVector.size(); ++i) {
+		out.push(Value(String::fromInt(heap, static_cast<Int32>(i))));
+	}
+	if (completeObject != 0) {
+		completeObject->collectOwnPropertyNames(rt, out);	// sparse indices and named properties
+	}
+	out.push(Value(&LENGTH_STRING));
 }
 #endif
 
@@ -5579,6 +5609,25 @@ struct Support {
 		desc->setOwnProperty(rt, &CONFIGURABLE_STRING, Value((flags & DONT_DELETE_FLAG) == 0));
 		return desc;
 	}
+
+	// 15.2.3.4: every own property name (including non-enumerable), as an array.
+	static Value getOwnPropertyNames(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+		Heap& heap = rt.getHeap();
+		Object* o = (argc >= 1 ? argv[0].asObject() : 0);
+		if (o == 0) {
+			ScriptException::throwError(heap, TYPE_ERROR, "Object.getOwnPropertyNames called on non-object");
+			return Value();
+		}
+		Vector<Value> names(0, &heap);
+		o->collectOwnPropertyNames(rt, names);	// no GC runs during a native call, so the raw Values stay valid
+		return new(heap) JSArray(heap.managed(), names.size(), names.begin());
+	}
+
+	// 15.2.3.5 helper: a fresh object with the given [[Prototype]] (an object, or null for a bare object).
+	static Value createObject(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+		Object* prototype = (argc >= 1 ? argv[0].asObject() : 0);	// null / non-object -> no prototype
+		return new(rt.getHeap()) JSObject(rt.getHeap().managed(), prototype);
+	}
 #endif
 
 	static Value fromCharCode(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
@@ -5706,6 +5755,7 @@ static struct {
 	, { "preventExtensions", Support::preventExtensions }, { "isExtensible", Support::isExtensible }
 	, { "defineOwnProperty", Support::defineOwnProperty }
 	, { "getOwnPropertyDescriptor", Support::getOwnPropertyDescriptor }
+	, { "getOwnPropertyNames", Support::getOwnPropertyNames }, { "createObject", Support::createObject }
 #endif
 };
 

@@ -153,12 +153,12 @@ Pure `stdlib.js` + one upgraded native hook. Replaces the current data-only `Obj
       extensibility) and route to `Object::defineOwnProperty`. It must read existing attributes (not force-false)
       and return the object.
 - [x] `Object.defineProperty`, `Object.defineProperties` (§15.2.3.6–7) via native `defineOwnProperty` (8.12.9) + JS `toPropertyDescriptor` (8.10.5). (`tests/es5/objectDefineProperty.io`)
-- [x] `Object.getOwnPropertyDescriptor` (§15.2.3.3) via native FromPropertyDescriptor. `getOwnPropertyNames` still pending. (`tests/es5/objectReflection.io`)
-- [ ] `Object.create` incl. `null` prototype and second (properties) argument (§15.2.3.5)
+- [x] `Object.getOwnPropertyDescriptor` (§15.2.3.3) and `getOwnPropertyNames` (§15.2.3.4) via native FromPropertyDescriptor + a per-type name collector. (`tests/es5/objectReflection.io`, `objectCreate.io`)
+- [x] `Object.create` incl. `null` prototype and second (properties) argument (§15.2.3.5). (`tests/es5/objectCreate.io`)
 - [x] `Object.keys` (§15.2.3.14, own enumerable via for-in) and `Object.getPrototypeOf` (§15.2.3.2, now throwing on non-object). (`tests/es5/objectReflection.io`)
-- [ ] `Object.preventExtensions / isExtensible / seal / freeze / isSealed / isFrozen` (§15.2.3.8–13), implemented by
-      iterating `getOwnPropertyNames` and toggling bits via `defineProperty`.
-- [ ] Ensure these built-ins are **not constructable** and have correct `length`/attributes.
+- [x] `Object.preventExtensions / isExtensible / seal / freeze / isSealed / isFrozen` (§15.2.3.8–13), the last four
+      pure JS iterating `getOwnPropertyNames` + `defineProperty`. (`tests/es5/objectExtensions.io`, `objectSealFreeze.io`)
+- [x] These built-ins are **not constructable** (wrapped via `distinctConstructor`) with the standard writable / non-enumerable / configurable attributes.
 
 ### Tests
 - one `.io` per method; descriptor round-trips; `create(null)`; freeze/seal predicates on data & accessor props;
