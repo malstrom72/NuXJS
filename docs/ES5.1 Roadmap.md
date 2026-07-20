@@ -105,9 +105,10 @@ Rules for this implementation:
   managed exception, never the C++ stack).
 
 ### Property descriptors & attributes
-- [ ] Add `ACCESSOR_FLAG` to the `Flags` bits (`NuXJS.h:447`) and a GC item `Accessor { Function* get; Function* set; }`
-      (per D2: a plain `GCItem`, not an `Object`, held via its own Bucket-union member); mark it in
-      `Table::gcMarkReferences`.
+- [x] Add `ACCESSOR_FLAG` to the `Flags` bits and a GC item `Accessor { Function* get; Function* set; }`
+      (per D2: a plain `GCItem`, not an `Object`, held via its own Bucket-union member); marked in
+      `Table::gcMarkReferences`. Object literals install pairs via `JSObject::defineOwnAccessor` and the
+      guarded `ADD_GETTER_OP`/`ADD_SETTER_OP`. (`tests/es5/accessorProperties.io`)
 - [ ] Introduce a `PropertyDescriptor` value type (in C++) carrying `value | {get,set}` + present/attribute bits,
       mirroring spec §8.10. Keep it stack-only (no heap) where possible.
 - [ ] Add `Object::defineOwnProperty(rt, key, const PropertyDescriptor&)` implementing the §8.12.9 validation
@@ -116,18 +117,26 @@ Rules for this implementation:
 - [ ] `Object::getOwnProperty` returns enough to reconstruct a descriptor (data vs accessor + attrs) for reflection.
 
 ### VM wiring
-- [ ] `GET_PROPERTY_OP`: when the resolved bucket is an accessor, invoke the getter via the standard
-      `invokeFunction` path with the receiver as `this` (undefined getter → `undefined`). (§8.12.3)
-- [ ] `SET_PROPERTY_OP`: when an accessor, invoke the setter with the value (undefined setter → silently ignore
-      in non-strict, **throw** in strict — see Phase 4). Data-property read-only failure likewise no-op/throw. (§8.12.5)
-- [ ] Confirm accessors participate correctly in the prototype chain (inherited setter runs on the receiver).
+- [x] `GET_PROPERTY_OP` invokes getters via the standard `invokeFunction` continuation with the receiver as
+      `this` (undefined getter → `undefined`). Pure `getPropertySlot` walk reports the pair; invocation only in
+      the opcode. (§8.12.3, `tests/es5/accessorProperties.io`)
+- [x] Property stores route through `SET_PROPERTY_POP_OP` (es5 net effect −2 + compiler-emitted `POP_OP`) so a JS
+      setter frame can deposit its discarded return value; undefined setter is silently ignored (strict throw
+      comes in Phase 4). (§8.12.5)
+- [x] Accessors participate in the prototype chain; inherited setters run against the receiver.
+- [x] Method calls split into guarded `GET_METHOD_OP` + `CALL_THIS_OP`, which also lands the ES5 11.2.3
+      evaluation-order fix (callee fetched before arguments). ES3-order tests moved to `tests/es3only/` with ES5
+      twins (`tests/es5/callTargetResolvedBeforeArgs.io`, `tests/es5/methodCallTypeErrorTrace.io`).
 
 ### Tests (`tests/es5/`)
-- accessor get/set on own and inherited properties; getter/setter `this` binding.
-- `defineOwnProperty` data→accessor and accessor→data transitions; attribute toggling; non-configurable rejection.
-- non-extensible object rejects new properties; existing writable still updates.
+- [x] accessor get/set on own and inherited properties; getter/setter `this` binding; compound/post-inc; syntax
+      errors for arity and 11.1.5 duplicates. (`tests/es5/accessorProperties.io`)
+- [x] re-entrancy: throwing/recursive/self-deleting getters, GC-heavy getters — all managed, never a host crash.
+      (`tests/es5/accessorReentrancy.io`)
+- [ ] `defineOwnProperty` data→accessor and accessor→data transitions; attribute toggling; non-configurable
+      rejection; non-extensible object rejects new properties. *(lands with §2's descriptor machinery)*
 
-**Gate:** full build green; no ES3 regression (existing property tests unaffected).
+**Gate met:** full `both` build green (1222 test files) and the es3 release binary stayed **byte-identical**.
 
 ---
 
