@@ -40,11 +40,15 @@ the change is wrong, not the principle.
   with `NUXJS_ES5` undefined. Build variants: `es3`, `es5`, `both` (both = default gate for CI). Discipline: guard
   additively — **prefer adding a guarded branch over rewriting an existing ES3 code path**; never let an ES5 guard
   silently change ES3 behavior.
-- **D5 — Gating the JS standard library.** `stdlib.js` is JS, so `#if` doesn't apply directly. ES5 additions are
-  fenced with build-time markers that the minifier includes only for the `es5`/`both` targets (e.g.
-  `//#if ES5 … //#endif` region comments handled in `tools/stdlibMinifier.ppeg`), so the ES3 build's embedded
-  library carries no ES5 code. (Mechanism finalized in Phase 2; a runtime `support.es5` capability flag is the
-  fallback if build-time fencing proves fragile.)
+- **D5 — Gating the JS standard library. (DECIDED — separate `stdlibES5.js`.)** ES5 library code lives in a
+  standalone `src/stdlibES5.js` module; the base `stdlib.js` and the ES3 native `support` contracts are left
+  byte-for-byte untouched (the archive proved that reusing base's private helpers means *rewriting* them —
+  ~25% of base churned — which is why ES3 couldn't stay pristine there). `tools/stdlibToCpp.pika` minifies it
+  separately (seeded with the base `@preserve` header so it inherits all keywords/globals) and emits a second
+  `STDLIB_ES5_JS` string guarded by `#if NUXJS_ES5`; `setupStandardLibrary` evals + runs it after the base
+  library, sharing the same `support`. The es3 embedding and binary stay byte-identical. The module uses only the
+  native `support` bridge and already-installed globals — never base's closure. *(Pipeline landed with the first
+  feature, `String.prototype.trim`.)*
 - **D2 — Accessor storage by indirection.** Add an `ACCESSOR_FLAG`; an accessor bucket's union holds a pointer to
   a small GC item `Accessor { Function* get; Function* set; }` — a plain `GCItem`, *not* an `Object`, stored via
   its own union member so it can never be read back as a JS `Value`. Bucket size is unchanged. Ordinary data
@@ -228,7 +232,8 @@ The largest behavioral addition. Needs both parser (directive detection) and VM 
 - [ ] Generic behaviors: `sort` with no comparator (string compare) and generic over array-likes; `toLocaleString`
       generic; `length` truncation respects non-configurable elements; `push/unshift/splice` refuse to extend when
       `length` non-writable or object non-extensible (§15.4.4).
-- [ ] `String.prototype.trim` with the full ES5 WhiteSpace + LineTerminator set (§15.5.4.20).
+- [x] `String.prototype.trim` with the full ES5 WhiteSpace + LineTerminator set (§15.5.4.20) — first
+      `stdlibES5.js` feature, proving the pipeline. (`tests/es5/stringTrim.io`)
 - [ ] String character indices are non-writable, non-configurable own data properties (§15.5.5.2).
 
 ### Tests
