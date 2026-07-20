@@ -1400,6 +1400,11 @@ bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 			return false;
 		}
 	}
+#if NUXJS_ES5
+	if (!extensible) {
+		return false;	// 8.12.4 [[CanPut]]: cannot add a new own property to a non-extensible object
+	}
+#endif
 	return setOwnProperty(rt, key, v);
 }
 
@@ -2827,8 +2832,8 @@ void Processor::innerRun() {
 							invokeFunction(accessor->set, 2, 1, o);	// ES5 8.12.5: the setter runs as an ordinary frame with the value as its argument
 							return;	// the following POP_OP discards the setter's return value after the frame returns
 						}	// no setter: silently ignored outside strict mode
-					} else if ((flags & READ_ONLY_FLAG) == 0) {
-						o->setOwnProperty(rt, sp[-1], sp[0]);
+					} else if ((flags & READ_ONLY_FLAG) == 0 && o->isExtensible()) {
+						o->setOwnProperty(rt, sp[-1], sp[0]);	// 8.12.4 [[CanPut]]: a new own property requires extensibility
 					}
 				}
 				assert(unpackInstruction(*ip).first == POP_OP);	// guaranteed by makeAssignment
@@ -5351,6 +5356,21 @@ struct Support {
 		return (object != 0 ? object->isOwnPropertyEnumerable(rt, argv[1]) : false);
 	}
 
+#if NUXJS_ES5
+	static Value preventExtensions(Runtime&, Processor&, UInt32 argc, const Value* argv, Object*) {
+		Object* object = (argc >= 1 ? argv[0].asObject() : 0);	// the stdlib wrapper has already required an object
+		if (object != 0) {
+			object->preventExtensions();
+		}
+		return (argc >= 1 ? argv[0] : UNDEFINED_VALUE);
+	}
+
+	static Value isExtensible(Runtime&, Processor&, UInt32 argc, const Value* argv, Object*) {
+		Object* object = (argc >= 1 ? argv[0].asObject() : 0);
+		return (object != 0 && object->isExtensible());
+	}
+#endif
+
 	static Value fromCharCode(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		Char c = static_cast<Char>(argc > 0 ? argv[0].toInt() & 0xFFFF : 0);
 		Heap& heap = rt.getHeap();
@@ -5472,6 +5492,9 @@ static struct {
 	{ "substring", Support::substring }, { "submatch", Support::submatch },
 	{ "getCurrentTime", Support::getCurrentTime }, { "localTimeDifference", Support::localTimeDifference },
 	{ "random", Support::random }, { "updateDateValue", Support::updateDateValue }
+#if NUXJS_ES5
+	, { "preventExtensions", Support::preventExtensions }, { "isExtensible", Support::isExtensible }
+#endif
 };
 
 static UnaryMathFunction<bool (double)> IS_NAN_FUNCTION(isNaN);

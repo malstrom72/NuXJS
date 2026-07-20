@@ -6,13 +6,21 @@
 	never touched, so the ES3 embedding stays byte-for-byte identical. This module may use the native `support`
 	hooks and the globals stdlib.js has already installed, but not stdlib.js's private (closure-local) helpers.
 
-	@preserve: trim
+	@preserve: trim,preventExtensions,isExtensible
 */
 (function (support) {
 
 var $defineProperty = support.defineProperty;
 
 function method(target, name, fn) { $defineProperty(target, name, fn, false, true, false); }
+
+// 9.9 / many 15.2.3.x steps: "If Type(O) is not Object, throw a TypeError exception."
+function requireObject(o, name) {
+	if (o === null || (typeof o !== "object" && typeof o !== "function")) {
+		throw new TypeError("Object." + name + " called on non-object");
+	}
+	return o;
+}
 
 // ES5.1 15.5.4.20: strips WhiteSpace (7.2) and LineTerminator (7.3) from both ends of the string.
 function isSpace(c) {
@@ -27,6 +35,15 @@ method(String.prototype, "trim", function trim() {
 	while (i < j && isSpace(s.charCodeAt(i))) ++i;
 	while (j > i && isSpace(s.charCodeAt(j - 1))) --j;
 	return s.substring(i, j);
+});
+
+// 15.2.3.10 Object.preventExtensions / 15.2.3.13 Object.isExtensible
+method(Object, "preventExtensions", function preventExtensions(o) {
+	return support.preventExtensions(requireObject(o, "preventExtensions"));
+});
+
+method(Object, "isExtensible", function isExtensible(o) {
+	return support.isExtensible(requireObject(o, "isExtensible"));
 });
 
 })
