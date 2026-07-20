@@ -204,6 +204,10 @@ static const String* PROTOTYPE_NAMES[Runtime::PROTOTYPE_COUNT] = {
 
 static const String PROTOTYPES_STRING("prototypes"), IS_NAN_STRING("isNaN"), IS_FINITE_STRING("isFinite")
 		, MAX_NUMBER_STRING("maxNumber"), MIN_NUMBER_STRING("minNumber");
+#if NUXJS_ES5
+static const String WRITABLE_STRING("writable"), ENUMERABLE_STRING("enumerable"), CONFIGURABLE_STRING("configurable")
+		, GET_STRING("get"), SET_STRING("set");
+#endif
 
 /* --- Utilities --- */
 
@@ -5549,6 +5553,32 @@ struct Support {
 		o->defineOwnProperty(rt, argv[1], desc, true);
 		return argv[0];
 	}
+
+	// 15.2.3.3 + FromPropertyDescriptor (8.10.4): a fresh, fully-populated descriptor object, or undefined.
+	static Value getOwnPropertyDescriptor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+		Object* o = (argc >= 1 ? argv[0].asObject() : 0);
+		if (o == 0) {
+			ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Object.getOwnPropertyDescriptor called on non-object");
+			return Value();
+		}
+		Value v(UNDEFINED_VALUE);
+		Accessor* accessor;
+		const Flags flags = o->getOwnPropertySlot(rt, argv[1], &v, &accessor);
+		if (flags == NONEXISTENT) {
+			return UNDEFINED_VALUE;
+		}
+		JSObject* desc = rt.newJSObject();
+		if ((flags & ACCESSOR_FLAG) != 0) {
+			desc->setOwnProperty(rt, &GET_STRING, accessor->get != 0 ? Value(accessor->get) : UNDEFINED_VALUE);
+			desc->setOwnProperty(rt, &SET_STRING, accessor->set != 0 ? Value(accessor->set) : UNDEFINED_VALUE);
+		} else {
+			desc->setOwnProperty(rt, &VALUE_STRING, v);
+			desc->setOwnProperty(rt, &WRITABLE_STRING, Value((flags & READ_ONLY_FLAG) == 0));
+		}
+		desc->setOwnProperty(rt, &ENUMERABLE_STRING, Value((flags & DONT_ENUM_FLAG) == 0));
+		desc->setOwnProperty(rt, &CONFIGURABLE_STRING, Value((flags & DONT_DELETE_FLAG) == 0));
+		return desc;
+	}
 #endif
 
 	static Value fromCharCode(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
@@ -5675,6 +5705,7 @@ static struct {
 #if NUXJS_ES5
 	, { "preventExtensions", Support::preventExtensions }, { "isExtensible", Support::isExtensible }
 	, { "defineOwnProperty", Support::defineOwnProperty }
+	, { "getOwnPropertyDescriptor", Support::getOwnPropertyDescriptor }
 #endif
 };
 
