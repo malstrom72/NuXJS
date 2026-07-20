@@ -1636,7 +1636,9 @@ class Processor : public GCItem {
 			, CHECK_OBJECT_COERCIBLE_OP						// stack: value -> value
 			, CHECK_RESOLVE_PROPERTY_OP						// stack: object, name -> object, name	// check coercible, then resolve object
 			, GET_PROPERTY_OP								// stack: object, name -> value
+		#if !NUXJS_ES5										// es5 stores via SET_PROPERTY_POP_OP (+ POP), so the setter can run as a frame
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
+		#endif
 			, SET_PROPERTY_POP_OP							// stack: object, name, value ->
 			, ADD_PROPERTY_OP								// operand: const_index (name), stack: object, value -> object
 			, PUSH_ELEMENTS_OP								// operand: count, stack: object, count * elements ... -> object
@@ -1662,7 +1664,9 @@ class Processor : public GCItem {
 			, REPUSH_2_OP									// stack: value_1, value_2 -> value_1, value_2, value_1, value_2	// used for duplicating property reference with assignment operators like += etc
 			, POST_SHUFFLE_OP								// stack: object, name, value -> value, object, name, value			// used for special post inc/dec logic on properties (see code)
 			, CALL_OP										// operand: n, stack: function, n * args -> return_value
+		#if !NUXJS_ES5										// es5 fetches the callee before args via GET_METHOD_OP + CALL_THIS_OP (11.2.3)
 			, CALL_METHOD_OP								// operand: n, stack: object, name, n * args -> return_value
+		#endif
 			, CALL_EVAL_OP									// operand: n, stack: function, n * args -> return_value			// special eval call is required because of need to differentiate direct or indirect call to eval
 			, NEW_OP										// operand: n, stack: constructor object, n * args -> new_object, return_value
 			, NEW_RESULT_OP									// stack: new_object, return_value -> new_this value
