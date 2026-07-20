@@ -593,10 +593,25 @@ class Object : public GCItem {
 		bool hasOwnProperty(Runtime& rt, const Value& key) const; 			///< Checks via getOwnProperty().
 		bool hasProperty(Runtime& rt, const Value& key) const;				///< Checks via getProperty().
 		Enumerator* getPropertyEnumerator(Runtime& rt) const;				///< Unlike getOwnPropertyEnumerator() this one also enumerates all prototype properties.
+	#if NUXJS_ES5
+		bool isExtensible() const { return extensible; }					///< 8.6.2 [[Extensible]]; new objects are extensible.
+		void preventExtensions() { extensible = false; }					///< 15.2.3.10: extensibility only ever goes true -> false.
+	#endif
 
 	protected:
-		Object() { }
-		Object(GCList& gcList) : super(gcList) { }
+		Object()
+	#if NUXJS_ES5
+			: extensible(true)
+	#endif
+			{ }
+		Object(GCList& gcList) : super(gcList)
+	#if NUXJS_ES5
+			, extensible(true)
+	#endif
+			{ }
+	#if NUXJS_ES5
+		bool extensible;
+	#endif
 };
 
 inline Function* Value::asFunction() const { return (type == OBJECT_TYPE ? var.object->asFunction() : 0); }

@@ -495,11 +495,14 @@ const char* STDLIB_JS =
 ;
 #if NUXJS_ES5
 const char* STDLIB_ES5_JS =
-"(function(a){var b=a.defineProperty;function c(d,name,e){b(d,name,e,false,true,false)}function f(g){return g===0x20||("
-"g>=0x09&&g<=0x0D)||g===0xA0||g===0xFEFF||g===0x1680||(g>=0x2000&&g<=0x200A)||g===0x2028||g===0x2029||g===0x202F||g===0"
-"x205F||g===0x3000}c(String.prototype,\"trim\",function trim(){if(this==null)throw new TypeError(\"String.prototype.tri"
-"m called on null or undefined\");var h=\"\"+this,i=0,j=h.length;while(i<j&&f(h.charCodeAt(i)))++i;while(j>i&&f(h.charC"
-"odeAt(j-1)))--j;return h.substring(i,j)})})"
+"(function(a){var b=a.defineProperty;function c(d,name,e){b(d,name,e,false,true,false)}function f(g,name){if(g===null||"
+"(typeof g!==\"object\"&&typeof g!==\"function\")){throw new TypeError(\"Object.\"+name+\" called on non-object\")}retu"
+"rn g}function h(i){return i===0x20||(i>=0x09&&i<=0x0D)||i===0xA0||i===0xFEFF||i===0x1680||(i>=0x2000&&i<=0x200A)||i==="
+"0x2028||i===0x2029||i===0x202F||i===0x205F||i===0x3000}c(String.prototype,\"trim\",function trim(){if(this==null)throw"
+" new TypeError(\"String.prototype.trim called on null or undefined\");var j=\"\"+this,k=0,l=j.length;while(k<l&&h(j.ch"
+"arCodeAt(k)))++k;while(l>k&&h(j.charCodeAt(l-1)))--l;return j.substring(k,l)});c(Object,\"preventExtensions\",function"
+" preventExtensions(g){return a.preventExtensions(f(g,\"preventExtensions\"))});c(Object,\"isExtensible\",function isEx"
+"tensible(g){return a.isExtensible(f(g,\"isExtensible\"))})})"
 ;
 #endif
 }
