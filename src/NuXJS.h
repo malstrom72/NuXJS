@@ -456,10 +456,32 @@ const Flags READ_ONLY_FLAG = 2;
 const Flags DONT_ENUM_FLAG = 4;
 const Flags DONT_DELETE_FLAG = 8;
 const Flags INDEX_TYPE_FLAG = 16;	///< internal index type, only used as an optimization for faster name -> local index lookup
+#if NUXJS_ES5
+const Flags ACCESSOR_FLAG = 32;		///< the bucket stores an Accessor (getter / setter pair) instead of a Value
+#endif
 const Flags STANDARD_FLAGS = EXISTS_FLAG;	///< use with setOwnProperty()
 const Flags HIDDEN_CONST_FLAGS = READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG | EXISTS_FLAG;
 const Flags NONEXISTENT = 0;		///< use with getOwnProperty() to check for existence, e.g. getOwnProperty(o, k, v) != NONEXISTENT
 const UInt32 TABLE_BUILT_IN_N = 3; ///< 1 << 3 == 8
+
+#if NUXJS_ES5
+/**
+	Accessor holds the getter / setter pair of an ES5 accessor property (either may be null). It is deliberately a
+	plain GCItem and *not* an Object, and it is stored through its own Bucket union member, so it can never be
+	materialized as a JS Value. Property lookups stay pure: they only ever *report* the pair, and invocation happens
+	solely at the VM opcodes (as ordinary frames) and the host Var/Property API (through Runtime::call).
+**/
+class Accessor : public GCItem {
+	public:
+		typedef GCItem super;
+		Accessor(GCList& gcList, Function* get, Function* set) : super(gcList), get(get), set(set) { }
+		Function* get;
+		Function* set;
+
+	protected:
+		virtual void gcMarkReferences(Heap& heap) const;
+};
+#endif
 
 /**
 	Table implements a hash table for storing object properties. It provides fast lookup and is used internally by JS
@@ -479,6 +501,9 @@ class Table {
 				Bucket() : key(0) { };
 				Value getValue() const {
 					assert(valueExists() && (flags & INDEX_TYPE_FLAG) == 0);
+				#if NUXJS_ES5
+					assert((flags & ACCESSOR_FLAG) == 0);
+				#endif
 					return Value(static_cast<Value::Type>(type), var);
 				}
 				Int32 getIndexValue() const {
@@ -499,6 +524,9 @@ class Table {
 				union {
 					Value::Variant var;
 					Int32 index;
+				#if NUXJS_ES5
+					Accessor* accessor;		///< valid only when (flags & ACCESSOR_FLAG) != 0
+				#endif
 				};
 				bool keyExists() const { return key != 0; }
 		};
@@ -511,6 +539,10 @@ class Table {
 		Bucket* insert(const String* key);									///< Insert key (if necessary) and return bucket pointer.
 		bool update(Bucket* bucket, const Value& value, Flags flags = 0);	///< Update value. Returns false if bucket is marked as read-only.
 		bool erase(Bucket* bucket);											///< Deletes bucket. Returns false if bucket is marked as dont-delete.
+	#if NUXJS_ES5
+		void defineAccessor(Bucket* bucket, Accessor* accessor);			///< Turns the bucket into an (enumerable, configurable) accessor property.
+		Accessor* getAccessor(const Bucket* bucket) const;					///< Only valid for buckets with ACCESSOR_FLAG set.
+	#endif
 		UInt32 getLoadCount() const;										///< Returns number of used hash table entries (not necessarily the same as the number of existing buckets!).
 		void update(Bucket* bucket, const Int32 index);						///< Update value as an index. Only used by name to index tables as an optimization.
 		void gcMarkReferences(Heap& heap) const;
@@ -545,7 +577,11 @@ class Object : public GCItem {
 		virtual Value getInternalValue(Heap& heap) const;		///< Used by the standard library to retrieve internal value for wrappers (Number, String etc), source code for functions and parser function for RegExp. Default returns UNDEFINED_VALUE.
 		virtual Object* getPrototype(Runtime& rt) const;		///< Default returns the Object prototype.
 
-		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;								///< Don't touch v if you return NONEXISTENT. Default returns NONEXISTENT.
+		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;								///< Don't touch v if you return NONEXISTENT. Default returns NONEXISTENT. (Under NUXJS_ES5 an accessor property yields *v == undefined; check ACCESSOR_FLAG in the returned flags.)
+	#if NUXJS_ES5
+		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;	///< Pure lookup like getOwnProperty but also reports the accessor pair (or null). Never runs script.
+		Flags getPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;				///< Prototype-chain walking version of getOwnPropertySlot. Never runs script.
+	#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);								///< Update existing property. Return false if it doesn't exist or can't be updated (e.g. read-only property exists). Can be overriden for optimization. (Default implementation checks existence with hasOwnProperty() first.)
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);												///< Default returns false.
@@ -733,6 +769,10 @@ class JSObject : public Object, public Table {
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
+	#if NUXJS_ES5
+		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;
+		bool defineOwnAccessor(Runtime& rt, const Value& key, Function* f, bool isSetter);	///< Installs (or completes) an accessor property, as for a `get` / `set` object literal entry.
+	#endif
 	
 	protected:
 		Object* prototype;
@@ -767,6 +807,19 @@ template<class SUPER> class LazyJSObject : public SUPER {
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
+	#if NUXJS_ES5
+		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const {
+			// Normal lookup first so internal properties (e.g. array length) keep their precedence; only when it
+			// reports an accessor does the completeObject table hold the actual pair.
+			*accessor = 0;
+			const Flags flags = this->getOwnProperty(rt, key, v);
+			if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+				assert(completeObject != 0);
+				return completeObject->getOwnPropertySlot(rt, key, v, accessor);
+			}
+			return flags;
+		}
+	#endif
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const = 0;
@@ -1636,6 +1689,12 @@ class Processor : public GCItem {
 			, TYPEOF_NAMED_OP								// operand: const_index (name), stack: -> string
 			, GET_ENUMERATOR_OP								// stack: object -> enumerator
 			, NEXT_PROPERTY_OP								// operand: exit_loop_offset, stack: enumerator -> string (unless end of loop)
+		#if NUXJS_ES5
+			, ADD_GETTER_OP									// operand: const_index (name), stack: object, function -> object
+			, ADD_SETTER_OP									// operand: const_index (name), stack: object, function -> object
+			, GET_METHOD_OP									// stack: object, name -> object, function		// full [[Get]] (runs accessors); errors early if the result is not callable
+			, CALL_THIS_OP									// operand: n, stack: object, function, n * args -> return_value	// like CALL_OP but with an explicit this object below the function
+		#endif
 			, OP_COUNT
 		};
 	
@@ -1844,6 +1903,9 @@ class Compiler : public GCItem {
 		ExpressionResult rvalueExpression(Precedence precedence = LOWEST_PREC);
 		void rvalueGroup();
 		void functionDefinition(const String* functionName, const String* selfName); // selfName is only for named function expressions, should be 0 otherwise
+	#if NUXJS_ES5
+		Code* accessorFunctionDefinition(const String* functionName); // like functionDefinition but returns the compiled Code (for arity checks) without emitting GEN_FUNC_OP
+	#endif
 		bool optionalExpression(ExpressionResult& xr, Precedence precedence);
 		ExpressionResult declareIdentifier(const String* name, bool func);
 		ExpressionResult varDeclaration();

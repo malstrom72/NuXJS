@@ -1363,6 +1363,32 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v) const {
 	return NONEXISTENT;
 }
 
+#if NUXJS_ES5
+void Accessor::gcMarkReferences(Heap& heap) const {
+	gcMark(heap, get);
+	gcMark(heap, set);
+	super::gcMarkReferences(heap);
+}
+
+Flags Object::getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const {
+	*accessor = 0;
+	return getOwnProperty(rt, key, v);
+}
+
+Flags Object::getPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const {
+	const Object* o = this;
+	do {
+		Flags flags = o->getOwnPropertySlot(rt, key, v, accessor);
+		if (flags != NONEXISTENT) {
+			return flags;
+		}
+		o = o->getPrototype(rt);
+	} while (o != 0);
+	*accessor = 0;
+	return NONEXISTENT;
+}
+#endif
+
 bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 	if (updateOwnProperty(rt, key, v)) {
 		return true;
@@ -1428,6 +1454,11 @@ Table::Bucket* Table::insert(const String* key) {
 
 bool Table::update(Bucket* bucket, const Value& value, Flags flags) {
 	assert(bucket->keyExists());
+#if NUXJS_ES5
+	if ((bucket->flags & ACCESSOR_FLAG) != 0) {
+		return false;	// accessors are never updated through the plain [[Put]] path; the VM invokes the setter instead
+	}
+#endif
 	if ((bucket->flags & READ_ONLY_FLAG) != 0) {
 		return false;
 	} else {
@@ -1455,6 +1486,20 @@ bool Table::erase(Bucket* bucket) {
 	return true;
 }
 
+#if NUXJS_ES5
+void Table::defineAccessor(Bucket* bucket, Accessor* accessor) {
+	assert(bucket->keyExists());
+	bucket->flags = EXISTS_FLAG | ACCESSOR_FLAG;	// exact flags: enumerable and configurable, as for object literals
+	bucket->type = static_cast<Byte>(Value::UNDEFINED_TYPE);
+	bucket->accessor = accessor;
+}
+
+Accessor* Table::getAccessor(const Bucket* bucket) const {
+	assert(bucket->valueExists() && (bucket->flags & ACCESSOR_FLAG) != 0);
+	return bucket->accessor;
+}
+#endif
+
 void Table::gcMarkReferences(Heap& heap) const {
 	UInt32 rebuildLoadCount = 0;
 	const UInt32 n = buckets.size();
@@ -1463,6 +1508,11 @@ void Table::gcMarkReferences(Heap& heap) const {
 		if (bucket.keyExists()) {
 			gcMark(heap, bucket.key);
 			if (bucket.valueExists()) {
+			#if NUXJS_ES5
+				if ((bucket.flags & ACCESSOR_FLAG) != 0) {
+					gcMark(heap, bucket.accessor);
+				} else
+			#endif
 				switch (((bucket.flags & INDEX_TYPE_FLAG) != 0) ? Value::NUMBER_TYPE : bucket.type) {
 					case Value::STRING_TYPE: gcMark(heap, bucket.var.string); break;
 					case Value::OBJECT_TYPE: gcMark(heap, bucket.var.object); break;
@@ -1537,11 +1587,42 @@ bool JSObject::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) 
 Flags JSObject::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 	const Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
 	if (bucket != 0) {
+	#if NUXJS_ES5
+		if ((bucket->getFlags() & ACCESSOR_FLAG) != 0) {
+			*v = UNDEFINED_VALUE;	// pure lookups never see the pair; callers that can invoke use getOwnPropertySlot
+			return bucket->getFlags();
+		}
+	#endif
 		*v = bucket->getValue();
 		return bucket->getFlags();
 	}
 	return NONEXISTENT;
 }
+
+#if NUXJS_ES5
+Flags JSObject::getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const {
+	const Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
+	if (bucket != 0 && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
+		*accessor = getAccessor(bucket);
+		*v = UNDEFINED_VALUE;
+		return bucket->getFlags();
+	}
+	*accessor = 0;
+	return getOwnProperty(rt, key, v);	// virtual, so subclasses keep their internal properties (e.g. wrapped string length)
+}
+
+bool JSObject::defineOwnAccessor(Runtime& rt, const Value& key, Function* f, bool isSetter) {
+	Heap& heap = rt.getHeap();
+	Table::Bucket* bucket = insert(key.toString(heap));
+	if (bucket->valueExists() && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
+		Accessor* accessor = getAccessor(bucket);
+		(isSetter ? accessor->set : accessor->get) = f;
+	} else {
+		defineAccessor(bucket, new(heap) Accessor(heap.managed(), (isSetter ? 0 : f), (isSetter ? f : 0)));
+	}
+	return true;
+}
+#endif
 
 bool JSObject::deleteOwnProperty(Runtime& rt, const Value& key) {
 	Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
@@ -2247,7 +2328,11 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ CHECK_RESOLVE_PROPERTY_OP	 , "CHECK_RESOLVE_PROPERTY"	 , 0	  , 0 },
 	{ GET_PROPERTY_OP            , "GET_PROPERTY"            , -1     , 0 },
 	{ SET_PROPERTY_OP            , "SET_PROPERTY"            , -2     , 0 },
+#if NUXJS_ES5
+	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -2     , 0 },	// es5: leaves junk / the setter's return value on top; the compiler always follows with POP_OP
+#else
 	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -3     , 0 },
+#endif
 	{ ADD_PROPERTY_OP            , "ADD_PROPERTY"            , -1     , 0 },
 	{ PUSH_ELEMENTS_OP           , "PUSH_ELEMENTS_OP"        , 0      , OpcodeInfo::POP_OPERAND },
 	{ OBJ_TO_PRIMITIVE_OP        , "OBJ_TO_PRIMITIVE"        , 0      , 0 },
@@ -2318,6 +2403,12 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ TYPEOF_NAMED_OP            , "TYPEOF_NAMED"            , 1      , 0 },
 	{ GET_ENUMERATOR_OP          , "GET_ENUMERATOR"          , 0      , 0 },
 	{ NEXT_PROPERTY_OP           , "NEXT_PROPERTY"           , 0      , OpcodeInfo::POP_ON_BRANCH }
+#if NUXJS_ES5
+	, { ADD_GETTER_OP            , "ADD_GETTER"              , -1     , 0 }
+	, { ADD_SETTER_OP            , "ADD_SETTER"              , -1     , 0 }
+	, { GET_METHOD_OP            , "GET_METHOD"              , 0      , 0 }
+	, { CALL_THIS_OP             , "CALL_THIS"               , -1     , OpcodeInfo::POP_OPERAND }
+#endif
 };
 
 const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
@@ -2667,6 +2758,26 @@ void Processor::innerRun() {
 			}
 
 			case GET_PROPERTY_OP: {
+			#if NUXJS_ES5
+				Object* o = convertToObject(sp[-1], false);
+				if (o == 0) {
+					return;
+				}
+				Accessor* accessor;
+				if (o->getPropertySlot(rt, sp[0], sp - 1, &accessor) == NONEXISTENT) {
+					sp[-1] = UNDEFINED_VALUE;
+				} else if (accessor != 0) {
+					if (accessor->get == 0) {
+						sp[-1] = UNDEFINED_VALUE;
+						pop(1);
+						break;
+					}
+					invokeFunction(accessor->get, 1, 0, o);	// ES5 8.12.3: the getter runs as an ordinary frame; its result replaces [object, name]
+					return;
+				}
+				pop(1);
+				break;
+			#else
 				const Object* o = convertToObject(sp[-1], false);
 				if (o == 0) {
 					return;
@@ -2676,19 +2787,42 @@ void Processor::innerRun() {
 				}
 				pop(1);
 				break;
+			#endif
 			}
-			
+
 			case SET_PROPERTY_OP: {
 				sp[-2].getObject()->setProperty(rt, sp[-1], sp[0]);
 				sp[-2] = sp[0];
 				pop(2);
 				break;
 			}
-			
+
 			case SET_PROPERTY_POP_OP: {
+			#if NUXJS_ES5
+				// es5 semantics: [object, name, value] -> [junk / setter return]; the compiler always follows
+				// with POP_OP so a JS setter frame can deposit its (discarded) return value. (See makeAssignment.)
+				Object* o = sp[-2].getObject();
+				Value dummy;
+				Accessor* accessor;
+				o->getPropertySlot(rt, sp[-1], &dummy, &accessor);
+				if (accessor != 0) {
+					if (accessor->set == 0) {
+						sp[-2] = UNDEFINED_VALUE;	// ES5 8.12.5: silently ignored outside strict mode
+						pop(2);
+						break;
+					}
+					invokeFunction(accessor->set, 2, 1, o);	// ES5 8.12.5: the setter runs as an ordinary frame with the value as its argument
+					return;
+				}
+				o->setProperty(rt, sp[-1], sp[0]);
+				sp[-2] = UNDEFINED_VALUE;
+				pop(2);
+				break;
+			#else
 				sp[-2].getObject()->setProperty(rt, sp[-1], sp[0]);
 				pop(3);
 				break;
+			#endif
 			}
 
 			case OBJ_TO_PRIMITIVE_OP:
@@ -2915,7 +3049,53 @@ void Processor::innerRun() {
 				}
 				break;
 			}
-			
+
+		#if NUXJS_ES5
+			case ADD_GETTER_OP:
+			case ADD_SETTER_OP: {
+				Object* o = sp[-1].getObject();
+				assert(dynamic_cast<JSObject*>(o) != 0);	// object literals always construct plain JSObjects
+				Function* f = sp[0].getObject()->asFunction();
+				assert(f != 0);
+				reinterpret_cast<JSObject*>(o)->defineOwnAccessor(rt, constants[im], f, opcode == ADD_SETTER_OP);
+				pop(1);
+				break;
+			}
+
+			case GET_METHOD_OP: {
+				Object* o = convertToObject(sp[-1], true);
+				if (o == 0) {
+					return;
+				}
+				sp[-1] = o;	// the call site (CALL_THIS_OP) picks this up as the this object
+				Accessor* accessor;
+				Value v(UNDEFINED_VALUE);
+				const Flags flags = o->getPropertySlot(rt, sp[0], &v, &accessor);
+				if (accessor != 0) {
+					if (accessor->get != 0) {
+						invokeFunction(accessor->get, 0, 0, o);	// result replaces the name at sp[0]; callability is checked by CALL_THIS_OP
+						return;
+					}
+					v = UNDEFINED_VALUE;
+				}
+				if (flags == NONEXISTENT || v.asFunction() == 0) {
+					error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[0].toString(heap), IS_NOT_A_FUNCTION_STRING));
+					return;
+				}
+				sp[0] = v;
+				break;
+			}
+
+			case CALL_THIS_OP: {
+				Function* const f = asFunction(sp[-im]);
+				if (f != 0) {
+					assert(sp[-im - 1].isObject());
+					invokeFunction(f, im + 1, im, sp[-im - 1].getObject());
+				}
+				return;
+			}
+		#endif
+
 			default: assert(0);
 		}
 	}
@@ -3467,7 +3647,17 @@ Compiler::ExpressionResult Compiler::makeAssignment(const ExpressionResult& xr) 
 		default: error(REFERENCE_ERROR, "Illegal l-value"); // FIX : ECMA like the word "reference"
 		case ExpressionResult::LOCAL: emit(Processor::WRITE_LOCAL_OP, xr.v.toInt()); break;
 		case ExpressionResult::NAMED: emitWithConstant(Processor::WRITE_NAMED_OP, xr.v); break;
-		case ExpressionResult::PROPERTY: emit(Processor::SET_PROPERTY_OP); break;
+		case ExpressionResult::PROPERTY:
+		#if NUXJS_ES5
+			// A JS setter frame always leaves its return value on top, so the assigned value is duplicated
+			// below and the leftover slot popped: [obj, name, val] -> [val, obj, name, val] -> [val, junk] -> [val].
+			emit(Processor::POST_SHUFFLE_OP);
+			emit(Processor::SET_PROPERTY_POP_OP);
+			emit(Processor::POP_OP, 1);
+		#else
+			emit(Processor::SET_PROPERTY_OP);
+		#endif
+			break;
 	}
 	return ExpressionResult(ExpressionResult::PUSHED);
 }
@@ -3599,22 +3789,86 @@ Compiler::ExpressionResult Compiler::arrayInitialiser() { // FIX : share stuff w
 	return ExpressionResult(ExpressionResult::PUSHED);
 }
 
+#if NUXJS_ES5
+static const String GET_KEYWORD_STRING("get");
+static const String SET_KEYWORD_STRING("set");
+#endif
+
 Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff with functionCall and arrayInitialiser
 	emit(Processor::NEW_OBJECT_OP);
-	
+
 	white();
+#if NUXJS_ES5
+	Vector<const String*> seenKeys(0, &heap);	// for the ES5 11.1.5 duplicate checks below
+	Vector<Byte> seenKinds(0, &heap);
+#endif
 	while (!token("}", false)) {
 		const Char* b = p;
 		Value key = stringOrNumberConstant();
+	#if NUXJS_ES5
+		Byte propertyKind = 1;	// 1 = data, 2 = getter, 4 = setter
+	#endif
 		if (p == b) {
 			key = identifier(false, true);
 			if (key.equalsString(EMPTY_STRING)) {
 				error(SYNTAX_ERROR, "Expected property name");
 			}
+		#if NUXJS_ES5
+			if (key.equalsString(GET_KEYWORD_STRING) || key.equalsString(SET_KEYWORD_STRING)) {
+				const bool isSetter = key.equalsString(SET_KEYWORD_STRING);
+				const Char* revert = p;
+				if (token(":", true) || token(",", true) || token("}", false)) {
+					p = revert;	// an ordinary data property that happens to be named "get" or "set"
+				} else {
+					// accessor property: `get PropertyName ( ) { ... }` / `set PropertyName ( v ) { ... }`
+					white();
+					const Char* b2 = p;
+					key = stringOrNumberConstant();
+					if (p == b2) {
+						key = identifier(false, true);
+						if (key.equalsString(EMPTY_STRING)) {
+							error(SYNTAX_ERROR, "Expected property name");
+						}
+					}
+					Code* func = accessorFunctionDefinition(key.toString(heap));
+					if (func->getArgumentsCount() != (isSetter ? 1U : 0U)) {
+						error(SYNTAX_ERROR, (isSetter ? "Setters must have exactly one parameter"
+								: "Getters must have no parameters"));
+					}
+					emitWithConstant(Processor::GEN_FUNC_OP, func);
+					emitWithConstant((isSetter ? Processor::ADD_SETTER_OP : Processor::ADD_GETTER_OP), key);
+					propertyKind = (isSetter ? 4 : 2);
+				}
+			}
+		#endif
 		}
+	#if NUXJS_ES5
+		if (propertyKind == 1) {
+	#endif
 		expectToken(":", true);
 		rvalueExpression(COMMA_PREC);
 		emitWithConstant(Processor::ADD_PROPERTY_OP, key);
+	#if NUXJS_ES5
+		}
+		{	// ES5 11.1.5: reject data / accessor collisions and duplicate same-kind accessors
+			const String* keyString = key.toString(heap);
+			UInt32 i = 0;
+			while (i < seenKeys.size() && !seenKeys[i]->isEqualTo(*keyString)) {
+				++i;
+			}
+			if (i < seenKeys.size()) {
+				const Byte previous = seenKinds[i];
+				if ((propertyKind == 1 && previous != 1)
+						|| (propertyKind != 1 && (previous & (1 | propertyKind)) != 0)) {
+					error(SYNTAX_ERROR, "Illegal duplicate property in object literal");
+				}
+				seenKinds[i] = static_cast<Byte>(previous | propertyKind);
+			} else {
+				seenKeys.push(keyString);
+				seenKinds.push(propertyKind);
+			}
+		}
+	#endif
 		if (token("}", true)) {
 			break;
 		}
@@ -3852,7 +4106,13 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				callOp = Processor::CALL_EVAL_OP;
 			}
 			if (xr.t == ExpressionResult::PROPERTY) {
+			#if NUXJS_ES5
+				// ES5 11.2.3: the function is fetched (running any getter) before the arguments are evaluated.
+				emit(Processor::GET_METHOD_OP);
+				callOp = Processor::CALL_THIS_OP;
+			#else
 				callOp = Processor::CALL_METHOD_OP;
+			#endif
 			} else {
 				makeRValue(xr, false);
 			}
@@ -3920,6 +4180,22 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 	}
 	emitWithConstant(Processor::GEN_FUNC_OP, func);
 }
+
+#if NUXJS_ES5
+Code* Compiler::accessorFunctionDefinition(const String* functionName) {
+	assert(functionName != 0);
+	Code* func = new(heap) Code(heap.managed(), code->constants, code->getSourceUnit());
+	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
+	try {
+		p = funcCompiler.compileFunction(p, e, functionName, 0);
+	}
+	catch (const Exception&) {
+		p = funcCompiler.p;
+		throw;
+	}
+	return func;
+}
+#endif
 
 /*
 	Caps total live compile-time recursion depth. Expressions and statements share this one counter (it is threaded

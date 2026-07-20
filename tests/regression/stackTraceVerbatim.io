@@ -17,9 +17,9 @@
 > '\n\n// E: direct eval\n' +
 > 'try { eval("throw new Error(\\\"E_eval\\\")"); } catch (err) {\n' +
 > 'print(err.stack);\n}' +
-> '\n\n// H: TypeError (non-callable)\n' +
-> 'try { ({}).notAFunction(); } catch (err) {\n' +
-> 'print(err.stack);\n}';
+> // H (TypeError from a non-callable method call) lives in tests/es3only and tests/es5,
+> // because ES5 11.2.3 fetches the callee before the arguments, moving the reported column.
+> '';
 > eval(SRC);
 > // throw to force this file to only work under -e option
 > throw "done"
@@ -41,9 +41,6 @@
 < Error: E_eval
 <     at <eval>:1:26
 <     at <eval>:24:42
-<     at <anonymous>:23:10
-< TypeError: notAFunction is not a function
-<     at <eval>:29:26
 <     at <anonymous>:23:10
 ! !!!! done
 -
