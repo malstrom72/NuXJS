@@ -2333,6 +2333,9 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ CHECK_OBJECT_COERCIBLE_OP	 , "CHECK_OBJECT_COERCIBLE"  , 0	  , 0 },
 	{ CHECK_RESOLVE_PROPERTY_OP	 , "CHECK_RESOLVE_PROPERTY"	 , 0	  , 0 },
 	{ GET_PROPERTY_OP            , "GET_PROPERTY"            , -1     , 0 },
+#if NUXJS_ES5
+	{ GET_METHOD_OP              , "GET_METHOD"              , 0      , 0 },
+#endif
 #if !NUXJS_ES5
 	{ SET_PROPERTY_OP            , "SET_PROPERTY"            , -2     , 0 },
 	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -3     , 0 },
@@ -2340,6 +2343,10 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ SET_PROPERTY_POP_OP        , "SET_PROPERTY_POP"        , -2     , 0 },	// es5: leaves junk / the setter's return value on top; the compiler always follows with POP_OP
 #endif
 	{ ADD_PROPERTY_OP            , "ADD_PROPERTY"            , -1     , 0 },
+#if NUXJS_ES5
+	{ ADD_GETTER_OP              , "ADD_GETTER"              , -1     , 0 },
+	{ ADD_SETTER_OP              , "ADD_SETTER"              , -1     , 0 },
+#endif
 	{ PUSH_ELEMENTS_OP           , "PUSH_ELEMENTS_OP"        , 0      , OpcodeInfo::POP_OPERAND },
 	{ OBJ_TO_PRIMITIVE_OP        , "OBJ_TO_PRIMITIVE"        , 0      , 0 },
 	{ OBJ_TO_NUMBER_OP           , "OBJ_TO_NUMBER"           , 0      , 0 },
@@ -2385,6 +2392,8 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ CALL_OP                    , "CALL"                    , 0      , OpcodeInfo::POP_OPERAND },
 #if !NUXJS_ES5
 	{ CALL_METHOD_OP             , "CALL_METHOD"             , -1     , OpcodeInfo::POP_OPERAND },
+#else
+	{ CALL_THIS_OP               , "CALL_THIS"               , -1     , OpcodeInfo::POP_OPERAND },
 #endif
 	{ CALL_EVAL_OP               , "CALL_EVAL"               , 0      , OpcodeInfo::POP_OPERAND },
 	{ NEW_OP                     , "NEW"                     , +1     , OpcodeInfo::POP_OPERAND },
@@ -2411,12 +2420,6 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ TYPEOF_NAMED_OP            , "TYPEOF_NAMED"            , 1      , 0 },
 	{ GET_ENUMERATOR_OP          , "GET_ENUMERATOR"          , 0      , 0 },
 	{ NEXT_PROPERTY_OP           , "NEXT_PROPERTY"           , 0      , OpcodeInfo::POP_ON_BRANCH }
-#if NUXJS_ES5
-	, { ADD_GETTER_OP            , "ADD_GETTER"              , -1     , 0 }
-	, { ADD_SETTER_OP            , "ADD_SETTER"              , -1     , 0 }
-	, { GET_METHOD_OP            , "GET_METHOD"              , 0      , 0 }
-	, { CALL_THIS_OP             , "CALL_THIS"               , -1     , OpcodeInfo::POP_OPERAND }
-#endif
 };
 
 const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
