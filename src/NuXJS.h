@@ -481,6 +481,27 @@ class Accessor : public GCItem {
 	protected:
 		virtual void gcMarkReferences(Heap& heap) const;
 };
+
+/**
+	PropertyDescriptor is the transient (stack-only) reification of an ES5 property descriptor (spec 8.10). Fields
+	may be present or absent — `present` records which — so [[DefineOwnProperty]] (8.12.9) can distinguish "set to
+	default" from "leave unchanged". It is collapsed into the compact bucket form only after the accept/reject
+	decision. Its Value / Function* members are only ever live inside a single native call (no GC in between).
+**/
+struct PropertyDescriptor {
+	enum { HAS_VALUE = 1, HAS_WRITABLE = 2, HAS_GET = 4, HAS_SET = 8, HAS_ENUMERABLE = 16, HAS_CONFIGURABLE = 32 };
+	Byte present;
+	bool writable, enumerable, configurable;
+	Value value;
+	Function* get;
+	Function* set;
+	PropertyDescriptor() : present(0), writable(false), enumerable(false), configurable(false)
+			, value(Value::UNDEFINED), get(0), set(0) { }
+	bool has(int field) const { return (present & field) != 0; }
+	bool isAccessor() const { return (present & (HAS_GET | HAS_SET)) != 0; }		///< 8.10.1
+	bool isData() const { return (present & (HAS_VALUE | HAS_WRITABLE)) != 0; }	///< 8.10.2
+	bool isGeneric() const { return !isAccessor() && !isData(); }				///< 8.10.3
+};
 #endif
 
 /**
@@ -540,8 +561,9 @@ class Table {
 		bool update(Bucket* bucket, const Value& value, Flags flags = 0);	///< Update value. Returns false if bucket is marked as read-only.
 		bool erase(Bucket* bucket);											///< Deletes bucket. Returns false if bucket is marked as dont-delete.
 	#if NUXJS_ES5
-		void defineAccessor(Bucket* bucket, Accessor* accessor);			///< Turns the bucket into an (enumerable, configurable) accessor property.
-		Accessor* getAccessor(const Bucket* bucket) const;					///< Only valid for buckets with ACCESSOR_FLAG set.
+		void defineData(Bucket* bucket, const Value& value, Flags exactFlags);		///< Writes a data property with exact attribute flags (clears + sets, unlike update()).
+		void defineAccessor(Bucket* bucket, Accessor* accessor, Flags exactFlags);	///< Writes an accessor property with exact attribute flags.
+		Accessor* getAccessor(const Bucket* bucket) const;							///< Only valid for buckets with ACCESSOR_FLAG set.
 	#endif
 		UInt32 getLoadCount() const;										///< Returns number of used hash table entries (not necessarily the same as the number of existing buckets!).
 		void update(Bucket* bucket, const Int32 index);						///< Update value as an index. Only used by name to index tables as an optimization.
@@ -581,6 +603,7 @@ class Object : public GCItem {
 	#if NUXJS_ES5
 		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;	///< Pure lookup like getOwnProperty but also reports the accessor pair (or null). Never runs script.
 		Flags getPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;				///< Prototype-chain walking version of getOwnPropertySlot. Never runs script.
+		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);	///< 8.12.9 [[DefineOwnProperty]]. Default rejects (throws TypeError when doThrow). Returns false on a rejected non-throwing call.
 	#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);								///< Update existing property. Return false if it doesn't exist or can't be updated (e.g. read-only property exists). Can be overriden for optimization. (Default implementation checks existence with hasOwnProperty() first.)
@@ -787,6 +810,7 @@ class JSObject : public Object, public Table {
 	#if NUXJS_ES5
 		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;
 		bool defineOwnAccessor(Runtime& rt, const Value& key, Function* f, bool isSetter);	///< Installs (or completes) an accessor property, as for a `get` / `set` object literal entry.
+		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);
 	#endif
 	
 	protected:
@@ -834,6 +858,11 @@ template<class SUPER> class LazyJSObject : public SUPER {
 			}
 			return flags;
 		}
+		// Objects with no dense storage of their own (functions, errors, arguments) define into the complete
+		// object. JSArray overrides this because its indexed elements and length are not ordinary table entries.
+		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow) {
+			return getCompleteObject(rt)->defineOwnProperty(rt, key, desc, doThrow);
+		}
 	#endif
 
 	protected:
@@ -865,6 +894,9 @@ class JSArray : public LazyJSObject<Object> {
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
+	#if NUXJS_ES5
+		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);	// index/length (15.4.5.1) not yet implemented; named properties delegate to the complete object
+	#endif
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 		void pushElements(Runtime& rt, Int32 count, const Value* elements);
