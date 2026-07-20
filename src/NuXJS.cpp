@@ -5647,6 +5647,9 @@ void Runtime::fetchFunction(const Object* supportObject, const char* name, Funct
 }
 
 extern const char* STDLIB_JS;
+#if NUXJS_ES5
+extern const char* STDLIB_ES5_JS;
+#endif
 
 double Runtime::getCurrentEpochTime() {
 	std::time_t t;
@@ -5693,7 +5696,12 @@ void Runtime::setupStandardLibrary() {
 	const Var func = eval(*String::allocate(heap, STDLIB_JS));
 	Value argv[1] = { protectedSupportObject };
 	call(func, 1, argv);
-	
+#if NUXJS_ES5
+	// The ES5.1 additions are a separate module run after the base library, sharing the same support bridge.
+	const Var es5 = eval(*String::allocate(heap, STDLIB_ES5_JS));
+	call(es5, 1, argv);
+#endif
+
 	fetchFunction(supportObject, "toPrimitive", toPrimitiveFunctions + 0);
 	fetchFunction(supportObject, "toPrimitiveNumber", toPrimitiveFunctions + 1);
 	fetchFunction(supportObject, "toPrimitiveString", toPrimitiveFunctions + 2);

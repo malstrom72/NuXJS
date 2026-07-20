@@ -19,7 +19,8 @@ if [ ! -e ./PikaCmd ]; then
 fi
 bash ./BuildPikaCmd.sh
 cd ../../tools
-if [ "../src/stdlib.js" -nt "../src/stdlibJS.cpp" ]; then
+if [ "../src/stdlib.js" -nt "../src/stdlibJS.cpp" ] || [ "../src/stdlibES5.js" -nt "../src/stdlibJS.cpp" ] \
+		|| [ "./stdlibToCpp.pika" -nt "../src/stdlibJS.cpp" ] || [ "./stdlibMinifier.ppeg" -nt "../src/stdlibJS.cpp" ]; then
 	../externals/PikaCmd/PikaCmd ./stdlibToCpp.pika ../src/stdlib.js ../src/stdlibJS.cpp
 fi
 opts=""
