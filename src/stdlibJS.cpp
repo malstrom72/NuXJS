@@ -516,8 +516,20 @@ const char* STDLIB_ES5_JS =
 "eProperties\");var F=Object(D);for(var name in F){if(a.hasOwnProperty(F,name))t(o,name,F[name])}return o});k(Object,\""
 "getPrototypeOf\",function getPrototypeOf(o){n(o,\"getPrototypeOf\");return d(o,\"prototype\")});k(Object,\"getOwnPrope"
 "rtyDescriptor\",function getOwnPropertyDescriptor(o,C){n(o,\"getOwnPropertyDescriptor\");return a.getOwnPropertyDescri"
-"ptor(o,\"\"+C)});k(Object,\"keys\",function keys(o){n(o,\"keys\");var G=[],H;for(H in o){if(a.hasOwnProperty(o,H))G.pu"
-"sh(H)}return G})})"
+"ptor(o,\"\"+C)});k(Object,\"getOwnPropertyNames\",function getOwnPropertyNames(o){n(o,\"getOwnPropertyNames\");return "
+"a.getOwnPropertyNames(o)});k(Object,\"keys\",function keys(o){n(o,\"keys\");var G=[],H;for(H in o){if(a.hasOwnProperty"
+"(o,H))G.push(H)}return G});k(Object,\"create\",function create(o,D){if(o!==null&&typeof o!==\"object\"&&typeof o!==\"f"
+"unction\"){throw new TypeError(\"Object.create: prototype must be an object or null\")}var I=a.createObject(o);if(D!=="
+"undefined)Object.defineProperties(I,D);return I});k(Object,\"seal\",function seal(o){n(o,\"seal\");var J=Object.getOwn"
+"PropertyNames(o);for(var A=0;A<J.length;++A){var w=Object.getOwnPropertyDescriptor(o,J[A]);if(w.configurable){w.config"
+"urable=false;Object.defineProperty(o,J[A],w)}}return Object.preventExtensions(o)});k(Object,\"freeze\",function freeze"
+"(o){n(o,\"freeze\");var J=Object.getOwnPropertyNames(o);for(var A=0;A<J.length;++A){var w=Object.getOwnPropertyDescrip"
+"tor(o,J[A]);if(\"value\"in w)w.writable=false;w.configurable=false;Object.defineProperty(o,J[A],w)}return Object.preve"
+"ntExtensions(o)});k(Object,\"isSealed\",function isSealed(o){n(o,\"isSealed\");var J=Object.getOwnPropertyNames(o);for"
+"(var A=0;A<J.length;++A){if(Object.getOwnPropertyDescriptor(o,J[A]).configurable)return false}return!Object.isExtensib"
+"le(o)});k(Object,\"isFrozen\",function isFrozen(o){n(o,\"isFrozen\");var J=Object.getOwnPropertyNames(o);for(var A=0;A"
+"<J.length;++A){var w=Object.getOwnPropertyDescriptor(o,J[A]);if(w.configurable||((\"value\"in w)&&w.writable))return f"
+"alse}return!Object.isExtensible(o)})})"
 ;
 #endif
 }
