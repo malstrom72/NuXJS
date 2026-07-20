@@ -14,6 +14,20 @@ Always execute this command before committing changes to verify that the build a
 
 If this message is absent, the build and test sequence did not finish.
 
+The full both-variant build (`es3` and `es5`, beta and release) takes longer than the 180 s above; allow roughly ten minutes (`timeout 600 ./build.sh`).
+
+## ECMAScript 5.1 work (`NUXJS_ES5`)
+
+The engine is being lifted from ES3 to ES5.1. Follow these rules for every ES5 addition:
+
+- **Implement from the spec, not from memory.** The full ES5.1 standard is `docs/specs/ECMA-262 5.1.md` (clause-numbered). Read the relevant clause before writing a feature and follow its numbered algorithm steps literally — including the pedantic parts: `Reject`/Throw semantics, `SameValue` versus `===`, "an absent field takes its default value", and the exact `CheckObjectCoercible` / `ToObject` / `ToString` ordering.
+- **Cite the clause in every test.** Each `tests/es5/*.io` names the clause it verifies (e.g. `// ES5.1 8.12.9 step 7`). Give each fiddly spec branch its own test section — those are exactly where a plausible implementation silently diverges from the standard.
+- **Guard additively; keep ES3 pristine.** Every ES5 change is wrapped in `#if NUXJS_ES5`, is strictly additive, and must not alter an ES3 code path. The ES3 build (with `NUXJS_ES5` undefined) must stay behaviourally identical — ideally the es3 release binary is byte-for-byte unchanged. Verify by building both variants.
+- **Standard-library additions go in `src/stdlibES5.js`**, never in `stdlib.js`; the base library and the ES3 native `support` contracts stay untouched.
+- **Document intentional deviations** in `docs/notes/ECMAScript Compatibility Notes.md` rather than leaving a silent gap.
+
+See `docs/ES5.1 Roadmap.md` for the plan and current status.
+
 ## Repository layout
 The project uses a consistent folder structure. Build output is written to `output/` and no source files live there. Useful locations:
 
