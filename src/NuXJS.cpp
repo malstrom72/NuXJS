@@ -1602,13 +1602,19 @@ Flags JSObject::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 #if NUXJS_ES5
 Flags JSObject::getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const {
 	const Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
-	if (bucket != 0 && (bucket->getFlags() & ACCESSOR_FLAG) != 0) {
+	*accessor = 0;
+	if (bucket == 0) {
+		// Virtual, so subclass internals (e.g. wrapped string length) answer misses. Safe because no table
+		// bucket ever shadows an internal property (subclasses refuse such writes in setOwnProperty).
+		return getOwnProperty(rt, key, v);
+	}
+	if ((bucket->getFlags() & ACCESSOR_FLAG) != 0) {
 		*accessor = getAccessor(bucket);
 		*v = UNDEFINED_VALUE;
-		return bucket->getFlags();
+	} else {
+		*v = bucket->getValue();
 	}
-	*accessor = 0;
-	return getOwnProperty(rt, key, v);	// virtual, so subclasses keep their internal properties (e.g. wrapped string length)
+	return bucket->getFlags();
 }
 
 bool JSObject::defineOwnAccessor(Runtime& rt, const Value& key, Function* f, bool isSetter) {
@@ -2763,10 +2769,13 @@ void Processor::innerRun() {
 				if (o == 0) {
 					return;
 				}
-				Accessor* accessor;
-				if (o->getPropertySlot(rt, sp[0], sp - 1, &accessor) == NONEXISTENT) {
+				const Flags flags = o->getProperty(rt, sp[0], sp - 1);	// data reads at full es3 speed
+				if (flags == NONEXISTENT) {
 					sp[-1] = UNDEFINED_VALUE;
-				} else if (accessor != 0) {
+				} else if ((flags & ACCESSOR_FLAG) != 0) {
+					Value dummy;
+					Accessor* accessor;
+					o->getPropertySlot(rt, sp[0], &dummy, &accessor);	// rare second walk fetches the pair
 					if (accessor->get == 0) {
 						sp[-1] = UNDEFINED_VALUE;
 						pop(1);
@@ -2802,21 +2811,22 @@ void Processor::innerRun() {
 				// es5 semantics: [object, name, value] -> [junk / setter return]; the compiler always follows
 				// with POP_OP so a JS setter frame can deposit its (discarded) return value. (See makeAssignment.)
 				Object* o = sp[-2].getObject();
-				Value dummy;
-				Accessor* accessor;
-				o->getPropertySlot(rt, sp[-1], &dummy, &accessor);
-				if (accessor != 0) {
-					if (accessor->set == 0) {
-						sp[-2] = UNDEFINED_VALUE;	// ES5 8.12.5: silently ignored outside strict mode
-						pop(2);
-						break;
+				if (!o->updateOwnProperty(rt, sp[-1], sp[0])) {	// fast path: existing own writable data property (same cost as es3)
+					Value dummy;
+					Accessor* accessor;
+					const Flags flags = o->getPropertySlot(rt, sp[-1], &dummy, &accessor);
+					if (accessor != 0) {
+						if (accessor->set != 0) {
+							invokeFunction(accessor->set, 2, 1, o);	// ES5 8.12.5: the setter runs as an ordinary frame with the value as its argument
+							return;	// the following POP_OP discards the setter's return value after the frame returns
+						}	// no setter: silently ignored outside strict mode
+					} else if ((flags & READ_ONLY_FLAG) == 0) {
+						o->setOwnProperty(rt, sp[-1], sp[0]);
 					}
-					invokeFunction(accessor->set, 2, 1, o);	// ES5 8.12.5: the setter runs as an ordinary frame with the value as its argument
-					return;
 				}
-				o->setProperty(rt, sp[-1], sp[0]);
-				sp[-2] = UNDEFINED_VALUE;
-				pop(2);
+				assert(unpackInstruction(*ip).first == POP_OP);	// guaranteed by makeAssignment
+				++ip;	// data path: consume the following POP_OP here to spare a dispatch
+				pop(3);
 				break;
 			#else
 				sp[-2].getObject()->setProperty(rt, sp[-1], sp[0]);
@@ -3068,10 +3078,12 @@ void Processor::innerRun() {
 					return;
 				}
 				sp[-1] = o;	// the call site (CALL_THIS_OP) picks this up as the this object
-				Accessor* accessor;
 				Value v(UNDEFINED_VALUE);
-				const Flags flags = o->getPropertySlot(rt, sp[0], &v, &accessor);
-				if (accessor != 0) {
+				const Flags flags = o->getProperty(rt, sp[0], &v);
+				if ((flags & ACCESSOR_FLAG) != 0) {
+					Value dummy;
+					Accessor* accessor;
+					o->getPropertySlot(rt, sp[0], &dummy, &accessor);	// rare second walk fetches the pair
 					if (accessor->get != 0) {
 						invokeFunction(accessor->get, 0, 0, o);	// result replaces the name at sp[0]; callability is checked by CALL_THIS_OP
 						return;
