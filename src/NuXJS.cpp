@@ -1387,6 +1387,33 @@ Flags Object::getPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor*
 	*accessor = 0;
 	return NONEXISTENT;
 }
+
+// 9.12 SameValue. Differs from === only for NaN (equal to itself) and +0 / -0 (distinct).
+static bool sameValue(const Value& a, const Value& b) {
+	if (a.isNumber() && b.isNumber()) {
+		const double x = a.toDouble(), y = b.toDouble();
+		if (isNaN(x) || isNaN(y)) {
+			return isNaN(x) && isNaN(y);
+		}
+		if (x == 0 && y == 0) {
+			return (1.0 / x) == (1.0 / y);	// +0 and -0 differ only in the sign of 1/x
+		}
+		return x == y;
+	}
+	return a.isStrictlyEqualTo(b);
+}
+
+// 8.12.9 "Reject": throw a TypeError when doThrow, otherwise report failure.
+static bool rejectDefine(Runtime& rt, bool doThrow) {
+	if (doThrow) {
+		ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Cannot redefine property");
+	}
+	return false;
+}
+
+bool Object::defineOwnProperty(Runtime& rt, const Value&, const PropertyDescriptor&, bool doThrow) {
+	return rejectDefine(rt, doThrow);
+}
 #endif
 
 bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
@@ -1492,9 +1519,18 @@ bool Table::erase(Bucket* bucket) {
 }
 
 #if NUXJS_ES5
-void Table::defineAccessor(Bucket* bucket, Accessor* accessor) {
+void Table::defineData(Bucket* bucket, const Value& value, Flags exactFlags) {
 	assert(bucket->keyExists());
-	bucket->flags = EXISTS_FLAG | ACCESSOR_FLAG;	// exact flags: enumerable and configurable, as for object literals
+	assert((exactFlags & (ACCESSOR_FLAG | INDEX_TYPE_FLAG)) == 0);
+	bucket->flags = exactFlags;
+	bucket->type = static_cast<Byte>(value.type & 0xFF);
+	bucket->var = value.var;
+}
+
+void Table::defineAccessor(Bucket* bucket, Accessor* accessor, Flags exactFlags) {
+	assert(bucket->keyExists());
+	assert((exactFlags & ACCESSOR_FLAG) != 0);
+	bucket->flags = exactFlags;
 	bucket->type = static_cast<Byte>(Value::UNDEFINED_TYPE);
 	bucket->accessor = accessor;
 }
@@ -1629,7 +1665,104 @@ bool JSObject::defineOwnAccessor(Runtime& rt, const Value& key, Function* f, boo
 		Accessor* accessor = getAccessor(bucket);
 		(isSetter ? accessor->set : accessor->get) = f;
 	} else {
-		defineAccessor(bucket, new(heap) Accessor(heap.managed(), (isSetter ? 0 : f), (isSetter ? f : 0)));
+		defineAccessor(bucket, new(heap) Accessor(heap.managed(), (isSetter ? 0 : f), (isSetter ? f : 0))
+				, EXISTS_FLAG | ACCESSOR_FLAG);	// object literals: enumerable and configurable
+	}
+	return true;
+}
+
+// 8.12.9 [[DefineOwnProperty]] for an ordinary object. `desc` carries presence bits so an absent field means
+// "default" for a new property (step 4) or "leave unchanged" for an existing one (step 12).
+bool JSObject::defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow) {
+	Heap& heap = rt.getHeap();
+	Table::Bucket* bucket = lookup(key.toString(heap));
+	const bool exists = (bucket != 0 && bucket->valueExists());
+
+	if (!exists) {												// steps 3-4: no current own property
+		if (!extensible) {
+			return rejectDefine(rt, doThrow);					// step 3
+		}
+		bucket = insert(key.toString(heap));
+		const Flags attrs = (desc.has(PropertyDescriptor::HAS_ENUMERABLE) && desc.enumerable ? 0 : DONT_ENUM_FLAG)
+				| (desc.has(PropertyDescriptor::HAS_CONFIGURABLE) && desc.configurable ? 0 : DONT_DELETE_FLAG);
+		if (desc.isAccessor()) {
+			defineAccessor(bucket, new(heap) Accessor(heap.managed()
+					, desc.has(PropertyDescriptor::HAS_GET) ? desc.get : 0
+					, desc.has(PropertyDescriptor::HAS_SET) ? desc.set : 0), EXISTS_FLAG | ACCESSOR_FLAG | attrs);
+		} else {
+			defineData(bucket, desc.has(PropertyDescriptor::HAS_VALUE) ? desc.value : Value::UNDEFINED
+					, EXISTS_FLAG | (desc.has(PropertyDescriptor::HAS_WRITABLE) && desc.writable ? 0 : READ_ONLY_FLAG) | attrs);
+		}
+		return true;
+	}
+
+	const Flags cf = bucket->getFlags();						// current property attributes
+	const bool curAccessor = (cf & ACCESSOR_FLAG) != 0;
+	const bool curConfigurable = (cf & DONT_DELETE_FLAG) == 0;
+	const bool curEnumerable = (cf & DONT_ENUM_FLAG) == 0;
+	const bool curWritable = (cf & READ_ONLY_FLAG) == 0;
+
+	if (desc.present == 0) {
+		return true;											// step 5: nothing to do
+	}
+	if (!curConfigurable) {										// step 7
+		if (desc.has(PropertyDescriptor::HAS_CONFIGURABLE) && desc.configurable) {
+			return rejectDefine(rt, doThrow);
+		}
+		if (desc.has(PropertyDescriptor::HAS_ENUMERABLE) && desc.enumerable != curEnumerable) {
+			return rejectDefine(rt, doThrow);
+		}
+	}
+	if (desc.isGeneric()) {										// step 8: only enumerable/configurable, no kind change
+	} else if (desc.isData() == curAccessor) {					// step 9: descriptor changes data <-> accessor
+		if (!curConfigurable) {
+			return rejectDefine(rt, doThrow);
+		}
+	} else if (!curAccessor) {									// step 10: both data descriptors
+		if (!curConfigurable && !curWritable) {
+			if (desc.has(PropertyDescriptor::HAS_WRITABLE) && desc.writable) {
+				return rejectDefine(rt, doThrow);				// 10.a.i: cannot un-freeze writable
+			}
+			if (desc.has(PropertyDescriptor::HAS_VALUE) && !sameValue(desc.value, bucket->getValue())) {
+				return rejectDefine(rt, doThrow);				// 10.a.ii: cannot change a non-writable value
+			}
+		}
+	} else {													// step 11: both accessor descriptors
+		if (!curConfigurable) {
+			Accessor* ca = getAccessor(bucket);
+			if ((desc.has(PropertyDescriptor::HAS_GET) && desc.get != ca->get)
+					|| (desc.has(PropertyDescriptor::HAS_SET) && desc.set != ca->set)) {
+				return rejectDefine(rt, doThrow);
+			}
+		}
+	}
+
+	// step 12: merge the present fields of `desc` onto the property.
+	const bool finalEnumerable = desc.has(PropertyDescriptor::HAS_ENUMERABLE) ? desc.enumerable : curEnumerable;
+	const bool finalConfigurable = desc.has(PropertyDescriptor::HAS_CONFIGURABLE) ? desc.configurable : curConfigurable;
+	const Flags attrs = (finalEnumerable ? 0 : DONT_ENUM_FLAG) | (finalConfigurable ? 0 : DONT_DELETE_FLAG);
+	const bool resultAccessor = desc.isAccessor() || (desc.isGeneric() && curAccessor);
+	if (resultAccessor) {
+		Function* g = 0;
+		Function* s = 0;
+		if (curAccessor) {										// keep current halves unless overwritten (a conversion resets them)
+			Accessor* ca = getAccessor(bucket);
+			g = ca->get;
+			s = ca->set;
+		}
+		if (desc.has(PropertyDescriptor::HAS_GET)) g = desc.get;
+		if (desc.has(PropertyDescriptor::HAS_SET)) s = desc.set;
+		defineAccessor(bucket, new(heap) Accessor(heap.managed(), g, s), EXISTS_FLAG | ACCESSOR_FLAG | attrs);
+	} else {
+		Value v(Value::UNDEFINED);
+		bool writable = false;
+		if (!curAccessor) {										// keep current value/writable unless overwritten
+			v = bucket->getValue();
+			writable = curWritable;
+		}
+		if (desc.has(PropertyDescriptor::HAS_VALUE)) v = desc.value;
+		if (desc.has(PropertyDescriptor::HAS_WRITABLE)) writable = desc.writable;
+		defineData(bucket, v, EXISTS_FLAG | (writable ? 0 : READ_ONLY_FLAG) | attrs);
 	}
 	return true;
 }
@@ -1848,6 +1981,31 @@ Flags JSArray::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 	}
 	return super::getOwnProperty(rt, key, v);
 }
+
+#if NUXJS_ES5
+bool JSArray::defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow) {
+	UInt32 index;
+	if (key.toArrayIndex(index) || key.equalsString(LENGTH_STRING)) {
+		// Full 15.4.5.1 (length maintenance and 8.12.9 validation for indices and length) is deferred. A
+		// data / generic descriptor maps to setOwnProperty with attribute flags, matching the ES3
+		// defineProperty shim so existing behaviour does not regress; an accessor cannot represent an array
+		// element or length in the dense-vector model, so reject it.
+		if (desc.isAccessor()) {
+			if (doThrow) {
+				ScriptException::throwError(rt.getHeap(), TYPE_ERROR
+						, "accessor array index / length [[DefineOwnProperty]] is not yet supported");
+			}
+			return false;
+		}
+		const Flags f = EXISTS_FLAG
+				| (desc.has(PropertyDescriptor::HAS_WRITABLE) && desc.writable ? 0 : READ_ONLY_FLAG)
+				| (desc.has(PropertyDescriptor::HAS_ENUMERABLE) && desc.enumerable ? 0 : DONT_ENUM_FLAG)
+				| (desc.has(PropertyDescriptor::HAS_CONFIGURABLE) && desc.configurable ? 0 : DONT_DELETE_FLAG);
+		return setOwnProperty(rt, key, desc.has(PropertyDescriptor::HAS_VALUE) ? desc.value : Value::UNDEFINED, f);
+	}
+	return super::defineOwnProperty(rt, key, desc, doThrow);
+}
+#endif
 
 void JSArray::sliceDenseVector(Runtime& rt, const Value& key) {
 	UInt32 index;
@@ -5369,6 +5527,28 @@ struct Support {
 		Object* object = (argc >= 1 ? argv[0].asObject() : 0);
 		return (object != 0 && object->isExtensible());
 	}
+
+	// defineOwnProperty(obj, key, present, value, get, set, attribs): the stdlib has already run ToPropertyDescriptor
+	// and packed the descriptor into presence/attribute bitmasks. Runs 8.12.9 with Throw = true and returns obj.
+	static Value defineOwnProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+		Object* o = (argc >= 1 ? argv[0].asObject() : 0);
+		if (o == 0) {
+			ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Object.defineProperty called on non-object");
+			return Value();
+		}
+		const Int32 present = (argc >= 3 ? argv[2].toInt() : 0);
+		const Int32 attribs = (argc >= 7 ? argv[6].toInt() : 0);
+		PropertyDescriptor desc;
+		desc.present = static_cast<Byte>(present);
+		if (present & PropertyDescriptor::HAS_VALUE) desc.value = argv[3];
+		if (present & PropertyDescriptor::HAS_WRITABLE) desc.writable = (attribs & 1) != 0;
+		if (present & PropertyDescriptor::HAS_GET) desc.get = argv[4].asFunction();
+		if (present & PropertyDescriptor::HAS_SET) desc.set = argv[5].asFunction();
+		if (present & PropertyDescriptor::HAS_ENUMERABLE) desc.enumerable = (attribs & 2) != 0;
+		if (present & PropertyDescriptor::HAS_CONFIGURABLE) desc.configurable = (attribs & 4) != 0;
+		o->defineOwnProperty(rt, argv[1], desc, true);
+		return argv[0];
+	}
 #endif
 
 	static Value fromCharCode(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
@@ -5494,6 +5674,7 @@ static struct {
 	{ "random", Support::random }, { "updateDateValue", Support::updateDateValue }
 #if NUXJS_ES5
 	, { "preventExtensions", Support::preventExtensions }, { "isExtensible", Support::isExtensible }
+	, { "defineOwnProperty", Support::defineOwnProperty }
 #endif
 };
 

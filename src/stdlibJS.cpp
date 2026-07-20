@@ -495,14 +495,25 @@ const char* STDLIB_JS =
 ;
 #if NUXJS_ES5
 const char* STDLIB_ES5_JS =
-"(function(a){var b=a.defineProperty;function c(d,name,e){b(d,name,e,false,true,false)}function f(g,name){if(g===null||"
-"(typeof g!==\"object\"&&typeof g!==\"function\")){throw new TypeError(\"Object.\"+name+\" called on non-object\")}retu"
-"rn g}function h(i){return i===0x20||(i>=0x09&&i<=0x0D)||i===0xA0||i===0xFEFF||i===0x1680||(i>=0x2000&&i<=0x200A)||i==="
-"0x2028||i===0x2029||i===0x202F||i===0x205F||i===0x3000}c(String.prototype,\"trim\",function trim(){if(this==null)throw"
-" new TypeError(\"String.prototype.trim called on null or undefined\");var j=\"\"+this,k=0,l=j.length;while(k<l&&h(j.ch"
-"arCodeAt(k)))++k;while(l>k&&h(j.charCodeAt(l-1)))--l;return j.substring(k,l)});c(Object,\"preventExtensions\",function"
-" preventExtensions(g){return a.preventExtensions(f(g,\"preventExtensions\"))});c(Object,\"isExtensible\",function isEx"
-"tensible(g){return a.isExtensible(f(g,\"isExtensible\"))})})"
+"(function(a){var b=a.defineProperty,c=a.distinctConstructor;var d=1,e=2,f=4,g=8,h=16,i=32;function j(k,name,l){b(k,nam"
+"e,c(l),false,true,false)}function m(n,name){if(n===null||(typeof n!==\"object\"&&typeof n!==\"function\")){throw new T"
+"ypeError(\"Object.\"+name+\" called on non-object\")}return n}function o(p){if(p===null||(typeof p!==\"object\"&&typeo"
+"f p!==\"function\")){throw new TypeError(\"Property description must be an object\")}var q=0,value,get,set,writable=fa"
+"lse,enumerable=false,configurable=false;if(\"enumerable\"in p){q|=h;enumerable=!!p.enumerable}if(\"configurable\"in p)"
+"{q|=i;configurable=!!p.configurable}if(\"value\"in p){q|=d;value=p.value}if(\"writable\"in p){q|=e;writable=!!p.writab"
+"le}if(\"get\"in p){get=p.get;if(get!==undefined&&typeof get!==\"function\")throw new TypeError(\"Getter must be a func"
+"tion\");q|=f}if(\"set\"in p){set=p.set;if(set!==undefined&&typeof set!==\"function\")throw new TypeError(\"Setter must"
+" be a function\");q|=g}if((q&(f|g))!==0&&(q&(d|e))!==0){throw new TypeError(\"A property descriptor cannot specify bot"
+"h accessors and a value or writable\")}return{q:q,value:value,get:get,set:set,r:(writable?1:0)|(enumerable?2:0)|(confi"
+"gurable?4:0)}}function s(n,t,u){var v=o(u);a.defineOwnProperty(n,\"\"+t,v.q,v.value,v.get,v.set,v.r)}function w(x){ret"
+"urn x===0x20||(x>=0x09&&x<=0x0D)||x===0xA0||x===0xFEFF||x===0x1680||(x>=0x2000&&x<=0x200A)||x===0x2028||x===0x2029||x="
+"==0x202F||x===0x205F||x===0x3000}j(String.prototype,\"trim\",function trim(){if(this==null)throw new TypeError(\"Strin"
+"g.prototype.trim called on null or undefined\");var y=\"\"+this,z=0,A=y.length;while(z<A&&w(y.charCodeAt(z)))++z;while"
+"(A>z&&w(y.charCodeAt(A-1)))--A;return y.substring(z,A)});j(Object,\"preventExtensions\",function preventExtensions(n){"
+"return a.preventExtensions(m(n,\"preventExtensions\"))});j(Object,\"isExtensible\",function isExtensible(n){return a.i"
+"sExtensible(m(n,\"isExtensible\"))});j(Object,\"defineProperty\",function defineProperty(n,B,u){m(n,\"defineProperty\""
+");s(n,B,u);return n});j(Object,\"defineProperties\",function defineProperties(n,C){m(n,\"defineProperties\");var D=Obj"
+"ect(C);for(var name in D){if(a.hasOwnProperty(D,name))s(n,name,D[name])}return n})})"
 ;
 #endif
 }

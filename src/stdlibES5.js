@@ -6,13 +6,17 @@
 	never touched, so the ES3 embedding stays byte-for-byte identical. This module may use the native `support`
 	hooks and the globals stdlib.js has already installed, but not stdlib.js's private (closure-local) helpers.
 
-	@preserve: trim,preventExtensions,isExtensible
+	@preserve: trim,preventExtensions,isExtensible,defineProperties,defineOwnProperty,get,set
 */
 (function (support) {
 
-var $defineProperty = support.defineProperty;
+var $defineProperty = support.defineProperty, unconstructable = support.distinctConstructor;
 
-function method(target, name, fn) { $defineProperty(target, name, fn, false, true, false); }
+// Presence bitmask for a property descriptor; must match PropertyDescriptor::HAS_* in NuXJS.h.
+var HAS_VALUE = 1, HAS_WRITABLE = 2, HAS_GET = 4, HAS_SET = 8, HAS_ENUMERABLE = 16, HAS_CONFIGURABLE = 32;
+
+// Built-in methods are writable, non-enumerable, configurable, and (like all standard built-ins) not constructors.
+function method(target, name, fn) { $defineProperty(target, name, unconstructable(fn), false, true, false); }
 
 // 9.9 / many 15.2.3.x steps: "If Type(O) is not Object, throw a TypeError exception."
 function requireObject(o, name) {
@@ -20,6 +24,39 @@ function requireObject(o, name) {
 		throw new TypeError("Object." + name + " called on non-object");
 	}
 	return o;
+}
+
+// 8.10.5 ToPropertyDescriptor. Reads the attributes object (via [[Get]], so getters run) and packs it into the
+// present / value / get / set / attribs form the native support.defineOwnProperty consumes.
+function toPropertyDescriptor(attrs) {
+	if (attrs === null || (typeof attrs !== "object" && typeof attrs !== "function")) {
+		throw new TypeError("Property description must be an object");
+	}
+	var present = 0, value, get, set, writable = false, enumerable = false, configurable = false;
+	if ("enumerable" in attrs) { present |= HAS_ENUMERABLE; enumerable = !!attrs.enumerable; }
+	if ("configurable" in attrs) { present |= HAS_CONFIGURABLE; configurable = !!attrs.configurable; }
+	if ("value" in attrs) { present |= HAS_VALUE; value = attrs.value; }
+	if ("writable" in attrs) { present |= HAS_WRITABLE; writable = !!attrs.writable; }
+	if ("get" in attrs) {
+		get = attrs.get;
+		if (get !== undefined && typeof get !== "function") throw new TypeError("Getter must be a function");
+		present |= HAS_GET;
+	}
+	if ("set" in attrs) {
+		set = attrs.set;
+		if (set !== undefined && typeof set !== "function") throw new TypeError("Setter must be a function");
+		present |= HAS_SET;
+	}
+	if ((present & (HAS_GET | HAS_SET)) !== 0 && (present & (HAS_VALUE | HAS_WRITABLE)) !== 0) {
+		throw new TypeError("A property descriptor cannot specify both accessors and a value or writable");
+	}
+	return { present: present, value: value, get: get, set: set
+			, attribs: (writable ? 1 : 0) | (enumerable ? 2 : 0) | (configurable ? 4 : 0) };
+}
+
+function define(o, key, attributes) {
+	var d = toPropertyDescriptor(attributes);
+	support.defineOwnProperty(o, "" + key, d.present, d.value, d.get, d.set, d.attribs);
 }
 
 // ES5.1 15.5.4.20: strips WhiteSpace (7.2) and LineTerminator (7.3) from both ends of the string.
@@ -44,6 +81,23 @@ method(Object, "preventExtensions", function preventExtensions(o) {
 
 method(Object, "isExtensible", function isExtensible(o) {
 	return support.isExtensible(requireObject(o, "isExtensible"));
+});
+
+// 15.2.3.6 Object.defineProperty (overrides the partial data-only shim in stdlib.js with the full 8.12.9 form)
+method(Object, "defineProperty", function defineProperty(o, p, attributes) {
+	requireObject(o, "defineProperty");
+	define(o, p, attributes);
+	return o;
+});
+
+// 15.2.3.7 Object.defineProperties
+method(Object, "defineProperties", function defineProperties(o, properties) {
+	requireObject(o, "defineProperties");
+	var props = Object(properties);
+	for (var name in props) {
+		if (support.hasOwnProperty(props, name)) define(o, name, props[name]);
+	}
+	return o;
 });
 
 })
