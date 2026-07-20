@@ -1636,11 +1636,18 @@ class Processor : public GCItem {
 			, CHECK_OBJECT_COERCIBLE_OP						// stack: value -> value
 			, CHECK_RESOLVE_PROPERTY_OP						// stack: object, name -> object, name	// check coercible, then resolve object
 			, GET_PROPERTY_OP								// stack: object, name -> value
+		#if NUXJS_ES5
+			, GET_METHOD_OP									// stack: object, name -> this_object, function		// full [[Get]] (runs accessors); errors early if not callable
+		#endif
 		#if !NUXJS_ES5										// es5 stores via SET_PROPERTY_POP_OP (+ POP), so the setter can run as a frame
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
 		#endif
 			, SET_PROPERTY_POP_OP							// stack: object, name, value ->
 			, ADD_PROPERTY_OP								// operand: const_index (name), stack: object, value -> object
+		#if NUXJS_ES5
+			, ADD_GETTER_OP									// operand: const_index (name), stack: object, function -> object
+			, ADD_SETTER_OP									// operand: const_index (name), stack: object, function -> object
+		#endif
 			, PUSH_ELEMENTS_OP								// operand: count, stack: object, count * elements ... -> object
 			, OBJ_TO_PRIMITIVE_OP							// stack: value -> primitive_value (no preference)	// these three must be in this exact order
 			, OBJ_TO_NUMBER_OP								// stack: value -> primitive_value (number preferred)
@@ -1664,8 +1671,10 @@ class Processor : public GCItem {
 			, REPUSH_2_OP									// stack: value_1, value_2 -> value_1, value_2, value_1, value_2	// used for duplicating property reference with assignment operators like += etc
 			, POST_SHUFFLE_OP								// stack: object, name, value -> value, object, name, value			// used for special post inc/dec logic on properties (see code)
 			, CALL_OP										// operand: n, stack: function, n * args -> return_value
-		#if !NUXJS_ES5										// es5 fetches the callee before args via GET_METHOD_OP + CALL_THIS_OP (11.2.3)
+		#if !NUXJS_ES5
 			, CALL_METHOD_OP								// operand: n, stack: object, name, n * args -> return_value
+		#else											// es5 fetches the callee before the args (11.2.3): GET_METHOD_OP leaves this+function, then CALL_THIS_OP
+			, CALL_THIS_OP									// operand: n, stack: this_object, function, n * args -> return_value
 		#endif
 			, CALL_EVAL_OP									// operand: n, stack: function, n * args -> return_value			// special eval call is required because of need to differentiate direct or indirect call to eval
 			, NEW_OP										// operand: n, stack: constructor object, n * args -> new_object, return_value
@@ -1693,12 +1702,6 @@ class Processor : public GCItem {
 			, TYPEOF_NAMED_OP								// operand: const_index (name), stack: -> string
 			, GET_ENUMERATOR_OP								// stack: object -> enumerator
 			, NEXT_PROPERTY_OP								// operand: exit_loop_offset, stack: enumerator -> string (unless end of loop)
-		#if NUXJS_ES5
-			, ADD_GETTER_OP									// operand: const_index (name), stack: object, function -> object
-			, ADD_SETTER_OP									// operand: const_index (name), stack: object, function -> object
-			, GET_METHOD_OP									// stack: object, name -> object, function		// full [[Get]] (runs accessors); errors early if the result is not callable
-			, CALL_THIS_OP									// operand: n, stack: object, function, n * args -> return_value	// like CALL_OP but with an explicit this object below the function
-		#endif
 			, OP_COUNT
 		};
 	
