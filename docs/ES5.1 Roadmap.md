@@ -153,9 +153,9 @@ Pure `stdlib.js` + one upgraded native hook. Replaces the current data-only `Obj
       extensibility) and route to `Object::defineOwnProperty`. It must read existing attributes (not force-false)
       and return the object.
 - [x] `Object.defineProperty`, `Object.defineProperties` (§15.2.3.6–7) via native `defineOwnProperty` (8.12.9) + JS `toPropertyDescriptor` (8.10.5). (`tests/es5/objectDefineProperty.io`)
-- [ ] `Object.getOwnPropertyDescriptor`, `Object.getOwnPropertyNames` (§15.2.3.3–4)
+- [x] `Object.getOwnPropertyDescriptor` (§15.2.3.3) via native FromPropertyDescriptor. `getOwnPropertyNames` still pending. (`tests/es5/objectReflection.io`)
 - [ ] `Object.create` incl. `null` prototype and second (properties) argument (§15.2.3.5)
-- [ ] `Object.keys` (§15.2.3.14); ensure `getPrototypeOf` matches §15.2.3.2 (present — verify primitive handling)
+- [x] `Object.keys` (§15.2.3.14, own enumerable via for-in) and `Object.getPrototypeOf` (§15.2.3.2, now throwing on non-object). (`tests/es5/objectReflection.io`)
 - [ ] `Object.preventExtensions / isExtensible / seal / freeze / isSealed / isFrozen` (§15.2.3.8–13), implemented by
       iterating `getOwnPropertyNames` and toggling bits via `defineProperty`.
 - [ ] Ensure these built-ins are **not constructable** and have correct `length`/attributes.

@@ -7,10 +7,12 @@
 	hooks and the globals stdlib.js has already installed, but not stdlib.js's private (closure-local) helpers.
 
 	@preserve: trim,preventExtensions,isExtensible,defineProperties,defineOwnProperty,get,set
+	@preserve: getOwnPropertyDescriptor,keys
 */
 (function (support) {
 
-var $defineProperty = support.defineProperty, unconstructable = support.distinctConstructor;
+var $defineProperty = support.defineProperty, unconstructable = support.distinctConstructor
+		, $getInternalProperty = support.getInternalProperty;
 
 // Presence bitmask for a property descriptor; must match PropertyDescriptor::HAS_* in NuXJS.h.
 var HAS_VALUE = 1, HAS_WRITABLE = 2, HAS_GET = 4, HAS_SET = 8, HAS_ENUMERABLE = 16, HAS_CONFIGURABLE = 32;
@@ -98,6 +100,28 @@ method(Object, "defineProperties", function defineProperties(o, properties) {
 		if (support.hasOwnProperty(props, name)) define(o, name, props[name]);
 	}
 	return o;
+});
+
+// 15.2.3.2 Object.getPrototypeOf (stdlib.js has a version without the non-object check; override for strictness)
+method(Object, "getPrototypeOf", function getPrototypeOf(o) {
+	requireObject(o, "getPrototypeOf");
+	return $getInternalProperty(o, "prototype");
+});
+
+// 15.2.3.3 Object.getOwnPropertyDescriptor
+method(Object, "getOwnPropertyDescriptor", function getOwnPropertyDescriptor(o, p) {
+	requireObject(o, "getOwnPropertyDescriptor");
+	return support.getOwnPropertyDescriptor(o, "" + p);
+});
+
+// 15.2.3.14 Object.keys: own enumerable string-keyed property names, in for-in order.
+method(Object, "keys", function keys(o) {
+	requireObject(o, "keys");
+	var result = [], k;
+	for (k in o) {
+		if (support.hasOwnProperty(o, k)) result.push(k);
+	}
+	return result;
 });
 
 })
