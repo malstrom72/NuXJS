@@ -3531,7 +3531,7 @@ Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNes
 	, mainSection(heap, 1), b(0), p(0), e(0), sourceUnitBase(code->getSourceUnit()->getSource()->begin())
 	, currentSection(0), acceptInOperator(true), withScopeCounter(0), nestCounter(initialNestCounter)
 #if NUXJS_ES5
-	, inDirectivePrologue(false)
+	, inDirectivePrologue(false), lastStringLiteralStart(0), lastStringLiteralEnd(0)
 #endif
 {
 }
@@ -3986,10 +3986,17 @@ Value Compiler::stringOrNumberConstant() {
 				break;
 			}
 			case '\'': case '"': {
+			#if NUXJS_ES5
+				const Char* const stringStart = p;	// at the opening quote
+			#endif
 				UInt32 maxLength = unescapedMaxLength(p, e);
 				Vector<Char, 64> buffer(maxLength, &heap);
 				Char* unescapeEnd = unescape(buffer, e);
 				assert(unescapeEnd <= buffer + maxLength);
+			#if NUXJS_ES5
+				lastStringLiteralStart = stringStart;	// record the exact token span for directive detection (14.1)
+				lastStringLiteralEnd = p;				// p is now just past the closing quote
+			#endif
 				return newHashedString(heap, buffer, unescapeEnd);
 			}
 		}
@@ -5213,11 +5220,12 @@ void Compiler::statement(SemanticScope* currentScope, SemanticScope* scopeLabels
 			ExpressionResult evalXR = (compilingFor == FOR_EVAL ? ExpressionResult::PUSHED : ExpressionResult::NONE);
 			optionalExpression(evalXR, LOWEST_PREC);
 		#if NUXJS_ES5
-			// A Directive is an ExpressionStatement whose expression is exactly a StringLiteral: the parser reports
-			// a CONSTANT string and the source starts at the quote (so `("...")` and `"..." + x` are excluded). The
-			// directive itself is the raw source `use strict` in quotes (no escapes -> exactly 12 source chars).
-			if (wasInPrologue && evalXR.t == ExpressionResult::CONSTANT && evalXR.v.isString()
-					&& (*b == '"' || *b == '\'')) {
+			// 14.1: a Directive is an ExpressionStatement consisting *entirely* of a StringLiteral token. The
+			// statement is exactly that literal iff the last string parsed spans the whole expression source
+			// [b, p) — this correctly rejects `("...")`, `"..." + x`, `"...".m`, and `"a", "b"` (comma). A Use
+			// Strict Directive is the raw source `use strict` in quotes with no EscapeSequence, i.e. exactly the
+			// 12 source characters — any escape would make the span longer, so the length check enforces that.
+			if (wasInPrologue && lastStringLiteralStart == b && lastStringLiteralEnd == p) {
 				inDirectivePrologue = true;
 				if (p - b == 12 && b[11] == *b && b[1] == 'u' && b[2] == 's' && b[3] == 'e' && b[4] == ' '
 						&& b[5] == 's' && b[6] == 't' && b[7] == 'r' && b[8] == 'i' && b[9] == 'c' && b[10] == 't') {
