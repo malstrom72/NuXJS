@@ -3894,6 +3894,17 @@ void Compiler::returnSafeKept(const ExpressionResult& xr) {
 }
 
 Compiler::ExpressionResult Compiler::makeAssignment(const ExpressionResult& xr) {
+#if NUXJS_ES5
+	// 11.13.1 / 11.4.4 / 11.4.5: assigning to (or ++/-- of) `eval` or `arguments` is a SyntaxError in strict mode.
+	// makeAssignment is the single write path for =, compound assignment, and pre/post increment.
+	if (code->strict && (xr.t == ExpressionResult::NAMED || xr.t == ExpressionResult::LOCAL)) {
+		const String* targetName = (xr.t == ExpressionResult::NAMED ? xr.v.getString()
+				: code->getLocalName(xr.v.toInt()));
+		if (targetName->isEqualTo(EVAL_STRING) || targetName->isEqualTo(ARGUMENTS_STRING)) {
+			error(SYNTAX_ERROR, "'eval' and 'arguments' may not be assigned in strict mode");
+		}
+	}
+#endif
 	switch (xr.t) {
 		default: error(REFERENCE_ERROR, "Illegal l-value"); // FIX : ECMA like the word "reference"
 		case ExpressionResult::LOCAL: emit(Processor::WRITE_LOCAL_OP, xr.v.toInt()); break;
@@ -4617,6 +4628,12 @@ void Compiler::rvalueGroup() {
 
 // FIX : ok, this is serious mess
 Compiler::ExpressionResult Compiler::declareIdentifier(const String* name, bool func) {
+#if NUXJS_ES5
+	// 12.2.1 / 13.1: binding `eval` or `arguments` (a var or function-declaration name) is a strict SyntaxError.
+	if (code->strict && (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING))) {
+		error(SYNTAX_ERROR, "'eval' and 'arguments' may not be bound in strict mode");
+	}
+#endif
 	ExpressionResult lxr(ExpressionResult::NAMED, name);
 	if (compilingFor != FOR_FUNCTION) {
 		CodeSection* previousSection = changeSection(&setupSection);
@@ -5042,6 +5059,12 @@ void Compiler::tryStatement(SemanticScope* currentScope) {
 		expectToken("(", true);
 		white();
 		const String* exceptionVarName = identifier(true, false);
+	#if NUXJS_ES5
+		// 12.14.1: a catch parameter named `eval` or `arguments` is a strict SyntaxError.
+		if (code->strict && (exceptionVarName->isEqualTo(EVAL_STRING) || exceptionVarName->isEqualTo(ARGUMENTS_STRING))) {
+			error(SYNTAX_ERROR, "'eval' and 'arguments' may not be a catch parameter in strict mode");
+		}
+	#endif
 		Int32 previousLocalIndex = 0;
 		Table& nameIndexes = code->nameIndexes;
 		bool didExist = false; // FIX : can use NON_EXISTENT type if we choose to keep it
@@ -5329,6 +5352,12 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 	white();
 	Table& nameIndexes = code->nameIndexes;
 	Vector<const String*>& argumentNames = code->argumentNames;
+#if NUXJS_ES5
+	// Parameters are parsed before the body's directive prologue, so strictness may not be known yet. Record the
+	// violations and report them retroactively (13.1) once the body has been compiled and code->strict is settled.
+	bool duplicateParam = false;
+	bool reservedParamName = false;
+#endif
 	while (!token(")", false)) {
 		if (eof()) {
 			error(SYNTAX_ERROR, argumentNames.size() == 0 ? "Expected ')'" : "Expected ',' or ')'");
@@ -5340,6 +5369,14 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 			white();
 		}
 		const String* name = identifier(true, false);
+	#if NUXJS_ES5
+		if (nameIndexes.lookup(name) != 0) {
+			duplicateParam = true;
+		}
+		if (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING)) {
+			reservedParamName = true;
+		}
+	#endif
 		nameIndexes.update(nameIndexes.insert(name), static_cast<Int32>(argumentNames.size()));
 		argumentNames.push(name);
 		code->bloomSet |= name->createBloomCode();
@@ -5347,6 +5384,23 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 	}
 	expectToken("{", true);
 	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
+#if NUXJS_ES5
+	if (code->strict) {
+		if (duplicateParam) {
+			error(SYNTAX_ERROR, "duplicate parameter name is not allowed in strict mode");
+		}
+		if (reservedParamName) {
+			error(SYNTAX_ERROR, "'eval' and 'arguments' may not be a parameter name in strict mode");
+		}
+		// 13.1: the function's own name (a FunctionDeclaration/FunctionExpression Identifier) may not be
+		// eval/arguments in strict code. Declarations are also caught in the enclosing scope via declareIdentifier,
+		// but a strict function's own directive requires checking the name here too.
+		if (functionName->isEqualTo(EVAL_STRING) || functionName->isEqualTo(ARGUMENTS_STRING)
+				|| (selfName != 0 && (selfName->isEqualTo(EVAL_STRING) || selfName->isEqualTo(ARGUMENTS_STRING)))) {
+			error(SYNTAX_ERROR, "a function named 'eval' or 'arguments' is not allowed in strict mode");
+		}
+	}
+#endif
 	expectToken("}", false);
 	code->name = functionName;
 	code->selfName = selfName;
