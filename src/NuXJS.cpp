@@ -2881,6 +2881,22 @@ void Processor::error(ErrorType errorType, const String* message) {
 	throwVirtualException(new(heap) Error(heap.managed(), errorType, message));
 }
 
+#if NUXJS_ES5
+bool Processor::checkStrictAssignable(Scope* scope, const String* name) {
+	Value dummy;
+	const Flags flags = scope->readVar(rt, name, &dummy);	// walks the same scope chain writeVar will
+	if (flags == NONEXISTENT) {
+		error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));	// 11.13.1: assign to undeclared
+		return false;
+	}
+	if ((flags & READ_ONLY_FLAG) != 0) {
+		error(TYPE_ERROR, new(heap) String(heap.managed(), *name, CANNOT_ASSIGN_STRING));	// 8.7.2: assign to read-only binding
+		return false;
+	}
+	return true;
+}
+#endif
+
 Object* Processor::convertToObject(const Value& v, const bool requireExtensible) {
 	Object* const object = v.toObjectOrNull(heap, requireExtensible);
 	if (object == 0) {
@@ -2955,8 +2971,24 @@ void Processor::innerRun() {
 				}
 				break;
 			}
+		#if NUXJS_ES5
+			case WRITE_NAMED_OP: {
+				const String* name = constants[im].getString();
+				if (code->isStrict() && !checkStrictAssignable(scope, name)) return;	// undeclared / read-only throw
+				scope->writeVar(rt, name, sp[0]);
+				break;
+			}
+			case WRITE_NAMED_POP_OP: {
+				const String* name = constants[im].getString();
+				if (code->isStrict() && !checkStrictAssignable(scope, name)) return;
+				scope->writeVar(rt, name, sp[0]);
+				pop(1);
+				break;
+			}
+		#else
 			case WRITE_NAMED_OP:		scope->writeVar(rt, constants[im].getString(), sp[0]); break;
 			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
+		#endif
 
 			case CHECK_OBJECT_COERCIBLE_OP: {
 				if (sp[0].isUndefined() || sp[0].isNull()) {
