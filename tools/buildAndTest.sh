@@ -30,9 +30,7 @@ fi
 if [ "$target" == "release" ]; then
 	opts="-fno-rtti $opts"
 fi
-if [ -n "$opts" ]; then
-	export CPP_OPTIONS="$opts"
-fi
+export CPP_OPTIONS="$opts"	# always reset so a CPP_OPTIONS inherited from the environment cannot leak into a build
 mkdir ../output >/dev/null 2>&1 || true
 bash ./BuildCpp.sh $target $model ../output/NuXJSTest${suffix}_${target}_${model} ../tools/NuXJSTest.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
 ../output/NuXJSTest${suffix}_${target}_${model} -s >/dev/null 2>&1

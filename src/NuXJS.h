@@ -1841,6 +1841,9 @@ class Processor : public GCItem {
 		void invokeFunction(Function* f, Int32 popCount, Int32 argc, Object* thisObject = 0); // FIX : rename, unnecessary with the same name as the public method
 		void newOperation(const Int32 argc);
 		void reset();
+	#if NUXJS_ES5
+		bool checkStrictAssignable(Scope* scope, const String* name);	///< For a strict named write: throws ReferenceError (undeclared) or TypeError (read-only) and returns false, else true.
+	#endif
 		void pushFrame(const Code* code, Scope* scope, Object* thisObject);
 		void popFrame();
 		void popCatcher();
