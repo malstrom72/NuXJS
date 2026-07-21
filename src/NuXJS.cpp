@@ -1889,6 +1889,9 @@ Code::Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUni
 	, sourceUnit(sourceUnit), codeOffsets(&gcList.getHeap()), sourceOffsets(&gcList.getHeap())
 	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
 	, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
+#if NUXJS_ES5
+	, strict(false)
+#endif
 {
 	assert(constants != 0);
 	assert(sourceUnit != 0);
@@ -2742,7 +2745,12 @@ void Processor::enter(const Code* code, Scope* scope, Object* thisObject) {
 	if (sp + code->getMaxStackDepth() > stack.end()) {
 		ScriptException::throwError(heap, RANGE_ERROR, &STACK_OVERFLOW_STRING); // Notice: we can't use virtual throw here, cause we need to abort any sp changes etc that could happen if we continued execution beyond this point.
 	} else {
+	#if NUXJS_ES5
+		// 10.4.3: a strict function keeps an unbound `this` (no global-object substitution).
+		pushFrame(code, scope, (thisObject == 0 && !code->isStrict() ? rt.getGlobalObject() : thisObject));
+	#else
 		pushFrame(code, scope, (thisObject == 0 ? rt.getGlobalObject() : thisObject));
+	#endif
 		ip = code->getCodeWords();
 	}
 }
@@ -3150,7 +3158,11 @@ void Processor::innerRun() {
 			case NEW_ARRAY_OP: push(new(heap) JSArray(heap.managed())); break;
 			case NEW_REG_EXP_OP: invokeFunction(rt.createRegExpFunction, 1, 2); return;
 			case RETURN_OP:	ip = currentFrame->returnIP; popFrame(); return;
+		#if NUXJS_ES5
+			case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break;	// strict unbound this -> undefined
+		#else
 			case THIS_OP: push(thisObject); break;
+		#endif
 			case VOID_OP: push(UNDEFINED_VALUE); break;
 			
 			case GEN_FUNC_OP: {
@@ -3502,6 +3514,9 @@ Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNes
 	: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
 	, mainSection(heap, 1), b(0), p(0), e(0), sourceUnitBase(code->getSourceUnit()->getSource()->begin())
 	, currentSection(0), acceptInOperator(true), withScopeCounter(0), nestCounter(initialNestCounter)
+#if NUXJS_ES5
+	, inDirectivePrologue(false)
+#endif
 {
 }
 
@@ -4390,6 +4405,9 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
 	Code* func = new(heap) Code(heap.managed(), code->constants, code->getSourceUnit());
+#if NUXJS_ES5
+	func->strict = code->strict;	// 14.1: strict mode propagates into nested functions
+#endif
 	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, selfName);
@@ -4405,6 +4423,7 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 Code* Compiler::accessorFunctionDefinition(const String* functionName) {
 	assert(functionName != 0);
 	Code* func = new(heap) Code(heap.managed(), code->constants, code->getSourceUnit());
+	func->strict = code->strict;	// 14.1: strict mode propagates into accessor bodies too
 	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, 0);
@@ -5139,7 +5158,14 @@ void Compiler::statement(SemanticScope* currentScope, SemanticScope* scopeLabels
 	NestGuard nestGuard(*this);
 
 	white();
-	
+
+#if NUXJS_ES5
+	// 14.1: only a leading string-literal ExpressionStatement continues the Directive Prologue; anything else
+	// (including this one, until the expression path below proves otherwise) ends it.
+	const bool wasInPrologue = inDirectivePrologue;
+	inDirectivePrologue = false;
+#endif
+
 	if (token("{", false)) {
 		statementList(currentScope);
 		expectToken("}", false);
@@ -5170,6 +5196,19 @@ void Compiler::statement(SemanticScope* currentScope, SemanticScope* scopeLabels
 			p = b;
 			ExpressionResult evalXR = (compilingFor == FOR_EVAL ? ExpressionResult::PUSHED : ExpressionResult::NONE);
 			optionalExpression(evalXR, LOWEST_PREC);
+		#if NUXJS_ES5
+			// A Directive is an ExpressionStatement whose expression is exactly a StringLiteral: the parser reports
+			// a CONSTANT string and the source starts at the quote (so `("...")` and `"..." + x` are excluded). The
+			// directive itself is the raw source `use strict` in quotes (no escapes -> exactly 12 source chars).
+			if (wasInPrologue && evalXR.t == ExpressionResult::CONSTANT && evalXR.v.isString()
+					&& (*b == '"' || *b == '\'')) {
+				inDirectivePrologue = true;
+				if (p - b == 12 && b[11] == *b && b[1] == 'u' && b[2] == 's' && b[3] == 'e' && b[4] == ' '
+						&& b[5] == 's' && b[6] == 't' && b[7] == 'r' && b[8] == 'i' && b[9] == 'c' && b[10] == 't') {
+					code->strict = true;
+				}
+			}
+		#endif
 			if (compilingFor == FOR_EVAL) {
 				evalXR = makeRValue(evalXR);
 			} else {
@@ -5212,6 +5251,9 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	p = b;
 	this->e = e;
 	acceptInOperator = true;
+#if NUXJS_ES5
+	inDirectivePrologue = true;	// 14.1: leading string-literal statements are directives; statement() scans them
+#endif
 	
 	// FIX : not 100% necessary now because we should always start with undefined on top of stack
 	if (compilingFor == FOR_EVAL) {

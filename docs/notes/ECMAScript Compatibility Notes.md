@@ -13,5 +13,12 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   *accessor* descriptor on an index or `length` throws a `TypeError`. Named array properties and all ordinary
   object / function properties follow 8.12.9 exactly. Tracked in `docs/ES5.1 Roadmap.md` §6.
 
+- **Strict `this` for primitive / null receivers — partial *(deferred)*.** In a strict function an *unbound* `this`
+  is `undefined` (correct), and object receivers pass through unchanged. But because the engine represents a
+  frame's `this` as an object pointer, a *primitive* or *null* receiver passed via `Function.prototype.call` /
+  `apply` is still coerced (a primitive is boxed, `null` becomes `undefined`) rather than passed through verbatim
+  as ES5 strict requires. Full fidelity needs `this` to be a value, not an object pointer; tracked for a later
+  commit.
+
 - **JSON nesting depth is bounded.** `JSON.parse` / `JSON.stringify` cap nesting at `MAX_JSON_DEPTH` (61) to stay
   within the compiler's recursion limit; deeper structures throw a `TypeError`. The spec imposes no fixed limit.
