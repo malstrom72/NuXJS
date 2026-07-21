@@ -287,6 +287,27 @@ static int findReservedKeyword(size_t n /* string length */, const Char* s) {
 	int stringIndex = QUICK_HASH_TABLE[(((s[1] + s[0]) << 3) - n) & 0xFF];
 	return (stringIndex >= 0 && strncmp(s, STRINGS[stringIndex], n) == 0 && STRINGS[stringIndex][n] == 0) ? stringIndex : -1;
 }
+
+#if NUXJS_ES5
+// 7.6.1.2: FutureReservedWords that are reserved only in strict-mode code (usable as identifiers otherwise).
+static bool isStrictReservedWord(size_t n, const Char* s) {
+	static const char* const WORDS[] = {
+		"implements", "interface", "let", "package", "private", "protected", "public", "static", "yield"
+	};
+	for (size_t i = 0; i < sizeof(WORDS) / sizeof(*WORDS); ++i) {
+		const char* const w = WORDS[i];
+		size_t j = 0;
+		while (j < n && w[j] != 0 && s[j] == static_cast<Char>(w[j])) {
+			++j;
+		}
+		if (j == n && w[j] == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+static bool isStrictReservedWord(const String* name) { return isStrictReservedWord(name->size(), name->begin()); }
+#endif
 /* Built with QuickHashMaker.pika */
 static int findLiteralKeyword(size_t n /* string length */, const Char* s /* zero-terminated string */) {
 	static const char* STRINGS[5] = {
@@ -3823,6 +3844,13 @@ const String* Compiler::identifier(bool required, bool allowKeywords) {
 	if (!allowKeywords && findReservedKeyword(parsed.size(), parsed.begin()) >= 0) {
 		error(SYNTAX_ERROR, "Illegal use of keyword");
 	}
+#if NUXJS_ES5
+	// 7.6.1.2: strict code additionally reserves the future reserved words. Not for property names (allowKeywords).
+	// Own-directive-strict function parameters are checked retroactively in compileFunction (strict not known yet).
+	if (!allowKeywords && code->strict && isStrictReservedWord(parsed.size(), parsed.begin())) {
+		error(SYNTAX_ERROR, "a future reserved word may not be used as an identifier in strict mode");
+	}
+#endif
 	return newHashedString(heap, parsed.begin(), parsed.end());
 }
 
@@ -5405,7 +5433,7 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 		if (nameIndexes.lookup(name) != 0) {
 			duplicateParam = true;
 		}
-		if (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING)) {
+		if (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING) || isStrictReservedWord(name)) {
 			reservedParamName = true;
 		}
 	#endif
@@ -5422,7 +5450,7 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 			error(SYNTAX_ERROR, "duplicate parameter name is not allowed in strict mode");
 		}
 		if (reservedParamName) {
-			error(SYNTAX_ERROR, "'eval' and 'arguments' may not be a parameter name in strict mode");
+			error(SYNTAX_ERROR, "a reserved word (or eval/arguments) may not be a parameter name in strict mode");
 		}
 		// 13.1: the function's own name (a FunctionDeclaration/FunctionExpression Identifier) may not be
 		// eval/arguments in strict code. Declarations are also caught in the enclosing scope via declareIdentifier,
