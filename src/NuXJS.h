@@ -1012,6 +1012,12 @@ class Code : public Object {
 		const String* source;
 		UInt32 bloomSet;							///< Bloom bits of all local variables, arguments (+ self name and "arguments"). For faster scope resolution.
 		UInt32 maxStackDepth;
+	#if NUXJS_ES5
+	public:
+		bool isStrict() const { return strict; }
+	protected:
+		bool strict;								///< 14.1: this Code is strict-mode code (own "use strict" directive or inherited from enclosing strict code).
+	#endif
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, constants);
@@ -2012,6 +2018,9 @@ class Compiler : public GCItem {
 		bool acceptInOperator;
 		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
 		int nestCounter;
+	#if NUXJS_ES5
+		bool inDirectivePrologue;	// 14.1: true while still parsing the leading string-literal directive prologue
+	#endif
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, code);
