@@ -207,6 +207,8 @@ static const String PROTOTYPES_STRING("prototypes"), IS_NAN_STRING("isNaN"), IS_
 #if NUXJS_ES5
 static const String WRITABLE_STRING("writable"), ENUMERABLE_STRING("enumerable"), CONFIGURABLE_STRING("configurable")
 		, GET_STRING("get"), SET_STRING("set");
+static const String CANNOT_ASSIGN_STRING(" cannot be assigned in strict mode")
+		, CANNOT_DELETE_STRING(" cannot be deleted in strict mode");
 #endif
 
 /* --- Utilities --- */
@@ -3027,13 +3029,19 @@ void Processor::innerRun() {
 					Value dummy;
 					Accessor* accessor;
 					const Flags flags = o->getPropertySlot(rt, sp[-1], &dummy, &accessor);
+					bool stored = false;
 					if (accessor != 0) {
 						if (accessor->set != 0) {
 							invokeFunction(accessor->set, 2, 1, o);	// ES5 8.12.5: the setter runs as an ordinary frame with the value as its argument
 							return;	// the following POP_OP discards the setter's return value after the frame returns
 						}	// no setter: silently ignored outside strict mode
 					} else if ((flags & READ_ONLY_FLAG) == 0 && o->isExtensible()) {
-						o->setOwnProperty(rt, sp[-1], sp[0]);	// 8.12.4 [[CanPut]]: a new own property requires extensibility
+						stored = o->setOwnProperty(rt, sp[-1], sp[0]);	// 8.12.4 [[CanPut]]: a new own property requires extensibility
+					}
+					if (!stored && code->isStrict()) {
+						// 8.12.5 / 11.13.1: strict mode throws where non-strict silently ignores the failed store.
+						error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[-1].toString(heap), CANNOT_ASSIGN_STRING));
+						return;
 					}
 				}
 				assert(unpackInstruction(*ip).first == POP_OP);	// guaranteed by makeAssignment
@@ -3197,7 +3205,15 @@ void Processor::innerRun() {
 				if (o == 0) {
 					return;
 				}
-				pop2push1(o->deleteOwnProperty(rt, sp[0]));
+				const bool deleted = o->deleteOwnProperty(rt, sp[0]);
+			#if NUXJS_ES5
+				if (!deleted && code->isStrict()) {
+					// 11.4.1: strict delete of a non-configurable property throws instead of returning false.
+					error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[0].toString(heap), CANNOT_DELETE_STRING));
+					return;
+				}
+			#endif
+				pop2push1(deleted);
 				break;
 			}
 			
