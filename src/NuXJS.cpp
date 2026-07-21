@@ -4203,6 +4203,13 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			assert(!op.primitiveInput);
 			assert(op.primitiveOutput);
 			xr = operand(op);
+		#if NUXJS_ES5
+			// 11.4.1: in strict mode `delete` of a direct reference to a variable, argument, or function name
+			// (a bare identifier) is a SyntaxError. NAMED and LOCAL are exactly those direct references.
+			if (code->strict && (xr.t == ExpressionResult::NAMED || xr.t == ExpressionResult::LOCAL)) {
+				error(SYNTAX_ERROR, "delete of an unqualified identifier is not allowed in strict mode");
+			}
+		#endif
 			switch (xr.t) {
 				case ExpressionResult::PUSHED:
 				case ExpressionResult::PUSHED_PRIMITIVE: emit(Processor::POP_OP, 1); /* fall through */
@@ -4765,6 +4772,11 @@ void Compiler::functionStatement() {
 }
 
 void Compiler::withStatement(SemanticScope* currentScope) {
+#if NUXJS_ES5
+	if (code->strict) {
+		error(SYNTAX_ERROR, "'with' statements are not allowed in strict mode");	// 12.10.1
+	}
+#endif
 	rvalueGroup();
 	emit(Processor::WITH_SCOPE_OP);
 	{
