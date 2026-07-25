@@ -13,14 +13,12 @@
 > print(descOf("undefined"))
 < writable:false enumerable:false configurable:false
 -
-
 // The values are unchanged by making them read-only.
 > print(isNaN(NaN)); print(Infinity); print(typeof undefined)
 < true
 < Infinity
 < undefined
 -
-
 // 8.12.5: a write to a non-writable property is silently ignored in non-strict code.
 > NaN = 1; Infinity = 2; undefined = 3;
 > print(isNaN(NaN)); print(Infinity); print(typeof undefined)
@@ -28,7 +26,6 @@
 < Infinity
 < undefined
 -
-
 // 8.12.5 / 11.13.1: the same write throws a TypeError in strict mode.
 > print(eval("'use strict'; try { NaN = 1; 'no throw' } catch (e) { e.name }"))
 < TypeError
@@ -37,7 +34,6 @@
 > print(eval("'use strict'; try { undefined = 1; 'no throw' } catch (e) { e.name }"))
 < TypeError
 -
-
 // They are non-configurable, so a non-strict delete just returns false. In strict code `delete` of an unqualified
 // identifier is a SyntaxError (11.4.1), raised when the eval code is compiled, so the throw escapes the eval itself.
 > print(delete NaN)
