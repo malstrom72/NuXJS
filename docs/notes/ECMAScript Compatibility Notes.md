@@ -22,3 +22,11 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
 
 - **JSON nesting depth is bounded.** `JSON.parse` / `JSON.stringify` cap nesting at `MAX_JSON_DEPTH` (61) to stay
   within the compiler's recursion limit; deeper structures throw a `TypeError`. The spec imposes no fixed limit.
+
+- **Octal escape sequences in non-strict code — accepted, but as the bare character.** ES5.1 keeps octal out of the
+  core grammar (`7.8.3` / `7.8.4`); octal integer literals and octal escapes exist only as the Annex B compatibility
+  extension, which NuXJS deliberately does not implement. Octal *literals* (`010`, `08`) are therefore rejected in
+  both modes, which is core-grammar-correct. Octal *escapes* are rejected in strict code as `7.8.4` requires, but in
+  non-strict code `"\47"` still yields `"47"` (the backslash is simply dropped) instead of being a `SyntaxError` as
+  the core grammar says — an ES3-era lexer behaviour left untouched so the ES3 engine stays byte-identical. (ES3
+  `7.8.4` *did* include octal escapes, so `"\47"` should be `"'"` there; NuXJS has never implemented that either.)

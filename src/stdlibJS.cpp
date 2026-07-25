@@ -529,7 +529,8 @@ const char* STDLIB_ES5_JS =
 "(var A=0;A<J.length;++A){if(Object.getOwnPropertyDescriptor(o,J[A]).configurable)return false}return!Object.isExtensib"
 "le(o)});k(Object,\"isFrozen\",function isFrozen(o){n(o,\"isFrozen\");var J=Object.getOwnPropertyNames(o);for(var A=0;A"
 "<J.length;++A){var w=Object.getOwnPropertyDescriptor(o,J[A]);if(w.configurable||((\"value\"in w)&&w.writable))return f"
-"alse}return!Object.isExtensible(o)})})"
+"alse}return!Object.isExtensible(o)});b(this,\"NaN\",this.NaN,true,true,true);b(this,\"Infinity\",this.Infinity,true,tr"
+"ue,true);b(this,\"undefined\",this.undefined,true,true,true)})"
 ;
 #endif
 }

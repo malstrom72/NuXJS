@@ -50,7 +50,11 @@ If a test needs any of these, it is outside ES5.1 scope — do not implement the
   `String.prototype.{startsWith,endsWith,includes,repeat,padStart,...}`, `Number.{isInteger,parseInt,...}`,
   `Map`/`Set`/`WeakMap`/`Promise`/`Proxy`/`Reflect`, typed arrays.
 - Annex B web-compat that ES5.1 does not require in the core grammar: `__proto__` literal key, `String.prototype`
-  HTML methods, `escape`/`unescape` nuances, legacy octal *escapes* in non-strict strings.
+  HTML methods, `escape`/`unescape` nuances, legacy octal *escapes* in non-strict strings. Concretely, V8 in
+  non-strict mode evaluates `010` to `8`, `08` to `8`, `"\47"` to `"'"` and `"\01"` to `""`; NuXJS implements
+  the core grammar only, so it rejects the octal *literals* in both modes. (Both engines reject every octal form in
+  strict mode, which is the part `7.8.3` / `7.8.4` actually make normative.) See the octal entry in
+  `docs/notes/ECMAScript Compatibility Notes.md` for what NuXJS does with non-strict octal escapes.
 - Trailing commas in function parameter lists and call arguments (ES2017).
 - `RegExp` `y`/`u`/`s` flags, named groups, lookbehind.
 
