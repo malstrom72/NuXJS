@@ -25,11 +25,15 @@
 < 0
 -
 // 10.6: strict arguments.callee and arguments.caller are poison pills (both throw TypeError in ES5.1).
+// The get AND set are the [[ThrowTypeError]] pill, so reading or writing either throws.
 > function pc() { "use strict"; try { return arguments.callee; } catch (e) { return e.name; } }
 > print(pc())
 < TypeError
 > function pl() { "use strict"; try { return arguments.caller; } catch (e) { return e.name; } }
 > print(pl())
+< TypeError
+> function ps() { "use strict"; try { arguments.callee = 1; return "no throw"; } catch (e) { return e.name; } }
+> print(ps())
 < TypeError
 -
 // Non-strict arguments.callee is the function itself.
