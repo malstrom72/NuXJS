@@ -173,12 +173,11 @@ C++ compiler (`NuXJS.cpp`), no VM changes beyond emitting the accessor-define pa
 - [x] **Getter/setter in object literals**: parse `get name(){}` / `set name(v){}` and emit accessor property
       definitions (§11.1.5), including all four duplicate/collision early errors.
 - [ ] **Reserved words as property keys** — already supported (`NuXJS.cpp:3603/3835`); add a confirming test.
-- [ ] **Octal numeric literals**: mis-lexed (`010` → `0` then stray `10`), which *does* yield a SyntaxError, but with
-      a confusing message. Strict-mode rejection of octal literals and escapes is done (Phase 4); what is left here is
-      a clean diagnostic, and deciding whether non-strict `"\47"` should stay `"47"` or become a SyntaxError per the
-      core grammar. Note this one is **not an ES5 change** — ES3 §7.8.4 has the identical core grammar and puts octal
-      escapes in its own Annex B.1.2 — so it is really an ES3 lexer fix that both variants should share, rather than
-      an `#if NUXJS_ES5` fork (see the octal entry in `docs/notes/ECMAScript Compatibility Notes.md`).
+- [ ] **Octal numeric literals**: `010` is still mis-lexed as `0` followed by a stray `10`. That *does* yield a
+      SyntaxError, which is the right verdict for the core grammar, but it arrives by accident and with a confusing
+      message; a clean diagnostic is all that is left. Octal *escapes* are done, and were **not** an ES5 change —
+      ES3 §7.8.4 has the identical core grammar and its own Annex B.1.2 — so they are rejected by the shared ES3
+      lexer rather than behind `#if NUXJS_ES5` (see `docs/notes/ECMAScript Compatibility Notes.md`).
 - [ ] **Trailing commas** in object/array literals — already handled; add confirming tests.
 - [ ] **Whitespace/Unicode (lower priority, own sub-phase):** treat `﻿` as WhiteSpace anywhere (§7.2); accept
       the full Zs set; allow line-continuation (`\`+LineTerminator) in string literals (§7.8.4); preserve/handle

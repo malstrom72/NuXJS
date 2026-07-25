@@ -17,7 +17,6 @@
 > print(flagsOf("undefined"))
 < enumerable:false deletable:false writable:true
 -
-
 // The values themselves are the expected ones.
 > print(isNaN(NaN)); print(Infinity); print(typeof undefined)
 < true
