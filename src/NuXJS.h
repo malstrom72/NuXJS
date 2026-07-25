@@ -1317,7 +1317,11 @@ class Runtime : public GCItem {
 		JSArray* newJSArray(UInt32 initialLength = 0) const;	///< Convenience routine for `new(heap) JSArray(heap.managed(), initialLength)`
 		const String* newStringConstant(const char* s);
 
+	#if NUXJS_ES5
+		Code* compileEvalCode(const String* expression, bool inheritStrict = false);
+	#else
 		Code* compileEvalCode(const String* expression);
+	#endif
 		Code* compileGlobalCode(const String& source, const String* filename = 0);
 
 		Var getGlobalsVar();							///< Convenience routine for `Var(rt, rt.getGlobalObject())`
@@ -1348,6 +1352,9 @@ class Runtime : public GCItem {
 		size_t memoryCap;
 		size_t gcThreshold;
 		mutable Table evalCodeCache; ///< eval() has a cache of source code strings -> functions (as they are neutral to which closure they run in). It is emptied on each big gc sweep.
+	#if NUXJS_ES5
+		mutable Table strictEvalCodeCache; ///< 10.4.2: a direct eval inheriting caller strictness compiles a distinct (forced-strict) Code, so it needs a separate cache from the by-expression evalCodeCache.
+	#endif
 		Object* prototypes[PROTOTYPE_COUNT];
 
 		Function* toPrimitiveFunctions[3]; ///< no preference, number, string
@@ -1377,6 +1384,10 @@ class Runtime : public GCItem {
 			std::fill(stringConstantsCache + 0, stringConstantsCache + STRING_CONSTANTS_CACHE_SIZE, (const String*)(0));
 			evalCodeCache = Table(&heap);
 			evalCodeCache.gcMarkReferences(heap);
+		#if NUXJS_ES5
+			strictEvalCodeCache = Table(&heap);
+			strictEvalCodeCache.gcMarkReferences(heap);
+		#endif
 			super::gcMarkReferences(heap);
 		}
 };
@@ -1799,6 +1810,9 @@ class Processor : public GCItem {
 		void enterGlobalCode(const Code* code);
 		void enterEvalCode(const Code* code, bool local = false);
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
+	#if NUXJS_ES5
+		bool isCurrentCodeStrict() const { return currentFrame != 0 && currentFrame->code->isStrict(); }	///< 10.4.2: a direct eval inherits strictness from the calling code.
+	#endif
 		void throwVirtualException(const Value& exception);
 		void addStackTrace(const Value& exception) const;
 		void error(ErrorType errorType, const String* message = 0);
@@ -1908,6 +1922,9 @@ class Compiler : public GCItem {
 		const Char* compile(const Char* b, const Char* e);
 		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
 		void compile(const String& source);
+	#if NUXJS_ES5
+		void markStrict() { code->strict = true; }	///< 10.4.2: seed strict before compiling (a direct eval inheriting caller strictness).
+	#endif
 		void getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const;
 
 	protected:
