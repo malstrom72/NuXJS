@@ -2591,7 +2591,13 @@ static struct EvalFunction : public Function {
 
 		Heap& heap = rt.getHeap();
 		const String* expression = argv[0].toString(heap);
+#if NUXJS_ES5
+		// 10.4.2: a direct call to eval from strict code makes the eval code strict too (strictness is inherited).
+		const bool inheritStrict = (direct && processor.isCurrentCodeStrict());
+		processor.enterEvalCode(rt.compileEvalCode(expression, inheritStrict), direct);
+#else
 		processor.enterEvalCode(rt.compileEvalCode(expression), direct);
+#endif
 		return UNDEFINED_VALUE;
 	}
 	bool direct;
@@ -2715,10 +2721,68 @@ const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
 */
 struct Processor::EvalScope : public Scope {
 	typedef Scope super;
+#if NUXJS_ES5
+	// 10.4.2: non-strict eval shares the calling context's variable environment (declarations leak to the caller),
+	// but strict eval gets its OWN environment so its var/function declarations are discarded when it returns.
+	EvalScope(GCList& gcList, Scope* parentScope, bool strict)
+			: super(gcList, parentScope), ownVars(0), strict(strict) { }
+	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
+		if (ownVars != 0) {
+			const Flags flags = ownVars->getOwnProperty(rt, name, v);
+			if (flags != NONEXISTENT) {
+				return flags;
+			}
+		}
+		return parentScope->readVar(rt, name, v);
+	}
+	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
+		if (ownVars != 0) {
+			Table::Bucket* bucket = ownVars->lookup(name);
+			if (bucket != 0) {
+				ownVars->update(bucket, v);
+				return;
+			}
+		}
+		parentScope->writeVar(rt, name, v);
+	}
+	virtual bool deleteVar(Runtime& rt, const String* name) {
+		if (ownVars != 0) {
+			Table::Bucket* bucket = ownVars->lookup(name);
+			if (bucket != 0) {
+				return ownVars->erase(bucket);
+			}
+		}
+		return parentScope->deleteVar(rt, name);
+	}
+	virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete) {
+		if (!strict) {
+			parentScope->declareVar(rt, name, initValue, false);
+			return;
+		}
+		if (ownVars == 0) {
+			Heap& heap = rt.getHeap();
+			ownVars = new(heap) JSObject(heap.managed(), 0);
+		}
+		Table::Bucket* bucket = ownVars->insert(name);
+		if (!bucket->valueExists()) {
+			ownVars->update(bucket, UNDEFINED_VALUE, dontDelete ? DONT_DELETE_FLAG : 0);
+		}
+		if (!initValue.isUndefined()) {
+			writeVar(rt, name, initValue);
+		}
+	}
+	virtual void gcMarkReferences(Heap& heap) const {
+		gcMark(heap, ownVars);
+		super::gcMarkReferences(heap);
+	}
+	mutable JSObject* ownVars;	// lazily created; holds a strict eval's own var/function declarations
+	const bool strict;
+#else
 	EvalScope(GCList& gcList, Scope* parentScope) : super(gcList, parentScope) { }
 	virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool) {
 		parentScope->declareVar(rt, name, initValue, false);
 	}
+#endif
 };
 	
 /*
@@ -2845,11 +2909,20 @@ void Processor::enterGlobalCode(const Code* code) {
 }
 
 void Processor::enterEvalCode(const Code* code, bool local) {
+#if NUXJS_ES5
+	const bool strict = code->isStrict();
+	if (local && currentFrame != 0) {
+		enter(code, new(heap) Processor::EvalScope(heap.managed(), currentFrame->scope, strict), currentFrame->thisObject);
+	} else {
+		enter(code, new(heap) Processor::EvalScope(heap.managed(), rt.getGlobalScope(), strict), rt.getGlobalObject());
+	}
+#else
 	if (local && currentFrame != 0) {
 		enter(code, new(heap) Processor::EvalScope(heap.managed(), currentFrame->scope), currentFrame->thisObject);
 	} else {
 		enter(code, new(heap) Processor::EvalScope(heap.managed(), rt.getGlobalScope()), rt.getGlobalObject());
 	}
+#endif
 }
 
 void Processor::enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject) {
@@ -6045,7 +6118,11 @@ Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap
 #if NUXJS_ES5
 		, throwTypeErrorFunction(0)
 #endif
-		, unixEpochTimeDiff(0.0), evalCodeCache(&heap) {
+		, unixEpochTimeDiff(0.0), evalCodeCache(&heap)
+#if NUXJS_ES5
+		, strictEvalCodeCache(&heap)
+#endif
+	{
 	std::fill(stringConstantsCache, stringConstantsCache + (1 << STRING_CONSTANTS_CACHE_SIZE_N), (const String*)(0));
 	std::fill(prototypes, prototypes + PROTOTYPE_COUNT, (Object*)(0));
 	std::fill(toPrimitiveFunctions + 0, toPrimitiveFunctions + 3, &DEFAULT_CONVERSION);
@@ -6161,6 +6238,28 @@ void Runtime::run(const String& source, const String* filename) {
 	runUntilReturn(processor);
 }
 
+#if NUXJS_ES5
+Code* Runtime::compileEvalCode(const String* expression, bool inheritStrict) {
+	// 10.4.2: eval inheriting caller strictness compiles to a distinct forced-strict Code, cached separately.
+	Table& cache = (inheritStrict ? strictEvalCodeCache : evalCodeCache);
+	const Table::Bucket* bucket = cache.lookup(expression);
+	if (bucket != 0) {
+		Object* o = bucket->getValue().getObject();
+		assert(dynamic_cast<Code*>(o) != 0);
+		return reinterpret_cast<Code*>(o);
+	} else {
+		SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), expression, &EVAL_CODE_STRING);
+		Code* code = new(heap) Code(heap.managed(), 0, unit);
+		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
+		if (inheritStrict) {
+			compiler.markStrict();	// force strict before compiling so parse-time strict checks (with, octal, ...) apply
+		}
+		compiler.compile(*expression);
+		cache.update(cache.insert(expression), code);
+		return code;
+	}
+}
+#else
 Code* Runtime::compileEvalCode(const String* expression) {
 	const Table::Bucket* bucket = evalCodeCache.lookup(expression);
 	if (bucket != 0) {
@@ -6176,6 +6275,7 @@ Code* Runtime::compileEvalCode(const String* expression) {
 		return code;
 	}
 }
+#endif
 
 Var Runtime::eval(const String& expression) {
 	Processor processor(*this);
