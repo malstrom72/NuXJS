@@ -25,8 +25,13 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
 
 - **Octal escape sequences in non-strict code — accepted, but as the bare character.** ES5.1 keeps octal out of the
   core grammar (`7.8.3` / `7.8.4`); octal integer literals and octal escapes exist only as the Annex B compatibility
-  extension, which NuXJS deliberately does not implement. Octal *literals* (`010`, `08`) are therefore rejected in
-  both modes, which is core-grammar-correct. Octal *escapes* are rejected in strict code as `7.8.4` requires, but in
-  non-strict code `"\47"` still yields `"47"` (the backslash is simply dropped) instead of being a `SyntaxError` as
-  the core grammar says — an ES3-era lexer behaviour left untouched so the ES3 engine stays byte-identical. (ES3
-  `7.8.4` *did* include octal escapes, so `"\47"` should be `"'"` there; NuXJS has never implemented that either.)
+  extension (`B.1.1` / `B.1.2`), which NuXJS deliberately does not implement. Octal *literals* (`010`, `08`) are
+  therefore rejected in both modes, which is core-grammar-correct. Octal *escapes* are rejected in strict code as
+  `7.8.4` requires, but in non-strict code `"\47"` still yields `"47"` (the backslash is simply dropped) instead of
+  being a `SyntaxError` as the core grammar says.
+
+  This is **not** an ES5 regression, and not an ES3-vs-ES5 difference at all: ES3 `7.8.4` has exactly the same core
+  `EscapeSequence` grammar, and ES3 puts octal escapes in its own Annex B.1.2 too. So the deviation predates the
+  ES5.1 lift and is equally a deviation from ES3. It is left alone here because correcting it would fork non-strict
+  lexing between the two build variants over something ES5 did not change; it belongs in a shared fix to the ES3
+  lexer. Tracked in `docs/ES5.1 Roadmap.md` §3.
