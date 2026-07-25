@@ -4322,7 +4322,8 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff 
 		emitWithConstant(Processor::ADD_PROPERTY_OP, key);
 	#if NUXJS_ES5
 		}
-		{	// ES5 11.1.5: reject data / accessor collisions and duplicate same-kind accessors
+		{	// ES5 11.1.5: reject data / accessor collisions and duplicate same-kind accessors. Two data properties
+			// of the same name collide in strict code only (non-strict keeps the last one).
 			const String* keyString = key.toString(heap);
 			UInt32 i = 0;
 			while (i < seenKeys.size() && !seenKeys[i]->isEqualTo(*keyString)) {
@@ -4330,7 +4331,7 @@ Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff 
 			}
 			if (i < seenKeys.size()) {
 				const Byte previous = seenKinds[i];
-				if ((propertyKind == 1 && previous != 1)
+				if ((propertyKind == 1 && (previous != 1 || code->strict))
 						|| (propertyKind != 1 && (previous & (1 | propertyKind)) != 0)) {
 					error(SYNTAX_ERROR, "Illegal duplicate property in object literal");
 				}
