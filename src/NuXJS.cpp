@@ -1368,7 +1368,13 @@ bool Object::deleteOwnProperty(Runtime&, const Value&) { return false; }
 Enumerator* Object::getOwnPropertyEnumerator(Runtime&) const { return &EMPTY_ENUMERATOR; }
 
 bool Object::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
+#if NUXJS_ES5
+	// Return the real store result so a failed update (accessor / read-only) falls through to the setter or
+	// strict-throw path; the es3 form discarded it and always reported success.
+	return (hasOwnProperty(rt, key) && setOwnProperty(rt, key, v));
+#else
 	return (hasOwnProperty(rt, key) && ((void)(setOwnProperty(rt, key, v)), true));
+#endif
 }
 
 bool Object::isOwnPropertyEnumerable(Runtime& rt, const Value& key) const {
@@ -2227,6 +2233,16 @@ void JSFunction::constructCompleteObject(Runtime& rt) const {
 	createPrototypeObject(rt, completeObject, false);
 	completeObject->setOwnProperty(rt, &NAME_STRING, code->getName(), DONT_ENUM_FLAG);
 	completeObject->setOwnProperty(rt, &LENGTH_STRING, code->getArgumentsCount(), HIDDEN_CONST_FLAGS);
+#if NUXJS_ES5
+	if (code->isStrict()) {
+		// 13.2.3: a strict function's own caller and arguments are [[ThrowTypeError]] poison pills.
+		Heap& heap = rt.getHeap();
+		Accessor* poison = new(heap) Accessor(heap.managed(), rt.getThrowTypeErrorFunction(), rt.getThrowTypeErrorFunction());
+		const Flags pillFlags = EXISTS_FLAG | ACCESSOR_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG;
+		completeObject->defineAccessor(completeObject->insert(&CALLER_STRING), poison, pillFlags);
+		completeObject->defineAccessor(completeObject->insert(&ARGUMENTS_STRING), poison, pillFlags);
+	}
+#endif
 }
 
 /* --- Error --- */
