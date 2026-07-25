@@ -35,6 +35,9 @@ hash-table order, which is spec-legal for ES5.1.)
 - `Function.prototype.bind` — the `.name` of a bound function is `"bound " + target.name` in ES2015; ES5.1 does
   not specify the name. (NuXJS follows the common `"bound "` prefix; check the ES5.1 text before asserting.)
 - `[[ThrowTypeError]]` poison pill: ES5.1 allows one per realm; ES2015 mandates exactly one shared. Cosmetic.
+- **Strict `arguments.caller`.** ES5.1 §10.6 defines *both* `caller` and `callee` as `[[ThrowTypeError]]` poison
+  pills on a strict-mode arguments object, so `arguments.caller` throws a `TypeError`. ES2017 removed the `caller`
+  pill, so V8 returns `undefined`. NuXJS follows ES5.1 (both throw). Verified against the spec text, not V8.
 
 ## Features V8 has that ES5.1 does NOT (never "match V8" by adding these)
 

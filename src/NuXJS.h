@@ -1015,8 +1015,10 @@ class Code : public Object {
 	#if NUXJS_ES5
 	public:
 		bool isStrict() const { return strict; }
+		bool getUsesArguments() const { return usesArguments; }
 	protected:
 		bool strict;								///< 14.1: this Code is strict-mode code (own "use strict" directive or inherited from enclosing strict code).
+		bool usesArguments;							///< the body contains a direct reference to `arguments` (so a strict function must capture them at entry).
 	#endif
 
 		virtual void gcMarkReferences(Heap& heap) const {
@@ -1184,7 +1186,10 @@ class Arguments : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 
-        Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
+        Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);	// mapped: indices alias the live parameter slots
+	#if NUXJS_ES5
+		Arguments(GCList& gcList, JSFunction* function, UInt32 argumentsCount, const Value* argv);	// 10.6: strict, non-mapped, values captured at entry
+	#endif
 		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
@@ -1203,6 +1208,9 @@ class Arguments : public LazyJSObject<Object> {
 		UInt32 const argumentsCount;
 		Vector<Byte> deletedArguments;
 		Vector<Value> values;	// Contains copied values after the Argument has been detached from its closure.
+	#if NUXJS_ES5
+		bool strict;			// 10.6: non-mapped and with poison-pill callee/caller
+	#endif
 
 		/**
 			Notice that we do not mark the scope reference, thus creating a "weak" reference that is handled by
@@ -1345,6 +1353,12 @@ class Runtime : public GCItem {
 		Function* toPrimitiveFunctions[3]; ///< no preference, number, string
 		Function* createRegExpFunction;
 		Function* evalFunction;
+	#if NUXJS_ES5
+		Function* throwTypeErrorFunction;	///< 13.2.3 [[ThrowTypeError]]: the shared poison pill for strict callee/caller
+	public:
+		Function* getThrowTypeErrorFunction() const { return throwTypeErrorFunction; }
+	protected:
+	#endif
 		double unixEpochTimeDiff;
 
 		mutable const String* stringConstantsCache[STRING_CONSTANTS_CACHE_SIZE];
@@ -1356,6 +1370,9 @@ class Runtime : public GCItem {
 			gcMark(heap, toPrimitiveFunctions + 0, toPrimitiveFunctions + 3);
 			gcMark(heap, createRegExpFunction);
 			gcMark(heap, evalFunction);
+		#if NUXJS_ES5
+			gcMark(heap, throwTypeErrorFunction);
+		#endif
 			// Yeah we just empty caches on each gc sweep
 			std::fill(stringConstantsCache + 0, stringConstantsCache + STRING_CONSTANTS_CACHE_SIZE, (const String*)(0));
 			evalCodeCache = Table(&heap);

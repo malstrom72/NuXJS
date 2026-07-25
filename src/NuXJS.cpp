@@ -209,6 +209,7 @@ static const String WRITABLE_STRING("writable"), ENUMERABLE_STRING("enumerable")
 		, GET_STRING("get"), SET_STRING("set");
 static const String CANNOT_ASSIGN_STRING(" cannot be assigned in strict mode")
 		, CANNOT_DELETE_STRING(" cannot be deleted in strict mode");
+static const String CALLER_STRING("caller");
 #endif
 
 /* --- Utilities --- */
@@ -1913,7 +1914,7 @@ Code::Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUni
 	, nameIndexes(&gcList.getHeap()), varNames(&gcList.getHeap()), argumentNames(&gcList.getHeap()), name(0)
 	, selfName(0), source(0), bloomSet(0), maxStackDepth(0)
 #if NUXJS_ES5
-	, strict(false)
+	, strict(false), usesArguments(false)
 #endif
 {
 	assert(constants != 0);
@@ -2275,9 +2276,24 @@ void Error::constructCompleteObject(Runtime& rt) const {
 
 Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
 	   , scope(scope), function(scope->function), argumentsCount(argumentsCount)
-	   , deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()) {
+	   , deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap())
+#if NUXJS_ES5
+	   , strict(false)
+#endif
+{
 	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
 }
+
+#if NUXJS_ES5
+// 10.6: a strict-mode arguments object is non-mapped (its indexed values are captured at entry, independent of the
+// parameter slots) and has poison-pill callee/caller. scope == 0 makes findProperty read the own `values` copy.
+Arguments::Arguments(GCList& gcList, JSFunction* function, UInt32 argumentsCount, const Value* argv) : super(gcList)
+	   , scope(0), function(function), argumentsCount(argumentsCount)
+	   , deletedArguments(argumentsCount, &gcList.getHeap()), values(argumentsCount, &gcList.getHeap()), strict(true) {
+	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
+	std::copy(argv, argv + argumentsCount, values.begin());
+}
+#endif
 
 const String* Arguments::getClassName() const { return &A_RGUMENTS_STRING; }
 
@@ -2331,6 +2347,17 @@ Enumerator* Arguments::getOwnPropertyEnumerator(Runtime& rt) const {
 
 void Arguments::constructCompleteObject(Runtime& rt) const {
 	completeObject->setOwnProperty(rt, &LENGTH_STRING, argumentsCount, DONT_ENUM_FLAG);
+#if NUXJS_ES5
+	if (strict) {
+		// 10.6: callee and caller are accessor properties whose get and set are both the [[ThrowTypeError]] pill.
+		Heap& heap = rt.getHeap();
+		Accessor* poison = new(heap) Accessor(heap.managed(), rt.getThrowTypeErrorFunction(), rt.getThrowTypeErrorFunction());
+		const Flags pillFlags = EXISTS_FLAG | ACCESSOR_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG;
+		completeObject->defineAccessor(completeObject->insert(&CALLEE_STRING), poison, pillFlags);
+		completeObject->defineAccessor(completeObject->insert(&CALLER_STRING), poison, pillFlags);
+		return;
+	}
+#endif
 	completeObject->setOwnProperty(rt, &CALLEE_STRING, function, DONT_ENUM_FLAG);
 }
 
@@ -2386,13 +2413,28 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, 
 	if (code->getArgumentsCount() > argc) {
 		std::fill(e, locals.end(), UNDEFINED_VALUE);
 	}
+#if NUXJS_ES5
+	// 10.6: a strict function that references `arguments` captures the passed values here, while argv is still the
+	// pristine entry list (the object is non-mapped). Skipped when the body never mentions `arguments`.
+	if (code->isStrict() && code->getUsesArguments()) {
+		arguments = new(gcList.getHeap()) Arguments(gcList, function, argc, argv);
+	}
+#endif
 }
 
 JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
 	if (dynamicVars == 0) {
 		Heap& heap = rt.getHeap();
 		dynamicVars = new(heap) JSObject(heap.managed(), 0);
+	#if NUXJS_ES5
+		if (arguments == 0) {	// not eagerly created (non-strict, or strict reached `arguments` only indirectly)
+			arguments = (function->code->isStrict()
+					? new(heap) Arguments(heap.managed(), function, passedArgumentsCount, localsPointer)	// non-mapped fallback
+					: new(heap) Arguments(heap.managed(), this, passedArgumentsCount));
+		}
+	#else
 		arguments = new(heap) Arguments(heap.managed(), this, passedArgumentsCount);
+	#endif
 		dynamicVars->setOwnProperty(rt, &ARGUMENTS_STRING, arguments, DONT_DELETE_FLAG);
 	}
 	return dynamicVars;
@@ -4643,7 +4685,12 @@ bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
 						}
 						xr = discard(xr);
 						xr = ExpressionResult(ExpressionResult::NAMED, name);
-						// Notice: compilingFor != FOR_EVAL and checking for "arguments" is only for non-strict mode (if we ever support strict-mode in the future)
+					#if NUXJS_ES5
+						if (compilingFor == FOR_FUNCTION && name->isEqualTo(ARGUMENTS_STRING)) {
+							code->usesArguments = true;	// a strict function must capture its arguments at entry
+						}
+					#endif
+						// Notice: "arguments" stays a NAMED reference (resolved to the scope's arguments object at runtime).
 						if (!name->isEqualTo(ARGUMENTS_STRING) && compilingFor == FOR_FUNCTION && withScopeCounter == 0) {
 							const Table::Bucket* bucket = code->nameIndexes.lookup(name);
 							if (bucket != 0) {
@@ -5754,6 +5801,13 @@ struct Support {
 		return (object != 0 && object->isExtensible());
 	}
 
+	// 13.2.3 [[ThrowTypeError]]: the poison pill shared by strict callee/caller (and Function.prototype.caller/arguments).
+	static Value throwTypeError(Runtime& rt, Processor&, UInt32, const Value*, Object*) {
+		ScriptException::throwError(rt.getHeap(), TYPE_ERROR
+				, "'caller', 'callee', and 'arguments' may not be accessed on strict-mode functions or their arguments");
+		return Value();
+	}
+
 	// defineOwnProperty(obj, key, present, value, get, set, attribs): the stdlib has already run ToPropertyDescriptor
 	// and packed the descriptor into presence/attribute bitmasks. Runs 8.12.9 with Throw = true and returns obj.
 	static Value defineOwnProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
@@ -5945,6 +5999,7 @@ static struct {
 	{ "random", Support::random }, { "updateDateValue", Support::updateDateValue }
 #if NUXJS_ES5
 	, { "preventExtensions", Support::preventExtensions }, { "isExtensible", Support::isExtensible }
+	, { "throwTypeError", Support::throwTypeError }
 	, { "defineOwnProperty", Support::defineOwnProperty }
 	, { "getOwnPropertyDescriptor", Support::getOwnPropertyDescriptor }
 	, { "getOwnPropertyNames", Support::getOwnPropertyNames }, { "createObject", Support::createObject }
@@ -5970,7 +6025,11 @@ static struct NoRegExpSupport : public Function {
 Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap.roots()), globalObject(0)
 		, stackSize(STANDARD_JS_STACK_SIZE), callNestCounter(0), checkTimeOutCounter(0)
 		, timeOut(0), memoryCap(MAX_MEMORY_CAP), gcThreshold(AUTO_GC_MIN_SIZE), createRegExpFunction(&NO_REG_EXP_SUPPORT)
-		, evalFunction(&EVAL_FUNCTION), unixEpochTimeDiff(0.0), evalCodeCache(&heap) {
+		, evalFunction(&EVAL_FUNCTION)
+#if NUXJS_ES5
+		, throwTypeErrorFunction(0)
+#endif
+		, unixEpochTimeDiff(0.0), evalCodeCache(&heap) {
 	std::fill(stringConstantsCache, stringConstantsCache + (1 << STRING_CONSTANTS_CACHE_SIZE_N), (const String*)(0));
 	std::fill(prototypes, prototypes + PROTOTYPE_COUNT, (Object*)(0));
 	std::fill(toPrimitiveFunctions + 0, toPrimitiveFunctions + 3, &DEFAULT_CONVERSION);
@@ -6195,6 +6254,9 @@ void Runtime::setupStandardLibrary() {
 	fetchFunction(supportObject, "toPrimitiveString", toPrimitiveFunctions + 2);
 	fetchFunction(supportObject, "createRegExp", &createRegExpFunction);
 	fetchFunction(supportObject, "evalFunction", &evalFunction);
+#if NUXJS_ES5
+	fetchFunction(supportObject, "throwTypeError", &throwTypeErrorFunction);
+#endif
 
 	heap.gc();
 }
