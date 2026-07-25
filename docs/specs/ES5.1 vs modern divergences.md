@@ -31,6 +31,12 @@ ES5.1 leaves the order of `for-in`, `Object.keys`, and `Object.getOwnPropertyNam
 insertion order. **Do not** assert V8's order in ES5.1 tests — sort, or test single keys. (NuXJS enumerates in
 hash-table order, which is spec-legal for ES5.1.)
 
+### Duplicate data properties in a strict object literal
+ES5.1 §11.1.5 makes an `ObjectLiteral` with more than one definition of the same **data** property a `SyntaxError`
+in strict code (`"use strict"; ({a:1, a:2})`). ES2015 removed that restriction, so V8 accepts it in both modes.
+NuXJS follows ES5.1. The other §11.1.5 collisions — data vs. accessor, and two getters or two setters for one name
+— are errors in *both* modes in ES5.1; V8 accepts those too.
+
 ### Other changed semantics (add as encountered)
 - `Function.prototype.bind` — the `.name` of a bound function is `"bound " + target.name` in ES2015; ES5.1 does
   not specify the name. (NuXJS follows the common `"bound "` prefix; check the ES5.1 text before asserting.)
