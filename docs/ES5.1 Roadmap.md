@@ -170,11 +170,13 @@ Pure `stdlib.js` + one upgraded native hook. Replaces the current data-only `Obj
 
 C++ compiler (`NuXJS.cpp`), no VM changes beyond emitting the accessor-define path from §1.
 
-- [ ] **Getter/setter in object literals**: parse `get name(){}` / `set name(v){}` and emit accessor property
-      definitions (§11.1.5). Today `objectInitialiser` hard-requires `:` (`NuXJS.cpp:3608`).
+- [x] **Getter/setter in object literals**: parse `get name(){}` / `set name(v){}` and emit accessor property
+      definitions (§11.1.5), including all four duplicate/collision early errors.
 - [ ] **Reserved words as property keys** — already supported (`NuXJS.cpp:3603/3835`); add a confirming test.
-- [ ] **Octal numeric literals**: currently mis-lexed (`010` → `0` then stray `10`, `NuXJS.cpp:3514`). Reject cleanly
-      as a SyntaxError in the main grammar (ES5 §7.8.3 / Annex B); strict mode also rejects octal escapes (Phase 4).
+- [ ] **Octal numeric literals**: mis-lexed (`010` → `0` then stray `10`), which *does* yield a SyntaxError, but with
+      a confusing message. Strict-mode rejection of octal literals and escapes is done (Phase 4); what is left here is
+      a clean diagnostic, and deciding whether non-strict `"\47"` should stay `"47"` or become a SyntaxError per the
+      core grammar (see the octal entry in `docs/notes/ECMAScript Compatibility Notes.md`).
 - [ ] **Trailing commas** in object/array literals — already handled; add confirming tests.
 - [ ] **Whitespace/Unicode (lower priority, own sub-phase):** treat `﻿` as WhiteSpace anywhere (§7.2); accept
       the full Zs set; allow line-continuation (`\`+LineTerminator) in string literals (§7.8.4); preserve/handle
@@ -185,27 +187,34 @@ C++ compiler (`NuXJS.cpp`), no VM changes beyond emitting the accessor-define pa
 
 ---
 
-## 4. Strict mode
+## 4. Strict mode — **DONE**
 
 The largest behavioral addition. Needs both parser (directive detection) and VM (make silent failures throw).
 
-- [ ] **Directive prologue**: scan leading string-literal statements for exactly `use strict`; set a `bool strict`
+- [x] **Directive prologue**: scan leading string-literal statements for exactly `use strict`; set a `bool strict`
       on `Code` for global, function, and eval scopes (§14.1). Nested functions inherit.
-- [ ] **`this` binding**: unbound `this` stays `undefined` — change `enter`'s `thisObject == 0 ? global : …`
-      substitution (`NuXJS.cpp:2446`) to skip substitution when strict (§10.4.3).
-- [ ] **Throw on silent failures** (the VM currently discards the store-success bool at `SET_PROPERTY_OP`):
+- [x] **`this` binding**: unbound `this` stays `undefined` — change `enter`'s `thisObject == 0 ? global : …`
+      substitution to skip substitution when strict (§10.4.3). *Partial:* a primitive/null receiver passed via
+      `call`/`apply` is still coerced; see the deferral in `docs/notes/ECMAScript Compatibility Notes.md`.
+- [x] **Throw on silent failures** (the VM discarded the store-success bool at `SET_PROPERTY_OP`):
       assignment to read-only / accessor-without-setter, assignment to undeclared identifier, and `delete` of a
       non-configurable property all throw `TypeError`/`ReferenceError` in strict (§8.7.2, §11.4.1, §11.13.1).
-- [ ] **Syntax restrictions**: `with` forbidden; duplicate parameter names; `eval`/`arguments` as binding/assignment
-      targets; octal literals & escapes — all SyntaxErrors in strict (§12.10.1, §11.13.1, §7.8.3).
-- [ ] **Strict `arguments`**: non-mapped arguments object (no parameter aliasing); `callee`/`caller` poison-pill
+- [x] **Syntax restrictions**: `with` forbidden; duplicate parameter names; `eval`/`arguments` as binding/assignment
+      targets; future reserved words; duplicate data properties in an object literal (§11.1.5); octal literals &
+      escapes — all SyntaxErrors in strict (§12.10.1, §11.13.1, §7.8.3, §7.8.4).
+- [x] **Strict `arguments`**: non-mapped arguments object (no parameter aliasing); `callee`/`caller` poison-pill
       throwers; `Function.prototype.caller`/`arguments` throwers (§10.6, §13.2.3).
-- [ ] **Eval isolation**: strict direct `eval` gets its own variable environment; indirect `eval` runs global
-      (the `CALL_EVAL_OP` split already exists — extend it for strict).
+- [x] **Eval isolation**: strict direct `eval` gets its own variable environment and inherits caller strictness;
+      indirect `eval` runs global and non-strict (§10.4.2).
+- [x] **Read-only global constants**: `NaN`/`Infinity`/`undefined` are non-writable (§15.1.1.1-3), so a strict
+      write to them throws. Lives in `stdlibES5.js`; ES3 §15.1.1 leaves them writable.
 
 ### Tests
-- one `.io` per rule; `this===undefined`; throwing assignments/deletes; `with`/dup-param/eval-arg SyntaxErrors;
-  strict arguments non-aliasing + poison pills.
+One `.io` per rule under `tests/es5/`: `strictDirectivePrologue`, `strictThisBinding`, `strictAssignmentErrors`,
+`strictSyntaxRestrictions`, `strictEvalArguments`, `strictGlobalAssignment`, `strictReservedWords`,
+`strictArguments`, `strictFunctionPoison`, `strictEvalEnvironment`, `strictOctal`, `strictDuplicateProperties`,
+`globalConstantAttributes` (with an `es3only` twin for the ES3 attributes). Verified against V8 as a differential
+oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `docs/specs`.
 
 ---
 
