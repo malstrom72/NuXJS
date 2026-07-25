@@ -3387,6 +3387,11 @@ Char* Compiler::unescape(Char* buffer, const Char* e) {
 			const Char* f = std::find(ESCAPE_CHARS, ESCAPE_CHARS + ESCAPE_CODE_COUNT, *p);
 			if (f != ESCAPE_CHARS + ESCAPE_CODE_COUNT) {
 				l = ESCAPE_CODES[f - ESCAPE_CHARS];
+				// 7.8.4: `0` is the <NUL> escape only with [lookahead not DecimalDigit]; a digit after it would
+				// begin an OctalEscapeSequence, which belongs to Annex B and not to the grammar proper.
+				if (*p == '0' && p + 1 != e && '0' <= p[1] && p[1] <= '9') {
+					error(SYNTAX_ERROR, "Invalid escape sequence");
+				}
 			} else if (*p == 'x' || *p == 'u') {
 				const int n = (*p == 'x' ? 2 : 4);
 				if (e - (p + 1) < n || parseHex(p + 1, p + 1 + n, l) != p + 1 + n) {
@@ -3395,6 +3400,10 @@ Char* Compiler::unescape(Char* buffer, const Char* e) {
 				p += n;
 			} else if (isLineTerminator(*p)) {
 				error(SYNTAX_ERROR, "\\ continuation is not supported");
+			} else if ('0' <= *p && *p <= '9') {
+				// 7.8.4: DecimalDigit is an EscapeCharacter, so it is excluded from NonEscapeCharacter just as x
+				// and u are above; \1 to \9 can only begin an (Annex B) OctalEscapeSequence.
+				error(SYNTAX_ERROR, "Invalid escape sequence");
 			} else {
 				l = *p;
 			}
