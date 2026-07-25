@@ -3715,7 +3715,7 @@ Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNes
 	, mainSection(heap, 1), b(0), p(0), e(0), sourceUnitBase(code->getSourceUnit()->getSource()->begin())
 	, currentSection(0), acceptInOperator(true), withScopeCounter(0), nestCounter(initialNestCounter)
 #if NUXJS_ES5
-	, inDirectivePrologue(false), lastStringLiteralStart(0), lastStringLiteralEnd(0)
+	, inDirectivePrologue(false), lastStringLiteralStart(0), lastStringLiteralEnd(0), octalEscapeStart(0)
 #endif
 {
 }
@@ -4016,6 +4016,13 @@ Char* Compiler::unescape(Char* buffer, const Char* e) {
 			const Char* f = std::find(ESCAPE_CHARS, ESCAPE_CHARS + ESCAPE_CODE_COUNT, *p);
 			if (f != ESCAPE_CHARS + ESCAPE_CODE_COUNT) {
 				l = ESCAPE_CODES[f - ESCAPE_CHARS];
+			#if NUXJS_ES5
+				// 7.8.4: \0 is the NUL escape only when not followed by a decimal digit; otherwise it begins an
+				// OctalEscapeSequence, which strict code may not contain (B.1.2).
+				if (*p == '0' && p + 1 != e && '0' <= p[1] && p[1] <= '9' && octalEscapeStart == 0) {
+					octalEscapeStart = p - 1;
+				}
+			#endif
 			} else if (*p == 'x' || *p == 'u') {
 				const int n = (*p == 'x' ? 2 : 4);
 				if (e - (p + 1) < n || parseHex(p + 1, p + 1 + n, l) != p + 1 + n) {
@@ -4025,6 +4032,11 @@ Char* Compiler::unescape(Char* buffer, const Char* e) {
 			} else if (isLineTerminator(*p)) {
 				error(SYNTAX_ERROR, "\\ continuation is not supported");
 			} else {
+			#if NUXJS_ES5
+				if ('0' <= *p && *p <= '9' && octalEscapeStart == 0) {
+					octalEscapeStart = p - 1;	// \1..\7 is an OctalEscapeSequence; \8 and \9 are no escape at all
+				}
+			#endif
 				l = *p;
 			}
 			b = ++p;
@@ -5517,6 +5529,14 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	}
 	SemanticScope rootScope(heap, SemanticScope::ROOT_TYPE, 1, 0);
 	statementList(&rootScope);
+#if NUXJS_ES5
+	// B.1.2: strict code may not contain an OctalEscapeSequence. Directive-prologue literals are unescaped before
+	// strictness is settled, so the violation is recorded while lexing and reported retroactively here.
+	if (code->strict && octalEscapeStart != 0) {
+		p = octalEscapeStart;
+		error(SYNTAX_ERROR, "octal escape sequences are not allowed in strict mode");
+	}
+#endif
  	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
 	if (compilingFor != FOR_EVAL) {
 		// FIX : if RETURN_OP took a push back count we could just do void_op here, or even have another RETURN_VOID_OP

@@ -98,17 +98,6 @@
 > 	print("--------");
 > }
 -
-> function checkGlobalConstant(constantName) {
-> 	print(constantName);
-> 	print("--------");
-> 	print("'" + constantName + "' in global: " + this.hasOwnProperty(constantName))
-> 	print(constantName + " = " + this[constantName])
-> 	var flags = analyzeFlags(this, constantName);
-> 	var ok = flags.dontEnum && !flags.readOnly && flags.dontDelete;
-> 	print("OK: " + ok);
-> 	print("--------");
-> }
--
 > function checkGlobalFunction(funcName, expectedLength, isConstructor) {
 > 	print(funcName);
 > 	print("--------");
@@ -1930,32 +1919,8 @@
 < OK: true
 < --------
 -
-> checkGlobalConstant('NaN');
-< NaN
-< --------
-< 'NaN' in global: true
-< NaN = NaN
-< NaN : dontEnum,dontDelete, (deleted:false)
-< OK: true
-< --------
--
-> checkGlobalConstant('Infinity');
-< Infinity
-< --------
-< 'Infinity' in global: true
-< Infinity = Infinity
-< Infinity : dontEnum,dontDelete, (deleted:false)
-< OK: true
-< --------
--
-> checkGlobalConstant('undefined');
-< undefined
-< --------
-< 'undefined' in global: true
-< undefined = undefined
-< undefined : dontEnum,dontDelete, (deleted:false)
-< OK: true
-< --------
+// The global NaN / Infinity / undefined are checked in tests/es3only and tests/es5 instead: ES5.1 15.1.1 made them
+// read-only, while ES3 15.1.1 leaves them writable, so their attributes differ between the two engine variants.
 -
 > checkGlobalFunction('eval', 1);
 < eval

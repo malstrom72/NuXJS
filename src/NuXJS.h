@@ -2057,6 +2057,7 @@ class Compiler : public GCItem {
 		int nestCounter;
 	#if NUXJS_ES5
 		bool inDirectivePrologue;	// 14.1: true while still parsing the leading string-literal directive prologue
+		const Char* octalEscapeStart;	// B.1.2: first octal escape seen (0 = none), reported if this code turns out strict
 		const Char* lastStringLiteralStart;	// source span of the most recently parsed string literal token, so a
 		const Char* lastStringLiteralEnd;	// directive can require the statement to be *entirely* one string literal
 	#endif

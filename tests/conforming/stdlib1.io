@@ -34,8 +34,7 @@
 >     }
 -     
 >     var constants = [
->         [ this, "NaN" ], [ this, "Infinity" ], [ this, "undefined" ]
->         , [ Number, "MAX_VALUE" ], [ Number, "MIN_VALUE" ], [ Number, "NaN" ], [ Number, "NEGATIVE_INFINITY" ], [ Number, "POSITIVE_INFINITY" ]
+>         [ Number, "MAX_VALUE" ], [ Number, "MIN_VALUE" ], [ Number, "NaN" ], [ Number, "NEGATIVE_INFINITY" ], [ Number, "POSITIVE_INFINITY" ]
 >     ];
 >     for (var i = 0; i < constants.length; ++i) {
 >         var base = constants[i][0];
@@ -43,13 +42,8 @@
 >         print(constant + ": " + base[constant]);
 >         analyzeFlags(base, constant);
 >     };
-// ES5.1: 15.1.1: The value properties NaN, Infinity, and undefined of the Global Object have been changed to be read-only properties.
-< NaN: NaN
-< NaN : dontEnum,dontDelete, (deleted:false)
-< Infinity: Infinity
-< Infinity : dontEnum,dontDelete, (deleted:false)
-< undefined: undefined
-< undefined : dontEnum,dontDelete, (deleted:false)
+// The global NaN / Infinity / undefined are checked in tests/es3only and tests/es5 instead: ES5.1 15.1.1 made them
+// read-only, while ES3 15.1.1 leaves them writable, so their attributes differ between the two engine variants.
 < MAX_VALUE: 1.7976931348623157e+308
 < MAX_VALUE : dontEnum,readOnly,dontDelete, (deleted:false)
 < MIN_VALUE: 5e-324

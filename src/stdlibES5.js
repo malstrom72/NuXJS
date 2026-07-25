@@ -187,4 +187,10 @@ method(Object, "isFrozen", function isFrozen(o) {
 	return !Object.isExtensible(o);
 });
 
+// 15.1.1.1-3: ES5 made the global NaN, Infinity and undefined non-writable. ES3 15.1.1 left them writable, so
+// stdlib.js installs them with dontEnum + dontDelete only; re-define them here with readOnly added.
+$defineProperty(this, "NaN", this.NaN, true, true, true);
+$defineProperty(this, "Infinity", this.Infinity, true, true, true);
+$defineProperty(this, "undefined", this.undefined, true, true, true);
+
 })
