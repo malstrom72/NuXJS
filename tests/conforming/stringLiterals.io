@@ -38,7 +38,6 @@
 < "abcd
 < efghi" failed
 -
-
 // 7.8.4: EscapeCharacter is SingleEscapeCharacter, DecimalDigit, x or u, and NonEscapeCharacter is "SourceCharacter
 // but not EscapeCharacter". Digits are therefore excluded from NonEscapeCharacter exactly as x and u are, so \1 to \9
 // match no production at all: an OctalEscapeSequence is an Annex B extension that is not part of the grammar proper.
@@ -57,7 +56,6 @@
 > shouldFail('"\\47"')
 < "\47" failed
 -
-
 // EscapeSequence :: 0 [lookahead not DecimalDigit], so \0 is the <NUL> escape only when no digit follows it.
 > listCharCodes("\0");
 < 0
@@ -71,7 +69,6 @@
 > shouldFail('"\\01"')
 < "\01" failed
 -
-
 // Escapes are a string-literal concept; a regular expression literal is lexed separately, so a \1 backreference
 // inside one is unaffected by the rule above.
 > print(/(abc)\1/.test("abcabc")); print(/(abc)\1/.test("abcdef"));
