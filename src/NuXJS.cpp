@@ -2679,14 +2679,22 @@ void Processor::innerRun() {
 			}
 			
 			case SET_PROPERTY_OP: {
-				sp[-2].getObject()->setProperty(rt, sp[-1], sp[0]);
+				Object* o = convertToObject(sp[-2], false);
+				if (o == 0) {
+					return;
+				}
+				o->setProperty(rt, sp[-1], sp[0]);
 				sp[-2] = sp[0];
 				pop(2);
 				break;
 			}
 			
 			case SET_PROPERTY_POP_OP: {
-				sp[-2].getObject()->setProperty(rt, sp[-1], sp[0]);
+				Object* o = convertToObject(sp[-2], false);
+				if (o == 0) {
+					return;
+				}
+				o->setProperty(rt, sp[-1], sp[0]);
 				pop(3);
 				break;
 			}
