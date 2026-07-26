@@ -3895,11 +3895,14 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case PROPERTY_BRACKETS: {
 			assert(!op.primitiveInput);
 			makeRValue(xr, false);
-			emit(Processor::CHECK_OBJECT_COERCIBLE_OP);
 			const bool didAcceptInOperator = acceptInOperator;
 			acceptInOperator = true;
-			makeRValue(operand(op), true, Processor::OBJ_TO_STRING_OP); // left doesn't need to be primitive, but right does (and preferred string!)
+			const ExpressionResult keyXR = makeRValue(operand(op), false);
 			acceptInOperator = didAcceptInOperator;
+			emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
+			if (keyXR.t != ExpressionResult::PUSHED_PRIMITIVE) {
+				emit(Processor::OBJ_TO_STRING_OP); // left doesn't need to be primitive, but right does (and preferred string!)
+			}
 			xr = ExpressionResult(ExpressionResult::PROPERTY);
 			break;
 		}
