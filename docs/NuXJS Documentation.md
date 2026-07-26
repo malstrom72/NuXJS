@@ -106,7 +106,7 @@ This mirrors the JavaScript idioms used in the engine's high‑level API and ill
 
 ### Implementing Custom Native Objects
 
-Embedding applications often need richer objects than plain functions. Every scriptable entity in NuXJS ultimately derives from `Object`, which defines the contract for property lookups, mutation, and enumeration. Property access uses a compact set of attribute flags – `EXISTS_FLAG`, `READ_ONLY_FLAG`, `DONT_ENUM_FLAG`, and `DONT_DELETE_FLAG` – together with the `STANDARD_FLAGS` helper constant for ordinary writable properties.
+Embedding applications often need richer objects than plain functions. Every scriptable entity in NuXJS ultimately derives from `Object`, which defines the contract for property lookups, mutation, and enumeration. Property access uses a compact set of attribute flags - `EXISTS_FLAG`, `READ_ONLY_FLAG`, `DONT_ENUM_FLAG`, and `DONT_DELETE_FLAG` - together with the `STANDARD_FLAGS` helper constant for ordinary writable properties.
 
 `Object` exposes five virtuals that host objects may override. Understanding how they interact is key to building a class that behaves just like its JavaScript counterparts:
 
@@ -116,7 +116,7 @@ Embedding applications often need richer objects than plain functions. Every scr
 * `deleteOwnProperty(Runtime&, const Value&)` decides whether `delete obj[key]` succeeds. Return `true` once the property has been removed. Returning `false` leaves the property intact, mirroring JavaScript's semantics for `configurable: false` slots.
 * `getOwnPropertyEnumerator(Runtime&)` hands back an `Enumerator` that yields enumerable keys; the pointer should reference a GC-managed enumerator allocated by the callee. NuXJS automatically chains enumerators from the prototype chain by calling `getPropertyEnumerator`. Returning an empty enumerator (never `nullptr`) signals that the object contributes no own properties.
 
-All other property helpers funnel through these hooks. A write performed from JavaScript—or from C++ via `globals["name"] = value`—ultimately lands on `Object::setProperty`. That helper first calls `updateOwnProperty`, then checks the prototype chain for a read-only shadow, and finally falls back to `setOwnProperty` to insert a new slot. The assignment helpers in `Var` and `Property` call the same path, so custom classes see identical behaviour whether a script or the host performs the mutation.
+All other property helpers funnel through these hooks. A write performed from JavaScript-or from C++ via `globals["name"] = value`-ultimately lands on `Object::setProperty`. That helper first calls `updateOwnProperty`, then checks the prototype chain for a read-only shadow, and finally falls back to `setOwnProperty` to insert a new slot. The assignment helpers in `Var` and `Property` call the same path, so custom classes see identical behaviour whether a script or the host performs the mutation.
 
 Because `setOwnProperty` receives the attribute flags, it is responsible for enforcing the invariants attached to a slot. `JSObject`, the dictionary-style object NuXJS uses for ordinary JavaScript values, provides the canonical example: it interns the key as a string, updates an internal hash table, and refuses writes when a bucket already carries `READ_ONLY_FLAG` or `DONT_DELETE_FLAG`. Host objects can employ the same pattern when exposing selective mutability.
 
@@ -124,11 +124,11 @@ Because `setOwnProperty` receives the attribute flags, it is responsible for enf
 
 Deriving from `JSObject` is the quickest way to obtain a full ECMAScript property bag. `JSObject` couples `Object` with the internal `Table`, automatically handles key canonicalisation, and allocates enumerators that honour the `DONT_ENUM` bit. Passing `STANDARD_FLAGS` to `setOwnProperty` yields a normal writable, enumerable property; additional flags add const-like semantics. If you only need to materialise the property table lazily (for example, when exposing a large native object with rare script interaction) you can inherit from `LazyJSObject` instead and build the backing `JSObject` the first time a property hook fires.
 
-When the host manages its own backing state and does not need `JSObject`'s hash table, overriding the base `Object` hooks directly avoids the bookkeeping overhead. Returning `NONEXISTENT` from `getOwnProperty` delegates the lookup to the prototype chain, while returning `false` from `setOwnProperty` causes assignments to silently do nothing—matching JavaScript's behaviour for read-only properties on non-strict code paths. Deletions mirror this pattern: `delete` succeeds only if your implementation returns `true` and the stored flags did not include `DONT_DELETE_FLAG`.
+When the host manages its own backing state and does not need `JSObject`'s hash table, overriding the base `Object` hooks directly avoids the bookkeeping overhead. Returning `NONEXISTENT` from `getOwnProperty` delegates the lookup to the prototype chain, while returning `false` from `setOwnProperty` causes assignments to silently do nothing-matching JavaScript's behaviour for read-only properties on non-strict code paths. Deletions mirror this pattern: `delete` succeeds only if your implementation returns `true` and the stored flags did not include `DONT_DELETE_FLAG`.
 
 #### Example: exposing a mutable point
 
-The snippet below sketches a small native class that surfaces `x`/`y` fields with read–write semantics and participates in property enumeration. It relies on the common `StringListEnumerator` helper to report its keys:
+The snippet below sketches a small native class that surfaces `x`/`y` fields with read-write semantics and participates in property enumeration. It relies on the common `StringListEnumerator` helper to report its keys:
 
 ```cpp
 using namespace NuXJS;
@@ -185,7 +185,7 @@ void exposePoint(Runtime& rt) {
 }
 ```
 
-Because `Property::operator=` also routes through `Object::setProperty`, the same object can be updated from C++ in a fluent style – for example `rt.getGlobalsVar()["point"]["x"] = 7.5;` – and those writes still flow through the overrides above. This keeps host-side and script-side interactions consistent without duplicating bookkeeping.
+Because `Property::operator=` also routes through `Object::setProperty`, the same object can be updated from C++ in a fluent style - for example `rt.getGlobalsVar()["point"]["x"] = 7.5;` - and those writes still flow through the overrides above. This keeps host-side and script-side interactions consistent without duplicating bookkeeping.
 
 ## Runtime Architecture
 
@@ -213,7 +213,7 @@ Garbage collection is either invoked manually with `Heap::gc()` or automatically
 
 Strings store UTF‑16 data. When a new string should live on a heap, you may allocate it directly with `new(heap) String(heap.managed(), text)` or use the helper `String::allocate(heap, "text")`. Temporary root strings can be constructed on the stack using `String(heap.roots(), ...)`. Global constant strings can be created without a heap using `String string("text")`.
 
-Note: `wchar_t` strings are converted based on the native size of `wchar_t` — UTF‑16 when it is 16 bits and UTF‑32 when it is 32 bits. Plain `char*` and `std::string` values are treated as ISO‑8859‑1 text for fast byte‑for‑byte copying. Use wide strings when full Unicode input is required.
+Note: `wchar_t` strings are converted based on the native size of `wchar_t` - UTF‑16 when it is 16 bits and UTF‑32 when it is 32 bits. Plain `char*` and `std::string` values are treated as ISO‑8859‑1 text for fast byte‑for‑byte copying. Use wide strings when full Unicode input is required.
 
 NuXJS provides several convenience routines for constructing managed strings:
 
