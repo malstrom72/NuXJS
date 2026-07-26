@@ -25,7 +25,18 @@ Each test file uses simple single-character directives:
 - `<` gives the expected output for the preceding input.
 - `!` marks expected errors (only checked when `-e` is supplied).
 - `-` ends a section so multiple input/output pairs can be placed in one file.
+- `*` deliberately disables a section (used for not-yet-implemented `// todo` cases).
 - `//` starts a comment that is ignored.
+
+**Every line must begin with one of those characters.** A line that does not — a blank line, an indented
+directive, a wrapped long line, or an expected-output line missing its `<` — makes the harness *discard the
+section it is currently collecting*. That silently removes coverage: the expected output is built from the same
+filtered list of sections, so a dropped section can never cause a mismatch and the file still reports success
+while testing less than it appears to. Use a `//` comment rather than a blank line to separate groups.
+
+The harness prints `Warning! Skipped N section(s)` when this happens, but it is easy to miss in a long run.
+When adding or changing a test, confirm it really runs: break one expectation on purpose and check that the run
+turns red. A test that passes proves nothing if its section was never collected in the first place.
 
 Example lines from `tests/conforming/Array1.io`:
 
