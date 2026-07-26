@@ -1,16 +1,16 @@
-# ES5.1 vs modern ECMAScript (V8) — divergence reference
+# ES5.1 vs modern ECMAScript (V8) - divergence reference
 
 We use `node` (V8) as a **differential oracle** for the ES5.1 lift: run a snippet in both `node` and the `es5`
 NuXJS build and diff. But V8 implements a *much* newer spec, so it is only a valid oracle **where ES5.1 and the
 current spec agree**. This file lists the places they diverge, so V8's answer must be *ignored* in favour of
-`ECMA-262 5.1.md`. It is a living document — add a row whenever a divergence is found.
+`ECMA-262 5.1.md`. It is a living document - add a row whenever a divergence is found.
 
 Methodology: **V8 to catch bugs, the ES5.1 spec to arbitrate.** When V8 disagrees with our ES5.1 implementation,
 check this table first; if the behaviour is listed here, ES5.1 wins.
 
 ## Behaviours that changed (V8 is wrong for ES5.1)
 
-### `Object.*` on a non-object argument — ES5.1 throws, ES6+ coerces
+### `Object.*` on a non-object argument - ES5.1 throws, ES6+ coerces
 ES5.1 §15.2.3.x begins each of these with "If Type(O) is not Object throw a **TypeError**". ES2015 relaxed most
 of them to coerce/accept the primitive. Verified in node v26:
 
@@ -28,25 +28,25 @@ of them to coerce/accept the primitive. Verified in node v26:
 ### Property enumeration order
 ES5.1 leaves the order of `for-in`, `Object.keys`, and `Object.getOwnPropertyNames` **implementation-defined**
 (§12.6.4, §15.2.3.14). ES2015 mandated: integer-index keys in ascending numeric order, then string keys in
-insertion order. **Do not** assert V8's order in ES5.1 tests — sort, or test single keys. (NuXJS enumerates in
+insertion order. **Do not** assert V8's order in ES5.1 tests - sort, or test single keys. (NuXJS enumerates in
 hash-table order, which is spec-legal for ES5.1.)
 
 ### Duplicate data properties in a strict object literal
 ES5.1 §11.1.5 makes an `ObjectLiteral` with more than one definition of the same **data** property a `SyntaxError`
 in strict code (`"use strict"; ({a:1, a:2})`). ES2015 removed that restriction, so V8 accepts it in both modes.
-NuXJS follows ES5.1. The other §11.1.5 collisions — data vs. accessor, and two getters or two setters for one name
-— are errors in *both* modes in ES5.1; V8 accepts those too.
+NuXJS follows ES5.1. The other §11.1.5 collisions - data vs. accessor, and two getters or two setters for one name
+- are errors in *both* modes in ES5.1; V8 accepts those too.
 
 ### When a `null` / `undefined` base throws in `base[key] = rhs`
 ES5.1 §11.2.1 puts `CheckObjectCoercible(baseValue)` at step 5, *inside* the evaluation of the
 `LeftHandSideExpression`, and §11.13.1 evaluates that whole production (step 1) before the right-hand side
 (step 2). So `(null)[hit = 1] = (rhsHit = 1)` throws before the RHS runs: `hit` is `1` (the key *expression* is
 step 3, before the throw) and `rhsHit` stays `0`. ES2015 moved the check out of member evaluation into `PutValue`,
-which runs *after* the RHS, so V8 reports `rhsHit = 1`. Only the `rhsHit` cell diverges — both agree `hit` is `1`.
+which runs *after* the RHS, so V8 reports `rhsHit = 1`. Only the `rhsHit` cell diverges - both agree `hit` is `1`.
 ES3 §11.2.1 matches ES5.1 here, so this ordering is shared by both NuXJS variants.
 
 ### Other changed semantics (add as encountered)
-- `Function.prototype.bind` — the `.name` of a bound function is `"bound " + target.name` in ES2015; ES5.1 does
+- `Function.prototype.bind` - the `.name` of a bound function is `"bound " + target.name` in ES2015; ES5.1 does
   not specify the name. (NuXJS follows the common `"bound "` prefix; check the ES5.1 text before asserting.)
 - `[[ThrowTypeError]]` poison pill: ES5.1 allows one per realm; ES2015 mandates exactly one shared. Cosmetic.
 - **Strict `arguments.caller`.** ES5.1 §10.6 defines *both* `caller` and `callee` as `[[ThrowTypeError]]` poison
@@ -55,7 +55,7 @@ ES3 §11.2.1 matches ES5.1 here, so this ordering is shared by both NuXJS varian
 
 ## Features V8 has that ES5.1 does NOT (never "match V8" by adding these)
 
-If a test needs any of these, it is outside ES5.1 scope — do not implement them to match V8:
+If a test needs any of these, it is outside ES5.1 scope - do not implement them to match V8:
 - Block scoping: `let`, `const`, block-scoped functions.
 - Arrow functions, classes, generators, `async`/`await`, template literals, destructuring, spread/rest,
   default parameters, computed property names, shorthand methods, symbols.

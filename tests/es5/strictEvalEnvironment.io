@@ -1,6 +1,6 @@
 // ES5.1 10.4.2 (Entering Eval Code): non-strict eval shares the calling context's variable environment, so its
-// var/function declarations LEAK to the caller. Strict eval code — whether strict by its own directive or because a
-// direct eval was called from strict code (strictness is inherited) — gets its OWN environment, so declarations are
+// var/function declarations LEAK to the caller. Strict eval code - whether strict by its own directive or because a
+// direct eval was called from strict code (strictness is inherited) - gets its OWN environment, so declarations are
 // discarded when it returns. Reads and writes of pre-existing outer bindings still reach the enclosing scope.
 // Non-strict direct eval leaks a declared var into the calling function.
 > function ns() { eval("var leak1 = 11;"); return typeof leak1; }
@@ -12,7 +12,7 @@
 > print(inh())
 < undefined
 -
-// Eval code with its own "use strict" directive is strict too — same isolation, even without an enclosing strict scope.
+// Eval code with its own "use strict" directive is strict too - same isolation, even without an enclosing strict scope.
 > function own() { eval("'use strict'; var leak3 = 33;"); return typeof leak3; }
 > print(own())
 < undefined
