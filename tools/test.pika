@@ -66,17 +66,27 @@ testFile => {
 	sectionOutput = '';
 	sections.n = 0;
 	skip = false;
+	skippedForUnknownLine = false;
 
 	addSection => {
-		if (!skip) map(@sections[sections.n++], 'input', sectionInput, 'output', sectionOutput);
+		if (!skip) {
+			map(@sections[sections.n++], 'input', sectionInput, 'output', sectionOutput);
+		} else if (skippedForUnknownLine) {
+			++unknownLineSkips;			// a section was silently thrown away because of an unparsable line
+		};
 		skip = false;
+		skippedForUnknownLine = false;
 		sectionInput = '';
 		sectionOutput = '';
 	};
 
 	warnAboutExpectedErrors = false;
+	unknownLineSkips = 0;
+	firstUnknownLine = 0;
+	lineNumber = 0;
 
 	tokenize(ioSource, >{
+		++lineNumber;
 		directive = $0{:1};
 		command = $0{2:};
 		if (directive === '>') {
@@ -93,14 +103,24 @@ testFile => {
 			}
 		} else if (directive === '-') {
 			addSection();
+		} else if (directive === '*') {
+			skip = true;	// deliberately disabled section, e.g. a `// todo` that is not implemented yet
 		} else if (directive !== '/') {
+			// Every line must begin with > < ! - * or /. Anything else (a blank line, a stray indent, a wrapped
+			// long line) discards the section being collected, so warn instead of losing coverage in silence.
+			if (firstUnknownLine === 0) firstUnknownLine = lineNumber;
 			skip = true;
+			skippedForUnknownLine = true;
 		}
 	});
 	if (sectionOutput !== '') addSection();
 
 	if (warnAboutExpectedErrors) {
 		print("Warning! Expects one or more tests to fail. Run with -e to test these too.")
+	};
+	if (unknownLineSkips > 0) {
+		print("Warning! Skipped " # unknownLineSkips # " section(s): a line does not begin with > < ! - * or / (first at line "
+				# firstUnknownLine # "). A blank line or an indented directive will do this.")
 	};
 
 	allInput = '';
@@ -165,7 +185,11 @@ testDir = function {
 	print(STANDARD_COLOR # $0 # LF # repeat('#', length($0)) # LF);
 	dir($0, >{
 		fn = $0;
-		(if (appendDirSlash(fn) === fn) testDir else testFile)(thisDir # fn);
+		if (appendDirSlash(fn) === fn) {
+			testDir(thisDir # fn);
+		} else if (fn{(length(fn) - 3):} === '.io') {	// only .io files are tests; skip README.md and strays
+			testFile(thisDir # fn);
+		};
 	});
 };
 
