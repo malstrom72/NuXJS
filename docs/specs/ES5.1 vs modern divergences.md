@@ -37,6 +37,14 @@ in strict code (`"use strict"; ({a:1, a:2})`). ES2015 removed that restriction, 
 NuXJS follows ES5.1. The other §11.1.5 collisions — data vs. accessor, and two getters or two setters for one name
 — are errors in *both* modes in ES5.1; V8 accepts those too.
 
+### When a `null` / `undefined` base throws in `base[key] = rhs`
+ES5.1 §11.2.1 puts `CheckObjectCoercible(baseValue)` at step 5, *inside* the evaluation of the
+`LeftHandSideExpression`, and §11.13.1 evaluates that whole production (step 1) before the right-hand side
+(step 2). So `(null)[hit = 1] = (rhsHit = 1)` throws before the RHS runs: `hit` is `1` (the key *expression* is
+step 3, before the throw) and `rhsHit` stays `0`. ES2015 moved the check out of member evaluation into `PutValue`,
+which runs *after* the RHS, so V8 reports `rhsHit = 1`. Only the `rhsHit` cell diverges — both agree `hit` is `1`.
+ES3 §11.2.1 matches ES5.1 here, so this ordering is shared by both NuXJS variants.
+
 ### Other changed semantics (add as encountered)
 - `Function.prototype.bind` — the `.name` of a bound function is `"bound " + target.name` in ES2015; ES5.1 does
   not specify the name. (NuXJS follows the common `"bound "` prefix; check the ES5.1 text before asserting.)
