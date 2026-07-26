@@ -1,8 +1,8 @@
 # TypeScript Compatibility
 
-NuXJS targets ECMAScript 3 with a few ES5 additions. When compiling TypeScript code for the engine, emit ES3 (or ES5) output. The recommended compiler is **TypeScript 4.4.4**: it is the last release that down-levels untagged template literals into plain `+` string concatenations. Starting with 4.5, TypeScript instead emits `String.prototype.concat()` calls (e.g. `"Hello, ".concat(name)`). NuXJS does implement `String.prototype.concat`, so that output still runs correctly — but the inline `+` form produced by 4.4.4 is faster on the engine, which is why 4.4.4 is preferred if you want to freely use the `${}` syntax in your sources.
+NuXJS targets ECMAScript 3 with a few ES5 additions. When compiling TypeScript code for the engine, emit ES3 (or ES5) output. The recommended compiler is **TypeScript 4.4.4**: it is the last release that down-levels untagged template literals into plain `+` string concatenations. Starting with 4.5, TypeScript instead emits `String.prototype.concat()` calls (e.g. `"Hello, ".concat(name)`). NuXJS does implement `String.prototype.concat`, so that output still runs correctly - but the inline `+` form produced by 4.4.4 is faster on the engine, which is why 4.4.4 is preferred if you want to freely use the `${}` syntax in your sources.
 
-(`--target ES3` itself remained available through TypeScript 5.4 — it was deprecated in 5.0 and stopped having any effect in 5.5 — but the template-literal emit style, not ES3 availability, is the reason for pinning to 4.4.4.)
+(`--target ES3` itself remained available through TypeScript 5.4 - it was deprecated in 5.0 and stopped having any effect in 5.5 - but the template-literal emit style, not ES3 availability, is the reason for pinning to 4.4.4.)
 
 The file `docs/examples/lib.NuXJS.d.ts` contains a trimmed version of the standard library declarations that match the runtime features of NuXJS. Add it to your build with the `--lib` option to get accurate type checking.
 
