@@ -3384,14 +3384,13 @@ Char* Compiler::unescape(Char* buffer, const Char* e) {
 			UInt32 l = 0;
 			d = std::copy(b, p, d);
 			++p;
+			// 7.8.4: only `0` with [lookahead not DecimalDigit] escapes a digit, the rest is Annex B octal
+			if (*p >= '0' && *p <= '9' && (*p != '0' || (p + 1 != e && p[1] >= '0' && p[1] <= '9'))) {
+				error(SYNTAX_ERROR, "Invalid escape sequence");
+			}
 			const Char* f = std::find(ESCAPE_CHARS, ESCAPE_CHARS + ESCAPE_CODE_COUNT, *p);
 			if (f != ESCAPE_CHARS + ESCAPE_CODE_COUNT) {
 				l = ESCAPE_CODES[f - ESCAPE_CHARS];
-				// 7.8.4: `0` is the <NUL> escape only with [lookahead not DecimalDigit]; a digit after it would
-				// begin an OctalEscapeSequence, which belongs to Annex B and not to the grammar proper.
-				if (*p == '0' && p + 1 != e && '0' <= p[1] && p[1] <= '9') {
-					error(SYNTAX_ERROR, "Invalid escape sequence");
-				}
 			} else if (*p == 'x' || *p == 'u') {
 				const int n = (*p == 'x' ? 2 : 4);
 				if (e - (p + 1) < n || parseHex(p + 1, p + 1 + n, l) != p + 1 + n) {
@@ -3400,10 +3399,6 @@ Char* Compiler::unescape(Char* buffer, const Char* e) {
 				p += n;
 			} else if (isLineTerminator(*p)) {
 				error(SYNTAX_ERROR, "\\ continuation is not supported");
-			} else if ('0' <= *p && *p <= '9') {
-				// 7.8.4: DecimalDigit is an EscapeCharacter, so it is excluded from NonEscapeCharacter just as x
-				// and u are above; \1 to \9 can only begin an (Annex B) OctalEscapeSequence.
-				error(SYNTAX_ERROR, "Invalid escape sequence");
 			} else {
 				l = *p;
 			}
@@ -3900,9 +3895,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			const ExpressionResult keyXR = makeRValue(operand(op), false);
 			acceptInOperator = didAcceptInOperator;
 			emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
-			if (keyXR.t != ExpressionResult::PUSHED_PRIMITIVE) {
-				emit(Processor::OBJ_TO_STRING_OP); // left doesn't need to be primitive, but right does (and preferred string!)
-			}
+			makeRValue(keyXR, true, Processor::OBJ_TO_STRING_OP); // left doesn't need to be primitive, but right does (and preferred string!)
 			xr = ExpressionResult(ExpressionResult::PROPERTY);
 			break;
 		}
