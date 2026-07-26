@@ -21,10 +21,8 @@
 < undefined
 -
 // A real object base does receive the assignment. A single-property source keeps this independent of enumeration
-// order (12.6.4 leaves the order implementation-defined).
+// order (12.6.4 leaves the order implementation-defined); ForInSideEffectOrdering.io covers a bracket lvalue.
 > var o = {}; for (o.prop in {only:1}) { } print(o.prop)
-< only
-> var arr = []; for (arr[0] in {only:1}) { } print(arr[0])
 < only
 -
 // null / undefined base: ToObject throws, but only once a property is actually enumerated (step 5 skips first).

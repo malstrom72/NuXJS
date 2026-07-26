@@ -3209,13 +3209,13 @@ void Processor::innerRun() {
 		#endif
 
 			case SET_PROPERTY_POP_OP: {
-			#if NUXJS_ES5
-				// es5 semantics: [object, name, value] -> [junk / setter return]; the compiler always follows
-				// with POP_OP so a JS setter frame can deposit its (discarded) return value. (See makeAssignment.)
-				Object* o = convertToObject(sp[-2], false);	// 11.2.1 ToObject: a primitive base (e.g. for-in `(5).x`) is boxed
+				Object* o = convertToObject(sp[-2], false);
 				if (o == 0) {
 					return;
 				}
+			#if NUXJS_ES5
+				// es5 semantics: [object, name, value] -> [junk / setter return]; the compiler always follows
+				// with POP_OP so a JS setter frame can deposit its (discarded) return value. (See makeAssignment.)
 				if (!o->updateOwnProperty(rt, sp[-1], sp[0])) {	// fast path: existing own writable data property (same cost as es3)
 					Value dummy;
 					Accessor* accessor;
@@ -3240,10 +3240,6 @@ void Processor::innerRun() {
 				pop(3);
 				break;
 			#else
-				Object* o = convertToObject(sp[-2], false);
-				if (o == 0) {
-					return;
-				}
 				o->setProperty(rt, sp[-1], sp[0]);
 				pop(3);
 				break;
