@@ -6,14 +6,14 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
 
 ## ES5.1
 
-- **`Object.defineProperty` on array indices and `length` — partial *(deferred)*.** The full `Array`
-  `[[DefineOwnProperty]]` algorithm (15.4.5.1) — `length` maintenance and 8.12.9 validation for indices/`length`,
-  which interact with the engine's dense-vector element storage — is not yet implemented. A *data* (or generic)
+- **`Object.defineProperty` on array indices and `length` - partial *(deferred)*.** The full `Array`
+  `[[DefineOwnProperty]]` algorithm (15.4.5.1) - `length` maintenance and 8.12.9 validation for indices/`length`,
+  which interact with the engine's dense-vector element storage - is not yet implemented. A *data* (or generic)
   descriptor on an array index or `length` still works (it maps to the ordinary set-with-attributes path); an
   *accessor* descriptor on an index or `length` throws a `TypeError`. Named array properties and all ordinary
   object / function properties follow 8.12.9 exactly. Tracked in `docs/ES5.1 Roadmap.md` §6.
 
-- **Strict `this` for primitive / null receivers — partial *(deferred)*.** In a strict function an *unbound* `this`
+- **Strict `this` for primitive / null receivers - partial *(deferred)*.** In a strict function an *unbound* `this`
   is `undefined` (correct), and object receivers pass through unchanged. But because the engine represents a
   frame's `this` as an object pointer, a *primitive* or *null* receiver passed via `Function.prototype.call` /
   `apply` is still coerced (a primitive is boxed, `null` becomes `undefined`) rather than passed through verbatim
@@ -23,10 +23,10 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
 - **JSON nesting depth is bounded.** `JSON.parse` / `JSON.stringify` cap nesting at `MAX_JSON_DEPTH` (61) to stay
   within the compiler's recursion limit; deeper structures throw a `TypeError`. The spec imposes no fixed limit.
 
-- **No Annex B octal — by design, in both modes.** ES5.1 keeps octal out of the core grammar (`7.8.3` / `7.8.4`);
+- **No Annex B octal - by design, in both modes.** ES5.1 keeps octal out of the core grammar (`7.8.3` / `7.8.4`);
   octal integer literals and octal escapes exist only as the Annex B compatibility extension (`B.1.1` / `B.1.2`),
   which NuXJS deliberately does not implement. So octal *literals* (`010`, `08`) and octal *escapes* (`"\47"`,
   `"\01"`) are `SyntaxError`s in **both** strict and non-strict code, which is what the grammar proper says. Real
   browsers do implement Annex B, so `"\47"` is `"'"` and `010` is `8` there; code relying on that will not run.
-  This is not an ES5-versus-ES3 difference — ES3 `7.8.4` has the identical core grammar and its own Annex B.1.2 —
+  This is not an ES5-versus-ES3 difference - ES3 `7.8.4` has the identical core grammar and its own Annex B.1.2 -
   so the escape half of it is enforced by the shared ES3 lexer rather than behind `NUXJS_ES5`.

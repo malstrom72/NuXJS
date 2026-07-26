@@ -5,7 +5,7 @@
 // NuXJS never extends the grammar with Annex B octal in the first place, so it satisfies this a fortiori: octal is a
 // SyntaxError in BOTH modes, enforced by the shared lexer (see tests/conforming/stringLiterals.io and
 // tests/conforming/numericLiterals.io, which cover the non-strict half). These cases guard that the normative strict
-// requirement specifically keeps holding — notably if Annex B octal were ever added for web compatibility, strict
+// requirement specifically keeps holding - notably if Annex B octal were ever added for web compatibility, strict
 // code would still have to reject it. They are compile-time errors, so they are probed through eval.
 // Octal escape sequences are a SyntaxError in strict code.
 > try { eval("'use strict'; var s = '\\47';"); print("no throw") } catch (e) { print(e.name) }
