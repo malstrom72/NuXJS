@@ -113,12 +113,19 @@ Rules for this implementation:
       (per D2: a plain `GCItem`, not an `Object`, held via its own Bucket-union member); marked in
       `Table::gcMarkReferences`. Object literals install pairs via `JSObject::defineOwnAccessor` and the
       guarded `ADD_GETTER_OP`/`ADD_SETTER_OP`. (`tests/es5/accessorProperties.io`)
-- [ ] Introduce a `PropertyDescriptor` value type (in C++) carrying `value | {get,set}` + present/attribute bits,
-      mirroring spec §8.10. Keep it stack-only (no heap) where possible.
-- [ ] Add `Object::defineOwnProperty(rt, key, const PropertyDescriptor&)` implementing the §8.12.9 validation
-      algorithm (reject/allow transitions per configurable/writable), distinct from `setOwnProperty`/`update`.
-- [ ] Add an `extensible` flag to `Object`; `setOwnProperty`/`defineOwnProperty` honor it (§8.12.9 step 3).
-- [ ] `Object::getOwnProperty` returns enough to reconstruct a descriptor (data vs accessor + attrs) for reflection.
+- [x] `PropertyDescriptor` value type carrying `value | {get,set}` + present/attribute bits (§8.10). Stack-only as
+      intended: a plain struct, never heap-allocated, and the presence bits never reach bucket flags.
+- [x] `Object::defineOwnProperty(rt, key, const PropertyDescriptor&, doThrow)` implementing §8.12.9, distinct from
+      `setOwnProperty`/`update`; virtual, forwarded by `LazyJSObject`. `JSArray` overrides it - see the gaps below.
+- [x] `extensible` flag on `Object`. `defineOwnProperty` honors it at step 3; assignment honors it in
+      `Object::setProperty` (§8.12.4 `[[CanPut]]`), which is where the spec puts the check.
+- [x] `getOwnPropertySlot` returns flags plus the `Accessor*`, enough to rebuild a descriptor for reflection.
+
+Gaps this section leaves open (pre-existing, not regressions; the array ones overlap §6):
+- [ ] `JSArray::defineOwnProperty` (§15.4.5.1): no 8.12.9 validation on indices or `length`, absent attributes are
+      forced false, an accessor on an index is rejected. Deviation documented in `tests/es5/objectDefineProperty.io`.
+- [ ] Array `length` reports `writable: false`; §15.4.5.2 requires true, which also makes `isFrozen([])` wrong.
+- [ ] `Arguments` has no `defineOwnProperty` override and reports mapped indices non-enumerable (§10.6).
 
 ### VM wiring
 - [x] `GET_PROPERTY_OP` invokes getters via the standard `invokeFunction` continuation with the receiver as
@@ -137,8 +144,10 @@ Rules for this implementation:
       errors for arity and 11.1.5 duplicates. (`tests/es5/accessorProperties.io`)
 - [x] re-entrancy: throwing/recursive/self-deleting getters, GC-heavy getters - all managed, never a host crash.
       (`tests/es5/accessorReentrancy.io`)
-- [ ] `defineOwnProperty` data→accessor and accessor→data transitions; attribute toggling; non-configurable
-      rejection; non-extensible object rejects new properties. *(lands with §2's descriptor machinery)*
+- [x] `defineOwnProperty` data→accessor and accessor→data transitions, attribute toggling, non-configurable
+      rejection. (`tests/es5/objectDefineProperty.io`)
+- [ ] Still uncovered: `defineProperty` on a non-extensible object (§8.12.9 step 3 has no test at all), enumerable
+      `false→true` on a configurable property, accessor→accessor partial redefine, and arrays under seal/freeze.
 
 **Gate met:** full `both` build green (1222 test files) and the es3 release binary stayed **byte-identical**.
 
@@ -149,9 +158,10 @@ Rules for this implementation:
 Pure `stdlib.js` + one upgraded native hook. Replaces the current data-only `Object.defineProperty` shim
 (`stdlib.js:1875`).
 
-- [ ] Upgrade native `support.defineProperty` to accept a full descriptor (data + accessor, exact attributes,
-      extensibility) and route to `Object::defineOwnProperty`. It must read existing attributes (not force-false)
-      and return the object.
+- [x] Native descriptor hook - landed as a *new* `support.defineOwnProperty(obj, key, present, value, get, set,
+      attribs)` routing to `Object::defineOwnProperty`, rather than by upgrading the ES3 data-only
+      `support.defineProperty`, which stays for internal plumbing. Accessors, exact attributes and "leave
+      unspecified fields unchanged" all work for ordinary objects; array indices still take the `JSArray` shim.
 - [x] `Object.defineProperty`, `Object.defineProperties` (§15.2.3.6-7) via native `defineOwnProperty` (8.12.9) + JS `toPropertyDescriptor` (8.10.5). (`tests/es5/objectDefineProperty.io`)
 - [x] `Object.getOwnPropertyDescriptor` (§15.2.3.3) and `getOwnPropertyNames` (§15.2.3.4) via native FromPropertyDescriptor + a per-type name collector. (`tests/es5/objectReflection.io`, `objectCreate.io`)
 - [x] `Object.create` incl. `null` prototype and second (properties) argument (§15.2.3.5). (`tests/es5/objectCreate.io`)
@@ -161,8 +171,12 @@ Pure `stdlib.js` + one upgraded native hook. Replaces the current data-only `Obj
 - [x] These built-ins are **not constructable** (wrapped via `distinctConstructor`) with the standard writable / non-enumerable / configurable attributes.
 
 ### Tests
-- one `.io` per method; descriptor round-trips; `create(null)`; freeze/seal predicates on data & accessor props;
-  immutability helpers reject primitives gracefully.
+- [x] Grouped rather than one `.io` per method: `objectDefineProperty`, `objectReflection`, `objectCreate`,
+      `objectExtensions`, `objectSealFreeze`. `create(null)`, freeze/seal on data properties and on a getter-only
+      accessor, and graceful rejection of primitives are all covered.
+- [ ] Missing: an explicit descriptor round-trip (get → re-define → compare), `isSealed(primitive)`, `seal` on an
+      accessor, the `defineProperty`/`defineProperties` return value, and attribute / non-constructability
+      assertions for the new built-ins (`checkAllPrototypes.io` only checks `defineProperty` and `getPrototypeOf`).
 
 ---
 
@@ -172,16 +186,23 @@ C++ compiler (`NuXJS.cpp`), no VM changes beyond emitting the accessor-define pa
 
 - [x] **Getter/setter in object literals**: parse `get name(){}` / `set name(v){}` and emit accessor property
       definitions (§11.1.5), including all four duplicate/collision early errors.
-- [ ] **Reserved words as property keys** - already supported (`NuXJS.cpp:3603/3835`); add a confirming test.
+- [ ] **Reserved words as property keys** - implemented and verified, both as literal keys and after `.`, including
+      the strict future-reserved words. Only the confirming test is missing.
 - [ ] **Octal numeric literals**: `010` is still mis-lexed as `0` followed by a stray `10`. That *does* yield a
-      SyntaxError, which is the right verdict for the core grammar, but it arrives by accident and with a confusing
-      message; a clean diagnostic is all that is left. Octal *escapes* are done, and were **not** an ES5 change -
+      SyntaxError, which is the right verdict for the core grammar, but it arrives by accident and the message
+      depends on context (`Expected ',' or ')'` inside a call, `Syntax error` in a var initialiser); a clean
+      diagnostic is all that is left. Note that `tests/erroneous/badNumericLiterals.io` currently asserts the
+      accidental message, so it changes with the fix. Octal *escapes* are done, and were **not** an ES5 change -
       ES3 §7.8.4 has the identical core grammar and its own Annex B.1.2 - so they are rejected by the shared ES3
       lexer rather than behind `#if NUXJS_ES5` (see `docs/notes/ECMAScript Compatibility Notes.md`).
-- [ ] **Trailing commas** in object/array literals - already handled; add confirming tests.
-- [ ] **Whitespace/Unicode (lower priority, own sub-phase):** treat `﻿` as WhiteSpace anywhere (§7.2); accept
-      the full Zs set; allow line-continuation (`\`+LineTerminator) in string literals (§7.8.4); preserve/handle
-      Cf format-control characters per §7.1. These are the items flagged in `docs/notes/Todo.md`.
+- [ ] **Trailing commas** - implemented and verified for both forms. Arrays are covered by
+      `tests/conforming/ArrayLiteralHoleLength.io`; the object-literal case `{a:1,}` has no test.
+- [ ] **Whitespace/Unicode (lower priority, own sub-phase):** `Compiler::white()` accepts only space, `\f \n \r \t
+      \v`, U+00A0, U+2028 and U+2029. Missing: U+FEFF as WhiteSpace anywhere (§7.2); the rest of Zs (U+1680,
+      U+2000-U+200A, U+202F, U+205F, U+3000); line-continuation (`\`+LineTerminator) in string literals (§7.8.4),
+      today an explicit `\ continuation is not supported` error that `tests/erroneous/escapedLFNotAllowed.io`
+      asserts; Cf format-control characters as IdentifierPart (§7.1). The runtime skipper `eatStringWhite` has the
+      same gap, so `Number("\u30001")` is `NaN`. These are the items flagged in `docs/notes/Todo.md`.
 
 ### Tests
 - accessor object literals; octal rejection; reserved-word keys; BOM-as-whitespace; string line continuation.
@@ -198,8 +219,10 @@ The largest behavioral addition. Needs both parser (directive detection) and VM 
       substitution to skip substitution when strict (§10.4.3). *Partial:* a primitive/null receiver passed via
       `call`/`apply` is still coerced; see the deferral in `docs/notes/ECMAScript Compatibility Notes.md`.
 - [x] **Throw on silent failures** (the VM discarded the store-success bool at `SET_PROPERTY_OP`):
-      assignment to read-only / accessor-without-setter, assignment to undeclared identifier, and `delete` of a
-      non-configurable property all throw `TypeError`/`ReferenceError` in strict (§8.7.2, §11.4.1, §11.13.1).
+      assignment to read-only / accessor-without-setter, assignment to a property of a **primitive base** (the
+      §8.7.2 special `[[Put]]`, where the store lands on a transient wrapper and is therefore never kept),
+      assignment to undeclared identifier, and `delete` of a non-configurable property all throw
+      `TypeError`/`ReferenceError` in strict (§8.7.2, §11.4.1, §11.13.1).
 - [x] **Syntax restrictions**: `with` forbidden; duplicate parameter names; `eval`/`arguments` as binding/assignment
       targets; future reserved words; duplicate data properties in an object literal (§11.1.5); octal literals &
       escapes - all SyntaxErrors in strict (§12.10.1, §11.13.1, §7.8.3, §7.8.4).
@@ -214,7 +237,8 @@ The largest behavioral addition. Needs both parser (directive detection) and VM 
 One `.io` per rule under `tests/es5/`: `strictDirectivePrologue`, `strictThisBinding`, `strictAssignmentErrors`,
 `strictSyntaxRestrictions`, `strictEvalArguments`, `strictGlobalAssignment`, `strictReservedWords`,
 `strictArguments`, `strictFunctionPoison`, `strictEvalEnvironment`, `strictOctal`, `strictDuplicateProperties`,
-`globalConstantAttributes` (with an `es3only` twin for the ES3 attributes). Verified against V8 as a differential
+`strictPrimitiveBaseAssignment`, `globalConstantAttributes` (with an `es3only` twin for the ES3 attributes). All
+verified present. Verified against V8 as a differential
 oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `docs/specs`.
 
 ---
@@ -238,13 +262,16 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 
 - [ ] Array iteration: `forEach, map, filter, some, every, reduce, reduceRight, indexOf, lastIndexOf` (§15.4.4.14-22),
       each spec-accurate on callback args, `thisArg`, and **sparse** arrays (property-existence checks, not naive loops).
-- [ ] `Array.isArray` - present; verify against §15.4.3.2.
-- [ ] Generic behaviors: `sort` with no comparator (string compare) and generic over array-likes; `toLocaleString`
-      generic; `length` truncation respects non-configurable elements; `push/unshift/splice` refuse to extend when
-      `length` non-writable or object non-extensible (§15.4.4).
+      None of the nine exist today; this is the largest remaining user-visible gap.
+- [x] `Array.isArray` (§15.4.3.2) - verified: `arguments` and `{length:0}` are false, `Array.prototype` is true.
+      Needs a test.
+- [ ] Generic behaviors: `sort` with no comparator and `toLocaleString` are already correct and generic over
+      array-likes. Still broken: `push` succeeds on a non-extensible array, and `length` truncation ignores
+      non-configurable elements. Both need §15.4.5.1, so they land with the §1 array gap.
 - [x] `String.prototype.trim` with the full ES5 WhiteSpace + LineTerminator set (§15.5.4.20) - first
       `stdlibES5.js` feature, proving the pipeline. (`tests/es5/stringTrim.io`)
-- [ ] String character indices are non-writable, non-configurable own data properties (§15.5.5.2).
+- [x] String character indices are non-writable, non-configurable own data properties (§15.5.5.2) - already
+      conformant (`writable:false enumerable:true configurable:false`). Needs a test.
 
 ### Tests
 - iteration methods incl. sparse/`thisArg`/early-exit; `sort` no-comparator; `trim` unicode; string index immutability.
@@ -253,16 +280,20 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 
 ## 7. Number / Date / JSON / global refinements
 
-- [ ] `Number.prototype.toFixed / toExponential / toPrecision` with ES5 range checks + rounding (§15.7.4). Note the
-      existing `toFixed` full-precision TODO in `docs/notes/Todo.md`.
-- [ ] `Date.now` (§15.9.4.4); `Date.prototype.toISOString`/`toJSON` (present - verify genericity & non-finite → `null`);
-      `Date.parse` prioritizes ISO 8601 then falls back (§15.9.1.15, §15.9.4.2).
-- [ ] `Number.isNaN`/`isFinite` shims; `parseInt`/`parseFloat` whitespace & radix per ES5 (§15.1.2).
-- [ ] JSON reviver/replacer/space - present; verify against §15.12 and keep the depth-cap deviation documented.
-- [ ] Global `NaN`/`Infinity`/`undefined` read-only (§15.1.1).
+- [ ] `Number.prototype.toFixed / toExponential / toPrecision` (§15.7.4): ES5 range checks and rounding verified
+      correct. The one gap left is `toFixed` precision - `(1000000000000000128).toFixed(0)` loses the last digits
+      (the existing TODO in `docs/notes/Todo.md`).
+- [ ] `Date.now` (§15.9.4.4) - missing entirely. `toISOString`/`toJSON` work and non-finite → `null`, but `toJSON`
+      is not generic (explicit TODO at `stdlib.js:1002`). `Date.parse` handles the ISO date-time form but reads the
+      date-only form as local time where §15.9.1.15 says UTC, and has no legacy fallback (§15.9.4.2).
+- [ ] `Number.isNaN`/`isFinite` shims (ES6, not ES5.1). `parseInt`/`parseFloat` radix and no-octal behaviour already
+      match ES5 (§15.1.2); their whitespace handling pends §3's Zs work.
+- [x] JSON reviver/replacer/space (§15.12) - verified working, including array and function replacers, `space`
+      indenting and `toJSON` dispatch. The depth-cap deviation stays documented. Needs a test.
+- [x] Global `NaN`/`Infinity`/`undefined` read-only (§15.1.1) - landed in §4 via `stdlibES5.js`.
 - [ ] `Object.prototype.toString` → `[object Undefined]`/`[object Null]` for those receivers; `[object Arguments]`
-      for arguments objects (§15.2.4.2).
-- [ ] `for-in` over `null`/`undefined` yields an empty iteration rather than throwing (§12.6.4).
+      for arguments objects (§15.2.4.2). All three still report `[object Object]`.
+- [x] `for-in` over `null`/`undefined` yields an empty iteration rather than throwing (§12.6.4) - landed in §0.5.
 
 ### Tests
 - number formatting ranges/rounding; `Date.now`/ISO parse; global constants read-only; toString tags; for-in null.
