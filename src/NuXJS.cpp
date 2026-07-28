@@ -3155,7 +3155,9 @@ void Processor::innerRun() {
 					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
 					return;
 				}
-				sp[-1] = convertToObject(sp[-1], false);
+			#if !NUXJS_ES5
+				sp[-1] = convertToObject(sp[-1], false);	// 11.2.1 (5): es3 resolves the base; es5 keeps the primitive for 8.7.2
+			#endif
 				break;
 			}
 
@@ -3216,7 +3218,9 @@ void Processor::innerRun() {
 			#if NUXJS_ES5
 				// es5 semantics: [object, name, value] -> [junk / setter return]; the compiler always follows
 				// with POP_OP so a JS setter frame can deposit its (discarded) return value. (See makeAssignment.)
-				if (!o->updateOwnProperty(rt, sp[-1], sp[0])) {	// fast path: existing own writable data property (same cost as es3)
+				// 8.7.2 special [[Put]]: a primitive base boxes into a transient object, so a store is never kept.
+				const bool primitiveBase = !sp[-2].isObject();
+				if (primitiveBase || !o->updateOwnProperty(rt, sp[-1], sp[0])) {	// fast path: existing own writable data property (same cost as es3)
 					Value dummy;
 					Accessor* accessor;
 					const Flags flags = o->getPropertySlot(rt, sp[-1], &dummy, &accessor);
@@ -3226,7 +3230,7 @@ void Processor::innerRun() {
 							invokeFunction(accessor->set, 2, 1, o);	// ES5 8.12.5: the setter runs as an ordinary frame with the value as its argument
 							return;	// the following POP_OP discards the setter's return value after the frame returns
 						}	// no setter: silently ignored outside strict mode
-					} else if ((flags & READ_ONLY_FLAG) == 0 && o->isExtensible()) {
+					} else if (!primitiveBase && (flags & READ_ONLY_FLAG) == 0 && o->isExtensible()) {
 						stored = o->setOwnProperty(rt, sp[-1], sp[0]);	// 8.12.4 [[CanPut]]: a new own property requires extensibility
 					}
 					if (!stored && code->isStrict()) {
@@ -4442,7 +4446,9 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			assert(op.primitiveOutput);
 			xr = operand(op);
 			if (xr.t == ExpressionResult::PROPERTY) {
-				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
+			#if !NUXJS_ES5
+				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);	// es5: 11.2.1 already checked the base and must not box it
+			#endif
 				emit(Processor::REPUSH_2_OP);
 			}
 			makeRValue(xr, true);
@@ -4529,7 +4535,9 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				return false;
 			}
 			if (xr.t == ExpressionResult::PROPERTY) {
-				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
+			#if !NUXJS_ES5
+				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);	// es5: 11.2.1 already checked the base and must not box it
+			#endif
 				emit(Processor::REPUSH_2_OP);
 			}
 			makeRValue(xr, true);
@@ -4603,9 +4611,11 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 		case ASSIGNMENT: {
 			assert(!op.primitiveInput);
 			assert(!op.primitiveOutput);
+		#if !NUXJS_ES5
 			if (xr.t == ExpressionResult::PROPERTY) {
 				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
 			}
+		#endif
 			const ExpressionResult rxr = makeRValue(operand(op), false);
 			makeAssignment(xr);
 			xr = rxr;
@@ -4618,7 +4628,9 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			const Processor::Opcode primitiveOp = (op.vmOp == Processor::ADD_OP
 					? Processor::OBJ_TO_PRIMITIVE_OP : Processor::OBJ_TO_NUMBER_OP);
 			if (xr.t == ExpressionResult::PROPERTY) {
-				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
+			#if !NUXJS_ES5
+				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);	// es5: 11.2.1 already checked the base and must not box it
+			#endif
 				emit(Processor::REPUSH_2_OP);
 			}
 			makeRValue(xr, true, primitiveOp);
