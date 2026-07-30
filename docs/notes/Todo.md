@@ -6,6 +6,13 @@ Run-time
 
 	* Make gc async/incremental in the sense that you actively and repeatdly call it until it is done (doesn't block native cpu, even if it "blocks" vm cpu).
 
+	* CRASH (es5 only, found 2026-07-30): a strict function that references `arguments` and throws an exception caught by JS segfaults the process on the next sweep. Reproducer and analysis in tests/es5/strictArgumentsThrowUseAfterFree.io, disabled with `*` because it kills the harness rather than failing a section.
+		- chain: (1) FunctionScope's ctor eagerly builds a non-mapped Arguments for a strict body that mentions `arguments` (10.6) and nothing else references it; (2) throwVirtualException resumes at firstCatcher->frame without popping the frames in between, so Scope::leave() never runs and those FunctionScopes are abandoned instead of destroyed; (3) the sweep destroys both, and ~FunctionScope calls arguments->detach() on an Arguments that may already be gone, dereferencing poison via Scope::getLocalsPointer().
+		- root hazard is general: a GC object's destructor touching another GC object during sweep has no ordering guarantee. Latent in ES3, which never builds the eager Arguments, so es3 is unaffected and its binary must stay byte-identical.
+		- fix A (surgical, es5-only): the non-mapped Arguments always has scope == 0, so it never needs detaching. Let FunctionScope record that itself rather than asking the possibly-dead object, and skip the detach. Leaves the frame leak in (2) alone.
+		- fix B (principled): make throwVirtualException pop frames down to the catcher's frame, calling Scope::leave() on each, so teardown is deterministic instead of left to the GC. Also fixes a real scope leak ES3 has today, but it is shared code, so the es3 binary changes unless the fix is #if-guarded.
+		- blocks 15.4.4.14-22 (Array iteration): those methods must be strict so a null `this` survives to the ToObject step, and must read `arguments` so their `length` stays 1. That combination is exactly the trigger. Implementation is done and V8-verified on local branch wip/array-iteration, waiting on this.
+
 	* is the logic correct when changing array length containing a few undeletable elements?
 
 	* exception what() should be the one doing the conversion job etc (because exception constructors should never have a risk of throwing), but how can we do that without a heap?

@@ -209,7 +209,12 @@ C++ compiler (`NuXJS.cpp`), no VM changes beyond emitting the accessor-define pa
 
 ---
 
-## 4. Strict mode - **DONE**
+## 4. Strict mode - **DONE, with one open crash**
+
+> A strict function that references `arguments` and throws an exception caught by JS segfaults the process on the
+> next sweep (found 2026-07-30). Reproducer in `tests/es5/strictArgumentsThrowUseAfterFree.io` (disabled), analysis
+> and two candidate fixes in `docs/notes/Todo.md`. It blocks §6 array iteration, whose methods must be both strict
+> and `arguments`-reading.
 
 The largest behavioral addition. Needs both parser (directive detection) and VM (make silent failures throw).
 
