@@ -8,7 +8,7 @@
 
 	@preserve: trim,preventExtensions,isExtensible,defineProperties,defineOwnProperty,get,set
 	@preserve: getOwnPropertyDescriptor,keys,getOwnPropertyNames,createObject,create
-	@preserve: seal,freeze,isSealed,isFrozen,forEach,map,filter,some,every,reduce,reduceRight,bind,bindFunction
+	@preserve: seal,freeze,isSealed,isFrozen,push,forEach,map,filter,some,every,reduce,reduceRight,bind,bindFunction
 */
 (function (support) {
 
@@ -107,6 +107,19 @@ method(String.prototype, "trim", function trim() {
 // `prototype`, a [[Construct]] that constructs the target, and a [[HasInstance]] that defers to it).
 method(Function.prototype, "bind", function bind(thisArg) {
 	return support.bindFunction(this, thisArg, arguments, 1);
+});
+
+// 15.4.4.7: ES5 passes Throw = true to every [[Put]] push makes, where ES3 15.4.4.7 had no Throw flag at all. Being
+// strict is what turns a refused store into the required TypeError, and it also stops `length` from running ahead of
+// an element that was never stored, on a non-extensible array or past a read-only length.
+method(Array.prototype, "push", function push(item) {
+	var o = toObject(this, "push"), n = o.length >>> 0, argv = arguments;
+	for (var i = 0; i < argv.length; ++i) {
+		o[n] = argv[i];
+		++n;
+	}
+	o.length = n;
+	return n;
 });
 
 /*

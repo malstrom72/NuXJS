@@ -1988,13 +1988,24 @@ bool Function::hasInstance(Runtime& rt, Object* object) const {
 
 /* --- JSArray --- */
 
-JSArray::JSArray(GCList& gcList) : super(gcList), length(0), denseVector(&gcList.getHeap()) { }
-JSArray::JSArray(GCList& gcList, UInt32 initialLength)
-		: super(gcList), length(initialLength), denseVector(initialLength, &gcList.getHeap()) {
+JSArray::JSArray(GCList& gcList) : super(gcList), length(0)
+#if NUXJS_ES5
+		, lengthWritable(true)
+#endif
+		, denseVector(&gcList.getHeap()) { }
+JSArray::JSArray(GCList& gcList, UInt32 initialLength) : super(gcList), length(initialLength)
+#if NUXJS_ES5
+		, lengthWritable(true)
+#endif
+		, denseVector(initialLength, &gcList.getHeap()) {
 	std::fill(denseVector.begin(), denseVector.end(), UNDEFINED_VALUE);
 }
-JSArray::JSArray(GCList& gcList, UInt32 initialLength, const Value* initialElements) : super(gcList)
-		, length(initialLength), denseVector(initialElements, initialElements + initialLength, &gcList.getHeap()) { }
+JSArray::JSArray(GCList& gcList, UInt32 initialLength, const Value* initialElements)
+		: super(gcList), length(initialLength)
+#if NUXJS_ES5
+		, lengthWritable(true)
+#endif
+		, denseVector(initialElements, initialElements + initialLength, &gcList.getHeap()) { }
 
 const String* JSArray::getClassName() const { return &A_RRAY_STRING; }
 JSArray* JSArray::asArray() { return this; }
@@ -2037,31 +2048,117 @@ Flags JSArray::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 	}
 	if (key.equalsString(LENGTH_STRING)) {
 		*v = length;
+	#if NUXJS_ES5
+		// 15.4.5.2: { [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false } until made read-only.
+		return EXISTS_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG | (lengthWritable ? 0 : READ_ONLY_FLAG);
+	#else
 		return HIDDEN_CONST_FLAGS;
+	#endif
 	}
 	return super::getOwnProperty(rt, key, v);
 }
 
 #if NUXJS_ES5
-bool JSArray::defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow) {
-	UInt32 index;
-	if (key.toArrayIndex(index) || key.equalsString(LENGTH_STRING)) {
-		// Full 15.4.5.1 (length maintenance and 8.12.9 validation for indices and length) is deferred. A
-		// data / generic descriptor maps to setOwnProperty with attribute flags, matching the ES3
-		// defineProperty shim so existing behaviour does not regress; an accessor cannot represent an array
-		// element or length in the dense-vector model, so reject it.
-		if (desc.isAccessor()) {
-			if (doThrow) {
-				ScriptException::throwError(rt.getHeap(), TYPE_ERROR
-						, "accessor array index / length [[DefineOwnProperty]] is not yet supported");
+/*
+	Deletes elements from the top down, exactly as 15.4.5.1 step 12 does, and answers the length actually reached.
+	The spec walks index by index and stops at the first element it cannot delete; since every dense element is
+	configurable, only the sparse table can block, so scanning it for the highest non-deletable index in range gives
+	the identical answer without walking a range that may be billions wide.
+*/
+UInt32 JSArray::truncateTo(Runtime& rt, UInt32 newLength) {
+	(void)rt;
+	UInt32 reached = newLength;
+	if (completeObject != 0) {
+		for (Table::Bucket* bucket = completeObject->getFirst(); bucket != 0
+				; bucket = completeObject->getNext(bucket)) {	// find the blocker before deleting anything
+			UInt32 i;
+			if (Value(bucket->getKey()).toArrayIndex(i) && i >= reached
+					&& (bucket->getFlags() & DONT_DELETE_FLAG) != 0) {
+				reached = i + 1;
 			}
-			return false;
 		}
-		const Flags f = EXISTS_FLAG
-				| (desc.has(PropertyDescriptor::HAS_WRITABLE) && desc.writable ? 0 : READ_ONLY_FLAG)
-				| (desc.has(PropertyDescriptor::HAS_ENUMERABLE) && desc.enumerable ? 0 : DONT_ENUM_FLAG)
-				| (desc.has(PropertyDescriptor::HAS_CONFIGURABLE) && desc.configurable ? 0 : DONT_DELETE_FLAG);
-		return setOwnProperty(rt, key, desc.has(PropertyDescriptor::HAS_VALUE) ? desc.value : Value::UNDEFINED, f);
+		for (Table::Bucket* bucket = completeObject->getFirst(); bucket != 0;) {
+			Table::Bucket* const next = completeObject->getNext(bucket);
+			UInt32 i;
+			if (Value(bucket->getKey()).toArrayIndex(i) && i >= reached) {
+				completeObject->erase(bucket);
+			}
+			bucket = next;
+		}
+	}
+	if (reached < denseVector.size()) {
+		denseVector.resize(reached);
+	}
+	length = reached;
+	return reached;
+}
+
+// 15.4.5.1 (3). `length` is not a table property here, so the default 8.12.9 is applied to it by hand; it is
+// always a non-configurable, non-enumerable data property, which collapses most of that algorithm.
+bool JSArray::defineLength(Runtime& rt, const PropertyDescriptor& desc, bool doThrow) {
+	const bool rejectEnumerable = desc.has(PropertyDescriptor::HAS_ENUMERABLE) && desc.enumerable;
+	const bool rejectConfigurable = desc.has(PropertyDescriptor::HAS_CONFIGURABLE) && desc.configurable;
+	const bool wantWritable = !desc.has(PropertyDescriptor::HAS_WRITABLE) || desc.writable;
+	if (desc.isAccessor() || rejectEnumerable || rejectConfigurable || (!lengthWritable && wantWritable)) {
+		return rejectDefine(rt, doThrow);	// 8.12.9 (7) / (9) / (10.a.i): non-configurable, so none of these may change
+	}
+	if (!desc.has(PropertyDescriptor::HAS_VALUE)) {	// 3.1: attributes only
+		lengthWritable = lengthWritable && wantWritable;
+		return true;
+	}
+	const double raw = desc.value.toDouble();		// 3.3 / 3.4: ToUint32 must round-trip through ToNumber
+	if (!(raw >= 0.0 && raw <= 4294967295.0) || raw != static_cast<double>(static_cast<UInt32>(raw))) {
+		ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
+	}
+	const UInt32 newLen = static_cast<UInt32>(raw);
+	if (newLen < length && !lengthWritable) {
+		return rejectDefine(rt, doThrow);	// 3.7
+	}
+	const UInt32 reached = (newLen < length ? truncateTo(rt, newLen) : (length = newLen));
+	lengthWritable = lengthWritable && wantWritable;	// 3.9 / 3.13: clearing it is deferred until after the deletes
+	return (reached == newLen ? true : rejectDefine(rt, doThrow));	// 3.12.c.4
+}
+
+// 15.4.5.1 (4.3): the default 8.12.9 applied to one element. A dense element carries the standard attributes
+// implicitly, so anything that needs real attributes, or an accessor, first moves into the table.
+bool JSArray::defineElement(Runtime& rt, const Value& key, UInt32 index, const PropertyDescriptor& desc) {
+	const bool staysStandard = !desc.isAccessor()
+			&& (!desc.has(PropertyDescriptor::HAS_WRITABLE) || desc.writable)
+			&& (!desc.has(PropertyDescriptor::HAS_ENUMERABLE) || desc.enumerable)
+			&& (!desc.has(PropertyDescriptor::HAS_CONFIGURABLE) || desc.configurable);
+	if (index < denseVector.size()) {
+		if (staysStandard) {
+			if (desc.has(PropertyDescriptor::HAS_VALUE)) {
+				denseVector[index] = desc.value;
+			}
+			return true;
+		}
+		const Value existing = denseVector[index];	// evict it, keeping the value the descriptor may not restate
+		sliceDenseVector(rt, key);
+		getCompleteObject(rt)->setOwnProperty(rt, key, existing, STANDARD_FLAGS);
+	}
+	return getCompleteObject(rt)->defineOwnProperty(rt, key, desc, false);
+}
+
+bool JSArray::defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow) {
+	if (key.equalsString(LENGTH_STRING)) {
+		return defineLength(rt, desc, doThrow);
+	}
+	UInt32 index;
+	if (key.toArrayIndex(index)) {
+		Value dummy;
+		const bool isNew = (getOwnProperty(rt, key, &dummy) == NONEXISTENT);
+		if ((index >= length && !lengthWritable)	// 4.2
+				|| (isNew && !extensible)) {		// 8.12.9 (3), which the complete object cannot see for us
+			return rejectDefine(rt, doThrow);
+		}
+		if (!defineElement(rt, key, index, desc)) {
+			return rejectDefine(rt, doThrow);				// 4.4
+		}
+		if (index >= length) {
+			length = index + 1;						// 4.5
+		}
+		return true;
 	}
 	return super::defineOwnProperty(rt, key, desc, doThrow);
 }
@@ -2096,6 +2193,17 @@ bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value&
 	if (key.toArrayIndex(index)) {
 		if ((flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) == 0) {
 			assert(flags == STANDARD_FLAGS);
+		#if NUXJS_ES5
+			// A dense element always exists, so only the sparse range can be creating a NEW own property here,
+			// which 15.4.5.1 (4.2) refuses past a read-only length and 8.12.4 refuses on a non-extensible array.
+			if (index >= denseVector.size()) {
+				Value dummy;
+				if ((index >= length && !lengthWritable)
+						|| (!extensible && getOwnProperty(rt, key, &dummy) == NONEXISTENT)) {
+					return true;	// `result` stays false: refused outright rather than delegated upwards
+				}
+			}
+		#endif
 			result = setElement(rt, index, v);
 			return true;
 		}
@@ -2103,6 +2211,11 @@ bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value&
 		return false;
 	}
 	if (key.equalsString(LENGTH_STRING)) {
+	#if NUXJS_ES5
+		if (!lengthWritable) {
+			return true;	// `result` stays false: 15.4.5.1 made length read-only
+		}
+	#endif
 		const double rawLength = v.toDouble();
 		if (!(rawLength >= 0.0 && rawLength <= 4294967295.0)) {	// NaN-safe range check *before* the cast (avoids UB float->UInt32 cast)
 			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
@@ -2111,7 +2224,17 @@ bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value&
 		if (rawLength != static_cast<double>(coercedLength)) {
 			ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
 		}
+	#if NUXJS_ES5
+		// 15.4.5.1 (12): shrinking stops below the highest element that refuses to go, and reports the failure.
+		if (coercedLength >= length) {
+			length = coercedLength;
+			result = true;
+		} else {
+			result = (truncateTo(rt, coercedLength) == coercedLength);
+		}
+	#else
 		result = updateLength(coercedLength);
+	#endif
 		return true;
 	}
 	return false;
@@ -2141,6 +2264,11 @@ bool JSArray::setElement(Runtime& rt, UInt32 index, const Value& v) {
 					++moveIndex;
 				}
 			}
+		#if NUXJS_ES5
+			else {	// it carries real attributes, so the table has to apply them (read-only, accessor, ...)
+				return completeObject->updateOwnProperty(rt, String::fromInt(heap, index), v);
+			}
+		#endif
 		}
 		return true;
 	}
