@@ -209,7 +209,7 @@ static const String WRITABLE_STRING("writable"), ENUMERABLE_STRING("enumerable")
 		, GET_STRING("get"), SET_STRING("set");
 static const String CANNOT_ASSIGN_STRING(" cannot be assigned in strict mode")
 		, CANNOT_DELETE_STRING(" cannot be deleted in strict mode");
-static const String CALLER_STRING("caller");
+static const String CALLER_STRING("caller"), BOUND_STRING("bound ");
 #endif
 
 /* --- Utilities --- */
@@ -1963,6 +1963,10 @@ Value Function::construct(Runtime& rt, Processor& processor, UInt32 argc, const 
 	return invoke(rt, processor, argc, argv, thisObject);
 }
 
+#if NUXJS_ES5
+void Function::getConstructPrototype(Runtime& rt, Value* v) const { getProperty(rt, &PROTOTYPE_STRING, v); }
+#endif
+
 bool Function::hasInstance(Runtime& rt, Object* object) const {
 	if (object == 0) {
 		return false;
@@ -3081,7 +3085,11 @@ void Processor::newOperation(const Int32 argc) {
 	Function* f = asFunction(sp[-argc]);
 	if (f != 0) { // FIX : sub
 		Value v(UNDEFINED_VALUE);
+	#if NUXJS_ES5
+		f->getConstructPrototype(rt, &v);
+	#else
 		f->getProperty(rt, &PROTOTYPE_STRING, &v);
+	#endif
 		Object* prototype = v.asObject();
 		Int32 counter = 0;
 		for (Object* p = prototype; p != 0; p = p->getPrototype(rt)) {
@@ -5749,6 +5757,77 @@ Value SeparateConstructorFunction::construct(Runtime& rt, Processor& processor, 
 	return constructorFunction->invoke(rt, processor, argc, argv, thisObject);
 }
 
+#if NUXJS_ES5
+/**
+	15.3.4.5: the function object Function.prototype.bind returns. It has no [[Code]] and no `prototype` property;
+	calling or constructing it forwards to the target with the bound arguments prepended, and instanceof defers to
+	the target entirely. Constructing ignores the bound this, per 15.3.4.5.2.
+**/
+struct BoundFunction : public ExtensibleFunction {
+	typedef ExtensibleFunction super;
+	BoundFunction(GCList& gcList, Function* target, const Value& boundThis, const Vector<Value>& boundArgs)
+			: super(gcList), target(target), boundThis(boundThis), boundArgs(boundArgs) { assert(target != 0); }
+	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
+	virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
+	virtual bool hasInstance(Runtime& rt, Object* object) const { return target->hasInstance(rt, object); }
+	virtual void getConstructPrototype(Runtime& rt, Value* v) const { target->getConstructPrototype(rt, v); }
+
+	virtual void constructCompleteObject(Runtime& rt) const;
+	void concatArguments(Vector<Value>& args, UInt32 argc, const Value* argv) const;
+
+	Function* const target;
+	const Value boundThis;
+	const Vector<Value> boundArgs;
+
+	virtual void gcMarkReferences(Heap& heap) const {
+		gcMark(heap, target);
+		gcMark(heap, boundThis);
+		gcMark(heap, boundArgs.begin(), boundArgs.end());
+		super::gcMarkReferences(heap);
+	}
+};
+
+// 15.3.4.5.1 (4) / 15.3.4.5.2 (4): the bound arguments, then the ones this call supplied.
+void BoundFunction::concatArguments(Vector<Value>& args, UInt32 argc, const Value* argv) const {
+	args.resize(boundArgs.size() + argc);
+	std::copy(boundArgs.begin(), boundArgs.end(), args.begin());
+	std::copy(argv, argv + argc, args.begin() + boundArgs.size());
+}
+
+Value BoundFunction::invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object*) {
+	Heap& heap = rt.getHeap();
+	Vector<Value> args(&heap);
+	concatArguments(args, argc, argv);
+	// The receiver is boxed per call, exactly as apply / call do, so a primitive boundThis behaves the same way
+	// there as here. See the deferral in docs/notes/ECMAScript Compatibility Notes.md.
+	return target->invoke(rt, processor, args.size(), args.begin(), boundThis.toObjectOrNull(heap, true));
+}
+
+Value BoundFunction::construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+	Vector<Value> args(&rt.getHeap());
+	concatArguments(args, argc, argv);
+	return target->construct(rt, processor, args.size(), args.begin(), thisObject);	// boundThis does not apply
+}
+
+void BoundFunction::constructCompleteObject(Runtime& rt) const {
+	Heap& heap = rt.getHeap();
+	Value v(UNDEFINED_VALUE);
+	target->getProperty(rt, &LENGTH_STRING, &v);
+	// 15.3.4.5 (15): what is left of the target's arity once the bound arguments have eaten into it.
+	completeObject->setOwnProperty(rt, &LENGTH_STRING
+			, std::max(v.toInt() - static_cast<Int32>(boundArgs.size()), 0), HIDDEN_CONST_FLAGS);
+	v = UNDEFINED_VALUE;
+	target->getProperty(rt, &NAME_STRING, &v);
+	completeObject->setOwnProperty(rt, &NAME_STRING
+			, new(heap) String(heap.managed(), BOUND_STRING, *v.toString(heap)), DONT_ENUM_FLAG);
+	// 15.3.4.5 (20-21): caller and arguments are poison pills whatever the target is, strict or not.
+	Accessor* poison = new(heap) Accessor(heap.managed(), rt.getThrowTypeErrorFunction(), rt.getThrowTypeErrorFunction());
+	const Flags pillFlags = EXISTS_FLAG | ACCESSOR_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG;
+	completeObject->defineAccessor(completeObject->insert(&CALLER_STRING), poison, pillFlags);
+	completeObject->defineAccessor(completeObject->insert(&ARGUMENTS_STRING), poison, pillFlags);
+}
+#endif
+
 void SeparateConstructorFunction::constructCompleteObject(Runtime& rt) const {
 	Object* templateFunction = regularFunction;
 	if (constructorFunction != 0) {
@@ -5839,6 +5918,34 @@ struct Support {
 		}
 		return UNDEFINED_VALUE;
 	}
+
+#if NUXJS_ES5
+	// 15.3.4.5 Function.prototype.bind, called from stdlibES5.js as bindFunction(target, thisArg, arguments, 1).
+	// The argument-flattening loop mirrors callWithArgs above; sharing one helper compiles to a slightly different
+	// es3 binary, and keeping that byte-identical outranks the duplication.
+	static Value bindFunction(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+		Heap& heap = rt.getHeap();
+		Function* target = (argc > 0 ? argv[0].asFunction() : 0);
+		if (target == 0) {
+			ScriptException::throwError(heap, TYPE_ERROR, "Function.prototype.bind called on non-function");
+		}
+		Vector<Value> boundArgs(0, &heap);
+		Object* arrayObject = (argc > 2 ? argv[2].toObjectOrNull(heap, false) : 0);
+		if (arrayObject != 0) {
+			Value v;
+			if (arrayObject->getProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) {
+				const Int32 offset = (argc > 3 ? argv[3].toInt() : 0);
+				const UInt32 length = static_cast<UInt32>(std::max(v.toInt() - offset, 0));
+				boundArgs.resize(length);
+				for (UInt32 i = 0; i < length; ++i) {
+					boundArgs[i] = UNDEFINED_VALUE;
+					arrayObject->getProperty(rt, i + offset, &boundArgs[i]);
+				}
+			}
+		}
+		return new(heap) BoundFunction(heap.managed(), target, (argc > 1 ? argv[1] : UNDEFINED_VALUE), boundArgs);
+	}
+#endif
 
 	static Value defineProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		bool success = false;
@@ -6120,7 +6227,7 @@ static struct {
 #if NUXJS_ES5
 	, { "preventExtensions", Support::preventExtensions }, { "isExtensible", Support::isExtensible }
 	, { "throwTypeError", Support::throwTypeError }
-	, { "defineOwnProperty", Support::defineOwnProperty }
+	, { "defineOwnProperty", Support::defineOwnProperty }, { "bindFunction", Support::bindFunction }
 	, { "getOwnPropertyDescriptor", Support::getOwnPropertyDescriptor }
 	, { "getOwnPropertyNames", Support::getOwnPropertyNames }, { "createObject", Support::createObject }
 #endif

@@ -247,9 +247,13 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 
 ## 5. Function semantics
 
-- [ ] `Function.prototype.bind` → a `BoundFunction` with correct partial application, `[[Construct]]` behavior,
-      `length = max(0, target.length - bound args)`, and `name = "bound " + target.name` (§15.3.4.5). Prefer a small
-      native helper wrapped by `stdlib.js`, consistent with how `apply`/`call` are done.
+- [x] `Function.prototype.bind` → a native `BoundFunction` (§15.3.4.5) with partial application, a `[[Construct]]`
+      that constructs the target and ignores the bound `this`, a `[[HasInstance]]` that defers to the target, no
+      `prototype` property, `length = max(0, target.length - bound args)` and the poison-pill `caller`/`arguments`.
+      A `support.bindFunction` hook wrapped by `stdlibES5.js`, like `apply`/`call`. `new` needed one new seam:
+      `getConstructPrototype`, because the object a `new` expression creates takes its prototype from the callee,
+      and a bound function has none. `name` is a NuXJS extension (ES5.1 §15.3.5 has no such property) set to
+      `"bound " + target.name` to match V8. (`tests/es5/functionBind.io`)
 - [ ] Function `length`/`name` become read-only/non-enumerable; `prototype` non-enumerable (§15.3.5).
 - [ ] Named `FunctionExpression` binding lives in its own declarative environment (§13) so it doesn't leak via
       `Object.prototype`.
