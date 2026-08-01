@@ -72,15 +72,14 @@
 < F
 < 2
 -
-// DEVIATION (deferred): full array-index / length [[DefineOwnProperty]] (15.4.5.1) is not yet implemented.
-// A data descriptor still works (mapped to the ES3 set-with-attributes path); only an accessor on an index or
-// length is rejected. See docs/notes/ECMAScript Compatibility Notes.md.
+// Arrays run the real 15.4.5.1, so an accessor on an index works too. Length maintenance, truncation and every
+// reject path live in tests/es5/arrayDefineOwnProperty.io.
 > var arr = [1, 2, 3]; Object.defineProperty(arr, "0", { value: 9, writable: true, enumerable: true, configurable: true });
 > print(arr[0]); print(arr.length)
 < 9
 < 3
-> Object.defineProperty(arr, "length", { value: 1 }); print(arr.length)
+> var arr = [1, 2, 3]; Object.defineProperty(arr, "length", { value: 1 }); print(arr.length)
 < 1
-> try { Object.defineProperty([1], "1", { get: function () { return 5; } }); } catch (e) { print(e.name) }
-< TypeError
+> var arr = [1]; Object.defineProperty(arr, "1", { get: function () { return 5; } }); print(arr[1] + " " + arr.length)
+< 5 2
 -

@@ -72,6 +72,12 @@ If a test needs any of these, it is outside ES5.1 scope - do not implement them 
 - Trailing commas in function parameter lists and call arguments (ES2017).
 - `RegExp` `y`/`u`/`s` flags, named groups, lookbehind.
 
+### `Object.isFrozen` on an empty non-extensible array
+§15.2.3.12 returns **false** as soon as any own data property is writable. An array's `length` starts writable
+(§15.4.5.2) and `Object.preventExtensions` does not change that, so `Object.isFrozen(Object.preventExtensions([]))`
+is `false` under ES5.1. V8 answers `true`, apparently treating an empty non-extensible array's `length` as fixed.
+Verified in node; `Object.freeze([])` is `true` in both, because freeze clears the writable flag explicitly.
+
 ### Function `length` is non-configurable, and `name` is not an ES5.1 property
 §15.3.5.1 gives every function's `length` the attributes { [[Writable]]: false, [[Enumerable]]: false,
 [[Configurable]]: **false** }. ES2015 made it configurable, so V8 reports `configurable: true` and lets you

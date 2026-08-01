@@ -122,9 +122,11 @@ Rules for this implementation:
 - [x] `getOwnPropertySlot` returns flags plus the `Accessor*`, enough to rebuild a descriptor for reflection.
 
 Gaps this section leaves open (pre-existing, not regressions; the array ones overlap §6):
-- [ ] `JSArray::defineOwnProperty` (§15.4.5.1): no 8.12.9 validation on indices or `length`, absent attributes are
-      forced false, an accessor on an index is rejected. Deviation documented in `tests/es5/objectDefineProperty.io`.
-- [ ] Array `length` reports `writable: false`; §15.4.5.2 requires true, which also makes `isFrozen([])` wrong.
+- [x] `JSArray::defineOwnProperty` implements §15.4.5.1: length maintenance, per-index 8.12.9 validation, accessors
+      on indices, and truncation that deletes from the top down and stops below a non-deletable element.
+      (`tests/es5/arrayDefineOwnProperty.io`)
+- [x] Array `length` now reports `writable: true` until cleared (§15.4.5.2), tracked by its own flag so
+      `defineProperty(a, "length", {writable: false})` sticks and blocks any later growth or shrink.
 - [ ] `Arguments` has no `defineOwnProperty` override and reports mapped indices non-enumerable (§10.6).
 
 ### VM wiring
@@ -146,8 +148,10 @@ Gaps this section leaves open (pre-existing, not regressions; the array ones ove
       (`tests/es5/accessorReentrancy.io`)
 - [x] `defineOwnProperty` data→accessor and accessor→data transitions, attribute toggling, non-configurable
       rejection. (`tests/es5/objectDefineProperty.io`)
-- [ ] Still uncovered: `defineProperty` on a non-extensible object (§8.12.9 step 3 has no test at all), enumerable
-      `false→true` on a configurable property, accessor→accessor partial redefine, and arrays under seal/freeze.
+- [x] §8.12.9 step 3 is now covered, and was genuinely broken: a lazy object forwards to its complete object, which
+      carries its own extensible flag, so `preventExtensions` then `defineProperty` succeeded on functions as well as
+      arrays. Arrays under seal/freeze are covered too.
+- [ ] Still uncovered: enumerable `false→true` on a configurable property, and accessor→accessor partial redefine.
 
 **Gate met:** full `both` build green (1222 test files) and the es3 release binary stayed **byte-identical**.
 
@@ -280,9 +284,10 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
       (`tests/es5/arrayIteration.io`, `arrayReduce.io`, `arraySearch.io`)
 - [x] `Array.isArray` (§15.4.3.2) - verified: `arguments` and `{length:0}` are false, `Array.prototype` is true.
       Needs a test.
-- [ ] Generic behaviors: `sort` with no comparator and `toLocaleString` are already correct and generic over
-      array-likes. Still broken: `push` succeeds on a non-extensible array, and `length` truncation ignores
-      non-configurable elements. Both need §15.4.5.1, so they land with the §1 array gap.
+- [x] Generic behaviors: `sort` with no comparator and `toLocaleString` were already correct and generic over
+      array-likes. `length` truncation now respects non-configurable elements, and `push` is overridden in
+      `stdlibES5.js` to be strict, which is what supplies §15.4.4.7's Throw flag.
+- [ ] `unshift` and `splice` still pass no Throw flag (§15.4.4.13 / §15.4.4.12), so a refused store is silent there.
 - [x] `String.prototype.trim` with the full ES5 WhiteSpace + LineTerminator set (§15.5.4.20) - first
       `stdlibES5.js` feature, proving the pipeline. (`tests/es5/stringTrim.io`) Its CheckObjectCoercible guard was
       dead until it moved into the strict block: a non-strict built-in never sees a null `this`.

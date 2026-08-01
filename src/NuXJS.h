@@ -863,7 +863,11 @@ template<class SUPER> class LazyJSObject : public SUPER {
 		// Objects with no dense storage of their own (functions, errors, arguments) define into the complete
 		// object. JSArray overrides this because its indexed elements and length are not ordinary table entries.
 		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow) {
-			return getCompleteObject(rt)->defineOwnProperty(rt, key, desc, doThrow);
+			JSObject* const complete = getCompleteObject(rt);
+			if (!this->isExtensible()) {
+				complete->preventExtensions();	// 8.12.9 (3) is checked on the table, which has its own flag
+			}
+			return complete->defineOwnProperty(rt, key, desc, doThrow);
 		}
 		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const {
 			getCompleteObject(rt)->collectOwnPropertyNames(rt, out);	// materializes name/length/prototype etc. into the table
@@ -900,7 +904,7 @@ class JSArray : public LazyJSObject<Object> {
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
 	#if NUXJS_ES5
-		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);	// index/length (15.4.5.1) not yet implemented; named properties delegate to the complete object
+		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);	// 15.4.5.1
 		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;
 	#endif
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
@@ -915,7 +919,15 @@ class JSArray : public LazyJSObject<Object> {
 		virtual void constructCompleteObject(Runtime& rt) const;
 		void sliceDenseVector(Runtime& rt, const Value& key);
 		bool setOwnPropertyInternal(Runtime& rt, const Value& key, const Value& v, Flags flags, bool& result);
+	#if NUXJS_ES5
+		bool defineLength(Runtime& rt, const PropertyDescriptor& desc, bool doThrow);					// 15.4.5.1 (3)
+		bool defineElement(Runtime& rt, const Value& key, UInt32 index, const PropertyDescriptor& desc);	// 15.4.5.1 (4.3)
+		UInt32 truncateTo(Runtime& rt, UInt32 newLength);	// deletes from the top down, stopping below a non-deletable element, and answers the length reached
+	#endif
 		UInt32 length;
+	#if NUXJS_ES5
+		bool lengthWritable;	// 15.4.5.2: `length` starts writable, and only [[DefineOwnProperty]] can clear it
+	#endif
 		Vector<Value> denseVector;
 		virtual void gcMarkReferences(Heap& heap) const {
 			const_cast<JSArray*>(this)->denseVector.shrink(); // FIX : split into two different gc-things? it really *is* different to just mark stuff and actively shrink / compress stuff
