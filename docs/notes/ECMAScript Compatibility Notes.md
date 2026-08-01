@@ -18,7 +18,15 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   frame's `this` as an object pointer, a *primitive* or *null* receiver passed via `Function.prototype.call` /
   `apply` is still coerced (a primitive is boxed, `null` becomes `undefined`) rather than passed through verbatim
   as ES5 strict requires. Full fidelity needs `this` to be a value, not an object pointer; tracked for a later
-  commit.
+  commit. One visible consequence: `Object.prototype.toString.call(null)` answers `[object Undefined]` where
+  15.2.4.2 step 2 wants `[object Null]`, because the method cannot tell a `null` receiver from an `undefined` one.
+  Every other tag in 15.2.4.2 is exact, `[object Arguments]` and `[object Undefined]` included.
+
+- **`Date.parse` accepts no legacy formats.** 15.9.4.2 requires the 15.9.1.15 ISO format and says an implementation
+  *may* fall back to other heuristics for anything else. NuXJS does not, so
+  `Date.parse("Mon, 25 Dec 1995 13:30:00 GMT")` is `NaN` where V8 returns a time value. Conformant, but worth
+  knowing when porting code. Separately, a *date-only* ISO string is read as local time where 15.9.1.15 says UTC;
+  that one is a real bug, tracked in `docs/notes/Todo.md`.
 
 - **JSON nesting depth is bounded.** `JSON.parse` / `JSON.stringify` cap nesting at `MAX_JSON_DEPTH` (61) to stay
   within the compiler's recursion limit; deeper structures throw a `TypeError`. The spec imposes no fixed limit.
