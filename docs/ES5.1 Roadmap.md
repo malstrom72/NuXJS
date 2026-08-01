@@ -194,17 +194,19 @@ C++ compiler (`NuXJS.cpp`), no VM changes beyond emitting the accessor-define pa
 
 - [x] **Getter/setter in object literals**: parse `get name(){}` / `set name(v){}` and emit accessor property
       definitions (§11.1.5), including all four duplicate/collision early errors.
-- [ ] **Reserved words as property keys** - implemented and verified, both as literal keys and after `.`, including
-      the strict future-reserved words. Only the confirming test is missing.
-- [ ] **Octal numeric literals**: `010` is still mis-lexed as `0` followed by a stray `10`. That *does* yield a
-      SyntaxError, which is the right verdict for the core grammar, but it arrives by accident and the message
-      depends on context (`Expected ',' or ')'` inside a call, `Syntax error` in a var initialiser); a clean
-      diagnostic is all that is left. Note that `tests/erroneous/badNumericLiterals.io` currently asserts the
-      accidental message, so it changes with the fix. Octal *escapes* are done, and were **not** an ES5 change -
+- [x] **Reserved words as property keys** - all 45 of them (§7.6.1.1 keywords, §7.6.1.2 future reserved words
+      including the strict-only set, and the `null` / `true` / `false` literals) as literal keys, after `.`, in
+      `delete`, with a trailing comma and in strict code. NuXJS accepts them in the es3 build too, so the test is
+      shared rather than an es5 twin. (`tests/conforming/reservedWordsAsPropertyNames.io`)
+- [x] **Octal numeric literals**: a leading `0` followed by a digit is now diagnosed at the literal, so the message
+      no longer depends on whatever the stray second number ran into. The verdict was already right, only the
+      message was accidental. `tests/erroneous/badNumericLiterals.io` asserted those accidental messages, so its six
+      leading-zero cases moved into the `badOctalLiterals.io` twins. Octal *escapes* were **not** an ES5 change -
       ES3 §7.8.4 has the identical core grammar and its own Annex B.1.2 - so they are rejected by the shared ES3
       lexer rather than behind `#if NUXJS_ES5` (see `docs/notes/ECMAScript Compatibility Notes.md`).
-- [ ] **Trailing commas** - implemented and verified for both forms. Arrays are covered by
-      `tests/conforming/ArrayLiteralHoleLength.io`; the object-literal case `{a:1,}` has no test.
+- [x] **Trailing commas** - both forms. Arrays are covered by `tests/conforming/ArrayLiteralHoleLength.io`, and the
+      object-literal case now by `tests/conforming/objectLiteralTrailingComma.io`, which also pins down that the
+      grammar allows exactly one and only after a property. Accepted in the es3 build too, so it is shared.
 - [ ] **Whitespace/Unicode (lower priority, own sub-phase):** `Compiler::white()` accepts only space, `\f \n \r \t
       \v`, U+00A0, U+2028 and U+2029. Missing: U+FEFF as WhiteSpace anywhere (§7.2); the rest of Zs (U+1680,
       U+2000-U+200A, U+202F, U+205F, U+3000); line-continuation (`\`+LineTerminator) in string literals (§7.8.4),

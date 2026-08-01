@@ -4415,6 +4415,15 @@ Value Compiler::stringOrNumberConstant() {
 	if (!eof()) {
 		switch (*p) {
 			case '0': {
+			#if NUXJS_ES5
+				// 7.8.3: a DecimalIntegerLiteral is `0` or NonZeroDigit DecimalDigits, so a digit right after the
+				// leading zero never parses. Annex B.1.1 OctalIntegerLiteral is the extension we deliberately do
+				// not implement, and 08 / 09 are not even that. Diagnosed here rather than left to lex as two
+				// numbers, which is still a SyntaxError but reports whatever the stray second one runs into.
+				if (p + 1 != e && p[1] >= '0' && p[1] <= '9') {
+					error(SYNTAX_ERROR, "Octal literals and leading zeros are not supported");
+				}
+			#endif
 				if (p + 1 == e || (p[1] != '.' && !testUnicodeChar(p[1], IDENTIFIER_START_OFFSETS))) {
 					++p;
 					return 0;

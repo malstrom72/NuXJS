@@ -28,6 +28,13 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   knowing when porting code. Separately, a *date-only* ISO string is read as local time where 15.9.1.15 says UTC;
   that one is a real bug, tracked in `docs/notes/Todo.md`.
 
+- **ES3 mode accepts two ES5 syntax relaxations.** ES5.1 `11.1.5` takes an `IdentifierName` as a property name and
+  `11.2.1` does the same after the dot, so `{ if: 1 }` and `o.if` are legal; it also added the trailing comma to
+  `ObjectLiteral`. ES3 `11.1.5` / `11.2.1` asked for an `Identifier` and had no trailing comma. NuXJS has always
+  accepted all three, in both builds, so the `NUXJS_ES5` build is conformant here and the ES3 build is *lenient*
+  rather than conformant. Tightening it would break working code for no benefit, so the confirming tests
+  (`tests/conforming/reservedWordsAsPropertyNames.io`, `objectLiteralTrailingComma.io`) are shared.
+
 - **JSON nesting depth is bounded.** `JSON.parse` / `JSON.stringify` cap nesting at `MAX_JSON_DEPTH` (61) to stay
   within the compiler's recursion limit; deeper structures throw a `TypeError`. The spec imposes no fixed limit.
 

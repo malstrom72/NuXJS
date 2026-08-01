@@ -1,23 +1,5 @@
-> print(01)
-! !!!! Line: 1
-! !!!! SyntaxError: Expected ',' or ')'
--
-> print(00001)
-! !!!! Line: 1
-! !!!! SyntaxError: Expected ',' or ')'
--
-> print(00001.00000)
-! !!!! Line: 1
-! !!!! SyntaxError: Expected ',' or ')'
--
-> print(00001.00001)
-! !!!! Line: 1
-! !!!! SyntaxError: Expected ',' or ')'
--
-> print(+0001.0001)
-! !!!! Line: 1
-! !!!! SyntaxError: Expected ',' or ')'
--
+// The leading-zero cases (01, 00001, +00X123 and friends) live in the tests/es3only/ and tests/es5/
+// badOctalLiterals.io twins instead, because es5 diagnoses 7.8.3 at the literal itself.
 > +.
 ! !!!! Line: 1
 ! !!!! SyntaxError: Missing / invalid expression
@@ -55,10 +37,6 @@
 > +1e+0x3
 ! !!!! Line: 1
 ! !!!! SyntaxError: Missing / invalid expression
--
-> +00X123
-! !!!! Line: 1
-! !!!! SyntaxError: Syntax error
 -
 > print(--1.0)
 ! !!!! Line: 1
