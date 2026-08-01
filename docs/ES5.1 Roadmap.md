@@ -289,9 +289,13 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 - [x] `Array.isArray` (§15.4.3.2) - verified: `arguments` and `{length:0}` are false, `Array.prototype` is true.
       Needs a test.
 - [x] Generic behaviors: `sort` with no comparator and `toLocaleString` were already correct and generic over
-      array-likes. `length` truncation now respects non-configurable elements, and `push` is overridden in
-      `stdlibES5.js` to be strict, which is what supplies §15.4.4.7's Throw flag.
-- [ ] `unshift` and `splice` still pass no Throw flag (§15.4.4.13 / §15.4.4.12), so a refused store is silent there.
+      array-likes. `length` truncation now respects non-configurable elements.
+- [x] The Throw flag, §15.4.4.6-13. The audit had this as two methods; it was seven. `push`, `pop`, `shift`,
+      `unshift`, `reverse` and `splice` are restated strict in `stdlibES5.js`, since strict mode *is* the flag
+      (§8.7.2 and §11.4.1 turn the refused store or delete into the TypeError). `sort` hands the present elements to
+      the base sort and writes the permutation back strictly, so the ordering and even the comparator call pattern
+      stay identical to ES3. All 64 refusal cases and a 364-case semantic differential match V8 and the es3 build.
+      (`tests/es5/arrayMutatorThrowFlag.io`, `tests/es3only/arrayMutatorNoThrowFlag.io`)
 - [x] `String.prototype.trim` with the full ES5 WhiteSpace + LineTerminator set (§15.5.4.20) - first
       `stdlibES5.js` feature, proving the pipeline. (`tests/es5/stringTrim.io`) Its CheckObjectCoercible guard was
       dead until it moved into the strict block: a non-strict built-in never sees a null `this`.
