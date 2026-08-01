@@ -2435,9 +2435,11 @@ void Error::constructCompleteObject(Runtime& rt) const {
 /* --- Arguments --- */
 
 #if NUXJS_ES5
-// The bit that es3 writes as a plain `true` when an index leaves its slot; in es5 the other bits of the same byte
-// carry the attributes of an index that is still in it (10.6).
+// Layout of a `deletedArguments` byte in es5 (10.6). DELETED_ARGUMENT is the bit es3 writes as a plain `true` when
+// an index leaves its slot; ARGUMENT_ATTRIBS are the attributes of an index that is still in it, and are the only
+// other bits the byte ever holds, which is what lets getOwnProperty hand them straight back as Flags.
 static const Byte DELETED_ARGUMENT = 1;
+static const Byte ARGUMENT_ATTRIBS = DONT_ENUM_FLAG | DONT_DELETE_FLAG;
 #endif
 
 Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
@@ -2482,9 +2484,21 @@ void Arguments::detach() {
    }
 }
 
+#if NUXJS_ES5
+// The other bits of the byte are attributes, so only DELETED_ARGUMENT says the index left its slot (10.6). Every
+// es5 caller wants the index as well, to reach that byte. Letting the es3 overload below forward to this one would
+// be the obvious way to write it, but that shifts the es3 binary by 64 bytes, so the two stay separate.
+Value* Arguments::findProperty(const Value& key, UInt32& i) const {
+	if (key.toArrayIndex(i) && i < argumentsCount && (deletedArguments[i] & DELETED_ARGUMENT) == 0) {
+		return (isMapped() ? scope->getLocalsPointer() + i : values.begin() + i);
+	}
+	return 0;
+}
+#endif
+
 Value* Arguments::findProperty(const Value& key) const {
 	UInt32 i;
-#if NUXJS_ES5	// the other bits are attributes, so only DELETED_ARGUMENT says the index left its slot
+#if NUXJS_ES5
 	if (key.toArrayIndex(i) && i < argumentsCount && (deletedArguments[i] & DELETED_ARGUMENT) == 0) {
 #else
 	if (key.toArrayIndex(i) && i < argumentsCount && !deletedArguments[i]) {
@@ -2494,18 +2508,14 @@ Value* Arguments::findProperty(const Value& key) const {
 	return 0;
 }
 
-#if NUXJS_ES5
-UInt32 Arguments::argumentIndex(const Value* p) const {
-	return static_cast<UInt32>(p - (isMapped() ? scope->getLocalsPointer() : values.begin()));
-}
-#endif
-
 Flags Arguments::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
-	const Value* p = findProperty(key);
 #if NUXJS_ES5	// 10.6 (11)(b) makes every index writable, enumerable and configurable; ES3 10.1.8 gave it { DontEnum }.
+	UInt32 i;
+	const Value* p = findProperty(key, i);
 	return (p == 0 ? super::getOwnProperty(rt, key, v)
-			: ((void)(*v = *p), static_cast<Flags>(EXISTS_FLAG | deletedArguments[argumentIndex(p)])));
+			: ((void)(*v = *p), static_cast<Flags>(EXISTS_FLAG | (deletedArguments[i] & ARGUMENT_ATTRIBS))));
 #else
+	const Value* p = findProperty(key);
 	return (p == 0 ? super::getOwnProperty(rt, key, v) : ((void)(*v = *p), (DONT_ENUM_FLAG | EXISTS_FLAG)));
 #endif
 }
@@ -2521,11 +2531,14 @@ bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Fl
 }
 
 bool Arguments::deleteOwnProperty(Runtime& rt, const Value& key) {
-	const Value* p = findProperty(key);
 #if NUXJS_ES5	// 8.12.7 (3): an index that a define made non-configurable stays put
-	if (p != 0 && (deletedArguments[argumentIndex(p)] & DONT_DELETE_FLAG) != 0) {
+	UInt32 i;
+	const Value* p = findProperty(key, i);
+	if (p != 0 && (deletedArguments[i] & DONT_DELETE_FLAG) != 0) {
 		return false;
 	}
+#else
+	const Value* p = findProperty(key);
 #endif
 	return (p == 0 ? super::deleteOwnProperty(rt, key)
 			: (deletedArguments[p - (isMapped() ? scope->getLocalsPointer() : values.begin())] = true));
@@ -2567,11 +2580,12 @@ void Arguments::collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const {
 	same breath as it outgrows the slot, so those move the index into the table for JSObject to finish 8.12.9.
 **/
 bool Arguments::defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow) {
-	Value* p = findProperty(key);
+	UInt32 i;
+	Value* p = findProperty(key, i);
 	if (p == 0) {
 		return super::defineOwnProperty(rt, key, desc, doThrow);
 	}
-	Byte& attribs = deletedArguments[argumentIndex(p)];
+	Byte& attribs = deletedArguments[i];
 	if ((attribs & DONT_DELETE_FLAG) != 0
 			&& ((desc.has(PropertyDescriptor::HAS_CONFIGURABLE) && desc.configurable)					// 8.12.9 (7)
 				|| (desc.has(PropertyDescriptor::HAS_ENUMERABLE)
@@ -2592,7 +2606,7 @@ bool Arguments::defineOwnProperty(Runtime& rt, const Value& key, const PropertyD
 		return true;
 	}
 	const Value current = *p;
-	const Flags kept = attribs & (DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+	const Flags kept = attribs;
 	attribs = DELETED_ARGUMENT;	// 10.6 (5)(b)(ii) / (5)(a): the parameter map goes with the slot
 	JSObject* const complete = getCompleteObject(rt);
 	complete->setOwnProperty(rt, key, current, EXISTS_FLAG | kept);	// it exists already, so extensibility is moot
