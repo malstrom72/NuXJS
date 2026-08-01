@@ -4852,6 +4852,14 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			Processor::Opcode callOp = Processor::CALL_OP;
 			if (xr.t == ExpressionResult::NAMED && xr.v.equalsString(EVAL_STRING)) {
 				callOp = Processor::CALL_EVAL_OP;
+			#if NUXJS_ES5
+				// 10.6: a direct eval reaches this function's scope by name, so it can ask for `arguments` without
+				// the body ever naming it. Only the FunctionScope constructor still has the entry values, so a
+				// strict function has to capture there; see usesArguments in NuXJS.h.
+				if (compilingFor == FOR_FUNCTION) {
+					code->usesArguments = true;
+				}
+			#endif
 			}
 			if (xr.t == ExpressionResult::PROPERTY) {
 			#if NUXJS_ES5

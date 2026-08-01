@@ -1030,7 +1030,16 @@ class Code : public Object {
 		bool getUsesArguments() const { return usesArguments; }
 	protected:
 		bool strict;								///< 14.1: this Code is strict-mode code (own "use strict" directive or inherited from enclosing strict code).
-		bool usesArguments;							///< the body contains a direct reference to `arguments` (so a strict function must capture them at entry).
+		/**
+			The body can reach its own `arguments`, so a strict function must capture the passed values at entry
+			rather than let 10.6's non-mapped object be built later from parameter slots that may since have been
+			assigned. Set by two productions, and they have to stay a matched pair: a reference to the identifier
+			`arguments`, and a *direct* eval call, which reaches the scope by name and can therefore ask for
+			`arguments` without the body naming it. Nothing else gets at a strict function's own scope from the
+			inside: `with` is a SyntaxError in strict code, an indirect eval runs in the global scope, and a nested
+			function's `arguments` is its own.
+		*/
+		bool usesArguments;
 	#endif
 
 		virtual void gcMarkReferences(Heap& heap) const {
