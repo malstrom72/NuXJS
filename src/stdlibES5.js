@@ -9,6 +9,7 @@
 	@preserve: trim,preventExtensions,isExtensible,defineProperties,defineOwnProperty,get,set
 	@preserve: getOwnPropertyDescriptor,keys,getOwnPropertyNames,createObject,create
 	@preserve: seal,freeze,isSealed,isFrozen,now,toPrimitiveNumber,push,forEach,map,filter,some,every,reduce,reduceRight,bind,bindFunction
+	@preserve: pop,shift,unshift,reverse,splice,sort
 */
 (function (support) {
 
@@ -130,9 +131,13 @@ method(Date.prototype, "toJSON", function toJSON(key) {
 	return toISO.call(o);
 });
 
-// 15.4.4.7: ES5 passes Throw = true to every [[Put]] push makes, where ES3 15.4.4.7 had no Throw flag at all. Being
-// strict is what turns a refused store into the required TypeError, and it also stops `length` from running ahead of
-// an element that was never stored, on a non-extensible array or past a read-only length.
+/*
+	15.4.4.6-13, the mutators. ES5 passes Throw = true to every [[Put]] and [[Delete]] they make, where the ES3
+	editions of the same algorithms had no Throw flag at all, so a refused store was silent. Being strict is exactly
+	that flag: 8.7.2 and 11.4.1 turn a refused store or delete into the TypeError the spec asks for. It also stops
+	`length` from running ahead of an element that was never stored, on a non-extensible array or past a read-only
+	length. The algorithms themselves are unchanged from stdlib.js, holes and array-likes included.
+*/
 method(Array.prototype, "push", function push(item) {
 	var o = toObject(this, "push"), n = o.length >>> 0, argv = arguments;
 	for (var i = 0; i < argv.length; ++i) {
@@ -141,6 +146,110 @@ method(Array.prototype, "push", function push(item) {
 	}
 	o.length = n;
 	return n;
+});
+
+method(Array.prototype, "pop", function pop() {
+	var o = toObject(this, "pop"), len = o.length >>> 0, element;
+	if (len === 0) {
+		o.length = 0;	// 4.a: an empty array still gets the store, so a read-only length throws here too
+		return void 0;
+	}
+	element = o[--len];
+	delete o[len];
+	o.length = len;
+	return element;
+});
+
+method(Array.prototype, "shift", function shift() {
+	var o = toObject(this, "shift"), len = o.length >>> 0, first, k;
+	if (len === 0) {
+		o.length = 0;
+		return void 0;
+	}
+	first = o[0];
+	for (k = 1; k < len; ++k) {
+		if (k in o) o[k - 1] = o[k];
+		else delete o[k - 1];
+	}
+	delete o[--len];
+	o.length = len;
+	return first;
+});
+
+method(Array.prototype, "unshift", function unshift(item) {
+	var o = toObject(this, "unshift"), len = o.length >>> 0, argv = arguments, argc = argv.length, k;
+	for (k = len; k > 0; --k) {
+		if (k - 1 in o) o[k + argc - 1] = o[k - 1];
+		else delete o[k + argc - 1];
+	}
+	for (k = 0; k < argc; ++k) o[k] = argv[k];
+	return (o.length = len + argc);
+});
+
+method(Array.prototype, "reverse", function reverse() {
+	var o = toObject(this, "reverse"), len = o.length >>> 0, middle = $floor(len / 2), lower = 0;
+	for (; lower !== middle; ++lower) {
+		var upper = len - lower - 1;
+		var lowerValue = o[lower], upperValue = o[upper];			// 6.4 and 6.5 read both before either is stored
+		var lowerExists = lower in o, upperExists = upper in o;
+		if (lowerExists) {
+			if (upperExists) o[lower] = upperValue; else delete o[lower];
+			o[upper] = lowerValue;
+		} else if (upperExists) {
+			o[lower] = upperValue;
+			delete o[upper];
+		}
+	}
+	return o;
+});
+
+// The `length` of splice is 2, so both are formal parameters even though deleteCount is read through `arguments`.
+method(Array.prototype, "splice", function splice(start, deleteCount) {
+	var o = toObject(this, "splice"), a = [], len = o.length >>> 0, argv = arguments, k, from, to;
+	if ((start = int(start)) < 0) { if ((start += len) < 0) start = 0; }
+	else if (start > len) start = len;
+	// 7: min(max(ToInteger(deleteCount), 0), len - start). Taken literally that makes a.splice(i) delete nothing,
+	// since ToInteger(undefined) is 0; no engine has ever done that and ES2015 rewrote the step to say len - start,
+	// which is what stdlib.js does too, so es5 keeps it. With no arguments at all nothing is deleted either.
+	var count = (argv.length === 0 ? 0 : argv.length === 1 ? len - start : int(deleteCount));
+	if (count < 0) count = 0;
+	else if (count > len - start) count = len - start;
+	for (k = 0; k < count; ++k) if (start + k in o) a[k] = o[start + k];
+	a.length = count;	// 15.4.4.12 omits this step, but every edition since sets it, and so does stdlib.js
+	var itemCount = (argv.length > 2 ? argv.length - 2 : 0);
+	if (itemCount < count) {									// 12: the tail closes up, lowest index first
+		for (k = start; k < len - count; ++k) {
+			from = k + count;
+			to = k + itemCount;
+			if (from in o) o[to] = o[from]; else delete o[to];
+		}
+		for (k = len; k > len - count + itemCount; --k) delete o[k - 1];
+	} else if (itemCount > count) {								// 13: the tail moves up, highest index first
+		for (k = len - count; k > start; --k) {
+			from = k + count - 1;
+			to = k + itemCount - 1;
+			if (from in o) o[to] = o[from]; else delete o[to];
+		}
+	}
+	for (k = 0; k < itemCount; ++k) o[start + k] = argv[k + 2];
+	o.length = len - count + itemCount;
+	return a;
+});
+
+/*
+	15.4.4.11. The ordering itself is unchanged, so this hands the present elements to the base sort and then writes
+	the permutation back strictly, which is what supplies the Throw flag. SortCompare's ranking falls out of that:
+	the base comparator already sorts undefined last, and lifting the holes out puts them after even those.
+*/
+var $sort = Array.prototype.sort;
+
+method(Array.prototype, "sort", function sort(comparefn) {
+	var o = toObject(this, "sort"), len = o.length >>> 0, v = [], k;
+	for (k = 0; k < len; ++k) if (k in o) v[v.length] = o[k];
+	$sort.call(v, comparefn);
+	for (k = 0; k < v.length; ++k) o[k] = v[k];
+	for (; k < len; ++k) delete o[k];
+	return o;
 });
 
 /*
