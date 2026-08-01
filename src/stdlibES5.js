@@ -8,12 +8,12 @@
 
 	@preserve: trim,preventExtensions,isExtensible,defineProperties,defineOwnProperty,get,set
 	@preserve: getOwnPropertyDescriptor,keys,getOwnPropertyNames,createObject,create
-	@preserve: seal,freeze,isSealed,isFrozen
+	@preserve: seal,freeze,isSealed,isFrozen,forEach,map,filter,some,every,reduce,reduceRight
 */
 (function (support) {
 
 var $defineProperty = support.defineProperty, unconstructable = support.distinctConstructor
-		, $getInternalProperty = support.getInternalProperty;
+		, $getInternalProperty = support.getInternalProperty, typeError = TypeError;
 
 // Presence bitmask for a property descriptor; must match PropertyDescriptor::HAS_* in NuXJS.h.
 var HAS_VALUE = 1, HAS_WRITABLE = 2, HAS_GET = 4, HAS_SET = 8, HAS_ENUMERABLE = 16, HAS_CONFIGURABLE = 32;
@@ -24,7 +24,7 @@ function method(target, name, fn) { $defineProperty(target, name, unconstructabl
 // 9.9 / many 15.2.3.x steps: "If Type(O) is not Object, throw a TypeError exception."
 function requireObject(o, name) {
 	if (o === null || (typeof o !== "object" && typeof o !== "function")) {
-		throw new TypeError("Object." + name + " called on non-object");
+		throw typeError("Object." + name + " called on non-object");
 	}
 	return o;
 }
@@ -33,7 +33,7 @@ function requireObject(o, name) {
 // present / value / get / set / attribs form the native support.defineOwnProperty consumes.
 function toPropertyDescriptor(attrs) {
 	if (attrs === null || (typeof attrs !== "object" && typeof attrs !== "function")) {
-		throw new TypeError("Property description must be an object");
+		throw typeError("Property description must be an object");
 	}
 	var present = 0, value, get, set, writable = false, enumerable = false, configurable = false;
 	if ("enumerable" in attrs) { present |= HAS_ENUMERABLE; enumerable = !!attrs.enumerable; }
@@ -42,16 +42,16 @@ function toPropertyDescriptor(attrs) {
 	if ("writable" in attrs) { present |= HAS_WRITABLE; writable = !!attrs.writable; }
 	if ("get" in attrs) {
 		get = attrs.get;
-		if (get !== undefined && typeof get !== "function") throw new TypeError("Getter must be a function");
+		if (get !== undefined && typeof get !== "function") throw typeError("Getter must be a function");
 		present |= HAS_GET;
 	}
 	if ("set" in attrs) {
 		set = attrs.set;
-		if (set !== undefined && typeof set !== "function") throw new TypeError("Setter must be a function");
+		if (set !== undefined && typeof set !== "function") throw typeError("Setter must be a function");
 		present |= HAS_SET;
 	}
 	if ((present & (HAS_GET | HAS_SET)) !== 0 && (present & (HAS_VALUE | HAS_WRITABLE)) !== 0) {
-		throw new TypeError("A property descriptor cannot specify both accessors and a value or writable");
+		throw typeError("A property descriptor cannot specify both accessors and a value or writable");
 	}
 	return { present: present, value: value, get: get, set: set
 			, attribs: (writable ? 1 : 0) | (enumerable ? 2 : 0) | (configurable ? 4 : 0) };
@@ -62,7 +62,33 @@ function define(o, key, attributes) {
 	support.defineOwnProperty(o, "" + key, d.present, d.value, d.get, d.set, d.attribs);
 }
 
-// ES5.1 15.5.4.20: strips WhiteSpace (7.2) and LineTerminator (7.3) from both ends of the string.
+/*
+	Prototype methods whose first step is CheckObjectCoercible or ToObject on the this value. They must be strict:
+	a non-strict function has a null or undefined this substituted with the global object (10.4.3), which would
+	make the required TypeError unreachable. Strict mode also makes `arguments` unmapped, which is what the
+	"was the argument supplied?" tests below want.
+*/
+(function () {
+"use strict";
+
+// 9.4 ToInteger and 9.6 ToUint32. stdlib.js keeps its own copies closure-local, so they are restated here.
+var $floor = Math.floor, $isNaN = isNaN, $isFinite = isFinite;
+function int(v) { return ($isNaN(v = +v) || v === 0) ? 0 : (!$isFinite(v) ? v : (v < 0 ? -$floor(-v) : $floor(v))); }
+function uint32(v) { return int(v) >>> 0; }
+
+// Step 1 of every array method below: ToObject(this), which throws for null and undefined (9.9).
+function toObject(v, name) {
+	if (v == null) throw typeError("Array.prototype." + name + " called on null or undefined");
+	return Object(v);
+}
+
+// "If IsCallable(callbackfn) is false, throw a TypeError exception." Runs after length is read, never before.
+function checkCallback(f, name) {
+	if (typeof f !== "function") throw typeError("Array.prototype." + name + " callback is not a function");
+	return f;
+}
+
+// 15.5.4.20: strips WhiteSpace (7.2) and LineTerminator (7.3) from both ends of the string.
 function isSpace(c) {
 	return c === 0x20 || (c >= 0x09 && c <= 0x0D) || c === 0xA0 || c === 0xFEFF
 			|| c === 0x1680 || (c >= 0x2000 && c <= 0x200A)
@@ -70,12 +96,91 @@ function isSpace(c) {
 }
 
 method(String.prototype, "trim", function trim() {
-	if (this == null) throw new TypeError("String.prototype.trim called on null or undefined");
+	if (this == null) throw typeError("String.prototype.trim called on null or undefined");
 	var s = "" + this, i = 0, j = s.length;
 	while (i < j && isSpace(s.charCodeAt(i))) ++i;
 	while (j > i && isSpace(s.charCodeAt(j - 1))) --j;
 	return s.substring(i, j);
 });
+
+/*
+	15.4.4.14-22. All nine are generic over array-likes, read length once up front, and visit only indices that
+	are actually present, so holes are skipped rather than passed as undefined. Each declares exactly one formal
+	parameter because the spec fixes its `length` at 1; the optional second argument comes from `arguments`.
+*/
+method(Array.prototype, "indexOf", function indexOf(searchElement) {
+	var o = toObject(this, "indexOf"), len = uint32(o.length), k;
+	if (len === 0) return -1;
+	if ((k = (arguments.length > 1 ? int(arguments[1]) : 0)) >= len) return -1;
+	if (k < 0 && (k += len) < 0) k = 0;	// 8.b: a negative fromIndex is an offset from the end, clamped to 0
+	for (; k < len; ++k) if (k in o && o[k] === searchElement) return k;
+	return -1;
+});
+
+method(Array.prototype, "lastIndexOf", function lastIndexOf(searchElement) {
+	var o = toObject(this, "lastIndexOf"), len = uint32(o.length), k;
+	if (len === 0) return -1;
+	k = (arguments.length > 1 ? int(arguments[1]) : len - 1);
+	if (k >= 0) { if (k > len - 1) k = len - 1; } else k += len;	// 7: a negative result just ends the search
+	for (; k >= 0; --k) if (k in o && o[k] === searchElement) return k;
+	return -1;
+});
+
+method(Array.prototype, "every", function every(callbackfn) {
+	var o = toObject(this, "every"), len = uint32(o.length), f = checkCallback(callbackfn, "every"), t = arguments[1];
+	for (var k = 0; k < len; ++k) if (k in o && !f.call(t, o[k], k, o)) return false;
+	return true;
+});
+
+method(Array.prototype, "some", function some(callbackfn) {
+	var o = toObject(this, "some"), len = uint32(o.length), f = checkCallback(callbackfn, "some"), t = arguments[1];
+	for (var k = 0; k < len; ++k) if (k in o && f.call(t, o[k], k, o)) return true;
+	return false;
+});
+
+method(Array.prototype, "forEach", function forEach(callbackfn) {
+	var o = toObject(this, "forEach"), len = uint32(o.length), f = checkCallback(callbackfn, "forEach"), t = arguments[1];
+	for (var k = 0; k < len; ++k) if (k in o) f.call(t, o[k], k, o);
+});
+
+method(Array.prototype, "map", function map(callbackfn) {
+	var o = toObject(this, "map"), len = uint32(o.length), f = checkCallback(callbackfn, "map"), t = arguments[1]
+			, a = new Array(len);	// 6: length is fixed up front, so a hole in the source stays a hole in the result
+	for (var k = 0; k < len; ++k) if (k in o) a[k] = f.call(t, o[k], k, o);
+	return a;
+});
+
+method(Array.prototype, "filter", function filter(callbackfn) {
+	var o = toObject(this, "filter"), len = uint32(o.length), f = checkCallback(callbackfn, "filter"), t = arguments[1]
+			, a = [ ], to = 0, v;	// 8: `to` packs the result densely, unlike map
+	for (var k = 0; k < len; ++k) if (k in o && f.call(t, v = o[k], k, o)) a[to++] = v;
+	return a;
+});
+
+/*
+	reduce / reduceRight take four callback arguments and no thisArg, so the callback is called as a function.
+	With no initialValue the first present element seeds the accumulator; if there is none, that is a TypeError,
+	which also covers step 5 (empty and unseeded) without a second test.
+*/
+method(Array.prototype, "reduce", function reduce(callbackfn) {
+	var o = toObject(this, "reduce"), len = uint32(o.length), f = checkCallback(callbackfn, "reduce")
+			, k = 0, seeded = (arguments.length > 1), acc = arguments[1];
+	while (!seeded && k < len) { if (seeded = (k in o)) acc = o[k]; ++k; }
+	if (!seeded) throw typeError("Reduce of empty array with no initial value");
+	for (; k < len; ++k) if (k in o) acc = f(acc, o[k], k, o);
+	return acc;
+});
+
+method(Array.prototype, "reduceRight", function reduceRight(callbackfn) {
+	var o = toObject(this, "reduceRight"), len = uint32(o.length), f = checkCallback(callbackfn, "reduceRight")
+			, k = len - 1, seeded = (arguments.length > 1), acc = arguments[1];
+	while (!seeded && k >= 0) { if (seeded = (k in o)) acc = o[k]; --k; }
+	if (!seeded) throw typeError("Reduce of empty array with no initial value");
+	for (; k >= 0; --k) if (k in o) acc = f(acc, o[k], k, o);
+	return acc;
+});
+
+})();
 
 // 15.2.3.10 Object.preventExtensions / 15.2.3.13 Object.isExtensible
 method(Object, "preventExtensions", function preventExtensions(o) {
@@ -134,7 +239,7 @@ method(Object, "keys", function keys(o) {
 // 15.2.3.5 Object.create
 method(Object, "create", function create(o, properties) {
 	if (o !== null && typeof o !== "object" && typeof o !== "function") {
-		throw new TypeError("Object.create: prototype must be an object or null");
+		throw typeError("Object.create: prototype must be an object or null");
 	}
 	var obj = support.createObject(o);
 	if (properties !== undefined) Object.defineProperties(obj, properties);
