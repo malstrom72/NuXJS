@@ -2245,7 +2245,13 @@ static void definePoisonPills(Runtime& rt, JSObject* object, const String* first
 #endif
 
 void JSFunction::constructCompleteObject(Runtime& rt) const {
+#if NUXJS_ES5
+	createPrototypeObject(rt, completeObject, true);	// 15.3.5.2 added DontEnum; ES3 leaves `prototype` enumerable
+#else
 	createPrototypeObject(rt, completeObject, false);
+#endif
+	// `name` is not an ES5.1 property at all (15.3.5 defines only length and prototype). It stays writable here
+	// because stdlib.js relies on that when it names the error constructors.
 	completeObject->setOwnProperty(rt, &NAME_STRING, code->getName(), DONT_ENUM_FLAG);
 	completeObject->setOwnProperty(rt, &LENGTH_STRING, code->getArgumentsCount(), HIDDEN_CONST_FLAGS);
 #if NUXJS_ES5

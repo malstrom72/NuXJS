@@ -254,10 +254,16 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
       `getConstructPrototype`, because the object a `new` expression creates takes its prototype from the callee,
       and a bound function has none. `name` is a NuXJS extension (ES5.1 §15.3.5 has no such property) set to
       `"bound " + target.name` to match V8. (`tests/es5/functionBind.io`)
-- [ ] Function `length`/`name` become read-only/non-enumerable; `prototype` non-enumerable (§15.3.5).
-- [ ] Named `FunctionExpression` binding lives in its own declarative environment (§13) so it doesn't leak via
-      `Object.prototype`.
-- [ ] `Function.prototype.toString` returns source text; throws `TypeError` for non-functions (§15.3.4.2).
+- [x] Function `prototype` becomes non-enumerable (§15.3.5.2) - a real ES3→ES5 change, since ES3 gave it only
+      { DontDelete }; the two builds are covered by the `enumerableOfFunctions.io` twins. `length` already had the
+      §15.3.5.1 attributes. `name` is deliberately NOT made read-only: §15.3.5 does not define it at all, and
+      `stdlib.js` assigns it when naming the error constructors. (`tests/es5/functionInstanceProperties.io`)
+- [x] Named `FunctionExpression` binding lives in its own declarative environment (§13): visible inside, invisible
+      outside, immutable, so a non-strict assignment to it is ignored and a strict one throws. Already correct in
+      the engine; this was verification, not a change. (`tests/es5/namedFunctionExpression.io`)
+- [x] `Function.prototype.toString` returns source text and throws `TypeError` for a non-Function `this`
+      (§15.3.4.2). Already correct; the representation is implementation-dependent, so only the round-trip of the
+      source text is asserted. (`tests/es5/functionInstanceProperties.io`)
 
 ### Tests
 - bind partial application + `new`; bound `name`/`length`; named-function-expression scope isolation.
