@@ -304,16 +304,20 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 - [ ] `Number.prototype.toFixed / toExponential / toPrecision` (§15.7.4): ES5 range checks and rounding verified
       correct. The one gap left is `toFixed` precision - `(1000000000000000128).toFixed(0)` loses the last digits
       (the existing TODO in `docs/notes/Todo.md`).
-- [ ] `Date.now` (§15.9.4.4) - missing entirely. `toISOString`/`toJSON` work and non-finite → `null`, but `toJSON`
-      is not generic (explicit TODO at `stdlib.js:1002`). `Date.parse` handles the ISO date-time form but reads the
-      date-only form as local time where §15.9.1.15 says UTC, and has no legacy fallback (§15.9.4.2).
-- [ ] `Number.isNaN`/`isFinite` shims (ES6, not ES5.1). `parseInt`/`parseFloat` radix and no-octal behaviour already
-      match ES5 (§15.1.2); their whitespace handling pends §3's Zs work.
+- [x] `Date.now` (§15.9.4.4) and a fully generic `Date.prototype.toJSON` (§15.9.5.44) live in `stdlibES5.js`; the
+      base `toJSON` read the receiver's own date value instead of going through ToPrimitive and the receiver's own
+      `toISOString`. (`tests/es5/dateES5.io`)
+- [ ] `Date.parse` reads the ISO *date-only* form as local time where §15.9.1.15 says UTC. The parser is shared with
+      es3, so fixing it moves the es3 binary; see `docs/notes/Todo.md`. No legacy fallback, which §15.9.4.2 permits.
+- [x] `parseInt`/`parseFloat` radix and no-octal behaviour already match ES5 (§15.1.2); their whitespace handling
+      pends §3's Zs work. `Number.isNaN`/`isFinite` are ES6, not ES5.1, and are deliberately NOT added - this is an
+      ES5.1 engine, and shipping ES6 globals would misreport what it supports.
 - [x] JSON reviver/replacer/space (§15.12) - verified working, including array and function replacers, `space`
       indenting and `toJSON` dispatch. The depth-cap deviation stays documented. Needs a test.
 - [x] Global `NaN`/`Infinity`/`undefined` read-only (§15.1.1) - landed in §4 via `stdlibES5.js`.
-- [ ] `Object.prototype.toString` → `[object Undefined]`/`[object Null]` for those receivers; `[object Arguments]`
-      for arguments objects (§15.2.4.2). All three still report `[object Object]`.
+- [x] `Object.prototype.toString` (§15.2.4.2) reports `[object Undefined]` and `[object Arguments]`; ES3 gave the
+      arguments object the class `Object` (§10.1.8), so there is an `es3only` twin. A `null` receiver still reports
+      `[object Undefined]`, blocked by the `this`-as-a-Value deferral. (`tests/es5/objectToStringTag.io`)
 - [x] `for-in` over `null`/`undefined` yields an empty iteration rather than throwing (§12.6.4) - landed in §0.5.
 
 ### Tests

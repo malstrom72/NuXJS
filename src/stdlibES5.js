@@ -8,7 +8,7 @@
 
 	@preserve: trim,preventExtensions,isExtensible,defineProperties,defineOwnProperty,get,set
 	@preserve: getOwnPropertyDescriptor,keys,getOwnPropertyNames,createObject,create
-	@preserve: seal,freeze,isSealed,isFrozen,push,forEach,map,filter,some,every,reduce,reduceRight,bind,bindFunction
+	@preserve: seal,freeze,isSealed,isFrozen,now,toPrimitiveNumber,push,forEach,map,filter,some,every,reduce,reduceRight,bind,bindFunction
 */
 (function (support) {
 
@@ -107,6 +107,27 @@ method(String.prototype, "trim", function trim() {
 // `prototype`, a [[Construct]] that constructs the target, and a [[HasInstance]] that defers to it).
 method(Function.prototype, "bind", function bind(thisArg) {
 	return support.bindFunction(this, thisArg, arguments, 1);
+});
+
+/*
+	15.2.4.2 gained explicit undefined and null cases, and 10.6 gave the arguments object the class "Arguments"
+	where ES3 10.1.8 gave it "Object" (which is why stdlib.js maps that class back to "Object").
+	DEVIATION: `this` reaches a callee as an object reference, so a null receiver is indistinguishable from an
+	undefined one and reports "[object Undefined]". Fixing that needs the `this`-as-a-Value change deferred in
+	docs/notes/ECMAScript Compatibility Notes.md.
+*/
+method(Object.prototype, "toString", function toString() {
+	if (this == null) return "[object Undefined]";
+	return "[object " + $getInternalProperty(Object(this), "class") + "]";
+});
+
+// 15.9.5.44: fully generic. ES3 had no toJSON at all, and stdlib.js's version reads the receiver's own date value
+// rather than going through ToPrimitive and the receiver's own (reassignable) toISOString.
+method(Date.prototype, "toJSON", function toJSON(key) {
+	var o = Object(this), tv = support.toPrimitiveNumber(o), toISO;
+	if (typeof tv === "number" && !isFinite(tv)) return null;
+	if (typeof (toISO = o.toISOString) !== "function") throw typeError("toISOString is not callable");
+	return toISO.call(o);
 });
 
 // 15.4.4.7: ES5 passes Throw = true to every [[Put]] push makes, where ES3 15.4.4.7 had no Throw flag at all. Being
@@ -310,6 +331,9 @@ method(Object, "isFrozen", function isFrozen(o) {
 	}
 	return !Object.isExtensible(o);
 });
+
+// 15.9.4.4 Date.now: the time value at the moment of the call, which ES3 had no equivalent of.
+method(Date, "now", function now() { return support.getCurrentTime(); });
 
 // 15.1.1.1-3: ES5 made the global NaN, Infinity and undefined non-writable. ES3 15.1.1 left them writable, so
 // stdlib.js installs them with dontEnum + dontDelete only; re-define them here with readOnly added.
