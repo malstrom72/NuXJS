@@ -53,6 +53,13 @@ ES3 §11.2.1 matches ES5.1 here, so this ordering is shared by both NuXJS varian
   pills on a strict-mode arguments object, so `arguments.caller` throws a `TypeError`. ES2017 removed the `caller`
   pill, so V8 returns `undefined`. NuXJS follows ES5.1 (both throw). Verified against the spec text, not V8.
 
+### A plain V8 bug: a non-enumerable mapped arguments index
+Not a spec divergence, but it looks like one from the diff. After
+`(function (a) { Object.defineProperty(arguments, "0", {enumerable: false}) })(1)`, V8 drops `"0"` from
+`Object.getOwnPropertyNames(arguments)` even though `hasOwnProperty("0")` and `getOwnPropertyDescriptor` both still
+report it. §15.2.3.4 asks for every own property, so NuXJS lists it. Only *mapped* indices are affected; a strict
+(unmapped) arguments object is fine in V8. Verified in node v26.
+
 ## Features V8 has that ES5.1 does NOT (never "match V8" by adding these)
 
 If a test needs any of these, it is outside ES5.1 scope - do not implement them to match V8:

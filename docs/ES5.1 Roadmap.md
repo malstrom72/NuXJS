@@ -127,7 +127,11 @@ Gaps this section leaves open (pre-existing, not regressions; the array ones ove
       (`tests/es5/arrayDefineOwnProperty.io`)
 - [x] Array `length` now reports `writable: true` until cleared (§15.4.5.2), tracked by its own flag so
       `defineProperty(a, "length", {writable: false})` sticks and blocks any later growth or shrink.
-- [ ] `Arguments` has no `defineOwnProperty` override and reports mapped indices non-enumerable (§10.6).
+- [x] `Arguments::defineOwnProperty` implements §10.6, including the parameter map that step 5 keeps or severs, and
+      indices are enumerable as §10.6 (11)(b) says (ES3 §10.1.8 made them DontEnum). The attribute bits of an index
+      still in its slot ride in the spare bits of the existing per-index byte, so the object grew by nothing.
+      (`tests/es5/argumentsDefineOwnProperty.io`, and the `Arguments2.io` / `Arguments3.io` twins whose ES5
+      expectations were already sitting commented out in `tests/es3only/`)
 
 ### VM wiring
 - [x] `GET_PROPERTY_OP` invokes getters via the standard `invokeFunction` continuation with the receiver as
