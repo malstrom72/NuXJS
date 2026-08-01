@@ -1050,6 +1050,11 @@ class Function : public Object {
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
 		virtual bool hasInstance(Runtime& rt, Object* object) const;
+	#if NUXJS_ES5
+		// The prototype a `new` expression gives the object it creates. Normally this function's own `prototype`,
+		// but a bound function has none and constructs its target instead (15.3.4.5.2).
+		virtual void getConstructPrototype(Runtime& rt, Value* v) const;
+	#endif
 		virtual const Code* getScriptCode() const { return 0; }
 		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject = 0) = 0;
 

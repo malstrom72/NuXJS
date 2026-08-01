@@ -72,6 +72,21 @@ If a test needs any of these, it is outside ES5.1 scope - do not implement them 
 - Trailing commas in function parameter lists and call arguments (ES2017).
 - `RegExp` `y`/`u`/`s` flags, named groups, lookbehind.
 
+### Bound functions: poison pills and the `length` attributes
+ES5.1 §15.3.4.5 steps 20-21 make `Function.prototype.bind` define own `caller` and `arguments` properties on the
+returned function, both the [[ThrowTypeError]] accessor, non-enumerable and non-configurable. ES2015 dropped them
+from bound functions (they survive only on `Function.prototype`). Step 17 also gives the bound `length` the
+§15.3.5.1 attributes, so it is **non-configurable**; ES2015 made function `length` configurable. Verified in node:
+
+| Expression | ES5.1 (NuXJS) | V8 / ES6+ |
+| --- | --- | --- |
+| `Object.getOwnPropertyNames(f.bind(null))` | includes `caller` and `arguments` | `length`, `name` only |
+| `f.bind(null).caller` | **TypeError** (poison pill) | `undefined` |
+| `Object.getOwnPropertyDescriptor(f.bind(null), "length").configurable` | `false` | `true` |
+
+Note that `name` is not an ES5.1 property at all - §15.3.5 defines only `length` and `prototype`. NuXJS carries it
+as an extension, and gives a bound function `"bound " + target.name` to match V8 rather than leave a gap.
+
 ## Same in both (V8 is a valid oracle)
 
 Most core ES5.1 semantics are unchanged and V8 can be trusted: the `[[DefineOwnProperty]]` (8.12.9) algorithm,

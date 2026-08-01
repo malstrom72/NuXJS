@@ -8,7 +8,7 @@
 
 	@preserve: trim,preventExtensions,isExtensible,defineProperties,defineOwnProperty,get,set
 	@preserve: getOwnPropertyDescriptor,keys,getOwnPropertyNames,createObject,create
-	@preserve: seal,freeze,isSealed,isFrozen,forEach,map,filter,some,every,reduce,reduceRight
+	@preserve: seal,freeze,isSealed,isFrozen,forEach,map,filter,some,every,reduce,reduceRight,bind,bindFunction
 */
 (function (support) {
 
@@ -101,6 +101,12 @@ method(String.prototype, "trim", function trim() {
 	while (i < j && isSpace(s.charCodeAt(i))) ++i;
 	while (j > i && isSpace(s.charCodeAt(j - 1))) --j;
 	return s.substring(i, j);
+});
+
+// 15.3.4.5: the native side builds the bound function, since it needs internal methods JS cannot express (no
+// `prototype`, a [[Construct]] that constructs the target, and a [[HasInstance]] that defers to it).
+method(Function.prototype, "bind", function bind(thisArg) {
+	return support.bindFunction(this, thisArg, arguments, 1);
 });
 
 /*
