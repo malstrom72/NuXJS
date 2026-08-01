@@ -71,10 +71,10 @@ function define(o, key, attributes) {
 (function () {
 "use strict";
 
-// 9.4 ToInteger and 9.6 ToUint32. stdlib.js keeps its own copies closure-local, so they are restated here.
+// 9.4 ToInteger, restated verbatim from stdlib.js, which keeps its copy closure-local. 9.6 ToUint32 needs no
+// helper: `>>> 0` is that conversion, so `length` is normalised inline below.
 var $floor = Math.floor, $isNaN = isNaN, $isFinite = isFinite;
 function int(v) { return ($isNaN(v = +v) || v === 0) ? 0 : (!$isFinite(v) ? v : (v < 0 ? -$floor(-v) : $floor(v))); }
-function uint32(v) { return int(v) >>> 0; }
 
 // Step 1 of every array method below: ToObject(this), which throws for null and undefined (9.9).
 function toObject(v, name) {
@@ -115,49 +115,49 @@ method(Function.prototype, "bind", function bind(thisArg) {
 	parameter because the spec fixes its `length` at 1; the optional second argument comes from `arguments`.
 */
 method(Array.prototype, "indexOf", function indexOf(searchElement) {
-	var o = toObject(this, "indexOf"), len = uint32(o.length), k;
-	if (len === 0) return -1;
-	if ((k = (arguments.length > 1 ? int(arguments[1]) : 0)) >= len) return -1;
+	var o = toObject(this, "indexOf"), len = o.length >>> 0, k;
+	if (len === 0) return -1;	// 4: returns before fromIndex is read, so a throwing valueOf is never reached
+	k = (arguments.length > 1 ? int(arguments[1]) : 0);
 	if (k < 0 && (k += len) < 0) k = 0;	// 8.b: a negative fromIndex is an offset from the end, clamped to 0
 	for (; k < len; ++k) if (k in o && o[k] === searchElement) return k;
 	return -1;
 });
 
 method(Array.prototype, "lastIndexOf", function lastIndexOf(searchElement) {
-	var o = toObject(this, "lastIndexOf"), len = uint32(o.length), k;
-	if (len === 0) return -1;
+	var o = toObject(this, "lastIndexOf"), len = o.length >>> 0, k;
+	if (len === 0) return -1;	// 4: as above, an empty array never reads fromIndex
 	k = (arguments.length > 1 ? int(arguments[1]) : len - 1);
-	if (k >= 0) { if (k > len - 1) k = len - 1; } else k += len;	// 7: a negative result just ends the search
+	if (k < 0) k += len; else if (k >= len) k = len - 1;	// 7: a negative result just ends the search
 	for (; k >= 0; --k) if (k in o && o[k] === searchElement) return k;
 	return -1;
 });
 
 method(Array.prototype, "every", function every(callbackfn) {
-	var o = toObject(this, "every"), len = uint32(o.length), f = checkCallback(callbackfn, "every"), t = arguments[1];
+	var o = toObject(this, "every"), len = o.length >>> 0, f = checkCallback(callbackfn, "every"), t = arguments[1];
 	for (var k = 0; k < len; ++k) if (k in o && !f.call(t, o[k], k, o)) return false;
 	return true;
 });
 
 method(Array.prototype, "some", function some(callbackfn) {
-	var o = toObject(this, "some"), len = uint32(o.length), f = checkCallback(callbackfn, "some"), t = arguments[1];
+	var o = toObject(this, "some"), len = o.length >>> 0, f = checkCallback(callbackfn, "some"), t = arguments[1];
 	for (var k = 0; k < len; ++k) if (k in o && f.call(t, o[k], k, o)) return true;
 	return false;
 });
 
 method(Array.prototype, "forEach", function forEach(callbackfn) {
-	var o = toObject(this, "forEach"), len = uint32(o.length), f = checkCallback(callbackfn, "forEach"), t = arguments[1];
+	var o = toObject(this, "forEach"), len = o.length >>> 0, f = checkCallback(callbackfn, "forEach"), t = arguments[1];
 	for (var k = 0; k < len; ++k) if (k in o) f.call(t, o[k], k, o);
 });
 
 method(Array.prototype, "map", function map(callbackfn) {
-	var o = toObject(this, "map"), len = uint32(o.length), f = checkCallback(callbackfn, "map"), t = arguments[1]
+	var o = toObject(this, "map"), len = o.length >>> 0, f = checkCallback(callbackfn, "map"), t = arguments[1]
 			, a = new Array(len);	// 6: length is fixed up front, so a hole in the source stays a hole in the result
 	for (var k = 0; k < len; ++k) if (k in o) a[k] = f.call(t, o[k], k, o);
 	return a;
 });
 
 method(Array.prototype, "filter", function filter(callbackfn) {
-	var o = toObject(this, "filter"), len = uint32(o.length), f = checkCallback(callbackfn, "filter"), t = arguments[1]
+	var o = toObject(this, "filter"), len = o.length >>> 0, f = checkCallback(callbackfn, "filter"), t = arguments[1]
 			, a = [ ], to = 0, v;	// 8: `to` packs the result densely, unlike map
 	for (var k = 0; k < len; ++k) if (k in o && f.call(t, v = o[k], k, o)) a[to++] = v;
 	return a;
@@ -169,7 +169,7 @@ method(Array.prototype, "filter", function filter(callbackfn) {
 	which also covers step 5 (empty and unseeded) without a second test.
 */
 method(Array.prototype, "reduce", function reduce(callbackfn) {
-	var o = toObject(this, "reduce"), len = uint32(o.length), f = checkCallback(callbackfn, "reduce")
+	var o = toObject(this, "reduce"), len = o.length >>> 0, f = checkCallback(callbackfn, "reduce")
 			, k = 0, seeded = (arguments.length > 1), acc = arguments[1];
 	while (!seeded && k < len) { if (seeded = (k in o)) acc = o[k]; ++k; }
 	if (!seeded) throw typeError("Reduce of empty array with no initial value");
@@ -178,7 +178,7 @@ method(Array.prototype, "reduce", function reduce(callbackfn) {
 });
 
 method(Array.prototype, "reduceRight", function reduceRight(callbackfn) {
-	var o = toObject(this, "reduceRight"), len = uint32(o.length), f = checkCallback(callbackfn, "reduceRight")
+	var o = toObject(this, "reduceRight"), len = o.length >>> 0, f = checkCallback(callbackfn, "reduceRight")
 			, k = len - 1, seeded = (arguments.length > 1), acc = arguments[1];
 	while (!seeded && k >= 0) { if (seeded = (k in o)) acc = o[k]; --k; }
 	if (!seeded) throw typeError("Reduce of empty array with no initial value");
