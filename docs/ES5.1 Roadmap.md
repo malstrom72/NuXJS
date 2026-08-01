@@ -339,8 +339,9 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 
 - [ ] Retarget the Test262 dashboard to ES5.1: re-categorize the currently-excluded `ES >3` set, import the ES5.1
       section, and track pass/fail (`tools/testdash.*`, `docs/Test262 Dashboard.md`).
-- [ ] Re-create `docs/notes/ECMAScript Compatibility Notes.md` documenting every intentional deviation (JSON depth
-      cap, any Unicode gaps, etc.).
+- [x] `docs/notes/ECMAScript Compatibility Notes.md` exists again and has been kept current with each deviation as
+      it landed: the JSON depth cap, no Annex B octal, the strict `this` deferral, `Date.parse`, the two ES5 syntax
+      relaxations the es3 build also accepts, and the array `[[DefineOwnProperty]]` note.
 - [ ] Update `README.md` scope ("ES5.1" instead of "ES3 + focused ES5"), `docs/NuXJS Documentation.md`,
       `docs/notes/TypeScript Compatibility.md`, and `docs/examples/lib.NuXJS.d.ts`.
 - [ ] Refresh the ES3-compliance numbers in the README from an actual dashboard run.
