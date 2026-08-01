@@ -123,9 +123,11 @@ support.toPrimitive = function(o) {
 	return support[$getInternalProperty(o, "class") === "Date" ? "toPrimitiveString" : "toPrimitiveNumber"](o);
 };
 
-function int(v) { return ($isNaN(v = +v) || v === 0) ? 0 : (!$isFinite(v) ? v : (v < 0 ? -$floor(-v) : $floor(v))); }
-function int32(v) { return int(v) | 0; }
-function uint32(v) { return int(v) >>> 0; }
+// 9.4 ToInteger. Infinities need no special case: floor leaves them as they are.
+function int(v) { return ($isNaN(v = +v) || v === 0) ? 0 : (v < 0 ? -$floor(-v) : $floor(v)); }
+// 9.5 ToInt32 and 9.6 ToUint32 are exactly what these operators do, so neither needs to truncate first.
+function int32(v) { return v | 0; }
+function uint32(v) { return v >>> 0; }
 
 // TODO : what a waste of cycles, could be a simple OBJ_TO_STRING, problem with ''+s is that it uses OBJ_TO_NUMBER which only affects the priority of toString vs valueOf... so subtle!
 function str(o) { return '' + (isPrimitive(o) ? o : support.toPrimitiveString(o)) }
