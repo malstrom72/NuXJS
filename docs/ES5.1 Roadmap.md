@@ -209,12 +209,7 @@ C++ compiler (`NuXJS.cpp`), no VM changes beyond emitting the accessor-define pa
 
 ---
 
-## 4. Strict mode - **DONE, with one open crash**
-
-> A strict function that references `arguments` and throws an exception caught by JS segfaults the process on the
-> next sweep (found 2026-07-30). Reproducer in `tests/es5/strictArgumentsThrowUseAfterFree.io` (disabled), analysis
-> and two candidate fixes in `docs/notes/Todo.md`. It blocks §6 array iteration, whose methods must be both strict
-> and `arguments`-reading.
+## 4. Strict mode - **DONE**
 
 The largest behavioral addition. Needs both parser (directive detection) and VM (make silent failures throw).
 
@@ -232,7 +227,9 @@ The largest behavioral addition. Needs both parser (directive detection) and VM 
       targets; future reserved words; duplicate data properties in an object literal (§11.1.5); octal literals &
       escapes - all SyntaxErrors in strict (§12.10.1, §11.13.1, §7.8.3, §7.8.4).
 - [x] **Strict `arguments`**: non-mapped arguments object (no parameter aliasing); `callee`/`caller` poison-pill
-      throwers; `Function.prototype.caller`/`arguments` throwers (§10.6, §13.2.3).
+      throwers; `Function.prototype.caller`/`arguments` throwers (§10.6, §13.2.3). The non-mapped object keeps its
+      weak back-link to the FunctionScope, since that link is what lets either side sever the other at destruction;
+      only the aliasing is switched off. (`tests/es5/strictArgumentsThrowUseAfterFree.io`)
 - [x] **Eval isolation**: strict direct `eval` gets its own variable environment and inherits caller strictness;
       indirect `eval` runs global and non-strict (§10.4.2).
 - [x] **Read-only global constants**: `NaN`/`Infinity`/`undefined` are non-writable (§15.1.1.1-3), so a strict

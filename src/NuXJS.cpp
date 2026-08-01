@@ -2303,8 +2303,8 @@ Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argument
 #if NUXJS_ES5
 // 10.6: a strict-mode arguments object is non-mapped (its indexed values are captured at entry, independent of the
 // parameter slots) and has poison-pill callee/caller. scope == 0 makes findProperty read the own `values` copy.
-Arguments::Arguments(GCList& gcList, JSFunction* function, UInt32 argumentsCount, const Value* argv) : super(gcList)
-	   , scope(0), function(function), argumentsCount(argumentsCount)
+Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount, const Value* argv)
+	   : super(gcList), scope(scope), function(scope->function), argumentsCount(argumentsCount)
 	   , deletedArguments(argumentsCount, &gcList.getHeap()), values(argumentsCount, &gcList.getHeap()), strict(true) {
 	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
 	std::copy(argv, argv + argumentsCount, values.begin());
@@ -2322,6 +2322,12 @@ Object* Arguments::getPrototype(Runtime& rt) const { return rt.getObjectPrototyp
 
 void Arguments::detach() {
    if (scope != 0) {
+   #if NUXJS_ES5
+	   if (strict) {	// 10.6: non-mapped, so `values` already holds the copy taken at entry
+		   scope = 0;
+		   return;
+	   }
+   #endif
 	   values.resize(argumentsCount);
 	   std::copy(scope->getLocalsPointer(), scope->getLocalsPointer() + argumentsCount, values.begin());
 	   scope = 0;
@@ -2331,7 +2337,7 @@ void Arguments::detach() {
 Value* Arguments::findProperty(const Value& key) const {
 	UInt32 i;
 	if (key.toArrayIndex(i) && i < argumentsCount && !deletedArguments[i]) {
-		return (scope != 0 ? scope->getLocalsPointer() + i : const_cast<Value*>(&values[i]));
+		return (isMapped() ? scope->getLocalsPointer() + i : const_cast<Value*>(&values[i]));
 	}
 	return 0;
 }
@@ -2344,7 +2350,7 @@ Flags Arguments::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
 	Value* p = findProperty(key);
 	if (p != 0 && (flags & (READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG)) != 0) {
-		const UInt32 index = static_cast<UInt32>(p - (scope != 0 ? scope->getLocalsPointer() : values.begin()));
+		const UInt32 index = static_cast<UInt32>(p - (isMapped() ? scope->getLocalsPointer() : values.begin()));
 		deletedArguments[index] = true;
 		p = 0;
 	}
@@ -2354,7 +2360,7 @@ bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Fl
 bool Arguments::deleteOwnProperty(Runtime& rt, const Value& key) {
 	const Value* p = findProperty(key);
 	return (p == 0 ? super::deleteOwnProperty(rt, key)
-			: (deletedArguments[p - (scope != 0 ? scope->getLocalsPointer() : values.begin())] = true));
+			: (deletedArguments[p - (isMapped() ? scope->getLocalsPointer() : values.begin())] = true));
 }
 
 Enumerator* Arguments::getOwnPropertyEnumerator(Runtime& rt) const {
@@ -2433,7 +2439,7 @@ FunctionScope::FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, 
 	// 10.6: a strict function that references `arguments` captures the passed values here, while argv is still the
 	// pristine entry list (the object is non-mapped). Skipped when the body never mentions `arguments`.
 	if (code->isStrict() && code->getUsesArguments()) {
-		arguments = new(gcList.getHeap()) Arguments(gcList, function, argc, argv);
+		arguments = new(gcList.getHeap()) Arguments(gcList, this, argc, argv);
 	}
 #endif
 }
@@ -2445,7 +2451,7 @@ JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
 	#if NUXJS_ES5
 		if (arguments == 0) {	// not eagerly created (non-strict, or strict reached `arguments` only indirectly)
 			arguments = (function->code->isStrict()
-					? new(heap) Arguments(heap.managed(), function, passedArgumentsCount, localsPointer)	// non-mapped fallback
+					? new(heap) Arguments(heap.managed(), this, passedArgumentsCount, localsPointer)	// non-mapped fallback
 					: new(heap) Arguments(heap.managed(), this, passedArgumentsCount));
 		}
 	#else
