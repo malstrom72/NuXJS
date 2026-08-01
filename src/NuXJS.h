@@ -1227,7 +1227,7 @@ class Arguments : public LazyJSObject<Object> {
 		virtual void constructCompleteObject(Runtime& rt) const;
         Value* findProperty(const Value& key) const;
 	#if NUXJS_ES5
-		UInt32 argumentIndex(const Value* p) const;	// index behind a slot pointer that findProperty() returned
+		Value* findProperty(const Value& key, UInt32& index) const;	// also reports the index, for the attribute byte
 	#endif
 		// `scope` is the weak back-link in both modes, so that whichever of the pair is destructed first can sever
 		// the other's pointer. Only a mapped (non-strict) object aliases that scope's parameter slots (10.6).

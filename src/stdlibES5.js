@@ -148,56 +148,50 @@ method(Array.prototype, "push", function push(item) {
 	return n;
 });
 
+// 4.a in both pop and shift: an empty array still gets the length store, so a read-only length throws there too.
 method(Array.prototype, "pop", function pop() {
 	var o = toObject(this, "pop"), len = o.length >>> 0, element;
-	if (len === 0) {
-		o.length = 0;	// 4.a: an empty array still gets the store, so a read-only length throws here too
-		return void 0;
+	if (len !== 0) {
+		element = o[--len];
+		delete o[len];
 	}
-	element = o[--len];
-	delete o[len];
 	o.length = len;
 	return element;
 });
 
 method(Array.prototype, "shift", function shift() {
 	var o = toObject(this, "shift"), len = o.length >>> 0, first, k;
-	if (len === 0) {
-		o.length = 0;
-		return void 0;
+	if (len !== 0) {
+		first = o[0];
+		for (k = 1; k < len; ++k) {
+			if (k in o) o[k - 1] = o[k];
+			else delete o[k - 1];
+		}
+		delete o[--len];
 	}
-	first = o[0];
-	for (k = 1; k < len; ++k) {
-		if (k in o) o[k - 1] = o[k];
-		else delete o[k - 1];
-	}
-	delete o[--len];
 	o.length = len;
 	return first;
 });
 
 method(Array.prototype, "unshift", function unshift(item) {
-	var o = toObject(this, "unshift"), len = o.length >>> 0, argv = arguments, argc = argv.length, k;
-	for (k = len; k > 0; --k) {
-		if (k - 1 in o) o[k + argc - 1] = o[k - 1];
-		else delete o[k + argc - 1];
+	var o = toObject(this, "unshift"), len = o.length >>> 0, argv = arguments, argc = argv.length, k, to;
+	for (k = len; k-- > 0; ) {
+		to = k + argc;
+		if (k in o) o[to] = o[k]; else delete o[to];
 	}
 	for (k = 0; k < argc; ++k) o[k] = argv[k];
 	return (o.length = len + argc);
 });
 
 method(Array.prototype, "reverse", function reverse() {
-	var o = toObject(this, "reverse"), len = o.length >>> 0, middle = $floor(len / 2), lower = 0;
+	var o = toObject(this, "reverse"), len = o.length >>> 0, middle = $floor(len / 2), last = len - 1, lower = 0;
 	for (; lower !== middle; ++lower) {
-		var upper = len - lower - 1;
+		var upper = last - lower;
 		var lowerValue = o[lower], upperValue = o[upper];			// 6.4 and 6.5 read both before either is stored
 		var lowerExists = lower in o, upperExists = upper in o;
-		if (lowerExists) {
+		if (lowerExists || upperExists) {							// 6.11: with neither there is nothing to do
 			if (upperExists) o[lower] = upperValue; else delete o[lower];
-			o[upper] = lowerValue;
-		} else if (upperExists) {
-			o[lower] = upperValue;
-			delete o[upper];
+			if (lowerExists) o[upper] = lowerValue; else delete o[upper];
 		}
 	}
 	return o;
@@ -205,34 +199,29 @@ method(Array.prototype, "reverse", function reverse() {
 
 // The `length` of splice is 2, so both are formal parameters even though deleteCount is read through `arguments`.
 method(Array.prototype, "splice", function splice(start, deleteCount) {
-	var o = toObject(this, "splice"), a = [], len = o.length >>> 0, argv = arguments, k, from, to;
+	var o = toObject(this, "splice"), a = [], len = o.length >>> 0, argv = arguments, argc = argv.length, k, n, to;
 	if ((start = int(start)) < 0) { if ((start += len) < 0) start = 0; }
 	else if (start > len) start = len;
 	// 7: min(max(ToInteger(deleteCount), 0), len - start). Taken literally that makes a.splice(i) delete nothing,
 	// since ToInteger(undefined) is 0; no engine has ever done that and ES2015 rewrote the step to say len - start,
 	// which is what stdlib.js does too, so es5 keeps it. With no arguments at all nothing is deleted either.
-	var count = (argv.length === 0 ? 0 : argv.length === 1 ? len - start : int(deleteCount));
+	var count = (argc === 0 ? 0 : argc === 1 ? len - start : int(deleteCount));
 	if (count < 0) count = 0;
 	else if (count > len - start) count = len - start;
 	for (k = 0; k < count; ++k) if (start + k in o) a[k] = o[start + k];
 	a.length = count;	// 15.4.4.12 omits this step, but every edition since sets it, and so does stdlib.js
-	var itemCount = (argv.length > 2 ? argv.length - 2 : 0);
-	if (itemCount < count) {									// 12: the tail closes up, lowest index first
-		for (k = start; k < len - count; ++k) {
-			from = k + count;
+	// 12 and 13 are one loop: the tail shifts by `move`, walked away from the direction it is overwriting. Only a
+	// shrink leaves a stale tail above the new length, and only then is the trailing delete loop non-empty.
+	var itemCount = (argc > 2 ? argc - 2 : 0), move = itemCount - count, tail = len - count, step = (move < 0 ? 1 : -1);
+	if (move !== 0) {
+		for (n = tail - start, k = (move < 0 ? start : tail - 1); n-- > 0; k += step) {
 			to = k + itemCount;
-			if (from in o) o[to] = o[from]; else delete o[to];
+			if (k + count in o) o[to] = o[k + count]; else delete o[to];
 		}
-		for (k = len; k > len - count + itemCount; --k) delete o[k - 1];
-	} else if (itemCount > count) {								// 13: the tail moves up, highest index first
-		for (k = len - count; k > start; --k) {
-			from = k + count - 1;
-			to = k + itemCount - 1;
-			if (from in o) o[to] = o[from]; else delete o[to];
-		}
+		for (k = len; k > len + move; --k) delete o[k - 1];
 	}
 	for (k = 0; k < itemCount; ++k) o[start + k] = argv[k + 2];
-	o.length = len - count + itemCount;
+	o.length = len + move;
 	return a;
 });
 
@@ -245,6 +234,7 @@ var $sort = Array.prototype.sort;
 
 method(Array.prototype, "sort", function sort(comparefn) {
 	var o = toObject(this, "sort"), len = o.length >>> 0, v = [], k;
+	if (len < 2) return o;	// nothing can move, so nothing is stored: a frozen empty or single array must not throw
 	for (k = 0; k < len; ++k) if (k in o) v[v.length] = o[k];
 	$sort.call(v, comparefn);
 	for (k = 0; k < v.length; ++k) o[k] = v[k];
