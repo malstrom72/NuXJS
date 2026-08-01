@@ -23,9 +23,8 @@
 -
 > dump(new Date)
 -
-> dump(new Function)
-< prototype
--
+// `new Function` is covered by the enumerableOfFunctions twins instead: ES3 15.3.5.2 leaves `prototype`
+// enumerable here, ES5.1 15.3.5.2 does not, so the expectation differs per build.
 > dump(new Number)
 -
 > dump(new Object)

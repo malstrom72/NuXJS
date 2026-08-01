@@ -72,6 +72,25 @@ If a test needs any of these, it is outside ES5.1 scope - do not implement them 
 - Trailing commas in function parameter lists and call arguments (ES2017).
 - `RegExp` `y`/`u`/`s` flags, named groups, lookbehind.
 
+### Function `length` is non-configurable, and `name` is not an ES5.1 property
+§15.3.5.1 gives every function's `length` the attributes { [[Writable]]: false, [[Enumerable]]: false,
+[[Configurable]]: **false** }. ES2015 made it configurable, so V8 reports `configurable: true` and lets you
+`delete f.length`. ES5.1 arbitrates, so NuXJS refuses both.
+
+§15.3.5 defines only `length` and `prototype`, so `name` is a NuXJS extension in either edition. It is deliberately
+left **writable**, because `stdlib.js` assigns it when naming the error constructors; V8 follows ES2015 and reports
+`writable: false`. Verified in node:
+
+| Expression | ES5.1 (NuXJS) | V8 / ES6+ |
+| --- | --- | --- |
+| `Object.getOwnPropertyDescriptor(f, "length").configurable` | `false` | `true` |
+| `delete f.length` | `false` | `true` |
+| `Object.getOwnPropertyDescriptor(f, "name").writable` | `true` (extension) | `false` |
+
+Note that `prototype` moves the other way, and is an ES3→ES5 change rather than a V8 divergence: ES3 §15.3.5.2 gave
+it only { DontDelete }, so it was **enumerable**, while ES5.1 adds [[Enumerable]]: false. Both builds are covered by
+the `enumerableOfFunctions.io` twins.
+
 ### Bound functions: poison pills and the `length` attributes
 ES5.1 §15.3.4.5 steps 20-21 make `Function.prototype.bind` define own `caller` and `arguments` properties on the
 returned function, both the [[ThrowTypeError]] accessor, non-enumerable and non-configurable. ES2015 dropped them
