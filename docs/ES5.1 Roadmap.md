@@ -262,16 +262,20 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 
 ## 6. Array & String library (mostly `stdlib.js`)
 
-- [ ] Array iteration: `forEach, map, filter, some, every, reduce, reduceRight, indexOf, lastIndexOf` (§15.4.4.14-22),
-      each spec-accurate on callback args, `thisArg`, and **sparse** arrays (property-existence checks, not naive loops).
-      None of the nine exist today; this is the largest remaining user-visible gap.
+- [x] Array iteration: `forEach, map, filter, some, every, reduce, reduceRight, indexOf, lastIndexOf` (§15.4.4.14-22),
+      spec-accurate on callback args, `thisArg` and **sparse** arrays (`k in O`, not naive loops). Pure
+      `stdlibES5.js`. They sit in a strict IIFE for two reasons the spec forces: strict so a null `this` survives to
+      the ToObject step instead of being replaced by the global (§10.4.3), and each takes exactly one formal
+      parameter with the optional second read from `arguments`, because §15.4.4.x fixes their `length` at 1.
+      (`tests/es5/arrayIteration.io`, `arrayReduce.io`, `arraySearch.io`)
 - [x] `Array.isArray` (§15.4.3.2) - verified: `arguments` and `{length:0}` are false, `Array.prototype` is true.
       Needs a test.
 - [ ] Generic behaviors: `sort` with no comparator and `toLocaleString` are already correct and generic over
       array-likes. Still broken: `push` succeeds on a non-extensible array, and `length` truncation ignores
       non-configurable elements. Both need §15.4.5.1, so they land with the §1 array gap.
 - [x] `String.prototype.trim` with the full ES5 WhiteSpace + LineTerminator set (§15.5.4.20) - first
-      `stdlibES5.js` feature, proving the pipeline. (`tests/es5/stringTrim.io`)
+      `stdlibES5.js` feature, proving the pipeline. (`tests/es5/stringTrim.io`) Its CheckObjectCoercible guard was
+      dead until it moved into the strict block: a non-strict built-in never sees a null `this`.
 - [x] String character indices are non-writable, non-configurable own data properties (§15.5.5.2) - already
       conformant (`writable:false enumerable:true configurable:false`). Needs a test.
 
