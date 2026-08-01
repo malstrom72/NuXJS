@@ -44,6 +44,15 @@ Stdlib
 
 	* toFixed should convert to string with full exact decimals, e.g. (1000000000000000128).toFixed(0) should return "1000000000000000128" and not "1000000000000000100".
 
+	* es5 only: a strict function that reaches `arguments` INDIRECTLY gets the wrong values. `Code::usesArguments` is set by a purely lexical scan for the identifier (Compiler, `compilingFor == FOR_FUNCTION`), and only then does the FunctionScope ctor capture argv at entry. Reach it through `eval` or `with` instead and `getDynamicVars` builds the non-mapped object from `localsPointer`, i.e. the parameter slots as they are NOW, so a non-mapped object silently behaves like a mapped one snapshotted late.
+		- `eval("(function (a) { 'use strict'; a = 9; return eval('arguments[0]'); })")(1)` gives 9; V8 and 10.6 say 1. Written lexically (`return arguments[0]`) it correctly gives 1.
+		- fix: stop deriving "must capture" from the lexical scan for strict functions and always capture at entry. The eager path in the FunctionScope ctor is already unconditional-capable; `getUsesArguments()` is only an allocation optimisation, and for strict functions it is an unsound one.
+
+	* es5 only: `f.bind(null).name` is "bound undefined" when the target has no own `name` (V8 gives "bound "). Only reachable for native functions that lack `name`, since JSFunction always sets one. `name` is a NuXJS extension anyway (15.3.5 defines only `length` and `prototype`), so this is cosmetic - see the bound-function entry in docs/specs/ES5.1 vs modern divergences.md.
+
+	* es5 only, performance: the five callback-taking array methods use `f.call(t, o[k], k, o)` per element, and `Function.prototype.call` is itself JS (stdlib.js) that reads `arguments`. That costs roughly 4-5 heap objects per element: the `call` frame's FunctionScope and locals, a dynamicVars JSObject plus an Arguments object because `call` is non-strict and touches `arguments`, and the lazy complete object that `arguments.length` forces. `reduce`/`reduceRight` call `f(...)` directly and pay none of it.
+		- fix: a `support.callback(f, thisArg, a, b, c)` native hook doing `f->invoke(rt, processor, 3, argv, thisObject)` off a stack array. Adds one Support entry and REMOVES a code path from the JS, so it does not fall foul of "an optimization that adds code paths is a net loss" - but measure a large forEach first, per the PROVEN-win rule.
+
 LOW PRIO
 ########
 
