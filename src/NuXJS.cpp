@@ -2233,18 +2233,24 @@ Value JSFunction::invoke(Runtime&, Processor& processor, UInt32 argc, const Valu
 	return UNDEFINED_VALUE;
 }
 
+#if NUXJS_ES5
+// 13.2.3 / 10.6 / 15.3.4.5: gives `object` a pair of properties that are both the [[ThrowTypeError]] accessor.
+static void definePoisonPills(Runtime& rt, JSObject* object, const String* first, const String* second) {
+	Heap& heap = rt.getHeap();
+	Accessor* poison = new(heap) Accessor(heap.managed(), rt.getThrowTypeErrorFunction(), rt.getThrowTypeErrorFunction());
+	const Flags pillFlags = EXISTS_FLAG | ACCESSOR_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG;
+	object->defineAccessor(object->insert(first), poison, pillFlags);
+	object->defineAccessor(object->insert(second), poison, pillFlags);
+}
+#endif
+
 void JSFunction::constructCompleteObject(Runtime& rt) const {
 	createPrototypeObject(rt, completeObject, false);
 	completeObject->setOwnProperty(rt, &NAME_STRING, code->getName(), DONT_ENUM_FLAG);
 	completeObject->setOwnProperty(rt, &LENGTH_STRING, code->getArgumentsCount(), HIDDEN_CONST_FLAGS);
 #if NUXJS_ES5
 	if (code->isStrict()) {
-		// 13.2.3: a strict function's own caller and arguments are [[ThrowTypeError]] poison pills.
-		Heap& heap = rt.getHeap();
-		Accessor* poison = new(heap) Accessor(heap.managed(), rt.getThrowTypeErrorFunction(), rt.getThrowTypeErrorFunction());
-		const Flags pillFlags = EXISTS_FLAG | ACCESSOR_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG;
-		completeObject->defineAccessor(completeObject->insert(&CALLER_STRING), poison, pillFlags);
-		completeObject->defineAccessor(completeObject->insert(&ARGUMENTS_STRING), poison, pillFlags);
+		definePoisonPills(rt, completeObject, &CALLER_STRING, &ARGUMENTS_STRING);	// 13.2.3
 	}
 #endif
 }
@@ -2306,7 +2312,7 @@ Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argument
 
 #if NUXJS_ES5
 // 10.6: a strict-mode arguments object is non-mapped (its indexed values are captured at entry, independent of the
-// parameter slots) and has poison-pill callee/caller. scope == 0 makes findProperty read the own `values` copy.
+// parameter slots) and has poison-pill callee/caller. It still keeps the back-link; see isMapped() in NuXJS.h.
 Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount, const Value* argv)
 	   : super(gcList), scope(scope), function(scope->function), argumentsCount(argumentsCount)
 	   , deletedArguments(argumentsCount, &gcList.getHeap()), values(argumentsCount, &gcList.getHeap()), strict(true) {
@@ -2326,14 +2332,10 @@ Object* Arguments::getPrototype(Runtime& rt) const { return rt.getObjectPrototyp
 
 void Arguments::detach() {
    if (scope != 0) {
-   #if NUXJS_ES5
-	   if (strict) {	// 10.6: non-mapped, so `values` already holds the copy taken at entry
-		   scope = 0;
-		   return;
+	   if (isMapped()) {	// a non-mapped object already holds the copy it took at entry (10.6)
+		   values.resize(argumentsCount);
+		   std::copy(scope->getLocalsPointer(), scope->getLocalsPointer() + argumentsCount, values.begin());
 	   }
-   #endif
-	   values.resize(argumentsCount);
-	   std::copy(scope->getLocalsPointer(), scope->getLocalsPointer() + argumentsCount, values.begin());
 	   scope = 0;
    }
 }
@@ -2341,7 +2343,7 @@ void Arguments::detach() {
 Value* Arguments::findProperty(const Value& key) const {
 	UInt32 i;
 	if (key.toArrayIndex(i) && i < argumentsCount && !deletedArguments[i]) {
-		return (isMapped() ? scope->getLocalsPointer() + i : const_cast<Value*>(&values[i]));
+		return (isMapped() ? scope->getLocalsPointer() + i : values.begin() + i);
 	}
 	return 0;
 }
@@ -2375,12 +2377,7 @@ void Arguments::constructCompleteObject(Runtime& rt) const {
 	completeObject->setOwnProperty(rt, &LENGTH_STRING, argumentsCount, DONT_ENUM_FLAG);
 #if NUXJS_ES5
 	if (strict) {
-		// 10.6: callee and caller are accessor properties whose get and set are both the [[ThrowTypeError]] pill.
-		Heap& heap = rt.getHeap();
-		Accessor* poison = new(heap) Accessor(heap.managed(), rt.getThrowTypeErrorFunction(), rt.getThrowTypeErrorFunction());
-		const Flags pillFlags = EXISTS_FLAG | ACCESSOR_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG;
-		completeObject->defineAccessor(completeObject->insert(&CALLEE_STRING), poison, pillFlags);
-		completeObject->defineAccessor(completeObject->insert(&CALLER_STRING), poison, pillFlags);
+		definePoisonPills(rt, completeObject, &CALLEE_STRING, &CALLER_STRING);	// 10.6
 		return;
 	}
 #endif
@@ -5757,76 +5754,6 @@ Value SeparateConstructorFunction::construct(Runtime& rt, Processor& processor, 
 	return constructorFunction->invoke(rt, processor, argc, argv, thisObject);
 }
 
-#if NUXJS_ES5
-/**
-	15.3.4.5: the function object Function.prototype.bind returns. It has no [[Code]] and no `prototype` property;
-	calling or constructing it forwards to the target with the bound arguments prepended, and instanceof defers to
-	the target entirely. Constructing ignores the bound this, per 15.3.4.5.2.
-**/
-struct BoundFunction : public ExtensibleFunction {
-	typedef ExtensibleFunction super;
-	BoundFunction(GCList& gcList, Function* target, const Value& boundThis, const Vector<Value>& boundArgs)
-			: super(gcList), target(target), boundThis(boundThis), boundArgs(boundArgs) { assert(target != 0); }
-	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
-	virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
-	virtual bool hasInstance(Runtime& rt, Object* object) const { return target->hasInstance(rt, object); }
-	virtual void getConstructPrototype(Runtime& rt, Value* v) const { target->getConstructPrototype(rt, v); }
-
-	virtual void constructCompleteObject(Runtime& rt) const;
-	void concatArguments(Vector<Value>& args, UInt32 argc, const Value* argv) const;
-
-	Function* const target;
-	const Value boundThis;
-	const Vector<Value> boundArgs;
-
-	virtual void gcMarkReferences(Heap& heap) const {
-		gcMark(heap, target);
-		gcMark(heap, boundThis);
-		gcMark(heap, boundArgs.begin(), boundArgs.end());
-		super::gcMarkReferences(heap);
-	}
-};
-
-// 15.3.4.5.1 (4) / 15.3.4.5.2 (4): the bound arguments, then the ones this call supplied.
-void BoundFunction::concatArguments(Vector<Value>& args, UInt32 argc, const Value* argv) const {
-	args.resize(boundArgs.size() + argc);
-	std::copy(boundArgs.begin(), boundArgs.end(), args.begin());
-	std::copy(argv, argv + argc, args.begin() + boundArgs.size());
-}
-
-Value BoundFunction::invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object*) {
-	Heap& heap = rt.getHeap();
-	Vector<Value> args(&heap);
-	concatArguments(args, argc, argv);
-	// The receiver is boxed per call, exactly as apply / call do, so a primitive boundThis behaves the same way
-	// there as here. See the deferral in docs/notes/ECMAScript Compatibility Notes.md.
-	return target->invoke(rt, processor, args.size(), args.begin(), boundThis.toObjectOrNull(heap, true));
-}
-
-Value BoundFunction::construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
-	Vector<Value> args(&rt.getHeap());
-	concatArguments(args, argc, argv);
-	return target->construct(rt, processor, args.size(), args.begin(), thisObject);	// boundThis does not apply
-}
-
-void BoundFunction::constructCompleteObject(Runtime& rt) const {
-	Heap& heap = rt.getHeap();
-	Value v(UNDEFINED_VALUE);
-	target->getProperty(rt, &LENGTH_STRING, &v);
-	// 15.3.4.5 (15): what is left of the target's arity once the bound arguments have eaten into it.
-	completeObject->setOwnProperty(rt, &LENGTH_STRING
-			, std::max(v.toInt() - static_cast<Int32>(boundArgs.size()), 0), HIDDEN_CONST_FLAGS);
-	v = UNDEFINED_VALUE;
-	target->getProperty(rt, &NAME_STRING, &v);
-	completeObject->setOwnProperty(rt, &NAME_STRING
-			, new(heap) String(heap.managed(), BOUND_STRING, *v.toString(heap)), DONT_ENUM_FLAG);
-	// 15.3.4.5 (20-21): caller and arguments are poison pills whatever the target is, strict or not.
-	Accessor* poison = new(heap) Accessor(heap.managed(), rt.getThrowTypeErrorFunction(), rt.getThrowTypeErrorFunction());
-	const Flags pillFlags = EXISTS_FLAG | ACCESSOR_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG;
-	completeObject->defineAccessor(completeObject->insert(&CALLER_STRING), poison, pillFlags);
-	completeObject->defineAccessor(completeObject->insert(&ARGUMENTS_STRING), poison, pillFlags);
-}
-#endif
 
 void SeparateConstructorFunction::constructCompleteObject(Runtime& rt) const {
 	Object* templateFunction = regularFunction;
@@ -5844,6 +5771,67 @@ void SeparateConstructorFunction::constructCompleteObject(Runtime& rt) const {
 		completeObject->setOwnProperty(rt, &LENGTH_STRING, v, flags);
 	}
 }
+
+#if NUXJS_ES5
+/**
+	15.3.4.5: the function object Function.prototype.bind returns. It has no [[Code]] and no `prototype` property;
+	calling or constructing it forwards to the target with the bound arguments prepended, and instanceof defers to
+	the target entirely. Constructing ignores the bound this, per 15.3.4.5.2.
+**/
+struct BoundFunction : public ExtensibleFunction {
+	typedef ExtensibleFunction super;
+	BoundFunction(GCList& gcList, Function* target, const Value& boundThis, const Value* b, const Value* e)
+			: super(gcList), target(target), boundThis(boundThis), boundArgs(b, e, &gcList.getHeap()) {
+		assert(target != 0);
+	}
+	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
+	virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
+	virtual bool hasInstance(Runtime& rt, Object* object) const { return target->hasInstance(rt, object); }
+	virtual void getConstructPrototype(Runtime& rt, Value* v) const { target->getConstructPrototype(rt, v); }
+
+	virtual void constructCompleteObject(Runtime& rt) const;
+
+	Function* const target;
+	const Value boundThis;
+	const Vector<Value, 0> boundArgs;	// no inline slots: bound arguments are rare and the object is long-lived
+
+	virtual void gcMarkReferences(Heap& heap) const {
+		gcMark(heap, target);
+		gcMark(heap, boundThis);
+		gcMark(heap, boundArgs.begin(), boundArgs.end());
+		super::gcMarkReferences(heap);
+	}
+};
+
+Value BoundFunction::invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object*) {
+	Heap& heap = rt.getHeap();
+	Vector<Value> args(boundArgs.begin(), boundArgs.end(), &heap);	// 15.3.4.5.1 (4): bound arguments, then these
+	args.insert(args.end(), argv, argv + argc);
+	// The receiver is boxed per call, exactly as apply / call do, so a primitive boundThis behaves the same way
+	// there as here. See the deferral in docs/notes/ECMAScript Compatibility Notes.md.
+	return target->invoke(rt, processor, args.size(), args.begin(), boundThis.toObjectOrNull(heap, true));
+}
+
+Value BoundFunction::construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+	Vector<Value> args(boundArgs.begin(), boundArgs.end(), &rt.getHeap());	// 15.3.4.5.2 (4)
+	args.insert(args.end(), argv, argv + argc);
+	return target->construct(rt, processor, args.size(), args.begin(), thisObject);	// boundThis does not apply
+}
+
+void BoundFunction::constructCompleteObject(Runtime& rt) const {
+	Heap& heap = rt.getHeap();
+	Value length(UNDEFINED_VALUE), name(UNDEFINED_VALUE);
+	target->getProperty(rt, &LENGTH_STRING, &length);
+	target->getProperty(rt, &NAME_STRING, &name);
+	// 15.3.4.5 (15): what is left of the target's arity once the bound arguments have eaten into it.
+	completeObject->setOwnProperty(rt, &LENGTH_STRING
+			, std::max(length.toInt() - static_cast<Int32>(boundArgs.size()), 0), HIDDEN_CONST_FLAGS);
+	completeObject->setOwnProperty(rt, &NAME_STRING
+			, String::concatenate(heap, BOUND_STRING, *name.toString(heap)), DONT_ENUM_FLAG);
+	// 15.3.4.5 (20-21): caller and arguments are poison pills whatever the target is, strict or not.
+	definePoisonPills(rt, completeObject, &CALLER_STRING, &ARGUMENTS_STRING);
+}
+#endif
 
 template<class F> struct UnaryMathFunction : public Function {
 	UnaryMathFunction(F& f) : f(f) { }
@@ -5920,30 +5908,27 @@ struct Support {
 	}
 
 #if NUXJS_ES5
-	// 15.3.4.5 Function.prototype.bind, called from stdlibES5.js as bindFunction(target, thisArg, arguments, 1).
-	// The argument-flattening loop mirrors callWithArgs above; sharing one helper compiles to a slightly different
-	// es3 binary, and keeping that byte-identical outranks the duplication.
+	// 15.3.4.5 Function.prototype.bind. stdlibES5.js is the only caller and always passes
+	// (target, thisArg, arguments, 1), so only `target` is untrusted here.
 	static Value bindFunction(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
+		assert(argc == 4 && "stdlibES5.js calls bindFunction(target, thisArg, arguments, 1)");
+		(void)argc;
 		Heap& heap = rt.getHeap();
-		Function* target = (argc > 0 ? argv[0].asFunction() : 0);
+		Function* target = argv[0].asFunction();
 		if (target == 0) {
 			ScriptException::throwError(heap, TYPE_ERROR, "Function.prototype.bind called on non-function");
 		}
-		Vector<Value> boundArgs(0, &heap);
-		Object* arrayObject = (argc > 2 ? argv[2].toObjectOrNull(heap, false) : 0);
-		if (arrayObject != 0) {
-			Value v;
-			if (arrayObject->getProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) {
-				const Int32 offset = (argc > 3 ? argv[3].toInt() : 0);
-				const UInt32 length = static_cast<UInt32>(std::max(v.toInt() - offset, 0));
-				boundArgs.resize(length);
-				for (UInt32 i = 0; i < length; ++i) {
-					boundArgs[i] = UNDEFINED_VALUE;
-					arrayObject->getProperty(rt, i + offset, &boundArgs[i]);
-				}
-			}
+		Object* argumentsObject = argv[2].asObject();
+		const Int32 offset = argv[3].toInt();
+		Value v(UNDEFINED_VALUE);
+		argumentsObject->getProperty(rt, &LENGTH_STRING, &v);
+		const UInt32 count = static_cast<UInt32>(std::max(v.toInt() - offset, 0));
+		Vector<Value> boundArgs(count, &heap);
+		for (UInt32 i = 0; i < count; ++i) {
+			boundArgs[i] = UNDEFINED_VALUE;
+			argumentsObject->getProperty(rt, i + offset, &boundArgs[i]);
 		}
-		return new(heap) BoundFunction(heap.managed(), target, (argc > 1 ? argv[1] : UNDEFINED_VALUE), boundArgs);
+		return new(heap) BoundFunction(heap.managed(), target, argv[1], boundArgs.begin(), boundArgs.end());
 	}
 #endif
 

@@ -33,7 +33,10 @@
 < 4 -1
 -
 // Step 4 returns -1 for an empty array before fromIndex is even read, so a throwing valueOf is never reached.
+// That ordering is the only reason the step-4 check cannot be folded into the loop condition.
 > print([].indexOf(1, {valueOf: function () { throw new Error("boom"); }}))
+< -1
+> print([].lastIndexOf(1, {valueOf: function () { throw new Error("boom"); }}))
 < -1
 -
 // Generic over array-likes and strings, with length taken through ToUint32.

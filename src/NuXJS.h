@@ -1208,12 +1208,9 @@ class Arguments : public LazyJSObject<Object> {
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
         Value* findProperty(const Value& key) const;
-		/*
-			`scope` is the weak back-link to the owning FunctionScope and stays set for as long as that scope
-			lives, in both modes, so that whichever of the two is destructed first severs the other's pointer.
-			Whether the indices alias that scope's parameter slots is a separate question: a strict arguments
-			object is non-mapped (10.6) and reads its own `values`, captured at entry.
-		*/
+		// `scope` is the weak back-link in both modes, so that whichever of the pair is destructed first can sever
+		// the other's pointer. Only a mapped (non-strict) object aliases that scope's parameter slots (10.6).
+		// (Cannot dereference `scope` here: FunctionScope is still incomplete at this point.)
 	#if NUXJS_ES5
 		bool isMapped() const { return scope != 0 && !strict; }
 	#else
