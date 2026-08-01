@@ -1,4 +1,6 @@
-// ES3 10.1.8 answers. The "ES5.1:" expectations commented in below are live in tests/es5/Arguments2.io.
+// ES5.1 10.6 Arguments Object. Twin of tests/es3only/Arguments2.io, which keeps the ES3 answers and carries
+// these expectations as comments: ES5 made the array indexed properties enumerable, where ES3 10.1.8 gave
+// them { DontEnum }. Everything else about the object is unchanged. Verified against V8.
 > function sort(a) {
 > 	for (i = 0; i < a.length - 1; ++i) {
 > 		for (j = i + 1; j < a.length; ++j) {
@@ -93,9 +95,7 @@
 < -
 -
 > f('abcd');
-// ES5.1: 10.6: In Edition 5 the array indexed properties of argument objects that correspond to actual formal parameters are enumerable. In Edition 3, such properties were not enumerable.
-// < { 0: abcd }
-< {  }
+< { 0: abcd }
 < 1
 < 1
 < length : dontEnum, (deleted:true)
@@ -104,15 +104,11 @@
 < function
 < true
 < callee : dontEnum, (deleted:true)
-// ES5.1:
-// < 0 :  (deleted:true)
-< 0 : dontEnum, (deleted:true)
+< 0 :  (deleted:true)
 < -
 -
 > f('a', 'b', 'c', 'd');
-// ES5.1:
-// < { 0: a, 1: b, 2: c, 3: d }
-< {  }
+< { 0: a, 1: b, 2: c, 3: d }
 < 4
 < 4
 < length : dontEnum, (deleted:true)
@@ -121,14 +117,9 @@
 < function
 < true
 < callee : dontEnum, (deleted:true)
-// ES5.1:
-// < 0 :  (deleted:true)
-// < 1 :  (deleted:true)
-// < 2 :  (deleted:true)
-// < 3 :  (deleted:true)
-< 0 : dontEnum, (deleted:true)
-< 1 : dontEnum, (deleted:true)
-< 2 : dontEnum, (deleted:true)
-< 3 : dontEnum, (deleted:true)
+< 0 :  (deleted:true)
+< 1 :  (deleted:true)
+< 2 :  (deleted:true)
+< 3 :  (deleted:true)
 < -
 -

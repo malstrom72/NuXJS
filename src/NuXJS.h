@@ -1208,18 +1208,27 @@ class Arguments : public LazyJSObject<Object> {
 		Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount, const Value* argv);	// 10.6: strict, non-mapped, values captured at entry
 	#endif
 		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
-		virtual const String* toString(Heap& heap) const;
+	#if !NUXJS_ES5
+		virtual const String* toString(Heap& heap) const;	// es3 10.1.8 reports the class as "Object"
+	#endif
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
+	#if NUXJS_ES5
+		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);	// 10.6
+		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;
+	#endif
 		void detach();	// Arguments can get "detached" from FunctionScopes to prevent holding on to closures unnecessarily.
 		virtual ~Arguments();	// At heap cleanup for example, Arguments might be destructed before the FunctionScope that "owns" it.
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
         Value* findProperty(const Value& key) const;
+	#if NUXJS_ES5
+		UInt32 argumentIndex(const Value* p) const;	// index behind a slot pointer that findProperty() returned
+	#endif
 		// `scope` is the weak back-link in both modes, so that whichever of the pair is destructed first can sever
 		// the other's pointer. Only a mapped (non-strict) object aliases that scope's parameter slots (10.6).
 		// (Cannot dereference `scope` here: FunctionScope is still incomplete at this point.)
@@ -1231,6 +1240,8 @@ class Arguments : public LazyJSObject<Object> {
         const FunctionScope* scope;
 		JSFunction* const function;
 		UInt32 const argumentsCount;
+		// In es5 this byte doubles as the index's attribute bits: DELETED_ARGUMENT means the index no longer lives
+		// in its slot, DONT_ENUM_FLAG / DONT_DELETE_FLAG describe one that still does (10.6).
 		Vector<Byte> deletedArguments;
 		Vector<Value> values;	// Contains copied values after the Argument has been detached from its closure.
 	#if NUXJS_ES5

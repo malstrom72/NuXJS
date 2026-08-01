@@ -2434,6 +2434,12 @@ void Error::constructCompleteObject(Runtime& rt) const {
 
 /* --- Arguments --- */
 
+#if NUXJS_ES5
+// The bit that es3 writes as a plain `true` when an index leaves its slot; in es5 the other bits of the same byte
+// carry the attributes of an index that is still in it (10.6).
+static const Byte DELETED_ARGUMENT = 1;
+#endif
+
 Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
 	   , scope(scope), function(scope->function), argumentsCount(argumentsCount)
 	   , deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap())
@@ -2457,10 +2463,12 @@ Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argument
 
 const String* Arguments::getClassName() const { return &A_RGUMENTS_STRING; }
 
+#if !NUXJS_ES5	// es5 wants the "Arguments" class here (10.6), which is exactly what the inherited toString() builds
 const String* Arguments::toString(Heap& heap) const {
 	return new(heap) String(heap.managed(), String(heap.roots(), BRACKET_OBJECT_STRING, O_BJECT_STRING)
 			, END_BRACKET_STRING);
 }
+#endif
 
 Object* Arguments::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
 
@@ -2476,15 +2484,30 @@ void Arguments::detach() {
 
 Value* Arguments::findProperty(const Value& key) const {
 	UInt32 i;
+#if NUXJS_ES5	// the other bits are attributes, so only DELETED_ARGUMENT says the index left its slot
+	if (key.toArrayIndex(i) && i < argumentsCount && (deletedArguments[i] & DELETED_ARGUMENT) == 0) {
+#else
 	if (key.toArrayIndex(i) && i < argumentsCount && !deletedArguments[i]) {
+#endif
 		return (isMapped() ? scope->getLocalsPointer() + i : values.begin() + i);
 	}
 	return 0;
 }
 
+#if NUXJS_ES5
+UInt32 Arguments::argumentIndex(const Value* p) const {
+	return static_cast<UInt32>(p - (isMapped() ? scope->getLocalsPointer() : values.begin()));
+}
+#endif
+
 Flags Arguments::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 	const Value* p = findProperty(key);
+#if NUXJS_ES5	// 10.6 (11)(b) makes every index writable, enumerable and configurable; ES3 10.1.8 gave it { DontEnum }.
+	return (p == 0 ? super::getOwnProperty(rt, key, v)
+			: ((void)(*v = *p), static_cast<Flags>(EXISTS_FLAG | deletedArguments[argumentIndex(p)])));
+#else
 	return (p == 0 ? super::getOwnProperty(rt, key, v) : ((void)(*v = *p), (DONT_ENUM_FLAG | EXISTS_FLAG)));
+#endif
 }
 
 bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
@@ -2499,13 +2522,83 @@ bool Arguments::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Fl
 
 bool Arguments::deleteOwnProperty(Runtime& rt, const Value& key) {
 	const Value* p = findProperty(key);
+#if NUXJS_ES5	// 8.12.7 (3): an index that a define made non-configurable stays put
+	if (p != 0 && (deletedArguments[argumentIndex(p)] & DONT_DELETE_FLAG) != 0) {
+		return false;
+	}
+#endif
 	return (p == 0 ? super::deleteOwnProperty(rt, key)
 			: (deletedArguments[p - (isMapped() ? scope->getLocalsPointer() : values.begin())] = true));
 }
 
 Enumerator* Arguments::getOwnPropertyEnumerator(Runtime& rt) const {
+#if NUXJS_ES5	// indices are enumerable in es5, and `length` / `callee` never are, so they need no materializing
+	Heap& heap = rt.getHeap();
+	StringListEnumerator* list = new(heap) StringListEnumerator(heap.managed(), argumentsCount);
+	for (UInt32 i = 0; i < argumentsCount; ++i) {
+		if ((deletedArguments[i] & (DELETED_ARGUMENT | DONT_ENUM_FLAG)) == 0) {
+			list->add(String::fromInt(heap, static_cast<Int32>(i)));
+		}
+	}
+	return (completeObject == 0 ? static_cast<Enumerator*>(list)
+			: new(heap) JoiningEnumerator(heap.managed(), rt, completeObject, list));
+#else
 	return (completeObject == 0 ? super::getOwnPropertyEnumerator(rt) : completeObject->getOwnPropertyEnumerator(rt));
+#endif
 }
+
+#if NUXJS_ES5
+void Arguments::collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const {
+	Heap& heap = rt.getHeap();
+	for (UInt32 i = 0; i < argumentsCount; ++i) {
+		if ((deletedArguments[i] & DELETED_ARGUMENT) == 0) {
+			out.push(Value(String::fromInt(heap, static_cast<Int32>(i))));
+		}
+	}
+	super::collectOwnPropertyNames(rt, out);	// length, callee / caller, and any index that moved into the table
+}
+
+/**
+	10.6 [[DefineOwnProperty]]. An index in its slot is always a writable data property, so 8.12.9 can only ever
+	reject it over step 7 or step 9, both of which need it to be non-configurable; that is checked up front, and
+	nothing below can fail afterwards. A slot then holds whatever the descriptor leaves writable and data-kind,
+	which is exactly the case where step 5 keeps the parameter map: a value writes straight through to the mapped
+	parameter and the attribute bits go in the byte. An accessor or a cleared [[Writable]] severs the map in the
+	same breath as it outgrows the slot, so those move the index into the table for JSObject to finish 8.12.9.
+**/
+bool Arguments::defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow) {
+	Value* p = findProperty(key);
+	if (p == 0) {
+		return super::defineOwnProperty(rt, key, desc, doThrow);
+	}
+	Byte& attribs = deletedArguments[argumentIndex(p)];
+	if ((attribs & DONT_DELETE_FLAG) != 0
+			&& ((desc.has(PropertyDescriptor::HAS_CONFIGURABLE) && desc.configurable)					// 8.12.9 (7)
+				|| (desc.has(PropertyDescriptor::HAS_ENUMERABLE)
+					&& desc.enumerable == ((attribs & DONT_ENUM_FLAG) != 0))							// 8.12.9 (7)
+				|| desc.isAccessor())) {															// 8.12.9 (9)
+		return rejectDefine(rt, doThrow);
+	}
+	if (desc.has(PropertyDescriptor::HAS_VALUE)) {
+		*p = desc.value;	// 10.6 (5)(b)(i): the [[Put]] on the map is the write to the parameter
+	}
+	if (!desc.isAccessor() && (!desc.has(PropertyDescriptor::HAS_WRITABLE) || desc.writable)) {
+		if (desc.has(PropertyDescriptor::HAS_ENUMERABLE)) {
+			attribs = static_cast<Byte>((attribs & ~DONT_ENUM_FLAG) | (desc.enumerable ? 0 : DONT_ENUM_FLAG));
+		}
+		if (desc.has(PropertyDescriptor::HAS_CONFIGURABLE)) {
+			attribs = static_cast<Byte>((attribs & ~DONT_DELETE_FLAG) | (desc.configurable ? 0 : DONT_DELETE_FLAG));
+		}
+		return true;
+	}
+	const Value current = *p;
+	const Flags kept = attribs & (DONT_ENUM_FLAG | DONT_DELETE_FLAG);
+	attribs = DELETED_ARGUMENT;	// 10.6 (5)(b)(ii) / (5)(a): the parameter map goes with the slot
+	JSObject* const complete = getCompleteObject(rt);
+	complete->setOwnProperty(rt, key, current, EXISTS_FLAG | kept);	// it exists already, so extensibility is moot
+	return complete->defineOwnProperty(rt, key, desc, doThrow);
+}
+#endif
 
 void Arguments::constructCompleteObject(Runtime& rt) const {
 	completeObject->setOwnProperty(rt, &LENGTH_STRING, argumentsCount, DONT_ENUM_FLAG);
