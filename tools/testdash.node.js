@@ -10,29 +10,6 @@ const readline = require("readline");
 const TEST_PATH = "./externals/test262-master/";
 const TEST_TAR = "./externals/test262-master.tar.gz";
 
-// Resolve the engine binary across platforms/build variants
-function resolveEngine() {
-	// Prefer platform-specific names
-	if (process.platform === "win32") {
-		if (fs.existsSync(path.join(".", "output", "NuXJS_beta_x64.exe"))) return path.join(".", "output", "NuXJS_beta_x64.exe");
-		if (fs.existsSync(path.join(".", "output", "NuXJS.exe"))) return path.join(".", "output", "NuXJS.exe");
-		// fallback to non-.exe name (cmd will resolve .exe)
-		return path.join(".", "output", "NuXJS");
-	}
-	if (fs.existsSync("./output/NuXJS_beta_native")) return "./output/NuXJS_beta_native";
-	if (fs.existsSync("./output/NuXJS_release_native")) return "./output/NuXJS_release_native";
-	return "./output/NuXJS";
-}
-const ENGINE = resolveEngine();
-
-const TEST_ARGS_BASE = [
-	"-u",
-	"./externals/test262-master/tools/packaging/test262.py",
-	"--non_strict_only",
-	"--tests=" + TEST_PATH,
-	"--command=" + (process.platform === "win32" ? '"' + path.resolve(ENGINE) + '"' : ENGINE) + " -s",
-];
-
 // Simple arg helpers to support both "--name value" and "--name=value"
 function findArg(name) {
 	const eq = "--" + name + "=";
@@ -59,6 +36,35 @@ function getInt(name, def) {
 	const n = parseInt(raw, 10);
 	return isFinite(n) ? n : def;
 }
+function getString(name, def) {
+	const hit = findArg(name);
+	if (!hit) return def;
+	return (hit.type === "separate" ? process.argv[hit.index + 1] : hit.value) || def;
+}
+
+// The dashboard scores the target edition, so picking the es3 binary would be silently wrong. --engine overrides.
+function resolveEngine() {
+	const override = getString("engine", "");
+	if (override) return override;
+	const ext = process.platform === "win32" ? ".exe" : "";
+	const names = ["NuXJS_es5_release_native", "NuXJS_es5_beta_native", "NuXJS_es5_release_x64",
+			"NuXJS_es5_debug_x64", "NuXJS_beta_native", "NuXJS_release_native"];
+	for (let i = 0; i < names.length; i++) {
+		const p = path.join(".", "output", names[i] + ext);
+		if (fs.existsSync(p)) return p;
+	}
+	return path.join(".", "output", "NuXJS" + ext);	// cmd resolves the .exe on win32
+}
+const ENGINE = resolveEngine();
+
+// test262.py runs each test in both modes unless restricted. Strict mode is an ES5.1 feature and 482 tests are
+// onlyStrict, so --non_strict_only silently drops them: --include-strict is what makes those count.
+const TEST_ARGS_BASE = ["-u", "./externals/test262-master/tools/packaging/test262.py"]
+	.concat(getBool("include-strict") ? [] : ["--non_strict_only"])
+	.concat([
+		"--tests=" + TEST_PATH,
+		"--command=" + (process.platform === "win32" ? '"' + path.resolve(ENGINE) + '"' : ENGINE) + " -s",
+	]);
 
 // Resolve a Python 2 interpreter robustly:
 // 1) Respect NUXJS_PYTHON2 if provided
@@ -98,14 +104,47 @@ function interpretResult(text) {
 	throw 'Unknown test result: "' + text + '"';
 }
 
+/*
+	The edition a test targets is not a human judgement, it is stated in the test's own frontmatter: test262 tags
+	each one with the clause number of the edition it was written against, so `es5id` is an ES5.1 test while
+	`es6id` and the unversioned `esid` are newer. Deriving the out-of-scope bucket from that keeps testdash.json
+	down to the calls a human actually made, and retargeting to a later edition is then this one object.
+*/
+const TARGET = { id: "es5id", category: "not_es51", label: "ES >5.1" };
+const EDITION_IDS = ["es5id", "es6id", "esid"];
+
 const CATEGORY_LABELS = {
 	bad_test: "BAD TEST",
 	by_design: "BY DESIGN",
-	not_es3: "ES >3",
 	tbd: "TBD",
 	todo: "TODO",
 };
-const CATEGORIES_TO_IGNORE = { bad_test: true, by_design: true, not_es3: true, tbd: true };
+CATEGORY_LABELS[TARGET.category] = TARGET.label;
+const CATEGORIES_TO_IGNORE = { bad_test: true, by_design: true, tbd: true };
+CATEGORIES_TO_IGNORE[TARGET.category] = true;
+
+const editions = {};
+function testEdition(testName) {
+	if (editions[testName] === undefined) {
+		var head = "";
+		try {
+			head = fs.readFileSync(path.join(TEST_PATH, "test", testName + ".js"), "utf8").substr(0, 6000);
+		} catch (e) {
+			// Not in this snapshot. Left unclassified so a stale entry surfaces instead of being quietly ignored.
+		}
+		const block = /\/\*---([\s\S]*?)---\*\//.exec(head);	// the ids may be indented inside the frontmatter
+		editions[testName] = EDITION_IDS.filter(function (id) {
+			return new RegExp("^\\s*" + id + "\\s*:", "m").test(block ? block[1] : head);
+		})[0] || "";
+	}
+	return editions[testName];
+}
+function categoryOf(testName) {
+	const stored = config[testName] && config[testName].category;
+	if (stored) return stored;
+	const edition = testEdition(testName);
+	return edition !== "" && edition !== TARGET.id ? TARGET.category : "";
+}
 
 var tests = {};
 var config = {};
@@ -211,6 +250,7 @@ function runTests(callback, limit, jobs) {
 						testName = testName.replace(/\\/g, "/");
 						var passed = interpretResult(m[3]);
 						tests[testName] = extend({ name: testName, passed: passed, output: "" }, config[testName]);
+						tests[testName].category = categoryOf(testName);
 						currentTest = currentTests[idx] = tests[testName];
 						captureMode[idx] = m[4] === " ===";
 						count++;
