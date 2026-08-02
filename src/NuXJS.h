@@ -1793,6 +1793,15 @@ class Processor : public GCItem {
 			, READ_NAMED_OP									// operand: const_index (name), stack: -> value
 			, WRITE_NAMED_OP								// operand: const_index (name), stack: value -> value
 			, WRITE_NAMED_POP_OP							// operand: const_index (name), stack: value ->
+		#if NUXJS_ES5
+			// 11.13 evaluates the left-hand side once and hands that same Reference to PutValue, so an assignment
+			// resolves the name up front and keeps the holder on the stack rather than looking it up again after
+			// the right-hand side has run. Undefined stands for a declarative binding, which cannot move.
+			, RESOLVE_NAMED_OP								// operand: const_index (name), stack: -> holder
+			, READ_RESOLVED_OP								// operand: const_index (name), stack: holder -> holder, value
+			, WRITE_RESOLVED_OP								// operand: const_index (name), stack: holder, value -> value, junk
+			, POST_SHUFFLE_2_OP								// stack: holder, value -> value, holder, value
+		#endif
 			, CHECK_OBJECT_COERCIBLE_OP						// stack: value -> value
 			, CHECK_RESOLVE_PROPERTY_OP						// stack: object, name -> object, name	// check coercible, then resolve object
 			, GET_PROPERTY_OP								// stack: object, name -> value

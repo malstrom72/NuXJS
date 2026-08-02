@@ -2929,6 +2929,12 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 #else
 	{ WRITE_NAMED_POP_OP         , "WRITE_NAMED_POP"         , 0      , 0 },	// es5: same shape as SET_PROPERTY_POP below, the compiler always follows with POP_OP
 #endif
+#if NUXJS_ES5
+	{ RESOLVE_NAMED_OP           , "RESOLVE_NAMED"           , 1      , 0 },
+	{ READ_RESOLVED_OP           , "READ_RESOLVED"           , 1      , 0 },
+	{ WRITE_RESOLVED_OP          , "WRITE_RESOLVED"          , 0      , 0 },	// leaves the value and a junk slot; the compiler always follows with POP_OP
+	{ POST_SHUFFLE_2_OP          , "POST_SHUFFLE_2"          , 1      , 0 },
+#endif
 	{ CHECK_OBJECT_COERCIBLE_OP	 , "CHECK_OBJECT_COERCIBLE"  , 0	  , 0 },
 	{ CHECK_RESOLVE_PROPERTY_OP	 , "CHECK_RESOLVE_PROPERTY"	 , 0	  , 0 },
 	{ GET_PROPERTY_OP            , "GET_PROPERTY"            , -1     , 0 },
@@ -3554,6 +3560,78 @@ void Processor::innerRun() {
 			case WRITE_NAMED_POP_OP:	scope->writeVar(rt, constants[im].getString(), sp[0]); pop(1); break;
 		#endif
 
+		#if NUXJS_ES5
+			case RESOLVE_NAMED_OP: {
+				Object* const holder = scope->resolveVar(rt, constants[im].getString());
+				push(holder != 0 ? Value(holder) : UNDEFINED_VALUE);	// undefined: declarative, so it cannot move
+				break;
+			}
+
+			case READ_RESOLVED_OP: {
+				const String* name = constants[im].getString();
+				Object* const holder = sp[0].asObject();
+				if (holder == 0) {	// declarative, so resolving by name again lands in the same place
+					if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
+						error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+						return;
+					}
+					break;
+				}
+				const Value key(name);
+				const Flags flags = holder->getProperty(rt, key, ++sp);
+				if (flags == NONEXISTENT) {
+					sp[0] = UNDEFINED_VALUE;	// deleted since it was resolved; 8.7.1 on an object base answers undefined
+				} else if ((flags & ACCESSOR_FLAG) != 0) {
+					Value dummy;
+					Accessor* accessor;
+					holder->getPropertySlot(rt, key, &dummy, &accessor);
+					if (accessor->get == 0) {
+						sp[0] = UNDEFINED_VALUE;
+						break;
+					}
+					invokeFunction(accessor->get, 0, 0, holder);
+					return;
+				}
+				break;
+			}
+
+			case WRITE_RESOLVED_OP: {
+				const String* name = constants[im].getString();
+				Object* const holder = sp[-1].asObject();
+				sp[-1] = sp[0];	// the assigned value takes the holder's slot, so it survives a setter frame
+				if (holder == 0) {
+					if (code->isStrict() && !checkStrictAssignable(scope, name)) return;
+					scope->writeVar(rt, name, sp[0]);
+				} else if (!holder->updateOwnProperty(rt, Value(name), sp[0])) {	// fast path, as SET_PROPERTY_POP does
+					const Value key(name);
+					Value dummy;
+					Accessor* accessor;
+					const Flags flags = holder->getPropertySlot(rt, key, &dummy, &accessor);
+					if (accessor != 0) {
+						if (accessor->set != 0) {
+							invokeFunction(accessor->set, 0, 1, holder);
+							return;	// the following POP_OP discards the setter's return value
+						}
+						if (code->isStrict()) {
+							error(TYPE_ERROR, new(heap) String(heap.managed(), *name, CANNOT_ASSIGN_STRING));
+							return;
+						}
+					} else if ((flags & READ_ONLY_FLAG) == 0) {
+						holder->setProperty(rt, key, sp[0]);	// 8.7.2: [[Put]] on the base the reference captured
+					} else if (code->isStrict()) {
+						error(TYPE_ERROR, new(heap) String(heap.managed(), *name, CANNOT_ASSIGN_STRING));
+						return;
+					}
+				}
+				assert(unpackInstruction(*ip).first == POP_OP);	// guaranteed by makeAssignment
+				++ip;
+				pop(1);
+				break;
+			}
+
+			case POST_SHUFFLE_2_OP:	push(sp[0]); sp[-1] = sp[-2]; sp[-2] = sp[0]; break;
+		#endif
+
 			case CHECK_OBJECT_COERCIBLE_OP: {
 				if (sp[0].isUndefined() || sp[0].isNull()) {
 					error(TYPE_ERROR, &CANNOT_CONVERT_TO_OBJECT_STRING);
@@ -4089,6 +4167,9 @@ struct Compiler::ExpressionResult {
 		, CONSTANT			// constant (and primitive) value on stack
 		, LOCAL				// arbitrary value in local variable
 		, NAMED				// arbitrary value in named variable
+	#if NUXJS_ES5
+		, RESOLVED			// named variable whose holder is already on the stack (11.13: one reference, not two)
+	#endif
 		, PROPERTY			// arbitrary value in object property
 		, SAFEKEPT			// further up the value stack (value = position relative to safe-kept-counter)
 	};
@@ -4499,6 +4580,9 @@ Compiler::ExpressionResult Compiler::makeRValue(const ExpressionResult& xr, bool
 		case ExpressionResult::CONSTANT: emitWithConstant(Processor::CONST_OP, xr.v); return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
 		case ExpressionResult::LOCAL: emit(Processor::READ_LOCAL_OP, xr.v.toInt()); break;
 		case ExpressionResult::NAMED: emitWithConstant(Processor::READ_NAMED_OP, xr.v); break;
+	#if NUXJS_ES5
+		case ExpressionResult::RESOLVED: emitWithConstant(Processor::READ_RESOLVED_OP, xr.v); break;
+	#endif
 		case ExpressionResult::PROPERTY: emit(Processor::GET_PROPERTY_OP); break;
 		case ExpressionResult::SAFEKEPT: emit(Processor::REPUSH_OP
 				, (currentSection->inDeadCode() ? 0 : xr.v.toInt() - currentSection->stackDepth + 1)); break;
@@ -4538,9 +4622,10 @@ Compiler::ExpressionResult Compiler::makeAssignment(const ExpressionResult& xr) 
 #if NUXJS_ES5
 	// 11.13.1 / 11.4.4 / 11.4.5: assigning to (or ++/-- of) `eval` or `arguments` is a SyntaxError in strict mode.
 	// makeAssignment is the single write path for =, compound assignment, and pre/post increment.
-	if (code->strict && (xr.t == ExpressionResult::NAMED || xr.t == ExpressionResult::LOCAL)) {
-		const String* targetName = (xr.t == ExpressionResult::NAMED ? xr.v.getString()
-				: code->getLocalName(xr.v.toInt()));
+	if (code->strict && (xr.t == ExpressionResult::NAMED || xr.t == ExpressionResult::RESOLVED
+			|| xr.t == ExpressionResult::LOCAL)) {
+		const String* targetName = (xr.t == ExpressionResult::LOCAL ? code->getLocalName(xr.v.toInt())
+				: xr.v.getString());	// RESOLVED carries the same name constant NAMED did
 		if (targetName->isEqualTo(EVAL_STRING) || targetName->isEqualTo(ARGUMENTS_STRING)) {
 			error(SYNTAX_ERROR, "'eval' and 'arguments' may not be assigned in strict mode");
 		}
@@ -4549,6 +4634,12 @@ Compiler::ExpressionResult Compiler::makeAssignment(const ExpressionResult& xr) 
 	switch (xr.t) {
 		default: error(REFERENCE_ERROR, "Illegal l-value"); // FIX : ECMA like the word "reference"
 		case ExpressionResult::LOCAL: emit(Processor::WRITE_LOCAL_OP, xr.v.toInt()); break;
+	#if NUXJS_ES5
+		case ExpressionResult::RESOLVED:
+			emitWithConstant(Processor::WRITE_RESOLVED_OP, xr.v);
+			emit(Processor::POP_OP, 1);
+			break;
+	#endif
 		case ExpressionResult::NAMED:
 		#if NUXJS_ES5
 			// The binding may be an accessor on a `with` or global object, and a JS setter frame leaves its return
@@ -4909,6 +5000,14 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			#endif
 				emit(Processor::REPUSH_2_OP);
 			}
+			#if NUXJS_ES5
+				// 11.13 / 11.4.4: the reference is created here, before anything else runs, and PutValue below
+				// must use this one. Only a name needs it; a local cannot move and a property keeps its base.
+				if (xr.t == ExpressionResult::NAMED) {
+					emitWithConstant(Processor::RESOLVE_NAMED_OP, xr.v);
+					xr = ExpressionResult(ExpressionResult::RESOLVED, xr.v);
+				}
+			#endif
 			makeRValue(xr, true);
 			emit(op.vmOp);
 			makeAssignment(xr);
@@ -5003,9 +5102,22 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			#endif
 				emit(Processor::REPUSH_2_OP);
 			}
+			#if NUXJS_ES5
+				// 11.13 / 11.4.4: the reference is created here, before anything else runs, and PutValue below
+				// must use this one. Only a name needs it; a local cannot move and a property keeps its base.
+				if (xr.t == ExpressionResult::NAMED) {
+					emitWithConstant(Processor::RESOLVE_NAMED_OP, xr.v);
+					xr = ExpressionResult(ExpressionResult::RESOLVED, xr.v);
+				}
+			#endif
 			makeRValue(xr, true);
 			emit(Processor::PLUS_OP);
+		#if NUXJS_ES5
+			emit(xr.t == ExpressionResult::PROPERTY ? Processor::POST_SHUFFLE_OP
+					: xr.t == ExpressionResult::RESOLVED ? Processor::POST_SHUFFLE_2_OP : Processor::REPUSH_OP);
+		#else
 			emit(xr.t == ExpressionResult::PROPERTY ? Processor::POST_SHUFFLE_OP : Processor::REPUSH_OP);
+		#endif
 			emit(op.vmOp);
 			makeAssignment(xr);
 			emit(Processor::POP_OP, 1);
@@ -5087,6 +5199,14 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				emit(Processor::CHECK_RESOLVE_PROPERTY_OP);
 			}
 		#endif
+			#if NUXJS_ES5
+				// 11.13 / 11.4.4: the reference is created here, before anything else runs, and PutValue below
+				// must use this one. Only a name needs it; a local cannot move and a property keeps its base.
+				if (xr.t == ExpressionResult::NAMED) {
+					emitWithConstant(Processor::RESOLVE_NAMED_OP, xr.v);
+					xr = ExpressionResult(ExpressionResult::RESOLVED, xr.v);
+				}
+			#endif
 			const ExpressionResult rxr = makeRValue(operand(op), false);
 			makeAssignment(xr);
 			xr = rxr;
@@ -5104,6 +5224,14 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			#endif
 				emit(Processor::REPUSH_2_OP);
 			}
+			#if NUXJS_ES5
+				// 11.13 / 11.4.4: the reference is created here, before anything else runs, and PutValue below
+				// must use this one. Only a name needs it; a local cannot move and a property keeps its base.
+				if (xr.t == ExpressionResult::NAMED) {
+					emitWithConstant(Processor::RESOLVE_NAMED_OP, xr.v);
+					xr = ExpressionResult(ExpressionResult::RESOLVED, xr.v);
+				}
+			#endif
 			makeRValue(xr, true, primitiveOp);
 			makeRValue(operand(op), true, primitiveOp);
 			emit(op.vmOp);
