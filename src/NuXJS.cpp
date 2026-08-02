@@ -2652,6 +2652,11 @@ Object* Scope::resolveVar(Runtime& rt, const String* name) const {
 	assert(parentScope != 0);
 	return parentScope->resolveVar(rt, name);
 }
+
+Object* Scope::writeVarOrAccessor(Runtime& rt, const String* name, const Value& v) {
+	assert(parentScope != 0);
+	return parentScope->writeVarOrAccessor(rt, name, v);
+}
 #endif
 
 bool Scope::deleteVar(Runtime& rt, const String* name) {
@@ -2762,6 +2767,31 @@ void FunctionScope::writeVar(Runtime& rt, const String* name, const Value& v) {
 }
 
 #if NUXJS_ES5
+Object* FunctionScope::writeVarOrAccessor(Runtime& rt, const String* name, const Value& v) {
+	const UInt32 bloomCode = name->createBloomCode();
+	if ((bloomSet & bloomCode) == bloomCode) {	// mirrors writeVar; locals, dynamic vars and the self name are
+		Int32 index;								// declarative, so the write happens here and answers 0
+		const Code* code = function->code;
+		if (code->lookupNameIndex(name, index)) {
+			assert(locals.begin() <= localsPointer + index && localsPointer + index < locals.end());
+			localsPointer[index] = v;
+			return 0;
+		}
+		if (dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) {
+			Table& props = *getDynamicVars(rt);
+			Table::Bucket* bucket = props.lookup(name);
+			if (bucket != 0) {
+				props.update(bucket, v);
+				return 0;
+			}
+		}
+		if (code->selfName != 0 && name->isEqualTo(*code->selfName)) {
+			return 0;	// a function's own name is read-only
+		}
+	}
+	return parentScope->writeVarOrAccessor(rt, name, v);
+}
+
 Object* FunctionScope::resolveVar(Runtime& rt, const String* name) const {
 	const UInt32 bloomCode = name->createBloomCode();
 	if ((bloomSet & bloomCode) == bloomCode) {	// mirrors readVar: locals, dynamic vars and the self name are all
@@ -3035,6 +3065,16 @@ struct Processor::EvalScope : public Scope {
 		}
 		return parentScope->resolveVar(rt, name);
 	}
+	virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v) {
+		if (ownVars != 0) {
+			Table::Bucket* bucket = ownVars->lookup(name);
+			if (bucket != 0) {
+				ownVars->update(bucket, v);
+				return 0;
+			}
+		}
+		return parentScope->writeVarOrAccessor(rt, name, v);
+	}
 #endif
 	virtual bool deleteVar(Runtime& rt, const String* name) {
 		if (ownVars != 0) {
@@ -3106,6 +3146,13 @@ struct Processor::CatchScope : public Scope {
 	virtual Object* resolveVar(Runtime& rt, const String* name) const {
 		return (name->isEqualTo(*exceptionName) ? 0 : parentScope->resolveVar(rt, name));	// the binding is declarative
 	}
+	virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v) {
+		if (name->isEqualTo(*exceptionName)) {
+			exceptionValue = v;
+			return 0;
+		}
+		return parentScope->writeVarOrAccessor(rt, name, v);
+	}
 #endif
 	virtual bool deleteVar(Runtime& rt, const String* name) {
 		if (name->isEqualTo(*exceptionName)) {
@@ -3151,6 +3198,23 @@ struct Processor::WithScope : public Scope {
 	virtual Object* resolveVar(Runtime& rt, const String* name) const {
 		Value dummy;
 		return (withObject->getProperty(rt, name, &dummy) != NONEXISTENT ? withObject : parentScope->resolveVar(rt, name));
+	}
+	virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v) {
+		const Value key(name);
+		for (Object* o = withObject; o != 0; o = o->getPrototype(rt)) {	// mirrors writeVar, and the flags it
+			Value dummy;													// already fetches answer the accessor
+			const Flags flags = o->getOwnProperty(rt, key, &dummy);		// question at no extra cost
+			if (flags != NONEXISTENT) {
+				if ((flags & ACCESSOR_FLAG) != 0) {
+					return withObject;
+				}
+				if ((flags & READ_ONLY_FLAG) == 0) {
+					withObject->setOwnProperty(rt, key, v);
+				}
+				return 0;
+			}
+		}
+		return parentScope->writeVarOrAccessor(rt, name, v);
 	}
 #endif
 	virtual bool deleteVar(Runtime& rt, const String* name) {
@@ -3466,27 +3530,20 @@ void Processor::innerRun() {
 				// global object can hold the binding as an accessor, and then the setter runs instead of a store.
 				// The compiler duplicated the value and follows with POP_OP, so a setter frame has a slot to
 				// deposit its discarded return value in (see makeAssignment).
-				Object* const holder = scope->resolveVar(rt, name);
-				if (holder != 0) {
+				Object* const holder = scope->writeVarOrAccessor(rt, name, sp[0]);
+				if (holder != 0) {	// the write did not happen: the binding is an accessor
 					Value dummy;
 					Accessor* accessor;
 					holder->getPropertySlot(rt, Value(name), &dummy, &accessor);
-					if (accessor != 0) {
-						if (accessor->set != 0) {
-							invokeFunction(accessor->set, 0, 1, holder);
-							return;	// the following POP_OP discards the setter's return value after the frame returns
-						}
-						if (code->isStrict()) {	// 8.12.5: strict throws where non-strict silently ignores
-							error(TYPE_ERROR, new(heap) String(heap.managed(), *name, CANNOT_ASSIGN_STRING));
-							return;
-						}
-						assert(unpackInstruction(*ip).first == POP_OP);
-						++ip;
-						pop(1);
-						break;	// accessor with no setter: the store is dropped
+					if (accessor->set != 0) {
+						invokeFunction(accessor->set, 0, 1, holder);
+						return;	// the following POP_OP discards the setter's return value after the frame returns
+					}
+					if (code->isStrict()) {	// 8.12.5: strict throws where non-strict silently ignores
+						error(TYPE_ERROR, new(heap) String(heap.managed(), *name, CANNOT_ASSIGN_STRING));
+						return;
 					}
 				}
-				scope->writeVar(rt, name, sp[0]);
 				assert(unpackInstruction(*ip).first == POP_OP);	// guaranteed by makeAssignment
 				++ip;	// data path: consume the following POP_OP here to spare a dispatch
 				pop(1);
@@ -6083,6 +6140,21 @@ void Runtime::GlobalScope::writeVar(Runtime& rt, const String* name, const Value
 }
 
 #if NUXJS_ES5
+Object* Runtime::GlobalScope::writeVarOrAccessor(Runtime& rt, const String* name, const Value& v) {
+	Object* const globalObject = rt.getGlobalObject();
+	if (globalObject->updateOwnProperty(rt, Value(name), v)) {
+		return 0;	// fast path: an existing writable data property, the overwhelmingly common global assignment
+	}
+	Value dummy;
+	Accessor* accessor;
+	globalObject->getPropertySlot(rt, Value(name), &dummy, &accessor);
+	if (accessor != 0) {
+		return globalObject;
+	}
+	globalObject->setProperty(rt, name, v);
+	return 0;
+}
+
 Object* Runtime::GlobalScope::resolveVar(Runtime& rt, const String* name) const {
 	Value dummy;
 	Object* const globalObject = rt.getGlobalObject();
