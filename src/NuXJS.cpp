@@ -4650,6 +4650,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 		}
 		
 		case GROUP: {
+			// 11.1.6 does not GetValue, so unlike COMMA this hands the reference back and `(eval)(s)` stays direct.
 			const bool didAcceptInOperator = acceptInOperator;
 			acceptInOperator = true;
 			xr = operand(op);
@@ -4748,7 +4749,9 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 	switch (op.type) {
 		case COMMA: {
 			xr = discard(xr);
-			xr = operand(op);
+			// 11.14 GetValues both operands, so a comma yields a value and never a reference: that is what makes
+			// `(0, f)()` this-less (11.2.3), `(0, eval)(s)` indirect (15.1.2.1.1), typeof/delete/assign see a value.
+			xr = makeRValue(operand(op), false);
 			break;
 		}
 			
