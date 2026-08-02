@@ -74,12 +74,12 @@ select, button { background: rgba(88, 88, 88, 0.42);color: rgba(255, 255, 255, 0
 		[ "", "" ],
 		[ "bad_test", "BAD TEST" ],
 		[ "by_design", "BY DESIGN" ],
-		[ "not_es3", "ES &gt;3" ],
+		[ "not_es51", "ES &gt;5.1" ],
 		[ "tbd", "TBD" ],
 		[ "todo", "TODO" ],
 	];
 
-	const CATEGORIES_TO_IGNORE = { bad_test: true, by_design: true, not_es3: true, tbd: true };
+	const CATEGORIES_TO_IGNORE = { bad_test: true, by_design: true, not_es51: true, tbd: true };
 
 	var testFlagTemplate = "<select><option>";
 	for (var i = 0; i < CATEGORIES.length; i++) {

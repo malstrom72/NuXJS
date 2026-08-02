@@ -337,8 +337,15 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 
 ## 8. Conformance, docs & tooling
 
-- [ ] Retarget the Test262 dashboard to ES5.1: re-categorize the currently-excluded `ES >3` set, import the ES5.1
-      section, and track pass/fail (`tools/testdash.*`, `docs/Test262 Dashboard.md`).
+- [ ] Retarget the Test262 dashboard to ES5.1 (`tools/testdash.*`, `docs/Test262 Dashboard.md`).
+    - [x] Scope is derived from each test's own `es5id`/`es6id`/`esid` frontmatter instead of being recorded, so
+      the 8943 hand-marked `ES >3` entries collapsed to the 58 that carry no edition id. `testdash.json` went from
+      9427 entries to 349: 190 `BY DESIGN`, 101 `BAD TEST`, 58 `ES >5.1`, and 7 stale keys dropped. 5073 tests
+      come into scope. Verified by classifying all 16485 tests twice, independently, with zero disagreements.
+    - [x] `--engine` selects the binary. It defaulted to the ES3 build, which would have scored the wrong engine.
+    - [x] `--include-strict` drops `--non_strict_only`. That flag skips all 482 `onlyStrict` tests, so no strict
+      mode behaviour was ever measured; ES5.1 conformance numbers are not meaningful without it.
+    - [ ] Run it and triage. Needs the suite extracted into `externals/`, so it has to be asked for.
 - [x] `docs/notes/ECMAScript Compatibility Notes.md` exists again and has been kept current with each deviation as
       it landed: the JSON depth cap, no Annex B octal, the strict `this` deferral, `Date.parse`, the two ES5 syntax
       relaxations the es3 build also accepts, and the array `[[DefineOwnProperty]]` note.
