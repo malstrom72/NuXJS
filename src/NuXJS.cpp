@@ -2647,6 +2647,13 @@ void Scope::writeVar(Runtime& rt, const String* name, const Value& v) {
 	return parentScope->writeVar(rt, name, v);
 }
 
+#if NUXJS_ES5
+Object* Scope::resolveVar(Runtime& rt, const String* name) const {
+	assert(parentScope != 0);
+	return parentScope->resolveVar(rt, name);
+}
+#endif
+
 bool Scope::deleteVar(Runtime& rt, const String* name) {
 	assert(parentScope != 0);
 	return parentScope->deleteVar(rt, name);
@@ -2753,6 +2760,29 @@ void FunctionScope::writeVar(Runtime& rt, const String* name, const Value& v) {
 	}
 	parentScope->writeVar(rt, name, v); // FIX : recursion
 }
+
+#if NUXJS_ES5
+Object* FunctionScope::resolveVar(Runtime& rt, const String* name) const {
+	const UInt32 bloomCode = name->createBloomCode();
+	if ((bloomSet & bloomCode) == bloomCode) {	// mirrors readVar: locals, dynamic vars and the self name are all
+		Int32 index;								// declarative, so a hit stops the walk and still answers 0
+		const Code* code = function->code;
+		if (code->lookupNameIndex(name, index)) {
+			return 0;
+		}
+		if (dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) {
+			Value dummy;
+			if (getDynamicVars(rt)->getOwnProperty(rt, name, &dummy) != NONEXISTENT) {
+				return 0;
+			}
+		}
+		if (code->selfName != 0 && name->isEqualTo(*code->selfName)) {
+			return 0;
+		}
+	}
+	return parentScope->resolveVar(rt, name);
+}
+#endif
 
 bool FunctionScope::deleteVar(Runtime& rt, const String* name) {
 	const UInt32 bloomCode = name->createBloomCode();
@@ -2864,7 +2894,11 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ WRITE_LOCAL_POP_OP         , "WRITE_LOCAL_POP"         , -1     , 0 },
 	{ READ_NAMED_OP              , "READ_NAMED"              , 1      , 0 },
 	{ WRITE_NAMED_OP             , "WRITE_NAMED"             , 0      , 0 },
+#if !NUXJS_ES5
 	{ WRITE_NAMED_POP_OP         , "WRITE_NAMED_POP"         , -1     , 0 },
+#else
+	{ WRITE_NAMED_POP_OP         , "WRITE_NAMED_POP"         , 0      , 0 },	// es5: same shape as SET_PROPERTY_POP below, the compiler always follows with POP_OP
+#endif
 	{ CHECK_OBJECT_COERCIBLE_OP	 , "CHECK_OBJECT_COERCIBLE"  , 0	  , 0 },
 	{ CHECK_RESOLVE_PROPERTY_OP	 , "CHECK_RESOLVE_PROPERTY"	 , 0	  , 0 },
 	{ GET_PROPERTY_OP            , "GET_PROPERTY"            , -1     , 0 },
@@ -2993,6 +3027,15 @@ struct Processor::EvalScope : public Scope {
 		}
 		parentScope->writeVar(rt, name, v);
 	}
+#if NUXJS_ES5
+	virtual Object* resolveVar(Runtime& rt, const String* name) const {
+		Value dummy;
+		if (ownVars != 0 && ownVars->getOwnProperty(rt, name, &dummy) != NONEXISTENT) {
+			return 0;	// a strict eval's own vars are declarative
+		}
+		return parentScope->resolveVar(rt, name);
+	}
+#endif
 	virtual bool deleteVar(Runtime& rt, const String* name) {
 		if (ownVars != 0) {
 			Table::Bucket* bucket = ownVars->lookup(name);
@@ -3059,6 +3102,11 @@ struct Processor::CatchScope : public Scope {
 			parentScope->writeVar(rt, name, v);
 		}
 	}
+#if NUXJS_ES5
+	virtual Object* resolveVar(Runtime& rt, const String* name) const {
+		return (name->isEqualTo(*exceptionName) ? 0 : parentScope->resolveVar(rt, name));	// the binding is declarative
+	}
+#endif
 	virtual bool deleteVar(Runtime& rt, const String* name) {
 		if (name->isEqualTo(*exceptionName)) {
 			return false;
@@ -3099,6 +3147,12 @@ struct Processor::WithScope : public Scope {
 		}
 		parentScope->writeVar(rt, name, v);
 	}
+#if NUXJS_ES5
+	virtual Object* resolveVar(Runtime& rt, const String* name) const {
+		Value dummy;
+		return (withObject->getProperty(rt, name, &dummy) != NONEXISTENT ? withObject : parentScope->resolveVar(rt, name));
+	}
+#endif
 	virtual bool deleteVar(Runtime& rt, const String* name) {
 		Value dummy;
 		Flags findFlags = withObject->getProperty(rt, name, &dummy);
@@ -3369,10 +3423,33 @@ void Processor::innerRun() {
 			case WRITE_LOCAL_POP_OP:	assert(locals != 0); locals[im] = sp[0]; pop(1); break;
 			case READ_NAMED_OP: {
 				const String* name = constants[im].getString();
+			#if !NUXJS_ES5
 				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
 					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
 					return;
 				}
+			#else
+				const Flags flags = scope->readVar(rt, name, ++sp);
+				if (flags == NONEXISTENT) {
+					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+					return;
+				}
+				// 8.12.3 through an object environment record: a `with` object or the global object can hold the
+				// binding as an accessor, and then the identifier has to run the getter. Data reads never get here.
+				if ((flags & ACCESSOR_FLAG) != 0) {
+					Value dummy;
+					Accessor* accessor;
+					Object* const holder = scope->resolveVar(rt, name);	// rare second walk fetches the pair
+					assert(holder != 0);
+					holder->getPropertySlot(rt, Value(name), &dummy, &accessor);
+					if (accessor->get == 0) {
+						sp[0] = UNDEFINED_VALUE;
+						break;
+					}
+					invokeFunction(accessor->get, 0, 0, holder);	// the getter's result replaces the pushed slot
+					return;
+				}
+			#endif
 				break;
 			}
 		#if NUXJS_ES5
@@ -3385,7 +3462,33 @@ void Processor::innerRun() {
 			case WRITE_NAMED_POP_OP: {
 				const String* name = constants[im].getString();
 				if (code->isStrict() && !checkStrictAssignable(scope, name)) return;
+				// 8.12.5 through an object environment record, the mirror of the read above: a `with` object or the
+				// global object can hold the binding as an accessor, and then the setter runs instead of a store.
+				// The compiler duplicated the value and follows with POP_OP, so a setter frame has a slot to
+				// deposit its discarded return value in (see makeAssignment).
+				Object* const holder = scope->resolveVar(rt, name);
+				if (holder != 0) {
+					Value dummy;
+					Accessor* accessor;
+					holder->getPropertySlot(rt, Value(name), &dummy, &accessor);
+					if (accessor != 0) {
+						if (accessor->set != 0) {
+							invokeFunction(accessor->set, 0, 1, holder);
+							return;	// the following POP_OP discards the setter's return value after the frame returns
+						}
+						if (code->isStrict()) {	// 8.12.5: strict throws where non-strict silently ignores
+							error(TYPE_ERROR, new(heap) String(heap.managed(), *name, CANNOT_ASSIGN_STRING));
+							return;
+						}
+						assert(unpackInstruction(*ip).first == POP_OP);
+						++ip;
+						pop(1);
+						break;	// accessor with no setter: the store is dropped
+					}
+				}
 				scope->writeVar(rt, name, sp[0]);
+				assert(unpackInstruction(*ip).first == POP_OP);	// guaranteed by makeAssignment
+				++ip;	// data path: consume the following POP_OP here to spare a dispatch
 				pop(1);
 				break;
 			}
@@ -3706,9 +3809,32 @@ void Processor::innerRun() {
 			}
 			case TYPEOF_OP: sp[0] = sp[0].typeOfString(); break;
 			case TYPEOF_NAMED_OP: {
+			#if !NUXJS_ES5
 				Value v(UNDEFINED_VALUE);
 				scope->readVar(rt, constants[im].getString(), &v);
 				push(v.typeOfString());
+			#else
+				const String* name = constants[im].getString();
+				Value v(UNDEFINED_VALUE);
+				const Flags flags = scope->readVar(rt, name, &v);
+				// 11.4.3 takes GetValue of the reference unless it is unresolvable, so a binding held as an
+				// accessor has to run its getter here too. That means pushing the value and letting the TYPEOF_OP
+				// the compiler now follows with turn it into the name, since a getter needs its own frame.
+				if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+					Value dummy;
+					Accessor* accessor;
+					Object* const holder = scope->resolveVar(rt, name);
+					assert(holder != 0);
+					holder->getPropertySlot(rt, Value(name), &dummy, &accessor);
+					if (accessor->get != 0) {
+						push(UNDEFINED_VALUE);
+						invokeFunction(accessor->get, 0, 0, holder);
+						return;
+					}
+					v = UNDEFINED_VALUE;
+				}
+				push(v);
+			#endif
 				break;
 			}
 			
@@ -4366,7 +4492,20 @@ Compiler::ExpressionResult Compiler::makeAssignment(const ExpressionResult& xr) 
 	switch (xr.t) {
 		default: error(REFERENCE_ERROR, "Illegal l-value"); // FIX : ECMA like the word "reference"
 		case ExpressionResult::LOCAL: emit(Processor::WRITE_LOCAL_OP, xr.v.toInt()); break;
-		case ExpressionResult::NAMED: emitWithConstant(Processor::WRITE_NAMED_OP, xr.v); break;
+		case ExpressionResult::NAMED:
+		#if NUXJS_ES5
+			// The binding may be an accessor on a `with` or global object, and a JS setter frame leaves its return
+			// value on top, so the value is duplicated below and the leftover slot popped, exactly as PROPERTY
+			// does: [val] -> [val, val] -> [val, junk] -> [val]. WRITE_NAMED consumes the POP on the data path.
+			// WRITE_NAMED_POP rather than WRITE_NAMED, because emitting the latter here would let the POP_OP
+			// peephole fuse the two and skip the slot the setter needs.
+			emit(Processor::REPUSH_OP, 0);
+			emitWithConstant(Processor::WRITE_NAMED_POP_OP, xr.v);
+			emit(Processor::POP_OP, 1);
+		#else
+			emitWithConstant(Processor::WRITE_NAMED_OP, xr.v);
+		#endif
+			break;
 		case ExpressionResult::PROPERTY:
 		#if NUXJS_ES5
 			// A JS setter frame always leaves its return value on top, so the assigned value is duplicated
@@ -4726,6 +4865,9 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 			xr = operand(op);
 			if (xr.t == ExpressionResult::NAMED) {
 				emitWithConstant(Processor::TYPEOF_NAMED_OP, xr.v);
+			#if NUXJS_ES5
+				emit(Processor::TYPEOF_OP);	// es5: TYPEOF_NAMED pushes the value, so a getter can run first
+			#endif
 			} else {
 				makeRValue(xr, false);
 				emit(op.vmOp);
@@ -5939,6 +6081,14 @@ Flags Runtime::GlobalScope::readVar(Runtime& rt, const String* name, Value* v) c
 void Runtime::GlobalScope::writeVar(Runtime& rt, const String* name, const Value& v) {
 	rt.getGlobalObject()->setProperty(rt, name, v);
 }
+
+#if NUXJS_ES5
+Object* Runtime::GlobalScope::resolveVar(Runtime& rt, const String* name) const {
+	Value dummy;
+	Object* const globalObject = rt.getGlobalObject();
+	return (globalObject->getProperty(rt, name, &dummy) != NONEXISTENT ? globalObject : 0);	// 0 is unresolvable
+}
+#endif
 
 bool Runtime::GlobalScope::deleteVar(Runtime& rt, const String* name) {
 	return rt.getGlobalObject()->deleteOwnProperty(rt, name);

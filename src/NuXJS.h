@@ -1122,6 +1122,17 @@ class Scope : public GCItem {
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
+	#if NUXJS_ES5
+		/**
+			The object holding `name`, for the two scopes that are 10.2.1.2 *object* environment records: a `with`
+			object and the global object. Anything else is a declarative record and answers 0, as does a name that
+			resolves nowhere. Only such a record can hold an accessor, and readVar / writeVar cannot run one: they
+			are plain calls, and a getter needs a frame pushed by the opcode. So they hand back the holder and
+			READ_NAMED / WRITE_NAMED do the invoking, exactly as GET_PROPERTY already does for `o.x`.
+			Every override must stop wherever its own readVar stops, or a shadowed name resolves to the wrong one.
+		*/
+		virtual Object* resolveVar(Runtime& rt, const String* name) const;
+	#endif
 		Value* getLocalsPointer() const { return localsPointer; }
 		Scope* getParentScope() const { return parentScope; }
 		void makeClosure() const;
@@ -1280,6 +1291,9 @@ class FunctionScope : public Scope {
 		FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, const Value* argv);
 		virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
+	#if NUXJS_ES5
+		virtual Object* resolveVar(Runtime& rt, const String* name) const;
+	#endif
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		JSObject* getDynamicVars(Runtime& rt) const;
@@ -1327,6 +1341,9 @@ class Runtime : public GCItem {
 			GlobalScope(GCList& gcList);
 			virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
 			virtual void writeVar(Runtime& rt, const String* name, const Value& v);
+		#if NUXJS_ES5
+			virtual Object* resolveVar(Runtime& rt, const String* name) const;
+		#endif
 			virtual bool deleteVar(Runtime& rt, const String* name);
 			virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		};
