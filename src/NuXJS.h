@@ -1132,6 +1132,15 @@ class Scope : public GCItem {
 			Every override must stop wherever its own readVar stops, or a shadowed name resolves to the wrong one.
 		*/
 		virtual Object* resolveVar(Runtime& rt, const String* name) const;
+
+		/**
+			Writes like writeVar, except that a binding held as an accessor on an object environment record is
+			left alone and its holder returned, so the opcode can push the setter frame. Answering both questions
+			in one walk is the point: asking resolveVar first and then writing walks the chain twice, which costs
+			~50% on a global assignment and 5% across the benchmark suite. Only a read can afford resolveVar,
+			because there the accessor flag has already come back from readVar and the walk is the rare case.
+		*/
+		virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v);
 	#endif
 		Value* getLocalsPointer() const { return localsPointer; }
 		Scope* getParentScope() const { return parentScope; }
@@ -1293,6 +1302,7 @@ class FunctionScope : public Scope {
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 	#if NUXJS_ES5
 		virtual Object* resolveVar(Runtime& rt, const String* name) const;
+		virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v);
 	#endif
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
@@ -1343,6 +1353,7 @@ class Runtime : public GCItem {
 			virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		#if NUXJS_ES5
 			virtual Object* resolveVar(Runtime& rt, const String* name) const;
+			virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v);
 		#endif
 			virtual bool deleteVar(Runtime& rt, const String* name);
 			virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
