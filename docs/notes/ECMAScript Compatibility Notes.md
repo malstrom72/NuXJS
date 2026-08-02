@@ -35,18 +35,17 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   rather than conformant. Tightening it would break working code for no benefit, so the confirming tests
   (`tests/conforming/reservedWordsAsPropertyNames.io`, `objectLiteralTrailingComma.io`) are shared.
 
-- **An assignment finds its target twice - shared with the ES3 build, and pre-existing.** Evaluating an identifier
-  yields a Reference whose base is the *particular* scope object found at that moment (ES3 `10.1.4` step 3, ES5.1
-  `10.2.2.1`), and every assignment form evaluates its left-hand side once, before the right-hand side, then hands
-  that same Reference to `PutValue` (ES3/ES5.1 `11.13.1` steps 1 and 4, `11.13.2` steps 1 and 6, `11.3` / `11.4.4`
-  for `++` and `--`). NuXJS emits `READ_NAMED` and `WRITE_NAMED`, which each walk the scope chain by name, so if
-  the right-hand side removes the binding the write lands on whatever the name resolves to next:
-  `with (scope) { x = (delete scope.x, 2) }` writes to the outer `x` where the spec writes to `scope`. Only
-  reachable through an *object* environment record, a `with` object or the global object, since a declarative one
-  cannot lose a binding mid-expression; a property reference is unaffected, because `o.x += 1` keeps its base on
-  the value stack. V8 behaves the same way. Recorded by `tests/unconforming/rightSideBeforeAssignmentRef.io`.
-  Whether to make the `NUXJS_ES5` build conformant here is still open: it is 75 test262 failures, and it gets
-  easier to hit once a `with` scope honours accessors, since a getter can then mutate the scope object.
+- **An assignment finds its target twice - es3 build only.** Evaluating an identifier yields a Reference whose
+  base is the *particular* scope object found at that moment (ES3 `10.1.4` step 3, ES5.1 `10.2.2.1`), and every
+  assignment form evaluates its left-hand side once, before the right-hand side, then hands that same Reference
+  to `PutValue` (ES3/ES5.1 `11.13.1` steps 1 and 4, `11.13.2` steps 1 and 6, `11.3` / `11.4.4` for `++` and
+  `--`). The es3 engine emits `READ_NAMED` and `WRITE_NAMED`, which each walk the scope chain by name, so if the
+  right-hand side removes the binding the write lands on whatever the name resolves to next:
+  `with (scope) { x = (delete scope.x, 2) }` writes to the outer `x` where the spec writes to `scope`. V8 has the
+  same deviation. Left as it stands in es3 rather than moving the frozen binary for it; recorded by
+  `tests/es3only/rightSideBeforeAssignmentRef.io`. The `NUXJS_ES5` build is conformant: it resolves the name up
+  front and keeps the holder on the value stack, the way a property reference already keeps its base
+  (`tests/es5/assignmentReferenceCapture.io`).
 
 - **JSON nesting depth is bounded.** `JSON.parse` / `JSON.stringify` cap nesting at `MAX_JSON_DEPTH` (61) to stay
   within the compiler's recursion limit; deeper structures throw a `TypeError`. The spec imposes no fixed limit.
