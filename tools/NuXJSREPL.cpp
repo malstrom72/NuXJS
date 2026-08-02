@@ -546,6 +546,27 @@ void printUsage() {
 			<< "JS receives global `arguments`: [script.js, arguments...]." << std::endl;
 }
 
+/*
+	Describes an uncaught value the way `String(e)` would, which is what a script author can predict. Errors
+	stringify natively, but Value::toString(Heap&) runs no script at all (see NuXJS.h), so any other object used
+	as an exception reports as [object Object] however much detail it carries. Test harnesses throw exactly such
+	objects. Only ever reached from the ScriptException handler, i.e. from a script-level `throw`: a time out or
+	an out of memory is a ConstStringException and never arrives here, so this cannot run more script on a
+	runtime that has already given up.
+*/
+static const String* describeThrown(Runtime& rt, MyHeap& heap, const Value& thrown) {
+	if (thrown.isObject()) {	// a thrown primitive already stringifies without running anything
+		try {
+			const Value described = Var(rt, thrown)["toString"]();
+			if (described.isString()) {	// 9.8 would fall back to valueOf; for a diagnostic, plain is better
+				return described.getString();
+			}
+		}
+		catch (const Exception&) { }	// describing a failure must never replace the failure being described
+	}
+	return thrown.toString(heap);
+}
+
 // Compiles one chunk of source and runs it to completion. All program-visible output (print() and `!!!!`
 // error/stack reporting) goes to stdout; the result echo and timing go to stderr. When `capture` is
 // non-null the `!!!!` lines are also appended to the interactive transcript. Returns true on success,
@@ -601,7 +622,7 @@ static bool compileAndRun(Runtime& rt, MyHeap& heap, Processor& processor, const
 		return true;
 	}
 	catch (const ScriptException& x) {
-		const std::wstring ws = L"!!!! " + x.value.toString(heap)->toWideString();
+		const std::wstring ws = L"!!!! " + describeThrown(rt, heap, x.value)->toWideString();
 		std::wcout << ws << std::endl;
 		std::string stackLine;
 		if (!legacyExceptions) {
