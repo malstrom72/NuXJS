@@ -4580,6 +4580,13 @@ static UInt32 unescapedMaxLength(const Char* p, const Char* e) {
 	while (++p != e && *p != endChar && !isLineTerminator(*p)) {
 		if (*p == '\\' && p + 1 != e) {
 			++p;
+#if NUXJS_ES5
+			// A 7.8.4 LineContinuation over a 7.3 CR LF pair spans three chars, and stopping on the LF here would
+			// leave the count short of what unescape then writes. Over-counting by one is harmless; it emits none.
+			if (*p == '\r' && p + 1 != e && p[1] == '\n') {
+				++p;
+			}
+#endif
 		}
 		++l;
 	}
@@ -4615,7 +4622,22 @@ Char* Compiler::unescape(Char* buffer, const Char* e) {
 				}
 				p += n;
 			} else if (isLineTerminator(*p)) {
+#if NUXJS_ES5
+				/*
+					7.8.4 LineContinuation: a `\` before a LineTerminatorSequence contributes the *empty* character
+					sequence, so both characters vanish rather than becoming a newline. 7.3 counts CR LF as one
+					sequence, hence the extra step over the LF. ES3 has no such production at all, so the arm below
+					stays exactly as it was. Skipping to the top rather than falling through is what emits nothing:
+					the tail of this branch always writes one character.
+				*/
+				if (*p == '\r' && p + 1 != e && p[1] == '\n') {
+					++p;
+				}
+				b = ++p;
+				continue;
+#else
 				error(SYNTAX_ERROR, "\\ continuation is not supported");
+#endif
 			} else {
 				l = *p;
 			}
