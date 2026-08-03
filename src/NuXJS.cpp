@@ -3581,11 +3581,15 @@ void Processor::innerRun() {
 		#if NUXJS_ES5
 			case WRITE_NAMED_POP_OP: {
 				const String* name = constants[im].getString();
-				if (code->isStrict() && !checkStrictAssignable(scope, name)) return;
-				// 8.12.5 through an object environment record, the mirror of the read above: a `with` object or the
-				// global object can hold the binding as an accessor, and then the setter runs instead of a store.
-				// The compiler duplicated the value and follows with POP_OP, so a setter frame has a slot to
-				// deposit its discarded return value in (see makeAssignment).
+				if (code->isStrict() && !checkStrictAssignable(scope, name)) {
+					return;
+				}
+				/*
+					8.12.5 through an object environment record, the mirror of the read above: a `with` object or
+					the global object can hold the binding as an accessor, and then the setter runs instead of a
+					store. The compiler duplicated the value and follows with POP_OP, so a setter frame has a slot
+					to deposit its discarded return value in (see makeAssignment).
+				*/
 				Object* const holder = scope->writeVarOrAccessor(rt, name, sp[0]);
 				if (holder != 0 && putThroughHolder(holder, name, sp[0], code->isStrict())) {	// the cheap store did not happen
 					return;	// a setter frame, or a throw; either way the loop takes over
@@ -3666,7 +3670,9 @@ void Processor::innerRun() {
 					for (Int32 n = reference.toInt(); n > 0; --n) {
 						owner = owner->getParentScope();
 					}
-					if (code->isStrict() && !checkStrictAssignable(owner, name)) return;
+					if (code->isStrict() && !checkStrictAssignable(owner, name)) {
+						return;
+					}
 					owner->writeVar(rt, name, sp[0]);
 				} else if (!holder->updateOwnProperty(rt, Value(name), sp[0])	// fast path, as SET_PROPERTY_POP does
 						&& putThroughHolder(holder, name, sp[0], code->isStrict())) {	// 8.7.2: [[Put]] on the base the reference captured
@@ -4001,9 +4007,11 @@ void Processor::innerRun() {
 				const String* name = constants[im].getString();
 				Value v(UNDEFINED_VALUE);
 				const Flags flags = scope->readVar(rt, name, &v);
-				// 11.4.3 takes GetValue of the reference unless it is unresolvable, so a binding held as an
-				// accessor has to run its getter here too. That means pushing the value and letting the TYPEOF_OP
-				// the compiler now follows with turn it into the name, since a getter needs its own frame.
+				/*
+					11.4.3 takes GetValue of the reference unless it is unresolvable, so a binding held as an
+					accessor has to run its getter here too. That means pushing the value and letting the TYPEOF_OP
+					the compiler now follows with turn it into the name, since a getter needs its own frame.
+				*/
 				if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
 					Value dummy;
 					Accessor* accessor;
@@ -4720,11 +4728,13 @@ Compiler::ExpressionResult Compiler::makeAssignment(const ExpressionResult& xr) 
 	#endif
 		case ExpressionResult::NAMED:
 		#if NUXJS_ES5
-			// The binding may be an accessor on a `with` or global object, and a JS setter frame leaves its return
-			// value on top, so the value is duplicated below and the leftover slot popped, exactly as PROPERTY
-			// does: [val] -> [val, val] -> [val, junk] -> [val]. WRITE_NAMED consumes the POP on the data path.
-			// WRITE_NAMED_POP rather than WRITE_NAMED, because emitting the latter here would let the POP_OP
-			// peephole fuse the two and skip the slot the setter needs.
+			/*
+				The binding may be an accessor on a `with` or global object, and a JS setter frame leaves its
+				return value on top, so the value is duplicated below and the leftover slot popped, exactly as
+				PROPERTY does: [val] -> [val, val] -> [val, junk] -> [val]. WRITE_NAMED_POP rather than
+				WRITE_NAMED, because emitting the latter here would let the POP_OP peephole fuse the two and skip
+				the slot the setter needs; it consumes the POP itself on the data path.
+			*/
 			emit(Processor::REPUSH_OP, 0);
 			emitWithConstant(Processor::WRITE_NAMED_POP_OP, xr.v);
 			emit(Processor::POP_OP, 1);
@@ -4753,6 +4763,9 @@ Compiler::ExpressionResult Compiler::discard(const ExpressionResult& xr) {
 		case ExpressionResult::PUSHED_PRIMITIVE: emit(Processor::POP_OP, 1); break;
 		case ExpressionResult::NAMED: emitWithConstant(Processor::READ_NAMED_OP, xr.v); emit(Processor::POP_OP, 1); break;
 		case ExpressionResult::PROPERTY: emit(Processor::GET_PROPERTY_OP); emit(Processor::POP_OP, 1); break;
+	#if NUXJS_ES5
+		case ExpressionResult::RESOLVED: assert(0); break;	// a captured reference is only ever written through
+	#endif
 		default: break;
 	}
 	return ExpressionResult(ExpressionResult::NONE);
@@ -5551,9 +5564,11 @@ Compiler::ExpressionResult Compiler::varDeclaration() {
 	ExpressionResult lxr(declareIdentifier(identifier(true, false), false));
 	if (token("=", true)) {
 	#if NUXJS_ES5
-		// 12.2 evaluates the Identifier at step 1 and the Initialiser at step 2, and its NOTE spells the case out:
-		// inside a `with` whose object carries the same name, the write belongs to that object even if the
-		// initialiser has since removed it. `lxr` is handed back unchanged, since for-in wants the name instead.
+		/*
+			12.2 evaluates the Identifier at step 1 and the Initialiser at step 2, and its NOTE spells the case
+			out: inside a `with` whose object carries the same name, the write belongs to that object even if the
+			initialiser has since removed it. `lxr` is handed back unchanged, since for-in wants the name instead.
+		*/
 		ExpressionResult target(lxr);
 		captureReference(target, Processor::RESOLVE_NAMED_OP);
 		rvalueExpression(COMMA_PREC);
