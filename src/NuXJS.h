@@ -1141,11 +1141,14 @@ class Scope : public GCItem {
 		Object* resolveHolder(Runtime& rt, const String* name) const;	// resolveVar for the callers that want only the holder
 
 		/*
-			Writes like writeVar, except that a binding held as an accessor on an object environment record is
-			left alone and its holder returned, so the opcode can push the setter frame. Answering both questions
-			in one walk is the point: asking resolveVar first and then writing walks the chain twice, which costs
-			~50% on a global assignment and 5% across the benchmark suite. Only a read can afford resolveVar,
-			because there the accessor flag has already come back from readVar and the walk is the rare case.
+			Writes like writeVar, but only when the write is a plain update of an existing writable binding.
+			Anything else leaves the binding untouched and answers the object environment record holding it, so
+			that putThroughHolder can finish the 8.12.5 [[Put]]: run a setter, refuse the store, or throw in
+			strict mode. A declarative record always answers 0, having nothing an accessor could live on.
+			Answering both questions in one walk is the point: asking resolveVar first and then writing walks the
+			chain twice, which costs ~50% on a global assignment and 5% across the benchmark suite. Only a read
+			can afford resolveVar, because there the accessor flag has already come back from readVar and the
+			walk is the rare case.
 		*/
 		virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v);
 	#endif
@@ -1977,6 +1980,9 @@ class Processor : public GCItem {
 		void reset();
 	#if NUXJS_ES5
 		bool checkStrictAssignable(Scope* scope, const String* name);	///< For a strict named write: throws ReferenceError (undeclared) or TypeError (read-only) and returns false, else true.
+	#if NUXJS_ES5
+		bool putThroughHolder(Object* holder, const String* name, const Value& v, bool strict);	// 8.12.5 on an object environment record; true means return to the loop
+	#endif
 	#endif
 		void pushFrame(const Code* code, Scope* scope, Object* thisObject);
 		void popFrame();
