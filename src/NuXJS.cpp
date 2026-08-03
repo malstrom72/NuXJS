@@ -3237,12 +3237,12 @@ struct Processor::WithScope : public Scope {
 			Value dummy;													// already fetches answer the accessor
 			const Flags flags = o->getOwnProperty(rt, key, &dummy);		// question at no extra cost
 			if (flags != NONEXISTENT) {
-				if ((flags & ACCESSOR_FLAG) != 0) {
+				// Only the plain update is done here; anything else is handed back for putThroughHolder to
+				// finish, since a store onto the object needs 8.12.4 [[CanPut]] and a setter needs a frame.
+				if ((flags & (ACCESSOR_FLAG | READ_ONLY_FLAG)) != 0 || o != withObject) {
 					return withObject;
 				}
-				if ((flags & READ_ONLY_FLAG) == 0) {
-					withObject->setOwnProperty(rt, key, v);
-				}
+				withObject->setOwnProperty(rt, key, v);
 				return 0;
 			}
 		}
@@ -3445,6 +3445,36 @@ bool Processor::checkStrictAssignable(Scope* scope, const String* name) {
 	}
 	return true;
 }
+
+#if NUXJS_ES5
+/*
+	Finishes an 8.12.5 [[Put]] on an object environment record once the cheap update has failed, for both opcodes
+	that write a name: run the setter if the binding is an accessor, otherwise store if [[CanPut]] allows and throw
+	in strict mode if it did not. It is SET_PROPERTY_POP's body for `o.x = v`, which is the point: 10.2.1.2 says a
+	`with` object and the global object hold their bindings as ordinary properties, so the two must agree.
+	Answers true when the caller has to return to the interpreter loop, either for a setter frame or for a throw.
+*/
+bool Processor::putThroughHolder(Object* holder, const String* name, const Value& v, bool strict) {
+	const Value key(name);
+	Value dummy;
+	Accessor* accessor;
+	const Flags flags = holder->getPropertySlot(rt, key, &dummy, &accessor);
+	bool stored = false;
+	if (accessor != 0) {
+		if (accessor->set != 0) {
+			invokeFunction(accessor->set, 0, 1, holder);
+			return true;
+		}	// no setter: silently ignored outside strict mode
+	} else if ((flags & READ_ONLY_FLAG) == 0 && holder->isExtensible()) {
+		stored = holder->setOwnProperty(rt, key, v);	// 8.12.4 [[CanPut]]: a new own property requires extensibility
+	}
+	if (!stored && strict) {
+		error(TYPE_ERROR, new(heap) String(heap.managed(), *name, CANNOT_ASSIGN_STRING));
+		return true;
+	}
+	return false;
+}
+#endif
 #endif
 
 Object* Processor::convertToObject(const Value& v, const bool requireExtensible) {
@@ -3557,18 +3587,8 @@ void Processor::innerRun() {
 				// The compiler duplicated the value and follows with POP_OP, so a setter frame has a slot to
 				// deposit its discarded return value in (see makeAssignment).
 				Object* const holder = scope->writeVarOrAccessor(rt, name, sp[0]);
-				if (holder != 0) {	// the write did not happen: the binding is an accessor
-					Value dummy;
-					Accessor* accessor;
-					holder->getPropertySlot(rt, Value(name), &dummy, &accessor);
-					if (accessor->set != 0) {
-						invokeFunction(accessor->set, 0, 1, holder);
-						return;	// the following POP_OP discards the setter's return value after the frame returns
-					}
-					if (code->isStrict()) {	// 8.12.5: strict throws where non-strict silently ignores
-						error(TYPE_ERROR, new(heap) String(heap.managed(), *name, CANNOT_ASSIGN_STRING));
-						return;
-					}
+				if (holder != 0 && putThroughHolder(holder, name, sp[0], code->isStrict())) {	// the cheap store did not happen
+					return;	// a setter frame, or a throw; either way the loop takes over
 				}
 				assert(unpackInstruction(*ip).first == POP_OP);	// guaranteed by makeAssignment
 				++ip;	// data path: consume the following POP_OP here to spare a dispatch
@@ -3648,23 +3668,9 @@ void Processor::innerRun() {
 					}
 					if (code->isStrict() && !checkStrictAssignable(owner, name)) return;
 					owner->writeVar(rt, name, sp[0]);
-				} else if (!holder->updateOwnProperty(rt, Value(name), sp[0])) {	// fast path, as SET_PROPERTY_POP does
-					const Value key(name);
-					Value dummy;
-					Accessor* accessor;
-					const Flags flags = holder->getPropertySlot(rt, key, &dummy, &accessor);
-					if (accessor != 0 && accessor->set != 0) {
-						invokeFunction(accessor->set, 0, 1, holder);
-						return;	// the following POP_OP discards the setter's return value
-					}
-					// 8.12.5: a setter-less accessor and a read-only property drop the store alike, and throw in
-					// strict mode, so the two share the one else, as SET_PROPERTY_POP's `stored` flag does.
-					if (accessor == 0 && (flags & READ_ONLY_FLAG) == 0) {
-						holder->setProperty(rt, key, sp[0]);	// 8.7.2: [[Put]] on the base the reference captured
-					} else if (code->isStrict()) {
-						error(TYPE_ERROR, new(heap) String(heap.managed(), *name, CANNOT_ASSIGN_STRING));
-						return;
-					}
+				} else if (!holder->updateOwnProperty(rt, Value(name), sp[0])	// fast path, as SET_PROPERTY_POP does
+						&& putThroughHolder(holder, name, sp[0], code->isStrict())) {	// 8.7.2: [[Put]] on the base the reference captured
+					return;
 				}
 				assert(unpackInstruction(*ip).first == POP_OP);	// guaranteed by makeAssignment
 				++ip;
@@ -6338,14 +6344,7 @@ Object* Runtime::GlobalScope::writeVarOrAccessor(Runtime& rt, const String* name
 	if (globalObject->updateOwnProperty(rt, Value(name), v)) {
 		return 0;	// fast path: an existing writable data property, the overwhelmingly common global assignment
 	}
-	Value dummy;
-	Accessor* accessor;
-	globalObject->getPropertySlot(rt, Value(name), &dummy, &accessor);
-	if (accessor != 0) {
-		return globalObject;
-	}
-	globalObject->setProperty(rt, name, v);
-	return 0;
+	return globalObject;	// an accessor, a read-only or a new property: putThroughHolder decides, and can throw
 }
 
 Flags Runtime::GlobalScope::resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const {
