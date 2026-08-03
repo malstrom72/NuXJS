@@ -339,6 +339,11 @@ static void disassemble(Heap& heap, const Code& code) {
 			case Processor::WRITE_NAMED_POP_OP:
 			case Processor::ADD_PROPERTY_OP:
 			case Processor::DELETE_NAMED_OP:
+		#if NUXJS_ES5
+			case Processor::RESOLVE_NAMED_OP:
+			case Processor::RESOLVE_READ_NAMED_OP:
+			case Processor::WRITE_RESOLVED_OP:
+		#endif
 			case Processor::TYPEOF_NAMED_OP: std::wcerr << L" " << constants[operand].toString(heap)->toWideString(); break;
 			default: break;
 		}
