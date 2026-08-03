@@ -1123,23 +1123,24 @@ class Scope : public GCItem {
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 	#if NUXJS_ES5
-		/**
-			The object holding `name`, for the two scopes that are 10.2.1.2 *object* environment records: a `with`
-			object and the global object. Anything else is a declarative record and answers 0, as does a name that
-			resolves nowhere. Only such a record can hold an accessor, and readVar / writeVar cannot run one: they
-			are plain calls, and a getter needs a frame pushed by the opcode. So they hand back the holder and
-			READ_NAMED / WRITE_NAMED do the invoking, exactly as GET_PROPERTY already does for `o.x`.
-			Every override must stop wherever its own readVar stops, or a shadowed name resolves to the wrong one.
-			It is readVar's walk with the holder reported as well, so one lookup answers both halves of a captured
-			reference: the value goes to `v` and the flags come back, exactly as readVar would.
-			`depth` counts the levels climbed and comes back as the level the binding was found at. A declarative
-			record has no holder, but it still has to be identified: a direct eval in a right-hand side can add a
-			*more local* binding of the same name, and 11.13.2 says the write belongs to the one resolved first.
-			The level says which, and getting back to it is a few pointer hops rather than a second search.
+		/*
+			readVar's walk with the holder reported as well, so one lookup answers both halves of a captured
+			reference: `v` and the returned flags are exactly what readVar gives, while `*holder` is the object
+			holding the binding for the two scopes that are 10.2.1.2 *object* environment records, a `with` object
+			and the global object. A declarative record answers 0 there, as does a name that resolves nowhere. Only
+			an object record can hold an accessor, and readVar / writeVar cannot run one: they are plain calls, and
+			a getter needs a frame pushed by the opcode, so they hand the holder back and READ_NAMED / WRITE_NAMED
+			do the invoking, exactly as GET_PROPERTY already does for `o.x`. `depth` must be 0 on entry and comes
+			back as the number of levels climbed, which is how a declarative binding is identified in the absence
+			of a holder: a direct eval in a right-hand side can add a *more local* binding of the same name,
+			11.13.2 says the write belongs to the one resolved first, and the level says which, reachable in a few
+			pointer hops rather than a second search. Every override must stop wherever its own readVar stops, or a
+			shadowed name resolves to the wrong one.
 		*/
 		virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const;
+		Object* resolveHolder(Runtime& rt, const String* name) const;	// resolveVar for the callers that want only the holder
 
-		/**
+		/*
 			Writes like writeVar, except that a binding held as an accessor on an object environment record is
 			left alone and its holder returned, so the opcode can push the setter frame. Answering both questions
 			in one walk is the point: asking resolveVar first and then writing walks the chain twice, which costs
@@ -1804,13 +1805,18 @@ class Processor : public GCItem {
 			, WRITE_NAMED_POP_OP							// operand: const_index (name), stack: value -> value, junk (a POP_OP always follows)
 		#endif
 		#if NUXJS_ES5
-			// 11.13 evaluates the left-hand side once and hands that same Reference to PutValue, so an assignment
-			// resolves the name up front and keeps the holder on the stack rather than looking it up again after
-			// the right-hand side has run. Undefined stands for a declarative binding, which cannot move.
-			, RESOLVE_NAMED_OP								// operand: const_index (name), stack: -> holder
-			, RESOLVE_READ_NAMED_OP							// operand: const_index (name), stack: -> holder, value
-			, WRITE_RESOLVED_OP								// operand: const_index (name), stack: holder, value -> value, junk
-			, POST_SHUFFLE_2_OP								// stack: holder, value -> value, holder, value
+			/*
+				11.13 evaluates the left-hand side once and hands that same Reference to PutValue, so an assignment
+				resolves the name up front and keeps the reference on the stack rather than looking it up again
+				after the right-hand side has run. One Value carries all three shapes a resolved name takes: the
+				holder object for a 10.2.1.2 *object* environment record, the level climbed to for a declarative
+				one (which has no holder, but still has to be told apart from a nearer binding that a direct eval
+				in the right-hand side may add), and undefined for a name that resolves nowhere.
+			*/
+			, RESOLVE_NAMED_OP								// operand: const_index (name), stack: -> reference
+			, RESOLVE_READ_NAMED_OP							// operand: const_index (name), stack: -> reference, value
+			, WRITE_RESOLVED_OP								// operand: const_index (name), stack: reference, value -> value, junk
+			, POST_SHUFFLE_2_OP								// stack: reference, value -> value, reference, value
 		#endif
 			, CHECK_OBJECT_COERCIBLE_OP						// stack: value -> value
 			, CHECK_RESOLVE_PROPERTY_OP						// stack: object, name -> object, name	// check coercible, then resolve object
@@ -2084,7 +2090,8 @@ class Compiler : public GCItem {
 		void returnSafeKept(const ExpressionResult& xr);
 		ExpressionResult makeRValue(const ExpressionResult& xr, bool toPrimitive = false, Processor::Opcode toPrimitiveOp = Processor::OBJ_TO_NUMBER_OP); ///< Creates an r-value (i.e. pushed on value stack) out of a result.
 	#if NUXJS_ES5
-		ExpressionResult makeCapturedRValue(ExpressionResult& xr, Processor::Opcode toPrimitiveOp = Processor::OBJ_TO_NUMBER_OP); ///< Reads a read-modify-write's target through the reference captured for its later write.
+		void captureReference(ExpressionResult& xr, Processor::Opcode resolveOp);	// an assignment target becomes the reference it denotes
+		ExpressionResult makeCapturedRValue(ExpressionResult& xr, Processor::Opcode toPrimitiveOp = Processor::OBJ_TO_NUMBER_OP);	// reads that target through the same reference
 	#endif
 		ExpressionResult makeAssignment(const ExpressionResult& xr); ///< Creates an assignment out of an l-value (throws if xr is not a valid l-value)
 		ExpressionResult discard(const ExpressionResult& xr); ///< Discards result (e.g. popping it if it is on stack)

@@ -2654,6 +2654,14 @@ Flags Scope::resolveVar(Runtime& rt, const String* name, Value* v, Object** hold
 	return parentScope->resolveVar(rt, name, v, holder, depth);
 }
 
+Object* Scope::resolveHolder(Runtime& rt, const String* name) const {
+	Value ignored;
+	Object* holder = 0;
+	Int32 ignoredDepth = 0;
+	resolveVar(rt, name, &ignored, &holder, ignoredDepth);
+	return holder;
+}
+
 Object* Scope::writeVarOrAccessor(Runtime& rt, const String* name, const Value& v) {
 	assert(parentScope != 0);
 	return parentScope->writeVarOrAccessor(rt, name, v);
@@ -3527,10 +3535,7 @@ void Processor::innerRun() {
 				if ((flags & ACCESSOR_FLAG) != 0) {
 					Value dummy;
 					Accessor* accessor;
-					Value ignored;
-					Object* holder = 0;
-					Int32 ignoredDepth = 0;
-					scope->resolveVar(rt, name, &ignored, &holder, ignoredDepth);	// rare second walk fetches the pair
+					Object* const holder = scope->resolveHolder(rt, name);	// rare second walk fetches the pair
 					assert(holder != 0);
 					holder->getPropertySlot(rt, Value(name), &dummy, &accessor);
 					if (accessor->get == 0) {
@@ -3634,16 +3639,13 @@ void Processor::innerRun() {
 					Value dummy;
 					Accessor* accessor;
 					const Flags flags = holder->getPropertySlot(rt, key, &dummy, &accessor);
-					if (accessor != 0) {
-						if (accessor->set != 0) {
-							invokeFunction(accessor->set, 0, 1, holder);
-							return;	// the following POP_OP discards the setter's return value
-						}
-						if (code->isStrict()) {
-							error(TYPE_ERROR, new(heap) String(heap.managed(), *name, CANNOT_ASSIGN_STRING));
-							return;
-						}
-					} else if ((flags & READ_ONLY_FLAG) == 0) {
+					if (accessor != 0 && accessor->set != 0) {
+						invokeFunction(accessor->set, 0, 1, holder);
+						return;	// the following POP_OP discards the setter's return value
+					}
+					// 8.12.5: a setter-less accessor and a read-only property drop the store alike, and throw in
+					// strict mode, so the two share the one else, as SET_PROPERTY_POP's `stored` flag does.
+					if (accessor == 0 && (flags & READ_ONLY_FLAG) == 0) {
 						holder->setProperty(rt, key, sp[0]);	// 8.7.2: [[Put]] on the base the reference captured
 					} else if (code->isStrict()) {
 						error(TYPE_ERROR, new(heap) String(heap.managed(), *name, CANNOT_ASSIGN_STRING));
@@ -3985,10 +3987,7 @@ void Processor::innerRun() {
 				if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
 					Value dummy;
 					Accessor* accessor;
-					Value ignored;
-					Object* holder = 0;
-					Int32 ignoredDepth = 0;
-					scope->resolveVar(rt, name, &ignored, &holder, ignoredDepth);
+					Object* const holder = scope->resolveHolder(rt, name);
 					assert(holder != 0);
 					holder->getPropertySlot(rt, Value(name), &dummy, &accessor);
 					if (accessor->get != 0) {
@@ -4333,7 +4332,9 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand, UInt32
 		Processor::Opcode replacementOpcode = Processor::INVALID_OP;
 		switch (lastEmitted) {
 			case Processor::WRITE_LOCAL_OP: replacementOpcode = Processor::WRITE_LOCAL_POP_OP; break;
-		#if !NUXJS_ES5	// es5 emits the POP form directly, and fusing would leave it without the POP_OP it consumes
+			// es5 emits WRITE_NAMED_POP itself and never WRITE_NAMED, so this rule cannot fire there. It stays
+			// guarded all the same: fusing takes away the slot a setter frame deposits its return value in.
+		#if !NUXJS_ES5
 			case Processor::WRITE_NAMED_OP: replacementOpcode = Processor::WRITE_NAMED_POP_OP; break;
 		#endif
 		#if !NUXJS_ES5
@@ -4612,8 +4613,6 @@ Compiler::ExpressionResult Compiler::makeRValue(const ExpressionResult& xr, bool
 		case ExpressionResult::CONSTANT: emitWithConstant(Processor::CONST_OP, xr.v); return ExpressionResult(ExpressionResult::PUSHED_PRIMITIVE);
 		case ExpressionResult::LOCAL: emit(Processor::READ_LOCAL_OP, xr.v.toInt()); break;
 		case ExpressionResult::NAMED: emitWithConstant(Processor::READ_NAMED_OP, xr.v); break;
-	#if NUXJS_ES5
-	#endif
 		case ExpressionResult::PROPERTY: emit(Processor::GET_PROPERTY_OP); break;
 		case ExpressionResult::SAFEKEPT: emit(Processor::REPUSH_OP
 				, (currentSection->inDeadCode() ? 0 : xr.v.toInt() - currentSection->stackDepth + 1)); break;
@@ -4651,17 +4650,28 @@ void Compiler::returnSafeKept(const ExpressionResult& xr) {
 
 #if NUXJS_ES5
 /*
-	The read half of a read-modify-write. 11.13.2 / 11.3 / 11.4.4 each evaluate the left-hand side once and give
-	that same reference to PutValue, so a name is captured here, before anything else runs. RESOLVE_READ_NAMED
-	does the capture and the read in one lookup and leaves the value above the holder, which is why makeRValue
+	11.13.1, 11.13.2, 11.3, 11.4.4 and 12.2 all have the one shape: evaluate the left-hand side, then the right,
+	then hand PutValue the reference the *first* step made. So the four assignment productions capture their target
+	here, before anything else runs, and it stays on the value stack until makeAssignment writes through it. Only a
+	name needs it: a local cannot move, and a property already keeps its base. `resolveOp` is RESOLVE_READ_NAMED
+	when the target is read as well, which is the same walk and so costs nothing over the plain capture.
+*/
+void Compiler::captureReference(ExpressionResult& xr, Processor::Opcode resolveOp) {
+	if (xr.t == ExpressionResult::NAMED) {
+		emitWithConstant(resolveOp, xr.v);
+		xr = ExpressionResult(ExpressionResult::RESOLVED, xr.v);
+	}
+}
+
+/*
+	The read half of a read-modify-write: RESOLVE_READ_NAMED leaves the value above the reference, so makeRValue
 	then has only the conversion left to do.
 */
 Compiler::ExpressionResult Compiler::makeCapturedRValue(ExpressionResult& xr, Processor::Opcode toPrimitiveOp) {
-	if (xr.t != ExpressionResult::NAMED) {	// a local cannot move and a property already keeps its base
+	if (xr.t != ExpressionResult::NAMED) {
 		return makeRValue(xr, true, toPrimitiveOp);
 	}
-	emitWithConstant(Processor::RESOLVE_READ_NAMED_OP, xr.v);
-	xr = ExpressionResult(ExpressionResult::RESOLVED, xr.v);
+	captureReference(xr, Processor::RESOLVE_READ_NAMED_OP);
 	return makeRValue(ExpressionResult(ExpressionResult::PUSHED), true, toPrimitiveOp);
 }
 #endif
@@ -5240,12 +5250,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			}
 		#endif
 			#if NUXJS_ES5
-				// 11.13 / 11.4.4: the reference is created here, before anything else runs, and PutValue below
-				// must use this one. Only a name needs it; a local cannot move and a property keeps its base.
-				if (xr.t == ExpressionResult::NAMED) {
-					emitWithConstant(Processor::RESOLVE_NAMED_OP, xr.v);
-					xr = ExpressionResult(ExpressionResult::RESOLVED, xr.v);
-				}
+				captureReference(xr, Processor::RESOLVE_NAMED_OP);	// 11.13.1 step 1, before the right-hand side
 			#endif
 			const ExpressionResult rxr = makeRValue(operand(op), false);
 			makeAssignment(xr);
@@ -5526,15 +5531,11 @@ Compiler::ExpressionResult Compiler::varDeclaration() {
 	ExpressionResult lxr(declareIdentifier(identifier(true, false), false));
 	if (token("=", true)) {
 	#if NUXJS_ES5
-		// 12.2 evaluates the Identifier at step 1, before the Initialiser at step 2, and PutValue at step 4 uses
-		// that reference, exactly as 11.13.1 does. Its NOTE spells out the case: inside a `with` whose object
-		// carries the same name, the write belongs to that object even if the initialiser has since removed it.
-		// `lxr` itself is handed back unchanged, because for-in wants the name rather than the reference.
+		// 12.2 evaluates the Identifier at step 1 and the Initialiser at step 2, and its NOTE spells the case out:
+		// inside a `with` whose object carries the same name, the write belongs to that object even if the
+		// initialiser has since removed it. `lxr` is handed back unchanged, since for-in wants the name instead.
 		ExpressionResult target(lxr);
-		if (target.t == ExpressionResult::NAMED) {
-			emitWithConstant(Processor::RESOLVE_NAMED_OP, target.v);
-			target = ExpressionResult(ExpressionResult::RESOLVED, target.v);
-		}
+		captureReference(target, Processor::RESOLVE_NAMED_OP);
 		rvalueExpression(COMMA_PREC);
 		makeAssignment(target);
 	#else
