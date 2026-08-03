@@ -91,3 +91,27 @@
 > try { eval('"use strict"; arguments++;'); print("no error") } catch (e) { print(e.name) }
 < SyntaxError
 -
+// A name that resolves nowhere is a reference too, with an undefined base. 8.7.2 step 3 sends the write to the
+// global object, so a binding that appears during the right-hand side cannot take it, exactly as above. V8 lets
+// the new binding win in the first two, so these expectations come from the spec.
+> var evalStole = (function () { qUnres = (eval("var qUnres;"), 7); return typeof qUnres })();
+> show("unresolvable eval", evalStole + "/" + qUnres);
+< unresolvable eval: undefined/7
+> function unresWith() { var s = {}; (function () { with (s) { zUnres = (s.zUnres = 1, 2) } })(); return s.zUnres + "/" + zUnres }
+> show("unresolvable with", unresWith());
+< unresolvable with: 1/2
+-
+// 8.7.2 reaches the global object through [[Put]], so a setter the right-hand side installs still runs. Here the
+// engine used to disagree with V8 as well as the spec, because the write took the accessor-blind path.
+> var seenU = "none";
+> aUnres = (Object.defineProperty(this, "aUnres", { set: function (v) { seenU = v }, get: function () { return "G" }, configurable: true }), 42);
+> show("unresolvable accessor", seenU + "/" + aUnres);
+< unresolvable accessor: 42/G
+-
+// The two controls: an ordinary implicit global still lands, and strict code still refuses to create one.
+> (function () { plainImplicit = 3 })();
+> show("implicit global", plainImplicit);
+< implicit global: 3
+> try { eval('"use strict"; neverDeclaredQQ = 1'); print("no error") } catch (e) { print(e.name) }
+< ReferenceError
+-
