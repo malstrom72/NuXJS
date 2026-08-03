@@ -3538,12 +3538,6 @@ void Processor::innerRun() {
 				break;
 			}
 		#if NUXJS_ES5
-			case WRITE_NAMED_OP: {
-				const String* name = constants[im].getString();
-				if (code->isStrict() && !checkStrictAssignable(scope, name)) return;	// undeclared / read-only throw
-				scope->writeVar(rt, name, sp[0]);
-				break;
-			}
 			case WRITE_NAMED_POP_OP: {
 				const String* name = constants[im].getString();
 				if (code->isStrict() && !checkStrictAssignable(scope, name)) return;
@@ -4321,7 +4315,9 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand, UInt32
 		Processor::Opcode replacementOpcode = Processor::INVALID_OP;
 		switch (lastEmitted) {
 			case Processor::WRITE_LOCAL_OP: replacementOpcode = Processor::WRITE_LOCAL_POP_OP; break;
+		#if !NUXJS_ES5	// es5 emits the POP form directly, and fusing would leave it without the POP_OP it consumes
 			case Processor::WRITE_NAMED_OP: replacementOpcode = Processor::WRITE_NAMED_POP_OP; break;
+		#endif
 		#if !NUXJS_ES5
 			case Processor::SET_PROPERTY_OP: replacementOpcode = Processor::SET_PROPERTY_POP_OP; break;
 		#endif
@@ -4634,6 +4630,23 @@ void Compiler::returnSafeKept(const ExpressionResult& xr) {
 	assert(currentSection->inDeadCode() || xr.v.toInt() == currentSection->stackDepth - (compilingFor == FOR_EVAL ? 2 : 1));
 	emit(evalPopOpcode(), 1);
 }
+
+#if NUXJS_ES5
+/*
+	The read half of a read-modify-write. 11.13.2 / 11.3 / 11.4.4 each evaluate the left-hand side once and give
+	that same reference to PutValue, so a name is captured here, before anything else runs. RESOLVE_READ_NAMED
+	does the capture and the read in one lookup and leaves the value above the holder, which is why makeRValue
+	then has only the conversion left to do.
+*/
+Compiler::ExpressionResult Compiler::makeCapturedRValue(ExpressionResult& xr, Processor::Opcode toPrimitiveOp) {
+	if (xr.t != ExpressionResult::NAMED) {	// a local cannot move and a property already keeps its base
+		return makeRValue(xr, true, toPrimitiveOp);
+	}
+	emitWithConstant(Processor::RESOLVE_READ_NAMED_OP, xr.v);
+	xr = ExpressionResult(ExpressionResult::RESOLVED, xr.v);
+	return makeRValue(ExpressionResult(ExpressionResult::PUSHED), true, toPrimitiveOp);
+}
+#endif
 
 Compiler::ExpressionResult Compiler::makeAssignment(const ExpressionResult& xr) {
 #if NUXJS_ES5
@@ -5018,14 +5031,10 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 				emit(Processor::REPUSH_2_OP);
 			}
 			#if NUXJS_ES5
-				// 11.4.4 / 11.3: same as compound assignment, one reference captured and read in one lookup.
-				if (xr.t == ExpressionResult::NAMED) {
-					emitWithConstant(Processor::RESOLVE_READ_NAMED_OP, xr.v);
-					xr = ExpressionResult(ExpressionResult::RESOLVED, xr.v);
-					makeRValue(ExpressionResult(ExpressionResult::PUSHED), true);
-				} else
-			#endif
+				makeCapturedRValue(xr);
+			#else
 				makeRValue(xr, true);
+			#endif
 			emit(op.vmOp);
 			makeAssignment(xr);
 			xr = ExpressionResult::PUSHED_PRIMITIVE;
@@ -5120,14 +5129,10 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				emit(Processor::REPUSH_2_OP);
 			}
 			#if NUXJS_ES5
-				// 11.4.4 / 11.3: same as compound assignment, one reference captured and read in one lookup.
-				if (xr.t == ExpressionResult::NAMED) {
-					emitWithConstant(Processor::RESOLVE_READ_NAMED_OP, xr.v);
-					xr = ExpressionResult(ExpressionResult::RESOLVED, xr.v);
-					makeRValue(ExpressionResult(ExpressionResult::PUSHED), true);
-				} else
-			#endif
+				makeCapturedRValue(xr);
+			#else
 				makeRValue(xr, true);
+			#endif
 			emit(Processor::PLUS_OP);
 		#if NUXJS_ES5
 			emit(xr.t == ExpressionResult::PROPERTY ? Processor::POST_SHUFFLE_OP
@@ -5242,15 +5247,10 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				emit(Processor::REPUSH_2_OP);
 			}
 			#if NUXJS_ES5
-				// 11.13.2: the reference is created here, before anything else runs, and PutValue below must use
-				// this one. RESOLVE_READ_NAMED captures it and reads through it in a single lookup.
-				if (xr.t == ExpressionResult::NAMED) {
-					emitWithConstant(Processor::RESOLVE_READ_NAMED_OP, xr.v);
-					xr = ExpressionResult(ExpressionResult::RESOLVED, xr.v);
-					makeRValue(ExpressionResult(ExpressionResult::PUSHED), true, primitiveOp);
-				} else
-			#endif
+				makeCapturedRValue(xr, primitiveOp);
+			#else
 				makeRValue(xr, true, primitiveOp);
+			#endif
 			makeRValue(operand(op), true, primitiveOp);
 			emit(op.vmOp);
 			makeAssignment(xr);

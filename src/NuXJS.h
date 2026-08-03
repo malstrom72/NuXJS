@@ -1794,7 +1794,11 @@ class Processor : public GCItem {
 			, WRITE_LOCAL_POP_OP							// operand: local_index, stack: value ->
 			, READ_NAMED_OP									// operand: const_index (name), stack: -> value
 			, WRITE_NAMED_OP								// operand: const_index (name), stack: value -> value
+		#if !NUXJS_ES5
 			, WRITE_NAMED_POP_OP							// operand: const_index (name), stack: value ->
+		#else
+			, WRITE_NAMED_POP_OP							// operand: const_index (name), stack: value -> value, junk (a POP_OP always follows)
+		#endif
 		#if NUXJS_ES5
 			// 11.13 evaluates the left-hand side once and hands that same Reference to PutValue, so an assignment
 			// resolves the name up front and keeps the holder on the stack rather than looking it up again after
@@ -1870,7 +1874,11 @@ class Processor : public GCItem {
 			, IN_OP											// stack: string, object -> boolean
 			, INSTANCE_OF_OP								// stack: object, function -> boolean
 			, TYPEOF_OP										// stack: value -> string
+		#if !NUXJS_ES5
 			, TYPEOF_NAMED_OP								// operand: const_index (name), stack: -> string
+		#else
+			, TYPEOF_NAMED_OP								// operand: const_index (name), stack: -> value (a TYPEOF_OP always follows)
+		#endif
 			, GET_ENUMERATOR_OP								// stack: object -> enumerator
 			, NEXT_PROPERTY_OP								// operand: exit_loop_offset, stack: enumerator -> string (unless end of loop)
 			, OP_COUNT
@@ -2071,6 +2079,9 @@ class Compiler : public GCItem {
 		ExpressionResult safeKeep(); ///< Used to store result into a new temporary local (e.g. used by return statement if there are finally blocks to call first). Good rule of thumb is that anything that needs to be preserved over statements need to be safe-kept (except the completion value of course).
 		void returnSafeKept(const ExpressionResult& xr);
 		ExpressionResult makeRValue(const ExpressionResult& xr, bool toPrimitive = false, Processor::Opcode toPrimitiveOp = Processor::OBJ_TO_NUMBER_OP); ///< Creates an r-value (i.e. pushed on value stack) out of a result.
+	#if NUXJS_ES5
+		ExpressionResult makeCapturedRValue(ExpressionResult& xr, Processor::Opcode toPrimitiveOp = Processor::OBJ_TO_NUMBER_OP); ///< Reads a read-modify-write's target through the reference captured for its later write.
+	#endif
 		ExpressionResult makeAssignment(const ExpressionResult& xr); ///< Creates an assignment out of an l-value (throws if xr is not a valid l-value)
 		ExpressionResult discard(const ExpressionResult& xr); ///< Discards result (e.g. popping it if it is on stack)
 
