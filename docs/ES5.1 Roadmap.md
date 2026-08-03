@@ -207,12 +207,18 @@ C++ compiler (`NuXJS.cpp`), no VM changes beyond emitting the accessor-define pa
 - [x] **Trailing commas** - both forms. Arrays are covered by `tests/conforming/ArrayLiteralHoleLength.io`, and the
       object-literal case now by `tests/conforming/objectLiteralTrailingComma.io`, which also pins down that the
       grammar allows exactly one and only after a property. Accepted in the es3 build too, so it is shared.
+- [x] **String line continuation (§7.8.4).** A `\` before a LineTerminatorSequence now contributes the empty
+      character sequence instead of raising `\ continuation is not supported`. ES3 §7.8.4 has no such production at
+      all, so this is genuinely ES5-only and the old error moved to `tests/es3only/escapedLFNotAllowed.io` rather
+      than being edited. §7.3 makes CR LF one sequence, which `unescapedMaxLength` has to agree with or it
+      under-counts the buffer `unescape` then fills. (`tests/es5/stringLineContinuation.io`)
 - [ ] **Whitespace/Unicode (lower priority, own sub-phase):** `Compiler::white()` accepts only space, `\f \n \r \t
       \v`, U+00A0, U+2028 and U+2029. Missing: U+FEFF as WhiteSpace anywhere (§7.2); the rest of Zs (U+1680,
-      U+2000-U+200A, U+202F, U+205F, U+3000); line-continuation (`\`+LineTerminator) in string literals (§7.8.4),
-      today an explicit `\ continuation is not supported` error that `tests/erroneous/escapedLFNotAllowed.io`
-      asserts; Cf format-control characters as IdentifierPart (§7.1). The runtime skipper `eatStringWhite` has the
-      same gap, so `Number("\u30001")` is `NaN`. These are the items flagged in `docs/notes/Todo.md`.
+      U+2000-U+200A, U+202F, U+205F, U+3000); Cf format-control characters as IdentifierPart (§7.1). The runtime
+      skipper `eatStringWhite` has the
+      same gap, so `Number("\u30001")` is `NaN`. Unlike the continuation above, ES3 §7.2
+      carries the identical `<USP>` catch-all, so this is a shared conformance bug: fixing either half moves the es3
+      binary, and it is one decision rather than two. Tracked in `docs/notes/Todo.md` under Compiler.
 
 ### Tests
 - accessor object literals; octal rejection; reserved-word keys; BOM-as-whitespace; string line continuation.
