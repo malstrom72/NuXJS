@@ -1130,8 +1130,10 @@ class Scope : public GCItem {
 			are plain calls, and a getter needs a frame pushed by the opcode. So they hand back the holder and
 			READ_NAMED / WRITE_NAMED do the invoking, exactly as GET_PROPERTY already does for `o.x`.
 			Every override must stop wherever its own readVar stops, or a shadowed name resolves to the wrong one.
+			It is readVar's walk with the holder reported as well, so one lookup answers both halves of a captured
+			reference: the value goes to `v` and the flags come back, exactly as readVar would.
 		*/
-		virtual Object* resolveVar(Runtime& rt, const String* name) const;
+		virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const;
 
 		/**
 			Writes like writeVar, except that a binding held as an accessor on an object environment record is
@@ -1301,7 +1303,7 @@ class FunctionScope : public Scope {
 		virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 	#if NUXJS_ES5
-		virtual Object* resolveVar(Runtime& rt, const String* name) const;
+		virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const;
 		virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v);
 	#endif
 		virtual bool deleteVar(Runtime& rt, const String* name);
@@ -1352,7 +1354,7 @@ class Runtime : public GCItem {
 			virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
 			virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		#if NUXJS_ES5
-			virtual Object* resolveVar(Runtime& rt, const String* name) const;
+			virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const;
 			virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v);
 		#endif
 			virtual bool deleteVar(Runtime& rt, const String* name);
@@ -1798,7 +1800,7 @@ class Processor : public GCItem {
 			// resolves the name up front and keeps the holder on the stack rather than looking it up again after
 			// the right-hand side has run. Undefined stands for a declarative binding, which cannot move.
 			, RESOLVE_NAMED_OP								// operand: const_index (name), stack: -> holder
-			, READ_RESOLVED_OP								// operand: const_index (name), stack: holder -> holder, value
+			, RESOLVE_READ_NAMED_OP							// operand: const_index (name), stack: -> holder, value
 			, WRITE_RESOLVED_OP								// operand: const_index (name), stack: holder, value -> value, junk
 			, POST_SHUFFLE_2_OP								// stack: holder, value -> value, holder, value
 		#endif

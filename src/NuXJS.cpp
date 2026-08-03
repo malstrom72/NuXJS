@@ -2648,9 +2648,9 @@ void Scope::writeVar(Runtime& rt, const String* name, const Value& v) {
 }
 
 #if NUXJS_ES5
-Object* Scope::resolveVar(Runtime& rt, const String* name) const {
+Flags Scope::resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const {
 	assert(parentScope != 0);
-	return parentScope->resolveVar(rt, name);
+	return parentScope->resolveVar(rt, name, v, holder);
 }
 
 Object* Scope::writeVarOrAccessor(Runtime& rt, const String* name, const Value& v) {
@@ -2792,25 +2792,28 @@ Object* FunctionScope::writeVarOrAccessor(Runtime& rt, const String* name, const
 	return parentScope->writeVarOrAccessor(rt, name, v);
 }
 
-Object* FunctionScope::resolveVar(Runtime& rt, const String* name) const {
+Flags FunctionScope::resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const {
 	const UInt32 bloomCode = name->createBloomCode();
-	if ((bloomSet & bloomCode) == bloomCode) {	// mirrors readVar: locals, dynamic vars and the self name are all
-		Int32 index;								// declarative, so a hit stops the walk and still answers 0
+	if ((bloomSet & bloomCode) == bloomCode) {	// readVar's walk exactly; every hit here is a declarative binding,
+		Int32 index;								// so the holder stays 0 and only the value comes back
 		const Code* code = function->code;
 		if (code->lookupNameIndex(name, index)) {
-			return 0;
+			assert(locals.begin() <= localsPointer + index && localsPointer + index < locals.end());
+			*v = localsPointer[index];
+			return DONT_DELETE_FLAG | EXISTS_FLAG;
 		}
 		if (dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) {
-			Value dummy;
-			if (getDynamicVars(rt)->getOwnProperty(rt, name, &dummy) != NONEXISTENT) {
-				return 0;
+			const Flags flags = getDynamicVars(rt)->getOwnProperty(rt, name, v);
+			if (flags != NONEXISTENT) {
+				return flags;
 			}
 		}
 		if (code->selfName != 0 && name->isEqualTo(*code->selfName)) {
-			return 0;
+			*v = function;
+			return DONT_DELETE_FLAG | READ_ONLY_FLAG | EXISTS_FLAG;
 		}
 	}
-	return parentScope->resolveVar(rt, name);
+	return parentScope->resolveVar(rt, name, v, holder);
 }
 #endif
 
@@ -2931,7 +2934,7 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 #endif
 #if NUXJS_ES5
 	{ RESOLVE_NAMED_OP           , "RESOLVE_NAMED"           , 1      , 0 },
-	{ READ_RESOLVED_OP           , "READ_RESOLVED"           , 1      , 0 },
+	{ RESOLVE_READ_NAMED_OP      , "RESOLVE_READ_NAMED"      , 2      , 0 },
 	{ WRITE_RESOLVED_OP          , "WRITE_RESOLVED"          , 0      , 0 },	// leaves the value and a junk slot; the compiler always follows with POP_OP
 	{ POST_SHUFFLE_2_OP          , "POST_SHUFFLE_2"          , 1      , 0 },
 #endif
@@ -3064,12 +3067,14 @@ struct Processor::EvalScope : public Scope {
 		parentScope->writeVar(rt, name, v);
 	}
 #if NUXJS_ES5
-	virtual Object* resolveVar(Runtime& rt, const String* name) const {
-		Value dummy;
-		if (ownVars != 0 && ownVars->getOwnProperty(rt, name, &dummy) != NONEXISTENT) {
-			return 0;	// a strict eval's own vars are declarative
+	virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const {
+		if (ownVars != 0) {
+			const Flags flags = ownVars->getOwnProperty(rt, name, v);
+			if (flags != NONEXISTENT) {
+				return flags;	// a strict eval's own vars are declarative
+			}
 		}
-		return parentScope->resolveVar(rt, name);
+		return parentScope->resolveVar(rt, name, v, holder);
 	}
 	virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v) {
 		if (ownVars != 0) {
@@ -3149,8 +3154,12 @@ struct Processor::CatchScope : public Scope {
 		}
 	}
 #if NUXJS_ES5
-	virtual Object* resolveVar(Runtime& rt, const String* name) const {
-		return (name->isEqualTo(*exceptionName) ? 0 : parentScope->resolveVar(rt, name));	// the binding is declarative
+	virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const {
+		if (name->isEqualTo(*exceptionName)) {
+			*v = exceptionValue;	// declarative, so no holder
+			return DONT_DELETE_FLAG | EXISTS_FLAG;
+		}
+		return parentScope->resolveVar(rt, name, v, holder);
 	}
 	virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v) {
 		if (name->isEqualTo(*exceptionName)) {
@@ -3201,9 +3210,13 @@ struct Processor::WithScope : public Scope {
 		parentScope->writeVar(rt, name, v);
 	}
 #if NUXJS_ES5
-	virtual Object* resolveVar(Runtime& rt, const String* name) const {
-		Value dummy;
-		return (withObject->getProperty(rt, name, &dummy) != NONEXISTENT ? withObject : parentScope->resolveVar(rt, name));
+	virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const {
+		const Flags flags = withObject->getProperty(rt, name, v);
+		if (flags != NONEXISTENT) {
+			*holder = withObject;
+			return flags;
+		}
+		return parentScope->resolveVar(rt, name, v, holder);
 	}
 	virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v) {
 		const Value key(name);
@@ -3509,7 +3522,9 @@ void Processor::innerRun() {
 				if ((flags & ACCESSOR_FLAG) != 0) {
 					Value dummy;
 					Accessor* accessor;
-					Object* const holder = scope->resolveVar(rt, name);	// rare second walk fetches the pair
+					Value ignored;
+					Object* holder = 0;
+					scope->resolveVar(rt, name, &ignored, &holder);	// rare second walk fetches the pair
 					assert(holder != 0);
 					holder->getPropertySlot(rt, Value(name), &dummy, &accessor);
 					if (accessor->get == 0) {
@@ -3562,29 +3577,30 @@ void Processor::innerRun() {
 
 		#if NUXJS_ES5
 			case RESOLVE_NAMED_OP: {
-				Object* const holder = scope->resolveVar(rt, constants[im].getString());
+				Value ignored;
+				Object* holder = 0;
+				scope->resolveVar(rt, constants[im].getString(), &ignored, &holder);
 				push(holder != 0 ? Value(holder) : UNDEFINED_VALUE);	// undefined: declarative, so it cannot move
 				break;
 			}
 
-			case READ_RESOLVED_OP: {
+			case RESOLVE_READ_NAMED_OP: {
+				// The capture and the read of a read-modify-write, in the one lookup readVar took before the
+				// reference had to be kept (11.13.2 steps 1 and 2).
 				const String* name = constants[im].getString();
-				Object* const holder = sp[0].asObject();
-				if (holder == 0) {	// declarative, so resolving by name again lands in the same place
-					if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
-						error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
-						return;
-					}
-					break;
-				}
-				const Value key(name);
-				const Flags flags = holder->getProperty(rt, key, ++sp);
+				Value value(UNDEFINED_VALUE);
+				Object* holder = 0;
+				const Flags flags = scope->resolveVar(rt, name, &value, &holder);
 				if (flags == NONEXISTENT) {
-					sp[0] = UNDEFINED_VALUE;	// deleted since it was resolved; 8.7.1 on an object base answers undefined
-				} else if ((flags & ACCESSOR_FLAG) != 0) {
+					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+					return;
+				}
+				push(holder != 0 ? Value(holder) : UNDEFINED_VALUE);
+				push(value);
+				if ((flags & ACCESSOR_FLAG) != 0) {
 					Value dummy;
 					Accessor* accessor;
-					holder->getPropertySlot(rt, key, &dummy, &accessor);
+					holder->getPropertySlot(rt, Value(name), &dummy, &accessor);
 					if (accessor->get == 0) {
 						sp[0] = UNDEFINED_VALUE;
 						break;
@@ -3958,7 +3974,9 @@ void Processor::innerRun() {
 				if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
 					Value dummy;
 					Accessor* accessor;
-					Object* const holder = scope->resolveVar(rt, name);
+					Value ignored;
+					Object* holder = 0;
+					scope->resolveVar(rt, name, &ignored, &holder);
 					assert(holder != 0);
 					holder->getPropertySlot(rt, Value(name), &dummy, &accessor);
 					if (accessor->get != 0) {
@@ -4581,7 +4599,6 @@ Compiler::ExpressionResult Compiler::makeRValue(const ExpressionResult& xr, bool
 		case ExpressionResult::LOCAL: emit(Processor::READ_LOCAL_OP, xr.v.toInt()); break;
 		case ExpressionResult::NAMED: emitWithConstant(Processor::READ_NAMED_OP, xr.v); break;
 	#if NUXJS_ES5
-		case ExpressionResult::RESOLVED: emitWithConstant(Processor::READ_RESOLVED_OP, xr.v); break;
 	#endif
 		case ExpressionResult::PROPERTY: emit(Processor::GET_PROPERTY_OP); break;
 		case ExpressionResult::SAFEKEPT: emit(Processor::REPUSH_OP
@@ -5001,14 +5018,14 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 				emit(Processor::REPUSH_2_OP);
 			}
 			#if NUXJS_ES5
-				// 11.13 / 11.4.4: the reference is created here, before anything else runs, and PutValue below
-				// must use this one. Only a name needs it; a local cannot move and a property keeps its base.
+				// 11.4.4 / 11.3: same as compound assignment, one reference captured and read in one lookup.
 				if (xr.t == ExpressionResult::NAMED) {
-					emitWithConstant(Processor::RESOLVE_NAMED_OP, xr.v);
+					emitWithConstant(Processor::RESOLVE_READ_NAMED_OP, xr.v);
 					xr = ExpressionResult(ExpressionResult::RESOLVED, xr.v);
-				}
+					makeRValue(ExpressionResult(ExpressionResult::PUSHED), true);
+				} else
 			#endif
-			makeRValue(xr, true);
+				makeRValue(xr, true);
 			emit(op.vmOp);
 			makeAssignment(xr);
 			xr = ExpressionResult::PUSHED_PRIMITIVE;
@@ -5103,14 +5120,14 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				emit(Processor::REPUSH_2_OP);
 			}
 			#if NUXJS_ES5
-				// 11.13 / 11.4.4: the reference is created here, before anything else runs, and PutValue below
-				// must use this one. Only a name needs it; a local cannot move and a property keeps its base.
+				// 11.4.4 / 11.3: same as compound assignment, one reference captured and read in one lookup.
 				if (xr.t == ExpressionResult::NAMED) {
-					emitWithConstant(Processor::RESOLVE_NAMED_OP, xr.v);
+					emitWithConstant(Processor::RESOLVE_READ_NAMED_OP, xr.v);
 					xr = ExpressionResult(ExpressionResult::RESOLVED, xr.v);
-				}
+					makeRValue(ExpressionResult(ExpressionResult::PUSHED), true);
+				} else
 			#endif
-			makeRValue(xr, true);
+				makeRValue(xr, true);
 			emit(Processor::PLUS_OP);
 		#if NUXJS_ES5
 			emit(xr.t == ExpressionResult::PROPERTY ? Processor::POST_SHUFFLE_OP
@@ -5225,14 +5242,15 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 				emit(Processor::REPUSH_2_OP);
 			}
 			#if NUXJS_ES5
-				// 11.13 / 11.4.4: the reference is created here, before anything else runs, and PutValue below
-				// must use this one. Only a name needs it; a local cannot move and a property keeps its base.
+				// 11.13.2: the reference is created here, before anything else runs, and PutValue below must use
+				// this one. RESOLVE_READ_NAMED captures it and reads through it in a single lookup.
 				if (xr.t == ExpressionResult::NAMED) {
-					emitWithConstant(Processor::RESOLVE_NAMED_OP, xr.v);
+					emitWithConstant(Processor::RESOLVE_READ_NAMED_OP, xr.v);
 					xr = ExpressionResult(ExpressionResult::RESOLVED, xr.v);
-				}
+					makeRValue(ExpressionResult(ExpressionResult::PUSHED), true, primitiveOp);
+				} else
 			#endif
-			makeRValue(xr, true, primitiveOp);
+				makeRValue(xr, true, primitiveOp);
 			makeRValue(operand(op), true, primitiveOp);
 			emit(op.vmOp);
 			makeAssignment(xr);
@@ -6283,10 +6301,13 @@ Object* Runtime::GlobalScope::writeVarOrAccessor(Runtime& rt, const String* name
 	return 0;
 }
 
-Object* Runtime::GlobalScope::resolveVar(Runtime& rt, const String* name) const {
-	Value dummy;
+Flags Runtime::GlobalScope::resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const {
 	Object* const globalObject = rt.getGlobalObject();
-	return (globalObject->getProperty(rt, name, &dummy) != NONEXISTENT ? globalObject : 0);	// 0 is unresolvable
+	const Flags flags = globalObject->getProperty(rt, name, v);
+	if (flags != NONEXISTENT) {
+		*holder = globalObject;
+	}
+	return flags;
 }
 #endif
 
