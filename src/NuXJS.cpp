@@ -2648,9 +2648,10 @@ void Scope::writeVar(Runtime& rt, const String* name, const Value& v) {
 }
 
 #if NUXJS_ES5
-Flags Scope::resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const {
+Flags Scope::resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const {
 	assert(parentScope != 0);
-	return parentScope->resolveVar(rt, name, v, holder);
+	++depth;
+	return parentScope->resolveVar(rt, name, v, holder, depth);
 }
 
 Object* Scope::writeVarOrAccessor(Runtime& rt, const String* name, const Value& v) {
@@ -2792,7 +2793,7 @@ Object* FunctionScope::writeVarOrAccessor(Runtime& rt, const String* name, const
 	return parentScope->writeVarOrAccessor(rt, name, v);
 }
 
-Flags FunctionScope::resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const {
+Flags FunctionScope::resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const {
 	const UInt32 bloomCode = name->createBloomCode();
 	if ((bloomSet & bloomCode) == bloomCode) {	// readVar's walk exactly; every hit here is a declarative binding,
 		Int32 index;								// so the holder stays 0 and only the value comes back
@@ -2813,7 +2814,8 @@ Flags FunctionScope::resolveVar(Runtime& rt, const String* name, Value* v, Objec
 			return DONT_DELETE_FLAG | READ_ONLY_FLAG | EXISTS_FLAG;
 		}
 	}
-	return parentScope->resolveVar(rt, name, v, holder);
+	++depth;
+	return parentScope->resolveVar(rt, name, v, holder, depth);
 }
 #endif
 
@@ -3067,14 +3069,15 @@ struct Processor::EvalScope : public Scope {
 		parentScope->writeVar(rt, name, v);
 	}
 #if NUXJS_ES5
-	virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const {
+	virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const {
 		if (ownVars != 0) {
 			const Flags flags = ownVars->getOwnProperty(rt, name, v);
 			if (flags != NONEXISTENT) {
 				return flags;	// a strict eval's own vars are declarative
 			}
 		}
-		return parentScope->resolveVar(rt, name, v, holder);
+		++depth;
+		return parentScope->resolveVar(rt, name, v, holder, depth);
 	}
 	virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v) {
 		if (ownVars != 0) {
@@ -3154,12 +3157,13 @@ struct Processor::CatchScope : public Scope {
 		}
 	}
 #if NUXJS_ES5
-	virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const {
+	virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const {
 		if (name->isEqualTo(*exceptionName)) {
 			*v = exceptionValue;	// declarative, so no holder
 			return DONT_DELETE_FLAG | EXISTS_FLAG;
 		}
-		return parentScope->resolveVar(rt, name, v, holder);
+		++depth;
+		return parentScope->resolveVar(rt, name, v, holder, depth);
 	}
 	virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v) {
 		if (name->isEqualTo(*exceptionName)) {
@@ -3210,13 +3214,14 @@ struct Processor::WithScope : public Scope {
 		parentScope->writeVar(rt, name, v);
 	}
 #if NUXJS_ES5
-	virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const {
+	virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const {
 		const Flags flags = withObject->getProperty(rt, name, v);
 		if (flags != NONEXISTENT) {
 			*holder = withObject;
 			return flags;
 		}
-		return parentScope->resolveVar(rt, name, v, holder);
+		++depth;
+		return parentScope->resolveVar(rt, name, v, holder, depth);
 	}
 	virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v) {
 		const Value key(name);
@@ -3524,7 +3529,8 @@ void Processor::innerRun() {
 					Accessor* accessor;
 					Value ignored;
 					Object* holder = 0;
-					scope->resolveVar(rt, name, &ignored, &holder);	// rare second walk fetches the pair
+					Int32 ignoredDepth = 0;
+					scope->resolveVar(rt, name, &ignored, &holder, ignoredDepth);	// rare second walk fetches the pair
 					assert(holder != 0);
 					holder->getPropertySlot(rt, Value(name), &dummy, &accessor);
 					if (accessor->get == 0) {
@@ -3573,8 +3579,11 @@ void Processor::innerRun() {
 			case RESOLVE_NAMED_OP: {
 				Value ignored;
 				Object* holder = 0;
-				scope->resolveVar(rt, constants[im].getString(), &ignored, &holder);
-				push(holder != 0 ? Value(holder) : UNDEFINED_VALUE);	// undefined: declarative, so it cannot move
+				Int32 depth = 0;
+				const Flags flags = scope->resolveVar(rt, constants[im].getString(), &ignored, &holder, depth);
+				// The captured reference in one Value: the holder for an object environment record, the level for
+				// a declarative one, undefined for a name that resolves nowhere (11.13.1 step 1).
+				push(holder != 0 ? Value(holder) : flags == NONEXISTENT ? UNDEFINED_VALUE : Value(depth));
 				break;
 			}
 
@@ -3584,12 +3593,13 @@ void Processor::innerRun() {
 				const String* name = constants[im].getString();
 				Value value(UNDEFINED_VALUE);
 				Object* holder = 0;
-				const Flags flags = scope->resolveVar(rt, name, &value, &holder);
+				Int32 depth = 0;
+				const Flags flags = scope->resolveVar(rt, name, &value, &holder, depth);
 				if (flags == NONEXISTENT) {
 					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
 					return;
 				}
-				push(holder != 0 ? Value(holder) : UNDEFINED_VALUE);
+				push(holder != 0 ? Value(holder) : Value(depth));
 				push(value);
 				if ((flags & ACCESSOR_FLAG) != 0) {
 					Value dummy;
@@ -3607,11 +3617,18 @@ void Processor::innerRun() {
 
 			case WRITE_RESOLVED_OP: {
 				const String* name = constants[im].getString();
-				Object* const holder = sp[-1].asObject();
+				const Value reference = sp[-1];
+				Object* const holder = reference.asObject();
 				sp[-1] = sp[0];	// the assigned value takes the holder's slot, so it survives a setter frame
 				if (holder == 0) {
-					if (code->isStrict() && !checkStrictAssignable(scope, name)) return;
-					scope->writeVar(rt, name, sp[0]);
+					// A level, not a name: walk back to the scope the reference resolved in, so a binding a direct
+					// eval added since, more locally, cannot steal the write (11.13.2 step 6).
+					Scope* owner = scope;
+					for (Int32 n = (reference.isUndefined() ? 0 : reference.toInt()); n > 0; --n) {
+						owner = owner->getParentScope();
+					}
+					if (code->isStrict() && !checkStrictAssignable(owner, name)) return;
+					owner->writeVar(rt, name, sp[0]);
 				} else if (!holder->updateOwnProperty(rt, Value(name), sp[0])) {	// fast path, as SET_PROPERTY_POP does
 					const Value key(name);
 					Value dummy;
@@ -3970,7 +3987,8 @@ void Processor::innerRun() {
 					Accessor* accessor;
 					Value ignored;
 					Object* holder = 0;
-					scope->resolveVar(rt, name, &ignored, &holder);
+					Int32 ignoredDepth = 0;
+					scope->resolveVar(rt, name, &ignored, &holder, ignoredDepth);
 					assert(holder != 0);
 					holder->getPropertySlot(rt, Value(name), &dummy, &accessor);
 					if (accessor->get != 0) {
@@ -6315,7 +6333,7 @@ Object* Runtime::GlobalScope::writeVarOrAccessor(Runtime& rt, const String* name
 	return 0;
 }
 
-Flags Runtime::GlobalScope::resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const {
+Flags Runtime::GlobalScope::resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const {
 	Object* const globalObject = rt.getGlobalObject();
 	const Flags flags = globalObject->getProperty(rt, name, v);
 	if (flags != NONEXISTENT) {

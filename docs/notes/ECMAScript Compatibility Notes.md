@@ -44,8 +44,10 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   `with (scope) { x = (delete scope.x, 2) }` writes to the outer `x` where the spec writes to `scope`. V8 has the
   same deviation. Left as it stands in es3 rather than moving the frozen binary for it; recorded by
   `tests/es3only/rightSideBeforeAssignmentRef.io`. The `NUXJS_ES5` build is conformant: it resolves the name up
-  front and keeps the holder on the value stack, the way a property reference already keeps its base
-  (`tests/es5/assignmentReferenceCapture.io`).
+  front and keeps the reference on the value stack, the way a property reference already keeps its base. An
+  object environment record is kept as its holder and a declarative one as the level it was found at, which is
+  what stops a binding that a direct `eval` adds more locally during the right-hand side from taking the write
+  (`tests/es5/assignmentReferenceCapture.io`). V8 does not do this last part.
 
 - **JSON nesting depth is bounded.** `JSON.parse` / `JSON.stringify` cap nesting at `MAX_JSON_DEPTH` (61) to stay
   within the compiler's recursion limit; deeper structures throw a `TypeError`. The spec imposes no fixed limit.

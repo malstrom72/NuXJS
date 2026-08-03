@@ -1132,8 +1132,12 @@ class Scope : public GCItem {
 			Every override must stop wherever its own readVar stops, or a shadowed name resolves to the wrong one.
 			It is readVar's walk with the holder reported as well, so one lookup answers both halves of a captured
 			reference: the value goes to `v` and the flags come back, exactly as readVar would.
+			`depth` counts the levels climbed and comes back as the level the binding was found at. A declarative
+			record has no holder, but it still has to be identified: a direct eval in a right-hand side can add a
+			*more local* binding of the same name, and 11.13.2 says the write belongs to the one resolved first.
+			The level says which, and getting back to it is a few pointer hops rather than a second search.
 		*/
-		virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const;
+		virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const;
 
 		/**
 			Writes like writeVar, except that a binding held as an accessor on an object environment record is
@@ -1303,7 +1307,7 @@ class FunctionScope : public Scope {
 		virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 	#if NUXJS_ES5
-		virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const;
+		virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const;
 		virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v);
 	#endif
 		virtual bool deleteVar(Runtime& rt, const String* name);
@@ -1354,7 +1358,7 @@ class Runtime : public GCItem {
 			virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
 			virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		#if NUXJS_ES5
-			virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder) const;
+			virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const;
 			virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v);
 		#endif
 			virtual bool deleteVar(Runtime& rt, const String* name);

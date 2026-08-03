@@ -43,6 +43,19 @@
 > show("evalDeclared", typeof innerG + "/" + g);
 < evalDeclared: undefined/1
 -
+// A declarative binding needs identifying too, not just skipping: a direct eval in the right-hand side can add
+// a *more local* binding of the same name, and 11.13.2 says the write belongs to the one resolved at step 1.
+// V8 writes to the newly created inner binding instead, so these expectations come from the spec, not from node.
+> function evalShadow() { var x = 7; var inner = (function () { x %= (eval("var x = 2;"), 4); return x })(); return "inner=" + inner + " outer=" + x }
+> show("evalShadow", evalShadow());
+< evalShadow: inner=2 outer=3
+> function evalShadowSimple() { var x = 7; var inner = (function () { x = (eval("var x = 2;"), 5); return x })(); return "inner=" + inner + " outer=" + x }
+> show("evalShadowSimple", evalShadowSimple());
+< evalShadowSimple: inner=2 outer=5
+> function evalShadowInc() { var x = 7; var inner = (function () { eval("var x = 2;"); return x })(); return "inner=" + inner + " outer=" + x }
+> show("control (no capture involved)", evalShadowInc());
+< control (no capture involved): inner=2 outer=7
+-
 // Nesting works because the captured reference lives on the value stack, like a property base.
 > function nested() { var a = 1, b = 10; var s = { a: 1, b: 10 }; with (s) { a += (b += 5, delete s.a, 2) } return s.a + "/" + s.b + "/" + a + "/" + b }
 > show("nested", nested());
