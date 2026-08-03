@@ -1811,7 +1811,8 @@ class Processor : public GCItem {
 				after the right-hand side has run. One Value carries all three shapes a resolved name takes: the
 				holder object for a 10.2.1.2 *object* environment record, the level climbed to for a declarative
 				one (which has no holder, but still has to be told apart from a nearer binding that a direct eval
-				in the right-hand side may add), and undefined for a name that resolves nowhere.
+				in the right-hand side may add), and undefined for a name that resolves nowhere, which 8.7.2
+				sends to the global object, or to a ReferenceError in strict code.
 			*/
 			, RESOLVE_NAMED_OP								// operand: const_index (name), stack: -> reference
 			, RESOLVE_READ_NAMED_OP							// operand: const_index (name), stack: -> reference, value

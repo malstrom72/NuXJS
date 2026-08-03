@@ -47,7 +47,9 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   front and keeps the reference on the value stack, the way a property reference already keeps its base. An
   object environment record is kept as its holder and a declarative one as the level it was found at, which is
   what stops a binding that a direct `eval` adds more locally during the right-hand side from taking the write
-  (`tests/es5/assignmentReferenceCapture.io`). V8 does not do this last part.
+  (`tests/es5/assignmentReferenceCapture.io`). V8 does not do this last part. A name that resolves nowhere keeps
+  no base at all, and `8.7.2` step 3 then sends the write to the global object, running a setter installed since
+  if there is one, or throws a `ReferenceError` in strict code.
 
 - **JSON nesting depth is bounded.** `JSON.parse` / `JSON.stringify` cap nesting at `MAX_JSON_DEPTH` (61) to stay
   within the compiler's recursion limit; deeper structures throw a `TypeError`. The spec imposes no fixed limit.

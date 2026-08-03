@@ -3623,13 +3623,27 @@ void Processor::innerRun() {
 			case WRITE_RESOLVED_OP: {
 				const String* name = constants[im].getString();
 				const Value reference = sp[-1];
-				Object* const holder = reference.asObject();
-				sp[-1] = sp[0];	// the assigned value takes the holder's slot, so it survives a setter frame
+				Object* holder = reference.asObject();
+				sp[-1] = sp[0];	// the assigned value takes the reference's slot, so it survives a setter frame
+				if (reference.isUndefined()) {
+					/*
+						8.7.2 step 3: the name resolved nowhere, so strict code throws and sloppy code [[Put]]s on
+						the global object, setter and all. That is why the unresolvable shape has to stay distinct
+						from a holder the walk did find: only here may a write conjure the binding it lands on.
+						It waits until now rather than until the capture because PutValue is 11.13.1 step 4, after
+						the right-hand side.
+					*/
+					if (code->isStrict()) {
+						error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+						return;
+					}
+					holder = rt.getGlobalObject();
+				}
 				if (holder == 0) {
 					// A level, not a name: walk back to the scope the reference resolved in, so a binding a direct
 					// eval added since, more locally, cannot steal the write (11.13.2 step 6).
 					Scope* owner = scope;
-					for (Int32 n = (reference.isUndefined() ? 0 : reference.toInt()); n > 0; --n) {
+					for (Int32 n = reference.toInt(); n > 0; --n) {
 						owner = owner->getParentScope();
 					}
 					if (code->isStrict() && !checkStrictAssignable(owner, name)) return;
