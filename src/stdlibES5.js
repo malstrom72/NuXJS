@@ -67,9 +67,10 @@ function define(o, key, attributes) {
 	Prototype methods whose first step is CheckObjectCoercible or ToObject on the this value. They must be strict:
 	a non-strict function has a null or undefined this substituted with the global object (10.4.3), which would
 	make the required TypeError unreachable. Strict mode also makes `arguments` unmapped, which is what the
-	"was the argument supplied?" tests below want.
+	"was the argument supplied?" tests below want. Strict also means `this` is undefined in here, so the global
+	object comes in as a parameter for the one member below that installs onto it rather than onto a prototype.
 */
-(function () {
+(function (globalObject) {
 "use strict";
 
 // 9.4 ToInteger, restated verbatim from stdlib.js, which keeps its copy closure-local. 9.6 ToUint32 needs no
@@ -102,6 +103,21 @@ method(String.prototype, "trim", function trim() {
 	while (i < j && isSpace(s.charCodeAt(i))) ++i;
 	while (j > i && isSpace(s.charCodeAt(j - 1))) --j;
 	return s.substring(i, j);
+});
+
+/*
+	15.1.2.2 step 2 skips StrWhiteSpace, which 9.3.1 defines as 7.2 WhiteSpace, so parseInt has to accept the same
+	set as isSpace above. stdlib.js keeps its own ES3 table for this, closure-local and so out of reach here, and
+	editing it would move the es3 binary. Strip the leading run and delegate: everything after step 2, the radix
+	rules and the digit loop, is already ES5-correct. String() and not "" + string because step 1 is ToString,
+	which for an object with a valueOf is not what the implicit ToPrimitive would pick. parseFloat needs none of
+	this, being native and sharing eatStringWhite with the lexer.
+*/
+var baseParseInt = parseInt;
+method(globalObject, "parseInt", function parseInt(string, radix) {
+	var s = String(string), i = 0, n = s.length;
+	while (i < n && isSpace(s.charCodeAt(i))) ++i;
+	return baseParseInt(i === 0 ? s : s.substring(i), radix);
 });
 
 // 15.3.4.5: the native side builds the bound function, since it needs internal methods JS cannot express (no
@@ -319,7 +335,7 @@ method(Array.prototype, "reduceRight", function reduceRight(callbackfn) {
 	return acc;
 });
 
-})();
+})(this);
 
 // 15.2.3.10 Object.preventExtensions / 15.2.3.13 Object.isExtensible
 method(Object, "preventExtensions", function preventExtensions(o) {

@@ -656,11 +656,29 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 	return numberEnd;
 }
 
+#if NUXJS_ES5
+/*
+	The 7.2 WhiteSpace characters the ES3 list does not carry: the BOM, which ES5 moved out of the 7.1
+	format-control set and into WhiteSpace proper, and the rest of category Zs behind the <USP> catch-all. Kept in
+	one place because the lexer and the 9.3.1 string-to-number skipper must agree on it, and because
+	String.prototype.trim in stdlibES5.js enumerates exactly the same set.
+*/
+static bool isES5ExtraWhite(Char c) {
+	return (c == 0xFEFF || c == 0x1680 || (c >= 0x2000 && c <= 0x200A) || c == 0x202F || c == 0x205F || c == 0x3000);
+}
+#endif
+
 static const Char* eatStringWhite(const Char* p, const Char* e) {
 	while (p != e) {
 		switch (*p) {
 			case ' ': case '\f': case '\n': case '\r': case '\t': case '\v': case 0xA0: case 0x2028: case 0x2029: break;
-			default: return p;
+			default:
+#if NUXJS_ES5
+				if (isES5ExtraWhite(*p)) {
+					break;
+				}
+#endif
+				return p;
 		}
 		++p;
 	}
@@ -4488,7 +4506,15 @@ void Compiler::white() {
 							p += 2;
 							break;
 						}
-			default:	return;
+			default:
+#if NUXJS_ES5
+						// 7.2 WhiteSpace separates tokens anywhere, so a BOM is not just a leading file marker.
+						if (isES5ExtraWhite(*p)) {
+							++p;
+							break;
+						}
+#endif
+						return;
 		}
 	}
 }

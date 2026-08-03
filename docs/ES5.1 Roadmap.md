@@ -212,13 +212,17 @@ C++ compiler (`NuXJS.cpp`), no VM changes beyond emitting the accessor-define pa
       all, so this is genuinely ES5-only and the old error moved to `tests/es3only/escapedLFNotAllowed.io` rather
       than being edited. §7.3 makes CR LF one sequence, which `unescapedMaxLength` has to agree with or it
       under-counts the buffer `unescape` then fills. (`tests/es5/stringLineContinuation.io`)
-- [ ] **Whitespace/Unicode (lower priority, own sub-phase):** `Compiler::white()` accepts only space, `\f \n \r \t
-      \v`, U+00A0, U+2028 and U+2029. Missing: U+FEFF as WhiteSpace anywhere (§7.2); the rest of Zs (U+1680,
-      U+2000-U+200A, U+202F, U+205F, U+3000); Cf format-control characters as IdentifierPart (§7.1). The runtime
-      skipper `eatStringWhite` has the
-      same gap, so `Number("\u30001")` is `NaN`. Unlike the continuation above, ES3 §7.2
-      carries the identical `<USP>` catch-all, so this is a shared conformance bug: fixing either half moves the es3
-      binary, and it is one decision rather than two. Tracked in `docs/notes/Todo.md` under Compiler.
+- [x] **The full §7.2 WhiteSpace set.** ES5 added U+FEFF, moved out of the §7.1 format-control set, and NuXJS had
+      never implemented the `<USP>` category-Zs catch-all that both editions carry. Four places must agree on that
+      set and only `String.prototype.trim` did: `Compiler::white()`, the run-time skipper `eatStringWhite` behind
+      §9.3.1 `ToNumber` and §15.1.2.3 `parseFloat`, and §15.1.2.2 `parseInt`. The first two now share
+      `isES5ExtraWhite`. `parseInt` keeps its own whitespace table closure-local in `stdlib.js`, out of reach of
+      `stdlibES5.js` and unmovable without changing the es3 binary, so the ES5 module wraps it: strip the leading
+      run with the same predicate `trim` uses, then delegate for the radix and digit rules, which were already
+      right. The es3 build is deliberately left alone, so the `<USP>` half stays a *shared* deviation rather than
+      an ES5 gap; see `docs/notes/Todo.md` under Compiler. (`tests/es5/whiteSpaceSet.io`)
+- [ ] **Cf format-control characters as IdentifierPart (§7.1).** ZWNJ and ZWJ inside identifiers, independent of
+      the whitespace work above and still unimplemented in both builds. Tracked in `docs/notes/Todo.md`.
 
 ### Tests
 - accessor object literals; octal rejection; reserved-word keys; BOM-as-whitespace; string line continuation.
@@ -326,7 +330,7 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 - [ ] `Date.parse` reads the ISO *date-only* form as local time where §15.9.1.15 says UTC. The parser is shared with
       es3, so fixing it moves the es3 binary; see `docs/notes/Todo.md`. No legacy fallback, which §15.9.4.2 permits.
 - [x] `parseInt`/`parseFloat` radix and no-octal behaviour already match ES5 (§15.1.2); their whitespace handling
-      pends §3's Zs work. `Number.isNaN`/`isFinite` are ES6, not ES5.1, and are deliberately NOT added - this is an
+      was brought up to the full §7.2 set in §3. `Number.isNaN`/`isFinite` are ES6, not ES5.1, and are deliberately NOT added - this is an
       ES5.1 engine, and shipping ES6 globals would misreport what it supports.
 - [x] JSON reviver/replacer/space (§15.12) - verified working, including array and function replacers, `space`
       indenting and `toJSON` dispatch. The depth-cap deviation stays documented. Needs a test.
