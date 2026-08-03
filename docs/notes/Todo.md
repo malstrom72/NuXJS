@@ -35,6 +35,7 @@ Compiler
 	* 7.1: strip Unicode format-control (Cf) characters - LRM (U+200E), RLM (U+200F), ZWNJ (U+200C), ZWJ (U+200D), BOM (U+FEFF) - from the source before lexing. ES3 removes them *everywhere*, even inside string/regexp literals (so they'd need \uXXXX to appear in a string). Currently NOT done: a BOM/LRM etc. in code gives a SyntaxError, and they survive as chars inside string literals (e.g. "a<BOM>b".length is 3, should be 2).
 
 	* 7.2 whitespace: the explicitly-listed chars are handled and tested (tests/conforming/variousUnicodeSpaces.io covers TAB/VT/FF/SP/NBSP plus the 7.3 terminators LF/CR/LS/PS). The only thing not covered is the open-ended "Other category Zs" catch-all (the rare U+2000..U+200A, U+3000, U+1680, U+202F); those currently SyntaxError between tokens. Marginal - low priority.
+		- the run-time skipper has the same gap and is the more visible half: eatStringWhite backs 9.3.1 ToNumber, so `Number("　1")` is NaN where it should be 1, and parseInt / parseFloat 15.1.2 leading-whitespace stripping is short by the same set. Shared with es3 (ES3 7.2 has the identical <USP> catch-all), so fixing either half moves the es3 binary and it is one decision, not two. docs/ES5.1 Roadmap.md §3 and §7 both defer to this entry.
 
 GC
 ==
@@ -129,6 +130,10 @@ Run-time
 
 		- Also, as the compiler works now, a simple late declaration of a var is enough to break things. E.g. `var x = 5; (function() { print(x); var x; })()` should print "undefined" and not "5". This could of course be solved as soon as you encounter "var x". But what about: `var x = 5; (function() { (function() { print(x); })(); var x })();`. The recompile when finding eval approach alone doesn't cut it (svn revision 19277). What we need is a second compilation pass to bind all variables. To bad. Chess benchmark is twice as fast without global variable lookup by name.
 
+
+	* es5 only: RESOLVE_NAMED walks the scope chain to capture the assignment reference 11.13.1 asks for, and that walk is most of the residual cost of the fix. It is only observable when the target scope can move under the right-hand side, which needs a `with` in scope or a direct eval that can declare; the compiler already knows both at the site, so it could emit plain WRITE_NAMED otherwise. Same eval-defeats-static-scoping problem as the "get parent index" entry above, and the same caveat: a late `var` counts too.
+		- do NOT "simplify" readVar and resolveVar into one walk. It looks like duplication and is not: measured at 1.6pp across the benchmark suite, because a read that hits an ordinary binding must not pay for the holder bookkeeping. The contract is written out on resolveVar in NuXJS.h.
+		- the branch's benchmark numbers were taken on a busy machine and are not trustworthy beyond "the fix costs a few percent". Re-run on a quiet one before anyone optimizes against them.
 
 	* have a tiny-string type which fits inside value directly (4 16-bit words or 8 8-bit bytes?), for faster/more economic character handling
 
