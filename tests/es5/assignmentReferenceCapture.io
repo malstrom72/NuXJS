@@ -56,7 +56,17 @@
 > show("catch", catchPath());
 < catch: 8
 -
-// The global object is an object environment record too, so the same capture applies there.
+// 12.2 has the same shape as 11.13.1 and its NOTE says so outright: a `var` whose Identifier names a property of
+// an enclosing `with` object assigns to that property, even when the Initialiser has since removed it.
+> function withVar() { var x = 0; var s = { x: 1 }; with (s) { var x = (delete s.x, 2) } return s.x + "/" + x }
+> show("var init", withVar());
+< var init: 2/0
+> function withVarSetter() { var seen = "none", x = 0; var s = { get x() { return 1 }, set x(v) { seen = v } }; with (s) { var x = 2 } return seen + "/" + x }
+> show("var setter", withVarSetter());
+< var setter: 2/0
+-
+// A control, not a capture test: for the *global* object both readings write to the same place, so this only
+// pins that the global path still works at all.
 > var gg = 1;
 > (function () { gg = (delete this.gg, 4) })();
 > show("global", typeof gg + "/" + gg);

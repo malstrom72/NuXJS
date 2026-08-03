@@ -39,7 +39,7 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   base is the *particular* scope object found at that moment (ES3 `10.1.4` step 3, ES5.1 `10.2.2.1`), and every
   assignment form evaluates its left-hand side once, before the right-hand side, then hands that same Reference
   to `PutValue` (ES3/ES5.1 `11.13.1` steps 1 and 4, `11.13.2` steps 1 and 6, `11.3` / `11.4.4` for `++` and
-  `--`). The es3 engine emits `READ_NAMED` and `WRITE_NAMED`, which each walk the scope chain by name, so if the
+  `--`, and `12.2` steps 1 and 4 for a `var` initialiser). The es3 engine emits `READ_NAMED` and `WRITE_NAMED`, which each walk the scope chain by name, so if the
   right-hand side removes the binding the write lands on whatever the name resolves to next:
   `with (scope) { x = (delete scope.x, 2) }` writes to the outer `x` where the spec writes to `scope`. V8 has the
   same deviation. Left as it stands in es3 rather than moving the frozen binary for it; recorded by

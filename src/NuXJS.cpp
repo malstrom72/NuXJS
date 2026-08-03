@@ -5507,8 +5507,22 @@ Compiler::ExpressionResult Compiler::declareIdentifier(const String* name, bool 
 Compiler::ExpressionResult Compiler::varDeclaration() {
 	ExpressionResult lxr(declareIdentifier(identifier(true, false), false));
 	if (token("=", true)) {
+	#if NUXJS_ES5
+		// 12.2 evaluates the Identifier at step 1, before the Initialiser at step 2, and PutValue at step 4 uses
+		// that reference, exactly as 11.13.1 does. Its NOTE spells out the case: inside a `with` whose object
+		// carries the same name, the write belongs to that object even if the initialiser has since removed it.
+		// `lxr` itself is handed back unchanged, because for-in wants the name rather than the reference.
+		ExpressionResult target(lxr);
+		if (target.t == ExpressionResult::NAMED) {
+			emitWithConstant(Processor::RESOLVE_NAMED_OP, target.v);
+			target = ExpressionResult(ExpressionResult::RESOLVED, target.v);
+		}
+		rvalueExpression(COMMA_PREC);
+		makeAssignment(target);
+	#else
 		rvalueExpression(COMMA_PREC);
 		makeAssignment(lxr);
+	#endif
 		emit(Processor::POP_OP, 1);
 	}
 	return lxr;
