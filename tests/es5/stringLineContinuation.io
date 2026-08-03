@@ -16,10 +16,18 @@
 < crlf: xy/2
 -
 // Everything after a CR LF continuation, which is where a length helper that stops on the LF instead of stepping
-// over it under-counts the buffer and unescape then writes past the end of it. Long tail on purpose.
+// over it under-counts the buffer that unescape then fills.
 > var crlfLong = eval("\"x\\\r\nabcdefghijklmnopqrstuvwxyz\"");
 > show("crlf long", crlfLong + "/" + crlfLong.length);
 < crlf long: xabcdefghijklmnopqrstuvwxyz/27
+-
+// The case above only trips the debug assert: unescape writes into a Vector<Char, 64>, whose first 64 elements are
+// inline, so a short under-count stays inside them and a release build survives it. Past 64 the write leaves the
+// object and corrupts the stack, so the tail here is 200 characters and the miscount aborts a release build too.
+> var CR = String.fromCharCode(13), BS = String.fromCharCode(92);
+> function mkTail(n) { var t = ""; for (var i = 0; i < n; ++i) t += "Z"; return eval('"x' + BS + CR + "\n" + t + '"') }
+> show("crlf past inline", mkTail(200).length);
+< crlf past inline: 201
 -
 // A lone CR is a LineTerminatorSequence in its own right.
 > var cr = eval("\"x\\\ry\"");
