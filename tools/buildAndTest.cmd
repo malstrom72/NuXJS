@@ -55,8 +55,9 @@ CALL .\BuildCpp.cmd %target% "%examplesExe%" ..\docs\examples\examples.cpp ..\sr
 ECHO Running examples
 %examplesExe% > ..\output\examples\all.log 2>&1 || GOTO error
 
-IF EXIST ..\docs\examples\expected_examples.txt (
-	FC ..\docs\examples\expected_examples.txt ..\output\examples\all.log || GOTO error
+REM Its own expectation per variant: one example counts 5-cycle batches, and es5 compiles a few more instructions.
+IF EXIST ..\docs\examples\expected_examples%suffix%.txt (
+	FC ..\docs\examples\expected_examples%suffix%.txt ..\output\examples\all.log || GOTO error
 )
 
 ECHO Success!
