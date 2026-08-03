@@ -60,8 +60,10 @@ bash ./BuildCpp.sh "$target" "$exe" ../docs/examples/examples.cpp ../src/NuXJS.c
 echo "Running examples"
 "$exe" > ../output/examples/all.log 2>&1
 
-if [ -f ../docs/examples/expected_examples.txt ]; then
-	diff -u ../docs/examples/expected_examples.txt ../output/examples/all.log
+# Its own expectation per variant: one example counts 5-cycle batches, and es5 compiles a few more instructions.
+expected=../docs/examples/expected_examples${suffix}.txt
+if [ -f "$expected" ]; then
+	diff -u "$expected" ../output/examples/all.log
 fi
 
 echo Success!
