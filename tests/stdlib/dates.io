@@ -192,3 +192,46 @@
 > print(d.getUTCDate())
 < 5
 -
+// 15.9.5.27 setTime never worked: it called setDateValue(timeClip(+time)) without `this`, so checkDateClass got the
+// timestamp instead of the Date object and every call threw "this is not a Date object".
+> print(d.setTime(86400000))
+< 86400000
+-
+> print(d.getTime() + " " + d.getUTCFullYear() + " " + d.getUTCDate())
+< 86400000 1970 2
+-
+> print(new Date(0).setTime(-1))
+< -1
+-
+> print(isNaN(new Date(0).setTime(NaN)))
+< true
+-
+> print(new Date(0).setTime("86400000"))
+< 86400000
+-
+// These had no behavioural test at all until now, which is how setTime stayed broken since the initial import.
+// getDay/getUTCDay are deterministic; 1970-01-01 was a Thursday and 2009-02-13T23:31:30Z a Friday.
+> print(new Date(0).getDay() + " " + new Date(0).getUTCDay() + " " + new Date(1234567890123).getUTCDay())
+< 4 4 5
+-
+> print(new Date(86400000 * 3).getUTCDay() + " " + new Date(86400000 * 4).getUTCDay())
+< 0 1
+-
+// 15.9.5.44 toJSON delegates to toISOString.
+> print(new Date(1234567890123).toJSON() + " " + (new Date(1234567890123).toJSON() === new Date(1234567890123).toISOString()))
+< 2009-02-13T23:31:30.123Z true
+-
+// 15.9.5.42/3/4 are implementation-dependent in their format, so these pin OUR format, not a spec requirement.
+> print(new Date(0).toUTCString())
+< 1970-01-01 00:00:00
+-
+> print(new Date(1234567890123).toUTCString() + " | " + new Date(-1).toUTCString())
+< 2009-02-13 23:31:30 | 1969-12-31 23:59:59
+-
+// Locale and zone dependent, so only the shape is checkable here.
+> print(typeof new Date(0).toLocaleDateString() + " " + typeof new Date(0).toLocaleTimeString() + " " + typeof new Date(0).getTimezoneOffset())
+< string string number
+-
+> print(new Date(0).getTimezoneOffset() === new Date(0).getTimezoneOffset())
+< true
+-
