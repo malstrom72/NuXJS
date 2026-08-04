@@ -211,10 +211,10 @@ function digitString(digits, place) {
 }
 
 // Offset of ch in s, or -1. String.prototype.indexOf would do it, but user code can replace that and every other
-// prototype method, so nothing in here may call one: only the support primitives are beyond reach.
+// prototype method, so nothing in here may call one. Indexing is a plain own-property read and needs no such care.
 function findChar(s, ch) {
-	for (var i = 0, n = s.length, c = $charCodeAt(ch, 0); i < n; ++i) {
-		if ($charCodeAt(s, i) === c) {
+	for (var i = 0, n = s.length; i < n; ++i) {
+		if (s[i] === ch) {
 			return i;
 		}
 	}

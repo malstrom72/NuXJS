@@ -164,7 +164,8 @@ other `Something.prototype` method are out of bounds inside `stdlib.js`. Use the
 aliases at the top of the file (`$sub`, `$match`, `$charCodeAt`, `$callWithArgs`, ...), or build a local helper from
 them, as `findChar` does. This is not hypothetical: a one-line `String.prototype.indexOf` override made
 `toExponential()` answer `1.234.5678e+8`, and an `Array.prototype.slice` override made `toFixed(1)` answer `0.1`.
-Property *reads* are fine (`s.length`, `d[i]`), those being own properties. The only two legitimate exceptions are
+Property *reads* are fine (`s.length`, `s[i]`, `d[i]`), being own properties that no prototype can shadow, so
+scanning with `s[i]` is the natural replacement for `indexOf` and needs no primitive. The only two exceptions are
 spec-mandated dynamic dispatch: `Object.prototype.toLocaleString` calling `this.toString()` (15.2.4.3) and
 `Array.prototype.toString` calling `this.join()` (15.4.4.2), both of which are *required* to see the current method.
 `tests/stdlib/numberToString.io` closes with a hijack regression test; extend it when adding a formatter.

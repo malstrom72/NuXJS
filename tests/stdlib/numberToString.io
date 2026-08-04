@@ -332,6 +332,7 @@
 // Nothing in stdlib.js may call a method off a user-reachable prototype, because user code can replace it. These
 // formatters used to go through String.prototype.indexOf and Array.prototype.slice, which made toExponential()
 // answer "1.234.5678e+8" and toFixed(1) answer "0.1" once those were hijacked.
+> String.prototype[0] = "Z"; String.prototype[1] = "Z"; String.prototype[4] = "Z";
 > String.prototype.indexOf = function () { return -1 };
 > Array.prototype.slice = function () { return [] };
 > String.prototype.charAt = function () { return "!" };
