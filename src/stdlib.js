@@ -986,7 +986,7 @@ defineProperties(Date.prototype, { dontEnum: true }, {
 	getMilliseconds: unconstructable(function getMilliseconds() { return msFromTime(getLocalDateValue(this)) }),
 	getUTCMilliseconds: unconstructable(function getUTCMilliseconds() { return msFromTime(getDateValue(this)) }),
 	getTimezoneOffset: unconstructable(function getTimezoneOffset() { var v = getDateValue(this); return (v - toLocalTime(v)) / 6e4 }),
-	setTime: unconstructable(function setTime(time) { return setDateValue(timeClip(+time)) }),
+	setTime: unconstructable(function setTime(time) { return setDateValue(this, timeClip(+time)) }),
 	setMilliseconds: unconstructable(function setMilliseconds(ms) { return setDateValue(this, timeClipLocal(setTimeParts(getLocalDateValue(this), 3, arguments))) }),
 	setUTCMilliseconds: unconstructable(function setUTCMilliseconds(ms) { return setDateValue(this, timeClip(setTimeParts(getDateValue(this), 3, arguments))) }),
 	setSeconds: unconstructable(function setSeconds(s, ms) { return setDateValue(this, timeClipLocal(setTimeParts(getLocalDateValue(this), 2, arguments))) }),
