@@ -147,17 +147,13 @@ function checkClass(object, expectedClass, forFunction) {
 function leftPad(s, l) { var n = (s = "00000000000000000000" + s).length; return $sub(s, n - l, n); }
 
 /*
-	The exact decimal expansion of a positive double, as a little-endian digit array with a `fraction` count of its
-	digits below the point. Every double is y * 2^shift with y an exact integer under 2^53, so the expansion is
-	the digits of y * 2^shift when shift >= 0, and of y * 5^-shift carrying -shift fraction digits when shift is
-	negative, since y / 2^k == y * 5^k / 10^k. 15.7.4.5, 15.7.4.6 and 15.7.4.7 all round on this rather than on
-	double arithmetic, which cannot see that 0.35 is really 0.34999999999999997779 and so must round DOWN, and
-	cannot carry the low digits of a large integer at all, 9.8.1 ToString being the SHORTEST round-tripping form
-	by definition. The fraction count rides on the returned array, ES3 having no way to return two values.
+	Exact decimal expansion of a positive double, little-endian, with `fraction` of its digits below the point. Every
+	double is y * 2^shift with y an integer under 2^53, so the expansion is y * 2^shift, or y * 5^-shift with -shift
+	fraction digits when shift < 0 (y / 2^k == y * 5^k / 10^k). 15.7.4.5-7 round on this and not on double
+	arithmetic, which cannot see that 0.35 is really 0.34999999999999997779 and so must round DOWN.
 */
-// Multiplies a little-endian digit array in place by factor from index `from` up, folding in an incoming carry. The
-// one divmod-10 idiom in the file: exactDigits multiplies by a power of 5 or 2 across the whole array, digitString
-// carries a rounding bump with factor 1 from the cut upwards, which is also what makes the cut without a copy.
+// Multiplies digits from `from` up by factor, folding in a carry. exactDigits passes a power of 5 or 2; digitString
+// passes 1 to carry a rounding bump, which is also how it cuts without copying.
 function carryDigits(digits, factor, carry, from) {
 	for (var i = from, n = digits.length; i < n || carry; ++i) {
 		digits[i] = (carry += (digits[i] || 0) * factor) % 10;
@@ -179,13 +175,10 @@ function exactDigits(val) {
 }
 
 /*
-	The expansion as a big-endian string, requantized to the given decimal place: a positive place drops that many
-	low digits and rounds half up, a negative one appends that many zeros. With the expansion exact, "as close to
-	zero as possible, ties to the larger" is settled by one digit, needing no sticky bit, since a tie rounds up
-	like anything above it. The cut is made by reading from `from` rather than by copying the tail out, since
-	Array.prototype.slice is user-overridable and must never be called from in here. Concatenating downwards rather
-	than reverse().join(): the result never exceeds 42 characters, so the copying is negligible either way and the
-	two extra interpreted library calls are not, which is what measured slower.
+	The expansion as a big-endian string requantized to `place`: positive drops that many low digits rounding half
+	up, negative appends that many zeros. Exact digits settle "ties to the larger" on one digit, no sticky bit. Cuts
+	by reading from `from` rather than slicing, slice being user-overridable. Concatenating down beats
+	reverse().join() at these lengths (42 characters at worst), measured.
 */
 function digitString(digits, place) {
 	var i, from = 0, s = '';
@@ -195,8 +188,8 @@ function digitString(digits, place) {
 	return s;
 }
 
-// Places the point after digit exponent+1 of a big-endian digit string, padding whichever side falls short.
-// 15.7.4.5's fixed form and 15.7.4.7's are the same operation counted from opposite ends.
+// Puts the point after digit exponent+1, padding whichever side falls short. 15.7.4.5 and 15.7.4.7 count the same
+// operation from opposite ends.
 function placePoint(s, exponent) {
 	return (exponent < 0 ? '0.' + leftPad('', -exponent - 1) + s
 			: exponent + 1 >= s.length ? s + leftPad('', exponent + 1 - s.length)
@@ -204,15 +197,13 @@ function placePoint(s, exponent) {
 }
 
 /*
-	15.7.4.6 and 15.7.4.7 both ask for n and e with a fixed digit count for which n * 10^(e-digits) is nearest x,
-	ties to the larger, so both are this: take the exact expansion, cut it to digits+1 significant digits, and
-	present it in whichever notation the caller's eNotationBelow selects. With fractionDigits absent 15.7.4.6
-	instead wants "f as small as possible", which is precisely what 9.8.1 ToString already produces, so that path
-	reads the digits back out of it rather than computing a second and less exact answer.
+	15.7.4.6 and 15.7.4.7 both want n and e with a fixed digit count where n * 10^(e-digits) is nearest x, ties to
+	the larger: cut the exact expansion to digits+1 significant digits, then present it per eNotationBelow. With
+	fractionDigits absent 15.7.4.6 wants "f as small as possible", which is what 9.8.1 ToString already produces, so
+	that path reads the digits back out of it.
 */
 function numberToString(num, digits, eNotationBelow) {
-	// Offset of ch in s, or -1. String.prototype.indexOf would do it, but user code can replace that and every other
-	// prototype method, so nothing in here may call one. Indexing is an own-property read and needs no such care.
+	// String.prototype.indexOf is user-overridable, so nothing in here may call it. Indexing is an own-property read.
 	function findChar(s, ch) {
 		for (var i = 0, n = s.length; i < n; ++i) if (s[i] === ch) return i;
 		return -1;
@@ -227,12 +218,10 @@ function numberToString(num, digits, eNotationBelow) {
 		for (i = 0; i < s.length - 1 && s[i] === '0'; ++i) --exponent;	// "0.000001" carries its exponent as zeros
 		s = $sub(s, i, s.length);
 		while (s.length > 1 && s[s.length - 1] === '0') s = $sub(s, 0, s.length - 1);	// 15.7.4.6: n not divisible by 10
-	} else {
-		// the empty expansion is zero, whose exponent is 0
+	} else {	// zero expands to no digits at all, and its exponent is 0
 		exponent = ((expansion = exactDigits(num)).length ? expansion.length - 1 - expansion.fraction : 0);
 		s = digitString(expansion, expansion.length - digits - 1);
-		// 9.99 -> 1.00e+1: the carry grew the count, so the spare zero goes back
-		if (s.length > digits + 1) { s = $sub(s, 0, digits + 1); ++exponent; }
+		if (s.length > digits + 1) { s = $sub(s, 0, digits + 1); ++exponent; }	// 9.99 -> 1.00e+1, carry grew the count
 	}
 	if (exponent >= eNotationBelow && exponent <= digits) return sign + placePoint(s, exponent);
 	return sign + $sub(s, 0, 1) + (s.length > 1 ? '.' + $sub(s, 1, s.length) : '')
@@ -372,7 +361,7 @@ defineProperties(Number.prototype, { dontEnum: true }, {
 	}),
 	toExponential: unconstructable(function toExponential(fractionDigits) {
 		var val, digits;
-		// 15.7.4.6 returns a String throughout, so NaN and the infinities are converted rather than passed back raw
+		// 15.7.4.6 returns a String throughout, so the non-finites are converted rather than passed back raw
 		if (!$isFinite(val = getInternalNumber(this, "toExponential"))) return '' + val;
 		else if (fractionDigits === void 0) return numberToString(val, void 0, $Infinity);
 		else {
@@ -382,11 +371,8 @@ defineProperties(Number.prototype, { dontEnum: true }, {
 			return numberToString(val, digits, $Infinity);
 		}
 	}),
-	/*
-		15.7.4.5 step 10 wants the integer nearest val * 10^f, ties upward, which is a question about the double's
-		exact decimal expansion; see exactDigits. Unlike 15.7.4.6 and 15.7.4.7 the cut is at an absolute decimal
-		place rather than at a significant-digit count, so this one does not go through numberToString.
-	*/
+	// 15.7.4.5 step 10 wants the integer nearest val * 10^f, ties upward: see exactDigits. The cut is at an absolute
+	// decimal place, not a significant-digit count, so unlike 15.7.4.6 and .7 this does not go through numberToString.
 	toFixed: unconstructable(function toFixed(fractionDigits) {
 		var val, digits, sign, place, s, expansion = [];
 		if ((digits = int(fractionDigits)) < 0 || digits > 20) {
@@ -395,15 +381,14 @@ defineProperties(Number.prototype, { dontEnum: true }, {
 		if ($isNaN(val = getInternalNumber(this, "toFixed")) || val <= -1e21 || val >= 1e21) return '' + val;
 		sign = '';
 		if (val < 0) { val = -val; sign = '-'; }
-		// Below 5e-21 every legal f rounds to zeros, so the expansion is not worth computing. Otherwise `place` is
-		// the count of exact fraction digits to drop, or -place zeros to append when f asks for more than there are.
+		// under 5e-21 every legal f rounds to zeros; `place` is fraction digits to drop, or -place zeros to append
 		place = (val >= 5e-21 ? (expansion = exactDigits(val)).fraction - digits : -digits);
-		s = digitString(expansion, place) || '0';	// nothing survives the cut only when f is 0 and val rounds away
+		s = digitString(expansion, place) || '0';	// empty only when f is 0 and val rounds away
 		return sign + placePoint(s, s.length - 1 - digits);
 	}),
 	toPrecision: unconstructable(function toPrecision(precision) {
 		var val = getInternalNumber(this, "toPrecision"), digits;
-		if (precision === void 0 || !$isFinite(val)) return '' + val;	// 15.7.4.7 step 2 is ToString, and returns a String
+		if (precision === void 0 || !$isFinite(val)) return '' + val;	// 15.7.4.7 step 2 is ToString, so a String
 		else {
 			if ((digits = int(precision) - 1) < 0 || digits > 20) {
 				throw rangeError("Illegal precision argument for toPrecision()");
