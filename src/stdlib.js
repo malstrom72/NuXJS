@@ -156,10 +156,21 @@ function leftPad(s, l) { var n = (s = "00000000000000000000" + s).length; return
 	by definition. The fraction count is a module variable rather than a second return value: ES3 has no tuple
 	and every caller reads it on the next line.
 */
+// Multiplies a little-endian digit array in place by m, folding in an incoming carry. The one divmod-10 idiom in
+// the file: exactDigits multiplies by a power of 5 or 2, digitString carries a rounding bump with m of 1.
+function carryDigits(d, m, c) {
+	for (var j = 0, n = d.length; j < n || c; ++j) {
+		c += (d[j] || 0) * m;
+		d[j] = c % 10;
+		c = (c - d[j]) / 10;
+	}
+	return d;
+}
+
 var exactFraction;
 function exactDigits(val) {
-	var shift = 0, i, j, k, c, m, d = [];
-	while (val !== $floor(val)) {
+	var shift = 0, i, k, c, d = [];
+	while (val % 1) {
 		val *= 2;
 		--shift;
 	}
@@ -167,33 +178,48 @@ function exactDigits(val) {
 		val /= 2;
 		++shift;
 	}
-	for (; val; val = (val - c) / 10) {
-		d.push(c = val % 10);
+	for (i = 0; val; val = (val - c) / 10) {
+		d[i++] = c = val % 10;
 	}
-	for (i = (shift < 0 ? -shift : shift); i > 0; i -= k) {
+	for (i = abs(shift); i > 0; i -= k) {
 		k = (i < 21 ? i : 21);	// 9 * 5^21 plus the carry still lands under 2^53, so 21 exponents per pass
-		m = support.pow(shift < 0 ? 5 : 2, k);
-		for (j = c = 0; j < d.length || c; ++j) {
-			c += (d[j] || 0) * m;
-			d[j] = c % 10;
-			c = (c - d[j]) / 10;
-		}
+		carryDigits(d, support.pow(shift < 0 ? 5 : 2, k), 0);
 	}
 	exactFraction = (shift < 0 ? -shift : 0);
 	return d;
 }
 
-// Drops the lowest i digits of an exact expansion, rounding half up. With the expansion exact, "as close to zero as
-// possible, ties to the larger" is settled by one digit: no sticky bit, a tie rounding up like anything above it.
-function roundDigits(d, i) {
-	var j, c = (d[i - 1] >= 5 ? 1 : 0);
-	d = d.slice(i);
-	for (j = 0; c; ++j) {
-		c += (d[j] || 0);
-		d[j] = c % 10;
-		c = (c - d[j]) / 10;
+/*
+	The expansion as a big-endian string, requantized to decimal place i: a positive i drops that many low digits
+	and rounds half up, a negative one appends that many zeros. With the expansion exact, "as close to zero as
+	possible, ties to the larger" is settled by one digit, needing no sticky bit, since a tie rounds up like
+	anything above it. Concatenating downwards rather than reverse().join(): both are quadratic in the
+	interpreter, but here the char copying is native, which measured faster at every length.
+*/
+function digitString(d, i) {
+	var j, t = '';
+	if (i > 0) {
+		d = carryDigits(d.slice(i), 1, (d[i - 1] >= 5 ? 1 : 0));
+		i = 0;
 	}
-	return d;
+	for (j = d.length; --j >= 0; ) {
+		t += d[j];
+	}
+	while (i++ < 0) {
+		t += '0';
+	}
+	return t;
+}
+
+// Places the point after digit e+1 of a big-endian digit string, padding whichever side falls short. 15.7.4.5's
+// fixed form and 15.7.4.7's are the same operation counted from opposite ends.
+function placePoint(d, e) {
+	if (e < 0) {
+		return '0.' + leftPad('', -e - 1) + d;
+	} else if (e + 1 >= d.length) {
+		return d + leftPad('', e + 1 - d.length);
+	}
+	return $sub(d, 0, e + 1) + '.' + $sub(d, e + 1, d.length);
 }
 
 /*
@@ -223,42 +249,26 @@ function numberToString(num, digits, eNotationBelow) {
 		} else {
 			e += t.length - 1;
 		}
-		for (i = 0; i < t.length - 1 && t.charAt(i) === '0'; ++i) {	// "0.000001" carries its exponent as zeros
+		for (i = 0; i < t.length - 1 && t[i] === '0'; ++i) {	// "0.000001" carries its exponent as zeros
 			--e;
 		}
-		d = $sub(t, i, t.length);
-		while (d.length > 1 && d.charAt(d.length - 1) === '0') {	// 15.7.4.6: n is not divisible by 10
-			d = $sub(d, 0, d.length - 1);
+		t = $sub(t, i, t.length);
+		while (t.length > 1 && t[t.length - 1] === '0') {	// 15.7.4.6: n is not divisible by 10
+			t = $sub(t, 0, t.length - 1);
 		}
-	} else if (num === 0) {
-		d = leftPad('', digits) + '0';
-		e = 0;
 	} else {
-		t = exactDigits(num);
-		e = t.length - 1 - exactFraction;
-		i = t.length - digits - 1;
-		if (i > 0) {
-			t = roundDigits(t, i);
-			if (t.length > digits + 1) {	// 9.99 -> 1.00e+1: the carry grew the count, so the spare zero goes back
-				t.shift();
-				++e;
-			}
-		} else {
-			while (i++ < 0) {
-				t.unshift(0);
-			}
+		d = exactDigits(num);
+		e = (d.length ? d.length - 1 - exactFraction : 0);	// the empty expansion is zero, whose exponent is 0
+		t = digitString(d, d.length - digits - 1);
+		if (t.length > digits + 1) {	// 9.99 -> 1.00e+1: the carry grew the count, so the spare zero goes back
+			t = $sub(t, 0, digits + 1);
+			++e;
 		}
-		d = t.reverse().join('');
 	}
 	if (e >= eNotationBelow && e <= digits) {
-		if (e < 0) {
-			return string + '0.' + leftPad('', -e - 1) + d;
-		} else if (e + 1 >= d.length) {
-			return string + d + leftPad('', e + 1 - d.length);
-		}
-		return string + $sub(d, 0, e + 1) + '.' + $sub(d, e + 1, d.length);
+		return string + placePoint(t, e);
 	}
-	return string + $sub(d, 0, 1) + (d.length > 1 ? '.' + $sub(d, 1, d.length) : '')
+	return string + $sub(t, 0, 1) + (t.length > 1 ? '.' + $sub(t, 1, t.length) : '')
 			+ (e >= 0 ? 'e+' : 'e') + e;
 }
 
@@ -422,22 +432,12 @@ defineProperties(Number.prototype, { dontEnum: true }, {
 			neg = '-';
 		}
 		i = -f;
-		if (val >= 5e-21) {	// anything below rounds to zeros at every f, and this also bounds exactDigits for denormals
+		if (val >= 5e-21) {	// anything below rounds to zeros at every f, so the expansion is not worth computing
 			d = exactDigits(val);
 			i = exactFraction - f;	// exact fraction digits to drop, or -i zeros to append when f wants more
 		}
-		if (i > 0) {
-			d = roundDigits(d, i);
-		} else {
-			while (i++ < 0) {
-				d.unshift(0);
-			}
-		}
-		t = d.reverse().join('');	// one pass, where popping into a string is quadratic on the long expansions
-		while (t.length <= f) {
-			t = '0' + t;
-		}
-		return neg + (f ? $sub(t, 0, t.length - f) + '.' + $sub(t, t.length - f, t.length) : t);
+		t = digitString(d, i) || '0';	// nothing survives the cut only when f is 0 and val rounds away
+		return neg + placePoint(t, t.length - 1 - f);
 	}),
 	toPrecision: unconstructable(function toPrecision(precision) {
 		var val = getInternalNumber(this, "toPrecision"), digits;
