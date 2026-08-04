@@ -192,3 +192,20 @@
 > print(d.getUTCDate())
 < 5
 -
+// 15.9.5.27 setTime never worked: it called setDateValue(timeClip(+time)) without `this`, so checkDateClass got the
+// timestamp instead of the Date object and every call threw "this is not a Date object".
+> print(d.setTime(86400000))
+< 86400000
+-
+> print(d.getTime() + " " + d.getUTCFullYear() + " " + d.getUTCDate())
+< 86400000 1970 2
+-
+> print(new Date(0).setTime(-1))
+< -1
+-
+> print(isNaN(new Date(0).setTime(NaN)))
+< true
+-
+> print(new Date(0).setTime("86400000"))
+< 86400000
+-
