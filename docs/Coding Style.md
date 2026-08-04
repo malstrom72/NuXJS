@@ -155,3 +155,56 @@ These are the most important principles in the codebase. Get them wrong and the 
   someCall(veryLongFirstArgument, secondArgument, thirdArgument
   		, fourthArgument, fifthArgument)
   ```
+
+## 7. `src/stdlib.js` and the minifier
+
+The standard library ships as one minified string in `src/stdlibJS.cpp`, produced from `src/stdlib.js` by
+`tools/stdlibToCpp.pika` driving the PEG in `tools/stdlibMinifier.ppeg`. What that minifier does and does not do
+decides what is worth squeezing by hand, so know it before optimising anything.
+
+**What it does.** Strips every comment and all whitespace, emitting a single space only where two adjacent tokens
+would otherwise merge. Renames every identifier via one flat, file-wide map (no scope analysis, but a bijection, so
+it is safe). Drops a `;` that sits immediately before a `}`.
+
+**What it does not do.** No expression folding, no dead-code removal, no `var` merging, no `if`/`?:` rewriting, no
+brace removal, no number rewriting, and nothing at all inside string literals.
+
+Consequences, roughly in the order they bite:
+
+- **Comments and formatting are free.** They vanish. Cite the spec, explain the reasoning, indent normally. Terseness
+  in `stdlib.js` is about the *code*, never about the commentary.
+- **Identifier length is free; identifier count is not.** Each distinct name takes one slot from a pool of 62
+  single-character names before spilling to two. Prefer reusing a name the file already has over coining a new one,
+  and never shorten a name for the blob's sake - it buys nothing.
+- **A `@preserve` name is emitted verbatim, at every occurrence.** Never use one as a local. Many read like perfectly
+  ordinary variable names: `value`, `name`, `index`, `length`, `min`, `max`, `test`, `source`, `global`, `log`,
+  `parse`, `time`, `input`, `match`, `call`, `apply`. Check the lists at the top of `stdlib.js` before naming a
+  local.
+- **Keywords are just identifiers to the minifier**, so every keyword in use must appear on a `@preserve` list.
+  `catch`, `continue` and `with` are *not* on it today, which is safe only because the file uses none of them.
+  Introducing a `try`/`catch` or a `continue` without adding the keyword first yields a silently corrupt blob.
+- **Private property names are free.** A property invented and used only within `stdlib.js` is renamed on both the
+  store and the load, so `digits.fraction` costs two characters. Only names the engine or user code must see need
+  preserving.
+- **Numbers are never rewritten.** Write `1e21`, not the digits.
+- **Do not hand-strip a `;` before a `}`.** That one the minifier already does.
+
+**Manual compaction.** Since the minifier does nothing at the expression level, that is where hand work pays. Fold an
+assignment into the expression that consumes it rather than spending a statement on it:
+
+```
+digits[i] = (carry += (digits[i] || 0) * factor) % 10;		// preferred
+```
+```
+carry += (digits[i] || 0) * factor;							// two statements for one value
+digits[i] = carry % 10;
+```
+
+`void 0` over `undefined` is the same instinct and already the file's idiom (`undefined` is preserved, so it costs
+nine characters every time; the blob carries 40 `void 0` against 4 `undefined`). None of this licenses breaking
+§6 - bodies stay braced and on their own lines. It is about not spending values, temporaries and statements the
+expression could have carried.
+
+**Measure, do not guess.** `stat` the blob before and after; regenerate with `tools/buildAndTest.sh`. For speed use
+the engine's own `-t` flag (`getCPUSecs`, microsecond resolution) or `tools/benchmark.node.js`, which takes a median
+over N runs. `Date.getTime()` is useless for this: it comes from `std::time` and ticks once a second.

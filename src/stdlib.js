@@ -159,25 +159,24 @@ function leftPad(s, l) { var n = (s = "00000000000000000000" + s).length; return
 // in the file: exactDigits multiplies by a power of 5 or 2, digitString carries a rounding bump with factor 1.
 function carryDigits(digits, factor, carry) {
 	for (var i = 0, n = digits.length; i < n || carry; ++i) {
-		carry += (digits[i] || 0) * factor;
-		digits[i] = carry % 10;
+		digits[i] = (carry += (digits[i] || 0) * factor) % 10;
 		carry = (carry - digits[i]) / 10;
 	}
 	return digits;
 }
 
-function exactDigits(value) {
+function exactDigits(val) {
 	var shift = 0, i, chunk, digit, digits = [];
-	while (value % 1) {
-		value *= 2;
+	while (val % 1) {
+		val *= 2;
 		--shift;
 	}
-	while (value > 9007199254740991) {	// the % 10 below is only exact under 2^53
-		value /= 2;
+	while (val > 9007199254740991) {	// the % 10 below is only exact under 2^53
+		val /= 2;
 		++shift;
 	}
-	for (i = 0; value; value = (value - digit) / 10) {
-		digits[i++] = digit = value % 10;
+	for (i = 0; val; val = (val - digit) / 10) {
+		digits[i++] = digit = val % 10;
 	}
 	for (i = abs(shift); i > 0; i -= chunk) {
 		chunk = (i < 21 ? i : 21);	// 9 * 5^21 plus the carry still lands under 2^53, so 21 exponents per pass
