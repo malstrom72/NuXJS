@@ -147,14 +147,13 @@ function checkClass(object, expectedClass, forFunction) {
 function leftPad(s, l) { var n = (s = "00000000000000000000" + s).length; return $sub(s, n - l, n); }
 
 /*
-	The exact decimal expansion of a positive double, as a little-endian digit array with exactFraction of its
+	The exact decimal expansion of a positive double, as a little-endian digit array with a `fraction` count of its
 	digits below the point. Every double is y * 2^shift with y an exact integer under 2^53, so the expansion is
 	the digits of y * 2^shift when shift >= 0, and of y * 5^-shift carrying -shift fraction digits when shift is
 	negative, since y / 2^k == y * 5^k / 10^k. 15.7.4.5, 15.7.4.6 and 15.7.4.7 all round on this rather than on
 	double arithmetic, which cannot see that 0.35 is really 0.34999999999999997779 and so must round DOWN, and
 	cannot carry the low digits of a large integer at all, 9.8.1 ToString being the SHORTEST round-tripping form
-	by definition. The fraction count is a module variable rather than a second return value: ES3 has no tuple
-	and every caller reads it on the next line.
+	by definition. The fraction count rides on the returned array, ES3 having no way to return two values.
 */
 // Multiplies a little-endian digit array in place by factor, folding in an incoming carry. The one divmod-10 idiom
 // in the file: exactDigits multiplies by a power of 5 or 2, digitString carries a rounding bump with factor 1.
@@ -167,7 +166,6 @@ function carryDigits(digits, factor, carry) {
 	return digits;
 }
 
-var exactFraction;
 function exactDigits(value) {
 	var shift = 0, i, chunk, digit, digits = [];
 	while (value % 1) {
@@ -185,7 +183,7 @@ function exactDigits(value) {
 		chunk = (i < 21 ? i : 21);	// 9 * 5^21 plus the carry still lands under 2^53, so 21 exponents per pass
 		carryDigits(digits, support.pow(shift < 0 ? 5 : 2, chunk), 0);
 	}
-	exactFraction = (shift < 0 ? -shift : 0);
+	digits.fraction = (shift < 0 ? -shift : 0);
 	return digits;
 }
 
@@ -260,7 +258,7 @@ function numberToString(num, digits, eNotationBelow) {
 	} else {
 		expansion = exactDigits(num);
 		// the empty expansion is zero, whose exponent is 0
-		exponent = (expansion.length ? expansion.length - 1 - exactFraction : 0);
+		exponent = (expansion.length ? expansion.length - 1 - expansion.fraction : 0);
 		s = digitString(expansion, expansion.length - digits - 1);
 		if (s.length > digits + 1) {	// 9.99 -> 1.00e+1: the carry grew the count, so the spare zero goes back
 			s = $sub(s, 0, digits + 1);
@@ -436,7 +434,7 @@ defineProperties(Number.prototype, { dontEnum: true }, {
 		place = -digits;
 		if (val >= 5e-21) {	// anything below rounds to zeros at every f, so the expansion is not worth computing
 			expansion = exactDigits(val);
-			place = exactFraction - digits;	// digits to drop, or -place zeros to append when f asks for more
+			place = expansion.fraction - digits;	// digits to drop, or -place zeros to append when f asks for more
 		}
 		s = digitString(expansion, place) || '0';	// nothing survives the cut only when f is 0 and val rounds away
 		return sign + placePoint(s, s.length - 1 - digits);
