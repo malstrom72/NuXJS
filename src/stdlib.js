@@ -156,71 +156,71 @@ function leftPad(s, l) { var n = (s = "00000000000000000000" + s).length; return
 	by definition. The fraction count is a module variable rather than a second return value: ES3 has no tuple
 	and every caller reads it on the next line.
 */
-// Multiplies a little-endian digit array in place by m, folding in an incoming carry. The one divmod-10 idiom in
-// the file: exactDigits multiplies by a power of 5 or 2, digitString carries a rounding bump with m of 1.
-function carryDigits(d, m, c) {
-	for (var j = 0, n = d.length; j < n || c; ++j) {
-		c += (d[j] || 0) * m;
-		d[j] = c % 10;
-		c = (c - d[j]) / 10;
+// Multiplies a little-endian digit array in place by factor, folding in an incoming carry. The one divmod-10 idiom
+// in the file: exactDigits multiplies by a power of 5 or 2, digitString carries a rounding bump with factor 1.
+function carryDigits(digits, factor, carry) {
+	for (var i = 0, n = digits.length; i < n || carry; ++i) {
+		carry += (digits[i] || 0) * factor;
+		digits[i] = carry % 10;
+		carry = (carry - digits[i]) / 10;
 	}
-	return d;
+	return digits;
 }
 
 var exactFraction;
-function exactDigits(val) {
-	var shift = 0, i, k, c, d = [];
-	while (val % 1) {
-		val *= 2;
+function exactDigits(value) {
+	var shift = 0, i, chunk, digit, digits = [];
+	while (value % 1) {
+		value *= 2;
 		--shift;
 	}
-	while (val > 9007199254740991) {	// the % 10 below is only exact under 2^53
-		val /= 2;
+	while (value > 9007199254740991) {	// the % 10 below is only exact under 2^53
+		value /= 2;
 		++shift;
 	}
-	for (i = 0; val; val = (val - c) / 10) {
-		d[i++] = c = val % 10;
+	for (i = 0; value; value = (value - digit) / 10) {
+		digits[i++] = digit = value % 10;
 	}
-	for (i = abs(shift); i > 0; i -= k) {
-		k = (i < 21 ? i : 21);	// 9 * 5^21 plus the carry still lands under 2^53, so 21 exponents per pass
-		carryDigits(d, support.pow(shift < 0 ? 5 : 2, k), 0);
+	for (i = abs(shift); i > 0; i -= chunk) {
+		chunk = (i < 21 ? i : 21);	// 9 * 5^21 plus the carry still lands under 2^53, so 21 exponents per pass
+		carryDigits(digits, support.pow(shift < 0 ? 5 : 2, chunk), 0);
 	}
 	exactFraction = (shift < 0 ? -shift : 0);
-	return d;
+	return digits;
 }
 
 /*
-	The expansion as a big-endian string, requantized to decimal place i: a positive i drops that many low digits
-	and rounds half up, a negative one appends that many zeros. With the expansion exact, "as close to zero as
-	possible, ties to the larger" is settled by one digit, needing no sticky bit, since a tie rounds up like
-	anything above it. Concatenating downwards rather than reverse().join(): the result never exceeds 42
+	The expansion as a big-endian string, requantized to the given decimal place: a positive place drops that many
+	low digits and rounds half up, a negative one appends that many zeros. With the expansion exact, "as close to
+	zero as possible, ties to the larger" is settled by one digit, needing no sticky bit, since a tie rounds up
+	like anything above it. Concatenating downwards rather than reverse().join(): the result never exceeds 42
 	characters, so the copying is negligible either way and the two extra interpreted library calls are not,
 	which is what measured slower.
 */
-function digitString(d, i) {
-	var j, t = '';
-	if (i > 0) {
-		d = carryDigits(d.slice(i), 1, (d[i - 1] >= 5 ? 1 : 0));
-		i = 0;
+function digitString(digits, place) {
+	var i, s = '';
+	if (place > 0) {
+		digits = carryDigits(digits.slice(place), 1, (digits[place - 1] >= 5 ? 1 : 0));
+		place = 0;
 	}
-	for (j = d.length; --j >= 0; ) {
-		t += d[j];
+	for (i = digits.length; --i >= 0; ) {
+		s += digits[i];
 	}
-	while (i++ < 0) {
-		t += '0';
+	while (place++ < 0) {
+		s += '0';
 	}
-	return t;
+	return s;
 }
 
-// Places the point after digit e+1 of a big-endian digit string, padding whichever side falls short. 15.7.4.5's
-// fixed form and 15.7.4.7's are the same operation counted from opposite ends.
-function placePoint(d, e) {
-	if (e < 0) {
-		return '0.' + leftPad('', -e - 1) + d;
-	} else if (e + 1 >= d.length) {
-		return d + leftPad('', e + 1 - d.length);
+// Places the point after digit exponent+1 of a big-endian digit string, padding whichever side falls short.
+// 15.7.4.5's fixed form and 15.7.4.7's are the same operation counted from opposite ends.
+function placePoint(s, exponent) {
+	if (exponent < 0) {
+		return '0.' + leftPad('', -exponent - 1) + s;
+	} else if (exponent + 1 >= s.length) {
+		return s + leftPad('', exponent + 1 - s.length);
 	}
-	return $sub(d, 0, e + 1) + '.' + $sub(d, e + 1, d.length);
+	return $sub(s, 0, exponent + 1) + '.' + $sub(s, exponent + 1, s.length);
 }
 
 /*
@@ -231,46 +231,47 @@ function placePoint(d, e) {
 	reads the digits back out of it rather than computing a second and less exact answer.
 */
 function numberToString(num, digits, eNotationBelow) {
-	var string = '', d, e, i, t;
+	var sign = '', expansion, exponent, i, s;
 	if (num < 0) {
 		num = -num;
-		string = '-';
+		sign = '-';
 	}
 	if (digits === void 0) {
-		t = '' + num;
-		if ((i = t.indexOf('e')) >= 0) {
-			e = +$sub(t, i + 1, t.length);
-			t = $sub(t, 0, i);
+		s = '' + num;
+		if ((i = s.indexOf('e')) >= 0) {
+			exponent = +$sub(s, i + 1, s.length);
+			s = $sub(s, 0, i);
 		} else {
-			e = 0;
+			exponent = 0;
 		}
-		if ((i = t.indexOf('.')) >= 0) {
-			e += i - 1;
-			t = $sub(t, 0, i) + $sub(t, i + 1, t.length);
+		if ((i = s.indexOf('.')) >= 0) {
+			exponent += i - 1;
+			s = $sub(s, 0, i) + $sub(s, i + 1, s.length);
 		} else {
-			e += t.length - 1;
+			exponent += s.length - 1;
 		}
-		for (i = 0; i < t.length - 1 && t[i] === '0'; ++i) {	// "0.000001" carries its exponent as zeros
-			--e;
+		for (i = 0; i < s.length - 1 && s[i] === '0'; ++i) {	// "0.000001" carries its exponent as zeros
+			--exponent;
 		}
-		t = $sub(t, i, t.length);
-		while (t.length > 1 && t[t.length - 1] === '0') {	// 15.7.4.6: n is not divisible by 10
-			t = $sub(t, 0, t.length - 1);
+		s = $sub(s, i, s.length);
+		while (s.length > 1 && s[s.length - 1] === '0') {	// 15.7.4.6: n is not divisible by 10
+			s = $sub(s, 0, s.length - 1);
 		}
 	} else {
-		d = exactDigits(num);
-		e = (d.length ? d.length - 1 - exactFraction : 0);	// the empty expansion is zero, whose exponent is 0
-		t = digitString(d, d.length - digits - 1);
-		if (t.length > digits + 1) {	// 9.99 -> 1.00e+1: the carry grew the count, so the spare zero goes back
-			t = $sub(t, 0, digits + 1);
-			++e;
+		expansion = exactDigits(num);
+		// the empty expansion is zero, whose exponent is 0
+		exponent = (expansion.length ? expansion.length - 1 - exactFraction : 0);
+		s = digitString(expansion, expansion.length - digits - 1);
+		if (s.length > digits + 1) {	// 9.99 -> 1.00e+1: the carry grew the count, so the spare zero goes back
+			s = $sub(s, 0, digits + 1);
+			++exponent;
 		}
 	}
-	if (e >= eNotationBelow && e <= digits) {
-		return string + placePoint(t, e);
+	if (exponent >= eNotationBelow && exponent <= digits) {
+		return sign + placePoint(s, exponent);
 	}
-	return string + $sub(t, 0, 1) + (t.length > 1 ? '.' + $sub(t, 1, t.length) : '')
-			+ (e >= 0 ? 'e+' : 'e') + e;
+	return sign + $sub(s, 0, 1) + (s.length > 1 ? '.' + $sub(s, 1, s.length) : '')
+			+ (exponent >= 0 ? 'e+' : 'e') + exponent;
 }
 
 function numberToRadix(val, radix) {
@@ -422,23 +423,23 @@ defineProperties(Number.prototype, { dontEnum: true }, {
 		place rather than at a significant-digit count, so this one does not go through numberToString.
 	*/
 	toFixed: unconstructable(function toFixed(fractionDigits) {
-		var val, f, neg, i, t, d = [];
-		if ((f = int(fractionDigits)) < 0 || f > 20) {
+		var val, digits, sign, place, s, expansion = [];
+		if ((digits = int(fractionDigits)) < 0 || digits > 20) {
 			throw rangeError("Illegal fractionDigits argument for toFixed()");
 		}
 		if ($isNaN(val = getInternalNumber(this, "toFixed")) || val <= -1e21 || val >= 1e21) return '' + val;
-		neg = '';
+		sign = '';
 		if (val < 0) {
 			val = -val;
-			neg = '-';
+			sign = '-';
 		}
-		i = -f;
+		place = -digits;
 		if (val >= 5e-21) {	// anything below rounds to zeros at every f, so the expansion is not worth computing
-			d = exactDigits(val);
-			i = exactFraction - f;	// exact fraction digits to drop, or -i zeros to append when f wants more
+			expansion = exactDigits(val);
+			place = exactFraction - digits;	// digits to drop, or -place zeros to append when f asks for more
 		}
-		t = digitString(d, i) || '0';	// nothing survives the cut only when f is 0 and val rounds away
-		return neg + placePoint(t, t.length - 1 - f);
+		s = digitString(expansion, place) || '0';	// nothing survives the cut only when f is 0 and val rounds away
+		return sign + placePoint(s, s.length - 1 - digits);
 	}),
 	toPrecision: unconstructable(function toPrecision(precision) {
 		var val = getInternalNumber(this, "toPrecision"), digits;
