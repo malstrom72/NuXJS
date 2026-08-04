@@ -167,17 +167,9 @@ function carryDigits(digits, factor, carry, from) {
 
 function exactDigits(val) {
 	var shift = 0, i, chunk, digit, digits = [];
-	while (val % 1) {
-		val *= 2;
-		--shift;
-	}
-	while (val > 9007199254740991) {	// the % 10 below is only exact under 2^53
-		val /= 2;
-		++shift;
-	}
-	for (i = 0; val; val = (val - digit) / 10) {
-		digits[i++] = digit = val % 10;
-	}
+	for (; val % 1; --shift) val *= 2;
+	for (; val > 9007199254740991; ++shift) val /= 2;	// the % 10 below is only exact under 2^53
+	for (i = 0; val; val = (val - digit) / 10) digits[i++] = digit = val % 10;
 	for (i = abs(shift); i > 0; i -= chunk) {
 		chunk = (i < 21 ? i : 21);	// 9 * 5^21 plus the carry still lands under 2^53, so 21 exponents per pass
 		carryDigits(digits, support.pow(shift < 0 ? 5 : 2, chunk), 0, 0);
@@ -201,34 +193,16 @@ function digitString(digits, place) {
 		carryDigits(digits, 1, (digits[place - 1] >= 5 ? 1 : 0), from = place);
 		place = 0;
 	}
-	for (i = digits.length; --i >= from; ) {
-		s += digits[i];
-	}
-	while (place++ < 0) {
-		s += '0';
-	}
+	for (i = digits.length; --i >= from; ) s += digits[i];
+	while (place++ < 0) s += '0';
 	return s;
-}
-
-// Offset of ch in s, or -1. String.prototype.indexOf would do it, but user code can replace that and every other
-// prototype method, so nothing in here may call one. Indexing is a plain own-property read and needs no such care.
-function findChar(s, ch) {
-	for (var i = 0, n = s.length; i < n; ++i) {
-		if (s[i] === ch) {
-			return i;
-		}
-	}
-	return -1;
 }
 
 // Places the point after digit exponent+1 of a big-endian digit string, padding whichever side falls short.
 // 15.7.4.5's fixed form and 15.7.4.7's are the same operation counted from opposite ends.
 function placePoint(s, exponent) {
-	if (exponent < 0) {
-		return '0.' + leftPad('', -exponent - 1) + s;
-	} else if (exponent + 1 >= s.length) {
-		return s + leftPad('', exponent + 1 - s.length);
-	}
+	if (exponent < 0) return '0.' + leftPad('', -exponent - 1) + s;
+	else if (exponent + 1 >= s.length) return s + leftPad('', exponent + 1 - s.length);
 	return $sub(s, 0, exponent + 1) + '.' + $sub(s, exponent + 1, s.length);
 }
 
@@ -240,6 +214,12 @@ function placePoint(s, exponent) {
 	reads the digits back out of it rather than computing a second and less exact answer.
 */
 function numberToString(num, digits, eNotationBelow) {
+	// Offset of ch in s, or -1. String.prototype.indexOf would do it, but user code can replace that and every other
+	// prototype method, so nothing in here may call one. Indexing is an own-property read and needs no such care.
+	function findChar(s, ch) {
+		for (var i = 0, n = s.length; i < n; ++i) if (s[i] === ch) return i;
+		return -1;
+	}
 	var sign = '', expansion, exponent, i, s;
 	if (num < 0) {
 		num = -num;
@@ -247,25 +227,18 @@ function numberToString(num, digits, eNotationBelow) {
 	}
 	if (digits === void 0) {
 		s = '' + num;
+		exponent = 0;
 		if ((i = findChar(s, 'e')) >= 0) {
 			exponent = +$sub(s, i + 1, s.length);
 			s = $sub(s, 0, i);
-		} else {
-			exponent = 0;
 		}
 		if ((i = findChar(s, '.')) >= 0) {
 			exponent += i - 1;
 			s = $sub(s, 0, i) + $sub(s, i + 1, s.length);
-		} else {
-			exponent += s.length - 1;
-		}
-		for (i = 0; i < s.length - 1 && s[i] === '0'; ++i) {	// "0.000001" carries its exponent as zeros
-			--exponent;
-		}
+		} else exponent += s.length - 1;
+		for (i = 0; i < s.length - 1 && s[i] === '0'; ++i) --exponent;	// "0.000001" carries its exponent as zeros
 		s = $sub(s, i, s.length);
-		while (s.length > 1 && s[s.length - 1] === '0') {	// 15.7.4.6: n is not divisible by 10
-			s = $sub(s, 0, s.length - 1);
-		}
+		while (s.length > 1 && s[s.length - 1] === '0') s = $sub(s, 0, s.length - 1);	// 15.7.4.6: n not divisible by 10
 	} else {
 		expansion = exactDigits(num);
 		// the empty expansion is zero, whose exponent is 0
@@ -276,9 +249,7 @@ function numberToString(num, digits, eNotationBelow) {
 			++exponent;
 		}
 	}
-	if (exponent >= eNotationBelow && exponent <= digits) {
-		return sign + placePoint(s, exponent);
-	}
+	if (exponent >= eNotationBelow && exponent <= digits) return sign + placePoint(s, exponent);
 	return sign + $sub(s, 0, 1) + (s.length > 1 ? '.' + $sub(s, 1, s.length) : '')
 			+ (exponent >= 0 ? 'e+' : 'e') + exponent;
 }

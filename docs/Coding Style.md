@@ -213,9 +213,18 @@ digits[i] = carry % 10;
 ```
 
 `void 0` over `undefined` is the same instinct and already the file's idiom (`undefined` is preserved, so it costs
-nine characters every time; the blob carries 40 `void 0` against 4 `undefined`). None of this licenses breaking
-§6 - bodies stay braced and on their own lines. It is about not spending values, temporaries and statements the
-expression could have carried.
+nine characters every time; the blob carries 40 `void 0` against 4 `undefined`).
+
+**`stdlib.js` takes §6's exception as standing: drop braces around a single statement** and put it on the control
+line, `if (s[i] === ch) return i;`. This is the file's overwhelming convention, 111 braceless single-statement `if`s
+against none braced, and it is not only cosmetic: the minifier does not remove braces, so each pair dropped is two
+characters off the shipped blob. Multi-statement bodies stay braced and indented exactly as §6 says.
+
+**Nest a helper inside its only caller.** `sort` keeps `swap`, `compare` and `qsort` inside it, the date parser keeps
+`readPart`, and `numberToString` keeps `findChar`. It scopes the name, keeps the helper next to the thing it serves,
+and costs nothing measurable (a per-call closure allocation came out at +0.04% min / +0.30% median, i.e. noise). Note
+that ES3 §12 has no `FunctionDeclaration` statement, so the declaration belongs at the top of the enclosing function
+body, never inside an `if` or a loop.
 
 **Counting down is the cheap loop.** Where iteration order does not matter, write
 
