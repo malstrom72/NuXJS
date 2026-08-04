@@ -193,8 +193,9 @@ function exactDigits(val) {
 	The expansion as a big-endian string, requantized to decimal place i: a positive i drops that many low digits
 	and rounds half up, a negative one appends that many zeros. With the expansion exact, "as close to zero as
 	possible, ties to the larger" is settled by one digit, needing no sticky bit, since a tie rounds up like
-	anything above it. Concatenating downwards rather than reverse().join(): both are quadratic in the
-	interpreter, but here the char copying is native, which measured faster at every length.
+	anything above it. Concatenating downwards rather than reverse().join(): the result never exceeds 42
+	characters, so the copying is negligible either way and the two extra interpreted library calls are not,
+	which is what measured slower.
 */
 function digitString(d, i) {
 	var j, t = '';
