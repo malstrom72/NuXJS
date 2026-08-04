@@ -155,14 +155,14 @@ function leftPad(s, l) { var n = (s = "00000000000000000000" + s).length; return
 	cannot carry the low digits of a large integer at all, 9.8.1 ToString being the SHORTEST round-tripping form
 	by definition. The fraction count rides on the returned array, ES3 having no way to return two values.
 */
-// Multiplies a little-endian digit array in place by factor, folding in an incoming carry. The one divmod-10 idiom
-// in the file: exactDigits multiplies by a power of 5 or 2, digitString carries a rounding bump with factor 1.
-function carryDigits(digits, factor, carry) {
-	for (var i = 0, n = digits.length; i < n || carry; ++i) {
+// Multiplies a little-endian digit array in place by factor from index `from` up, folding in an incoming carry. The
+// one divmod-10 idiom in the file: exactDigits multiplies by a power of 5 or 2 across the whole array, digitString
+// carries a rounding bump with factor 1 from the cut upwards, which is also what makes the cut without a copy.
+function carryDigits(digits, factor, carry, from) {
+	for (var i = from, n = digits.length; i < n || carry; ++i) {
 		digits[i] = (carry += (digits[i] || 0) * factor) % 10;
 		carry = (carry - digits[i]) / 10;
 	}
-	return digits;
 }
 
 function exactDigits(val) {
@@ -180,7 +180,7 @@ function exactDigits(val) {
 	}
 	for (i = abs(shift); i > 0; i -= chunk) {
 		chunk = (i < 21 ? i : 21);	// 9 * 5^21 plus the carry still lands under 2^53, so 21 exponents per pass
-		carryDigits(digits, support.pow(shift < 0 ? 5 : 2, chunk), 0);
+		carryDigits(digits, support.pow(shift < 0 ? 5 : 2, chunk), 0, 0);
 	}
 	digits.fraction = (shift < 0 ? -shift : 0);
 	return digits;
@@ -190,23 +190,35 @@ function exactDigits(val) {
 	The expansion as a big-endian string, requantized to the given decimal place: a positive place drops that many
 	low digits and rounds half up, a negative one appends that many zeros. With the expansion exact, "as close to
 	zero as possible, ties to the larger" is settled by one digit, needing no sticky bit, since a tie rounds up
-	like anything above it. Concatenating downwards rather than reverse().join(): the result never exceeds 42
-	characters, so the copying is negligible either way and the two extra interpreted library calls are not,
-	which is what measured slower.
+	like anything above it. The cut is made by reading from `from` rather than by copying the tail out, since
+	Array.prototype.slice is user-overridable and must never be called from in here. Concatenating downwards rather
+	than reverse().join(): the result never exceeds 42 characters, so the copying is negligible either way and the
+	two extra interpreted library calls are not, which is what measured slower.
 */
 function digitString(digits, place) {
-	var i, s = '';
+	var i, from = 0, s = '';
 	if (place > 0) {
-		digits = carryDigits(digits.slice(place), 1, (digits[place - 1] >= 5 ? 1 : 0));
+		carryDigits(digits, 1, (digits[place - 1] >= 5 ? 1 : 0), from = place);
 		place = 0;
 	}
-	for (i = digits.length; --i >= 0; ) {
+	for (i = digits.length; --i >= from; ) {
 		s += digits[i];
 	}
 	while (place++ < 0) {
 		s += '0';
 	}
 	return s;
+}
+
+// Offset of ch in s, or -1. String.prototype.indexOf would do it, but user code can replace that and every other
+// prototype method, so nothing in here may call one: only the support primitives are beyond reach.
+function findChar(s, ch) {
+	for (var i = 0, n = s.length, c = $charCodeAt(ch, 0); i < n; ++i) {
+		if ($charCodeAt(s, i) === c) {
+			return i;
+		}
+	}
+	return -1;
 }
 
 // Places the point after digit exponent+1 of a big-endian digit string, padding whichever side falls short.
@@ -235,13 +247,13 @@ function numberToString(num, digits, eNotationBelow) {
 	}
 	if (digits === void 0) {
 		s = '' + num;
-		if ((i = s.indexOf('e')) >= 0) {
+		if ((i = findChar(s, 'e')) >= 0) {
 			exponent = +$sub(s, i + 1, s.length);
 			s = $sub(s, 0, i);
 		} else {
 			exponent = 0;
 		}
-		if ((i = s.indexOf('.')) >= 0) {
+		if ((i = findChar(s, '.')) >= 0) {
 			exponent += i - 1;
 			s = $sub(s, 0, i) + $sub(s, i + 1, s.length);
 		} else {

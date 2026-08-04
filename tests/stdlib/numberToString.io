@@ -329,3 +329,13 @@
 > print((9.995).toPrecision(3) + " " + (9.999999999999998).toExponential(2))
 < 9.99 1.00e+1
 -
+// Nothing in stdlib.js may call a method off a user-reachable prototype, because user code can replace it. These
+// formatters used to go through String.prototype.indexOf and Array.prototype.slice, which made toExponential()
+// answer "1.234.5678e+8" and toFixed(1) answer "0.1" once those were hijacked.
+> String.prototype.indexOf = function () { return -1 };
+> Array.prototype.slice = function () { return [] };
+> String.prototype.charAt = function () { return "!" };
+> Array.prototype.join = function () { return "!" };
+> print((1234.5678).toExponential() + " " + (1234.5678).toPrecision() + " " + (1234.5678).toFixed(1));
+< 1.2345678e+3 1234.5678 1234.6
+-

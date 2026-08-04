@@ -158,6 +158,17 @@ These are the most important principles in the codebase. Get them wrong and the 
 
 ## 7. `src/stdlib.js` and the minifier
 
+**Never call a method off a user-reachable prototype (PRIO 1).** The library shares one object graph with user code,
+and user code may replace any built-in method at any moment. So `s.indexOf(..)`, `a.slice(..)`, `a.join(..)` and every
+other `Something.prototype` method are out of bounds inside `stdlib.js`. Use the `support.*` primitives or their `$`
+aliases at the top of the file (`$sub`, `$match`, `$charCodeAt`, `$callWithArgs`, ...), or build a local helper from
+them, as `findChar` does. This is not hypothetical: a one-line `String.prototype.indexOf` override made
+`toExponential()` answer `1.234.5678e+8`, and an `Array.prototype.slice` override made `toFixed(1)` answer `0.1`.
+Property *reads* are fine (`s.length`, `d[i]`), those being own properties. The only two legitimate exceptions are
+spec-mandated dynamic dispatch: `Object.prototype.toLocaleString` calling `this.toString()` (15.2.4.3) and
+`Array.prototype.toString` calling `this.join()` (15.4.4.2), both of which are *required* to see the current method.
+`tests/stdlib/numberToString.io` closes with a hijack regression test; extend it when adding a formatter.
+
 The standard library ships as one minified string in `src/stdlibJS.cpp`, produced from `src/stdlib.js` by
 `tools/stdlibToCpp.pika` driving the PEG in `tools/stdlibMinifier.ppeg`. What that minifier does and does not do
 decides what is worth squeezing by hand, so know it before optimising anything.
