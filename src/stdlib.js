@@ -146,48 +146,120 @@ function checkClass(object, expectedClass, forFunction) {
 
 function leftPad(s, l) { var n = (s = "00000000000000000000" + s).length; return $sub(s, n - l, n); }
 
+/*
+	The exact decimal expansion of a positive double, as a little-endian digit array with exactFraction of its
+	digits below the point. Every double is y * 2^shift with y an exact integer under 2^53, so the expansion is
+	the digits of y * 2^shift when shift >= 0, and of y * 5^-shift carrying -shift fraction digits when shift is
+	negative, since y / 2^k == y * 5^k / 10^k. 15.7.4.5, 15.7.4.6 and 15.7.4.7 all round on this rather than on
+	double arithmetic, which cannot see that 0.35 is really 0.34999999999999997779 and so must round DOWN, and
+	cannot carry the low digits of a large integer at all, 9.8.1 ToString being the SHORTEST round-tripping form
+	by definition. The fraction count is a module variable rather than a second return value: ES3 has no tuple
+	and every caller reads it on the next line.
+*/
+var exactFraction;
+function exactDigits(val) {
+	var shift = 0, i, j, k, c, m, d = [];
+	while (val !== $floor(val)) {
+		val *= 2;
+		--shift;
+	}
+	while (val > 9007199254740991) {	// the % 10 below is only exact under 2^53
+		val /= 2;
+		++shift;
+	}
+	for (; val; val = (val - c) / 10) {
+		d.push(c = val % 10);
+	}
+	for (i = (shift < 0 ? -shift : shift); i > 0; i -= k) {
+		k = (i < 21 ? i : 21);	// 9 * 5^21 plus the carry still lands under 2^53, so 21 exponents per pass
+		m = support.pow(shift < 0 ? 5 : 2, k);
+		for (j = c = 0; j < d.length || c; ++j) {
+			c += (d[j] || 0) * m;
+			d[j] = c % 10;
+			c = (c - d[j]) / 10;
+		}
+	}
+	exactFraction = (shift < 0 ? -shift : 0);
+	return d;
+}
+
+// Drops the lowest i digits of an exact expansion, rounding half up. With the expansion exact, "as close to zero as
+// possible, ties to the larger" is settled by one digit: no sticky bit, a tie rounding up like anything above it.
+function roundDigits(d, i) {
+	var j, c = (d[i - 1] >= 5 ? 1 : 0);
+	d = d.slice(i);
+	for (j = 0; c; ++j) {
+		c += (d[j] || 0);
+		d[j] = c % 10;
+		c = (c - d[j]) / 10;
+	}
+	return d;
+}
+
+/*
+	15.7.4.6 and 15.7.4.7 both ask for n and e with a fixed digit count for which n * 10^(e-digits) is nearest x,
+	ties to the larger, so both are this: take the exact expansion, cut it to digits+1 significant digits, and
+	present it in whichever notation the caller's eNotationBelow selects. With fractionDigits absent 15.7.4.6
+	instead wants "f as small as possible", which is precisely what 9.8.1 ToString already produces, so that path
+	reads the digits back out of it rather than computing a second and less exact answer.
+*/
 function numberToString(num, digits, eNotationBelow) {
-	var string = '';
+	var string = '', d, e, i, t;
 	if (num < 0) {
 		num = -num;
 		string = '-';
 	}
-	var significand = 0, exponent = 0, magnitude;
-	if (num !== 0) {
-		if (num < 1e-323) {
-			exponent = -324;
-			significand = num / 1e-323 * 10.0;
+	if (digits === void 0) {
+		t = '' + num;
+		if ((i = t.indexOf('e')) >= 0) {
+			e = +$sub(t, i + 1, t.length);
+			t = $sub(t, 0, i);
 		} else {
-			if ((exponent = $floor(support.log(num) * 0.43429448190325182765113)) < -323) exponent = -323;
-			if (num >= (magnitude = support.pow(10, exponent)) * 10.0) {
-				magnitude *= 10.0;
-				++exponent;
+			e = 0;
+		}
+		if ((i = t.indexOf('.')) >= 0) {
+			e += i - 1;
+			t = $sub(t, 0, i) + $sub(t, i + 1, t.length);
+		} else {
+			e += t.length - 1;
+		}
+		for (i = 0; i < t.length - 1 && t.charAt(i) === '0'; ++i) {	// "0.000001" carries its exponent as zeros
+			--e;
+		}
+		d = $sub(t, i, t.length);
+		while (d.length > 1 && d.charAt(d.length - 1) === '0') {	// 15.7.4.6: n is not divisible by 10
+			d = $sub(d, 0, d.length - 1);
+		}
+	} else if (num === 0) {
+		d = leftPad('', digits) + '0';
+		e = 0;
+	} else {
+		t = exactDigits(num);
+		e = t.length - 1 - exactFraction;
+		i = t.length - digits - 1;
+		if (i > 0) {
+			t = roundDigits(t, i);
+			if (t.length > digits + 1) {	// 9.99 -> 1.00e+1: the carry grew the count, so the spare zero goes back
+				t.shift();
+				++e;
 			}
-			significand = num / magnitude;
+		} else {
+			while (i++ < 0) {
+				t.unshift(0);
+			}
 		}
+		d = t.reverse().join('');
 	}
-	if (digits === void 0) string += significand;
-	else {
-		magnitude = support.pow(10, digits);
-		var integer = $floor(significand), decimals = $floor((significand - integer) * magnitude + 0.5);
-		integer += (decimals >= magnitude ? 1 : 0);
-		if (integer >= 10) {
-			integer = 1;
-			++exponent;
+	if (e >= eNotationBelow && e <= digits) {
+		if (e < 0) {
+			return string + '0.' + leftPad('', -e - 1) + d;
+		} else if (e + 1 >= d.length) {
+			return string + d + leftPad('', e + 1 - d.length);
 		}
-		if (exponent >= eNotationBelow && exponent <= digits) {
-			digits -= exponent;
-			magnitude = support.pow(10, digits);
-			integer = $floor(num);
-			decimals = $floor((num - integer) * magnitude + 0.5);
-			if (decimals >= magnitude) ++integer;
-			exponent = null;
-		}
-		string += integer;
-		if (digits > 0) string += '.' + leftPad(decimals, digits);
+		return string + $sub(d, 0, e + 1) + '.' + $sub(d, e + 1, d.length);
 	}
-	if (exponent !== null) string += (exponent >= 0 ? "e+" : 'e') + exponent;
-	return string
+	return string + $sub(d, 0, 1) + (d.length > 1 ? '.' + $sub(d, 1, d.length) : '')
+			+ (e >= 0 ? 'e+' : 'e') + e;
 }
 
 function numberToRadix(val, radix) {
@@ -323,7 +395,8 @@ defineProperties(Number.prototype, { dontEnum: true }, {
 	}),
 	toExponential: unconstructable(function toExponential(fractionDigits) {
 		var val, digits;
-		if (!$isFinite(val = getInternalNumber(this, "toExponential"))) return val;
+		// 15.7.4.6 returns a String throughout, so NaN and the infinities are converted rather than passed back raw
+		if (!$isFinite(val = getInternalNumber(this, "toExponential"))) return '' + val;
 		else if (fractionDigits === void 0) return numberToString(val, void 0, $Infinity);
 		else {
 			if ((digits = int(fractionDigits)) < 0 || digits > 20) {
@@ -333,16 +406,12 @@ defineProperties(Number.prototype, { dontEnum: true }, {
 		}
 	}),
 	/*
-		15.7.4.5 step 10 wants the integer nearest val * 10^f, ties upward, and that is a question about the
-		double's EXACT decimal expansion which a double cannot answer about itself: 0.35 is really
-		0.34999999999999997779 and so must round DOWN, where floor((val - integer) * 10^f + 0.5) answered "0.4".
-		Every double is y * 2^shift with y an exact integer below 2^53, so the expansion is the digits of
-		y * 2^shift when shift >= 0, and of y * 5^-shift carrying -shift fraction digits when shift < 0, since
-		y / 2^k == y * 5^k / 10^k. Both come out of one multiply-the-digit-array loop, after which a single digit
-		decides the rounding with no sticky bit needed, an exact tie rounding upward like everything above it.
+		15.7.4.5 step 10 wants the integer nearest val * 10^f, ties upward, which is a question about the double's
+		exact decimal expansion; see exactDigits. Unlike 15.7.4.6 and 15.7.4.7 the cut is at an absolute decimal
+		place rather than at a significant-digit count, so this one does not go through numberToString.
 	*/
 	toFixed: unconstructable(function toFixed(fractionDigits) {
-		var val, f, neg, shift = 0, i, j, k, c, m, t, d = [];
+		var val, f, neg, i, t, d = [];
 		if ((f = int(fractionDigits)) < 0 || f > 20) {
 			throw rangeError("Illegal fractionDigits argument for toFixed()");
 		}
@@ -352,37 +421,13 @@ defineProperties(Number.prototype, { dontEnum: true }, {
 			val = -val;
 			neg = '-';
 		}
-		if (val >= 5e-21) {	// anything below rounds to zeros at every f, and this also bounds the loops for denormals
-			while (val !== $floor(val)) {
-				val *= 2;
-				--shift;
-			}
-			while (val > 9007199254740991) {	// the % 10 below is only exact under 2^53
-				val /= 2;
-				++shift;
-			}
-			for (; val; val = (val - c) / 10) {
-				d.push(c = val % 10);
-			}
-			for (i = (shift < 0 ? -shift : shift); i > 0; i -= k) {
-				k = (i < 21 ? i : 21);	// 9 * 5^21 plus the carry still lands under 2^53, so 21 exponents per pass
-				m = support.pow(shift < 0 ? 5 : 2, k);
-				for (j = c = 0; j < d.length || c; ++j) {
-					c += (d[j] || 0) * m;
-					d[j] = c % 10;
-					c = (c - d[j]) / 10;
-				}
-			}
+		i = -f;
+		if (val >= 5e-21) {	// anything below rounds to zeros at every f, and this also bounds exactDigits for denormals
+			d = exactDigits(val);
+			i = exactFraction - f;	// exact fraction digits to drop, or -i zeros to append when f wants more
 		}
-		i = (shift < 0 ? -shift : 0) - f;	// exact fraction digits to drop, or -i zeros to append when f wants more
 		if (i > 0) {
-			c = (d[i - 1] >= 5 ? 1 : 0);
-			d = d.slice(i);
-			for (j = 0; c; ++j) {
-				c += (d[j] || 0);
-				d[j] = c % 10;
-				c = (c - d[j]) / 10;
-			}
+			d = roundDigits(d, i);
 		} else {
 			while (i++ < 0) {
 				d.unshift(0);
@@ -396,7 +441,7 @@ defineProperties(Number.prototype, { dontEnum: true }, {
 	}),
 	toPrecision: unconstructable(function toPrecision(precision) {
 		var val = getInternalNumber(this, "toPrecision"), digits;
-		if (precision === void 0 || !$isFinite(val)) return val;
+		if (precision === void 0 || !$isFinite(val)) return '' + val;	// 15.7.4.7 step 2 is ToString, and returns a String
 		else {
 			if ((digits = int(precision) - 1) < 0 || digits > 20) {
 				throw rangeError("Illegal precision argument for toPrecision()");
