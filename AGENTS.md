@@ -48,7 +48,7 @@ Two NuXJS-specific notes on top of it:
   `unexpand -t 4` on it afterwards.
 - Keep commit messages short, one or two sentences. Do not add `Co-Authored-By` or other generated trailers.
 
-See `docs/NuXJS Documentation.md` for details on how `src/stdlib.js` is minified and converted to `src/stdlibJS.cpp` during the build, and `docs/Standard Library Guidelines.md` for rules when editing the standard library.
+See `docs/NuXJS Documentation.md` for details on how `src/stdlib.js` is minified and converted to `src/stdlibJS.cpp` during the build, and `docs/Standard Library Guidelines.md` for rules when editing the standard library: the no-prototype-methods rule, what the minifier does and does not do, and where `src/stdlib.js` departs from `docs/Coding Style.md`.
 
 ## Script portability
 All user-facing `.sh` and `.cmd` files must work when launched from any directory. They should start by changing to their own folder (or the repository root) so that relative paths resolve correctly.
