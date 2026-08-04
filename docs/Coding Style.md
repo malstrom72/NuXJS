@@ -205,6 +205,20 @@ nine characters every time; the blob carries 40 `void 0` against 4 `undefined`).
 §6 - bodies stay braced and on their own lines. It is about not spending values, temporaries and statements the
 expression could have carried.
 
+**Counting down is the cheap loop.** Where iteration order does not matter, write
+
+```
+for (i = digits.length; --i >= 0; ) {
+```
+
+That is 8 VM instructions per pass, against 10 for `for (i = n - 1; i >= 0; --i)`, 11 for a forward loop over a
+cached length, and 14 for `for (i = 0; i < d.length; ++i)`, which re-fetches `length` every time. The saving is
+structural rather than a compiler accident: `--i >= 0` stores through `WRITE_LOCAL` instead of `WRITE_LOCAL_POP`, so
+the decremented value stays on the stack and feeds the compare directly, fusing the update into the test. Every
+other form spends a fresh `READ_LOCAL` + `OBJ_TO_NUMBER` on a separate update step, and testing against `CONST #0`
+also avoids the second `READ_LOCAL` that `i < n` needs. Check any such claim with `dasm(func)` in the REPL. Do not
+"tidy" these into forward loops.
+
 **Measure, do not guess.** `stat` the blob before and after; regenerate with `tools/buildAndTest.sh`. For speed use
 the engine's own `-t` flag (`getCPUSecs`, microsecond resolution) or `tools/benchmark.node.js`, which takes a median
 over N runs. `Date.getTime()` is useless for this: it comes from `std::time` and ticks once a second.
