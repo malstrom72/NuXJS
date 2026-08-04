@@ -61,8 +61,11 @@
 > print((0.00000000000555).toFixed(20))
 < 0.00000000000555000000
 -
+// The double is exactly 0.99999999999999988897769753748434595763683319091796875, so the 17th fraction digit is 8
+// and 15.7.4.5 step 10 rounds the 16th up. The old expectation here was the truncation the double-arithmetic
+// implementation produced. Verified against V8.
 > print((0.9999999999999999).toFixed(16))
-< 0.9999999999999998
+< 0.9999999999999999
 -
 > print((NaN).toFixed(1))
 < NaN
@@ -70,8 +73,10 @@
 > print((-Infinity).toFixed(2))
 < -Infinity
 -
+// 9.8.1 ToString gives the SHORTEST round-tripping form, "1000000000000000100", but 15.7.4.5 step 11 asks for the
+// exact digits of n, and this double is exactly 1000000000000000128. Going through ToString is what lost them.
 > print((1000000000000000128).toFixed())
-< 1000000000000000100
+< 1000000000000000128
 -
 > print((1e-20).toFixed(20))
 < 0.00000000000000000001
@@ -79,8 +84,11 @@
 > print((1e-21).toFixed(20))
 < 0.00000000000000000000
 -
+// Looks like an exact tie that step 10 would round up, and is not: the double nearest 5e-21 is
+// 4.99999999999999972576...e-21, so val * 10^20 is 0.49999... and rounds DOWN. This is the boundary of the
+// "too small to matter" guard in toFixed, so it is the case that catches the guard being written as > instead of >=.
 > print((5e-21).toFixed(20))
-< 0.00000000000000000001
+< 0.00000000000000000000
 -
 > try { (423489).toFixed(-1); print("wrong") } catch (x) { print("ok") }
 < ok
@@ -258,4 +266,27 @@
 -
 > print((9.999999999999998).toPrecision(2))
 < 10
+-
+// 15.7.4.5 step 10 rounds on the double's EXACT value, not on its shortest decimal form, and these are the cases
+// that made the difference reach ordinary code rather than only huge integers: 0.35 is really 0.34999999999999997779
+// so it rounds DOWN, and 1.45 is 1.44999999999999995559. Step 10 also says ties pick the LARGER n, which is
+// round-half-up on the magnitude and not banker's rounding, so .5 .5 .5 go up and the sign is applied afterwards.
+// All verified against V8.
+> print((0.35).toFixed(1))
+< 0.3
+-
+> print((1.45).toFixed(1))
+< 1.4
+-
+> print((8.005).toFixed(2))
+< 8.01
+-
+> print((0.5).toFixed(0) + " " + (1.5).toFixed(0) + " " + (2.5).toFixed(0))
+< 1 2 3
+-
+> print((-0.5).toFixed(0) + " " + (-2.5).toFixed(0))
+< -1 -3
+-
+> print((0.1).toFixed(20))
+< 0.10000000000000000555
 -

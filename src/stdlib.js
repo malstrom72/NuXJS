@@ -332,27 +332,67 @@ defineProperties(Number.prototype, { dontEnum: true }, {
 			return numberToString(val, digits, $Infinity);
 		}
 	}),
+	/*
+		15.7.4.5 step 10 wants the integer nearest val * 10^f, ties upward, and that is a question about the
+		double's EXACT decimal expansion which a double cannot answer about itself: 0.35 is really
+		0.34999999999999997779 and so must round DOWN, where floor((val - integer) * 10^f + 0.5) answered "0.4".
+		Every double is y * 2^shift with y an exact integer below 2^53, so the expansion is the digits of
+		y * 2^shift when shift >= 0, and of y * 5^-shift carrying -shift fraction digits when shift < 0, since
+		y / 2^k == y * 5^k / 10^k. Both come out of one multiply-the-digit-array loop, after which a single digit
+		decides the rounding with no sticky bit needed, an exact tie rounding upward like everything above it.
+	*/
 	toFixed: unconstructable(function toFixed(fractionDigits) {
-		var val, digits;
-		if ((digits = int(fractionDigits)) < 0 || digits > 20) {
+		var val, f, neg, shift = 0, i, j, k, c, m, t, d = [];
+		if ((f = int(fractionDigits)) < 0 || f > 20) {
 			throw rangeError("Illegal fractionDigits argument for toFixed()");
 		}
 		if ($isNaN(val = getInternalNumber(this, "toFixed")) || val <= -1e21 || val >= 1e21) return '' + val;
-		else {
-			var s = '';
-			if (val < 0) {
-				val = -val;
-				s = '-';
-			}
-			var magnitude = support.pow(10, digits);
-			var integer = $floor(val);
-			var decimals = $floor((val - integer) * magnitude + 0.5);
-			s += integer + (decimals >= magnitude ? 1 : 0);
-			if (digits > 0) {
-				s += '.' + leftPad(decimals, digits);
-			}
-			return s;
+		neg = '';
+		if (val < 0) {
+			val = -val;
+			neg = '-';
 		}
+		if (val >= 5e-21) {	// anything below rounds to zeros at every f, and this also bounds the loops for denormals
+			while (val !== $floor(val)) {
+				val *= 2;
+				--shift;
+			}
+			while (val > 9007199254740991) {	// the % 10 below is only exact under 2^53
+				val /= 2;
+				++shift;
+			}
+			for (; val; val = (val - c) / 10) {
+				d.push(c = val % 10);
+			}
+			for (i = (shift < 0 ? -shift : shift); i > 0; i -= k) {
+				k = (i < 21 ? i : 21);	// 9 * 5^21 plus the carry still lands under 2^53, so 21 exponents per pass
+				m = support.pow(shift < 0 ? 5 : 2, k);
+				for (j = c = 0; j < d.length || c; ++j) {
+					c += (d[j] || 0) * m;
+					d[j] = c % 10;
+					c = (c - d[j]) / 10;
+				}
+			}
+		}
+		i = (shift < 0 ? -shift : 0) - f;	// exact fraction digits to drop, or -i zeros to append when f wants more
+		if (i > 0) {
+			c = (d[i - 1] >= 5 ? 1 : 0);
+			d = d.slice(i);
+			for (j = 0; c; ++j) {
+				c += (d[j] || 0);
+				d[j] = c % 10;
+				c = (c - d[j]) / 10;
+			}
+		} else {
+			while (i++ < 0) {
+				d.unshift(0);
+			}
+		}
+		t = d.reverse().join('');	// one pass, where popping into a string is quadratic on the long expansions
+		while (t.length <= f) {
+			t = '0' + t;
+		}
+		return neg + (f ? $sub(t, 0, t.length - f) + '.' + $sub(t, t.length - f, t.length) : t);
 	}),
 	toPrecision: unconstructable(function toPrecision(precision) {
 		var val = getInternalNumber(this, "toPrecision"), digits;

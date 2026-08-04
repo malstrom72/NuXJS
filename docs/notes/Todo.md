@@ -36,7 +36,11 @@ GC
 Stdlib
 ======
 
-	* toFixed should convert to string with full exact decimals, e.g. (1000000000000000128).toFixed(0) should return "1000000000000000128" and not "1000000000000000100".
+	* FIXED 2026-08-04: toFixed rounded on double arithmetic where 15.7.4.5 step 10 asks for the integer nearest the EXACT value of val * 10^f, ties upward. Fixed in the es3 engine unguarded, like the comma operator before it, since it is a plain conformance bug in shared code and the same requirement in ES3 15.7.4.5 as in ES5.1. Tests in tests/stdlib/numberToString.io.
+		- the entry this replaces named only (1000000000000000128).toFixed(0) -> "1000000000000000100", which is the rarest corner of it. The common case was ordinary rounding: (0.35).toFixed(1) answered "0.4" where 0.35 is really 0.34999999999999997779 and must round DOWN, and (1.45).toFixed(1) answered "1.5". Roughly one in nine random doubles was wrong.
+		- two causes, one fix. Going through '' + integer used 9.8.1 ToString, which is the SHORTEST round-tripping form by definition and so cannot carry exact digits; and floor((val - integer) * 10^f + 0.5) rounds a value that has already lost the information. Every double is y * 2^shift with y an exact integer below 2^53, so the exact expansion is a digit array multiplied by 2 (shift >= 0) or by 5 (shift < 0, since y / 2^k == y * 5^k / 10^k), after which one digit decides the rounding: no sticky bit is needed because an exact tie rounds up like everything above it.
+		- COSTS 29x: 1.55 us -> 45 us per call, measured at 200k calls. Multiplying 21 exponents per pass (the most that keeps 9 * m + carry under 2^53) and joining the digits in one pass rather than popping into a string took it down from 160x. A double-arithmetic fast path for the cases that are not near a tie would recover most of it, at the price of resting on an error bound instead of on exactness. Not done; decide before anyone "optimizes" this again.
+		- 15.7.4.6 toExponential and 15.7.4.7 toPrecision have the SAME defect and are NOT fixed here: (1000000000000000128).toExponential(20) and .toPrecision(21) are both wrong. They would share this digit generator.
 
 LOW PRIO
 ########
