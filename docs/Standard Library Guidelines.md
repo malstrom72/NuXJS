@@ -5,8 +5,13 @@ it, run `bash tools/buildAndTest.sh release x64` to regenerate the blob and run 
 regeneration is gated on `src/stdlib.js` being newer than `src/stdlibJS.cpp`, and a `git checkout` can write both in
 the same second and silently skip it, so `touch src/stdlib.js` if you suspect you are testing a stale blob.
 
-General code style is in `docs/Coding Style.md`. This file covers what is specific to `src/stdlib.js`, including
-where it deliberately departs from that document.
+`src/stdlibES5.js` is a second module built by the same pipeline into the same blob, run only in `NUXJS_ES5`
+builds. Everything below applies to it unchanged, the hijack rule most of all: it shares the object graph too, and
+being written later is no protection. It gets a fresh rename map but is seeded with `src/stdlib.js`'s `@preserve`
+header, so it need only declare names that file does not already list.
+
+General code style is in `docs/Coding Style.md`. This file covers what is specific to the library, including where
+it deliberately departs from that document.
 
 ## Never call a method off a user-reachable prototype (PRIO 1)
 
@@ -40,9 +45,10 @@ rewrite `if`/`?:`, remove braces, rewrite numbers, or touch anything inside a st
 
 - **Comments and formatting are free.** They vanish. Cite the spec and explain the reasoning; terseness here is about
   the *code*, never the commentary. Match the file's density, which is sparse and short.
-- **Identifier length is free; identifier count is not.** Each distinct name takes a slot from a pool of 62
+- **Identifier length is free; identifier count is not.** Each distinct name takes a slot from a pool of 52
   single-character names before spilling to two. Prefer a name the file already uses over coining a new one, and
-  never shorten a name for the blob's sake.
+  never shorten a name for the blob's sake. Both modules are long past that pool, so the cost of one more name is a
+  flat byte per occurrence rather than a cliff: worth minding, not worth contorting the code for.
 - **A `@preserve` name is emitted verbatim at every occurrence, so never use one as a local.** Many read like
   ordinary variable names: `value`, `name`, `index`, `length`, `min`, `max`, `test`, `source`, `global`, `log`,
   `parse`, `time`, `input`, `match`, `call`, `apply`. Check the lists at the top of `src/stdlib.js` before naming
