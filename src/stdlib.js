@@ -170,9 +170,9 @@ function exactDigits(val) {
 	for (; val % 1; --shift) val *= 2;
 	for (; val > 9007199254740991; ++shift) val /= 2;	// the % 10 below is only exact under 2^53
 	for (i = 0; val; val = (val - digit) / 10) digits[i++] = digit = val % 10;
+	// 9 * 5^21 plus the carry still lands under 2^53, so 21 exponents per pass
 	for (i = abs(shift); i > 0; i -= chunk) {
-		chunk = (i < 21 ? i : 21);	// 9 * 5^21 plus the carry still lands under 2^53, so 21 exponents per pass
-		carryDigits(digits, support.pow(shift < 0 ? 5 : 2, chunk), 0, 0);
+		carryDigits(digits, support.pow(shift < 0 ? 5 : 2, (chunk = (i < 21 ? i : 21))), 0, 0);
 	}
 	digits.fraction = (shift < 0 ? -shift : 0);
 	return digits;
@@ -189,10 +189,7 @@ function exactDigits(val) {
 */
 function digitString(digits, place) {
 	var i, from = 0, s = '';
-	if (place > 0) {
-		carryDigits(digits, 1, (digits[place - 1] >= 5 ? 1 : 0), from = place);
-		place = 0;
-	}
+	if (place > 0) { carryDigits(digits, 1, (digits[place - 1] >= 5 ? 1 : 0), from = place); place = 0; }
 	for (i = digits.length; --i >= from; ) s += digits[i];
 	while (place++ < 0) s += '0';
 	return s;
@@ -201,9 +198,9 @@ function digitString(digits, place) {
 // Places the point after digit exponent+1 of a big-endian digit string, padding whichever side falls short.
 // 15.7.4.5's fixed form and 15.7.4.7's are the same operation counted from opposite ends.
 function placePoint(s, exponent) {
-	if (exponent < 0) return '0.' + leftPad('', -exponent - 1) + s;
-	else if (exponent + 1 >= s.length) return s + leftPad('', exponent + 1 - s.length);
-	return $sub(s, 0, exponent + 1) + '.' + $sub(s, exponent + 1, s.length);
+	return (exponent < 0 ? '0.' + leftPad('', -exponent - 1) + s
+			: exponent + 1 >= s.length ? s + leftPad('', exponent + 1 - s.length)
+			: $sub(s, 0, exponent + 1) + '.' + $sub(s, exponent + 1, s.length));
 }
 
 /*
@@ -221,33 +218,21 @@ function numberToString(num, digits, eNotationBelow) {
 		return -1;
 	}
 	var sign = '', expansion, exponent, i, s;
-	if (num < 0) {
-		num = -num;
-		sign = '-';
-	}
+	if (num < 0) { num = -num; sign = '-'; }
 	if (digits === void 0) {
-		s = '' + num;
-		exponent = 0;
-		if ((i = findChar(s, 'e')) >= 0) {
-			exponent = +$sub(s, i + 1, s.length);
-			s = $sub(s, 0, i);
-		}
-		if ((i = findChar(s, '.')) >= 0) {
-			exponent += i - 1;
-			s = $sub(s, 0, i) + $sub(s, i + 1, s.length);
-		} else exponent += s.length - 1;
+		if ((i = findChar(s = '' + num, 'e')) >= 0) { exponent = +$sub(s, i + 1, s.length); s = $sub(s, 0, i); }
+		else exponent = 0;
+		if ((i = findChar(s, '.')) >= 0) { exponent += i - 1; s = $sub(s, 0, i) + $sub(s, i + 1, s.length); }
+		else exponent += s.length - 1;
 		for (i = 0; i < s.length - 1 && s[i] === '0'; ++i) --exponent;	// "0.000001" carries its exponent as zeros
 		s = $sub(s, i, s.length);
 		while (s.length > 1 && s[s.length - 1] === '0') s = $sub(s, 0, s.length - 1);	// 15.7.4.6: n not divisible by 10
 	} else {
-		expansion = exactDigits(num);
 		// the empty expansion is zero, whose exponent is 0
-		exponent = (expansion.length ? expansion.length - 1 - expansion.fraction : 0);
+		exponent = ((expansion = exactDigits(num)).length ? expansion.length - 1 - expansion.fraction : 0);
 		s = digitString(expansion, expansion.length - digits - 1);
-		if (s.length > digits + 1) {	// 9.99 -> 1.00e+1: the carry grew the count, so the spare zero goes back
-			s = $sub(s, 0, digits + 1);
-			++exponent;
-		}
+		// 9.99 -> 1.00e+1: the carry grew the count, so the spare zero goes back
+		if (s.length > digits + 1) { s = $sub(s, 0, digits + 1); ++exponent; }
 	}
 	if (exponent >= eNotationBelow && exponent <= digits) return sign + placePoint(s, exponent);
 	return sign + $sub(s, 0, 1) + (s.length > 1 ? '.' + $sub(s, 1, s.length) : '')
@@ -409,15 +394,10 @@ defineProperties(Number.prototype, { dontEnum: true }, {
 		}
 		if ($isNaN(val = getInternalNumber(this, "toFixed")) || val <= -1e21 || val >= 1e21) return '' + val;
 		sign = '';
-		if (val < 0) {
-			val = -val;
-			sign = '-';
-		}
-		place = -digits;
-		if (val >= 5e-21) {	// anything below rounds to zeros at every f, so the expansion is not worth computing
-			expansion = exactDigits(val);
-			place = expansion.fraction - digits;	// digits to drop, or -place zeros to append when f asks for more
-		}
+		if (val < 0) { val = -val; sign = '-'; }
+		// Below 5e-21 every legal f rounds to zeros, so the expansion is not worth computing. Otherwise `place` is
+		// the count of exact fraction digits to drop, or -place zeros to append when f asks for more than there are.
+		place = (val >= 5e-21 ? (expansion = exactDigits(val)).fraction - digits : -digits);
 		s = digitString(expansion, place) || '0';	// nothing survives the cut only when f is 0 and val rounds away
 		return sign + placePoint(s, s.length - 1 - digits);
 	}),

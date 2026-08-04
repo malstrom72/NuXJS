@@ -212,8 +212,26 @@ carry += (digits[i] || 0) * factor;							// two statements for one value
 digits[i] = carry % 10;
 ```
 
-`void 0` over `undefined` is the same instinct and already the file's idiom (`undefined` is preserved, so it costs
-nine characters every time; the blob carries 40 `void 0` against 4 `undefined`).
+The same fold works on an argument (`support.pow(base, chunk = (i < 21 ? i : 21))`), on a receiver
+(`(expansion = exactDigits(val)).fraction`, 12 instances in the file), and on the subject of a test
+(`if ((start = int(start)) < 0)`). Apply it **only where the result is provably identical**: evaluation order can
+bite. `carry = (carry - (digits[i] = (carry += x) % 10)) / 10` looks like the same fold but is not, because §11.6.2
+evaluates the left operand of `-` before the right, so it would subtract using the pre-increment `carry`.
+
+An `if`/`else if`/`return` cascade is usually a `?:` cascade (15 chained ternaries in the file), broken with the
+operator leading the continuation line per §6:
+
+```
+return (exponent < 0 ? '0.' + leftPad('', -exponent - 1) + s
+		: exponent + 1 >= s.length ? s + leftPad('', exponent + 1 - s.length)
+		: $sub(s, 0, exponent + 1) + '.' + $sub(s, exponent + 1, s.length));
+```
+
+A two-statement body goes on one line braced, `if (val < 0) { val = -val; sign = '-'; }`, which the file uses 15
+times. The comma operator is perfectly legal here, it just rarely shrinks anything without costing more in syntax
+than it saves, so the braced form is normally the better trade. `void 0` over `undefined` is the same instinct and
+already the file's idiom (`undefined` is preserved, so it costs nine characters every time; the blob carries 40
+`void 0` against 4 `undefined`).
 
 **`stdlib.js` takes §6's exception as standing: drop braces around a single statement** and put it on the control
 line, `if (s[i] === ch) return i;`. This is the file's overwhelming convention, 111 braceless single-statement `if`s
