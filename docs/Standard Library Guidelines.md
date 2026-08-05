@@ -19,8 +19,17 @@ blob. Guards nest.
 The pass is line-based and runs *before* the minifier, so a directive owns its whole line (leading tabs are fine,
 trailing text is not), and what reaches the minifier is exactly the source you would have written without the
 guards. That is what keeps the ES3 blob byte for byte what it has always been, which is the invariant the whole
-lift rests on: the ES3 release binary must not move. Being line-based, the pass also has no idea about JavaScript,
-so a directive spelled out inside a string literal or a block comment is still acted on.
+lift rests on: the ES3 release binary must not move.
+
+Being line-based, the pass knows nothing about JavaScript, and cuts through a comment as readily as through code.
+That is deliberate for the `@preserve` header, where it is how a name only one target needs is declared only
+there. It also means a directive *spelled out* inside a string literal or a block comment is acted on, so do not
+write one where you meant to quote one.
+
+Keep a guard around whole entries rather than inside a shared body, per D1 in `docs/ES5.1 Roadmap.md`: the two
+implementations of a method read far better side by side than one implementation interleaved with directives.
+Where the ES5 side is `src/stdlibES5.js` rather than a branch here, hand it what it needs by publishing on
+`support` under a guard, the way `isWhiteSpace` is. That module has its own closure and cannot see this one's.
 
 `bash tools/buildAndTest.sh` writes `output/stdlib.es3.js`, the ES3 library recovered from the merged file with
 every guard resolved away. Read it, or diff it against a previous revision, whenever you want the pristine ES3
@@ -29,6 +38,9 @@ source rather than the two targets interleaved. Ask for the other side with
 	PikaCmd ./stdlibToCpp.pika ../src/stdlib.js ../output/stdlib.es5.js es5
 
 Any `.js` output selects this mode; anything else generates the blob.
+
+Blank lines count. A guard that swallows the blank line before it and leaves the one after (or the reverse) keeps
+both variants reading naturally; taking neither leaves the target that drops the block with a double blank.
 
 General code style is in `docs/Coding Style.md`. This file covers what is specific to the library, including where
 it deliberately departs from that document.

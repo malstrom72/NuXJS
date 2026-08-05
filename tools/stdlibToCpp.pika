@@ -79,12 +79,14 @@ if (right(outputFile, 3) === '.js') {
 
 	definition => "const char* " # $0 # " =" # LF # toCLines($1) # ";" # LF;
 
-	es5js = definition('STDLIB_JS', shrink(preprocess(src, true), 'ES5 code'));
+	es5source = preprocess(src, true);
+	es5js = definition('STDLIB_JS', shrink(es5source, 'ES5 code'));
 	es5mod = '';
 	if (hasES5) {
 		// The minifier's preserve set is fresh per call, so seed the ES5 module with the base library's @preserve
 		// header (all keywords and existing globals/props); stdlibES5.js then only declares genuinely new names.
-		es5mod = definition('STDLIB_ES5_JS', shrink(src{: search(src, '*/') + 2} # LF # es5src, 'ES5 module'));
+		// Seeded from the resolved ES5 source, so a guard around a @preserve line means what it says.
+		es5mod = definition('STDLIB_ES5_JS', shrink(es5source{: search(es5source, '*/') + 2} # LF # es5src, 'ES5 module'));
 	};
 	es3js = definition('STDLIB_JS', shrink(preprocess(src, false), 'ES3 code'));
 

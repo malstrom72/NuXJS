@@ -19,6 +19,9 @@
 	@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,$match
 	@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
 	@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
+//#if ES5
+	@preserve: isWhiteSpace
+//#endif
 
 	support: {
 		prototypes: {	// built-in prototype objects
@@ -71,7 +74,18 @@ var $isNaN = support.isNaN, $isFinite = support.isFinite, $floor = support.floor
 		, $getInternalProperty = support.getInternalProperty, $callWithArgs = support.callWithArgs
 		, $charCodeAt = support.charCodeAt, abs, syntaxError, rangeError, typeError
 		, ALPHA_DIGITS_LOWER = "0123456789abcdefghijklmnopqrstuvwxyz", ALPHA_DIGITS_UPPER = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+//#if !ES5
 		, WHITE_SPACES = " \f\n\r\t\v\xA0\u2028\u2029";
+//#else
+		/*
+			ES5 7.2 adds the BOM, which moved out of the 7.1 format-control set, and the rest of category Zs behind
+			the <USP> catch-all. This is exactly the set isES5ExtraWhite() carries in NuXJS.cpp for the lexer and
+			9.3.1; the four places that must agree on it are those two, 15.1.2.2 parseInt, which reads the table
+			below, and 15.5.4.20 trim, which reads it through support.isWhiteSpace.
+		*/
+		, WHITE_SPACES = " \f\n\r\t\v\xA0\u2028\u2029\uFEFF\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007"
+				+ "\u2008\u2009\u200A\u202F\u205F\u3000";
+//#endif
 
 var PARSE_INT_CHARS = (function() {
 	var pic = { }, ws = WHITE_SPACES;
@@ -85,6 +99,15 @@ var PARSE_INT_CHARS = (function() {
 	}
 	return pic
 })();
+//#if ES5
+
+/*
+	15.5.4.20 trim strips the same 7.2 and 7.3 set 15.1.2.2 parseInt skips, and stdlibES5.js lives in its own
+	closure, so it is handed the test rather than left to restate the set a third time. Whitespace is the only key
+	the table maps to null: a digit maps to its value and anything else is absent.
+*/
+support.isWhiteSpace = function(c) { return PARSE_INT_CHARS[c] === null };
+//#endif
 
 function StringBuilder() {
 	var i = 20, b = this.buffers = [ ];
