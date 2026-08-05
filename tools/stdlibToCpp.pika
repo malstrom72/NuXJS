@@ -1,56 +1,101 @@
 #! /usr/local/bin/PikaCmd
 
 include('stdlib.pika');
-run('./initPPEG.pika');
 
-vargs(@exe,, @inputFile, @outputFile);
-defaults(@inputFile, 'stdlib.js', @outputFile, 'stdlibJS.cpp');
+vargs(@exe,, @inputFile, @outputFile, @variant);
+defaults(@inputFile, 'stdlib.js', @outputFile, 'stdlibJS.cpp', @variant, 'es3');
 
 print(bake('Loading {inputFile}'));
 src = load(inputFile);
 
-// Optional standalone ES5 module next to the base library; embedded (guarded) only when present.
-es5path = replace(inputFile, 'stdlib.js', 'stdlibES5.js');
-hasES5 = (try(>es5src = load(es5path)) == void);
+/*
+	Resolves the //#if ES5, //#if !ES5, //#else and //#endif guards for one target, dropping the directive lines
+	along with the branches that do not apply. A directive owns a whole line, so what survives is exactly the
+	source you would have written without the guards, and the es3 target over an unguarded file is the identity.
+	This runs before the minifier, never inside it, which is what keeps the es3 token stream what it always was.
+*/
+preprocess => {
+	args(@source, @wantES5);
+	kept = '';
+	depth = 0;			// guards currently open
+	dead = 0;			// depth of the innermost guard whose branch is being dropped, 0 while emitting
+	tokenize(source, >{
+		d = trim($0);
+		if (d === '//#if ES5' || d === '//#if !ES5') {
+			if (dead == 0 && (d === '//#if ES5') != wantES5) dead = depth + 1;
+			++depth;
+		} else if (d === '//#else') {
+			if (depth == 0) throw('//#else outside a //#if');
+			if (dead == depth) dead = 0
+			else if (dead == 0) dead = depth;
+		} else if (d === '//#endif') {
+			if (depth == 0) throw('//#endif outside a //#if');
+			if (dead == depth) dead = 0;
+			--depth;
+		} else if (dead == 0) kept #= $0 # LF;
+	});
+	if (depth != 0) throw('Missing //#endif');
+	( kept )
+};
 
-print('Compiling parser');
+// A .js output asks for one target's plain source rather than the blob: the pristine ES3 library that stdlib.js
+// used to be, recovered from the merged file whenever you want to read or diff it.
+if (right(outputFile, 3) === '.js') {
+	save(outputFile, preprocess(src, variant === 'es5'));
+	print(bake('Wrote the {variant} source of {inputFile} to {outputFile}'));
+} else {
+	run('./initPPEG.pika');
 
-ok = ppeg.compileFunction(load('./stdlibMinifier.ppeg'), @minifier);
-if (!ok) throw("Error compiling the stdlib parser peg");
+	// Optional standalone ES5 module next to the base library; embedded (guarded) only when present.
+	es5path = replace(inputFile, 'stdlib.js', 'stdlibES5.js');
+	hasES5 = (try(>es5src = load(es5path)) == void);
 
-print('Shrinking code');
+	print('Compiling parser');
 
-ok = minifier(src, @minified, @i);
-if (!ok) throw("Failed parsing at offset " # i);
+	ok = ppeg.compileFunction(load('./stdlibMinifier.ppeg'), @minifier);
+	if (!ok) throw("Error compiling the stdlib parser peg");
 
-print(bake('Code shrunk from {length(src)} to {length(minified)}'));
+	print('Shrinking code');
 
-// Wrap minified source into escaped, column-bounded C string literals.
-toCLines => {
-	m = $0;
-	c = '';
-	for (offset = 0; offset < length(m); offset += n) {
-		for (n = min(length(m) - offset, 118)
-				; { line = '"' # (escape("\n" # m{offset:n}){3:}); length(line) > 120 }
-				; --n);
-		c #= line # LF;
+	shrink => {
+		args(@source, @what);
+		if (!minifier(source, @mini, @at)) throw(bake('Failed parsing {what} at offset {at}'));
+		print(bake('{what} shrunk from {length(source)} to {length(mini)}'));
+		( mini )
 	};
-	c
+
+	// Wrap minified source into escaped, column-bounded C string literals.
+	toCLines => {
+		m = $0;
+		c = '';
+		for (offset = 0; offset < length(m); offset += n) {
+			for (n = min(length(m) - offset, 118)
+					; { line = '"' # (escape("\n" # m{offset:n}){3:}); length(line) > 120 }
+					; --n);
+			c #= line # LF;
+		};
+		c
+	};
+
+	definition => "const char* " # $0 # " =" # LF # toCLines($1) # ";" # LF;
+
+	es5js = definition('STDLIB_JS', shrink(preprocess(src, true), 'ES5 code'));
+	es5mod = '';
+	if (hasES5) {
+		// The minifier's preserve set is fresh per call, so seed the ES5 module with the base library's @preserve
+		// header (all keywords and existing globals/props); stdlibES5.js then only declares genuinely new names.
+		es5mod = definition('STDLIB_ES5_JS', shrink(src{: search(src, '*/') + 2} # LF # es5src, 'ES5 module'));
+	};
+	es3js = definition('STDLIB_JS', shrink(preprocess(src, false), 'ES3 code'));
+
+	// One #if picks the whole ES5 side: its variant of the library plus the module that extends it. Everything
+	// here is bound before the concatenation, these helpers all keeping their state in plain globals.
+	out = "namespace NuXJS {" # LF # "#if NUXJS_ES5" # LF # es5js # es5mod
+			# "#else" # LF # es3js # "#endif" # LF # "}" # LF;
+
+	// Rewrite only on a real change, so callers can regenerate unconditionally without forcing a recompile.
+	if (try(>old = load(outputFile)) != void || old !== out) {
+		save(outputFile, out);
+		print(bake('Updated {outputFile}'));
+	} else print(bake('{outputFile} is unchanged'));
 };
-
-out = "namespace NuXJS {" # LF # "const char* STDLIB_JS =" # LF # toCLines(minified) # ";" # LF;
-
-if (hasES5) {
-	// The minifier's preserve set is fresh per call, so seed the ES5 module with the base library's @preserve
-	// header (all keywords and existing globals/props); stdlibES5.js then only declares genuinely new names.
-	es5src = src{: search(src, '*/') + 2} # LF # es5src;
-	ok = minifier(es5src, @es5minified, @j);
-	if (!ok) throw("Failed parsing ES5 at offset " # j);
-	print(bake('ES5 shrunk from {length(es5src)} to {length(es5minified)}'));
-	out #= "#if NUXJS_ES5" # LF # "const char* STDLIB_ES5_JS =" # LF # toCLines(es5minified) # ";" # LF # "#endif" # LF;
-};
-
-out #= "}" # LF;
-save(outputFile, out);
-
-print(bake('Updated {outputFile}'));

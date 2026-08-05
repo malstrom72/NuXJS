@@ -22,15 +22,12 @@ IF "%variant%"=="es5" (
 CD ..\externals\PikaCmd
 CALL .\BuildPikaCmd.cmd || GOTO error
 CD ..\..\tools
-REM Regenerate the embedded stdlib when any input is newer than the generated file.
-SET regen=0
-FOR %%F IN (..\src\stdlib.js ..\src\stdlibES5.js .\stdlibToCpp.pika .\stdlibMinifier.ppeg) DO (
-	FOR /F %%R IN ('DIR /B /O:D "%%F" "..\src\stdlibJS.cpp" 2^>NUL') DO SET newest=%%R
-	IF NOT "!newest!"=="stdlibJS.cpp" SET regen=1
-)
-IF "!regen!"=="1" ..\externals\PikaCmd\PikaCmd.exe .\stdlibToCpp.pika ..\src\stdlib.js ..\src\stdlibJS.cpp || GOTO error
-IF "%target%"=="release" SET CPP_OPTIONS=/GR- %CPP_OPTIONS%
+REM The blob carries the guarantee that the es3 build has not moved, so never risk a stale one on an mtime
+REM comparison that a checkout can defeat. Regenerating costs a second and rewrites the file only when it changes.
 MKDIR ..\output >NUL 2>&1
+..\externals\PikaCmd\PikaCmd.exe .\stdlibToCpp.pika ..\src\stdlib.js ..\src\stdlibJS.cpp || GOTO error
+..\externals\PikaCmd\PikaCmd.exe .\stdlibToCpp.pika ..\src\stdlib.js ..\output\stdlib.es3.js es3 || GOTO error
+IF "%target%"=="release" SET CPP_OPTIONS=/GR- %CPP_OPTIONS%
 CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJSTest%suffix%_%target%_%model%.exe .\NuXJSTest.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
 ..\output\NuXJSTest%suffix%_%target%_%model% -s >NUL 2>&1 || GOTO error
 ..\output\NuXJSTest%suffix%_%target%_%model% || GOTO error
