@@ -46,10 +46,6 @@ if (right(outputFile, 3) === '.js') {
 } else {
 	run('./initPPEG.pika');
 
-	// Optional standalone ES5 module next to the base library; embedded (guarded) only when present.
-	es5path = replace(inputFile, 'stdlib.js', 'stdlibES5.js');
-	hasES5 = (try(>es5src = load(es5path)) == void);
-
 	print('Compiling parser');
 
 	ok = ppeg.compileFunction(load('./stdlibMinifier.ppeg'), @minifier);
@@ -79,20 +75,12 @@ if (right(outputFile, 3) === '.js') {
 
 	definition => "const char* " # $0 # " =" # LF # toCLines($1) # ";" # LF;
 
-	es5source = preprocess(src, true);
-	es5js = definition('STDLIB_JS', shrink(es5source, 'ES5 code'));
-	es5mod = '';
-	if (hasES5) {
-		// The minifier's preserve set is fresh per call, so seed the ES5 module with the base library's @preserve
-		// header (all keywords and existing globals/props); stdlibES5.js then only declares genuinely new names.
-		// Seeded from the resolved ES5 source, so a guard around a @preserve line means what it says.
-		es5mod = definition('STDLIB_ES5_JS', shrink(es5source{: search(es5source, '*/') + 2} # LF # es5src, 'ES5 module'));
-	};
+	es5js = definition('STDLIB_JS', shrink(preprocess(src, true), 'ES5 code'));
 	es3js = definition('STDLIB_JS', shrink(preprocess(src, false), 'ES3 code'));
 
-	// One #if picks the whole ES5 side: its variant of the library plus the module that extends it. Everything
-	// here is bound before the concatenation, these helpers all keeping their state in plain globals.
-	out = "namespace NuXJS {" # LF # "#if NUXJS_ES5" # LF # es5js # es5mod
+	// One #if picks the target's variant of the library. Everything here is bound before the concatenation, these
+	// helpers all keeping their state in plain globals.
+	out = "namespace NuXJS {" # LF # "#if NUXJS_ES5" # LF # es5js
 			# "#else" # LF # es3js # "#endif" # LF # "}" # LF;
 
 	// Rewrite only on a real change, so callers can regenerate unconditionally without forcing a recompile.
