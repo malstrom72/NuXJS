@@ -11,8 +11,22 @@ the calls a human made:
 
 - `BAD TEST` - the test itself is wrong.
 - `BY DESIGN` - NuXJS deliberately differs.
-- `ES >5.1` - out of scope, but the frontmatter does not say so (58 tests carry no edition id).
+- `ES >5.1` - out of scope, but the frontmatter does not say so. Mostly tests rewritten for a later edition that
+  kept their `es5id`, which is the common case: `Object.seal(0)` must throw per 15.2.3.8 step 1 and does not per
+  ES2015, and 15.4.4.x reads `length` with ToUint32 where ES2015 reads it with ToLength.
 - `TBD` / `TODO` - triaged, not yet resolved.
+
+An entry may carry a `reason` alongside its `category`. The dashboard reads only `category`, so the field costs it
+nothing, but a bare call cannot be audited without redoing the whole analysis, and a wrong call is invisible and
+permanent: it removes the test from the failure list and reports the gap as fine. Cite the clause, and say how the
+call was checked. Prefer leaving a test red over a call you cannot support, since a false red costs an afternoon
+and a false green costs conformance.
+
+Establish the call per test rather than per pattern. Matching on a test's `description` is not enough: of the
+Array `length` failures, 46 described themselves that way, 43 had a `length` literal that actually discriminates
+between the two editions, and only 30 could be *proven* - by substituting the ToLength value into the test and
+confirming NuXJS then passes it, which shows the coercion is the whole of the difference. The other 13 fail for
+reasons the coercion does not explain and are still red.
 
 Retargeting to a later edition is the `TARGET` object at the top of `tools/testdash.node.js`.
 
