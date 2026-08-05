@@ -144,6 +144,16 @@ function int(v) { return ($isNaN(v = +v) || v === 0) ? 0 : (v < 0 ? -$floor(-v) 
 // 9.5 ToInt32 and 9.6 ToUint32 are exactly what these operators do, so neither needs to truncate first.
 function int32(v) { return v | 0; }
 function uint32(v) { return v >>> 0; }
+//#if ES5
+
+// 9.9 ToObject, which throws for null and undefined where the Object constructor makes a fresh object of them.
+// Step 1 of every generic Array method below, and the reason all of them have to be strict code: 10.4.3 would
+// otherwise have replaced a null this with the global object before the function body ever ran.
+function toObject(v, what) {
+	if (v == null) throw typeError("Array.prototype." + what + " called on null or undefined");
+	return Object(v)
+}
+//#endif
 
 // TODO : what a waste of cycles, could be a simple OBJ_TO_STRING, problem with ''+s is that it uses OBJ_TO_NUMBER which only affects the priority of toString vs valueOf... so subtle!
 function str(o) { return '' + (isPrimitive(o) ? o : support.toPrimitiveString(o)) }
@@ -700,6 +710,7 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		}
 		return s.build();
 	}),
+//#if !ES5
 	pop: unconstructable(function pop() {
 		var len, result = void 0;
 		if (len = uint32(this.length)) {
@@ -738,6 +749,66 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		this.length = len;
 		return elementZero;
 	}),
+//#else
+	/*
+		15.4.4.6-13, the mutators, restated for ES5. The algorithms are the ones above, holes and array-likes
+		included; what the ES5 editions add is Throw = true on every [[Put]] and [[Delete]], where the ES3 editions
+		had no Throw flag at all and a refused store was silent. Being strict IS that flag, 8.7.2 and 11.4.1 raising
+		a refused store or delete into the TypeError the spec asks for, and it is also what keeps `length` from
+		running ahead of an element that was never stored, on a non-extensible array or past a read-only length.
+		Strictness is why these are whole alternative entries rather than a guarded line inside the ES3 bodies: a
+		directive prologue applies to the entire function.
+	*/
+	// 4.a in both pop and shift: an empty array still gets the length store, so a read-only length throws there too.
+	pop: unconstructable(function pop() {
+		"use strict";
+		var o = toObject(this, "pop"), len = o.length >>> 0, element;
+		if (len !== 0) {
+			element = o[--len];
+			delete o[len];
+		}
+		o.length = len;
+		return element;
+	}),
+	push: unconstructable(function push(item) {
+		"use strict";
+		var o = toObject(this, "push"), n = o.length >>> 0, argv = arguments;
+		for (var i = 0; i < argv.length; ++i) {
+			o[n] = argv[i];
+			++n;
+		}
+		o.length = n;
+		return n;
+	}),
+	reverse: unconstructable(function reverse() {
+		"use strict";
+		var o = toObject(this, "reverse"), len = o.length >>> 0, middle = $floor(len / 2), last = len - 1, lower = 0;
+		for (; lower !== middle; ++lower) {
+			var upper = last - lower;
+			var lowerValue = o[lower], upperValue = o[upper];			// 6.4 and 6.5 read both before either is stored
+			var lowerExists = lower in o, upperExists = upper in o;
+			if (lowerExists || upperExists) {							// 6.11: with neither there is nothing to do
+				if (upperExists) o[lower] = upperValue; else delete o[lower];
+				if (lowerExists) o[upper] = lowerValue; else delete o[upper];
+			}
+		}
+		return o;
+	}),
+	shift: unconstructable(function shift() {
+		"use strict";
+		var o = toObject(this, "shift"), len = o.length >>> 0, first, k;
+		if (len !== 0) {
+			first = o[0];
+			for (k = 1; k < len; ++k) {
+				if (k in o) o[k - 1] = o[k];
+				else delete o[k - 1];
+			}
+			delete o[--len];
+		}
+		o.length = len;
+		return first;
+	}),
+//#endif
 	slice: unconstructable(function slice(start, end) {
 		var a = [ ], len = uint32(this.length);
 		if ((start = int(start)) < 0) { start += len; if (start < 0) start = 0; }
@@ -795,6 +866,7 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		qsort(0, this.length >>> 0);
 		return this;
 	}),
+//#if !ES5
 	splice: unconstructable(function splice(start, deleteCount) {
 		var a = [ ], len = uint32(this.length), argv, argc = (argv = arguments).length, end, itemCount, move;
 		if ((start = int(start)) < 0) { start += len; if (start < 0) start = 0; }
@@ -817,6 +889,37 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		this.length = len + move;
 		return a;
 	}),
+//#else
+	// Strict for the Throw flag, as pop above. The `length` of splice is 2, so both are formal parameters even
+	// though deleteCount is read through `arguments`.
+	splice: unconstructable(function splice(start, deleteCount) {
+		"use strict";
+		var o = toObject(this, "splice"), a = [ ], len = o.length >>> 0, argv = arguments, argc = argv.length, k, n, to;
+		if ((start = int(start)) < 0) { if ((start += len) < 0) start = 0; }
+		else if (start > len) start = len;
+		// 7: min(max(ToInteger(deleteCount), 0), len - start). Taken literally that makes a.splice(i) delete nothing,
+		// since ToInteger(undefined) is 0; no engine has ever done that and ES2015 rewrote the step to say len - start,
+		// which is what the entry above does too, so es5 keeps it. With no arguments at all nothing is deleted either.
+		var count = (argc === 0 ? 0 : argc === 1 ? len - start : int(deleteCount));
+		if (count < 0) count = 0;
+		else if (count > len - start) count = len - start;
+		for (k = 0; k < count; ++k) if (start + k in o) a[k] = o[start + k];
+		a.length = count;	// 15.4.4.12 omits this step, but every edition since sets it, and so does the entry above
+		// 12 and 13 are one loop: the tail shifts by `move`, walked away from the direction it is overwriting. Only a
+		// shrink leaves a stale tail above the new length, and only then is the trailing delete loop non-empty.
+		var itemCount = (argc > 2 ? argc - 2 : 0), move = itemCount - count, tail = len - count, step = (move < 0 ? 1 : -1);
+		if (move !== 0) {
+			for (n = tail - start, k = (move < 0 ? start : tail - 1); n-- > 0; k += step) {
+				to = k + itemCount;
+				if (k + count in o) o[to] = o[k + count]; else delete o[to];
+			}
+			for (k = len; k > len + move; --k) delete o[k - 1];
+		}
+		for (k = 0; k < itemCount; ++k) o[start + k] = argv[k + 2];
+		o.length = len + move;
+		return a;
+	}),
+//#endif
 	toLocaleString: unconstructable(function toLocaleString() {
 		var len = uint32(this.length), builder = new StringBuilder, element;
 		for (var k = 0; k < len; ++k) {
@@ -829,6 +932,7 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		checkClass(this, "Array", "toString");
 		return this.join();
 	}),
+//#if !ES5
 	unshift: unconstructable(function unshift(item1) {
 		var len, argv, n = (argv = arguments).length;
 		if (len = uint32(this.length)) {
@@ -840,6 +944,19 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		for (var i = 0; i < n; ++i) this[i] = argv[i];
 		return (this.length = len + n);
 	})
+//#else
+	// Strict for the Throw flag, as pop above.
+	unshift: unconstructable(function unshift(item) {
+		"use strict";
+		var o = toObject(this, "unshift"), len = o.length >>> 0, argv = arguments, argc = argv.length, k, to;
+		for (k = len; k-- > 0; ) {
+			to = k + argc;
+			if (k in o) o[to] = o[k]; else delete o[to];
+		}
+		for (k = 0; k < argc; ++k) o[k] = argv[k];
+		return (o.length = len + argc);
+	})
+//#endif
 });
 
 /* --- Date --- */
@@ -2079,30 +2196,18 @@ defineProperties(Date, { dontEnum: true }, {
 	now: unconstructable(function now() { return support.getCurrentTime() })
 });
 
-/*
-	15.4.4.11 hands the present elements to the base sort and then writes the permutation back strictly, which is
-	what supplies the Throw flag; the ordering itself is unchanged. SortCompare's ranking falls out of that: the base
-	comparator already sorts undefined last, and lifting the holes out puts them after even those. This is the one
-	place an ES3 entry is still needed under ES5, so Array.prototype.sort above is not guarded away.
-*/
-var $sort = Array.prototype.sort;
+var $sort = Array.prototype.sort;	// captured before the entry below replaces it
 
 /*
-	Everything whose first step is CheckObjectCoercible or ToObject on the this value, and every method that stores
-	through [[Put]] or [[Delete]] with Throw = true. Both need strict code: 10.4.3 substitutes the global object for
-	a null or undefined this in a non-strict function, which would make the required TypeError unreachable, and 8.7.2
-	and 11.4.1 only raise a refused store or delete into a TypeError when the code is strict. The ES3 editions of the
-	mutators had no Throw flag at all, so a refused store was silent. Strict mode also leaves `arguments` unmapped,
-	which is what the "was the argument supplied?" tests below want.
+	Everything left whose first step is CheckObjectCoercible or ToObject on the this value, or that stores with
+	Throw = true. One IIFE rather than a directive prologue per function, since there are twelve of them: 10.4.3
+	substitutes the global object for a null or undefined this in a non-strict function, which would make the
+	required TypeError unreachable, and 8.7.2 and 11.4.1 only raise a refused store or delete into a TypeError when
+	the code is strict. Strict mode also leaves `arguments` unmapped, which is what the "was the argument supplied?"
+	tests below want. The file as a whole cannot be strict: evalThere assigns to `eval`, which strict mode forbids.
 */
 (function() {
 "use strict";
-
-// Step 1 of every array method below: ToObject(this), which throws for null and undefined (9.9).
-function toObject(v, what) {
-	if (v == null) throw typeError("Array.prototype." + what + " called on null or undefined");
-	return Object(v)
-}
 
 // "If IsCallable(callbackfn) is false, throw a TypeError exception." Runs after length is read, never before.
 function checkCallback(f, what) {
@@ -2155,90 +2260,13 @@ defineProperties(Date.prototype, { dontEnum: true }, {
 });
 
 defineProperties(Array.prototype, { dontEnum: true }, {
-	// 15.4.4.6-13, the mutators. The algorithms are unchanged from the entries they supersede, holes and array-likes
-	// included; what strictness adds is the Throw flag, which also stops `length` from running ahead of an element
-	// that was never stored, on a non-extensible array or past a read-only length.
-	push: unconstructable(function push(item) {
-		var o = toObject(this, "push"), n = o.length >>> 0, argv = arguments;
-		for (var i = 0; i < argv.length; ++i) {
-			o[n] = argv[i];
-			++n;
-		}
-		o.length = n;
-		return n;
-	}),
-	// 4.a in both pop and shift: an empty array still gets the length store, so a read-only length throws there too.
-	pop: unconstructable(function pop() {
-		var o = toObject(this, "pop"), len = o.length >>> 0, element;
-		if (len !== 0) {
-			element = o[--len];
-			delete o[len];
-		}
-		o.length = len;
-		return element;
-	}),
-	shift: unconstructable(function shift() {
-		var o = toObject(this, "shift"), len = o.length >>> 0, first, k;
-		if (len !== 0) {
-			first = o[0];
-			for (k = 1; k < len; ++k) {
-				if (k in o) o[k - 1] = o[k];
-				else delete o[k - 1];
-			}
-			delete o[--len];
-		}
-		o.length = len;
-		return first;
-	}),
-	unshift: unconstructable(function unshift(item) {
-		var o = toObject(this, "unshift"), len = o.length >>> 0, argv = arguments, argc = argv.length, k, to;
-		for (k = len; k-- > 0; ) {
-			to = k + argc;
-			if (k in o) o[to] = o[k]; else delete o[to];
-		}
-		for (k = 0; k < argc; ++k) o[k] = argv[k];
-		return (o.length = len + argc);
-	}),
-	reverse: unconstructable(function reverse() {
-		var o = toObject(this, "reverse"), len = o.length >>> 0, middle = $floor(len / 2), last = len - 1, lower = 0;
-		for (; lower !== middle; ++lower) {
-			var upper = last - lower;
-			var lowerValue = o[lower], upperValue = o[upper];			// 6.4 and 6.5 read both before either is stored
-			var lowerExists = lower in o, upperExists = upper in o;
-			if (lowerExists || upperExists) {							// 6.11: with neither there is nothing to do
-				if (upperExists) o[lower] = upperValue; else delete o[lower];
-				if (lowerExists) o[upper] = lowerValue; else delete o[upper];
-			}
-		}
-		return o;
-	}),
-	// The `length` of splice is 2, so both are formal parameters even though deleteCount is read through `arguments`.
-	splice: unconstructable(function splice(start, deleteCount) {
-		var o = toObject(this, "splice"), a = [ ], len = o.length >>> 0, argv = arguments, argc = argv.length, k, n, to;
-		if ((start = int(start)) < 0) { if ((start += len) < 0) start = 0; }
-		else if (start > len) start = len;
-		// 7: min(max(ToInteger(deleteCount), 0), len - start). Taken literally that makes a.splice(i) delete nothing,
-		// since ToInteger(undefined) is 0; no engine has ever done that and ES2015 rewrote the step to say len - start,
-		// which is what the entry above does too, so es5 keeps it. With no arguments at all nothing is deleted either.
-		var count = (argc === 0 ? 0 : argc === 1 ? len - start : int(deleteCount));
-		if (count < 0) count = 0;
-		else if (count > len - start) count = len - start;
-		for (k = 0; k < count; ++k) if (start + k in o) a[k] = o[start + k];
-		a.length = count;	// 15.4.4.12 omits this step, but every edition since sets it, and so does the entry above
-		// 12 and 13 are one loop: the tail shifts by `move`, walked away from the direction it is overwriting. Only a
-		// shrink leaves a stale tail above the new length, and only then is the trailing delete loop non-empty.
-		var itemCount = (argc > 2 ? argc - 2 : 0), move = itemCount - count, tail = len - count, step = (move < 0 ? 1 : -1);
-		if (move !== 0) {
-			for (n = tail - start, k = (move < 0 ? start : tail - 1); n-- > 0; k += step) {
-				to = k + itemCount;
-				if (k + count in o) o[to] = o[k + count]; else delete o[to];
-			}
-			for (k = len; k > len + move; --k) delete o[k - 1];
-		}
-		for (k = 0; k < itemCount; ++k) o[start + k] = argv[k + 2];
-		o.length = len + move;
-		return a;
-	}),
+	/*
+		15.4.4.11 hands the present elements to the base sort and then writes the permutation back strictly, which is
+		what supplies the Throw flag; the ordering itself is unchanged. SortCompare's ranking falls out of that: the
+		base comparator already sorts undefined last, and lifting the holes out puts them after even those. This is the
+		one place the ES3 entry is still needed under ES5, which is why sort above is not a guarded alternative like the
+		other six mutators.
+	*/
 	sort: unconstructable(function sort(comparefn) {
 		var o = toObject(this, "sort"), len = o.length >>> 0, v = [ ], k;
 		if (len < 2) return o;	// nothing can move, so nothing is stored: a frozen empty or single array must not throw

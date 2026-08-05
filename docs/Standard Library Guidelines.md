@@ -29,10 +29,15 @@ Keep a guard around whole entries rather than inside a shared body, per D1 in `d
 implementations of a method read far better side by side than one implementation interleaved with directives.
 
 Anything whose first step is CheckObjectCoercible or ToObject on the this value, and anything that stores with
-Throw = true, has to sit inside the strict IIFE in that section. A non-strict function never sees a null or
-undefined `this`, because 10.4.3 substitutes the global object at frame entry, so the TypeError the spec asks for
-would be unreachable. The file as a whole cannot be strict: `evalThere` assigns to `eval`, which strict mode makes
-a SyntaxError.
+Throw = true, has to be strict code. A non-strict function never sees a null or undefined `this`, because 10.4.3
+substitutes the global object at frame entry, so the TypeError the spec asks for would be unreachable; and 8.7.2
+and 11.4.1 only raise a refused store or delete into a TypeError when the code is strict. The file as a whole
+cannot be strict: `evalThere` assigns to `eval`, which strict mode makes a SyntaxError.
+
+That leaves two shapes, and the count decides. A guarded alternative entry carries its own `"use strict";`
+prologue, which is what the six array mutators do, since a directive applies to the whole function and so cannot
+be a guarded line inside a shared ES3 body. Where a dozen methods need it at once, one strict IIFE at the end of
+the ES5 section is cheaper than a dozen prologues.
 
 `bash tools/buildAndTest.sh` writes `output/stdlib.es3.js`, the ES3 library recovered from the merged file with
 every guard resolved away. Read it, or diff it against a previous revision, whenever you want the pristine ES3
