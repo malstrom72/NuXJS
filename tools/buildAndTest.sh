@@ -19,10 +19,11 @@ if [ ! -e ./PikaCmd ]; then
 fi
 bash ./BuildPikaCmd.sh
 cd ../../tools
-if [ "../src/stdlib.js" -nt "../src/stdlibJS.cpp" ] || [ "../src/stdlibES5.js" -nt "../src/stdlibJS.cpp" ] \
-		|| [ "./stdlibToCpp.pika" -nt "../src/stdlibJS.cpp" ] || [ "./stdlibMinifier.ppeg" -nt "../src/stdlibJS.cpp" ]; then
-	../externals/PikaCmd/PikaCmd ./stdlibToCpp.pika ../src/stdlib.js ../src/stdlibJS.cpp
-fi
+# The blob carries the guarantee that the es3 build has not moved, so never risk a stale one on an mtime
+# comparison that a checkout can defeat. Regenerating costs a second and rewrites the file only when it changes.
+mkdir ../output >/dev/null 2>&1 || true
+../externals/PikaCmd/PikaCmd ./stdlibToCpp.pika ../src/stdlib.js ../src/stdlibJS.cpp
+../externals/PikaCmd/PikaCmd ./stdlibToCpp.pika ../src/stdlib.js ../output/stdlib.es3.js es3
 opts=""
 if [ "$variant" == "es5" ]; then
 	opts="-DNUXJS_ES5=1"
@@ -31,7 +32,6 @@ if [ "$target" == "release" ]; then
 	opts="-fno-rtti $opts"
 fi
 export CPP_OPTIONS="$opts"	# always reset so a CPP_OPTIONS inherited from the environment cannot leak into a build
-mkdir ../output >/dev/null 2>&1 || true
 bash ./BuildCpp.sh $target $model ../output/NuXJSTest${suffix}_${target}_${model} ../tools/NuXJSTest.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
 ../output/NuXJSTest${suffix}_${target}_${model} -s >/dev/null 2>&1
 ../output/NuXJSTest${suffix}_${target}_${model}

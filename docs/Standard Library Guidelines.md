@@ -1,14 +1,34 @@
 # Standard Library Guidelines
 
-The standard library lives in `src/stdlib.js` and ships as one minified string in `src/stdlibJS.cpp`. After editing
-it, run `bash tools/buildAndTest.sh release x64` to regenerate the blob and run the regression tests. The
-regeneration is gated on `src/stdlib.js` being newer than `src/stdlibJS.cpp`, and a `git checkout` can write both in
-the same second and silently skip it, so `touch src/stdlib.js` if you suspect you are testing a stale blob.
+The standard library lives in `src/stdlib.js` and ships as minified strings in `src/stdlibJS.cpp`. After editing
+it, run `bash tools/buildAndTest.sh release x64` to regenerate the blob and run the regression tests. That
+regeneration is unconditional, the generator rewriting `src/stdlibJS.cpp` only when its content actually changes,
+so there is no mtime gate left to defeat and no stale blob to test against.
 
 `src/stdlibES5.js` is a second module built by the same pipeline into the same blob, run only in `NUXJS_ES5`
 builds. Everything below applies to it unchanged, the hijack rule most of all: it shares the object graph too, and
 being written later is no protection. It gets a fresh rename map but is seeded with `src/stdlib.js`'s `@preserve`
 header, so it need only declare names that file does not already list.
+
+## Conditional compilation
+
+`src/stdlib.js` serves both language targets. `//#if ES5`, `//#if !ES5`, `//#else` and `//#endif` select what each
+one sees, and `tools/stdlibToCpp.pika` resolves them twice, emitting both variants under one `#if NUXJS_ES5` in the
+blob. Guards nest.
+
+The pass is line-based and runs *before* the minifier, so a directive owns its whole line (leading tabs are fine,
+trailing text is not), and what reaches the minifier is exactly the source you would have written without the
+guards. That is what keeps the ES3 blob byte for byte what it has always been, which is the invariant the whole
+lift rests on: the ES3 release binary must not move. Being line-based, the pass also has no idea about JavaScript,
+so a directive spelled out inside a string literal or a block comment is still acted on.
+
+`bash tools/buildAndTest.sh` writes `output/stdlib.es3.js`, the ES3 library recovered from the merged file with
+every guard resolved away. Read it, or diff it against a previous revision, whenever you want the pristine ES3
+source rather than the two targets interleaved. Ask for the other side with
+
+	PikaCmd ./stdlibToCpp.pika ../src/stdlib.js ../output/stdlib.es5.js es5
+
+Any `.js` output selects this mode; anything else generates the blob.
 
 General code style is in `docs/Coding Style.md`. This file covers what is specific to the library, including where
 it deliberately departs from that document.
