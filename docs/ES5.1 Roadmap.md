@@ -339,9 +339,23 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
       (`tests/es5/arrayMutatorThrowFlag.io`, `tests/es3only/arrayMutatorNoThrowFlag.io`)
 - [x] `String.prototype.trim` with the full ES5 WhiteSpace + LineTerminator set (§15.5.4.20) - first
       ES5 library feature, proving the pipeline. (`tests/es5/stringTrim.io`) Its CheckObjectCoercible guard was
-      dead until it moved into the strict block: a non-strict built-in never sees a null `this`.
+      dead until it moved into strict code: a non-strict built-in never sees a null `this`. That observation is
+      what turned up the 27 methods below with the same dead step.
 - [x] String character indices are non-writable, non-configurable own data properties (§15.5.5.2) - already
       conformant (`writable:false enumerable:true configurable:false`). Needs a test.
+- [x] CheckObjectCoercible / ToObject on the this value, step 1 of 26 prototype methods that had it silently dead:
+      the 17 `String.prototype` methods of §15.5.4.4-19, `concat`, `join`, `slice` and `toLocaleString` on
+      `Array.prototype` (§15.4.4.3-10), and `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`,
+      `toLocaleString` and `valueOf` on `Object.prototype` (§15.2.4.3-7). §10.4.3 substituted the global object for
+      a null this at frame entry, so `"".charAt.call(null, 0)` answered `"["` off `"[object global]"` rather than
+      throwing; the fix is to make each table a guarded strict IIFE, which costs nothing in the ES3 source, and add
+      one `coercible(this, ...)` line per entry. §15.2.4.6 needed care: it tests V *before* ToObject(this), so a
+      primitive V still answers false. `valueOf` and `Object.prototype.toString` became guarded alternative entries,
+      the former because §15.2.4.4 returns ToObject(this) rather than this. All 55 cases match V8.
+      (`tests/es5/checkObjectCoercible.io`, `tests/es3only/globalsFromUndefinedOrNullThis.io`)
+      DEVIATION left standing: `Number.prototype.toLocaleString` and `Date.prototype.toLocaleString` are the same
+      function object as `Object.prototype.toLocaleString`, where §15.7.4.2 and §15.9.5.5 specify three distinct
+      ones. They inherit the check correctly, but `===` can tell.
 
 ### Tests
 - iteration methods incl. sparse/`thisArg`/early-exit; `sort` no-comparator; `trim` unicode; string index immutability.

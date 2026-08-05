@@ -146,9 +146,20 @@ function int32(v) { return v | 0; }
 function uint32(v) { return v >>> 0; }
 //#if ES5
 
-// 9.9 ToObject, which throws for null and undefined where the Object constructor makes a fresh object of them.
-// Step 1 of every generic Array method below, and the reason all of them have to be strict code: 10.4.3 would
-// otherwise have replaced a null this with the global object before the function body ever ran.
+/*
+	9.10 CheckObjectCoercible and 9.9 ToObject, which reject null and undefined where the Object constructor makes
+	fresh objects of them. One or the other is step 1 of nearly every prototype method, and the reason all of those
+	have to be strict code is 10.4.3: a non-strict function has the global object substituted for a null this at
+	frame entry, so the step can never fail and the whole check is dead. Nor can the test fold into str(), which is
+	applied to arguments as well, where ToString(null) is correctly "null". `what` is the full property path, that
+	being the only thing the callers differ in. Array.prototype gets a second helper rather than sharing this one,
+	its methods wanting the ToObject result and its name being far too hot a path to build a message on every call.
+*/
+function coercible(v, what) {
+	if (v == null) throw typeError(what + " called on null or undefined");
+	return v
+}
+
 function toObject(v, what) {
 	if (v == null) throw typeError("Array.prototype." + what + " called on null or undefined");
 	return Object(v)
@@ -286,23 +297,74 @@ var Object = function Object(v) {
 	}
 };
 defineProperties(Object, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Object });
+//#if ES5
+// 15.2.4: step 1 of every method below is ToObject(this), which only strict code can ever fail. The entries keep
+// their indentation, this wrapper being invisible to the ES3 source.
+(function() {
+"use strict";
+//#endif
 defineProperties(Object.prototype, { dontEnum: true }, {
 	constructor: Object,
+//#if !ES5
 	valueOf: unconstructable(function valueOf() { return this }),
+//#else
+	// 15.2.4.4 returns ToObject(this), which for a boxed receiver is the receiver itself; the conversion matters
+	// only for null and undefined, and for the day `this` reaches a callee as a Value rather than as an object.
+	valueOf: unconstructable(function valueOf() { return Object(coercible(this, "Object.prototype.valueOf")) }),
+//#endif
+//#if !ES5
 	toLocaleString: unconstructable(function toLocaleString() { return this.toString() }),
+//#else
+	toLocaleString: unconstructable(function toLocaleString() {	// 15.2.4.3 step 1
+		coercible(this, "Object.prototype.toLocaleString");
+		return this.toString();
+	}),
+//#endif
+//#if !ES5
 	toString: unconstructable(function toString() {
 		var s;
 		return "[object " + (((s = $getInternalProperty(this, "class")) === "Arguments") ? "Object" : s) + ']'
 	}),
+//#else
+	/*
+		15.2.4.2 gained explicit undefined and null cases, and 10.6 gave the arguments object the class "Arguments"
+		where ES3 10.1.8 gave it "Object", which is what the entry above maps back.
+		DEVIATION: `this` reaches a callee as an object reference, so a null receiver is indistinguishable from an
+		undefined one and reports "[object Undefined]". Fixing that needs the `this`-as-a-Value change deferred in
+		docs/notes/ECMAScript Compatibility Notes.md.
+	*/
+	toString: unconstructable(function toString() {
+		if (this == null) return "[object Undefined]";
+		return "[object " + $getInternalProperty(Object(this), "class") + ']';
+	}),
+//#endif
+//#if !ES5
 	hasOwnProperty: unconstructable(function hasOwnProperty(name) { return support.hasOwnProperty(this, str(name)) }),
 	propertyIsEnumerable: unconstructable(function propertyIsEnumerable(name) { return support.isPropertyEnumerable(this, str(name)) }),
+//#else
+	// 15.2.4.5 and 15.2.4.7 take ToObject(this) as step 2, after ToString(P); the natives answer false rather than
+	// throwing for a non-object, so the step has to be spelled out here.
+	hasOwnProperty: unconstructable(function hasOwnProperty(name) {
+		return support.hasOwnProperty(coercible(this, "Object.prototype.hasOwnProperty"), str(name));
+	}),
+	propertyIsEnumerable: unconstructable(function propertyIsEnumerable(name) {
+		return support.isPropertyEnumerable(coercible(this, "Object.prototype.propertyIsEnumerable"), str(name));
+	}),
+//#endif
 	isPrototypeOf: unconstructable(function isPrototypeOf(v) {
+//#if ES5
+		if (isPrimitive(v)) return false;	// 15.2.4.6 tests V before step 2, so a primitive V never reaches ToObject
+		coercible(this, "Object.prototype.isPrototypeOf");
+//#endif
 		while (v = $getInternalProperty(v, "prototype")) {
 			if (v === this) return true;
 		}
 		return false;
 	})
 });
+//#if ES5
+})();
+//#endif
 
 /* --- Function --- */
 
@@ -501,37 +563,64 @@ defineProperties(String, { dontEnum: true }, {
 		return s;
 	})
 });
+//#if ES5
+// 15.5.4: step 1 of every method below is CheckObjectCoercible(this), which only strict code can ever fail,
+// so the whole table is strict. The entries keep their indentation, this wrapper being invisible to the ES3 source.
+(function() {
+"use strict";
+//#endif
 defineProperties(String.prototype, { dontEnum: true }, {
 	constructor: String,
 	charAt: unconstructable(function charAt(pos) {
+//#if ES5
+		coercible(this, "String.prototype.charAt");
+//#endif
 		var s;
 		return (((pos = int(pos)) < 0 || pos >= (s = str(this)).length) ? '' : s[pos]);
 	}),
 	charCodeAt: unconstructable(function charCodeAt(pos) {
+//#if ES5
+		coercible(this, "String.prototype.charCodeAt");
+//#endif
 		return $charCodeAt(str(this), +pos);
 	}),
 	concat: unconstructable(function concat(string1) {
+//#if ES5
+		coercible(this, "String.prototype.concat");
+//#endif
 		var args, n = (args = arguments).length, s = str(this);
 		for (var i = 0; i < n; ++i) s += str(args[i]);
 		return s;
 	}),
 	indexOf: unconstructable(function indexOf(searchString) { // .length should be 1
+//#if ES5
+		coercible(this, "String.prototype.indexOf");
+//#endif
 		var s, i, e = (s = str(this)).length - (searchString = str(searchString)).length, pos = arguments[1];
 		if ((i = int(pos)) < 0) i = 0;
 		for (; i <= e; ++i) if ($match(s, i, searchString)) return i;
 		return -1;
 	}),
 	lastIndexOf: unconstructable(function lastIndexOf(searchString) { // .length should be 1
+//#if ES5
+		coercible(this, "String.prototype.lastIndexOf");
+//#endif
 		var s, i, e = (s = str(this)).length - (searchString = str(searchString)).length, pos = arguments[1];
 		if ($isNaN(pos = +pos) || (i = int(pos)) > e) i = e;
 		for (; i >= 0; --i) if ($match(s, i, searchString)) return i;
 		return -1;
 	}),
 	localeCompare: unconstructable(function localeCompare(that) {
+//#if ES5
+		coercible(this, "String.prototype.localeCompare");
+//#endif
 		var me, him;
 		return ((me = str(this)) === (him = str(that)) ? 0 : (me < him ? -1 : 1));
 	}),
 	match: unconstructable(function match(regexp) {
+//#if ES5
+		coercible(this, "String.prototype.match");
+//#endif
 		if ($getInternalProperty(regexp, "class") !== "RegExp") regexp = new RegExp(regexp);
 		var s = str(this);
 		if (!regexp.global) return regExpExecMethod(regexp, s);
@@ -542,6 +631,9 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		} while (true);
 	}),
 	replace: unconstructable(function replace(searchValue, replaceValue) {
+//#if ES5
+		coercible(this, "String.prototype.replace");
+//#endif
 		var s, sLength = (s = str(this)).length, matches, i, p, t, l, e, replaceFunction = replaceValue, replacementValue;
 		function makeStringReplacer(r) {
 			for (var scan = r.length; --scan >= 0 && r[scan] != '$';);
@@ -605,12 +697,18 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		}
 	}),
 	search: unconstructable(function search(regexp) {
+//#if ES5
+		coercible(this, "String.prototype.search");
+//#endif
 		if ($getInternalProperty(regexp, "class") !== "RegExp") regexp = new RegExp(regexp);
 		var s, len = (s = str(this)).length, f = $getInternalProperty(regexp, "value");
 		for (var i = 0; i <= len; ++i) if (f(s, i)) return i;
 		return -1;
 	}),
 	slice: unconstructable(function slice(start, end) {
+//#if ES5
+		coercible(this, "String.prototype.slice");
+//#endif
 		var s = str(this);
 		if ((start = int(start)) < 0) start += s.length;
 		if (end === void 0) end = $Infinity;
@@ -618,6 +716,9 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		return $sub(s, start, end);
 	}),
 	split: unconstructable(function split(separator, limit) {
+//#if ES5
+		coercible(this, "String.prototype.split");
+//#endif
 		var s, sLength = (s = str(this)).length, a = [ ], aLength = 0, splitMatch;
 		if (!(limit = ((limit === void 0) ? 0xFFFFFFFF : uint32(limit)))) return a;
 		if (separator === void 0) return [ s ];
@@ -646,11 +747,17 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		return a;
 	}),
 	substr: unconstructable(function substr(start, length) {
+//#if ES5
+		coercible(this, "String.prototype.substr");
+//#endif
 		var s = str(this);
 		if ((start = int(start)) < 0) start = s.length + start;
 		return $sub(s, start, (length === void 0 ? $Infinity : start + int(length)));
 	}),
 	substring: unconstructable(function substring(start, end) {
+//#if ES5
+		coercible(this, "String.prototype.substring");
+//#endif
 		start = int(start);
 		if (end === void 0) end = $Infinity;
 		else if ((end = int(end)) < start) {
@@ -660,10 +767,27 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		}
 		return $sub(str(this), start, end);
 	}),
+//#if !ES5
 	toUpperCase: unconstructable(function toUpperCase() { return toUpper(this) }),
 	toLocaleUpperCase: unconstructable(function toLocaleUpperCase() { return toUpper(this) }),
 	toLowerCase: unconstructable(function toLowerCase() { return toLower(this) }),
 	toLocaleLowerCase: unconstructable(function toLocaleLowerCase() { return toLower(this) }),
+//#else
+	// 15.5.4.16-19. The check goes on the receiver rather than inside toUpper / toLower, so that each of the four
+	// names itself in the message; they are two pairs of synonyms, the locale forms deferring to the same tables.
+	toUpperCase: unconstructable(function toUpperCase() {
+		return toUpper(coercible(this, "String.prototype.toUpperCase"));
+	}),
+	toLocaleUpperCase: unconstructable(function toLocaleUpperCase() {
+		return toUpper(coercible(this, "String.prototype.toLocaleUpperCase"));
+	}),
+	toLowerCase: unconstructable(function toLowerCase() {
+		return toLower(coercible(this, "String.prototype.toLowerCase"));
+	}),
+	toLocaleLowerCase: unconstructable(function toLocaleLowerCase() {
+		return toLower(coercible(this, "String.prototype.toLocaleLowerCase"));
+	}),
+//#endif
 	valueOf: unconstructable(function valueOf() {
 		checkClass(this, "String", "valueOf");
 		return $getInternalProperty(this, "value");
@@ -673,6 +797,9 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		return $getInternalProperty(this, "value");
 	})
 });
+//#if ES5
+})();
+//#endif
 
 /* --- Array --- */
 
@@ -687,9 +814,18 @@ var Array = function Array(v) {
 	return a
 };
 defineProperties(Array, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Array });
+//#if ES5
+// 15.4.4: the generic methods take ToObject(this) as step 1 and the ES5 mutators store with Throw = true, both
+// of which need strict code. The entries keep their indentation, this wrapper being invisible to the ES3 source.
+(function() {
+"use strict";
+//#endif
 defineProperties(Array.prototype, { dontEnum: true }, {
 	constructor: Array,
 	concat: unconstructable(function concat(item1) {
+//#if ES5
+		toObject(this, "concat");
+//#endif
 		var a = [ ], argv, argc = (argv = arguments).length, n = 0, v = this;
 		for (var i = -1; i < argc; v = argv[++i]) {
 			if ($getInternalProperty(v, "class") !== "Array") {
@@ -702,6 +838,9 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return a;
 	}),
 	join: unconstructable(function join(separator) {
+//#if ES5
+		toObject(this, "join");
+//#endif
 		var s = new StringBuilder, s2, len = uint32(this.length);
 		separator = (separator === void 0 ? ',' : str(separator));
 		for (var i = 0; i < len; ++i) {
@@ -756,12 +895,11 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		had no Throw flag at all and a refused store was silent. Being strict IS that flag, 8.7.2 and 11.4.1 raising
 		a refused store or delete into the TypeError the spec asks for, and it is also what keeps `length` from
 		running ahead of an element that was never stored, on a non-extensible array or past a read-only length.
-		Strictness is why these are whole alternative entries rather than a guarded line inside the ES3 bodies: a
-		directive prologue applies to the entire function.
+		The bodies genuinely differ beyond that, which is why these are whole alternative entries: an empty array
+		still gets its length store, and splice reads deleteCount through `arguments` rather than as a parameter.
 	*/
 	// 4.a in both pop and shift: an empty array still gets the length store, so a read-only length throws there too.
 	pop: unconstructable(function pop() {
-		"use strict";
 		var o = toObject(this, "pop"), len = o.length >>> 0, element;
 		if (len !== 0) {
 			element = o[--len];
@@ -771,7 +909,6 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return element;
 	}),
 	push: unconstructable(function push(item) {
-		"use strict";
 		var o = toObject(this, "push"), n = o.length >>> 0, argv = arguments;
 		for (var i = 0; i < argv.length; ++i) {
 			o[n] = argv[i];
@@ -781,7 +918,6 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return n;
 	}),
 	reverse: unconstructable(function reverse() {
-		"use strict";
 		var o = toObject(this, "reverse"), len = o.length >>> 0, middle = $floor(len / 2), last = len - 1, lower = 0;
 		for (; lower !== middle; ++lower) {
 			var upper = last - lower;
@@ -795,7 +931,6 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return o;
 	}),
 	shift: unconstructable(function shift() {
-		"use strict";
 		var o = toObject(this, "shift"), len = o.length >>> 0, first, k;
 		if (len !== 0) {
 			first = o[0];
@@ -810,6 +945,9 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 	}),
 //#endif
 	slice: unconstructable(function slice(start, end) {
+//#if ES5
+		toObject(this, "slice");
+//#endif
 		var a = [ ], len = uint32(this.length);
 		if ((start = int(start)) < 0) { start += len; if (start < 0) start = 0; }
 		if (end === void 0 || (end = int(end)) > len) end = len;
@@ -890,10 +1028,9 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return a;
 	}),
 //#else
-	// Strict for the Throw flag, as pop above. The `length` of splice is 2, so both are formal parameters even
-	// though deleteCount is read through `arguments`.
+	// The `length` of splice is 2, so both are formal parameters even though deleteCount is read through
+	// `arguments`.
 	splice: unconstructable(function splice(start, deleteCount) {
-		"use strict";
 		var o = toObject(this, "splice"), a = [ ], len = o.length >>> 0, argv = arguments, argc = argv.length, k, n, to;
 		if ((start = int(start)) < 0) { if ((start += len) < 0) start = 0; }
 		else if (start > len) start = len;
@@ -921,6 +1058,9 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 	}),
 //#endif
 	toLocaleString: unconstructable(function toLocaleString() {
+//#if ES5
+		toObject(this, "toLocaleString");
+//#endif
 		var len = uint32(this.length), builder = new StringBuilder, element;
 		for (var k = 0; k < len; ++k) {
 			if (k > 0) builder.append(',');
@@ -945,9 +1085,7 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return (this.length = len + n);
 	})
 //#else
-	// Strict for the Throw flag, as pop above.
 	unshift: unconstructable(function unshift(item) {
-		"use strict";
 		var o = toObject(this, "unshift"), len = o.length >>> 0, argv = arguments, argc = argv.length, k, to;
 		for (k = len; k-- > 0; ) {
 			to = k + argc;
@@ -958,6 +1096,9 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 	})
 //#endif
 });
+//#if ES5
+})();
+//#endif
 
 /* --- Date --- */
 
@@ -2232,20 +2373,6 @@ defineProperties(Function.prototype, { dontEnum: true }, {
 	// 15.3.4.5: the native side builds the bound function, since it needs internal methods JS cannot express (no
 	// `prototype`, a [[Construct]] that constructs the target, and a [[HasInstance]] that defers to it).
 	bind: unconstructable(function bind(thisArg) { return support.bindFunction(this, thisArg, arguments, 1) })
-});
-
-defineProperties(Object.prototype, { dontEnum: true }, {
-	/*
-		15.2.4.2 gained explicit undefined and null cases, and 10.6 gave the arguments object the class "Arguments"
-		where ES3 10.1.8 gave it "Object" (which is why the entry this supersedes maps that class back to "Object").
-		DEVIATION: `this` reaches a callee as an object reference, so a null receiver is indistinguishable from an
-		undefined one and reports "[object Undefined]". Fixing that needs the `this`-as-a-Value change deferred in
-		docs/notes/ECMAScript Compatibility Notes.md.
-	*/
-	toString: unconstructable(function toString() {
-		if (this == null) return "[object Undefined]";
-		return "[object " + $getInternalProperty(Object(this), "class") + ']';
-	})
 });
 
 defineProperties(Date.prototype, { dontEnum: true }, {

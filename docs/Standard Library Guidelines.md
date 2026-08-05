@@ -34,10 +34,15 @@ substitutes the global object at frame entry, so the TypeError the spec asks for
 and 11.4.1 only raise a refused store or delete into a TypeError when the code is strict. The file as a whole
 cannot be strict: `evalThere` assigns to `eval`, which strict mode makes a SyntaxError.
 
-That leaves two shapes, and the count decides. A guarded alternative entry carries its own `"use strict";`
-prologue, which is what the six array mutators do, since a directive applies to the whole function and so cannot
-be a guarded line inside a shared ES3 body. Where a dozen methods need it at once, one strict IIFE at the end of
-the ES5 section is cheaper than a dozen prologues.
+A `"use strict";` prologue applies to a whole function, so it can never be a guarded line inside a shared ES3
+body. Where a whole table needs it, wrap the `defineProperties` call in a guarded strict IIFE instead, as
+`String.prototype`, `Array.prototype` and `Object.prototype` do. Leave the entries at their original indentation:
+the wrapper is invisible to the ES3 source, and re-indenting them would not be.
+
+Since a directive owns its whole line, a guard only goes where a line ends: an entry that is a one-liner, or that
+carries a trailing comment, takes a guarded alternative entry rather than a prologue. Getting that wrong runs the
+rest of the line into the `//#endif`, which stops being a directive; the generator then reports an unbalanced
+guard, and `node --check` on `output/stdlib.es3.js` and `output/stdlib.es5.js` catches whatever survives that.
 
 `bash tools/buildAndTest.sh` writes `output/stdlib.es3.js`, the ES3 library recovered from the merged file with
 every guard resolved away. Read it, or diff it against a previous revision, whenever you want the pristine ES3
@@ -87,8 +92,8 @@ rewrite `if`/`?:`, remove braces, rewrite numbers, or touch anything inside a st
   the *code*, never the commentary. Match the file's density, which is sparse and short.
 - **Identifier length is free; identifier count is not.** Each distinct name takes a slot from a pool of 52
   single-character names before spilling to two. Prefer a name the file already uses over coining a new one, and
-  never shorten a name for the blob's sake. Both modules are long past that pool, so the cost of one more name is a
-  flat byte per occurrence rather than a cliff: worth minding, not worth contorting the code for.
+  never shorten a name for the blob's sake. The file is long past that pool, so the cost of one more name is a flat
+  byte per occurrence rather than a cliff: worth minding, not worth contorting the code for.
 - **A `@preserve` name is emitted verbatim at every occurrence, so never use one as a local.** Many read like
   ordinary variable names: `value`, `name`, `index`, `length`, `min`, `max`, `test`, `source`, `global`, `log`,
   `parse`, `time`, `input`, `match`, `call`, `apply`. Check the lists at the top of `src/stdlib.js` before naming
