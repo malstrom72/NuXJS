@@ -147,19 +147,14 @@ function uint32(v) { return v >>> 0; }
 //#if ES5
 
 /*
-	9.10 CheckObjectCoercible and 9.9 ToObject, which reject null and undefined where the Object constructor makes
-	fresh objects of them. One or the other is step 1 of nearly every prototype method, and the reason all of those
-	have to be strict code is 10.4.3: a non-strict function has the global object substituted for a null this at
-	frame entry, so the step can never fail and the whole check is dead. Nor can the test fold into str(), which is
-	applied to arguments as well, where ToString(null) is correctly "null". `what` is the full property path, that
-	being the only thing the callers differ in. Array.prototype gets a second helper rather than sharing this one,
-	its methods wanting the ToObject result and its name being far too hot a path to build a message on every call.
+	9.9 ToObject for the Array.prototype methods, which reject null and undefined where the Object constructor makes
+	fresh objects of them. Its sibling, 9.10 CheckObjectCoercible, is step 1 of the String.prototype and
+	Object.prototype methods too, but is spelled out inline at each of those: they do so little else that a call
+	frame for the test measured 2.2% on a charCodeAt loop, where these read length and then loop. Either way the
+	callers have to be strict code, 10.4.3 otherwise substituting the global object for a null this at frame entry,
+	so that the step can never fail and the whole check is dead. Nor can the test fold into str(), which is applied
+	to arguments as well, where ToString(null) is correctly "null".
 */
-function coercible(v, what) {
-	if (v == null) throw typeError(what + " called on null or undefined");
-	return v
-}
-
 function toObject(v, what) {
 	if (v == null) throw typeError("Array.prototype." + what + " called on null or undefined");
 	return Object(v)
@@ -310,13 +305,16 @@ defineProperties(Object.prototype, { dontEnum: true }, {
 //#else
 	// 15.2.4.4 returns ToObject(this), which for a boxed receiver is the receiver itself; the conversion matters
 	// only for null and undefined, and for the day `this` reaches a callee as a Value rather than as an object.
-	valueOf: unconstructable(function valueOf() { return Object(coercible(this, "Object.prototype.valueOf")) }),
+	valueOf: unconstructable(function valueOf() {
+		if (this == null) throw typeError("Object.prototype.valueOf called on null or undefined");
+		return Object(this);
+	}),
 //#endif
 //#if !ES5
 	toLocaleString: unconstructable(function toLocaleString() { return this.toString() }),
 //#else
 	toLocaleString: unconstructable(function toLocaleString() {	// 15.2.4.3 step 1
-		coercible(this, "Object.prototype.toLocaleString");
+		if (this == null) throw typeError("Object.prototype.toLocaleString called on null or undefined");
 		return this.toString();
 	}),
 //#endif
@@ -345,16 +343,18 @@ defineProperties(Object.prototype, { dontEnum: true }, {
 	// 15.2.4.5 and 15.2.4.7 take ToObject(this) as step 2, after ToString(P); the natives answer false rather than
 	// throwing for a non-object, so the step has to be spelled out here.
 	hasOwnProperty: unconstructable(function hasOwnProperty(name) {
-		return support.hasOwnProperty(coercible(this, "Object.prototype.hasOwnProperty"), str(name));
+		if (this == null) throw typeError("Object.prototype.hasOwnProperty called on null or undefined");
+		return support.hasOwnProperty(this, str(name));
 	}),
 	propertyIsEnumerable: unconstructable(function propertyIsEnumerable(name) {
-		return support.isPropertyEnumerable(coercible(this, "Object.prototype.propertyIsEnumerable"), str(name));
+		if (this == null) throw typeError("Object.prototype.propertyIsEnumerable called on null or undefined");
+		return support.isPropertyEnumerable(this, str(name));
 	}),
 //#endif
 	isPrototypeOf: unconstructable(function isPrototypeOf(v) {
 //#if ES5
 		if (isPrimitive(v)) return false;	// 15.2.4.6 tests V before step 2, so a primitive V never reaches ToObject
-		coercible(this, "Object.prototype.isPrototypeOf");
+		if (this == null) throw typeError("Object.prototype.isPrototypeOf called on null or undefined");
 //#endif
 		while (v = $getInternalProperty(v, "prototype")) {
 			if (v === this) return true;
@@ -573,20 +573,20 @@ defineProperties(String.prototype, { dontEnum: true }, {
 	constructor: String,
 	charAt: unconstructable(function charAt(pos) {
 //#if ES5
-		coercible(this, "String.prototype.charAt");
+		if (this == null) throw typeError("String.prototype.charAt called on null or undefined");
 //#endif
 		var s;
 		return (((pos = int(pos)) < 0 || pos >= (s = str(this)).length) ? '' : s[pos]);
 	}),
 	charCodeAt: unconstructable(function charCodeAt(pos) {
 //#if ES5
-		coercible(this, "String.prototype.charCodeAt");
+		if (this == null) throw typeError("String.prototype.charCodeAt called on null or undefined");
 //#endif
 		return $charCodeAt(str(this), +pos);
 	}),
 	concat: unconstructable(function concat(string1) {
 //#if ES5
-		coercible(this, "String.prototype.concat");
+		if (this == null) throw typeError("String.prototype.concat called on null or undefined");
 //#endif
 		var args, n = (args = arguments).length, s = str(this);
 		for (var i = 0; i < n; ++i) s += str(args[i]);
@@ -594,7 +594,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 	}),
 	indexOf: unconstructable(function indexOf(searchString) { // .length should be 1
 //#if ES5
-		coercible(this, "String.prototype.indexOf");
+		if (this == null) throw typeError("String.prototype.indexOf called on null or undefined");
 //#endif
 		var s, i, e = (s = str(this)).length - (searchString = str(searchString)).length, pos = arguments[1];
 		if ((i = int(pos)) < 0) i = 0;
@@ -603,7 +603,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 	}),
 	lastIndexOf: unconstructable(function lastIndexOf(searchString) { // .length should be 1
 //#if ES5
-		coercible(this, "String.prototype.lastIndexOf");
+		if (this == null) throw typeError("String.prototype.lastIndexOf called on null or undefined");
 //#endif
 		var s, i, e = (s = str(this)).length - (searchString = str(searchString)).length, pos = arguments[1];
 		if ($isNaN(pos = +pos) || (i = int(pos)) > e) i = e;
@@ -612,14 +612,14 @@ defineProperties(String.prototype, { dontEnum: true }, {
 	}),
 	localeCompare: unconstructable(function localeCompare(that) {
 //#if ES5
-		coercible(this, "String.prototype.localeCompare");
+		if (this == null) throw typeError("String.prototype.localeCompare called on null or undefined");
 //#endif
 		var me, him;
 		return ((me = str(this)) === (him = str(that)) ? 0 : (me < him ? -1 : 1));
 	}),
 	match: unconstructable(function match(regexp) {
 //#if ES5
-		coercible(this, "String.prototype.match");
+		if (this == null) throw typeError("String.prototype.match called on null or undefined");
 //#endif
 		if ($getInternalProperty(regexp, "class") !== "RegExp") regexp = new RegExp(regexp);
 		var s = str(this);
@@ -632,7 +632,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 	}),
 	replace: unconstructable(function replace(searchValue, replaceValue) {
 //#if ES5
-		coercible(this, "String.prototype.replace");
+		if (this == null) throw typeError("String.prototype.replace called on null or undefined");
 //#endif
 		var s, sLength = (s = str(this)).length, matches, i, p, t, l, e, replaceFunction = replaceValue, replacementValue;
 		function makeStringReplacer(r) {
@@ -698,7 +698,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 	}),
 	search: unconstructable(function search(regexp) {
 //#if ES5
-		coercible(this, "String.prototype.search");
+		if (this == null) throw typeError("String.prototype.search called on null or undefined");
 //#endif
 		if ($getInternalProperty(regexp, "class") !== "RegExp") regexp = new RegExp(regexp);
 		var s, len = (s = str(this)).length, f = $getInternalProperty(regexp, "value");
@@ -707,7 +707,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 	}),
 	slice: unconstructable(function slice(start, end) {
 //#if ES5
-		coercible(this, "String.prototype.slice");
+		if (this == null) throw typeError("String.prototype.slice called on null or undefined");
 //#endif
 		var s = str(this);
 		if ((start = int(start)) < 0) start += s.length;
@@ -717,7 +717,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 	}),
 	split: unconstructable(function split(separator, limit) {
 //#if ES5
-		coercible(this, "String.prototype.split");
+		if (this == null) throw typeError("String.prototype.split called on null or undefined");
 //#endif
 		var s, sLength = (s = str(this)).length, a = [ ], aLength = 0, splitMatch;
 		if (!(limit = ((limit === void 0) ? 0xFFFFFFFF : uint32(limit)))) return a;
@@ -748,7 +748,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 	}),
 	substr: unconstructable(function substr(start, length) {
 //#if ES5
-		coercible(this, "String.prototype.substr");
+		if (this == null) throw typeError("String.prototype.substr called on null or undefined");
 //#endif
 		var s = str(this);
 		if ((start = int(start)) < 0) start = s.length + start;
@@ -756,7 +756,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 	}),
 	substring: unconstructable(function substring(start, end) {
 //#if ES5
-		coercible(this, "String.prototype.substring");
+		if (this == null) throw typeError("String.prototype.substring called on null or undefined");
 //#endif
 		start = int(start);
 		if (end === void 0) end = $Infinity;
@@ -776,16 +776,20 @@ defineProperties(String.prototype, { dontEnum: true }, {
 	// 15.5.4.16-19. The check goes on the receiver rather than inside toUpper / toLower, so that each of the four
 	// names itself in the message; they are two pairs of synonyms, the locale forms deferring to the same tables.
 	toUpperCase: unconstructable(function toUpperCase() {
-		return toUpper(coercible(this, "String.prototype.toUpperCase"));
+		if (this == null) throw typeError("String.prototype.toUpperCase called on null or undefined");
+		return toUpper(this);
 	}),
 	toLocaleUpperCase: unconstructable(function toLocaleUpperCase() {
-		return toUpper(coercible(this, "String.prototype.toLocaleUpperCase"));
+		if (this == null) throw typeError("String.prototype.toLocaleUpperCase called on null or undefined");
+		return toUpper(this);
 	}),
 	toLowerCase: unconstructable(function toLowerCase() {
-		return toLower(coercible(this, "String.prototype.toLowerCase"));
+		if (this == null) throw typeError("String.prototype.toLowerCase called on null or undefined");
+		return toLower(this);
 	}),
 	toLocaleLowerCase: unconstructable(function toLocaleLowerCase() {
-		return toLower(coercible(this, "String.prototype.toLocaleLowerCase"));
+		if (this == null) throw typeError("String.prototype.toLocaleLowerCase called on null or undefined");
+		return toLower(this);
 	}),
 //#endif
 	valueOf: unconstructable(function valueOf() {

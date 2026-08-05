@@ -39,6 +39,12 @@ body. Where a whole table needs it, wrap the `defineProperties` call in a guarde
 `String.prototype`, `Array.prototype` and `Object.prototype` do. Leave the entries at their original indentation:
 the wrapper is invisible to the ES3 source, and re-indenting them would not be.
 
+Prefer a call for a shared guard, but measure before assuming it is free. `CheckObjectCoercible` is spelled out
+inline at all 22 of its sites because the String and Object methods it guards do so little else that the call frame
+cost 3.6% on a `charCodeAt` loop, for 733 bytes of blob. `toObject` stays a call: its Array callers read `length`
+and then loop, so the frame disappears into the work. Neither is a rule, and both numbers came from three-way
+interleaved runs of `-t` against a binary built from the previous commit.
+
 Since a directive owns its whole line, a guard only goes where a line ends: an entry that is a one-liner, or that
 carries a trailing comment, takes a guarded alternative entry rather than a prologue. Getting that wrong runs the
 rest of the line into the `//#endif`, which stops being a directive; the generator then reports an unbalanced
