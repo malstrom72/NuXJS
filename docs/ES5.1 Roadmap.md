@@ -40,15 +40,21 @@ the change is wrong, not the principle.
   with `NUXJS_ES5` undefined. Build variants: `es3`, `es5`, `both` (both = default gate for CI). Discipline: guard
   additively - **prefer adding a guarded branch over rewriting an existing ES3 code path**; never let an ES5 guard
   silently change ES3 behavior.
-- **D5 - Gating the JS standard library. (DECIDED - separate `stdlibES5.js`.)** ES5 library code lives in a
-  standalone `src/stdlibES5.js` module; the base `stdlib.js` and the ES3 native `support` contracts are left
-  byte-for-byte untouched (the archive proved that reusing base's private helpers means *rewriting* them -
-  ~25% of base churned - which is why ES3 couldn't stay pristine there). `tools/stdlibToCpp.pika` minifies it
-  separately (seeded with the base `@preserve` header so it inherits all keywords/globals) and emits a second
-  `STDLIB_ES5_JS` string guarded by `#if NUXJS_ES5`; `setupStandardLibrary` evals + runs it after the base
-  library, sharing the same `support`. The es3 embedding and binary stay byte-identical. The module uses only the
-  native `support` bridge and already-installed globals - never base's closure. *(Pipeline landed with the first
-  feature, `String.prototype.trim`.)*
+- **D5 - Gating the JS standard library. (DECIDED - `stdlibES5.js` plus `//#if ES5` in `stdlib.js`.)** ES5 library
+  code lives in a standalone `src/stdlibES5.js` module. `tools/stdlibToCpp.pika` minifies it separately (seeded
+  with the base `@preserve` header so it inherits all keywords/globals) and emits a second `STDLIB_ES5_JS` string
+  guarded by `#if NUXJS_ES5`; `setupStandardLibrary` evals + runs it after the base library, sharing the same
+  `support`. *(Pipeline landed with the first feature, `String.prototype.trim`.)*
+
+  The module was originally forbidden to touch `stdlib.js` at all, because the archived attempt showed that
+  reusing base's private helpers meant *rewriting* them, churning ~25% of base and losing the pristine ES3 source.
+  That ban cost real duplication: a second `ToInteger`, a second whitespace set, a `parseInt` wrapper existing only
+  because base's table is closure-local. `stdlib.js` now carries `//#if ES5` / `//#if !ES5` / `//#else` /
+  `//#endif` guards instead, resolved by the generator before minification, so the file serves both targets and
+  the two variants ship side by side under one `#if NUXJS_ES5`. What the ban was protecting is now checked rather
+  than assumed: the generator re-emits the pure ES3 source to `output/stdlib.es3.js` on every build, and both it
+  and the ES3 blob must stay byte-identical. Base's helpers reach the module by being published on `support`
+  behind a guard, never by the module reading into base's closure. See `docs/Standard Library Guidelines.md`.
 - **D2 - Accessor storage by indirection.** Add an `ACCESSOR_FLAG`; an accessor bucket's union holds a pointer to
   a small GC item `Accessor { Function* get; Function* set; }` - a plain `GCItem`, *not* an `Object`, stored via
   its own union member so it can never be read back as a JS `Value`. Bucket size is unchanged. Ordinary data
@@ -216,10 +222,10 @@ C++ compiler (`NuXJS.cpp`), no VM changes beyond emitting the accessor-define pa
       never implemented the `<USP>` category-Zs catch-all that both editions carry. Four places must agree on that
       set and only `String.prototype.trim` did: `Compiler::white()`, the run-time skipper `eatStringWhite` behind
       §9.3.1 `ToNumber` and §15.1.2.3 `parseFloat`, and §15.1.2.2 `parseInt`. The first two now share
-      `isES5ExtraWhite`. `parseInt` keeps its own whitespace table closure-local in `stdlib.js`, out of reach of
-      `stdlibES5.js` and unmovable without changing the es3 binary, so the ES5 module wraps it: strip the leading
-      run with the same predicate `trim` uses, then delegate for the radix and digit rules, which were already
-      right. The es3 build is deliberately left alone, so the `<USP>` half stays a *shared* deviation rather than
+      `isES5ExtraWhite`. `parseInt` reads its own whitespace table, closure-local in `stdlib.js`; a `//#if ES5`
+      guard extends the set that table is built from, which makes `parseInt` conformant without touching a line of
+      its code, and publishes the membership test on `support` for `trim` to share. The es3 build is deliberately
+      left alone, so the `<USP>` half stays a *shared* deviation rather than
       an ES5 gap; see `docs/notes/Todo.md` under Compiler. (`tests/es5/whiteSpaceSet.io`)
 - [ ] **Cf format-control characters as IdentifierPart (§7.1).** ZWNJ and ZWJ inside identifiers, independent of
       the whitespace work above and still unimplemented in both builds. Tracked in `docs/notes/Todo.md`.

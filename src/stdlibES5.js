@@ -2,9 +2,10 @@
 	ES5.1 additions to the standard library.
 
 	Compiled into STDLIB_ES5_JS and run only in NUXJS_ES5 builds, as a standalone module that receives the same
-	native `support` bridge as stdlib.js and runs with `this` bound to the global object. The ES3 stdlib.js is
-	never touched, so the ES3 embedding stays byte-for-byte identical. This module may use the native `support`
-	hooks and the globals stdlib.js has already installed, but not stdlib.js's private (closure-local) helpers.
+	native `support` bridge as stdlib.js and runs with `this` bound to the global object. What stdlib.js has to
+	contribute goes behind //#if ES5 guards there, so the ES3 blob it emits stays byte-for-byte identical. This
+	module may use the native `support` hooks, the globals stdlib.js has already installed, and the closure-local
+	helpers that file deliberately publishes on `support` under those guards, but nothing else private to it.
 
 	The minifier seeds this module with stdlib.js's @preserve header, so only genuinely new names go below.
 
@@ -21,8 +22,8 @@
 */
 var $defineProperty = support.defineProperty, unconstructable = support.distinctConstructor
 		, $getInternalProperty = support.getInternalProperty, $callWithArgs = support.callWithArgs
-		, $charCodeAt = support.charCodeAt, $sub = support.substring
-		, typeError = TypeError, $Object = Object, $String = String;
+		, isWhiteSpace = support.isWhiteSpace, $sub = support.substring
+		, typeError = TypeError, $Object = Object;
 
 // Presence bitmask for a property descriptor; must match PropertyDescriptor::HAS_* in NuXJS.h.
 var HAS_VALUE = 1, HAS_WRITABLE = 2, HAS_GET = 4, HAS_SET = 8, HAS_ENUMERABLE = 16, HAS_CONFIGURABLE = 32;
@@ -72,10 +73,9 @@ function define(o, key, d) { support.defineOwnProperty(o, key, d[0], d[1], d[2],
 	Prototype methods whose first step is CheckObjectCoercible or ToObject on the this value. They must be strict:
 	a non-strict function has a null or undefined this substituted with the global object (10.4.3), which would
 	make the required TypeError unreachable. Strict mode also makes `arguments` unmapped, which is what the
-	"was the argument supplied?" tests below want. Strict also means `this` is undefined in here, so the global
-	object comes in as a parameter for the one member below that installs onto it rather than onto a prototype.
+	"was the argument supplied?" tests below want.
 */
-(function (globalObject) {
+(function () {
 "use strict";
 
 // 9.4 ToInteger, restated verbatim from stdlib.js, which keeps its copy closure-local. 9.6 ToUint32 needs no
@@ -95,34 +95,14 @@ function checkCallback(f, what) {
 	return f;
 }
 
-// 15.5.4.20: strips WhiteSpace (7.2) and LineTerminator (7.3) from both ends of the string.
-function isSpace(c) {
-	return c === 0x20 || (c >= 0x09 && c <= 0x0D) || c === 0xA0 || c === 0xFEFF
-			|| c === 0x1680 || (c >= 0x2000 && c <= 0x200A)
-			|| c === 0x2028 || c === 0x2029 || c === 0x202F || c === 0x205F || c === 0x3000;
-}
-
+// 15.5.4.20: strips WhiteSpace (7.2) and LineTerminator (7.3) from both ends. 15.1.2.2 parseInt skips exactly
+// that set, so both read it off the one table stdlib.js builds; see support.isWhiteSpace there.
 method(String.prototype, "trim", function trim() {
 	if (this == null) throw typeError("String.prototype.trim called on null or undefined");
 	var s = "" + this, i = 0, j = s.length;
-	while (i < j && isSpace($charCodeAt(s, i))) ++i;
-	while (j > i && isSpace($charCodeAt(s, j - 1))) --j;
+	while (i < j && isWhiteSpace(s[i])) ++i;
+	while (j > i && isWhiteSpace(s[j - 1])) --j;
 	return $sub(s, i, j);
-});
-
-/*
-	15.1.2.2 step 2 skips StrWhiteSpace, which 9.3.1 defines as 7.2 WhiteSpace, so parseInt has to accept the same
-	set as isSpace above. stdlib.js keeps its own ES3 table for this, closure-local and so out of reach here, and
-	editing it would move the es3 binary. Strip the leading run and delegate: everything after step 2, the radix
-	rules and the digit loop, is already ES5-correct. String() and not "" + string because step 1 is ToString,
-	which for an object with a valueOf is not what the implicit ToPrimitive would pick. parseFloat needs none of
-	this, being native and sharing eatStringWhite with the lexer.
-*/
-var baseParseInt = parseInt;
-method(globalObject, "parseInt", function parseInt(string, radix) {
-	var s = $String(string), i = 0, n = s.length;
-	while (i < n && isSpace($charCodeAt(s, i))) ++i;
-	return baseParseInt(i === 0 ? s : $sub(s, i, n), radix);
 });
 
 // 15.3.4.5: the native side builds the bound function, since it needs internal methods JS cannot express (no
@@ -357,7 +337,7 @@ method(Array.prototype, "reduceRight", function reduceRight(callbackfn) {
 	return acc;
 });
 
-})(this);
+})();
 
 /*
 	15.2.3.7 steps 3-6. Every descriptor is converted before any of them is defined, so a malformed one later in
