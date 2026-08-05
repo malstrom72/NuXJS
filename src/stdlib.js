@@ -20,7 +20,9 @@
 	@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
 	@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
 //#if ES5
-	@preserve: isWhiteSpace
+	@preserve: trim,preventExtensions,isExtensible,defineOwnProperty,get,set,keys,create,now,seal,freeze,isSealed
+	@preserve: getOwnPropertyDescriptor,getOwnPropertyNames,createObject,isFrozen,bind,bindFunction,forEach,map
+	@preserve: filter,some,every,reduce,reduceRight
 //#endif
 
 	support: {
@@ -81,7 +83,7 @@ var $isNaN = support.isNaN, $isFinite = support.isFinite, $floor = support.floor
 			ES5 7.2 adds the BOM, which moved out of the 7.1 format-control set, and the rest of category Zs behind
 			the <USP> catch-all. This is exactly the set isES5ExtraWhite() carries in NuXJS.cpp for the lexer and
 			9.3.1; the four places that must agree on it are those two, 15.1.2.2 parseInt, which reads the table
-			below, and 15.5.4.20 trim, which reads it through support.isWhiteSpace.
+			below, and 15.5.4.20 trim, which reads that same table.
 		*/
 		, WHITE_SPACES = " \f\n\r\t\v\xA0\u2028\u2029\uFEFF\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007"
 				+ "\u2008\u2009\u200A\u202F\u205F\u3000";
@@ -99,15 +101,6 @@ var PARSE_INT_CHARS = (function() {
 	}
 	return pic
 })();
-//#if ES5
-
-/*
-	15.5.4.20 trim strips the same 7.2 and 7.3 set 15.1.2.2 parseInt skips, and stdlibES5.js lives in its own
-	closure, so it is handed the test rather than left to restate the set a third time. Whitespace is the only key
-	the table maps to null: a digit maps to its value and anything else is absent.
-*/
-support.isWhiteSpace = function(c) { return PARSE_INT_CHARS[c] === null };
-//#endif
 
 function StringBuilder() {
 	var i = 20, b = this.buffers = [ ];
@@ -1659,9 +1652,16 @@ defineProperties(globals, { dontEnum: true }, {
 	})
 });
 
+//#if !ES5
 defineProperties(globals, { dontEnum: true, dontDelete: true }, {
 	NaN: $NaN, Infinity: $Infinity, undefined: support.undefined
 });
+//#else
+// 15.1.1.1-3 made the global NaN, Infinity and undefined non-writable; ES3 15.1.1 left them writable.
+defineProperties(globals, { readOnly: true, dontEnum: true, dontDelete: true }, {
+	NaN: $NaN, Infinity: $Infinity, undefined: support.undefined
+});
+//#endif
 
 /* --- Math --- */
 
@@ -1935,6 +1935,408 @@ defineProperties(Object, { dontEnum: true }, {
 	}),
 	getPrototypeOf: unconstructable(function getPrototypeOf(o) { return $getInternalProperty(o, "prototype"); })
 });
+//#if ES5
+
+/* --- ES5.1 additions --- */
+
+/*
+	Everything ES5.1 adds to the library, guarded so the ES3 build sees none of it. It lives here rather than in a
+	module of its own so that it can reach the helpers above (isPrimitive, int, str, defineProperties, unconstructable,
+	typeError and the captured support hooks) instead of restating them, and so the pure ES3 library stays recoverable
+	from this one source. It comes last because it supersedes entries defined above.
+*/
+
+// Presence bitmask for a property descriptor; must match PropertyDescriptor::HAS_* in NuXJS.h.
+var HAS_VALUE = 1, HAS_WRITABLE = 2, HAS_GET = 4, HAS_SET = 8, HAS_ENUMERABLE = 16, HAS_CONFIGURABLE = 32;
+
+// 9.9 / many 15.2.3.x steps: "If Type(O) is not Object, throw a TypeError exception."
+function requireObject(o, what) {
+	if (isPrimitive(o)) throw typeError("Object." + what + " called on non-object");
+	return o
+}
+
+/*
+	8.10.5 ToPropertyDescriptor, packed positionally as [present, value, get, set, attribs] for the native
+	defineOwnProperty that `define` hands it to. The attributes object is read through [[Get]], so accessors on it
+	run. 15.2.3.7 converts every descriptor before defining any of them, so the packed form has to outlive the
+	conversion; a named object would spend preserved names on `value`, `get` and `set`.
+*/
+function toPropertyDescriptor(attrs) {
+	if (isPrimitive(attrs)) throw typeError("Property description must be an object");
+	var present = 0, attribs = 0, v, g, s;
+	if ("enumerable" in attrs) { present |= HAS_ENUMERABLE; if (attrs.enumerable) attribs |= 2; }
+	if ("configurable" in attrs) { present |= HAS_CONFIGURABLE; if (attrs.configurable) attribs |= 4; }
+	if ("value" in attrs) { present |= HAS_VALUE; v = attrs.value; }
+	if ("writable" in attrs) { present |= HAS_WRITABLE; if (attrs.writable) attribs |= 1; }
+	if ("get" in attrs) {
+		if ((g = attrs.get) !== void 0 && typeof g !== "function") throw typeError("Getter must be a function");
+		present |= HAS_GET;
+	}
+	if ("set" in attrs) {
+		if ((s = attrs.set) !== void 0 && typeof s !== "function") throw typeError("Setter must be a function");
+		present |= HAS_SET;
+	}
+	if ((present & (HAS_GET | HAS_SET)) !== 0 && (present & (HAS_VALUE | HAS_WRITABLE)) !== 0) {
+		throw typeError("A property descriptor cannot specify both accessors and a value or writable");
+	}
+	return [ present, v, g, s, attribs ]
+}
+
+// `key` is already a String at all three call sites, ToString(P) being an earlier and separately ordered step.
+function define(o, key, d) { support.defineOwnProperty(o, key, d[0], d[1], d[2], d[3], d[4]); }
+
+/*
+	15.2.3.7 steps 3-6. Every descriptor is converted before any of them is defined, so a malformed one later in the
+	list leaves the properties ahead of it untouched. `pairs` holds name and packed descriptor in alternating slots,
+	the enumeration order of step 3 being for-in order by the note under the algorithm.
+*/
+function defineAll(o, properties) {
+	var props = Object(properties), pairs = [ ], p, i, n;
+	for (p in props) {
+		if (support.hasOwnProperty(props, p)) {
+			pairs[pairs.length] = p;
+			pairs[pairs.length] = toPropertyDescriptor(props[p]);
+		}
+	}
+	for (i = 0, n = pairs.length; i < n; i += 2) define(o, pairs[i], pairs[i + 1]);
+	return o
+}
+
+/*
+	15.2.3.8 seal and 15.2.3.9 freeze, which differ only in freeze additionally clearing [[Writable]] on a data
+	property. Step 2 defines unconditionally, which the full current descriptor makes a no-op by 8.12.9 step 6 when
+	nothing changed; re-supplying value and enumerable also keeps the deferred array-index path from clobbering
+	elements. isSealed / isFrozen (15.2.3.11, 15.2.3.12) are the same walk asking instead of setting.
+*/
+function lockDown(o, what, freezing) {
+	var names = support.getOwnPropertyNames(requireObject(o, what)), i, d;
+	for (i = names.length; --i >= 0; ) {
+		d = support.getOwnPropertyDescriptor(o, names[i]);
+		if (freezing && ("value" in d)) d.writable = false;
+		d.configurable = false;
+		define(o, names[i], toPropertyDescriptor(d));
+	}
+	return support.preventExtensions(o)
+}
+
+function isLockedDown(o, what, frozen) {
+	var names = support.getOwnPropertyNames(requireObject(o, what)), i, d;
+	for (i = names.length; --i >= 0; ) {
+		d = support.getOwnPropertyDescriptor(o, names[i]);
+		if (d.configurable || (frozen && ("value" in d) && d.writable)) return false;
+	}
+	return !support.isExtensible(o)
+}
+
+defineProperties(Object, { dontEnum: true }, {
+	preventExtensions: unconstructable(function preventExtensions(o) {	// 15.2.3.10
+		return support.preventExtensions(requireObject(o, "preventExtensions"));
+	}),
+	isExtensible: unconstructable(function isExtensible(o) {	// 15.2.3.13
+		return support.isExtensible(requireObject(o, "isExtensible"));
+	}),
+	// 15.2.3.6, the full 8.12.9 form, superseding the data-only shim above
+	defineProperty: unconstructable(function defineProperty(o, p, attributes) {
+		requireObject(o, "defineProperty");
+		define(o, str(p), toPropertyDescriptor(attributes));	// 2 before 3: ToString(P) runs before ToPropertyDescriptor
+		return o;
+	}),
+	// 15.2.3.7. The key is quoted because the minifier keeps one flat rename map for the whole file: @preserve-ing
+	// this name to publish it would also spell out all 33 uses of the local helper this very table is built with.
+	"defineProperties": unconstructable(function defineProperties(o, properties) {
+		return defineAll(requireObject(o, "defineProperties"), properties);
+	}),
+	// 15.2.3.2, superseding the shim above, which skipped the non-object check
+	getPrototypeOf: unconstructable(function getPrototypeOf(o) {
+		return $getInternalProperty(requireObject(o, "getPrototypeOf"), "prototype");
+	}),
+	getOwnPropertyDescriptor: unconstructable(function getOwnPropertyDescriptor(o, p) {	// 15.2.3.3
+		return support.getOwnPropertyDescriptor(requireObject(o, "getOwnPropertyDescriptor"), str(p));
+	}),
+	// 15.2.3.4: all own string-keyed names, including the non-enumerable ones
+	getOwnPropertyNames: unconstructable(function getOwnPropertyNames(o) {
+		return support.getOwnPropertyNames(requireObject(o, "getOwnPropertyNames"));
+	}),
+	keys: unconstructable(function keys(o) {	// 15.2.3.14: own enumerable string-keyed names, in for-in order
+		requireObject(o, "keys");
+		var a = [ ], k;
+		for (k in o) if (support.hasOwnProperty(o, k)) a[a.length] = k;
+		return a;
+	}),
+	create: unconstructable(function create(o, properties) {	// 15.2.3.5
+		if (o !== null && isPrimitive(o)) throw typeError("Object.create: prototype must be an object or null");
+		var obj = support.createObject(o);
+		return (properties === void 0 ? obj : defineAll(obj, properties));
+	}),
+	seal: unconstructable(function seal(o) { return lockDown(o, "seal", false) }),
+	freeze: unconstructable(function freeze(o) { return lockDown(o, "freeze", true) }),
+	isSealed: unconstructable(function isSealed(o) { return isLockedDown(o, "isSealed", false) }),
+	isFrozen: unconstructable(function isFrozen(o) { return isLockedDown(o, "isFrozen", true) })
+});
+
+// 15.9.4.4: the time value at the moment of the call, which ES3 had no equivalent of.
+defineProperties(Date, { dontEnum: true }, {
+	now: unconstructable(function now() { return support.getCurrentTime() })
+});
+
+/*
+	15.4.4.11 hands the present elements to the base sort and then writes the permutation back strictly, which is
+	what supplies the Throw flag; the ordering itself is unchanged. SortCompare's ranking falls out of that: the base
+	comparator already sorts undefined last, and lifting the holes out puts them after even those. This is the one
+	place an ES3 entry is still needed under ES5, so Array.prototype.sort above is not guarded away.
+*/
+var $sort = Array.prototype.sort;
+
+/*
+	Everything whose first step is CheckObjectCoercible or ToObject on the this value, and every method that stores
+	through [[Put]] or [[Delete]] with Throw = true. Both need strict code: 10.4.3 substitutes the global object for
+	a null or undefined this in a non-strict function, which would make the required TypeError unreachable, and 8.7.2
+	and 11.4.1 only raise a refused store or delete into a TypeError when the code is strict. The ES3 editions of the
+	mutators had no Throw flag at all, so a refused store was silent. Strict mode also leaves `arguments` unmapped,
+	which is what the "was the argument supplied?" tests below want.
+*/
+(function() {
+"use strict";
+
+// Step 1 of every array method below: ToObject(this), which throws for null and undefined (9.9).
+function toObject(v, what) {
+	if (v == null) throw typeError("Array.prototype." + what + " called on null or undefined");
+	return Object(v)
+}
+
+// "If IsCallable(callbackfn) is false, throw a TypeError exception." Runs after length is read, never before.
+function checkCallback(f, what) {
+	if (typeof f !== "function") throw typeError("Array.prototype." + what + " callback is not a function");
+	return f
+}
+
+defineProperties(String.prototype, { dontEnum: true }, {
+	// 15.5.4.20: strips WhiteSpace (7.2) and LineTerminator (7.3) from both ends, which is exactly the set 15.1.2.2
+	// parseInt skips, so it reads the one table above. Whitespace is the only key that maps to null there: a digit
+	// maps to its value and anything else is absent.
+	trim: unconstructable(function trim() {
+		if (this == null) throw typeError("String.prototype.trim called on null or undefined");
+		var pic = PARSE_INT_CHARS, s = str(this), i = 0, j = s.length;
+		while (i < j && pic[s[i]] === null) ++i;
+		while (j > i && pic[s[j - 1]] === null) --j;
+		return $sub(s, i, j);
+	})
+});
+
+defineProperties(Function.prototype, { dontEnum: true }, {
+	// 15.3.4.5: the native side builds the bound function, since it needs internal methods JS cannot express (no
+	// `prototype`, a [[Construct]] that constructs the target, and a [[HasInstance]] that defers to it).
+	bind: unconstructable(function bind(thisArg) { return support.bindFunction(this, thisArg, arguments, 1) })
+});
+
+defineProperties(Object.prototype, { dontEnum: true }, {
+	/*
+		15.2.4.2 gained explicit undefined and null cases, and 10.6 gave the arguments object the class "Arguments"
+		where ES3 10.1.8 gave it "Object" (which is why the entry this supersedes maps that class back to "Object").
+		DEVIATION: `this` reaches a callee as an object reference, so a null receiver is indistinguishable from an
+		undefined one and reports "[object Undefined]". Fixing that needs the `this`-as-a-Value change deferred in
+		docs/notes/ECMAScript Compatibility Notes.md.
+	*/
+	toString: unconstructable(function toString() {
+		if (this == null) return "[object Undefined]";
+		return "[object " + $getInternalProperty(Object(this), "class") + ']';
+	})
+});
+
+defineProperties(Date.prototype, { dontEnum: true }, {
+	// 15.9.5.44: fully generic, where the entry it supersedes reads the receiver's own date value rather than going
+	// through ToPrimitive and the receiver's own (reassignable) toISOString. ES3 had no toJSON at all.
+	toJSON: unconstructable(function toJSON(key) {
+		var o = Object(this), tv = objectToPrimitive(o, "valueOf", "toString"), toISO;
+		if (typeof tv === "number" && !$isFinite(tv)) return null;
+		if (typeof (toISO = o.toISOString) !== "function") throw typeError("toISOString is not callable");
+		return $callWithArgs(toISO, o);
+	})
+});
+
+defineProperties(Array.prototype, { dontEnum: true }, {
+	// 15.4.4.6-13, the mutators. The algorithms are unchanged from the entries they supersede, holes and array-likes
+	// included; what strictness adds is the Throw flag, which also stops `length` from running ahead of an element
+	// that was never stored, on a non-extensible array or past a read-only length.
+	push: unconstructable(function push(item) {
+		var o = toObject(this, "push"), n = o.length >>> 0, argv = arguments;
+		for (var i = 0; i < argv.length; ++i) {
+			o[n] = argv[i];
+			++n;
+		}
+		o.length = n;
+		return n;
+	}),
+	// 4.a in both pop and shift: an empty array still gets the length store, so a read-only length throws there too.
+	pop: unconstructable(function pop() {
+		var o = toObject(this, "pop"), len = o.length >>> 0, element;
+		if (len !== 0) {
+			element = o[--len];
+			delete o[len];
+		}
+		o.length = len;
+		return element;
+	}),
+	shift: unconstructable(function shift() {
+		var o = toObject(this, "shift"), len = o.length >>> 0, first, k;
+		if (len !== 0) {
+			first = o[0];
+			for (k = 1; k < len; ++k) {
+				if (k in o) o[k - 1] = o[k];
+				else delete o[k - 1];
+			}
+			delete o[--len];
+		}
+		o.length = len;
+		return first;
+	}),
+	unshift: unconstructable(function unshift(item) {
+		var o = toObject(this, "unshift"), len = o.length >>> 0, argv = arguments, argc = argv.length, k, to;
+		for (k = len; k-- > 0; ) {
+			to = k + argc;
+			if (k in o) o[to] = o[k]; else delete o[to];
+		}
+		for (k = 0; k < argc; ++k) o[k] = argv[k];
+		return (o.length = len + argc);
+	}),
+	reverse: unconstructable(function reverse() {
+		var o = toObject(this, "reverse"), len = o.length >>> 0, middle = $floor(len / 2), last = len - 1, lower = 0;
+		for (; lower !== middle; ++lower) {
+			var upper = last - lower;
+			var lowerValue = o[lower], upperValue = o[upper];			// 6.4 and 6.5 read both before either is stored
+			var lowerExists = lower in o, upperExists = upper in o;
+			if (lowerExists || upperExists) {							// 6.11: with neither there is nothing to do
+				if (upperExists) o[lower] = upperValue; else delete o[lower];
+				if (lowerExists) o[upper] = lowerValue; else delete o[upper];
+			}
+		}
+		return o;
+	}),
+	// The `length` of splice is 2, so both are formal parameters even though deleteCount is read through `arguments`.
+	splice: unconstructable(function splice(start, deleteCount) {
+		var o = toObject(this, "splice"), a = [ ], len = o.length >>> 0, argv = arguments, argc = argv.length, k, n, to;
+		if ((start = int(start)) < 0) { if ((start += len) < 0) start = 0; }
+		else if (start > len) start = len;
+		// 7: min(max(ToInteger(deleteCount), 0), len - start). Taken literally that makes a.splice(i) delete nothing,
+		// since ToInteger(undefined) is 0; no engine has ever done that and ES2015 rewrote the step to say len - start,
+		// which is what the entry above does too, so es5 keeps it. With no arguments at all nothing is deleted either.
+		var count = (argc === 0 ? 0 : argc === 1 ? len - start : int(deleteCount));
+		if (count < 0) count = 0;
+		else if (count > len - start) count = len - start;
+		for (k = 0; k < count; ++k) if (start + k in o) a[k] = o[start + k];
+		a.length = count;	// 15.4.4.12 omits this step, but every edition since sets it, and so does the entry above
+		// 12 and 13 are one loop: the tail shifts by `move`, walked away from the direction it is overwriting. Only a
+		// shrink leaves a stale tail above the new length, and only then is the trailing delete loop non-empty.
+		var itemCount = (argc > 2 ? argc - 2 : 0), move = itemCount - count, tail = len - count, step = (move < 0 ? 1 : -1);
+		if (move !== 0) {
+			for (n = tail - start, k = (move < 0 ? start : tail - 1); n-- > 0; k += step) {
+				to = k + itemCount;
+				if (k + count in o) o[to] = o[k + count]; else delete o[to];
+			}
+			for (k = len; k > len + move; --k) delete o[k - 1];
+		}
+		for (k = 0; k < itemCount; ++k) o[start + k] = argv[k + 2];
+		o.length = len + move;
+		return a;
+	}),
+	sort: unconstructable(function sort(comparefn) {
+		var o = toObject(this, "sort"), len = o.length >>> 0, v = [ ], k;
+		if (len < 2) return o;	// nothing can move, so nothing is stored: a frozen empty or single array must not throw
+		for (k = 0; k < len; ++k) if (k in o) v[v.length] = o[k];
+		$callWithArgs($sort, v, arguments);
+		for (k = 0; k < v.length; ++k) o[k] = v[k];
+		for (; k < len; ++k) delete o[k];
+		return o;
+	}),
+	/*
+		15.4.4.14-22. All nine are generic over array-likes, read length once up front, and visit only indices that
+		are actually present, so holes are skipped rather than passed as undefined. Each declares exactly one formal
+		parameter because the spec fixes its `length` at 1; the optional second argument comes from `arguments`.
+
+		The callback takes (element, index, O), so `args` below is one scratch argument list per call rather than per
+		element: callWithArgs copies it into the callee's frame before invoking and never retains it.
+	*/
+	indexOf: unconstructable(function indexOf(searchElement) {
+		var o = toObject(this, "indexOf"), len = o.length >>> 0, k;
+		if (len === 0) return -1;	// 4: returns before fromIndex is read, so a throwing valueOf is never reached
+		k = (arguments.length > 1 ? int(arguments[1]) : 0);
+		if (k < 0 && (k += len) < 0) k = 0;	// 8.b: a negative fromIndex is an offset from the end, clamped to 0
+		for (; k < len; ++k) if (k in o && o[k] === searchElement) return k;
+		return -1;
+	}),
+	lastIndexOf: unconstructable(function lastIndexOf(searchElement) {
+		var o = toObject(this, "lastIndexOf"), len = o.length >>> 0, k;
+		if (len === 0) return -1;	// 4: as above, an empty array never reads fromIndex
+		k = (arguments.length > 1 ? int(arguments[1]) : len - 1);
+		if (k < 0) k += len; else if (k >= len) k = len - 1;	// 7: a negative result just ends the search
+		for (; k >= 0; --k) if (k in o && o[k] === searchElement) return k;
+		return -1;
+	}),
+	every: unconstructable(function every(callbackfn) {
+		var o = toObject(this, "every"), len = o.length >>> 0, f = checkCallback(callbackfn, "every"), t = arguments[1]
+				, args = [ 0, 0, o ];
+		for (var k = 0; k < len; ++k) {
+			if (k in o) { args[0] = o[k]; args[1] = k; if (!$callWithArgs(f, t, args)) return false; }
+		}
+		return true;
+	}),
+	some: unconstructable(function some(callbackfn) {
+		var o = toObject(this, "some"), len = o.length >>> 0, f = checkCallback(callbackfn, "some"), t = arguments[1]
+				, args = [ 0, 0, o ];
+		for (var k = 0; k < len; ++k) {
+			if (k in o) { args[0] = o[k]; args[1] = k; if ($callWithArgs(f, t, args)) return true; }
+		}
+		return false;
+	}),
+	forEach: unconstructable(function forEach(callbackfn) {
+		var o = toObject(this, "forEach"), len = o.length >>> 0, f = checkCallback(callbackfn, "forEach")
+				, t = arguments[1], args = [ 0, 0, o ];
+		for (var k = 0; k < len; ++k) if (k in o) { args[0] = o[k]; args[1] = k; $callWithArgs(f, t, args); }
+	}),
+	map: unconstructable(function map(callbackfn) {
+		var o = toObject(this, "map"), len = o.length >>> 0, f = checkCallback(callbackfn, "map"), t = arguments[1]
+				, args = [ 0, 0, o ], a = [ ];
+		a.length = len;	// 6: length is fixed up front, so a hole in the source stays a hole in the result
+		for (var k = 0; k < len; ++k) if (k in o) { args[0] = o[k]; args[1] = k; a[k] = $callWithArgs(f, t, args); }
+		return a;
+	}),
+	filter: unconstructable(function filter(callbackfn) {
+		var o = toObject(this, "filter"), len = o.length >>> 0, f = checkCallback(callbackfn, "filter")
+				, t = arguments[1], args = [ 0, 0, o ], a = [ ], to = 0, v;	// 8: `to` packs the result densely, unlike map
+		for (var k = 0; k < len; ++k) {
+			if (k in o) { args[0] = v = o[k]; args[1] = k; if ($callWithArgs(f, t, args)) a[to++] = v; }
+		}
+		return a;
+	}),
+	/*
+		reduce / reduceRight take four callback arguments and no thisArg, so the callback is called as a function.
+		With no initialValue the first present element seeds the accumulator; if there is none, that is a TypeError,
+		which also covers step 5 (empty and unseeded) without a second test.
+	*/
+	reduce: unconstructable(function reduce(callbackfn) {
+		var o = toObject(this, "reduce"), len = o.length >>> 0, f = checkCallback(callbackfn, "reduce")
+				, k = 0, seeded = (arguments.length > 1), acc = arguments[1], args = [ 0, 0, 0, o ];
+		while (!seeded && k < len) { if (seeded = (k in o)) acc = o[k]; ++k; }
+		if (!seeded) throw typeError("Reduce of empty array with no initial value");
+		for (; k < len; ++k) {
+			if (k in o) { args[0] = acc; args[1] = o[k]; args[2] = k; acc = $callWithArgs(f, null, args); }
+		}
+		return acc;
+	}),
+	reduceRight: unconstructable(function reduceRight(callbackfn) {
+		var o = toObject(this, "reduceRight"), len = o.length >>> 0, f = checkCallback(callbackfn, "reduceRight")
+				, k = len - 1, seeded = (arguments.length > 1), acc = arguments[1], args = [ 0, 0, 0, o ];
+		while (!seeded && k >= 0) { if (seeded = (k in o)) acc = o[k]; --k; }
+		if (!seeded) throw typeError("Reduce of empty array with no initial value");
+		for (; k >= 0; --k) {
+			if (k in o) { args[0] = acc; args[1] = o[k]; args[2] = k; acc = $callWithArgs(f, null, args); }
+		}
+		return acc;
+	})
+});
+
+})();
+//#endif
 
 if ($NaN.toString() !== "NaN") throw Error("Internal self test failed. Check C++ compiler options concerning IEEE 754 compliance.");
 

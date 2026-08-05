@@ -5,16 +5,15 @@ it, run `bash tools/buildAndTest.sh release x64` to regenerate the blob and run 
 regeneration is unconditional, the generator rewriting `src/stdlibJS.cpp` only when its content actually changes,
 so there is no mtime gate left to defeat and no stale blob to test against.
 
-`src/stdlibES5.js` is a second module built by the same pipeline into the same blob, run only in `NUXJS_ES5`
-builds. Everything below applies to it unchanged, the hijack rule most of all: it shares the object graph too, and
-being written later is no protection. It gets a fresh rename map but is seeded with `src/stdlib.js`'s `@preserve`
-header, so it need only declare names that file does not already list.
-
 ## Conditional compilation
 
 `src/stdlib.js` serves both language targets. `//#if ES5`, `//#if !ES5`, `//#else` and `//#endif` select what each
 one sees, and `tools/stdlibToCpp.pika` resolves them twice, emitting both variants under one `#if NUXJS_ES5` in the
 blob. Guards nest.
+
+Everything ES5.1 adds lives in the one file, at the end under `/* --- ES5.1 additions --- */`, so that it can reach
+the helpers above it rather than restate them. That placement is what lets it supersede the entries it replaces, and
+it is also why the section is last.
 
 The pass is line-based and runs *before* the minifier, so a directive owns its whole line (leading tabs are fine,
 trailing text is not), and what reaches the minifier is exactly the source you would have written without the
@@ -28,8 +27,12 @@ write one where you meant to quote one.
 
 Keep a guard around whole entries rather than inside a shared body, per D1 in `docs/ES5.1 Roadmap.md`: the two
 implementations of a method read far better side by side than one implementation interleaved with directives.
-Where the ES5 side is `src/stdlibES5.js` rather than a branch here, hand it what it needs by publishing on
-`support` under a guard, the way `isWhiteSpace` is. That module has its own closure and cannot see this one's.
+
+Anything whose first step is CheckObjectCoercible or ToObject on the this value, and anything that stores with
+Throw = true, has to sit inside the strict IIFE in that section. A non-strict function never sees a null or
+undefined `this`, because 10.4.3 substitutes the global object at frame entry, so the TypeError the spec asks for
+would be unreachable. The file as a whole cannot be strict: `evalThere` assigns to `eval`, which strict mode makes
+a SyntaxError.
 
 `bash tools/buildAndTest.sh` writes `output/stdlib.es3.js`, the ES3 library recovered from the merged file with
 every guard resolved away. Read it, or diff it against a previous revision, whenever you want the pristine ES3

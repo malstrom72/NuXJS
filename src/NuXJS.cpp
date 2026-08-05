@@ -661,7 +661,7 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 	The 7.2 WhiteSpace characters the ES3 list does not carry: the BOM, which ES5 moved out of the 7.1
 	format-control set and into WhiteSpace proper, and the rest of category Zs behind the <USP> catch-all. Kept in
 	one place because the lexer and the 9.3.1 string-to-number skipper must agree on it, and because
-	String.prototype.trim in stdlibES5.js enumerates exactly the same set.
+	String.prototype.trim in stdlib.js enumerates exactly the same set.
 */
 static bool isES5ExtraWhite(Char c) {
 	return (c == 0xFEFF || c == 0x1680 || (c >= 0x2000 && c <= 0x200A) || c == 0x202F || c == 0x205F || c == 0x3000);
@@ -6649,10 +6649,10 @@ struct Support {
 	}
 
 #if NUXJS_ES5
-	// 15.3.4.5 Function.prototype.bind. stdlibES5.js is the only caller and always passes
+	// 15.3.4.5 Function.prototype.bind. stdlib.js is the only caller and always passes
 	// (target, thisArg, arguments, 1), so only `target` is untrusted here.
 	static Value bindFunction(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
-		assert(argc == 4 && "stdlibES5.js calls bindFunction(target, thisArg, arguments, 1)");
+		assert(argc == 4 && "stdlib.js calls bindFunction(target, thisArg, arguments, 1)");
 		(void)argc;
 		Heap& heap = rt.getHeap();
 		Function* target = argv[0].asFunction();
@@ -7174,9 +7174,6 @@ void Runtime::fetchFunction(const Object* supportObject, const char* name, Funct
 }
 
 extern const char* STDLIB_JS;
-#if NUXJS_ES5
-extern const char* STDLIB_ES5_JS;
-#endif
 
 double Runtime::getCurrentEpochTime() {
 	std::time_t t;
@@ -7223,11 +7220,6 @@ void Runtime::setupStandardLibrary() {
 	const Var func = eval(*String::allocate(heap, STDLIB_JS));
 	Value argv[1] = { protectedSupportObject };
 	call(func, 1, argv);
-#if NUXJS_ES5
-	// The ES5.1 additions are a separate module run after the base library, sharing the same support bridge.
-	const Var es5 = eval(*String::allocate(heap, STDLIB_ES5_JS));
-	call(es5, 1, argv);
-#endif
 
 	fetchFunction(supportObject, "toPrimitive", toPrimitiveFunctions + 0);
 	fetchFunction(supportObject, "toPrimitiveNumber", toPrimitiveFunctions + 1);

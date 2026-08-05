@@ -22,3 +22,14 @@
 > print(String.prototype.trim.call(12345))
 < 12345
 -
+// 15.5.4.20 step 2 is ToString(this), which is hint String: toString runs before valueOf.
+> var t = { toString: function () { return "  ts  " }, valueOf: function () { return "  vo  " } };
+> print("[" + String.prototype.trim.call(t) + "]")
+< [ts]
+-
+// 15.5.4.20 step 1 is CheckObjectCoercible, so a null or undefined this is a TypeError rather than "null".
+> try { String.prototype.trim.call(null) } catch (e) { print(e.name) }
+< TypeError
+> try { String.prototype.trim.call(undefined) } catch (e) { print(e.name) }
+< TypeError
+-

@@ -83,3 +83,14 @@
 > var arr = [1]; Object.defineProperty(arr, "1", { get: function () { return 5; } }); print(arr[1] + " " + arr.length)
 < 5 2
 -
+// 15.2.3.6 step 2 / 15.2.3.3 step 2 convert P with ToString, which is hint String: toString runs before valueOf.
+// A "" + P concatenation would take the hint Number path and name the property "vo" instead.
+> var key = { toString: function () { return "ts" }, valueOf: function () { return "vo" } };
+> var o = {}; Object.defineProperty(o, key, { value: 7, enumerable: true });
+> print(Object.getOwnPropertyNames(o).join("|"))
+< ts
+> print(Object.getOwnPropertyDescriptor(o, key).value)
+< 7
+> print("" + key)
+< vo
+-

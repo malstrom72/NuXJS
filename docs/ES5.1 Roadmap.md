@@ -40,21 +40,17 @@ the change is wrong, not the principle.
   with `NUXJS_ES5` undefined. Build variants: `es3`, `es5`, `both` (both = default gate for CI). Discipline: guard
   additively - **prefer adding a guarded branch over rewriting an existing ES3 code path**; never let an ES5 guard
   silently change ES3 behavior.
-- **D5 - Gating the JS standard library. (DECIDED - `stdlibES5.js` plus `//#if ES5` in `stdlib.js`.)** ES5 library
-  code lives in a standalone `src/stdlibES5.js` module. `tools/stdlibToCpp.pika` minifies it separately (seeded
-  with the base `@preserve` header so it inherits all keywords/globals) and emits a second `STDLIB_ES5_JS` string
-  guarded by `#if NUXJS_ES5`; `setupStandardLibrary` evals + runs it after the base library, sharing the same
-  `support`. *(Pipeline landed with the first feature, `String.prototype.trim`.)*
+- **D5 - Gating the JS standard library. (DECIDED - `//#if ES5` guards inside `stdlib.js`.)** All ES5 library code
+  lives in `src/stdlib.js` behind `//#if ES5` / `//#if !ES5` / `//#else` / `//#endif`, which
+  `tools/stdlibToCpp.pika` resolves twice before minification, emitting both variants under one `#if NUXJS_ES5`.
 
-  The module was originally forbidden to touch `stdlib.js` at all, because the archived attempt showed that
-  reusing base's private helpers meant *rewriting* them, churning ~25% of base and losing the pristine ES3 source.
-  That ban cost real duplication: a second `ToInteger`, a second whitespace set, a `parseInt` wrapper existing only
-  because base's table is closure-local. `stdlib.js` now carries `//#if ES5` / `//#if !ES5` / `//#else` /
-  `//#endif` guards instead, resolved by the generator before minification, so the file serves both targets and
-  the two variants ship side by side under one `#if NUXJS_ES5`. What the ban was protecting is now checked rather
-  than assumed: the generator re-emits the pure ES3 source to `output/stdlib.es3.js` on every build, and both it
-  and the ES3 blob must stay byte-identical. Base's helpers reach the module by being published on `support`
-  behind a guard, never by the module reading into base's closure. See `docs/Standard Library Guidelines.md`.
+  ES5 code was originally forbidden to touch `stdlib.js` at all, and lived in a standalone `src/stdlibES5.js`
+  module, because the archived attempt showed that reusing base's private helpers meant *rewriting* them, churning
+  ~25% of base and losing the pristine ES3 source. That ban cost real duplication, all of it forced by the closure
+  boundary rather than by the language: a second `ToInteger`, a second whitespace set, a `parseInt` wrapper, a
+  second capture block, and a `method()` that was a near-copy of `defineProperties`. What the ban was protecting is
+  now checked rather than assumed: the generator re-emits the pure ES3 source to `output/stdlib.es3.js` on every
+  build, and both it and the ES3 blob must stay byte-identical. See `docs/Standard Library Guidelines.md`.
 - **D2 - Accessor storage by indirection.** Add an `ACCESSOR_FLAG`; an accessor bucket's union holds a pointer to
   a small GC item `Accessor { Function* get; Function* set; }` - a plain `GCItem`, *not* an `Object`, stored via
   its own union member so it can never be read back as a JS `Value`. Bucket size is unchanged. Ordinary data
@@ -259,7 +255,7 @@ The largest behavioral addition. Needs both parser (directive detection) and VM 
 - [x] **Eval isolation**: strict direct `eval` gets its own variable environment and inherits caller strictness;
       indirect `eval` runs global and non-strict (§10.4.2).
 - [x] **Read-only global constants**: `NaN`/`Infinity`/`undefined` are non-writable (§15.1.1.1-3), so a strict
-      write to them throws. Lives in `stdlibES5.js`; ES3 §15.1.1 leaves them writable.
+      write to them throws. Guarded in `stdlib.js`; ES3 §15.1.1 leaves them writable.
 
 ### Tests
 One `.io` per rule under `tests/es5/`: `strictDirectivePrologue`, `strictThisBinding`, `strictAssignmentErrors`,
@@ -276,7 +272,7 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 - [x] `Function.prototype.bind` → a native `BoundFunction` (§15.3.4.5) with partial application, a `[[Construct]]`
       that constructs the target and ignores the bound `this`, a `[[HasInstance]]` that defers to the target, no
       `prototype` property, `length = max(0, target.length - bound args)` and the poison-pill `caller`/`arguments`.
-      A `support.bindFunction` hook wrapped by `stdlibES5.js`, like `apply`/`call`. `new` needed one new seam:
+      A `support.bindFunction` hook wrapped in `stdlib.js`, like `apply`/`call`. `new` needed one new seam:
       `getConstructPrototype`, because the object a `new` expression creates takes its prototype from the callee,
       and a bound function has none. `name` is a NuXJS extension (ES5.1 §15.3.5 has no such property) set to
       `"bound " + target.name` to match V8. (`tests/es5/functionBind.io`)
@@ -326,8 +322,8 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 ## 6. Array & String library (mostly `stdlib.js`)
 
 - [x] Array iteration: `forEach, map, filter, some, every, reduce, reduceRight, indexOf, lastIndexOf` (§15.4.4.14-22),
-      spec-accurate on callback args, `thisArg` and **sparse** arrays (`k in O`, not naive loops). Pure
-      `stdlibES5.js`. They sit in a strict IIFE for two reasons the spec forces: strict so a null `this` survives to
+      spec-accurate on callback args, `thisArg` and **sparse** arrays (`k in O`, not naive loops). They sit in the
+      guarded strict IIFE at the end of `stdlib.js` for two reasons the spec forces: strict so a null `this` survives to
       the ToObject step instead of being replaced by the global (§10.4.3), and each takes exactly one formal
       parameter with the optional second read from `arguments`, because §15.4.4.x fixes their `length` at 1.
       (`tests/es5/arrayIteration.io`, `arrayReduce.io`, `arraySearch.io`)
@@ -336,13 +332,13 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 - [x] Generic behaviors: `sort` with no comparator and `toLocaleString` were already correct and generic over
       array-likes. `length` truncation now respects non-configurable elements.
 - [x] The Throw flag, §15.4.4.6-13. The audit had this as two methods; it was seven. `push`, `pop`, `shift`,
-      `unshift`, `reverse` and `splice` are restated strict in `stdlibES5.js`, since strict mode *is* the flag
+      `unshift`, `reverse` and `splice` are restated strict in `stdlib.js`, since strict mode *is* the flag
       (§8.7.2 and §11.4.1 turn the refused store or delete into the TypeError). `sort` hands the present elements to
       the base sort and writes the permutation back strictly, so the ordering and even the comparator call pattern
       stay identical to ES3. All 64 refusal cases and a 364-case semantic differential match V8 and the es3 build.
       (`tests/es5/arrayMutatorThrowFlag.io`, `tests/es3only/arrayMutatorNoThrowFlag.io`)
 - [x] `String.prototype.trim` with the full ES5 WhiteSpace + LineTerminator set (§15.5.4.20) - first
-      `stdlibES5.js` feature, proving the pipeline. (`tests/es5/stringTrim.io`) Its CheckObjectCoercible guard was
+      ES5 library feature, proving the pipeline. (`tests/es5/stringTrim.io`) Its CheckObjectCoercible guard was
       dead until it moved into the strict block: a non-strict built-in never sees a null `this`.
 - [x] String character indices are non-writable, non-configurable own data properties (§15.5.5.2) - already
       conformant (`writable:false enumerable:true configurable:false`). Needs a test.
@@ -357,7 +353,7 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 - [ ] `Number.prototype.toFixed / toExponential / toPrecision` (§15.7.4): ES5 range checks and rounding verified
       correct. The one gap left is `toFixed` precision - `(1000000000000000128).toFixed(0)` loses the last digits
       (the existing TODO in `docs/notes/Todo.md`).
-- [x] `Date.now` (§15.9.4.4) and a fully generic `Date.prototype.toJSON` (§15.9.5.44) live in `stdlibES5.js`; the
+- [x] `Date.now` (§15.9.4.4) and a fully generic `Date.prototype.toJSON` (§15.9.5.44) are guarded in `stdlib.js`; the
       base `toJSON` read the receiver's own date value instead of going through ToPrimitive and the receiver's own
       `toISOString`. (`tests/es5/dateES5.io`)
 - [ ] `Date.parse` reads the ISO *date-only* form as local time where §15.9.1.15 says UTC. The parser is shared with
@@ -367,7 +363,7 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
       ES5.1 engine, and shipping ES6 globals would misreport what it supports.
 - [x] JSON reviver/replacer/space (§15.12) - verified working, including array and function replacers, `space`
       indenting and `toJSON` dispatch. The depth-cap deviation stays documented. Needs a test.
-- [x] Global `NaN`/`Infinity`/`undefined` read-only (§15.1.1) - landed in §4 via `stdlibES5.js`.
+- [x] Global `NaN`/`Infinity`/`undefined` read-only (§15.1.1) - landed in §4, guarded in `stdlib.js`.
 - [x] `Object.prototype.toString` (§15.2.4.2) reports `[object Undefined]` and `[object Arguments]`; ES3 gave the
       arguments object the class `Object` (§10.1.8), so there is an `es3only` twin. A `null` receiver still reports
       `[object Undefined]`, blocked by the `this`-as-a-`Value` item in §5. (`tests/es5/objectToStringTag.io`)
