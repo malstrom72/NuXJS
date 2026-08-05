@@ -237,7 +237,7 @@ The largest behavioral addition. Needs both parser (directive detection) and VM 
       on `Code` for global, function, and eval scopes (§14.1). Nested functions inherit.
 - [x] **`this` binding**: unbound `this` stays `undefined` - change `enter`'s `thisObject == 0 ? global : …`
       substitution to skip substitution when strict (§10.4.3). *Partial:* a primitive/null receiver passed via
-      `call`/`apply` is still coerced; see the deferral in `docs/notes/ECMAScript Compatibility Notes.md`.
+      `call`/`apply` is still coerced; scoped as the `this`-as-a-`Value` item in §5.
 - [x] **Throw on silent failures** (the VM discarded the store-success bool at `SET_PROPERTY_OP`):
       assignment to read-only / accessor-without-setter, assignment to a property of a **primitive base** (the
       §8.7.2 special `[[Put]]`, where the store lands on a transient wrapper and is therefore never kept),
@@ -284,9 +284,36 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 - [x] `Function.prototype.toString` returns source text and throws `TypeError` for a non-Function `this`
       (§15.3.4.2). Already correct; the representation is implementation-dependent, so only the round-trip of the
       source text is asserted. (`tests/es5/functionInstanceProperties.io`)
+- [ ] **`this` as a `Value`, not an `Object*`** - the last strict-mode gap (§10.4.3), and the only item here that
+      reaches into the public header. A frame stores its receiver as `Object*` (`Frame::thisObject`,
+      `NuXJS.h:1941`), so `Value::toObjectOrNull` (`NuXJS.cpp:879`) boxes a primitive and collapses both `null` and
+      `undefined` to `0`. Four symptoms, all ES5-strict only: `s.call(5)` and `s.bind(5)()` see a `Number` wrapper
+      rather than `5`, `s.call(null)` sees `undefined`, and `Object.prototype.toString.call(null)` answers
+      `[object Undefined]` where §15.2.4.2 step 2 wants `[object Null]`. ES3 §10.2.3 *requires* the coercion, so
+      the ES3 build is right as it stands and must not move.
+
+      Blast radius, which is smaller than the 81 occurrences of `thisObject` across the two files suggests:
+      - The advertised high-level API keeps its shape. `VarFunction` (`NuXJS.h:1514`) and the member-function
+        adapters already take `const Var&`, and `Var` holds a `Value`, so that tier can carry a primitive today.
+        Only the three adapter bodies building `Var(rt, thisObject)` from an `Object*` move (`NuXJS.h:1688`,
+        `1765`, `1778`). Every callback in `docs/examples/examples.cpp` is on this tier.
+      - Low-level *callers* mostly survive, `Value(Object*)` (`NuXJS.h:385`) being non-explicit: `Runtime::call`
+        (`1414`) and the five `Var::apply` overloads (`1542-1546`) still compile with an object receiver. Only an
+        explicit literal `0` breaks, since `Value(const void*)` (`450`) is private and undefined to poison
+        pointer-to-bool; the default arguments cover the ordinary case.
+      - The hard breaks are the `NativeFunction` typedef (`1087`) and the `Function::invoke` / `construct` virtuals
+        (`1080`, `1072`): writing a native function or subclassing `Function` needs a recompile. 41 internal
+        `Support::` functions carry the same tail.
+
+      So: guard the signature change with `#if NUXJS_ES5`, as the other 48 guards in the public header already are.
+      The ES3 API and binary stay byte-identical (design rule D1) and only an ES5 build recompiles. Do NOT carry a
+      primitive `this` alongside the `Object*`: two receivers on every call path is the accreting data model
+      `docs/Coding Style.md` §2 rules out, and it doubles the paths the guard was meant to keep single.
 
 ### Tests
 - bind partial application + `new`; bound `name`/`length`; named-function-expression scope isolation.
+- strict `this` pass-through: primitive and `null` receivers via `call`, `apply` and `bind`; `[object Null]` in
+  `objectToStringTag.io`; an `es3only` twin asserting the §10.2.3 coercion the ES3 build must keep.
 
 ---
 
@@ -337,7 +364,7 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 - [x] Global `NaN`/`Infinity`/`undefined` read-only (§15.1.1) - landed in §4 via `stdlibES5.js`.
 - [x] `Object.prototype.toString` (§15.2.4.2) reports `[object Undefined]` and `[object Arguments]`; ES3 gave the
       arguments object the class `Object` (§10.1.8), so there is an `es3only` twin. A `null` receiver still reports
-      `[object Undefined]`, blocked by the `this`-as-a-Value deferral. (`tests/es5/objectToStringTag.io`)
+      `[object Undefined]`, blocked by the `this`-as-a-`Value` item in §5. (`tests/es5/objectToStringTag.io`)
 - [x] `for-in` over `null`/`undefined` yields an empty iteration rather than throwing (§12.6.4) - landed in §0.5.
 
 ### Tests
