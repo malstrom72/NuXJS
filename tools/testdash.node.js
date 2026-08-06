@@ -177,9 +177,17 @@ function listSubdirs(relRoot) {
 function buildWorkList(limit) {
 	// Keep the small, fast subset for quick limit runs
 	if (limit) return [path.join("language", "arguments")];
-	// Fan out across first-level subdirectories for better parallelism
+	/*
+		Fan out across first-level subdirectories for better parallelism. test262.py matches each of these as a
+		substring of a test's path rather than as an anchored prefix, so "built-ins/Date" also picks up
+		"annexB/built-ins/Date". annexB is still listed in its own right: it has folders that test/built-ins does
+		not (escape, unescape), and those are reachable by no pattern at all otherwise, so their tests silently
+		never run and never appear as passed, failed or ignored. The resulting overlap costs a few duplicate
+		executions and nothing else, the totals being keyed by test name. Two roots stay out deliberately:
+		harness/ holds include files rather than tests, and intl402/ is ECMA-402, a different specification.
+	*/
 	let work = [];
-	["language", "built-ins"].forEach((root) => {
+	["language", "built-ins", "annexB"].forEach((root) => {
 		const subs = listSubdirs(root);
 		if (subs.length) work = work.concat(subs);
 		else work.push(root); // fallback to root if no subdirs found

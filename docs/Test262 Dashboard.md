@@ -30,6 +30,18 @@ reasons the coercion does not explain and are still red.
 
 Retargeting to a later edition is the `TARGET` object at the top of `tools/testdash.node.js`.
 
+## What is run
+
+`buildWorkList` in `tools/testdash.node.js` lists the first-level subdirectories of `language`, `built-ins` and
+`annexB` and hands them to `test262.py`, which matches each as a *substring* of a test's path rather than as an
+anchored prefix. So `built-ins/Date` also selects `annexB/built-ins/Date`, and annexB has to be listed in its own
+right anyway: it holds folders that `test/built-ins` does not (`escape`, `unescape`), and their tests are otherwise
+reachable by no pattern at all. Those eight went silently unrun for as long as the list held only two roots, and a
+silently unrun test is worse than a failing one, since it appears nowhere at all - not passed, failed or ignored.
+
+Two roots stay out on purpose: `harness/` holds include files rather than tests, and `intl402/` is ECMA-402, a
+different specification. With those excluded the suite is 16255 of the 16485 `.js` files on disk.
+
 ## Test262 Suite Layout
 
 - The Test262 archive lives at `externals/test262-master.tar.gz`.
