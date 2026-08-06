@@ -22,7 +22,7 @@
 //#if ES5
 	@preserve: trim,preventExtensions,isExtensible,defineOwnProperty,get,set,keys,create,now,seal,freeze,isSealed
 	@preserve: getOwnPropertyDescriptor,getOwnPropertyNames,createObject,isFrozen,bind,bindFunction,forEach,map
-	@preserve: filter,some,every,reduce,reduceRight
+	@preserve: filter,some,every,reduce,reduceRight,getYear,setYear,toGMTString
 //#endif
 
 	support: {
@@ -1282,6 +1282,14 @@ defineProperties(Date.prototype, { dontEnum: true }, {
 	getTime: unconstructable(function getTime() { return getDateValue(this) }),
 	getFullYear: unconstructable(function getFullYear() { return dateFromEpoch(getLocalDateValue(this))[0] }),
 	getUTCFullYear: unconstructable(function getUTCFullYear() { return dateFromEpoch(getDateValue(this))[0] }),
+//#if ES5
+	// B.2.4, informative. Step 2 returns NaN for an invalid date, which the two above are missing: int(NaN) is 0 by
+	// 9.4, so dateFromEpoch answers year 0 and month 2 where 15.9.5.10 and 15.9.5.12 also want NaN.
+	getYear: unconstructable(function getYear() {
+		var v;
+		return ($isNaN(v = getLocalDateValue(this)) ? v : dateFromEpoch(v)[0] - 1900);
+	}),
+//#endif
 	getMonth: unconstructable(function getMonth() { return dateFromEpoch(getLocalDateValue(this))[1] }),
 	getUTCMonth: unconstructable(function getUTCMonth() { return dateFromEpoch(getDateValue(this))[1] }),
 	getDate: unconstructable(function getDate() { return dateFromEpoch(getLocalDateValue(this))[2] }),
@@ -1312,9 +1320,25 @@ defineProperties(Date.prototype, { dontEnum: true }, {
 	setUTCMonth: unconstructable(function setUTCMonth(month, date) { return setDateValue(this, timeClip(setDateParts(getDateValue(this), 1, arguments))) }),
 	setFullYear: unconstructable(function setFullYear(year, month, date) { var v; return setDateValue(this, timeClipLocal(setDateParts($isNaN(v = getDateValue(this)) ? 0 : toLocalTime(v), 0, arguments))) }),
 	setUTCFullYear: unconstructable(function setUTCFullYear(year, month, date) { var v; return setDateValue(this, timeClip(setDateParts($isNaN(v = getDateValue(this)) ? 0 : v, 0, arguments))) }),
+//#if ES5
+	// B.2.5, informative. Step 1 reads the time value before step 2 converts `year`, so the class check comes first.
+	// Steps 5 and 6 are setFullYear's, the only difference being step 4 folding 0..99 into the 1900s.
+	setYear: unconstructable(function setYear(year) {
+		var t = getDateValue(this), y = +year, v;
+		if ($isNaN(y)) return setDateValue(this, $NaN);		// 3: an unusable year clears the date rather than clipping
+		if (0 <= (v = int(y)) && v <= 99) y = v + 1900;
+		return setDateValue(this, timeClipLocal(setDateParts($isNaN(t) ? 0 : toLocalTime(t), 0, [ y ])));
+	}),
+//#endif
 	// TODO: this isn't as generic as in the ES5 spec, e.g. not converting this to object, not going via the objects reassignable `toISOString`.
 	toJSON: unconstructable(function toJSON() { return isoDate(this); })
 });
+//#if ES5
+
+// B.2.6, informative: "the same Function object that is the initial value of Date.prototype.toUTCString", so it is
+// a second define rather than a table entry, the table having no name for a property it is itself creating.
+defineProperties(Date.prototype, { dontEnum: true }, { toGMTString: Date.prototype.toUTCString });
+//#endif
 
 /* --- RegExp --- */
 
