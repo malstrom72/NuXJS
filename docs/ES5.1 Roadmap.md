@@ -364,6 +364,13 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 
 ## 7. Number / Date / JSON / global refinements
 
+- [ ] **`getFullYear`, `getUTCFullYear`, `getMonth` and `getUTCMonth` answer 0 / 0 / 2 / 2 for an invalid date**
+      where §15.9.5.10 and §15.9.5.12 step 2 want NaN. `dateFromEpoch` runs its era arithmetic through `int()`, and
+      ToInteger(NaN) is 0 by §9.4, so the year and month fall out as numbers while the date correctly does not. The
+      other seventeen getters are right. Shared with ES3, so a fix has to be guarded or the frozen binary moves.
+      Found while adding `getYear` (Annex B §B.2.4), whose step 2 states the same requirement and which therefore
+      carries its own NaN check rather than inheriting one.
+
 - [ ] `Number.prototype.toFixed / toExponential / toPrecision` (§15.7.4): ES5 range checks and rounding verified
       correct. The one gap left is `toFixed` precision - `(1000000000000000128).toFixed(0)` loses the last digits
       (the existing TODO in `docs/notes/Todo.md`).

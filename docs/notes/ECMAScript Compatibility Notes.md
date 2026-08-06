@@ -57,6 +57,14 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
 - **JSON nesting depth is bounded.** `JSON.parse` / `JSON.stringify` cap nesting at `MAX_JSON_DEPTH` (61) to stay
   within the compiler's recursion limit; deeper structures throw a `TypeError`. The spec imposes no fixed limit.
 
+- **Annex B library functions - partial, by design.** Annex B is *informative* in ES5.1, so each entry is a
+  separate decision rather than a block. `String.prototype.substr` (`B.2.3`) has always been there, and
+  `Date.prototype.getYear` / `setYear` / `toGMTString` (`B.2.4` - `B.2.6`) are implemented under `NUXJS_ES5`;
+  `toGMTString` is the same Function object as `toUTCString`, as `B.2.6` requires. `escape` (`B.2.1`) and
+  `unescape` (`B.2.2`) are deliberately **not** implemented and never have been. Note that a Test262 path under
+  `annexB/` does not mean the test is Annex B for *this* edition: the RegExp tests there carry `es5id: 7.8.5` and
+  `15.10.2.x`, which are normative core in ES5.1 and only became Annex B in ES6.
+
 - **No Annex B octal - by design, in both modes.** ES5.1 keeps octal out of the core grammar (`7.8.3` / `7.8.4`);
   octal integer literals and octal escapes exist only as the Annex B compatibility extension (`B.1.1` / `B.1.2`),
   which NuXJS deliberately does not implement. So octal *literals* (`010`, `08`) and octal *escapes* (`"\47"`,
