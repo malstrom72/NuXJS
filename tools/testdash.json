@@ -116,6 +116,22 @@
 	"annexB/built-ins/String/prototype/sup/name": {
 		"category": "bad_test"
 	},
+	"annexB/built-ins/escape/B.2.1": {
+		"category": "by_design",
+		"reason": "escape (B.2.1) and unescape (B.2.2) are deliberately not implemented and never have been. Annex B is informative in ES5.1, so each entry is its own decision: substr (B.2.3) and the Date methods (B.2.4-B.2.6) are implemented, these two are not. See docs/notes/ECMAScript Compatibility Notes.md."
+	},
+	"annexB/built-ins/escape/B.2.1.propertyCheck": {
+		"category": "by_design",
+		"reason": "escape (B.2.1) and unescape (B.2.2) are deliberately not implemented and never have been. Annex B is informative in ES5.1, so each entry is its own decision: substr (B.2.3) and the Date methods (B.2.4-B.2.6) are implemented, these two are not. See docs/notes/ECMAScript Compatibility Notes.md."
+	},
+	"annexB/built-ins/unescape/B.2.2": {
+		"category": "by_design",
+		"reason": "escape (B.2.1) and unescape (B.2.2) are deliberately not implemented and never have been. Annex B is informative in ES5.1, so each entry is its own decision: substr (B.2.3) and the Date methods (B.2.4-B.2.6) are implemented, these two are not. See docs/notes/ECMAScript Compatibility Notes.md."
+	},
+	"annexB/built-ins/unescape/B.2.2.propertyCheck": {
+		"category": "by_design",
+		"reason": "escape (B.2.1) and unescape (B.2.2) are deliberately not implemented and never have been. Annex B is informative in ES5.1, so each entry is its own decision: substr (B.2.3) and the Date methods (B.2.4-B.2.6) are implemented, these two are not. See docs/notes/ECMAScript Compatibility Notes.md."
+	},
 	"built-ins/Array/S15.4.3_A2.2": {
 		"category": "bad_test"
 	},
