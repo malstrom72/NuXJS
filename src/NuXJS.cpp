@@ -2940,6 +2940,32 @@ bool Processor::run(Int32 maxCycles) {
 	return (ip != 0);
 }
 
+/* --- Constants --- */
+
+UInt32 Constants::findOrAdd(const Value& constant) {
+	const UInt32 newIndex = size();
+	if (constant.isString()) {
+		const String* string = constant.getString();
+		const Table::Bucket* found = stringIndexes.lookup(string);
+		if (found != 0) {
+			return static_cast<UInt32>(found->getIndexValue());
+		}
+		push(constant);
+		stringIndexes.update(stringIndexes.insert(string), static_cast<Int32>(newIndex));
+	} else if (constant.isObject()) {	// objects compare by identity, so a fresh one never matches
+		push(constant);
+	} else {
+		for (UInt32 i = otherIndexes.size(); i > 0; --i) {
+			if ((*this)[otherIndexes[i - 1]].isStrictlyEqualTo(constant)) {
+				return otherIndexes[i - 1];
+			}
+		}
+		push(constant);
+		otherIndexes.push(newIndex);
+	}
+	return newIndex;
+}
+
 /* --- Compiler --- */
 
 enum OperatorType {
@@ -3252,35 +3278,6 @@ void Compiler::emitBackwardBranch(Processor::Opcode opcode, const BranchPoint& p
 		assert(0 <= point.codeOffset && static_cast<UInt32>(point.codeOffset) <= currentSection->code.size());
 		emit(opcode, point.codeOffset - 1 - currentSection->code.size());
 	}
-}
-
-UInt32 Constants::findOrAdd(const Value& constant) {
-	if (constant.isString()) {
-		const String* string = constant.getString();
-		const Table::Bucket* found = stringIndexes.lookup(string);
-		if (found != 0) {
-			return static_cast<UInt32>(found->getIndexValue());
-		}
-		const UInt32 index = size();	// append before inserting: a sweep may take the table from under a bucket
-		push(constant);
-		stringIndexes.update(stringIndexes.insert(string), static_cast<Int32>(index));
-		return index;
-	}
-	const bool dedupable = !constant.isObject();	// objects compare by identity, so a fresh one never matches
-	if (dedupable) {
-		for (UInt32 i = otherIndexes.size(); i > 0;) {
-			const UInt32 index = otherIndexes[--i];
-			if ((*this)[index].isStrictlyEqualTo(constant)) {
-				return index;
-			}
-		}
-	}
-	const UInt32 index = size();
-	push(constant);
-	if (dedupable) {
-		otherIndexes.push(index);
-	}
-	return index;
 }
 
 UInt32 Compiler::addConstant(const Value& constant) {

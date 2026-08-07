@@ -828,7 +828,7 @@ class Constants : public GCItem, public Vector<Value> {
 		/*
 			The indexes hold nothing that is not in the list anyway, so a sweep may simply take them. findOrAdd
 			keeps no pointer into them across an allocation, and one landing mid-compilation costs only a few
-			constants appended twice.
+			constants appended twice. (And as of 20260807, compilation can never be interrupted by a GC anyhow.)
 		*/
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, begin(), end());
