@@ -3254,15 +3254,31 @@ void Compiler::emitBackwardBranch(Processor::Opcode opcode, const BranchPoint& p
 	}
 }
 
-UInt32 Compiler::addConstant(const Value& constant) {
-	Constants* constants = code->constants;
-	for (UInt32 index = constants->size(); index > 0;) {
-		if ((*constants)[--index].isStrictlyEqualTo(constant)) {
+UInt32 Constants::findOrAdd(const Value& constant) {
+	if (constant.isString()) {
+		Table::Bucket* bucket = stringIndexes.insert(constant.getString());
+		if (bucket->valueExists()) {
+			return static_cast<UInt32>(bucket->getIndexValue());
+		}
+		const UInt32 index = size();
+		push(constant);
+		stringIndexes.update(bucket, static_cast<Int32>(index));	// insert() cannot rehash under us again here
+		return index;
+	}
+	for (UInt32 i = otherIndexes.size(); i > 0;) {
+		const UInt32 index = otherIndexes[--i];
+		if ((*this)[index].isStrictlyEqualTo(constant)) {
 			return index;
 		}
 	}
-	constants->push(constant);
-	return constants->size() - 1;
+	const UInt32 index = size();
+	push(constant);
+	otherIndexes.push(index);
+	return index;
+}
+
+UInt32 Compiler::addConstant(const Value& constant) {
+	return code->constants->findOrAdd(constant);
 }
 
 void Compiler::emitWithConstant(Processor::Opcode opcode, const Value& constant) {
@@ -5018,6 +5034,7 @@ struct Support {
 			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
 			compiler.compileFunction(source->begin(), source->end()
 					, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING), 0);
+			code->dropConstantIndexes();
 			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
 		}
 		return UNDEFINED_VALUE;
@@ -5330,6 +5347,7 @@ Code* Runtime::compileEvalCode(const String* expression) {
 		Code* code = new(heap) Code(heap.managed(), 0, unit);
 		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
 		compiler.compile(*expression);
+		code->dropConstantIndexes();
 		evalCodeCache.update(evalCodeCache.insert(expression), code);
 		return code;
 	}
@@ -5356,6 +5374,7 @@ Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
 	catch (const ScriptException& x) {
 		throw CompilationError(x, effectiveFileName, compiler);
 	}
+	code->dropConstantIndexes();
 	return code;
 }
 
