@@ -3256,24 +3256,30 @@ void Compiler::emitBackwardBranch(Processor::Opcode opcode, const BranchPoint& p
 
 UInt32 Constants::findOrAdd(const Value& constant) {
 	if (constant.isString()) {
-		Table::Bucket* bucket = stringIndexes.insert(constant.getString());
-		if (bucket->valueExists()) {
-			return static_cast<UInt32>(bucket->getIndexValue());
+		const String* string = constant.getString();
+		const Table::Bucket* found = stringIndexes.lookup(string);
+		if (found != 0) {
+			return static_cast<UInt32>(found->getIndexValue());
 		}
-		const UInt32 index = size();
+		const UInt32 index = size();	// append before inserting: a sweep may take the table from under a bucket
 		push(constant);
-		stringIndexes.update(bucket, static_cast<Int32>(index));	// insert() cannot rehash under us again here
+		stringIndexes.update(stringIndexes.insert(string), static_cast<Int32>(index));
 		return index;
 	}
-	for (UInt32 i = otherIndexes.size(); i > 0;) {
-		const UInt32 index = otherIndexes[--i];
-		if ((*this)[index].isStrictlyEqualTo(constant)) {
-			return index;
+	const bool dedupable = !constant.isObject();	// objects compare by identity, so a fresh one never matches
+	if (dedupable) {
+		for (UInt32 i = otherIndexes.size(); i > 0;) {
+			const UInt32 index = otherIndexes[--i];
+			if ((*this)[index].isStrictlyEqualTo(constant)) {
+				return index;
+			}
 		}
 	}
 	const UInt32 index = size();
 	push(constant);
-	otherIndexes.push(index);
+	if (dedupable) {
+		otherIndexes.push(index);
+	}
 	return index;
 }
 
@@ -5034,7 +5040,6 @@ struct Support {
 			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
 			compiler.compileFunction(source->begin(), source->end()
 					, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING), 0);
-			code->dropConstantIndexes();
 			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
 		}
 		return UNDEFINED_VALUE;
@@ -5347,7 +5352,6 @@ Code* Runtime::compileEvalCode(const String* expression) {
 		Code* code = new(heap) Code(heap.managed(), 0, unit);
 		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
 		compiler.compile(*expression);
-		code->dropConstantIndexes();
 		evalCodeCache.update(evalCodeCache.insert(expression), code);
 		return code;
 	}
@@ -5374,7 +5378,6 @@ Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
 	catch (const ScriptException& x) {
 		throw CompilationError(x, effectiveFileName, compiler);
 	}
-	code->dropConstantIndexes();
 	return code;
 }
 

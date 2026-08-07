@@ -822,32 +822,24 @@ class Constants : public GCItem, public Vector<Value> {
 		Constants(GCList& gcList) : super(gcList), Vector<Value>(&gcList.getHeap())
 				, stringIndexes(&gcList.getHeap()), otherIndexes(&gcList.getHeap()) { }
 
-		/**
-			Returns the index of `constant`, appending it first if it is not already here. Constants are shared by
-			every Code in a compilation unit, so this list reaches a few thousand entries for a file the size of the
-			standard library, and a linear scan per constant made compilation quadratic: 6.7 million comparisons to
-			store 2476 constants, which was 79% of the cost of setting up a run-time. Strings are 86% of them and go
-			through a table; the rest keep the scan, but only over their own indexes, and there are a few hundred.
-		*/
 		UInt32 findOrAdd(const Value& constant);
 
-		/// Releases the lookup structures, which are only of use while compiling. Call once per compilation unit.
-		void dropIndexes() {
-			Heap* h = getAssociatedHeap();
-			stringIndexes = Table(h);
-			otherIndexes = Vector<UInt32>(h);
-		}
-
 	protected:
+		/*
+			The indexes hold nothing that is not in the list anyway, so a sweep may simply take them. findOrAdd
+			keeps no pointer into them across an allocation, and one landing mid-compilation costs only a few
+			constants appended twice.
+		*/
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, begin(), end());
-			stringIndexes.gcMarkReferences(heap);
+			stringIndexes = Table(&heap);
+			otherIndexes = Vector<UInt32>(&heap);
 			super::gcMarkReferences(heap);
 		}
 
 	private:
-		Table stringIndexes;			///< string constant -> its index in this list
-		Vector<UInt32> otherIndexes;	///< indexes of the non-string constants, the only ones still scanned
+		mutable Table stringIndexes;			// string constant -> its index in this list
+		mutable Vector<UInt32> otherIndexes;	// indexes of the non-strings worth scanning
 };
 
 /**
@@ -899,7 +891,6 @@ class Code : public Object {
 		UInt32 getArgumentsCount() const { return argumentNames.size(); }
 		const String* getLocalName(Int32 index) const { return (index < 0 ? varNames[static_cast<UInt32>(~index)] : argumentNames[static_cast<UInt32>(index)]); }
 		const Constants* getConstants() const { return constants; }
-		void dropConstantIndexes() { constants->dropIndexes(); }	///< Compilation over; drop the lookup structures.
 		const CodeWord* getCodeWords() const { return codeWords.begin(); }
 		UInt32 getCodeSize() const { return codeWords.size(); }
 		const String* getName() const { return name; }		// can be 0 (which means Code is not a function) or empty string (which means anonymous function)
