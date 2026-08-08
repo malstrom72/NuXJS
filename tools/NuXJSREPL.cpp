@@ -25,7 +25,7 @@
 	NuXJS command-line tool: an interactive REPL and a script runner around the embeddable engine.
 
 	Output stream contract (relied upon by the golden-file test suite in tools/test.pika, which compares
-	stdout only and runs the binary with `-s --legacy-exceptions`):
+	stdout only and runs the binary with `-s --legacy-exceptions` plus its own `-T` guard):
 
 	  * stdout  - program-visible output: anything printed by the script via print(), and the `!!!!`
 	              lines reporting compile/runtime errors (and their stack traces). The test runner captures

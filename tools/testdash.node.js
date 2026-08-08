@@ -30,7 +30,7 @@ const TEST_ARGS_BASE = [
 	"./externals/test262-master/tools/packaging/test262.py",
 	"--non_strict_only",
 	"--tests=" + TEST_PATH,
-	"--command=" + (process.platform === "win32" ? '"' + path.resolve(ENGINE) + '"' : ENGINE) + " -s",
+	"--command=" + (process.platform === "win32" ? '"' + path.resolve(ENGINE) + '"' : ENGINE) + " -s -T 60",
 ];
 
 // Simple arg helpers to support both "--name value" and "--name=value"
