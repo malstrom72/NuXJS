@@ -146,28 +146,29 @@ function checkClass(object, expectedClass, forFunction) {
 
 function leftPad(s, l) { var n = (s = "00000000000000000000" + s).length; return $sub(s, n - l, n); }
 
-/*
-	Exact decimal expansion of a positive double, little-endian, with `fraction` of its digits below the point. Every
-	double is y * 2^shift with y an integer under 2^53, so the expansion is y * 2^shift, or y * 5^-shift with -shift
-	fraction digits when shift < 0 (y / 2^k == y * 5^k / 10^k). 15.7.4.5-7 round on this and not on double
-	arithmetic, which cannot see that 0.35 is really 0.34999999999999997779 and so must round DOWN.
-*/
-// Multiplies digits from `from` up by factor, folding in a carry. exactDigits passes a power of 5 or 2; digitString
-// passes 1 to carry a rounding bump, which is also how it cuts without copying.
+// Exact decimal expansion, little-endian, `fraction` digits below the point. 15.7.4.5-7 round on this and not on
+// double arithmetic, which cannot see that 0.35 is really 0.34999999999999997779 and so must round DOWN.
+var ELEMENT_DIGITS = 8, POW10 = [1, 10, 100, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8], ELEMENT_BASE = POW10[ELEMENT_DIGITS];
+
 function carryDigits(digits, factor, carry, from) {
-	for (var d, i = from, n = digits.length; i < n || carry; ++i) {
-		digits[i] = d = (carry += (i < n ? digits[i] : 0) * factor) % 10;
-		carry = (carry - d) / 10;
+	var d, b = ELEMENT_BASE, i = from, n = digits.length;
+	for (; i < n; ++i) {
+		digits[i] = d = (carry += digits[i] * factor) % b;
+		carry = (carry - d) / b;
+	}
+	for (; carry; ++i) {
+		digits[i] = d = carry % b;
+		carry = (carry - d) / b;
 	}
 }
 
 function exactDigits(val) {
-	var shift = 0, i, digit, base, cap, full, digits = [];
-	for (; val % 1; --shift) val *= 2;
-	for (; val > 9007199254740991; ++shift) val /= 2;	// the % 10 below is only exact under 2^53
-	for (i = 0; val; val = (val - digit) / 10) digits[i++] = digit = val % 10;
+	var shift = 0, i, base, cap, full, digits = [];
+	for (; val % 1; shift -= 32) val *= 4294967296;	// 32 bits a time, the loop below divides the overshoot back out
+	for (; val > 9007199254740991; ++shift) val /= 2;	// carryDigits is only exact under 2^53
+	carryDigits(digits, 0, val, 0);
 	base = (shift < 0 ? 5 : 2);
-	cap = (shift < 0 ? 21 : 49);	// 10 * 5^21 and 10 * 2^49 both still land under 2^53, so that many per pass
+	cap = (shift < 0 ? 11 : 26);	// 1e8 * 5^11 and 1e8 * 2^26 stay under 2^53; widen ELEMENT_DIGITS and these must drop
 	full = support.pow(base, cap);
 	for (i = abs(shift); i > cap; i -= cap) carryDigits(digits, full, 0, 0);
 	if (i > 0) carryDigits(digits, support.pow(base, i), 0, 0);
@@ -175,22 +176,22 @@ function exactDigits(val) {
 	return digits;
 }
 
-/*
-	The expansion as a big-endian string requantized to `place`: positive drops that many low digits rounding half
-	up, negative appends that many zeros. Exact digits settle "ties to the larger" on one digit, no sticky bit. Cuts
-	by reading from `from` rather than slicing, slice being user-overridable, so this CONSUMES `digits`: below the
-	cut they are left un-rounded and `fraction` no longer describes them. Concatenating down beats reverse().join()
-	at these lengths (42 characters at worst), measured.
-*/
+// CONSUMES `digits`: cuts by reading from `from`, slice being user-overridable. `place` counts digits and not
+// elements, so the cut usually lands inside one and the probe and its carry sit at 10^off.
 function digitString(digits, place) {
-	var i, from = (place > 0 ? place : 0), s = '';
-	if (from > 0 && digits[from - 1] >= 5) carryDigits(digits, 1, 1, from);
-	for (i = digits.length; --i >= from; ) s += digits[i];
+	var i, n, v, from = (place > 0 ? place : 0), s = '';
+	var at = $floor(from / ELEMENT_DIGITS), off = from % ELEMENT_DIGITS;
+	if (from > 0 && $floor(digits[$floor((from - 1) / ELEMENT_DIGITS)] / POW10[(from - 1) % ELEMENT_DIGITS]) % 10 >= 5)
+		carryDigits(digits, 1, POW10[off], at);
+	if (at < (n = digits.length)) {	// after the bump, which can have grown the array by one
+		for (i = n; --i > at; ) s += (i === n - 1 ? digits[i] : leftPad(digits[i], ELEMENT_DIGITS));
+		v = $floor(digits[at] / POW10[off]);
+		s += (at === n - 1 ? v : leftPad(v, ELEMENT_DIGITS - off));
+	}
 	while (place++ < 0) s += '0';
 	return s;
 }
 
-// Puts the point after digit exponent+1. Both callers keep exponent+1 <= s.length, so the middle arm never pads.
 // leftPad's run is 20 zeros, which covers the 15.7.4.5-7 maximum of 20 fraction digits.
 function placePoint(s, exponent) {
 	return (exponent < 0 ? '0.' + leftPad('', -exponent - 1) + s
@@ -198,15 +199,8 @@ function placePoint(s, exponent) {
 			: $sub(s, 0, exponent + 1) + '.' + $sub(s, exponent + 1, s.length));
 }
 
-/*
-	15.7.4.6 and 15.7.4.7 both want n and e with a fixed digit count where n * 10^(e-digits) is nearest x, ties to
-	the larger: cut the exact expansion to digits+1 significant digits, then present it per eNotationBelow. With
-	fractionDigits absent 15.7.4.6 wants "f as small as possible", which is what 9.8.1 ToString already produces, so
-	that path reads the digits back out of it.
-*/
 function numberToString(num, digits, eNotationBelow) {
-	// Offset of ch, or s.length when absent, which lets the callers below skip the "not found" branch: $sub returns
-	// EMPTY for from >= to. String.prototype.indexOf is user-overridable so is out; indexing is an own-property read.
+	// String.prototype.indexOf is user-overridable so is out; indexing is an own-property read.
 	function findChar(s, ch) {
 		for (var i = 0, n = s.length; i < n; ++i) if (s[i] === ch) return i;
 		return n;
@@ -222,8 +216,11 @@ function numberToString(num, digits, eNotationBelow) {
 		while (n > i + 1 && s[n - 1] === '0') --n;	// 15.7.4.6: n is not divisible by 10
 		s = $sub(s, i, n);
 	} else {	// zero expands to no digits at all, and its exponent is 0
-		exponent = ((expansion = exactDigits(num)).length ? expansion.length - 1 - expansion.fraction : 0);
-		s = digitString(expansion, expansion.length - digits - 1);
+		// n counts digits, not elements, and must be read before digitString consumes the expansion
+		i = (expansion = exactDigits(num)).length;
+		n = (i ? (i - 1) * ELEMENT_DIGITS + ('' + expansion[i - 1]).length : 0);
+		exponent = (n ? n - 1 - expansion.fraction : 0);
+		s = digitString(expansion, n - digits - 1);
 		if (s.length > digits + 1) { s = $sub(s, 0, digits + 1); ++exponent; }	// 9.99 -> 1.00e+1, carry grew the count
 	}
 	if (exponent >= eNotationBelow && exponent <= digits) return sign + placePoint(s, exponent);
