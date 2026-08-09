@@ -81,3 +81,16 @@
 > asdf={qwer:123}; print(123 in\u0061sdf)
 ! !!!! Line: 1
 ! !!!! SyntaxError: Expected ',' or ')'
+-
+> \u5000\u4e00\ub000=fulsmurfen
+> print(\u5000\u4e00\ub000)
+< fiskpinne
+-
+> fulsmurfe\u2118=fulsmurfen
+! !!!! Line: 1
+! !!!! SyntaxError: Illegal Unicode in identifier
+-
+> fulsmurfe\u212e=fulsmurfen
+! !!!! Line: 1
+! !!!! SyntaxError: Illegal Unicode in identifier
+-

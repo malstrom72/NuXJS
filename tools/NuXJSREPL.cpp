@@ -25,7 +25,7 @@
 	NuXJS command-line tool: an interactive REPL and a script runner around the embeddable engine.
 
 	Output stream contract (relied upon by the golden-file test suite in tools/test.pika, which compares
-	stdout only and runs the binary with `-s --legacy-exceptions`):
+	stdout only and runs the binary with `-s --legacy-exceptions` plus its own `-T` guard):
 
 	  * stdout  - program-visible output: anything printed by the script via print(), and the `!!!!`
 	              lines reporting compile/runtime errors (and their stack traces). The test runner captures
@@ -51,6 +51,7 @@
 #include <ctime>
 #include <cstdlib>
 #include <cstring>
+#include <climits>
 
 using namespace NuXJS;
 
@@ -198,6 +199,7 @@ static const String* utf8ToString(Heap& heap, const char* utf8, size_t size) {
 
 static bool doQuit = false;			// set by the quit() helper
 static bool pauseBeforeQuit = false;	// -p; read by main()
+static int timeOutSeconds = 0;			// -T; read by compileAndRun(), 0 for no limit
 
 // In-memory transcript of the interactive session, tagged for #save (see pushIOLines). It is recorded
 // only while an interactive session is running; PrintFunction appends to it through a pointer that is null
@@ -544,6 +546,7 @@ void printUsage() {
 			<< "  -t: print timing and memory stats" << std::endl
 			<< "  -p: pause before quitting" << std::endl
 			<< "  -n: do not load the standard library" << std::endl
+			<< "  -T, --timeout <seconds>: abort code that runs longer (default: no limit)" << std::endl
 			<< "  -E, --legacy-exceptions: use legacy exception output" << std::endl
 			<< "  -h, --help: show this usage" << std::endl
 			<< std::endl
@@ -604,7 +607,8 @@ static bool compileAndRun(Runtime& rt, MyHeap& heap, Processor& processor, const
 
 		processor.enterGlobalCode(&globalCode);
 		bool done = false;
-		rt.resetTimeOut(60);
+		// Re-armed per chunk, so an interactive session gets the full allowance on each entry.
+		if (timeOutSeconds > 0) rt.resetTimeOut(timeOutSeconds);
 		const double start = getCPUSecs();
 		do {
 			done = !processor.run(STANDARD_CYCLES_BETWEEN_AUTO_GC);
@@ -779,6 +783,15 @@ int replMain(int argc, const char* argv[]) {
 			else if (strcmp(argv[argi], "-s") == 0) suppressResultEcho = true;
 			else if (strcmp(argv[argi], "-p") == 0) pauseBeforeQuit = true;
 			else if (strcmp(argv[argi], "-n") == 0) loadStdLib = false;
+			else if (strcmp(argv[argi], "--timeout") == 0 || strcmp(argv[argi], "-T") == 0) {
+				char* end;		// a missing value parses as the empty string, which fails on seconds <= 0 like any other
+				const long seconds = strtol(argi + 1 < argc ? argv[++argi] : "", &end, 10);
+				if (*end != '\0' || seconds <= 0 || seconds > INT_MAX) {
+					std::cerr << "Expected a positive number of seconds after -T / --timeout" << std::endl;
+					return 1;
+				}
+				timeOutSeconds = static_cast<int>(seconds);
+			}
 			else if (strcmp(argv[argi], "--legacy-exceptions") == 0 || strcmp(argv[argi], "-E") == 0) legacyExceptions = true;
 			else if (strcmp(argv[argi], "--help") == 0 || strcmp(argv[argi], "-h") == 0) {
 				printUsage();

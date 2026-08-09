@@ -282,7 +282,8 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 ### ES3 deviations
 
 - `\0` is interpreted as a null character even if digits follow (octal escapes are not supported).
-- Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The non‑breaking space (`\u00A0`) counts as white space, but the zero-width no‑break space (`\uFEFF`) does not. No other Unicode "space separator" characters are recognised.
+- Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The zero-width no‑break space (`\uFEFF`) counts as white space only in the es5 build, since ES5.1 7.2 lists it and ES3 7.2 does not.
+- Case conversion, identifier classification and the `<USP>` white space class are all derived from Unicode 3.0. ES3 asks for "version 2.1 or later", so this conforms, but it parts company with modern engines in three places. The zero width space (`\u200B`) counts as white space, because it is category Zs in Unicode 3.0 and only became a format character in 4.0.1. `"\u10A0".toLowerCase()` returns its argument unchanged, because Unicode 3.0 made Georgian unicameral, where later versions map it to `\u2D00`. `\u2118` and `\u212E` are rejected in identifiers, because ES3 defines those by Unicode category and both are symbols in Unicode 3.0; ES2015 grandfathered them back in with `Other_ID_Start`.
 - Custom property getters and setters are not implemented.
 - Implicit `valueOf` and `toString` conversions may happen earlier than specified, for example, `v[o]++` only invokes `toString()` once.
 - Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers.
