@@ -23,6 +23,8 @@ help => {
 didHelp = false;
 argNumber = 0;
 files.n = 0;
+// Kept off `exe` because -x replaces that wholesale, and every overriding caller would have to remember it.
+timeOutOption = ' -T 60';
 exe = (if (PLATFORM === 'WINDOWS') 'output\\NuXJS.exe -s --legacy-exceptions' else 'output/NuXJS -s --legacy-exceptions');
 errorsToo = false;
 keepInputFiles = false;
@@ -131,7 +133,7 @@ testFile => {
 		inFile = tempDir # 'test';
 	};
 	save(inFile, allInput);
-	result = pipe(exe # (if (errorsToo) ' <' else ' ') # quotePath(inFile), false, @err, @rc);
+	result = pipe(exe # timeOutOption # (if (errorsToo) ' <' else ' ') # quotePath(inFile), false, @err, @rc);
 	if (rc === 2) throw("user aborted");
 	result = replace(result, "\r\n", "\n");
 	result = trim(result, '', "\n");

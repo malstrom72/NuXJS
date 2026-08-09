@@ -17,7 +17,7 @@
 // 9.3.1 ToNumber on a string skips StrWhiteSpace at both ends.
 > show("number ideo", Number(IDEO + "12"));
 < number ideo: 12
-> show("number all", Number(B + OGHAM + NNBSP + MMSP + ENQ + HAIR + "7" + IDEO));
+> show("number all", Number(B + OGHAM + NNBSP + ENQ + HAIR + "7" + IDEO));
 < number all: 7
 -
 // A string of nothing but whitespace is the empty StrNumericLiteral, which 9.3.1 makes 0 rather than NaN.
@@ -45,12 +45,19 @@
 > show("trim", "[" + (IDEO + "x" + B).trim() + "]");
 < trim: [x]
 -
-// Negative control: U+200B ZERO WIDTH SPACE looks like a space but is category Cf, and 7.2 does not list it. The
-// Zs range stops at U+200A, so this must stay NaN or the range has been widened by one too many.
+// <USP> is category Zs of the Unicode version the engine is built from, which is 3.0. U+200B ZERO WIDTH SPACE is
+// Zs there and only became a format character in Unicode 4.0.1, so it counts here where modern engines reject it.
 > show("zwsp number", Number(C(0x200B) + "1"));
-< zwsp number: NaN
+< zwsp number: 1
 > show("zwsp parseInt", parseInt(C(0x200B) + "1"));
-< zwsp parseInt: NaN
+< zwsp parseInt: 1
+-
+// Negative controls that hold in every Unicode version: U+205F was added in 3.2 so it is outside the 3.0 set, and
+// U+200C ZERO WIDTH NON-JOINER is a format character throughout. Either turning white space widens the set wrongly.
+> show("mmsp number", Number(MMSP + "1"));
+< mmsp number: NaN
+> show("zwnj number", Number(C(0x200C) + "1"));
+< zwnj number: NaN
 -
 // The ES3 members of the set are unaffected.
 > show("nbsp", Number(C(0xA0) + "3"));

@@ -35,12 +35,27 @@
 < 6
 -
 > var s="\u1e98\uff47\u1fe3".toUpperCase(); for (i = 0; i < s.length; ++i) print(s.charCodeAt(i).toString(16))
-< 77
+< 57
 < 30a
 < ff27
-< 3c5
+< 3a5
 < 308
 < 301
+-
+> print("\xb5".toUpperCase().charCodeAt(0).toString(16))
+< 39c
+-
+> var s="\u0149".toUpperCase(); print(s.charCodeAt(0).toString(16) + " " + s.charCodeAt(1).toString(16))
+< 2bc 4e
+-
+> print("\u2126".toLowerCase().charCodeAt(0).toString(16))
+< 3c9
+-
+> print("\u212a".toLowerCase().charCodeAt(0).toString(16))
+< 6b
+-
+> print("\u10a0".toLowerCase().charCodeAt(0).toString(16))
+< 10a0
 -
 > print("abcd".toLocaleUpperCase())
 < ABCD

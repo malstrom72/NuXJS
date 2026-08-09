@@ -63,7 +63,7 @@ const TEST_ARGS_BASE = ["-u", "./externals/test262-master/tools/packaging/test26
 	.concat(getBool("include-strict") ? [] : ["--non_strict_only"])
 	.concat([
 		"--tests=" + TEST_PATH,
-		"--command=" + (process.platform === "win32" ? '"' + path.resolve(ENGINE) + '"' : ENGINE) + " -s",
+		"--command=" + (process.platform === "win32" ? '"' + path.resolve(ENGINE) + '"' : ENGINE) + " -s -T 60",
 	]);
 
 // Resolve a Python 2 interpreter robustly:

@@ -329,6 +329,24 @@
 > print((9.995).toPrecision(3) + " " + (9.999999999999998).toExponential(2))
 < 9.99 1.00e+1
 -
+// Cuts landing exactly on a packed-element boundary.
+> print((1.005).toFixed(2) + " " + (4.35).toFixed(1) + " " + (9.995).toFixed(1))
+< 1.00 4.3 10.0
+-
+> print((0.1).toFixed(15) + " " + (1 / 3).toFixed(14) + " " + (1e-7).toFixed(9))
+< 0.100000000000000 0.33333333333333 0.000000100
+-
+> print((0.30000000000000004).toFixed(20))
+< 0.30000000000000004441
+-
+// A tie on the element base itself, carrying out of the element.
+> print((99999999.5).toFixed(0) + " " + (99999999.5).toExponential(2) + " " + (99999999.5).toPrecision(3))
+< 100000000 1.00e+8 1.00e+8
+-
+// Cuts inside the top element.
+> print((12345678.87654321).toPrecision(9) + " " + (12345678.87654321).toFixed(10) + " " + (1e8).toFixed(2))
+< 12345678.9 12345678.8765432108 100000000.00
+-
 // Nothing in stdlib.js may call a method off a user-reachable prototype, because user code can replace it. These
 // formatters used to go through String.prototype.indexOf and Array.prototype.slice, which made toExponential()
 // answer "1.234.5678e+8" and toFixed(1) answer "0.1" once those were hijacked.

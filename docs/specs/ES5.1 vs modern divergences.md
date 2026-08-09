@@ -45,6 +45,20 @@ step 3, before the throw) and `rhsHit` stays `0`. ES2015 moved the check out of 
 which runs *after* the RHS, so V8 reports `rhsHit = 1`. Only the `rhsHit` cell diverges - both agree `hit` is `1`.
 ES3 §11.2.1 matches ES5.1 here, so this ordering is shared by both NuXJS variants.
 
+### White space is category Zs of Unicode 3.0, not of a modern Unicode
+ES5.1 §7.2 defines `<USP>` as "any other Unicode space separator", and §2 pins the database to "Unicode 3.0 or
+later". NuXJS derives every Unicode table from **3.0** (see `tools/work/generateUnicodeTables.js`), so V8 is not a
+valid oracle for two characters. Both engines conform; they just read different editions of the database.
+
+- **U+200B ZERO WIDTH SPACE is white space here, and is not in V8.** It is category Zs in Unicode 3.0 and only
+  became a format character in Unicode 4.0.1. So `Number("\u200B1")` is `1` for us and `NaN` in V8.
+- **U+205F MEDIUM MATHEMATICAL SPACE is not white space here, and is in V8.** It does not exist before Unicode
+  3.2, so it cannot be in a 3.0 derived set. `Number("\u205F1")` is `NaN` for us and `1` in V8.
+
+The BOM is a genuine edition difference rather than a Unicode one: ES5.1 §7.2 lists `<BOM>` and ES3 §7.2 does not,
+so `U+FEFF` is white space in the es5 build only. `tests/es5/whiteSpaceSet.io` and
+`tests/es3only/bomNotWhiteSpace.io` hold both halves.
+
 ### Other changed semantics (add as encountered)
 - `Function.prototype.bind` - the `.name` of a bound function is `"bound " + target.name` in ES2015; ES5.1 does
   not specify the name. (NuXJS follows the common `"bound "` prefix; check the ES5.1 text before asserting.)

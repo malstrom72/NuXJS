@@ -36,6 +36,7 @@ bash ./BuildCpp.sh $target $model ../output/NuXJSTest${suffix}_${target}_${model
 ../output/NuXJSTest${suffix}_${target}_${model} -s >/dev/null 2>&1
 ../output/NuXJSTest${suffix}_${target}_${model}
 bash ./BuildCpp.sh $target $model ../output/NuXJS${suffix}_${target}_${model} ../tools/NuXJSREPL.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
+(cd work && ../../output/NuXJS${suffix}_${target}_${model} -s generateUnicodeTables.js --check)
 
 # Select test directories for the variant: tests/es5 runs only under es5, tests/es3only only under es3.
 testDirs=""
