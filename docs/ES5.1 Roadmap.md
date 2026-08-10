@@ -364,6 +364,10 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 - [x] `Date.now` (§15.9.4.4) and a fully generic `Date.prototype.toJSON` (§15.9.5.44) are guarded in `stdlib.js`; the
       base `toJSON` read the receiver's own date value instead of going through ToPrimitive and the receiver's own
       `toISOString`. (`tests/es5/dateES5.io`)
+- [x] `RegExp.prototype` is itself a regular expression object (§15.10.6): [[Class]] `RegExp` and the §15.10.7
+      data properties of `new RegExp()`, where `distinctConstructor` had handed out a plain object. Found by the
+      first dashboard run, not by the roadmap. ES2015 reverted the whole idea, so V8 is not an oracle here and the
+      clause text is. (`tests/es5/regExpPrototypeObject.io`)
 - [ ] `Date.parse` reads the ISO *date-only* form as local time where §15.9.1.15 says UTC. The parser is shared with
       es3, so fixing it moves the es3 binary; see `docs/notes/Todo.md`. No legacy fallback, which §15.9.4.2 permits.
 - [x] `parseInt`/`parseFloat` radix and no-octal behaviour already match ES5 (§15.1.2); their whitespace handling
@@ -392,7 +396,9 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
     - [x] `--engine` selects the binary. It defaulted to the ES3 build, which would have scored the wrong engine.
     - [x] `--include-strict` drops `--non_strict_only`. That flag skips all 482 `onlyStrict` tests, so no strict
       mode behaviour was ever measured; ES5.1 conformance numbers are not meaningful without it.
-    - [ ] Run it and triage. Needs the suite extracted into `externals/`, so it has to be asked for.
+    - [~] First full run against the es5 build with `--include-strict`: 16255 total, 11151 passed, 268 failed,
+      4836 ignored. That is 97.7% of the 11419 in scope. Triage is under way rather than done: the RegExp
+      prototype family is closed (20 entries, three cited root causes), the rest of the 268 is not.
 - [x] `docs/notes/ECMAScript Compatibility Notes.md` exists again and has been kept current with each deviation as
       it landed: the JSON depth cap, no Annex B octal, `Date.parse`, the two ES5 syntax relaxations the es3 build
       also accepts, and the array `[[DefineOwnProperty]]` note. The strict `this` entry was retired with §5.

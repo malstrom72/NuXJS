@@ -294,6 +294,86 @@
 	"built-ins/RegExp/S15.10.2.8_A3_T15": {
 		"category": "by_design"
 	},
+	"built-ins/RegExp/prototype/15.10.6": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6 makes the RegExp prototype object itself a regular expression object, so its 15.10.7 properties are own data properties with { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, lastIndex writable. ES2015 21.2.5 reverted that: the prototype became an ordinary object carrying configurable accessors that throw for a non-RegExp receiver, and lastIndex moved to instances only. This test asserts the ES2015 shape under an es5id. Verified against the clause text; NuXJS implements 15.10.6, covered by tests/es5/regExpPrototypeObject.io."
+	},
+	"built-ins/RegExp/prototype/exec/S15.10.6.2_A5_T3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6.2 step 4 takes ToInteger(lastIndex) and returns null when it is negative; ES2015 replaced it with ToLength, which clamps a negative to 0 and so matches from the start. This test asserts the ToLength result under an es5id."
+	},
+	"built-ins/RegExp/prototype/exec/S15.10.6.2_A9": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.3.5.1 gives a function's length property { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, so `delete f.length` is false in sloppy code. ES2015 made length configurable, which is the only way this test's `delete === true` can hold. Asserted under an es5id."
+	},
+	"built-ins/RegExp/prototype/global/15.10.7.2-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6 makes the RegExp prototype object itself a regular expression object, so its 15.10.7 properties are own data properties with { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, lastIndex writable. ES2015 21.2.5 reverted that: the prototype became an ordinary object carrying configurable accessors that throw for a non-RegExp receiver, and lastIndex moved to instances only. This test asserts the ES2015 shape under an es5id. Verified against the clause text; NuXJS implements 15.10.6, covered by tests/es5/regExpPrototypeObject.io."
+	},
+	"built-ins/RegExp/prototype/global/15.10.7.2-2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6 makes the RegExp prototype object itself a regular expression object, so its 15.10.7 properties are own data properties with { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, lastIndex writable. ES2015 21.2.5 reverted that: the prototype became an ordinary object carrying configurable accessors that throw for a non-RegExp receiver, and lastIndex moved to instances only. This test asserts the ES2015 shape under an es5id. Verified against the clause text; NuXJS implements 15.10.6, covered by tests/es5/regExpPrototypeObject.io."
+	},
+	"built-ins/RegExp/prototype/global/S15.10.7.2_A9": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6 makes the RegExp prototype object itself a regular expression object, so its 15.10.7 properties are own data properties with { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, lastIndex writable. ES2015 21.2.5 reverted that: the prototype became an ordinary object carrying configurable accessors that throw for a non-RegExp receiver, and lastIndex moved to instances only. This test asserts the ES2015 shape under an es5id. Verified against the clause text; NuXJS implements 15.10.6, covered by tests/es5/regExpPrototypeObject.io."
+	},
+	"built-ins/RegExp/prototype/ignoreCase/15.10.7.3-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6 makes the RegExp prototype object itself a regular expression object, so its 15.10.7 properties are own data properties with { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, lastIndex writable. ES2015 21.2.5 reverted that: the prototype became an ordinary object carrying configurable accessors that throw for a non-RegExp receiver, and lastIndex moved to instances only. This test asserts the ES2015 shape under an es5id. Verified against the clause text; NuXJS implements 15.10.6, covered by tests/es5/regExpPrototypeObject.io."
+	},
+	"built-ins/RegExp/prototype/ignoreCase/15.10.7.3-2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6 makes the RegExp prototype object itself a regular expression object, so its 15.10.7 properties are own data properties with { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, lastIndex writable. ES2015 21.2.5 reverted that: the prototype became an ordinary object carrying configurable accessors that throw for a non-RegExp receiver, and lastIndex moved to instances only. This test asserts the ES2015 shape under an es5id. Verified against the clause text; NuXJS implements 15.10.6, covered by tests/es5/regExpPrototypeObject.io."
+	},
+	"built-ins/RegExp/prototype/ignoreCase/S15.10.7.3_A9": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6 makes the RegExp prototype object itself a regular expression object, so its 15.10.7 properties are own data properties with { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, lastIndex writable. ES2015 21.2.5 reverted that: the prototype became an ordinary object carrying configurable accessors that throw for a non-RegExp receiver, and lastIndex moved to instances only. This test asserts the ES2015 shape under an es5id. Verified against the clause text; NuXJS implements 15.10.6, covered by tests/es5/regExpPrototypeObject.io."
+	},
+	"built-ins/RegExp/prototype/lastIndex/15.10.7.5-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6 makes the RegExp prototype object itself a regular expression object, so its 15.10.7 properties are own data properties with { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, lastIndex writable. ES2015 21.2.5 reverted that: the prototype became an ordinary object carrying configurable accessors that throw for a non-RegExp receiver, and lastIndex moved to instances only. This test asserts the ES2015 shape under an es5id. Verified against the clause text; NuXJS implements 15.10.6, covered by tests/es5/regExpPrototypeObject.io."
+	},
+	"built-ins/RegExp/prototype/lastIndex/15.10.7.5-2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6 makes the RegExp prototype object itself a regular expression object, so its 15.10.7 properties are own data properties with { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, lastIndex writable. ES2015 21.2.5 reverted that: the prototype became an ordinary object carrying configurable accessors that throw for a non-RegExp receiver, and lastIndex moved to instances only. This test asserts the ES2015 shape under an es5id. Verified against the clause text; NuXJS implements 15.10.6, covered by tests/es5/regExpPrototypeObject.io."
+	},
+	"built-ins/RegExp/prototype/multiline/15.10.7.4-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6 makes the RegExp prototype object itself a regular expression object, so its 15.10.7 properties are own data properties with { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, lastIndex writable. ES2015 21.2.5 reverted that: the prototype became an ordinary object carrying configurable accessors that throw for a non-RegExp receiver, and lastIndex moved to instances only. This test asserts the ES2015 shape under an es5id. Verified against the clause text; NuXJS implements 15.10.6, covered by tests/es5/regExpPrototypeObject.io."
+	},
+	"built-ins/RegExp/prototype/multiline/15.10.7.4-2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6 makes the RegExp prototype object itself a regular expression object, so its 15.10.7 properties are own data properties with { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, lastIndex writable. ES2015 21.2.5 reverted that: the prototype became an ordinary object carrying configurable accessors that throw for a non-RegExp receiver, and lastIndex moved to instances only. This test asserts the ES2015 shape under an es5id. Verified against the clause text; NuXJS implements 15.10.6, covered by tests/es5/regExpPrototypeObject.io."
+	},
+	"built-ins/RegExp/prototype/multiline/S15.10.7.4_A9": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6 makes the RegExp prototype object itself a regular expression object, so its 15.10.7 properties are own data properties with { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, lastIndex writable. ES2015 21.2.5 reverted that: the prototype became an ordinary object carrying configurable accessors that throw for a non-RegExp receiver, and lastIndex moved to instances only. This test asserts the ES2015 shape under an es5id. Verified against the clause text; NuXJS implements 15.10.6, covered by tests/es5/regExpPrototypeObject.io."
+	},
+	"built-ins/RegExp/prototype/source/15.10.7.1-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6 makes the RegExp prototype object itself a regular expression object, so its 15.10.7 properties are own data properties with { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, lastIndex writable. ES2015 21.2.5 reverted that: the prototype became an ordinary object carrying configurable accessors that throw for a non-RegExp receiver, and lastIndex moved to instances only. This test asserts the ES2015 shape under an es5id. Verified against the clause text; NuXJS implements 15.10.6, covered by tests/es5/regExpPrototypeObject.io."
+	},
+	"built-ins/RegExp/prototype/source/15.10.7.1-2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6 makes the RegExp prototype object itself a regular expression object, so its 15.10.7 properties are own data properties with { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, lastIndex writable. ES2015 21.2.5 reverted that: the prototype became an ordinary object carrying configurable accessors that throw for a non-RegExp receiver, and lastIndex moved to instances only. This test asserts the ES2015 shape under an es5id. Verified against the clause text; NuXJS implements 15.10.6, covered by tests/es5/regExpPrototypeObject.io."
+	},
+	"built-ins/RegExp/prototype/source/S15.10.7.1_A9": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6 makes the RegExp prototype object itself a regular expression object, so its 15.10.7 properties are own data properties with { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, lastIndex writable. ES2015 21.2.5 reverted that: the prototype became an ordinary object carrying configurable accessors that throw for a non-RegExp receiver, and lastIndex moved to instances only. This test asserts the ES2015 shape under an es5id. Verified against the clause text; NuXJS implements 15.10.6, covered by tests/es5/regExpPrototypeObject.io."
+	},
+	"built-ins/RegExp/prototype/test/S15.10.6.3_A1_T22": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.10.6.2 step 4 takes ToInteger(lastIndex) and returns null when it is negative; ES2015 replaced it with ToLength, which clamps a negative to 0 and so matches from the start. This test asserts the ToLength result under an es5id."
+	},
+	"built-ins/RegExp/prototype/test/S15.10.6.3_A9": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.3.5.1 gives a function's length property { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, so `delete f.length` is false in sloppy code. ES2015 made length configurable, which is the only way this test's `delete === true` can hold. Asserted under an es5id."
+	},
+	"built-ins/RegExp/prototype/toString/S15.10.6.4_A9": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.3.5.1 gives a function's length property { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }, so `delete f.length` is false in sloppy code. ES2015 made length configurable, which is the only way this test's `delete === true` can hold. Asserted under an es5id."
+	},
 	"built-ins/String/fromCharCode/name": {
 		"category": "bad_test"
 	},
