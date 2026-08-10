@@ -1074,6 +1074,13 @@ class Code : public Object {
 		}
 };
 
+/*
+	The receiver a call carries, aliased so that the es5 lift can widen it in one place: 10.4.3 lets a strict
+	function see a primitive or `null` `this` verbatim, which an `Object*` cannot express. See docs/ES5.1 Roadmap.md
+	§5. Still `Object*` in both builds, so nothing has moved yet.
+*/
+typedef Object* Receiver;
+
 /**
 	The Function base class, which can be used to interface with native C++ functions, does not reference other objects.
 	Therefore it is ok to not place instances in a heap. (See GCItem for more info.)
@@ -1088,7 +1095,7 @@ class Function : public Object {
 		virtual const String* toString(Heap& heap) const;
 		virtual Value getInternalValue(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
-		virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
+		virtual Value construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Receiver thisObject);
 		virtual bool hasInstance(Runtime& rt, Object* object) const;
 	#if NUXJS_ES5
 		// The prototype a `new` expression gives the object it creates. Normally this function's own `prototype`,
@@ -1096,21 +1103,21 @@ class Function : public Object {
 		virtual void getConstructPrototype(Runtime& rt, Value* v) const;
 	#endif
 		virtual const Code* getScriptCode() const { return 0; }
-		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject = 0) = 0;
+		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Receiver thisObject = 0) = 0;
 
 	protected:
 		Function() { }
 		Function(GCList& gcList) : super(gcList) { }
 };
 
-typedef Value (*NativeFunction)(Runtime&, Processor&, UInt32, const Value*, Object*);
+typedef Value (*NativeFunction)(Runtime&, Processor&, UInt32, const Value*, Receiver);
 
 // FIX : overkill?
 template<class F> struct FunctorAdapter : public Function {
 	typedef Function super;
 	FunctorAdapter(const F& f) : f(f) { }
 	FunctorAdapter(GCList& gcList, const F& f) : super(gcList), f(f) { }
-	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Receiver thisObject) {
 		return f(rt, processor, argc, argv, thisObject);
 	}
 	F f;
@@ -1200,7 +1207,7 @@ class JSFunction : public ExtensibleFunction {
 		JSFunction(GCList& gcList, const Code* code, Scope* closure);
 		virtual const String* toString(Heap& heap) const;
 		virtual Value getInternalValue(Heap& heap) const;
-		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);
+		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Receiver thisObject);
 		virtual const Code* getScriptCode() const { return code; }
 
 	protected:
@@ -1430,7 +1437,7 @@ class Runtime : public GCItem {
 		Var newObjectVar();								///< Convenience routine for `Var(rt, rt.newJSObject())`
 		Var newArrayVar(UInt32 initialLength = 0);		///< Convenience routine for `Var(rt, rt.newJSArray())`
 
-		Var call(Function* function, UInt32 argc, const Value* argv, Object* thisObject = 0);	///< Synchronous blocking JS function call. Throws if recursion depth becomes greater than MAX_CROSS_CALL_RECURSION (too prevent potential C++ stack overflows).
+		Var call(Function* function, UInt32 argc, const Value* argv, Receiver thisObject = 0);	///< Synchronous blocking JS function call. Throws if recursion depth becomes greater than MAX_CROSS_CALL_RECURSION (too prevent potential C++ stack overflows).
 		Var eval(const String& expression);
 		void run(const String& source, const String* filename = 0);
 
@@ -1703,7 +1710,7 @@ class AccessorBase::const_iterator : public GCItem {
 template<class F> struct AccessorBase::VarFunctorAdapter : public ExtensibleFunction {
 	typedef ExtensibleFunction super;
 	VarFunctorAdapter(GCList& gcList, const F& f) : super(gcList), f(f) { }
-	virtual Value invoke(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object* thisObject) {
+	virtual Value invoke(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Receiver thisObject) {
 		return f(rt, Var(rt, thisObject), VarList(rt, argc, argv));
 	}
 	const F f;
@@ -1775,7 +1782,7 @@ template<class C> struct AccessorBase::VarMemberFunctionAdapter : public Extensi
 	typedef ExtensibleFunction super;
 	VarMemberFunctionAdapter(GCList& gcList, Var (C::*const &cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args))
 			: super(gcList), cppMethod(cppMethod) { }
-	virtual Value invoke(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object* thisObject) {
+	virtual Value invoke(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Receiver thisObject) {
 		C* me = reinterpret_cast<C*>(thisObject);
 		if ((me->C::getClassName()) != (me->getClassName())) {
 			ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Invalid class");
@@ -1793,7 +1800,7 @@ template<class C> struct BoundVarMemberFunctionAdapter : public ExtensibleFuncti
 	typedef ExtensibleFunction super;
 	BoundVarMemberFunctionAdapter(GCList& gcList, C* cppObject, Var (C::*const &cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args))
 			: super(gcList), cppObject(cppObject), cppMethod(cppMethod) { }
-	virtual Value invoke(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object* thisObject) {
+	virtual Value invoke(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Receiver thisObject) {
 		return (cppObject->*cppMethod)(rt, Var(rt, thisObject), VarList(rt, argc, argv));
 	}
 	C* cppObject;
@@ -1931,10 +1938,10 @@ class Processor : public GCItem {
 
 	public:
 		Processor(Runtime& rt);
-		void invokeFunction(Function* f, Int32 argc, const Value* argv, Object* thisObject = 0);
+		void invokeFunction(Function* f, Int32 argc, const Value* argv, Receiver thisObject = 0);
 		void enterGlobalCode(const Code* code);
 		void enterEvalCode(const Code* code, bool local = false);
-		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Object* thisObject = 0);
+		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Receiver thisObject = 0);
 	#if NUXJS_ES5
 		bool isCurrentCodeStrict() const { return currentFrame != 0 && currentFrame->code->isStrict(); }	///< 10.4.2: a direct eval inherits strictness from the calling code.
 	#endif
@@ -1947,7 +1954,7 @@ class Processor : public GCItem {
 	protected:
 		struct Frame : public GCItem {
 			typedef GCItem super;
-			Frame(GCList& gcList, const CodeWord* returnIP, const Code* code, Scope* scope, Object* thisObject
+			Frame(GCList& gcList, const CodeWord* returnIP, const Code* code, Scope* scope, Receiver thisObject
 				, Frame* previousFrame) : super(gcList), returnIP(returnIP), code(code), scope(scope)
 				, thisObject(thisObject), previousFrame(previousFrame)
 			{
@@ -1987,14 +1994,14 @@ class Processor : public GCItem {
 		struct CatchScope;
 		struct WithScope;
 
-		void enter(const Code* code, Scope* scope, Object* thisObject);
+		void enter(const Code* code, Scope* scope, Receiver thisObject);
 		void push(const Value& v);
 		void pop(Int32 count);
 		void pop2push1(const Value& v);
 		void innerRun();
 		Object* convertToObject(const Value& v, bool requireExtensible);
 		Function* asFunction(const Value& v);
-		void invokeFunction(Function* f, Int32 popCount, Int32 argc, Object* thisObject = 0); // FIX : rename, unnecessary with the same name as the public method
+		void invokeFunction(Function* f, Int32 popCount, Int32 argc, Receiver thisObject = 0); // FIX : rename, unnecessary with the same name as the public method
 		void newOperation(const Int32 argc);
 		void reset();
 	#if NUXJS_ES5
@@ -2003,7 +2010,7 @@ class Processor : public GCItem {
 		bool putThroughHolder(Object* holder, const String* name, const Value& v, bool strict);	// 8.12.5 on an object environment record; true means return to the loop
 	#endif
 	#endif
-		void pushFrame(const Code* code, Scope* scope, Object* thisObject);
+		void pushFrame(const Code* code, Scope* scope, Receiver thisObject);
 		void popFrame();
 		void popCatcher();
 
