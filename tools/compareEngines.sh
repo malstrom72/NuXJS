@@ -35,8 +35,7 @@ safe_sed() {
 	LC_ALL=C sed "$@"
 }
 
-# Build NuXJS if needed. es3, matching what build.sh leaves in output/NuXJS and what benchmarks/golden was
-# recorded from; NuXJS.h defaults NUXJS_ES5 to 1, so this has to be said rather than left out.
+# Build NuXJS if needed. es3, matching what build.sh leaves in output/NuXJS and what benchmarks/golden holds.
 if [ ! -x "output/NuXJS" ]; then
 	echo "Building NuXJS..."
 	CPP_OPTIONS="-DNUXJS_ES5=0" bash tools/BuildCpp.sh release x64 ./output/NuXJS \
