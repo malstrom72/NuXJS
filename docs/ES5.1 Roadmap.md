@@ -242,8 +242,8 @@ The largest behavioral addition. Needs both parser (directive detection) and VM 
 - [x] **Directive prologue**: scan leading string-literal statements for exactly `use strict`; set a `bool strict`
       on `Code` for global, function, and eval scopes (§14.1). Nested functions inherit.
 - [x] **`this` binding**: unbound `this` stays `undefined` - change `enter`'s `thisObject == 0 ? global : …`
-      substitution to skip substitution when strict (§10.4.3). *Partial:* a primitive/null receiver passed via
-      `call`/`apply` is still coerced; scoped as the `this`-as-a-`Value` item in §5.
+      substitution to skip substitution when strict (§10.4.3). A primitive or null receiver passes through
+      verbatim too, which took the `this`-as-a-`Value` item in §5.
 - [x] **Throw on silent failures** (the VM discarded the store-success bool at `SET_PROPERTY_OP`):
       assignment to read-only / accessor-without-setter, assignment to a property of a **primitive base** (the
       §8.7.2 special `[[Put]]`, where the store lands on a transient wrapper and is therefore never kept),
@@ -372,9 +372,9 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 - [x] JSON reviver/replacer/space (§15.12) - verified working, including array and function replacers, `space`
       indenting and `toJSON` dispatch. The depth-cap deviation stays documented. Needs a test.
 - [x] Global `NaN`/`Infinity`/`undefined` read-only (§15.1.1) - landed in §4, guarded in `stdlib.js`.
-- [x] `Object.prototype.toString` (§15.2.4.2) reports `[object Undefined]` and `[object Arguments]`; ES3 gave the
-      arguments object the class `Object` (§10.1.8), so there is an `es3only` twin. A `null` receiver still reports
-      `[object Undefined]`, blocked by the `this`-as-a-`Value` item in §5. (`tests/es5/objectToStringTag.io`)
+- [x] `Object.prototype.toString` (§15.2.4.2) reports `[object Undefined]`, `[object Null]` and
+      `[object Arguments]`; ES3 gave the arguments object the class `Object` (§10.1.8), so there is an `es3only`
+      twin. (`tests/es5/objectToStringTag.io`)
 - [x] `for-in` over `null`/`undefined` yields an empty iteration rather than throwing (§12.6.4) - landed in §0.5.
 
 ### Tests
