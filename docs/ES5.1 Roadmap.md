@@ -397,8 +397,9 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
     - [x] `--include-strict` drops `--non_strict_only`. That flag skips all 482 `onlyStrict` tests, so no strict
       mode behaviour was ever measured; ES5.1 conformance numbers are not meaningful without it.
     - [~] First full run against the es5 build with `--include-strict`: 16255 total, 11151 passed, 268 failed,
-      4836 ignored. That is 97.7% of the 11419 in scope. Triage is under way rather than done: the RegExp
-      prototype family is closed (20 entries, three cited root causes), the rest of the 268 is not.
+      4874 ignored, 230 still red. That is 98.0% of the 11381 in scope. Triage is under way rather than done:
+      the RegExp prototype family (20) and the 15.2.3.x non-object TypeErrors (38) are closed, each entry
+      verified by running the test's own expression in both engines and citing the clause. 230 to go.
 - [x] `docs/notes/ECMAScript Compatibility Notes.md` exists again and has been kept current with each deviation as
       it landed: the JSON depth cap, no Annex B octal, `Date.parse`, the two ES5 syntax relaxations the es3 build
       also accepts, and the array `[[DefineOwnProperty]]` note. The strict `this` entry was retired with §5.

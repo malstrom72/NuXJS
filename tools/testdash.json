@@ -291,6 +291,158 @@
 	"built-ins/Number/S9.3.1_A3_T2": {
 		"category": "by_design"
 	},
+	"built-ins/Object/freeze/15.2.3.9-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.9 step 1 throws a TypeError when Type(O) is not Object, so `Object.freeze` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/freeze/15.2.3.9-1-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.9 step 1 throws a TypeError when Type(O) is not Object, so `Object.freeze` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/freeze/15.2.3.9-1-2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.9 step 1 throws a TypeError when Type(O) is not Object, so `Object.freeze` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/freeze/15.2.3.9-1-3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.9 step 1 throws a TypeError when Type(O) is not Object, so `Object.freeze` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/freeze/15.2.3.9-1-4": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.9 step 1 throws a TypeError when Type(O) is not Object, so `Object.freeze` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/getOwnPropertyDescriptor/15.2.3.3-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.3 step 1 throws a TypeError when Type(O) is not Object, so `Object.getOwnPropertyDescriptor` on a primitive is a TypeError for this edition. A later edition applies ToObject to the argument instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/getOwnPropertyDescriptor/15.2.3.3-1-3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.3 step 1 throws a TypeError when Type(O) is not Object, so `Object.getOwnPropertyDescriptor` on a primitive is a TypeError for this edition. A later edition applies ToObject to the argument instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/getOwnPropertyDescriptor/15.2.3.3-1-4": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.3 step 1 throws a TypeError when Type(O) is not Object, so `Object.getOwnPropertyDescriptor` on a primitive is a TypeError for this edition. A later edition applies ToObject to the argument instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/getOwnPropertyNames/15.2.3.4-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.4 step 1 throws a TypeError when Type(O) is not Object, so `Object.getOwnPropertyNames` on a primitive is a TypeError for this edition. A later edition applies ToObject to the argument instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/getOwnPropertyNames/15.2.3.4-1-4": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.4 step 1 throws a TypeError when Type(O) is not Object, so `Object.getOwnPropertyNames` on a primitive is a TypeError for this edition. A later edition applies ToObject to the argument instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/getOwnPropertyNames/15.2.3.4-1-5": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.4 step 1 throws a TypeError when Type(O) is not Object, so `Object.getOwnPropertyNames` on a primitive is a TypeError for this edition. A later edition applies ToObject to the argument instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/getPrototypeOf/15.2.3.2-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.2 step 1 throws a TypeError when Type(O) is not Object, so `Object.getPrototypeOf` on a primitive is a TypeError for this edition. A later edition applies ToObject to the argument instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not. This one also asserts the coerced result is the wrapper prototype, which ES5.1 never reaches."
+	},
+	"built-ins/Object/getPrototypeOf/15.2.3.2-1-3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.2 step 1 throws a TypeError when Type(O) is not Object, so `Object.getPrototypeOf` on a primitive is a TypeError for this edition. A later edition applies ToObject to the argument instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not. This one also asserts the coerced result is the wrapper prototype, which ES5.1 never reaches."
+	},
+	"built-ins/Object/getPrototypeOf/15.2.3.2-1-4": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.2 step 1 throws a TypeError when Type(O) is not Object, so `Object.getPrototypeOf` on a primitive is a TypeError for this edition. A later edition applies ToObject to the argument instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not. This one also asserts the coerced result is the wrapper prototype, which ES5.1 never reaches."
+	},
+	"built-ins/Object/isExtensible/15.2.3.13-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.13 step 1 throws a TypeError when Type(O) is not Object, so `Object.isExtensible` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/isExtensible/15.2.3.13-1-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.13 step 1 throws a TypeError when Type(O) is not Object, so `Object.isExtensible` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/isExtensible/15.2.3.13-1-2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.13 step 1 throws a TypeError when Type(O) is not Object, so `Object.isExtensible` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/isExtensible/15.2.3.13-1-3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.13 step 1 throws a TypeError when Type(O) is not Object, so `Object.isExtensible` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/isExtensible/15.2.3.13-1-4": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.13 step 1 throws a TypeError when Type(O) is not Object, so `Object.isExtensible` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/isFrozen/15.2.3.12-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.12 step 1 throws a TypeError when Type(O) is not Object, so `Object.isFrozen` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/isFrozen/15.2.3.12-1-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.12 step 1 throws a TypeError when Type(O) is not Object, so `Object.isFrozen` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/isFrozen/15.2.3.12-1-2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.12 step 1 throws a TypeError when Type(O) is not Object, so `Object.isFrozen` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/isFrozen/15.2.3.12-1-3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.12 step 1 throws a TypeError when Type(O) is not Object, so `Object.isFrozen` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/isFrozen/15.2.3.12-1-4": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.12 step 1 throws a TypeError when Type(O) is not Object, so `Object.isFrozen` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/isSealed/15.2.3.11-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.11 step 1 throws a TypeError when Type(O) is not Object, so `Object.isSealed` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/keys/15.2.3.14-1-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.14 step 1 throws a TypeError when Type(O) is not Object, so `Object.keys` on a primitive is a TypeError for this edition. A later edition applies ToObject to the argument instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/keys/15.2.3.14-1-2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.14 step 1 throws a TypeError when Type(O) is not Object, so `Object.keys` on a primitive is a TypeError for this edition. A later edition applies ToObject to the argument instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/keys/15.2.3.14-1-3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.14 step 1 throws a TypeError when Type(O) is not Object, so `Object.keys` on a primitive is a TypeError for this edition. A later edition applies ToObject to the argument instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/preventExtensions/15.2.3.10-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.10 step 1 throws a TypeError when Type(O) is not Object, so `Object.preventExtensions` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/preventExtensions/15.2.3.10-1-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.10 step 1 throws a TypeError when Type(O) is not Object, so `Object.preventExtensions` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/preventExtensions/15.2.3.10-1-2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.10 step 1 throws a TypeError when Type(O) is not Object, so `Object.preventExtensions` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/preventExtensions/15.2.3.10-1-3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.10 step 1 throws a TypeError when Type(O) is not Object, so `Object.preventExtensions` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/preventExtensions/15.2.3.10-1-4": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.10 step 1 throws a TypeError when Type(O) is not Object, so `Object.preventExtensions` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/seal/15.2.3.8-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.8 step 1 throws a TypeError when Type(O) is not Object, so `Object.seal` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/seal/15.2.3.8-1-1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.8 step 1 throws a TypeError when Type(O) is not Object, so `Object.seal` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/seal/15.2.3.8-1-2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.8 step 1 throws a TypeError when Type(O) is not Object, so `Object.seal` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/seal/15.2.3.8-1-3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.8 step 1 throws a TypeError when Type(O) is not Object, so `Object.seal` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/seal/15.2.3.8-1-4": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.2.3.8 step 1 throws a TypeError when Type(O) is not Object, so `Object.seal` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
 	"built-ins/RegExp/S15.10.2.8_A3_T15": {
 		"category": "by_design"
 	},
