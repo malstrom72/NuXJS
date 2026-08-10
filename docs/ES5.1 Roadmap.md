@@ -394,8 +394,8 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
       mode behaviour was ever measured; ES5.1 conformance numbers are not meaningful without it.
     - [ ] Run it and triage. Needs the suite extracted into `externals/`, so it has to be asked for.
 - [x] `docs/notes/ECMAScript Compatibility Notes.md` exists again and has been kept current with each deviation as
-      it landed: the JSON depth cap, no Annex B octal, the strict `this` deferral, `Date.parse`, the two ES5 syntax
-      relaxations the es3 build also accepts, and the array `[[DefineOwnProperty]]` note.
+      it landed: the JSON depth cap, no Annex B octal, `Date.parse`, the two ES5 syntax relaxations the es3 build
+      also accepts, and the array `[[DefineOwnProperty]]` note. The strict `this` entry was retired with §5.
 - [ ] Update `README.md` scope ("ES5.1" instead of "ES3 + focused ES5"), `docs/NuXJS Documentation.md`,
       `docs/notes/TypeScript Compatibility.md`, and `docs/examples/lib.NuXJS.d.ts`.
 - [ ] Refresh the ES3-compliance numbers in the README from an actual dashboard run.
