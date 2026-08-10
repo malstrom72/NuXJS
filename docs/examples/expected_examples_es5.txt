@@ -29,7 +29,7 @@ C++ callback received: iteration 1
 C++ callback received: iteration 2
 JavaScript returned: 3
 === custom_object_example ===
-Counter value: 3
+Counter value: 2
 === error_handling_example ===
 C++ caught again: ReferenceError: print is not defined
 === json_conversion_example ===

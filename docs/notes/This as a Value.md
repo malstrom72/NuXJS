@@ -72,8 +72,8 @@ gate than the binary `cmp`: it isolates the change from link paths and the Mach-
 - **A template nobody instantiates is not covered by a green build.** `AccessorBase::VarMemberFunctionAdapter`
   dereferences its receiver, so the alias pass left it doing `reinterpret_cast<C*>` on a `Value`; both builds went
   green because nothing in the tree binds an unbound member function. `receiverObject()` sits in the alias block
-  for exactly this case - a boundary that genuinely wants the object - and `docs/examples/examples.cpp` should
-  grow a case that instantiates it.
+  for exactly this case - a boundary that genuinely wants the object - and `docs/examples/examples.cpp` now binds
+  `&Counter::decrement`, so the examples build is the guard against it rotting again.
 
 ## Gates
 
