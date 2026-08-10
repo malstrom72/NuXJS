@@ -1946,7 +1946,25 @@ var RegExp = support.distinctConstructor(function RegExp(pattern, flags) {
 	return re;
 });
 
+//#if !ES5
 defineProperties(RegExp, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: regExpPrototype = RegExp.prototype });
+//#else
+/*
+	15.10.6: the prototype is itself a regular expression object, its [[Class]] "RegExp" and its data properties
+	those of `new RegExp()`, where distinctConstructor hands out a plain object. So it is built here instead, with
+	the same attributes createRegExp gives an instance, and the methods below then land on it as before. Its
+	matcher is written out rather than compiled: compileRegExp goes through evalThere, and the globals table binds
+	`eval` further down. `[p, p]` is what compileRegExp emits for the empty pattern, an empty match wherever it is
+	tried, so RegExp.prototype.exec and .test answer as 15.10.6.2 and .3 require of `new RegExp()`.
+*/
+regExpPrototype = support.createWrapper("RegExp", function (s, p) { return [p, p] }
+		, support.prototypes.Object);
+defineProperties(regExpPrototype, { dontEnum: true, readOnly: true, dontDelete: true }
+		, { global: false, ignoreCase: false, multiline: false, source: '' });
+defineProperties(regExpPrototype, { dontEnum: true, dontDelete: true }, { lastIndex: 0 });
+defineProperties(regExpPrototype, { dontEnum: true }, { constructor: RegExp });
+defineProperties(RegExp, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: regExpPrototype });
+//#endif
 defineProperties(RegExp.prototype, { dontEnum: true }, {
 	exec: unconstructable(function exec(string) { checkClass(this, "RegExp", "exec"); return regExpExecMethod(this, string); }),
 	test: unconstructable(function test(string) { checkClass(this, "RegExp", "test"); return execRegExp(this, string) !== void 0; }),
