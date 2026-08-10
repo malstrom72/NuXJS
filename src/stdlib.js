@@ -822,10 +822,8 @@ defineProperties(Array, { dontEnum: true, readOnly: true, dontDelete: true }, { 
 //#endif
 defineProperties(Array.prototype, { dontEnum: true }, {
 	constructor: Array,
+//#if !ES5
 	concat: unconstructable(function concat(item1) {
-//#if ES5
-		toObject(this, "concat");
-//#endif
 		var a = [ ], argv, argc = (argv = arguments).length, n = 0, v = this;
 		for (var i = -1; i < argc; v = argv[++i]) {
 			if ($getInternalProperty(v, "class") !== "Array") {
@@ -837,10 +835,24 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		}
 		return a;
 	}),
-	join: unconstructable(function join(separator) {
-//#if ES5
-		toObject(this, "join");
+//#else
+	// ToObject(this) is step 1, and the algorithm reads *that* object: a strict caller now passes a
+	// primitive receiver verbatim (10.4.3), which a property read and `in` would both reject.
+	concat: unconstructable(function concat(item1) {
+		var a = [ ], argv, argc = (argv = arguments).length, n = 0, v = toObject(this, "concat");
+		for (var i = -1; i < argc; v = argv[++i]) {
+			if ($getInternalProperty(v, "class") !== "Array") {
+				a[n++] = v;
+			} else {
+				for (var j = 0, e = v.length; j < e; ++j) if (j in v) a[n + j] = v[j];
+				a.length = (n += j);
+			}
+		}
+		return a;
+	}),
 //#endif
+//#if !ES5
+	join: unconstructable(function join(separator) {
 		var s = new StringBuilder, s2, len = uint32(this.length);
 		separator = (separator === void 0 ? ',' : str(separator));
 		for (var i = 0; i < len; ++i) {
@@ -849,6 +861,19 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		}
 		return s.build();
 	}),
+//#else
+	// ToObject(this) is step 1, and the algorithm reads *that* object: a strict caller now passes a
+	// primitive receiver verbatim (10.4.3), which a property read and `in` would both reject.
+	join: unconstructable(function join(separator) {
+		var o = toObject(this, "join"), s = new StringBuilder, s2, len = uint32(o.length);
+		separator = (separator === void 0 ? ',' : str(separator));
+		for (var i = 0; i < len; ++i) {
+			if (i > 0) s.append(separator);
+			if ((s2 = o[i]) != null) s.append(str(s2));
+		}
+		return s.build();
+	}),
+//#endif
 //#if !ES5
 	pop: unconstructable(function pop() {
 		var len, result = void 0;
@@ -944,10 +969,8 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return first;
 	}),
 //#endif
+//#if !ES5
 	slice: unconstructable(function slice(start, end) {
-//#if ES5
-		toObject(this, "slice");
-//#endif
 		var a = [ ], len = uint32(this.length);
 		if ((start = int(start)) < 0) { start += len; if (start < 0) start = 0; }
 		if (end === void 0 || (end = int(end)) > len) end = len;
@@ -956,6 +979,19 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		a.length = j;
 		return a;
 	}),
+//#else
+	// ToObject(this) is step 1, and the algorithm reads *that* object: a strict caller now passes a
+	// primitive receiver verbatim (10.4.3), which a property read and `in` would both reject.
+	slice: unconstructable(function slice(start, end) {
+		var o = toObject(this, "slice"), a = [ ], len = uint32(o.length);
+		if ((start = int(start)) < 0) { start += len; if (start < 0) start = 0; }
+		if (end === void 0 || (end = int(end)) > len) end = len;
+		else if (end < 0) end += len;
+		for (var i = start, j = 0; i < end; ++i, ++j) if (i in o) a[j] = o[i];
+		a.length = j;
+		return a;
+	}),
+//#endif
 	sort: unconstructable(function sort(comparefn) {
 		var self = this;
 		function swap(arr, aIndex, bIndex) {
@@ -1057,10 +1093,8 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return a;
 	}),
 //#endif
+//#if !ES5
 	toLocaleString: unconstructable(function toLocaleString() {
-//#if ES5
-		toObject(this, "toLocaleString");
-//#endif
 		var len = uint32(this.length), builder = new StringBuilder, element;
 		for (var k = 0; k < len; ++k) {
 			if (k > 0) builder.append(',');
@@ -1068,6 +1102,18 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		}
 		return builder.build();
 	}),
+//#else
+	// ToObject(this) is step 1, and the algorithm reads *that* object: a strict caller now passes a
+	// primitive receiver verbatim (10.4.3), which a property read and `in` would both reject.
+	toLocaleString: unconstructable(function toLocaleString() {
+		var o = toObject(this, "toLocaleString"), len = uint32(o.length), builder = new StringBuilder, element;
+		for (var k = 0; k < len; ++k) {
+			if (k > 0) builder.append(',');
+			if ((element = o[k]) != null) builder.append(str(Object(element).toLocaleString()));
+		}
+		return builder.build();
+	}),
+//#endif
 	toString: unconstructable(function toString() {
 		checkClass(this, "Array", "toString");
 		return this.join();

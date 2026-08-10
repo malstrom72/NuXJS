@@ -1075,11 +1075,20 @@ class Code : public Object {
 };
 
 /*
-	The receiver a call carries, aliased so that the es5 lift can widen it in one place: 10.4.3 lets a strict
-	function see a primitive or `null` `this` verbatim, which an `Object*` cannot express. See docs/ES5.1 Roadmap.md
-	§5. Still `Object*` in both builds, so nothing has moved yet.
+	The receiver a call carries, and the slot a frame stores it in. 10.4.3 lets a strict function see a primitive
+	or `null` `this` verbatim, which an `Object*` cannot express, so es5 widens both to a `Value`; es3 10.2.3
+	requires the coercion and keeps the pointer. `noReceiver()` is the unbound `this`, which the two builds spell
+	differently, so that a default argument needs no guard of its own. See docs/ES5.1 Roadmap.md §5.
 */
+#if NUXJS_ES5
+typedef const Value& Receiver;
+typedef const Value ReceiverSlot;
+inline Receiver noReceiver() { return UNDEFINED_VALUE; }
+#else
 typedef Object* Receiver;
+typedef Object* const ReceiverSlot;
+inline Receiver noReceiver() { return 0; }
+#endif
 
 /**
 	The Function base class, which can be used to interface with native C++ functions, does not reference other objects.
@@ -1103,7 +1112,7 @@ class Function : public Object {
 		virtual void getConstructPrototype(Runtime& rt, Value* v) const;
 	#endif
 		virtual const Code* getScriptCode() const { return 0; }
-		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Receiver thisObject = 0) = 0;
+		virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Receiver thisObject = noReceiver()) = 0;
 
 	protected:
 		Function() { }
@@ -1437,7 +1446,7 @@ class Runtime : public GCItem {
 		Var newObjectVar();								///< Convenience routine for `Var(rt, rt.newJSObject())`
 		Var newArrayVar(UInt32 initialLength = 0);		///< Convenience routine for `Var(rt, rt.newJSArray())`
 
-		Var call(Function* function, UInt32 argc, const Value* argv, Receiver thisObject = 0);	///< Synchronous blocking JS function call. Throws if recursion depth becomes greater than MAX_CROSS_CALL_RECURSION (too prevent potential C++ stack overflows).
+		Var call(Function* function, UInt32 argc, const Value* argv, Receiver thisObject = noReceiver());	///< Synchronous blocking JS function call. Throws if recursion depth becomes greater than MAX_CROSS_CALL_RECURSION (too prevent potential C++ stack overflows).
 		Var eval(const String& expression);
 		void run(const String& source, const String* filename = 0);
 
@@ -1938,10 +1947,10 @@ class Processor : public GCItem {
 
 	public:
 		Processor(Runtime& rt);
-		void invokeFunction(Function* f, Int32 argc, const Value* argv, Receiver thisObject = 0);
+		void invokeFunction(Function* f, Int32 argc, const Value* argv, Receiver thisObject = noReceiver());
 		void enterGlobalCode(const Code* code);
 		void enterEvalCode(const Code* code, bool local = false);
-		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Receiver thisObject = 0);
+		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Receiver thisObject = noReceiver());
 	#if NUXJS_ES5
 		bool isCurrentCodeStrict() const { return currentFrame != 0 && currentFrame->code->isStrict(); }	///< 10.4.2: a direct eval inherits strictness from the calling code.
 	#endif
@@ -1964,7 +1973,7 @@ class Processor : public GCItem {
 			const CodeWord* const returnIP;
 			const Code* const code;
 			Scope* const scope;
-			Object* const thisObject;
+			ReceiverSlot thisObject;
 			Frame* const previousFrame;
 			virtual void gcMarkReferences(Heap& heap) const {
 				gcMark(heap, code);
@@ -2001,7 +2010,7 @@ class Processor : public GCItem {
 		void innerRun();
 		Object* convertToObject(const Value& v, bool requireExtensible);
 		Function* asFunction(const Value& v);
-		void invokeFunction(Function* f, Int32 popCount, Int32 argc, Receiver thisObject = 0); // FIX : rename, unnecessary with the same name as the public method
+		void invokeFunction(Function* f, Int32 popCount, Int32 argc, Receiver thisObject = noReceiver()); // FIX : rename, unnecessary with the same name as the public method
 		void newOperation(const Int32 argc);
 		void reset();
 	#if NUXJS_ES5
