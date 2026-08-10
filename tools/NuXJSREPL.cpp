@@ -228,7 +228,7 @@ static void pushIOStop() {
 struct PrintFunction : public Function {
 	std::vector<std::string>* capture;	// null => do not record (script-file mode)
 	PrintFunction() : capture(0) { }
-	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Receiver thisObject) {
 		const String* s = (argc >= 1 ? argv[0].toString(rt.getHeap()) : &EMPTY_STRING);
 		std::wcout << s->toWideString().c_str() << std::endl;
 		if (capture != 0) {
@@ -241,7 +241,7 @@ struct PrintFunction : public Function {
 // printErr() is print()'s stderr twin: it writes to the diagnostic stream and, being off the recorded
 // stdout transcript, is never captured for #save or compared by the golden .io tests.
 struct PrintErrFunction : public Function {
-	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Receiver thisObject) {
 		const String* s = (argc >= 1 ? argv[0].toString(rt.getHeap()) : &EMPTY_STRING);
 		std::wcerr << s->toWideString().c_str() << std::endl;
 		return Value::UNDEFINED;
@@ -249,7 +249,7 @@ struct PrintErrFunction : public Function {
 };
 
 struct GCFunction : public Function {
-	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Receiver thisObject) {
 	   Heap& heap = rt.getHeap();
 	   const UInt32 preCount = heap.count();
 	   const size_t preSize = heap.size();
@@ -362,7 +362,7 @@ static void disassemble(Heap& heap, const Code& code) {
 	}
 }
 
-Value disassemble(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+Value disassemble(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Receiver thisObject) {
 	Heap& heap = rt.getHeap();
 	Function* f = (argc >= 1 ? argv[0].asFunction() : 0);
 	if (f == 0) {

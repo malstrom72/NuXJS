@@ -261,7 +261,7 @@ struct BindingTestObject {
 struct NativeConstructor : public ExtensibleFunction {
 	typedef ExtensibleFunction super;
 	NativeConstructor(GCList& gcList, const Var& prototype) : super(gcList), prototype(prototype) { }
-	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+	virtual Value invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Receiver thisObject) {
 		(void)processor;
 		(void)thisObject;
 		Heap& heap = rt.getHeap();
@@ -289,7 +289,7 @@ Var test1(Runtime& rt, const Var& thisVar, const VarList& args) {
 	return Var(rt, static_cast<double>(args[0]) + args[1]);
 }
 
-Value gcTest(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject) {
+Value gcTest(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Receiver thisObject) {
 	(void)processor;
 	(void)thisObject;
 	VarList safeKeep(rt, argc, argv);
@@ -802,7 +802,7 @@ static Var countArguments(Runtime& rt, const Var&, const VarList& args) {
 	return Var(rt, static_cast<UInt32>(args.size()));
 }
 
-static Value returnFortyTwo(Runtime&, Processor&, UInt32, const Value*, Object*) {
+static Value returnFortyTwo(Runtime&, Processor&, UInt32, const Value*, Receiver) {
 	return Value(42);
 }
 
