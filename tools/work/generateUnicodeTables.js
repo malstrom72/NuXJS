@@ -37,6 +37,12 @@ var FIXED_WHITE_SPACE = [ 0x09, 0x0B, 0x0C, 0x0A, 0x0D, 0x2028, 0x2029 ];
 */
 var ES5_EXTRA_WHITE_SPACE = [ 0xFEFF ];
 
+/*
+	ES5 7.6 IdentifierPart also takes <ZWNJ> and <ZWJ>, which are category Cf and so in none of the categories
+	above. ES3 7.1 strips every Cf character from the source instead, so the es5 build gets its own part table.
+*/
+var ES5_EXTRA_IDENTIFIER_PART = [ 0x200C, 0x200D ];
+
 var CHUNK_SIZE = 8;						// Int32s per 256 character block of the identifier bitmaps
 var CPP_WRAP = 119, JS_WRAP = 576;		// generated data is exempt from the 120 column rule
 
@@ -158,12 +164,13 @@ function testBit(bits, index) {
 	return (bits[i] & (1 << (index - i * 32))) != 0;
 }
 
-function buildBitMask(categories) {
+function buildBitMask(categories, extras) {
 	var set = {}, bits = [], i;
 	for (i = 0; i < categories.length; ++i) set[categories[i]] = true;
 	for (i = 0; i < 65536 / 32; ++i) bits[i] = 0;
 	setBit(bits, '$'.charCodeAt(0));
 	setBit(bits, '_'.charCodeAt(0));
+	for (i = 0; i < extras.length; ++i) setBit(bits, extras[i]);
 	eachDataLine(function (from, ordinal, cols) {
 		if (cols[2] in set) for (var c = from; c <= ordinal; ++c) setBit(bits, c);
 	});
@@ -193,19 +200,46 @@ function testLookup(data, offsets, character) {
 	return (data[offsets[i] + k] & (1 << (j - k * 32))) != 0;
 }
 
-function emitCppTable(declaration, values) {
-	var out = [declaration.replace('$N', values.length) + ' = {'], line = '';
-	for (var i = 0; i < values.length; ++i) {
+// Wrapped lines for one range of a table. A trailing comma everywhere is what lets a range stand on its own.
+function tableLines(values, from, to) {
+	var lines = [], line = '';
+	for (var i = from; i < to; ++i) {
 		// INT32_MIN has no literal form in C++, so it is spelled as an expression.
-		var piece = (values[i] === -2147483648 ? '-2147483647-1' : '' + values[i])
-				+ (i + 1 < values.length ? ',' : '');
+		var piece = (values[i] === -2147483648 ? '-2147483647-1' : '' + values[i]) + ',';
 		if (line !== '' && 1 + line.length + piece.length > CPP_WRAP) {
-			out.push('\t' + line);
+			lines.push('\t' + line);
 			line = '';
 		}
 		line += piece;
 	}
-	out.push('\t' + line, '};');
+	if (line !== '') {
+		lines.push('\t' + line);
+	}
+	return lines;
+}
+
+/*
+	`es5Values` is the same table as the es5 build wants it. The two agree almost everywhere, so only the runs
+	that differ go under a guard and the rest is emitted once.
+*/
+function emitCppTable(declaration, values, es5Values) {
+	var es5 = (es5Values === undefined ? values : es5Values);
+	var n = Math.max(values.length, es5.length), out = [declaration.replace('$N', values.length) + ' = {'], i = 0;
+	while (i < n) {
+		var j = i, same = (values[i] === es5[i]);
+		while (j < n && (values[j] === es5[j]) === same) ++j;
+		if (same) {
+			out = out.concat(tableLines(values, i, j));
+		} else {
+			out = out.concat(['#if NUXJS_ES5'], tableLines(es5, i, Math.min(j, es5.length)));
+			if (i < values.length) {
+				out = out.concat(['#else'], tableLines(values, i, Math.min(j, values.length)));
+			}
+			out.push('#endif');
+		}
+		i = j;
+	}
+	out.push('};');
 	return out.join('\n');
 }
 
@@ -290,22 +324,27 @@ function splice(source, name, replacement, path) {
 
 var caseTables = buildCaseTables();
 var data = [];
-var leadingBits = buildBitMask(LEADING_CATEGORIES);
-var partBits = buildBitMask(PART_CATEGORIES);
+var leadingBits = buildBitMask(LEADING_CATEGORIES, []);
+var partBits = buildBitMask(PART_CATEGORIES, []);
+var partES5Bits = buildBitMask(PART_CATEGORIES, ES5_EXTRA_IDENTIFIER_PART);
 var leadingOffsets = buildLookup(leadingBits, data);
 var partOffsets = buildLookup(partBits, data);
+// buildLookup only ever appends, so taking the es5 table last leaves the es3 mask array a prefix of this one.
+var es3MaskCount = data.length;
+var partES5Offsets = buildLookup(partES5Bits, data);
 var whiteSpace = buildWhiteSpace();
 
 for (var ch = 0; ch < 65536; ++ch) {
 	if (testLookup(data, partOffsets, ch) !== testBit(partBits, ch)
-			|| testLookup(data, leadingOffsets, ch) !== testBit(leadingBits, ch)) {
+			|| testLookup(data, leadingOffsets, ch) !== testBit(leadingBits, ch)
+			|| testLookup(data, partES5Offsets, ch) !== testBit(partES5Bits, ch)) {
 		throw new Error('Identifier lookup disagrees with the bitmap at ' + ch);
 	}
 }
 
-var cppBlock = emitCppTable('const Int32 UNICODE_MASKS[$N]', data) + '\n\n'
+var cppBlock = emitCppTable('const Int32 UNICODE_MASKS[]', data.slice(0, es3MaskCount), data) + '\n\n'
 		+ emitCppTable('const UInt16 IDENTIFIER_START_OFFSETS[$N]', leadingOffsets) + '\n\n'
-		+ emitCppTable('const UInt16 IDENTIFIER_PART_OFFSETS[$N]', partOffsets) + '\n\n'
+		+ emitCppTable('const UInt16 IDENTIFIER_PART_OFFSETS[$N]', partOffsets, partES5Offsets) + '\n\n'
 		+ emitCppWhiteSpace(whiteSpace);
 
 var jsBlock = emitJSTable('lowerToUpper =', caseTables.lowerToUpper) + '\n'
