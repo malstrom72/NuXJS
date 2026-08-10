@@ -249,9 +249,9 @@ rt.eval("var o = {}; o.scale = v.scale; o.scale(21)");   // throws TypeError: In
 
 The two `eval` calls are the point of the example: the same function object, reached through the same property, either runs or is rejected purely on what `this` turns out to be. Nothing in `scale` performs the test, and the body of the second call is never entered.
 
-It relies on the class overriding `getClassName` to return a unique pointer that stays the same for the lifetime of the class, which `Object::getClassName` requires in any case.
+**The class must override `getClassName`, and nothing enforces it.** The comparison is between `C`'s statically resolved `getClassName()` and the receiver's virtual one. If `C` does not override it, the static side resolves to the inherited `JSObject`/`Object` implementation - which is also what any ordinary object returns virtually - so the two agree, the guard passes, and an unrelated object is `reinterpret_cast` into `C`. The check degenerates into a no-op precisely when it is needed, with no warning at compile time or run time. Treat the override as mandatory for any class bound this way, and give it a `String` constant of its own.
 
-Two limits are worth knowing. The adapter validates the *receiver* only - any arguments that must also be of a native class still need checking by hand. And the check is not null-safe: it reaches the receiver's virtual `getClassName()` through a `reinterpret_cast`, so a null receiver crashes rather than throwing. A hand-written check can test for null first.
+Two further limits. The adapter validates the *receiver* only - any arguments that must also be of a native class still need checking by hand. And it is not null-safe: it reaches the receiver's virtual `getClassName()` through a `reinterpret_cast`, so a null receiver crashes rather than throwing. A hand-written check can test for null first.
 
 ##### The unchecked form, and the manual check
 
