@@ -197,9 +197,22 @@ The rule that generalises: let the hooks answer indices and a small fixed set of
 
 A prototype built in C++ is a heap reference like any other. Whichever object owns it - the `Runtime`, a shared holder, or each instance - must mark it in `gcMarkReferences` and chain to the super-class implementation. Note also that a class whose hooks expose indices has to report them from `getOwnPropertyEnumerator` as well, or `for...in` will disagree with direct property access.
 
-#### Validating `this` in native methods
+#### Binding C++ functions to properties, and validating `this`
 
-A method installed on a prototype can be invoked with any receiver, so it has to confirm that `this` really is the native class before casting. NuXJS offers three ways to do that.
+A method installed on a prototype can be invoked with any receiver, so before casting `this` to the native class something has to confirm that it really is one. Whether anything does is decided by *which kind of C++ function you assign* - the four forms below are picked apart by overload resolution on `AccessorBase::makeValue`, and they behave differently. This is a safety decision rather than a matter of taste, so it is worth being deliberate about:
+
+| What is assigned | Signature | Adapter created | Receiver (`this`) |
+| --- | --- | --- | --- |
+| a free or static function | `Value (*)(Runtime&, Processor&, UInt32, const Value*, Object*)` (`NativeFunction`) | `FunctorAdapter` | passed through raw, **not checked** |
+| a free or static function | `Var (*)(Runtime&, const Var&, const VarList&)` (`VarFunction`) | `VarFunctorAdapter` | wrapped in a `Var`, **not checked** |
+| a pointer to a member function | `Var (C::*)(Runtime&, const Var&, const VarList&)` | `VarMemberFunctionAdapter<C>` | **checked**, then used as the C++ `this` |
+| `Var(rt, cppObject, &C::method)` | the same member signature, bound | `BoundVarMemberFunctionAdapter<C>` | ignored - the call always runs on `cppObject` |
+
+The distinction that catches people out is the first two versus the third. A static function and a member function can have identical-looking bodies and be installed on the same prototype, yet only the member function gets a receiver check. The static forms hand over whatever the call site supplied and do nothing else - `VarFunctorAdapter::invoke` is a single forwarding line. A static function that casts its receiver to its own class **must** validate it first, or `Type.prototype.method.call({}, ...)` will cast an unrelated object and corrupt memory instead of throwing.
+
+One further difference: `FunctorAdapter` derives from `Function`, while the other three derive from `ExtensibleFunction`. Only the latter can carry ordinary properties, so a constructor function whose `prototype` property must be assignable - as TypeScript's ES3 `__extends` emit requires of a base class - cannot use the raw `NativeFunction` form.
+
+##### The checked form
 
 Assigning a pointer to a member function with the signature `Var (C::*)(Runtime&, const Var&, const VarList&)` wraps it in an adapter that performs the check automatically. Before dispatching, the adapter compares the statically resolved `C::getClassName()` against the virtual `getClassName()` on the receiver, and throws a `TypeError` carrying the message `Invalid class` when the two differ:
 
@@ -236,11 +249,33 @@ rt.eval("var o = {}; o.scale = v.scale; o.scale(21)");   // throws TypeError: In
 
 The two `eval` calls are the point of the example: the same function object, reached through the same property, either runs or is rejected purely on what `this` turns out to be. Nothing in `scale` performs the test, and the body of the second call is never entered.
 
-This is the least error-prone binding. It relies on the class overriding `getClassName` to return a unique pointer that stays the same for the lifetime of the class, which `Object::getClassName` requires in any case.
+It relies on the class overriding `getClassName` to return a unique pointer that stays the same for the lifetime of the class, which `Object::getClassName` requires in any case.
+
+Two limits are worth knowing. The adapter validates the *receiver* only - any arguments that must also be of a native class still need checking by hand. And the check is not null-safe: it reaches the receiver's virtual `getClassName()` through a `reinterpret_cast`, so a null receiver crashes rather than throwing. A hand-written check can test for null first.
+
+##### The unchecked form, and the manual check
+
+Static functions - `Counter::increment` in `docs/examples/examples.cpp`, and most native methods in practice - get no help at all, so the same test has to be written out. Compare `getClassName()` against the class's own `String*` by pointer identity, which is exactly what the adapter does, plus a null test:
+
+```cpp
+static NativeVector* checkedSelf(Runtime& rt, Object* o) {
+    if (o == 0 || o->getClassName() != &VECTOR_CLASS_NAME) {
+        ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "can only be used on NativeVector");
+    }
+    return static_cast<NativeVector*>(o);        // safe: the class name has been confirmed
+}
+
+static Var scale(Runtime& rt, const Var& thisObject, const VarList& args) {
+    NativeVector* self = checkedSelf(rt, thisObject.to<Object*>());
+    ...
+}
+
+protoVar["scale"] = scale;                       // a plain function - nothing checks the receiver
+```
+
+Omitting `checkedSelf` here would not be a lax cast that usually works; it would be an unchecked one that any script can exploit with `.call()`. A bare `static_cast` is only defensible when nothing else can reach the prototype, as in a self-contained example.
 
 For checked downcasts outside a call, the engine's own idiom is a virtual accessor: `Object::asFunction`, `asArray` and `asError` return `0` by default and the class that owns the type overrides it to return `this`. Giving a custom class an equivalent yields a cheap, safe conversion from an arbitrary `Object*`.
-
-Where no adapter is involved - inside a plain `NativeFunction`, or a static function matching the `VarFunction` signature such as `Counter::increment` in `docs/examples/examples.cpp` - the same test has to be written by hand, comparing `getClassName()` against the class's own `String*` by pointer identity. Static functions receive the receiver unvalidated, so a bare `static_cast` is only safe when nothing else can reach the prototype, as in a self-contained example.
 
 ## Runtime Architecture
 
