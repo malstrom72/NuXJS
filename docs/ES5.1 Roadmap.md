@@ -368,6 +368,10 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
       data properties of `new RegExp()`, where `distinctConstructor` had handed out a plain object. Found by the
       first dashboard run, not by the roadmap. ES2015 reverted the whole idea, so V8 is not an oracle here and the
       clause text is. (`tests/es5/regExpPrototypeObject.io`)
+- [ ] An array `length` assigned an *object* throws a `RangeError` where 15.4.5.1 wants ToUint32 through
+      ToPrimitive. Needs the value coerced before it reaches the object model, which may not run script; the
+      `defineProperty` half is the §6 deferral, the plain-assignment half is not. 12 dashboard tests, documented
+      in `docs/notes/ECMAScript Compatibility Notes.md`.
 - [ ] `Date.parse` reads the ISO *date-only* form as local time where §15.9.1.15 says UTC. The parser is shared with
       es3, so fixing it moves the es3 binary; see `docs/notes/Todo.md`. No legacy fallback, which §15.9.4.2 permits.
 - [x] `parseInt`/`parseFloat` radix and no-octal behaviour already match ES5 (§15.1.2); their whitespace handling
