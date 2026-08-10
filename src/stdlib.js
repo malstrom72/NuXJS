@@ -171,6 +171,20 @@ function checkClass(object, expectedClass, forFunction) {
 		throw typeError(expectedClass + ".prototype." + forFunction + " is not generic");
 	}
 }
+//#if ES5
+/*
+	15.5.4.2 and 15.5.4.3 take a String value as readily as a String object. The String.prototype table is strict,
+	so 10.4.3 no longer boxes a primitive receiver on the way in and the class test alone would reject the very
+	value the clause is about. A typeof test rather than a box keeps `"s".toString()` from allocating a wrapper it
+	would only read straight back. Number.prototype and Boolean.prototype are not strict tables, so their receivers
+	still arrive boxed and their entries are unchanged.
+*/
+function thisStringValue(v, forFunction) {
+	if (typeof v === "string") return v;
+	checkClass(v, "String", forFunction);
+	return $getInternalProperty(v, "value")
+}
+//#endif
 
 function leftPad(s, l) { var n = (s = "00000000000000000000" + s).length; return $sub(s, n - l, n); }
 
@@ -318,14 +332,13 @@ defineProperties(Object.prototype, { dontEnum: true }, {
 	}),
 //#else
 	/*
-		15.2.4.2 gained explicit undefined and null cases, and 10.6 gave the arguments object the class "Arguments"
-		where ES3 10.1.8 gave it "Object", which is what the entry above maps back.
-		DEVIATION: `this` reaches a callee as an object reference, so a null receiver is indistinguishable from an
-		undefined one and reports "[object Undefined]". Fixing that needs the `this`-as-a-Value change deferred in
-		docs/notes/ECMAScript Compatibility Notes.md.
+		15.2.4.2 gained explicit undefined and null cases ahead of ToObject, and 10.6 gave the arguments object the
+		class "Arguments" where ES3 10.1.8 gave it "Object", which is what the entry above maps back. Steps 1 and 2
+		can tell the two apart only because a strict callee now receives the this value verbatim (10.4.3).
 	*/
 	toString: unconstructable(function toString() {
-		if (this == null) return "[object Undefined]";
+		if (this === void 0) return "[object Undefined]";
+		if (this === null) return "[object Null]";
 		return "[object " + $getInternalProperty(Object(this), "class") + ']';
 	}),
 //#endif
@@ -788,6 +801,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		return toLower(this);
 	}),
 //#endif
+//#if !ES5
 	valueOf: unconstructable(function valueOf() {
 		checkClass(this, "String", "valueOf");
 		return $getInternalProperty(this, "value");
@@ -796,6 +810,10 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		checkClass(this, "String", "toString");
 		return $getInternalProperty(this, "value");
 	})
+//#else
+	valueOf: unconstructable(function valueOf() { return thisStringValue(this, "valueOf") }),
+	toString: unconstructable(function toString() { return thisStringValue(this, "toString") })
+//#endif
 });
 //#if ES5
 })();

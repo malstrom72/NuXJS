@@ -13,18 +13,6 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   *accessor* descriptor on an index or `length` throws a `TypeError`. Named array properties and all ordinary
   object / function properties follow 8.12.9 exactly. Tracked in `docs/ES5.1 Roadmap.md` §6.
 
-- **Strict `this` for primitive / null receivers - partial *(deferred)*.** In a strict function an *unbound* `this`
-  is `undefined` (correct), and object receivers pass through unchanged. But because the engine represents a
-  frame's `this` as an object pointer, a *primitive* or *null* receiver passed via `Function.prototype.call` /
-  `apply` / `bind` is still coerced (a primitive is boxed, `null` becomes `undefined`) rather than passed through
-  verbatim as ES5 strict requires. ES3 10.2.3 *requires* that coercion, so the ES3 build is correct as it stands
-  and this is a missing ES5 addition, not a regression. Full fidelity needs `this` to be a value, not an object
-  pointer, which reaches the low-level public API; scoped in `docs/ES5.1 Roadmap.md` §5, including which tiers
-  break and why the change belongs behind `#if NUXJS_ES5`. One visible consequence:
-  `Object.prototype.toString.call(null)` answers `[object Undefined]` where
-  15.2.4.2 step 2 wants `[object Null]`, because the method cannot tell a `null` receiver from an `undefined` one.
-  Every other tag in 15.2.4.2 is exact, `[object Arguments]` and `[object Undefined]` included.
-
 - **`Date.parse` accepts no legacy formats.** 15.9.4.2 requires the 15.9.1.15 ISO format and says an implementation
   *may* fall back to other heuristics for anything else. NuXJS does not, so
   `Date.parse("Mon, 25 Dec 1995 13:30:00 GMT")` is `NaN` where V8 returns a time value. Conformant, but worth

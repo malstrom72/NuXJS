@@ -1861,7 +1861,7 @@ class Processor : public GCItem {
 			, CHECK_RESOLVE_PROPERTY_OP						// stack: object, name -> object, name	// check coercible, then resolve object
 			, GET_PROPERTY_OP								// stack: object, name -> value
 		#if NUXJS_ES5
-			, GET_METHOD_OP									// stack: object, name -> this_object, function		// full [[Get]] (runs accessors); errors early if not callable
+			, GET_METHOD_OP									// stack: value, name -> this_value, function		// full [[Get]] (runs accessors); errors early if not callable
 		#endif
 		#if !NUXJS_ES5										// es5 stores via SET_PROPERTY_POP_OP (+ POP), so the setter can run as a frame
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
@@ -1898,7 +1898,7 @@ class Processor : public GCItem {
 		#if !NUXJS_ES5
 			, CALL_METHOD_OP								// operand: n, stack: object, name, n * args -> return_value
 		#else											// es5 fetches the callee before the args (11.2.3): GET_METHOD_OP leaves this+function, then CALL_THIS_OP
-			, CALL_THIS_OP									// operand: n, stack: this_object, function, n * args -> return_value
+			, CALL_THIS_OP									// operand: n, stack: this_value, function, n * args -> return_value
 		#endif
 			, CALL_EVAL_OP									// operand: n, stack: function, n * args -> return_value			// special eval call is required because of need to differentiate direct or indirect call to eval
 			, NEW_OP										// operand: n, stack: constructor object, n * args -> new_object, return_value

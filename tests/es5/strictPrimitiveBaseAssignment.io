@@ -55,3 +55,11 @@
 < key ran
 < TypeError
 -
+// 8.7.2 step 6 hands the setter the base itself, not the transient box the lookup went through, so a strict
+// setter sees the primitive and a non-strict one its wrapper. Checked against V8.
+> Object.defineProperty(Number.prototype, "ss", { set: function (v) { "use strict"; print(typeof this + "/" + (this === 5)) } });
+> Object.defineProperty(Number.prototype, "sl", { set: function (v) { print(typeof this + "/" + (this === 5)) } });
+> (5).ss = 1; (5).sl = 1;
+< number/true
+< object/false
+-
