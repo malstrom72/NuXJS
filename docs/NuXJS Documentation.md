@@ -211,19 +211,30 @@ public:
     typedef JSObject super;
     NativeVector(Heap& heap, Object* proto) : super(heap.managed(), proto), samples(&heap) { }
 
+    // The receiver check is driven entirely by this override, so it must return the same pointer every time.
     const String* getClassName() const override { return &VECTOR_CLASS_NAME; }
 
-    Var scale(Runtime& rt, const Var& thisObject, const VarList& args);
+    Var scale(Runtime& rt, const Var& thisObject, const VarList& args) {
+        samples.resize(1);                     // reached only once `this` is known to be a NativeVector
+        samples[0] = args[0].to<double>();
+        return Var(rt, samples[0] * 2.0);
+    }
 
 private:
-    Vector<double> samples;        // `Vector` takes its heap explicitly; there is no default constructor
+    Vector<double> samples;                    // `Vector` takes its heap explicitly; it has no default constructor
 };
 
 Var protoVar(rt, rt.newJSObject());
-protoVar["scale"] = &NativeVector::scale;        // receiver checked on every call
+protoVar["scale"] = &NativeVector::scale;      // a member function pointer, not a static function
+
+NativeVector* v = new(heap) NativeVector(heap, protoVar.to<Object*>());
+rt.getGlobalsVar()["v"] = Var(rt, v);
+
+rt.eval("v.scale(21)");                                  // 42 - the receiver is a NativeVector
+rt.eval("var o = {}; o.scale = v.scale; o.scale(21)");   // throws TypeError: Invalid class
 ```
 
-Calling `scale` on a `NativeVector` runs the method; calling it on any other object - `var o = {}; o.scale = v.scale; o.scale(21);` - throws `TypeError: Invalid class` before the body is entered.
+The two `eval` calls are the point of the example: the same function object, reached through the same property, either runs or is rejected purely on what `this` turns out to be. Nothing in `scale` performs the test, and the body of the second call is never entered.
 
 This is the least error-prone binding. It relies on the class overriding `getClassName` to return a unique pointer that stays the same for the lifetime of the class, which `Object::getClassName` requires in any case.
 
@@ -325,7 +336,7 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 
 ### ES3 deviations
 
-- `\0` is interpreted as a null character even if digits follow (octal escapes are not supported).
+- `\0` is interpreted as a null character only when no digit follows it. Octal escapes are not supported: `\1` through `\7`, and `\0` followed by any digit, are rejected with `SyntaxError: Invalid escape sequence` rather than decoded.
 - Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The zero-width no‑break space (`\uFEFF`) does not count as white space, matching ES3 but not ES5.
 - Case conversion, identifier classification and the `<USP>` white space class are all derived from Unicode 3.0. ES3 asks for "version 2.1 or later", so this conforms, but it parts company with modern engines in three places. The zero width space (`\u200B`) counts as white space, because it is category Zs in Unicode 3.0 and only became a format character in 4.0.1. `"\u10A0".toLowerCase()` returns its argument unchanged, because Unicode 3.0 made Georgian unicameral, where later versions map it to `\u2D00`. `\u2118` and `\u212E` are rejected in identifiers, because ES3 defines those by Unicode category and both are symbols in Unicode 3.0; ES2015 grandfathered them back in with `Other_ID_Start`.
 - Custom property getters and setters are not implemented.
@@ -333,20 +344,21 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 - Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers.
 - The `arguments` object follows ES3 mapping semantics; changing element attributes does not fully emulate the ES5 behaviour.
 - `Object.defineProperty` only accepts plain data descriptors (`value`, `writable`, `enumerable`, `configurable`). Missing
-  fields default to `false`, accessors are ignored, failures return `false` instead of throwing, and descriptor invariant checks
-  are not performed.
-- Every created function has a writable, enumerable, and configurable `name` property, and a function's `length` property cannot be deleted.
+  fields default to `false`, accessors are ignored, and descriptor invariant checks are not performed - redefining a
+  non-configurable property silently does nothing instead of throwing. The call always returns `undefined`: it neither returns
+  the target object as ES5 specifies nor reports whether the definition succeeded. `Object.getOwnPropertyDescriptor` and
+  `Object.defineProperties` are not implemented.
+- Every created function has a writable and configurable, but *non-enumerable*, `name` property, and its `length` property is read-only and cannot be deleted.
 - Evaluation order of member expressions follows the ES3 order (object and arguments evaluated before selecting the member).
 - When the identifier of a `catch` clause is called as a function, its `this` value is the global object.
-- Assignments evaluate the right-hand side before resolving the reference on the left-hand side.
-- Property access may convert the property key before converting the base object.
+- When the target of an assignment is a plain identifier, the right-hand side is evaluated before that identifier's binding is resolved, so a variable the right-hand side brings into scope becomes the assignment's target (see `tests/unconforming/rightSideBeforeAssignmentRef.io`). This applies to identifier bindings only; a member expression on the left is evaluated in full before the right-hand side, as ES3 11.13.1 requires.
 - In regular expressions the lookahead operators `?=` and `?!` cannot be quantified as in ES3; they behave like the ES5 assertions.
 - Case-insensitive ranges in regular expressions and zero-length captures inside repeats may not perfectly match other engines.
 - A semicolon is required after `do ... while` statements. This matches the ES3 and ES5 grammar, even though ES6 made the semicolon optional.
-- Creating a numeric property on an object can shadow a read-only numeric property in the prototype chain.
+- Creating a numeric property on an *array* can shadow a read-only numeric property in the prototype chain. This falls out of an optimization for array element writes and does not apply to ordinary objects, where the read-only property in the prototype still wins.
 - Several tests under `tests/unconforming` demonstrate additional corner cases.
 - Assigning an object to an array's `length` property is unsupported; attempts throw `RangeError` instead of converting the value.
-- Recursive grammar constructs are limited to 64 levels to avoid a C++ stack overflow.
+- Recursive grammar constructs are limited to `MAX_NESTED_COMPILE_DEPTH` (256) levels to avoid a C++ stack overflow; exceeding it raises a `RangeError` at compile time.
 
 ### Partial ES5 features
 
