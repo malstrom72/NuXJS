@@ -13,6 +13,14 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   *accessor* descriptor on an index or `length` throws a `TypeError`. Named array properties and all ordinary
   object / function properties follow 8.12.9 exactly. Tracked in `docs/ES5.1 Roadmap.md` §6.
 
+- **An array `length` set to an *object* throws a `RangeError`.** 15.4.5.1 takes ToUint32 of the value, which for
+  an object runs ToPrimitive and so `valueOf` / `toString`; `arr.length = { toString: function () { return "2" } }`
+  should give 2. `Value::toDouble` answers NaN for an object instead, by design - proper ToNumber has to run
+  script, and the object model is required not to (`docs/ES5.1 Roadmap.md` §1, "core lookups stay pure"). Every
+  primitive coerces correctly, `true`, `null`, `"3"` and a `Number` wrapper included; only a plain object with a
+  `valueOf` / `toString` is affected, through plain assignment and through `Object.defineProperty` alike. Shared
+  with the es3 build, which has always behaved this way. Found by the Test262 dashboard, 12 tests.
+
 - **`Date.parse` accepts no legacy formats.** 15.9.4.2 requires the 15.9.1.15 ISO format and says an implementation
   *may* fall back to other heuristics for anything else. NuXJS does not, so
   `Date.parse("Mon, 25 Dec 1995 13:30:00 GMT")` is `NaN` where V8 returns a time value. Conformant, but worth
