@@ -3307,8 +3307,12 @@ void Processor::enter(const Code* code, Scope* scope, Receiver thisObject) {
 		ScriptException::throwError(heap, RANGE_ERROR, &STACK_OVERFLOW_STRING); // Notice: we can't use virtual throw here, cause we need to abort any sp changes etc that could happen if we continued execution beyond this point.
 	} else {
 	#if NUXJS_ES5
-		// 10.4.3: a strict function keeps an unbound `this` (no global-object substitution).
-		pushFrame(code, scope, (thisObject == 0 && !code->isStrict() ? rt.getGlobalObject() : thisObject));
+		// 10.4.3, and the only place a receiver is coerced: strict code keeps whatever it was given, non-strict
+		// substitutes the global object for undefined or null and boxes any other primitive. An object passes
+		// through toObject untouched, so the ordinary call allocates nothing.
+		pushFrame(code, scope, (code->isStrict() ? thisObject
+				: thisObject.isUndefined() || thisObject.isNull() ? Value(rt.getGlobalObject())
+				: Value(thisObject.toObject(heap, true))));
 	#else
 		pushFrame(code, scope, (thisObject == 0 ? rt.getGlobalObject() : thisObject));
 	#endif
@@ -3554,7 +3558,7 @@ void Processor::innerRun() {
 	assert(ip >= code->getCodeWords() && ip < code->getCodeWords() + code->getCodeSize());
 	const Value* constants = currentFrame->code->getConstants()->begin();
 	Value* locals = scope->getLocalsPointer();
-	Receiver thisObject = currentFrame->thisObject;
+	ReceiverSlot thisObject = currentFrame->thisObject;
 
 	while (--cyclesLeft >= 0) {
 		const CodeWord instruction = *ip++;
@@ -3924,11 +3928,7 @@ void Processor::innerRun() {
 			case NEW_ARRAY_OP: push(new(heap) JSArray(heap.managed())); break;
 			case NEW_REG_EXP_OP: invokeFunction(rt.createRegExpFunction, 1, 2); return;
 			case RETURN_OP:	ip = currentFrame->returnIP; popFrame(); return;
-		#if NUXJS_ES5
-			case THIS_OP: push(thisObject != 0 ? Value(thisObject) : UNDEFINED_VALUE); break;	// strict unbound this -> undefined
-		#else
 			case THIS_OP: push(thisObject); break;
-		#endif
 			case VOID_OP: push(UNDEFINED_VALUE); break;
 			
 			case GEN_FUNC_OP: {
@@ -6559,9 +6559,7 @@ Value BoundFunction::invoke(Runtime& rt, Processor& processor, UInt32 argc, cons
 	Heap& heap = rt.getHeap();
 	Vector<Value> args(boundArgs.begin(), boundArgs.end(), &heap);	// 15.3.4.5.1 (4): bound arguments, then these
 	args.insert(args.end(), argv, argv + argc);
-	// The receiver is boxed per call, exactly as apply / call do, so a primitive boundThis behaves the same way
-	// there as here. See the deferral in docs/notes/ECMAScript Compatibility Notes.md.
-	return target->invoke(rt, processor, args.size(), args.begin(), boundThis.toObjectOrNull(heap, true));
+	return target->invoke(rt, processor, args.size(), args.begin(), boundThis);	// 15.3.4.5.1 (5): verbatim
 }
 
 Value BoundFunction::construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Receiver thisObject) {
@@ -6720,7 +6718,11 @@ struct Support {
 			ScriptException::throwError(heap, TYPE_ERROR, "apply / call used on non-function");
 			return Value();
 		} else {
+		#if NUXJS_ES5
+			Receiver newThis = (argc > 1 ? argv[1] : UNDEFINED_VALUE);	// 15.3.4.3 (5) / 15.3.4.4 (3): verbatim
+		#else
 			Object* newThis = (argc > 1 ? argv[1].toObjectOrNull(heap, true) : 0);
+		#endif
 			Vector<Value> args(0, &heap);
 			Object* arrayObject = (argc > 2 ? argv[2].toObjectOrNull(heap, false) : 0);
 			if (arrayObject != 0) {
