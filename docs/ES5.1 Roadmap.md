@@ -194,7 +194,7 @@ Pure `stdlib.js` + one upgraded native hook. Replaces the current data-only `Obj
 
 ---
 
-## 3. Parser - ES5 syntax & lexical
+## 3. Parser - ES5 syntax & lexical - **DONE**
 
 C++ compiler (`NuXJS.cpp`), no VM changes beyond emitting the accessor-define path from §1.
 
@@ -227,11 +227,22 @@ C++ compiler (`NuXJS.cpp`), no VM changes beyond emitting the accessor-define pa
       its code, and publishes the membership test on `support` for `trim` to share. The es3 build is deliberately
       left alone, so the `<USP>` half stays a *shared* deviation rather than
       an ES5 gap; see `docs/notes/Todo.md` under Compiler. (`tests/es5/whiteSpaceSet.io`)
-- [ ] **Cf format-control characters as IdentifierPart (§7.1).** ZWNJ and ZWJ inside identifiers, independent of
-      the whitespace work above and still unimplemented in both builds. Tracked in `docs/notes/Todo.md`.
+- [x] **Cf format-control characters as IdentifierPart (§7.1).** ES3 §7.1 strips every Cf character from the source
+      before lexing, everywhere; ES5.1 §7.1 abandons that and names the two places a format-control character means
+      something instead. One is the BOM, done above. The other is §7.6 IdentifierPart, which takes `<ZWNJ>` and
+      `<ZWJ>` after the first character. Cf is in none of the categories the identifier bitmaps are built from, so
+      the generator builds a second part bitmap for es5 and packs it into the same mask array. `buildLookup` only
+      ever appends, so taking that table last leaves the es3 mask array a prefix of the es5 one, and the whole
+      difference is 8 words of mask data plus one of the 256 block offsets, both under a guard. No lexer code
+      changes at all, which is what makes it reach every caller: the keyword-boundary check in `token()`, where it
+      makes `in<ZWNJ>o` a single identifier as in V8, and §7.8.5 RegularExpressionFlags, which is IdentifierPart
+      too. The `\u` escape form goes through the same test, so it agrees for free. NuXJS still does not strip Cf
+      anywhere, which is correct for es5 and stays an es3 deviation in `docs/notes/Todo.md`.
+      (`tests/es5/identifierFormatControl.io`)
 
 ### Tests
-- accessor object literals; octal rejection; reserved-word keys; BOM-as-whitespace; string line continuation.
+- accessor object literals; octal rejection; reserved-word keys; BOM-as-whitespace; string line continuation;
+  ZWNJ/ZWJ in identifiers.
 
 ---
 
