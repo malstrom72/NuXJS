@@ -47,11 +47,13 @@ Benchmark output is normally checked against the files in `benchmarks/golden/`. 
 Compile the binary using the regular `./build.sh` wrapper or call the low-level helper directly:
 
 ```
-bash tools/BuildCpp.sh release x64 ./output/NuXJS \
+CPP_OPTIONS="-DNUXJS_ES5=0" bash tools/BuildCpp.sh release x64 ./output/NuXJS \
     tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp
 ```
 
-Either approach leaves `output/NuXJS` ready for benchmarking.
+Either approach leaves `output/NuXJS` ready for benchmarking. The golden results were recorded from the es3
+engine, hence `-DNUXJS_ES5=0`: `NuXJS.h` defaults the macro to 1, so an es3 build has to ask for it. Drop the
+flag, or pass `=1`, to benchmark the es5 engine instead, against `benchmarks/golden` from the same variant.
 
 ## Running `tools/compareEngines.sh`
 
