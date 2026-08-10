@@ -291,27 +291,12 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
       (§15.3.4.2). Already correct; the representation is implementation-dependent, so only the round-trip of the
       source text is asserted. (`tests/es5/functionInstanceProperties.io`)
 - [x] **`this` as a `Value`, not an `Object*`** - the last strict-mode gap (§10.4.3), and the only item here that
-      reached into the public header. A receiver is now a `Value` under `NUXJS_ES5`, so `s.call(5)` sees `5` rather
-      than a `Number` wrapper, `s.call(null)` sees `null`, and `Object.prototype.toString.call(null)` answers
-      `[object Null]`. ES3 §10.2.3 *requires* the coercion and keeps its `Object*`; the es3 release binary is
-      byte-identical across the whole change.
-
-      The 77 signature sites went behind one alias rather than 77 guards: `Receiver` (`NuXJS.h`) is
-      `const Value&` in es5 and `Object*` in es3, with a `ReceiverSlot` companion for the `Frame` member and
-      `noReceiver()` for the five default arguments. A typedef is transparent to mangling, so es3 codegen cannot
-      move, which is what let the mechanical pass land as its own commit. 19 of the 27 natives sit on the shared
-      es3 path, so guarding them individually was never an option.
-
-      `Processor::enter` is the single coercion point: strict code keeps its receiver, non-strict substitutes the
-      global object for undefined or null and boxes any other primitive. `callWithArgs`, `BoundFunction::invoke`,
-      `GET_METHOD_OP` and the three accessor call sites all pass the base through untouched. The lift exposed one
-      latent bug: `Array.prototype` `concat` / `join` / `slice` / `toLocaleString` called `toObject(this)` for its
-      throw and then read `this` raw, which only ever worked because the receiver arrived pre-boxed.
-
-      The advertised high-level API did not move. `VarFunction` and the member-function adapters already take
-      `const Var&`, `makeValue(const Value&)` already existed, and `AccessorBase::apply` deliberately keeps its
-      `Object*`. The hard breaks are the `Function::invoke` / `construct` virtuals and the `NativeFunction`
-      typedef: writing a native or subclassing `Function` needs a recompile in an es5 build, which is accepted.
+      reached into the public header. `s.call(5)` now sees `5` rather than a `Number` wrapper, `s.call(null)` sees
+      `null`, and `Object.prototype.toString.call(null)` answers `[object Null]`. ES3 §10.2.3 *requires* the
+      coercion and keeps its `Object*`; the es3 release binary is byte-identical across the whole change. The 77
+      signature sites went behind one alias (`Receiver` in `NuXJS.h`) rather than 77 guards, which is what let the
+      mechanical pass land separately. Writing a native or subclassing `Function` needs a recompile in an es5
+      build; the `Var` tier does not move. Reasoning, traps and gates: `docs/notes/This as a Value.md`.
 
 ### Tests
 - bind partial application + `new`; bound `name`/`length`; named-function-expression scope isolation.

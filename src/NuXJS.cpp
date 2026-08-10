@@ -3308,8 +3308,7 @@ void Processor::enter(const Code* code, Scope* scope, Receiver thisObject) {
 	} else {
 	#if NUXJS_ES5
 		// 10.4.3, and the only place a receiver is coerced: strict code keeps whatever it was given, non-strict
-		// substitutes the global object for undefined or null and boxes any other primitive. An object passes
-		// through toObject untouched, so the ordinary call allocates nothing.
+		// substitutes the global object for undefined or null and boxes any other primitive.
 		pushFrame(code, scope, (code->isStrict() ? thisObject
 				: thisObject.isUndefined() || thisObject.isNull() ? Value(rt.getGlobalObject())
 				: Value(thisObject.toObject(heap, true))));
@@ -3787,9 +3786,7 @@ void Processor::innerRun() {
 				// es5 semantics: [object, name, value] -> [junk / setter return]; the compiler always follows
 				// with POP_OP so a JS setter frame can deposit its (discarded) return value. (See makeAssignment.)
 				// 8.7.2 special [[Put]]: a primitive base boxes into a transient object, so a store is never kept.
-				// Step 6 still hands an inherited setter the base itself, never the box it was looked up through.
-				const Value base = sp[-2];
-				const bool primitiveBase = !base.isObject();
+				const bool primitiveBase = !sp[-2].isObject();
 				if (primitiveBase || !o->updateOwnProperty(rt, sp[-1], sp[0])) {	// fast path: existing own writable data property (same cost as es3)
 					Value dummy;
 					Accessor* accessor;
@@ -3797,7 +3794,7 @@ void Processor::innerRun() {
 					bool stored = false;
 					if (accessor != 0) {
 						if (accessor->set != 0) {
-							invokeFunction(accessor->set, 2, 1, base);	// ES5 8.12.5: the setter runs as an ordinary frame with the value as its argument
+							invokeFunction(accessor->set, 2, 1, sp[-2]);	// ES5 8.12.5: step 6 gives the setter the base, not the box
 							return;	// the following POP_OP discards the setter's return value after the frame returns
 						}	// no setter: silently ignored outside strict mode
 					} else if (!primitiveBase && (flags & READ_ONLY_FLAG) == 0 && o->isExtensible()) {
@@ -4093,8 +4090,9 @@ void Processor::innerRun() {
 			}
 
 			case GET_METHOD_OP: {
-				const Value base = sp[-1];	// stays on the stack for CALL_THIS_OP; the box below is only for the lookup
-				Object* o = convertToObject(base, true);
+				// sp[-1] stays put for CALL_THIS_OP; `o` is only walked, so it need not be an extensible wrapper,
+				// which for a string base is the difference between a fresh StringWrapper and no allocation.
+				Object* o = convertToObject(sp[-1], false);
 				if (o == 0) {
 					return;
 				}
@@ -4105,7 +4103,7 @@ void Processor::innerRun() {
 					Accessor* accessor;
 					o->getPropertySlot(rt, sp[0], &dummy, &accessor);	// rare second walk fetches the pair
 					if (accessor->get != 0) {
-						invokeFunction(accessor->get, 0, 0, base);	// result replaces the name at sp[0]; callability is checked by CALL_THIS_OP
+						invokeFunction(accessor->get, 0, 0, sp[-1]);	// result replaces the name at sp[0]; callability is checked by CALL_THIS_OP
 						return;
 					}
 					v = UNDEFINED_VALUE;
@@ -4121,8 +4119,7 @@ void Processor::innerRun() {
 			case CALL_THIS_OP: {
 				Function* const f = asFunction(sp[-im]);
 				if (f != 0) {
-					const Value base = sp[-im - 1];	// 11.2.3: the base as written, primitive or not
-					invokeFunction(f, im + 1, im, base);
+					invokeFunction(f, im + 1, im, sp[-im - 1]);	// 11.2.3: the base as written, primitive or not
 				}
 				return;
 			}

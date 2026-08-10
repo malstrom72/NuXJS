@@ -1050,10 +1050,11 @@ static void testHighLevelAPI() {
 	EXPECT_EQUAL(countArgumentsFunctionVar(VarList(rt, true, tempString.to<Value>())), 2);
 	Var tempFuncVar(rt, nativeFunctionVar.to<Function*>());
 	EXPECT_EQUAL(countArgumentsFunctionVar(VarList(rt, true, tempString.to<Value>(), tempFuncVar.to<Value>())), 3);
-	EXPECT_EQUAL(countArgumentsFunctionVar.apply(0), 0);
-	EXPECT_EQUAL(countArgumentsFunctionVar.apply(0, 1), 1);
-	EXPECT_EQUAL(countArgumentsFunctionVar.apply(0, 1, 2), 2);
-	EXPECT_EQUAL(countArgumentsFunctionVar.apply(0, 1, 2, 3), 3);
+	Object* const receiver = rt.getGlobalObject();	// a receiver, not a null pointer: apply carries it to the callee
+	EXPECT_EQUAL(countArgumentsFunctionVar.apply(receiver), 0);
+	EXPECT_EQUAL(countArgumentsFunctionVar.apply(receiver, 1), 1);
+	EXPECT_EQUAL(countArgumentsFunctionVar.apply(receiver, 1, 2), 2);
+	EXPECT_EQUAL(countArgumentsFunctionVar.apply(receiver, 1, 2, 3), 3);
 	EXPECT_EQUAL(nativeFunctionVar(), 42);
 	EXPECT_EQUAL(boundMethodVar().to<double>(), 123.456);
 	EXPECT_EQUAL(object["foo"].to<Int32>(), 123);

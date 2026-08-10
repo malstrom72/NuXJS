@@ -69,6 +69,11 @@ gate than the binary `cmp`: it isolates the change from link paths and the Mach-
   `i in this`. `Array.prototype.slice.call("abc", 1)` failed the moment `call` stopped boxing. They are now
   whole-entry guarded pairs reading the ToObject result, matching how `pop` / `push` / `reverse` were already
   written.
+- **A template nobody instantiates is not covered by a green build.** `AccessorBase::VarMemberFunctionAdapter`
+  dereferences its receiver, so the alias pass left it doing `reinterpret_cast<C*>` on a `Value`; both builds went
+  green because nothing in the tree binds an unbound member function. `receiverObject()` sits in the alias block
+  for exactly this case - a boundary that genuinely wants the object - and `docs/examples/examples.cpp` should
+  grow a case that instantiates it.
 
 ## Gates
 
@@ -86,15 +91,19 @@ gate than the binary `cmp`: it isolates the change from link paths and the Mach-
 
 ## Left open
 
-- **Perf was never measured.** A primitive receiver can be boxed twice: once by `GET_METHOD_OP` for the lookup and
-  once by `enter` for a non-strict callee. If it ever shows, the lookup does not need an extensible wrapper, so
-  `GET_METHOD_OP` can box with `requireExtensible = false`, which for a string returns the `String` itself and
-  allocates nothing. That only helps strings - a number or boolean still allocates a `GenericWrapper` - and
-  `docs/Coding Style.md` §2 wants a measured win before the change, so it was left alone.
-- **`AccessorBase::apply` keeps its `Object*`** deliberately, that overload taking an object rather than carrying
-  a receiver, which is what holds the promise that the advertised `Var` tier does not move. Passing it a literal
-  `0` is now a null-pointer receiver rather than an unbound one; nothing does, and widening it to a `Value` would
-  be a separate, optional change.
+- **Perf, measured.** A primitive receiver can be boxed twice: once by `GET_METHOD_OP` for the lookup and once by
+  `enter` for a non-strict callee. `GET_METHOD_OP` now boxes with `requireExtensible = false`, which it can because
+  the wrapper is only walked, and which for a string returns the `String` itself and allocates nothing: a 5M-call
+  `charCodeAt` loop went 3.06s -> 1.16s against the pre-change es5 build, and 100 calls allocate 8 objects rather
+  than 108. Numbers and booleans do **not** benefit - `toObjectOrNull` allocates a `GenericWrapper` for them either
+  way, so a method call on one went from one box to two: 2M `(255).toString(16)` went 1.54s -> 1.61s. Undoing that needs a
+  lookup that takes a `Value`, which is real code, and `docs/Coding Style.md` §2 wants a measured win first.
+- **A `Frame` costs 16 more bytes** in es5: the receiver went from an 8-byte pointer to a 16-byte `Value`, and with
+  `GCItem`'s hidden `Heap*` the pooled block rounds 80 -> 96. Unavoidable given that carrying both was ruled out.
+- **Every public receiver is a `Receiver`**, `AccessorBase::apply` included. Leaving that one as an `Object*`
+  looked like a boundary worth keeping, but it was the last place a literal `0` could still be spelled, and
+  `tools/NuXJSTest.cpp` was spelling it four times. The overloads are header-inline, so widening them protects no
+  ABI, and in es3 `Receiver` *is* `Object*`, so the signature does not move there at all.
 - **Dual-typed member**: `Frame::thisObject` is an `Object*` in one build and a `Value` in the other. Any new code
   comparing it against a pointer compiles in es3 and fails in es5, or worse. Nothing does so today; keep it that
   way.

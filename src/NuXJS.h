@@ -1075,19 +1075,21 @@ class Code : public Object {
 };
 
 /*
-	The receiver a call carries, and the slot a frame stores it in. 10.4.3 lets a strict function see a primitive
-	or `null` `this` verbatim, which an `Object*` cannot express, so es5 widens both to a `Value`; es3 10.2.3
-	requires the coercion and keeps the pointer. `noReceiver()` is the unbound `this`, which the two builds spell
-	differently, so that a default argument needs no guard of its own. See docs/ES5.1 Roadmap.md §5.
+	The receiver a call carries, the slot a frame stores it in, and the unbound `this`. 10.4.3 lets a strict
+	function see a primitive or `null` `this` verbatim, which an `Object*` cannot express, so es5 widens these to a
+	`Value`; es3 10.2.3 requires the coercion and keeps the pointer. `noReceiver()` exists because a literal `0`
+	default would bind `Value(Int32)`, the *number* zero. See docs/ES5.1 Roadmap.md §5.
 */
 #if NUXJS_ES5
 typedef const Value& Receiver;
 typedef const Value ReceiverSlot;
 inline Receiver noReceiver() { return UNDEFINED_VALUE; }
+inline Object* receiverObject(Receiver r) { return r.asObject(); }
 #else
 typedef Object* Receiver;
 typedef Object* const ReceiverSlot;
 inline Receiver noReceiver() { return 0; }
+inline Object* receiverObject(Receiver r) { return r; }
 #endif
 
 /**
@@ -1574,11 +1576,11 @@ class AccessorBase {
 		template<typename T0, typename T1> Var operator()(const T0& arg0, const T1& arg1) const;
 		template<typename T0, typename T1, typename T2> Var operator()(const T0& arg0, const T1& arg1, const T2& arg2) const;
 		Var operator()(const VarList& args) const;
-		Var apply(Object* thisObject) const;
-		Var apply(Object* thisObject, const VarList& args) const;
-		template<typename T0> Var apply(Object* thisObject, const T0& arg0) const;
-		template<typename T0, typename T1> Var apply(Object* thisObject, const T0& arg0, const T1& arg1) const;
-		template<typename T0, typename T1, typename T2> Var apply(Object* thisObject, const T0& arg0, const T1& arg1, const T2& arg2) const;
+		Var apply(Receiver thisObject) const;
+		Var apply(Receiver thisObject, const VarList& args) const;
+		template<typename T0> Var apply(Receiver thisObject, const T0& arg0) const;
+		template<typename T0, typename T1> Var apply(Receiver thisObject, const T0& arg0, const T1& arg1) const;
+		template<typename T0, typename T1, typename T2> Var apply(Receiver thisObject, const T0& arg0, const T1& arg1, const T2& arg2) const;
 		template<typename T> const Property operator[](const T& key) const;
 		template<typename T> bool operator==(const T& t) const { return get().isStrictlyEqualTo(makeValue(t)); }
 		template<typename T> bool operator!=(const T& t) const { return !get().isStrictlyEqualTo(makeValue(t)); }
@@ -1728,17 +1730,17 @@ template<class F> struct AccessorBase::VarFunctorAdapter : public ExtensibleFunc
 inline AccessorBase::operator Var() const { return Var(rt, get()); }
 inline Var AccessorBase::operator()() const { return call(0, 0); }
 inline Var AccessorBase::operator()(const VarList& args) const { return call(args.size(), args.begin()); }
-inline Var AccessorBase::apply(Object* thisObject) const { return rt.call(*this, 0, 0, thisObject); }
-inline Var AccessorBase::apply(Object* thisObject, const VarList& args) const { return rt.call(*this, args.size(), args.begin(), thisObject); }
-template<typename T0> inline Var AccessorBase::apply(Object* thisObject, const T0& arg0) const {
+inline Var AccessorBase::apply(Receiver thisObject) const { return rt.call(*this, 0, 0, thisObject); }
+inline Var AccessorBase::apply(Receiver thisObject, const VarList& args) const { return rt.call(*this, args.size(), args.begin(), thisObject); }
+template<typename T0> inline Var AccessorBase::apply(Receiver thisObject, const T0& arg0) const {
 	const Value argv[1] = { makeValue(arg0) };
 	return rt.call(*this, 1, argv, thisObject);
 }
-template<typename T0, typename T1> inline Var AccessorBase::apply(Object* thisObject, const T0& arg0, const T1& arg1) const {
+template<typename T0, typename T1> inline Var AccessorBase::apply(Receiver thisObject, const T0& arg0, const T1& arg1) const {
 	const Value argv[2] = { makeValue(arg0), makeValue(arg1) };
 	return rt.call(*this, 2, argv, thisObject);
 }
-template<typename T0, typename T1, typename T2> inline Var AccessorBase::apply(Object* thisObject, const T0& arg0, const T1& arg1, const T2& arg2) const {
+template<typename T0, typename T1, typename T2> inline Var AccessorBase::apply(Receiver thisObject, const T0& arg0, const T1& arg1, const T2& arg2) const {
 		const Value argv[3] = { makeValue(arg0), makeValue(arg1), makeValue(arg2) };
 		return rt.call(*this, 3, argv, thisObject);
 }
@@ -1792,11 +1794,12 @@ template<class C> struct AccessorBase::VarMemberFunctionAdapter : public Extensi
 	VarMemberFunctionAdapter(GCList& gcList, Var (C::*const &cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args))
 			: super(gcList), cppMethod(cppMethod) { }
 	virtual Value invoke(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Receiver thisObject) {
-		C* me = reinterpret_cast<C*>(thisObject);
+		Object* const o = receiverObject(thisObject);	// an unbound member function needs the object, not the value
+		C* me = reinterpret_cast<C*>(o);
 		if ((me->C::getClassName()) != (me->getClassName())) {
 			ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Invalid class");
 		}
-		assert(dynamic_cast<const C*>(thisObject) != 0);
+		assert(dynamic_cast<const C*>(o) != 0);
 		return (me->*cppMethod)(rt, Var(rt, thisObject), VarList(rt, argc, argv));
 	}
 	Var (C::*cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args);

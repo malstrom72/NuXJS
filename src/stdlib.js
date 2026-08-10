@@ -173,11 +173,9 @@ function checkClass(object, expectedClass, forFunction) {
 }
 //#if ES5
 /*
-	15.5.4.2 and 15.5.4.3 take a String value as readily as a String object. The String.prototype table is strict,
-	so 10.4.3 no longer boxes a primitive receiver on the way in and the class test alone would reject the very
-	value the clause is about. A typeof test rather than a box keeps `"s".toString()` from allocating a wrapper it
-	would only read straight back. Number.prototype and Boolean.prototype are not strict tables, so their receivers
-	still arrive boxed and their entries are unchanged.
+	15.5.4.2-3 take a String value as readily as a String object, and the String.prototype table being strict, a
+	primitive receiver now arrives unboxed (10.4.3) where the class test alone would reject the very value the
+	clause is about. Testing typeof rather than boxing keeps `"s".toString()` from allocating at all.
 */
 function thisStringValue(v, forFunction) {
 	if (typeof v === "string") return v;
@@ -854,8 +852,12 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return a;
 	}),
 //#else
-	// ToObject(this) is step 1, and the algorithm reads *that* object: a strict caller now passes a
-	// primitive receiver verbatim (10.4.3), which a property read and `in` would both reject.
+	/*
+		15.4.4.4-5, .10 and .3: ToObject(this) is step 1 and the algorithm reads *that* object, not the this value.
+		A strict caller passes a primitive receiver verbatim (10.4.3), so concat would otherwise push the primitive
+		where 15.4.4.4 step 5.b wants the object, and slice's `i in o` would reject it outright. Same split, same
+		reason, for join and toLocaleString below.
+	*/
 	concat: unconstructable(function concat(item1) {
 		var a = [ ], argv, argc = (argv = arguments).length, n = 0, v = toObject(this, "concat");
 		for (var i = -1; i < argc; v = argv[++i]) {
@@ -880,8 +882,6 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return s.build();
 	}),
 //#else
-	// ToObject(this) is step 1, and the algorithm reads *that* object: a strict caller now passes a
-	// primitive receiver verbatim (10.4.3), which a property read and `in` would both reject.
 	join: unconstructable(function join(separator) {
 		var o = toObject(this, "join"), s = new StringBuilder, s2, len = uint32(o.length);
 		separator = (separator === void 0 ? ',' : str(separator));
@@ -998,8 +998,6 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return a;
 	}),
 //#else
-	// ToObject(this) is step 1, and the algorithm reads *that* object: a strict caller now passes a
-	// primitive receiver verbatim (10.4.3), which a property read and `in` would both reject.
 	slice: unconstructable(function slice(start, end) {
 		var o = toObject(this, "slice"), a = [ ], len = uint32(o.length);
 		if ((start = int(start)) < 0) { start += len; if (start < 0) start = 0; }
@@ -1121,8 +1119,6 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return builder.build();
 	}),
 //#else
-	// ToObject(this) is step 1, and the algorithm reads *that* object: a strict caller now passes a
-	// primitive receiver verbatim (10.4.3), which a property read and `in` would both reject.
 	toLocaleString: unconstructable(function toLocaleString() {
 		var o = toObject(this, "toLocaleString"), len = uint32(o.length), builder = new StringBuilder, element;
 		for (var k = 0; k < len; ++k) {
