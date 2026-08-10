@@ -107,6 +107,13 @@ public:
 		return Var(rt, self->value);
 	}
 
+	// The same thing as an ordinary member function. Assigning `&Counter::decrement` resolves the receiver to a
+	// Counter* for you and checks its class, where the static form above has to cast the Var itself.
+	Var decrement(Runtime& rt, const Var&, const VarList&) {
+		--value;
+		return Var(rt, value);
+	}
+
 	int value;
 	static const String* className;
 };
@@ -121,6 +128,7 @@ int custom_object_example_main() {
 	Object* proto = rt.newJSObject();
 	Var protoVar(rt, proto);
 	protoVar["increment"] = Counter::increment;
+	protoVar["decrement"] = &Counter::decrement;
 
 	Counter* cObj = new(heap) Counter(heap.managed(), proto);
 	Var counter(rt, cObj);
@@ -131,6 +139,7 @@ int custom_object_example_main() {
 	globals["counter"] = counter;
 
 	rt.run("for (var i=0;i<3;i++) counter.increment();");
+	rt.run("counter.decrement();");
 
 	heap.gc(); // for testing purposes only
 
