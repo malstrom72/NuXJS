@@ -25,7 +25,7 @@ the change is wrong, not the principle.
    host-crashing path. New "must throw" ES5 semantics surface as **managed exceptions**, never asserts.
 5. **Regression-test-driven, both builds green.** No roadmap item is "done" until it has an `.io` test under
    `tests/es5/` that cites its spec clause, and the **full `es3` *and* `es5` builds** pass
-   (`=== ALL BUILDS AND TESTS COMPLETED SUCCESSFULLY ===`). The ES3 build (with `NUXJS_ES5` undefined) must stay
+   (`=== ALL BUILDS AND TESTS COMPLETED SUCCESSFULLY ===`). The ES3 build (with `NUXJS_ES5` at 0) must stay
    behaviorally identical to today - no ES3 test may regress, and ideally the ES3-compiled binary is unchanged.
    This is the hard guarantee that the engine the author is proud of remains intact underneath the lift.
 6. **Deviations are documented, not hidden.** Any intentional non-conformance goes in
@@ -37,7 +37,9 @@ the change is wrong, not the principle.
   bracketed by `#if NUXJS_ES5 … #endif` (C++) or the equivalent build-time gate (stdlib.js - see D5). Rationale:
   it makes each deviation from ES3 *individually visible in the diff*, reversible, and forces a per-change "is this
   worth it?" judgment, keeping the footprint minimal. The pure ES3 engine must still build and pass its full suite
-  with `NUXJS_ES5` undefined. Build variants: `es3`, `es5`, `both` (both = default gate for CI). Discipline: guard
+  with `NUXJS_ES5` at 0. `NuXJS.h` defaults the macro to 1, so both variants pass it explicitly and an unflagged
+  build is es5; 0 and undefined preprocess alike, every guard being `#if` rather than `#ifdef`, so D1 byte identity
+  is unaffected. Build variants: `es3`, `es5`, `both` (both = default gate for CI). Discipline: guard
   additively - **prefer adding a guarded branch over rewriting an existing ES3 code path**; never let an ES5 guard
   silently change ES3 behavior.
 - **D5 - Gating the JS standard library. (DECIDED - `//#if ES5` guards inside `stdlib.js`.)** All ES5 library code
@@ -71,7 +73,9 @@ Pure plumbing - lands before any feature so the guard discipline exists from com
 - [x] Define the `NUXJS_ES5` macro and wire `es3` / `es5` / `both` variants into `build.sh`, `build.cmd`, and
       `tools/buildAndTest.sh`/`.cmd`. `both` is the default. The `es5` variant compiles with `-DNUXJS_ES5=1`,
       names its binaries `NuXJS_es5_*` (release installed as `output/NuXJS_ES5`), runs `tests/es5/` and skips
-      `tests/es3only/`; the `es3` variant does the reverse.
+      `tests/es3only/`; the `es3` variant does the reverse with `-DNUXJS_ES5=0`. `src/stdlibJS.cpp` includes
+      `NuXJS.h` so the header's default reaches the library blob too, an unflagged build otherwise pairing an es5
+      engine with the es3 library.
 - [x] Create `tests/es5/`; smoke feature is a real conformance item - ES5.1 §12.6.4 `for-in` over `null`/
       `undefined` enumerates nothing (guarded in `GET_ENUMERATOR_OP`). ES3 expectation moved to
       `tests/es3only/forInNullUndefined.io`; ES5 expectation in `tests/es5/forInNullUndefined.io`.

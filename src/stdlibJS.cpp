@@ -1,3 +1,5 @@
+#include "NuXJS.h"
+
 namespace NuXJS {
 #if NUXJS_ES5
 const char* STDLIB_JS =

@@ -24,7 +24,9 @@ cd ../../tools
 mkdir ../output >/dev/null 2>&1 || true
 ../externals/PikaCmd/PikaCmd ./stdlibToCpp.pika ../src/stdlib.js ../src/stdlibJS.cpp
 ../externals/PikaCmd/PikaCmd ./stdlibToCpp.pika ../src/stdlib.js ../output/stdlib.es3.js es3
-opts=""
+# Both variants say so explicitly: NuXJS.h defaults NUXJS_ES5 to 1, so leaving it undefined no longer means es3.
+# -DNUXJS_ES5=0 preprocesses identically to the undefined macro, every guard being #if rather than #ifdef.
+opts="-DNUXJS_ES5=0"
 if [ "$variant" == "es5" ]; then
 	opts="-DNUXJS_ES5=1"
 fi

@@ -12,11 +12,15 @@ IF "%variant%"=="" SET variant=es3
 SET CPP_OPTIONS=/FS
 
 REM The es5 variant compiles the ECMAScript 5.1 extensions (guarded by NUXJS_ES5) and gets an "_es5" binary
-REM suffix. The es3 variant is the pristine ES3 engine, built exactly as before.
+REM suffix. The es3 variant is the pristine ES3 engine. Both say so explicitly: NuXJS.h defaults NUXJS_ES5 to 1,
+REM so leaving it undefined no longer means es3. /DNUXJS_ES5=0 preprocesses identically to the undefined macro,
+REM every guard being #if rather than #ifdef.
 SET suffix=
 IF "%variant%"=="es5" (
 	SET suffix=_es5
 	SET CPP_OPTIONS=/DNUXJS_ES5=1 %CPP_OPTIONS%
+) ELSE (
+	SET CPP_OPTIONS=/DNUXJS_ES5=0 %CPP_OPTIONS%
 )
 
 CD ..\externals\PikaCmd

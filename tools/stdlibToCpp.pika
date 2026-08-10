@@ -79,8 +79,10 @@ if (right(outputFile, 3) === '.js') {
 	es3js = definition('STDLIB_JS', shrink(preprocess(src, false), 'ES3 code'));
 
 	// One #if picks the target's variant of the library. Everything here is bound before the concatenation, these
-	// helpers all keeping their state in plain globals.
-	out = "namespace NuXJS {" # LF # "#if NUXJS_ES5" # LF # es5js
+	// helpers all keeping their state in plain globals. The #include is what carries the NUXJS_ES5 default in
+	// NuXJS.h into this file; without it a build that does not define the macro on the command line silently pairs
+	// an es5 engine with the es3 library, and links without complaint.
+	out = '#include "NuXJS.h"' # LF # LF # "namespace NuXJS {" # LF # "#if NUXJS_ES5" # LF # es5js
 			# "#else" # LF # es3js # "#endif" # LF # "}" # LF;
 
 	// Rewrite only on a real change, so callers can regenerate unconditionally without forcing a recompile.
