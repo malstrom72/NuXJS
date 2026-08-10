@@ -290,36 +290,34 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 - [x] `Function.prototype.toString` returns source text and throws `TypeError` for a non-Function `this`
       (§15.3.4.2). Already correct; the representation is implementation-dependent, so only the round-trip of the
       source text is asserted. (`tests/es5/functionInstanceProperties.io`)
-- [ ] **`this` as a `Value`, not an `Object*`** - the last strict-mode gap (§10.4.3), and the only item here that
-      reaches into the public header. A frame stores its receiver as `Object*` (`Frame::thisObject`,
-      `NuXJS.h:1941`), so `Value::toObjectOrNull` (`NuXJS.cpp:879`) boxes a primitive and collapses both `null` and
-      `undefined` to `0`. Four symptoms, all ES5-strict only: `s.call(5)` and `s.bind(5)()` see a `Number` wrapper
-      rather than `5`, `s.call(null)` sees `undefined`, and `Object.prototype.toString.call(null)` answers
-      `[object Undefined]` where §15.2.4.2 step 2 wants `[object Null]`. ES3 §10.2.3 *requires* the coercion, so
-      the ES3 build is right as it stands and must not move.
+- [x] **`this` as a `Value`, not an `Object*`** - the last strict-mode gap (§10.4.3), and the only item here that
+      reached into the public header. A receiver is now a `Value` under `NUXJS_ES5`, so `s.call(5)` sees `5` rather
+      than a `Number` wrapper, `s.call(null)` sees `null`, and `Object.prototype.toString.call(null)` answers
+      `[object Null]`. ES3 §10.2.3 *requires* the coercion and keeps its `Object*`; the es3 release binary is
+      byte-identical across the whole change.
 
-      Blast radius, which is smaller than the 81 occurrences of `thisObject` across the two files suggests:
-      - The advertised high-level API keeps its shape. `VarFunction` (`NuXJS.h:1514`) and the member-function
-        adapters already take `const Var&`, and `Var` holds a `Value`, so that tier can carry a primitive today.
-        Only the three adapter bodies building `Var(rt, thisObject)` from an `Object*` move (`NuXJS.h:1688`,
-        `1765`, `1778`). Every callback in `docs/examples/examples.cpp` is on this tier.
-      - Low-level *callers* mostly survive, `Value(Object*)` (`NuXJS.h:385`) being non-explicit: `Runtime::call`
-        (`1414`) and the five `Var::apply` overloads (`1542-1546`) still compile with an object receiver. Only an
-        explicit literal `0` breaks, since `Value(const void*)` (`450`) is private and undefined to poison
-        pointer-to-bool; the default arguments cover the ordinary case.
-      - The hard breaks are the `NativeFunction` typedef (`1087`) and the `Function::invoke` / `construct` virtuals
-        (`1080`, `1072`): writing a native function or subclassing `Function` needs a recompile. 41 internal
-        `Support::` functions carry the same tail.
+      The 77 signature sites went behind one alias rather than 77 guards: `Receiver` (`NuXJS.h`) is
+      `const Value&` in es5 and `Object*` in es3, with a `ReceiverSlot` companion for the `Frame` member and
+      `noReceiver()` for the five default arguments. A typedef is transparent to mangling, so es3 codegen cannot
+      move, which is what let the mechanical pass land as its own commit. 19 of the 27 natives sit on the shared
+      es3 path, so guarding them individually was never an option.
 
-      So: guard the signature change with `#if NUXJS_ES5`, as the other 48 guards in the public header already are.
-      The ES3 API and binary stay byte-identical (design rule D1) and only an ES5 build recompiles. Do NOT carry a
-      primitive `this` alongside the `Object*`: two receivers on every call path is the accreting data model
-      `docs/Coding Style.md` §2 rules out, and it doubles the paths the guard was meant to keep single.
+      `Processor::enter` is the single coercion point: strict code keeps its receiver, non-strict substitutes the
+      global object for undefined or null and boxes any other primitive. `callWithArgs`, `BoundFunction::invoke`,
+      `GET_METHOD_OP` and the three accessor call sites all pass the base through untouched. The lift exposed one
+      latent bug: `Array.prototype` `concat` / `join` / `slice` / `toLocaleString` called `toObject(this)` for its
+      throw and then read `this` raw, which only ever worked because the receiver arrived pre-boxed.
+
+      The advertised high-level API did not move. `VarFunction` and the member-function adapters already take
+      `const Var&`, `makeValue(const Value&)` already existed, and `AccessorBase::apply` deliberately keeps its
+      `Object*`. The hard breaks are the `Function::invoke` / `construct` virtuals and the `NativeFunction`
+      typedef: writing a native or subclassing `Function` needs a recompile in an es5 build, which is accepted.
 
 ### Tests
 - bind partial application + `new`; bound `name`/`length`; named-function-expression scope isolation.
-- strict `this` pass-through: primitive and `null` receivers via `call`, `apply` and `bind`; `[object Null]` in
-  `objectToStringTag.io`; an `es3only` twin asserting the §10.2.3 coercion the ES3 build must keep.
+- strict `this` pass-through: primitive and `null` receivers via `call`, `apply` and `bind`, and off a primitive
+  base through a method, a getter and a setter, each against a strict and a non-strict callee; `[object Null]` in
+  `objectToStringTag.io`; `es3only` twins asserting the §10.2.3 coercion the ES3 build must keep.
 
 ---
 

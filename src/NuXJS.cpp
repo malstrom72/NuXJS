@@ -3730,7 +3730,8 @@ void Processor::innerRun() {
 
 			case GET_PROPERTY_OP: {
 			#if NUXJS_ES5
-				Object* o = convertToObject(sp[-1], false);
+				const Value base = sp[-1];	// 8.7.1 hands a getter the base itself, and the read below overwrites it
+				Object* o = convertToObject(base, false);
 				if (o == 0) {
 					return;
 				}
@@ -3746,7 +3747,7 @@ void Processor::innerRun() {
 						pop(1);
 						break;
 					}
-					invokeFunction(accessor->get, 1, 0, o);	// ES5 8.12.3: the getter runs as an ordinary frame; its result replaces [object, name]
+					invokeFunction(accessor->get, 1, 0, base);	// ES5 8.12.3: the getter runs as an ordinary frame; its result replaces [object, name]
 					return;
 				}
 				pop(1);
@@ -3786,7 +3787,9 @@ void Processor::innerRun() {
 				// es5 semantics: [object, name, value] -> [junk / setter return]; the compiler always follows
 				// with POP_OP so a JS setter frame can deposit its (discarded) return value. (See makeAssignment.)
 				// 8.7.2 special [[Put]]: a primitive base boxes into a transient object, so a store is never kept.
-				const bool primitiveBase = !sp[-2].isObject();
+				// Step 6 still hands an inherited setter the base itself, never the box it was looked up through.
+				const Value base = sp[-2];
+				const bool primitiveBase = !base.isObject();
 				if (primitiveBase || !o->updateOwnProperty(rt, sp[-1], sp[0])) {	// fast path: existing own writable data property (same cost as es3)
 					Value dummy;
 					Accessor* accessor;
@@ -3794,7 +3797,7 @@ void Processor::innerRun() {
 					bool stored = false;
 					if (accessor != 0) {
 						if (accessor->set != 0) {
-							invokeFunction(accessor->set, 2, 1, o);	// ES5 8.12.5: the setter runs as an ordinary frame with the value as its argument
+							invokeFunction(accessor->set, 2, 1, base);	// ES5 8.12.5: the setter runs as an ordinary frame with the value as its argument
 							return;	// the following POP_OP discards the setter's return value after the frame returns
 						}	// no setter: silently ignored outside strict mode
 					} else if (!primitiveBase && (flags & READ_ONLY_FLAG) == 0 && o->isExtensible()) {
@@ -4090,11 +4093,11 @@ void Processor::innerRun() {
 			}
 
 			case GET_METHOD_OP: {
-				Object* o = convertToObject(sp[-1], true);
+				const Value base = sp[-1];	// stays on the stack for CALL_THIS_OP; the box below is only for the lookup
+				Object* o = convertToObject(base, true);
 				if (o == 0) {
 					return;
 				}
-				sp[-1] = o;	// the call site (CALL_THIS_OP) picks this up as the this object
 				Value v(UNDEFINED_VALUE);
 				const Flags flags = o->getProperty(rt, sp[0], &v);
 				if ((flags & ACCESSOR_FLAG) != 0) {
@@ -4102,7 +4105,7 @@ void Processor::innerRun() {
 					Accessor* accessor;
 					o->getPropertySlot(rt, sp[0], &dummy, &accessor);	// rare second walk fetches the pair
 					if (accessor->get != 0) {
-						invokeFunction(accessor->get, 0, 0, o);	// result replaces the name at sp[0]; callability is checked by CALL_THIS_OP
+						invokeFunction(accessor->get, 0, 0, base);	// result replaces the name at sp[0]; callability is checked by CALL_THIS_OP
 						return;
 					}
 					v = UNDEFINED_VALUE;
@@ -4118,8 +4121,8 @@ void Processor::innerRun() {
 			case CALL_THIS_OP: {
 				Function* const f = asFunction(sp[-im]);
 				if (f != 0) {
-					assert(sp[-im - 1].isObject());
-					invokeFunction(f, im + 1, im, sp[-im - 1].getObject());
+					const Value base = sp[-im - 1];	// 11.2.3: the base as written, primitive or not
+					invokeFunction(f, im + 1, im, base);
 				}
 				return;
 			}

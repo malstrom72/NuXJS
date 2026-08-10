@@ -6,11 +6,10 @@
 > var ts = Object.prototype.toString; print(ts.call(undefined) + " " + ts.call())
 < [object Undefined] [object Undefined]
 -
-// DEVIATION: a null receiver reports "[object Undefined]" rather than "[object Null]". `this` reaches a callee as
-// an object reference, so null and undefined are indistinguishable by the time the method runs; see the deferral
-// in docs/notes/ECMAScript Compatibility Notes.md. Everything else in 15.2.4.2 is exact.
+// 15.2.4.2 step 2: a null receiver is its own tag, distinguishable from undefined only because a strict callee
+// receives the this value verbatim (10.4.3).
 > var ts = Object.prototype.toString; print(ts.call(null))
-< [object Undefined]
+< [object Null]
 -
 // The class of every other built-in is unchanged from ES3.
 > var ts = Object.prototype.toString; print([ts.call([]), ts.call(function () {}), ts.call(5), ts.call("s"), ts.call(true)].join(" "))

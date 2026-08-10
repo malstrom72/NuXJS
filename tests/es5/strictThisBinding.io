@@ -96,3 +96,39 @@
 > print([s.call(o) === o, s.apply(o) === o, s.bind(o)() === o, n.call(o) === o, n.apply(o) === o, n.bind(o)() === o].join(" "))
 < true true true true true true
 -
+// 11.2.3 with 10.4.3: a method reached through a primitive base gets that primitive, the boxing GET_METHOD_OP
+// does for the property lookup being invisible to the callee. Checked against V8.
+> String.prototype.st = function () { "use strict"; return typeof this + "/" + (this === "abc"); };
+> Number.prototype.st = function () { "use strict"; return typeof this + "/" + (this === 5); };
+> Boolean.prototype.st = function () { "use strict"; return typeof this + "/" + (this === true); };
+> print(["abc".st(), (5).st(), true.st()].join(" "))
+< string/true number/true boolean/true
+-
+// A non-strict method off the same base still boxes, 10.4.3 running ToObject at frame entry.
+> String.prototype.sl = function () { return typeof this + "/" + (this === "abc"); };
+> print("abc".sl())
+< object/false
+-
+// 8.7.1 step 6 passes the base to a getter, so a strict one sees the primitive and a non-strict one the wrapper.
+> Object.defineProperty(String.prototype, "gs", { get: function () { "use strict"; return typeof this + "/" + (this === "abc"); } });
+> Object.defineProperty(String.prototype, "gl", { get: function () { return typeof this + "/" + (this === "abc"); } });
+> print("abc".gs + " " + "abc".gl)
+< string/true object/false
+-
+// None of this disturbs an ordinary method call on a primitive, which reads through the boxed lookup as before.
+> print([[1, 2, 3].join("-"), "abc".charAt(1), (255).toString(16), "  x ".trim()].join(" "))
+< 1-2-3 b ff x
+-
+// 15.5.4.2-3 take a String value as readily as a String object, which only matters now that the strict
+// String.prototype table receives a primitive receiver unboxed. Checked against V8.
+> print(["abc".valueOf(), "abc".toString(), String.prototype.valueOf.call("a"), String.prototype.toString.call(new String("b"))].join(" "))
+< abc abc a b
+-
+// A receiver of any other type is still rejected, null and undefined included.
+> var n = 0;
+> try { String.prototype.valueOf.call(5) } catch (e) { if (e instanceof TypeError) ++n; }
+> try { String.prototype.toString.call({}) } catch (e) { if (e instanceof TypeError) ++n; }
+> try { String.prototype.valueOf.call(null) } catch (e) { if (e instanceof TypeError) ++n; }
+> print(n)
+< 3
+-
