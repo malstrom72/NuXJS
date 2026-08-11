@@ -961,13 +961,11 @@ defineProperties(Date, { dontEnum: true }, {
 				s[i] === ":" && (++i, readPart(2)) || 0,
 				s[i] === "." && (++i, readPart(3)) || 0);
 
+		// ES3 defines no date format at all, so a date-time carrying no offset is read as local. That is what
+		// makes Date.parse(x.toString()) round trip, toString printing exactly that shape, and it is what V8 and
+		// JavaScriptCore do too. A date-only string has no time to be local and so comes out UTC.
 		while ((ch = s[i]) !== void 0 && ch !== "Z" && ch !== "z" && ch !== "+" && ch !== "-") ++i;
 
-		/*
-			15.9.1.15 makes an absent time zone offset "Z". A date-only string is read that way, which every
-			edition agrees on; a date-time without one is read as local, which is what a later edition changed to
-			and what V8 and JavaScriptCore both do. See docs/specs/ES5.1 vs modern divergences.md.
-		*/
 		if (ch === "Z" || ch === "z") local = false;
 		else if (ch === "+" || ch === "-") {
 			++i, tzh = readPart(2) * 36e5,
