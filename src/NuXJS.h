@@ -1482,6 +1482,7 @@ class Runtime : public GCItem {
 		Function* evalFunction;
 	#if NUXJS_ES5
 		Function* throwTypeErrorFunction;	///< 13.2.3 [[ThrowTypeError]]: the shared poison pill for strict callee/caller
+		Function* setArrayLengthFunction;	///< 15.4.5.1 (3.c): stores an object into an array length, ToUint32 of it running script
 	public:
 		Function* getThrowTypeErrorFunction() const { return throwTypeErrorFunction; }
 	protected:
@@ -1499,6 +1500,7 @@ class Runtime : public GCItem {
 			gcMark(heap, evalFunction);
 		#if NUXJS_ES5
 			gcMark(heap, throwTypeErrorFunction);
+			gcMark(heap, setArrayLengthFunction);
 		#endif
 			// Yeah we just empty caches on each gc sweep
 			std::fill(stringConstantsCache + 0, stringConstantsCache + STRING_CONSTANTS_CACHE_SIZE, (const String*)(0));

@@ -2122,26 +2122,34 @@ UInt32 JSArray::truncateTo(Runtime& rt, UInt32 newLength) {
 // 15.4.5.1 (3). `length` is not a table property here, so the default 8.12.9 is applied to it by hand; it is
 // always a non-configurable, non-enumerable data property, which collapses most of that algorithm.
 bool JSArray::defineLength(Runtime& rt, const PropertyDescriptor& desc, bool doThrow) {
-	const bool rejectEnumerable = desc.has(PropertyDescriptor::HAS_ENUMERABLE) && desc.enumerable;
-	const bool rejectConfigurable = desc.has(PropertyDescriptor::HAS_CONFIGURABLE) && desc.configurable;
-	const bool wantWritable = !desc.has(PropertyDescriptor::HAS_WRITABLE) || desc.writable;
-	if (desc.isAccessor() || rejectEnumerable || rejectConfigurable || (!lengthWritable && wantWritable)) {
-		return rejectDefine(rt, doThrow);	// 8.12.9 (7) / (9) / (10.a.i): non-configurable, so none of these may change
-	}
-	if (!desc.has(PropertyDescriptor::HAS_VALUE)) {	// 3.1: attributes only
-		lengthWritable = lengthWritable && wantWritable;
+	// 8.12.9 (7) / (10.a.i) / (10.b.i): length is non-configurable, so turning it into an accessor or asking for
+	// enumerable or configurable is always a reject, as is asking a read-only length to become writable. An absent
+	// field asks for nothing, which is why only a present-and-true writable can reject.
+	const bool keepWritable = !desc.has(PropertyDescriptor::HAS_WRITABLE) || desc.writable;
+	const bool rejectAttribs = desc.isAccessor()
+			|| (desc.has(PropertyDescriptor::HAS_ENUMERABLE) && desc.enumerable)
+			|| (desc.has(PropertyDescriptor::HAS_CONFIGURABLE) && desc.configurable)
+			|| (!lengthWritable && desc.has(PropertyDescriptor::HAS_WRITABLE) && desc.writable);
+	if (!desc.has(PropertyDescriptor::HAS_VALUE)) {	// 3.1: attributes only, straight to the default 8.12.9
+		if (rejectAttribs) {
+			return rejectDefine(rt, doThrow);
+		}
+		lengthWritable = lengthWritable && keepWritable;
 		return true;
 	}
 	const double raw = desc.value.toDouble();		// 3.3 / 3.4: ToUint32 must round-trip through ToNumber
 	if (!(raw >= 0.0 && raw <= 4294967295.0) || raw != static_cast<double>(static_cast<UInt32>(raw))) {
-		ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");
+		ScriptException::throwError(rt.getHeap(), RANGE_ERROR, "Invalid array length");	// 3.4, ahead of every reject
 	}
 	const UInt32 newLen = static_cast<UInt32>(raw);
-	if (newLen < length && !lengthWritable) {
-		return rejectDefine(rt, doThrow);	// 3.7
+	if (rejectAttribs) {
+		return rejectDefine(rt, doThrow);
+	}
+	if (!lengthWritable) {	// 3.6 into 8.12.9 (6) for a grow, 3.7 for a shrink: only an unchanged length gets through
+		return (newLen == length ? true : rejectDefine(rt, doThrow));
 	}
 	const UInt32 reached = (newLen < length ? truncateTo(rt, newLen) : (length = newLen));
-	lengthWritable = lengthWritable && wantWritable;	// 3.9 / 3.13: clearing it is deferred until after the deletes
+	lengthWritable = keepWritable;	// 3.9 / 3.13: clearing it is deferred until after the deletes
 	return (reached == newLen ? true : rejectDefine(rt, doThrow));	// 3.12.c.4
 }
 
@@ -2240,6 +2248,12 @@ bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value&
 	#if NUXJS_ES5
 		if (!lengthWritable) {
 			return true;	// `result` stays false: 15.4.5.1 made length read-only
+		}
+		// 8.12.5 puts [[CanPut]] ahead of the store, so a read-only length is settled above without conversion.
+		// Past it, 15.4.5.1 (3.c) runs ToUint32 over the value, and an object's valueOf is script this path may not
+		// run. Reporting the store unhandled sends the VM down the slow path it already keeps for setters.
+		if (v.isObject()) {
+			return true;	// `result` stays false
 		}
 	#endif
 		const double rawLength = v.toDouble();
@@ -3805,6 +3819,13 @@ void Processor::innerRun() {
 							invokeFunction(accessor->set, 2, 1, sp[-2]);	// ES5 8.12.5: step 6 gives the setter the base, not the box
 							return;	// the following POP_OP discards the setter's return value after the frame returns
 						}	// no setter: silently ignored outside strict mode
+					} else if (sp[0].isObject() && (flags & READ_ONLY_FLAG) == 0 && rt.setArrayLengthFunction != 0
+							&& o->asArray() != 0 && sp[-1].equalsString(LENGTH_STRING)) {
+						// 15.4.5.1 (3.c): the array store path handed this back because ToUint32 of an object runs
+						// its valueOf. A stdlib helper is entered in its place, shaped and discarded like a setter.
+						// 8.12.5 puts [[CanPut]] first, so a read-only length is left to the reject path untouched.
+						invokeFunction(rt.setArrayLengthFunction, 2, 1, sp[-2]);
+						return;
 					} else if (!primitiveBase && (flags & READ_ONLY_FLAG) == 0 && o->isExtensible()) {
 						stored = o->setOwnProperty(rt, sp[-1], sp[0]);	// 8.12.4 [[CanPut]]: a new own property requires extensibility
 					}
@@ -7001,7 +7022,7 @@ Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap
 		, timeOut(0), memoryCap(MAX_MEMORY_CAP), gcThreshold(AUTO_GC_MIN_SIZE), createRegExpFunction(&NO_REG_EXP_SUPPORT)
 		, evalFunction(&EVAL_FUNCTION)
 #if NUXJS_ES5
-		, throwTypeErrorFunction(0)
+		, throwTypeErrorFunction(0), setArrayLengthFunction(0)
 #endif
 		, unixEpochTimeDiff(0.0), evalCodeCache(&heap)
 #if NUXJS_ES5
@@ -7249,6 +7270,7 @@ void Runtime::setupStandardLibrary() {
 	fetchFunction(supportObject, "evalFunction", &evalFunction);
 #if NUXJS_ES5
 	fetchFunction(supportObject, "throwTypeError", &throwTypeErrorFunction);
+	fetchFunction(supportObject, "setArrayLength", &setArrayLengthFunction);
 #endif
 
 	heap.gc();
