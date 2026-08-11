@@ -13,13 +13,17 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   *accessor* descriptor on an index or `length` throws a `TypeError`. Named array properties and all ordinary
   object / function properties follow 8.12.9 exactly. Tracked in `docs/ES5.1 Roadmap.md` §6.
 
-- **An array `length` set to an *object* throws a `RangeError`.** 15.4.5.1 takes ToUint32 of the value, which for
-  an object runs ToPrimitive and so `valueOf` / `toString`; `arr.length = { toString: function () { return "2" } }`
-  should give 2. `Value::toDouble` answers NaN for an object instead, by design - proper ToNumber has to run
-  script, and the object model is required not to (`docs/ES5.1 Roadmap.md` §1, "core lookups stay pure"). Every
-  primitive coerces correctly, `true`, `null`, `"3"` and a `Number` wrapper included; only a plain object with a
-  `valueOf` / `toString` is affected, through plain assignment and through `Object.defineProperty` alike. Shared
-  with the es3 build, which has always behaved this way. Found by the Test262 dashboard, 12 tests.
+- **An array `length` set to an *object* throws a `RangeError` - es3 only.** 15.4.5.1 takes ToUint32 of the value,
+  which for an object runs ToPrimitive and so `valueOf` / `toString`;
+  `arr.length = { toString: function () { return "2" } }` should give 2. `Value::toDouble` answers NaN for an object
+  instead, by design - proper ToNumber has to run script, and the object model is required not to
+  (`docs/ES5.1 Roadmap.md` §1, "core lookups stay pure"). The **es5 build conforms**: `Object.defineProperty`
+  converts the value in `stdlib.js` before the native hook, and a plain assignment is handed to
+  `support.setArrayLength` through the same slow path `SET_PROPERTY_POP_OP` already uses for setters, so the
+  conversion runs in an ordinary frame and the object model still never runs script. The **es3 build keeps the
+  deviation**, its store opcode `SET_PROPERTY_OP` having neither the setter machinery nor the trailing `POP_OP` a
+  frame needs to return into. Every primitive coerces correctly in both, `true`, `null`, `"3"` and a `Number`
+  wrapper included. `tests/es3only/cantAssignObjectToArrayLength.io` and `tests/es5/arrayLengthCoercion.io`.
 
 - **`Date.parse` accepts no legacy formats.** 15.9.4.2 requires the 15.9.1.15 ISO format and says an implementation
   *may* fall back to other heuristics for anything else. NuXJS does not, so

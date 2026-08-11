@@ -382,10 +382,21 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
       data properties of `new RegExp()`, where `distinctConstructor` had handed out a plain object. Found by the
       first dashboard run, not by the roadmap. ES2015 reverted the whole idea, so V8 is not an oracle here and the
       clause text is. (`tests/es5/regExpPrototypeObject.io`)
-- [ ] An array `length` assigned an *object* throws a `RangeError` where 15.4.5.1 wants ToUint32 through
-      ToPrimitive. Needs the value coerced before it reaches the object model, which may not run script; the
-      `defineProperty` half is the §6 deferral, the plain-assignment half is not. 12 dashboard tests, documented
-      in `docs/notes/ECMAScript Compatibility Notes.md`.
+- [x] An array `length` assigned an *object* now runs ToUint32 through ToPrimitive, where it threw a `RangeError`.
+      §15.4.5.1 step 3.c demands it and the object model may not run script, so the two halves are reached
+      differently. `Object.defineProperty` needs no engine help at all: `define()` in `stdlib.js` converts the value
+      before the native hook sees it, leaving the native the pure range check it already had, and 3.c precedes every
+      reject so nothing gates it (6 test262 tests). Plain assignment goes through the VM, but *not* through a new
+      hot-path branch: `JSArray::updateOwnProperty` already special-cases `length`, so reporting the store unhandled
+      for an object value drops it into the slow path `SET_PROPERTY_POP_OP` already keeps for setters, where
+      `support.setArrayLength` is entered with exactly the setter's shape and the compiler's trailing `POP_OP`
+      discards its result. `+v` yields a primitive, so it cannot re-enter (1 test262 test). §8.12.5 puts
+      [[CanPut]] first, so a read-only length is still settled without converting anything. The es3 store opcode has
+      neither the setter machinery nor the `POP_OP`, so es3 keeps the deviation, its test moving to
+      `tests/es3only/cantAssignObjectToArrayLength.io`. Two further §15.4.5.1 bugs fell out of the same read: the
+      RangeError of 3.4 came *after* the rejects instead of before, and an absent `writable` field was treated as a
+      request for `writable: true`, so `{value: <unchanged>}` on a read-only length threw where 8.12.9 step 6 lets
+      it through. All ten cases now match V8. (`tests/es5/arrayLengthCoercion.io`)
 - [x] `Date.parse` conforms to §15.9.1.15, "the value of an absent time zone offset is `Z`", where it read every
       offset-less form as local time. Guarded, es5 only: ES3 §15.9.4.2 dictates no format at all, so reading them
       as local is a choice ES3 leaves open and `main` keeps it, rather than moving every existing

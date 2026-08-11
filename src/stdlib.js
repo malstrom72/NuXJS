@@ -22,7 +22,7 @@
 //#if ES5
 	@preserve: trim,preventExtensions,isExtensible,defineOwnProperty,get,set,keys,create,now,seal,freeze,isSealed
 	@preserve: getOwnPropertyDescriptor,getOwnPropertyNames,createObject,isFrozen,bind,bindFunction,forEach,map
-	@preserve: filter,some,every,reduce,reduceRight,getYear,setYear,toGMTString
+	@preserve: filter,some,every,reduce,reduceRight,getYear,setYear,toGMTString,setArrayLength
 //#endif
 
 	support: {
@@ -133,6 +133,15 @@ support.toPrimitiveString = function(o) { return objectToPrimitive(o, "toString"
 support.toPrimitive = function(o) {
 	return support[$getInternalProperty(o, "class") === "Date" ? "toPrimitiveString" : "toPrimitiveNumber"](o);
 };
+//#if ES5
+/*
+	15.4.5.1 (3.c) runs ToUint32 over the assigned value, which for an object means its valueOf, and the array's
+	store path may not run script. The VM hands such a store here instead, entering it exactly as it enters a
+	setter, so the receiver is the array and the value is the only argument. `+v` yields a primitive, so the store
+	below takes the ordinary path and this cannot re-enter.
+*/
+support.setArrayLength = function setArrayLength(v) { this.length = +v };
+//#endif
 
 // 9.4 ToInteger. Infinities need no special case: floor leaves them as they are.
 function int(v) { return ($isNaN(v = +v) || v === 0) ? 0 : (v < 0 ? -$floor(-v) : $floor(v)); }
@@ -2388,8 +2397,16 @@ function toPropertyDescriptor(attrs) {
 	return [ present, v, g, s, attribs ]
 }
 
-// `key` is already a String at all three call sites, ToString(P) being an earlier and separately ordered step.
-function define(o, key, d) { support.defineOwnProperty(o, key, d[0], d[1], d[2], d[3], d[4]); }
+/*
+	`key` is already a String at all three call sites, ToString(P) being an earlier and separately ordered step.
+	15.4.5.1 (3.c) runs ToUint32 over an array length's new value, which for an object means its valueOf, and the
+	native defineOwnProperty may not run script. Doing the ToNumber here leaves the native the pure range check it
+	already had, and 3.c comes before every reject in that algorithm, so it is right that nothing gates it.
+*/
+function define(o, key, d) {
+	if ((d[0] & HAS_VALUE) !== 0 && key === "length" && $getInternalProperty(o, "class") === "Array") d[1] = +d[1];
+	support.defineOwnProperty(o, key, d[0], d[1], d[2], d[3], d[4]);
+}
 
 /*
 	15.2.3.7 steps 3-6. Every descriptor is converted before any of them is defined, so a malformed one later in the
