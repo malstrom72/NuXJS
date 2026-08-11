@@ -991,7 +991,8 @@ defineProperties(Date.prototype, { dontEnum: true }, {
 	toUTCString: unconstructable(function toUTCString() {
 		var z;
 		if ($isNaN(z = getDateValue(this))) return "Invalid Date";
-		return (epochToDateString(z) + ' ' + epochToTimeString(z))
+		// 15.9.4.2 wants Date.parse(x.toUTCString()) back at x.valueOf(), and without the Z this reads as local.
+		return (epochToDateString(z) + ' ' + epochToTimeString(z) + 'Z')
 	}),
 	toString: unconstructable(function toString() { return localDateTimeToString(getDateValue(this)); }),
 	toDateString: unconstructable(function toDateString() {
