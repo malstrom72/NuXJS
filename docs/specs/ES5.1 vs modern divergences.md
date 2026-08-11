@@ -66,14 +66,26 @@ so `U+FEFF` is white space in the es5 build only. `tests/es5/whiteSpaceSet.io` a
 - **Strict `arguments.caller`.** ES5.1 §10.6 defines *both* `caller` and `callee` as `[[ThrowTypeError]]` poison
   pills on a strict-mode arguments object, so `arguments.caller` throws a `TypeError`. ES2017 removed the `caller`
   pill, so V8 returns `undefined`. NuXJS follows ES5.1 (both throw). Verified against the spec text, not V8.
-- **An ISO date string with no time zone offset.** ES5.1 §15.9.1.15 says "the value of an absent time zone offset
-  is `Z`", with no exception, so by that text `Date.parse("2011-10-10T14:48:00")` would be `14:48Z`. A later
-  edition kept the rule for the *date-only* form and made the *date-time* form local, and V8 and JavaScriptCore
-  both do that. **NuXJS follows the later reading**, which is the one place in this file where it does not follow
-  ES5.1, because the ES5.1 reading silently moves the result of an existing `new Date("...T...")` by the zone
-  offset - no error, just a value under a day wrong. Reading *date-only* as local was a plain bug, since every
-  edition makes it UTC, and that is fixed. The single test262 case for the clause, `15.9.1.15-1`, uses
-  `new Date("1970")`, so nothing in the suite pins the other half.
+- **An ISO date string with no time zone offset.** The rule has moved twice, so the exact texts matter:
+  - ES5.1 §15.9.1.15: "The value of an absent time zone offset is `Z`." No exception, so every form is UTC.
+  - ES2015 §20.3.1.16: "If the time zone offset is absent, the date-time is interpreted as a local time." The
+    exact opposite, and again no exception.
+  - ES2016 §20.3.1.16 onwards, unchanged since: "When the time zone offset is absent, date-only forms are
+    interpreted as a UTC time and date-time forms are interpreted as a local time."
+
+  **The es5 build follows ES5.1**: `new Date("2011-10-10T14:48:00")` is `14:48Z`, where V8 and JavaScriptCore
+  answer `14:48` local. The es3 build reads it as local, ES3 §15.9.4.2 defining no format at all and leaving the
+  reading to the implementation; `tests/es3only/dateTimeWithoutOffsetIsLocal.io` and
+  `tests/es5/isoDateTimeWithoutOffsetIsUTC.io` are the pair.
+
+  Only the `T` form divides them. §15.9.1.15 defines that separator alone, so the space-separated form NuXJS also
+  accepts is its own, reached through the implementation-specific fallback §15.9.4.2 allows, and stays local in
+  both builds. That is not a detail: `toString` prints the space form, and §15.9.4.2 requires
+  `Date.parse(x.toString())` to equal `x.valueOf()`. Making the space form UTC too would break that round trip,
+  which is what a first attempt at this did.
+
+  Date-only is UTC in both builds and under every edition. Reading it as local was a plain bug, now fixed. The
+  single test262 case for the clause, `15.9.1.15-1`, is `new Date("1970")`, so the suite pins only that half.
 
 ### A plain V8 bug: a non-enumerable mapped arguments index
 Not a spec divergence, but it looks like one from the diff. After

@@ -24,10 +24,11 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
 - **`Date.parse` accepts no legacy formats.** 15.9.4.2 requires the 15.9.1.15 ISO format and says an implementation
   *may* fall back to other heuristics for anything else. NuXJS does not, so
   `Date.parse("Mon, 25 Dec 1995 13:30:00 GMT")` is `NaN` where V8 returns a time value. Conformant, but worth
-  knowing when porting code. A *date-only* string with no time zone offset is read as UTC, per 15.9.1.15; a
-  *date-time* without one is read as local, following the later edition that V8 and JavaScriptCore implement
-  rather than 15.9.1.15's blanket rule, so that an existing `new Date("...T...")` does not silently move by the
-  zone offset. See `docs/specs/ES5.1 vs modern divergences.md`.
+  knowing when porting code. A string with no time zone offset follows 15.9.1.15 in the es5 build and is read as
+  UTC, which is a *deliberate* difference from V8 and JavaScriptCore, both of which follow a later edition and
+  read the date-time form as local. Only the `T` form is affected: the space-separated form is NuXJS's own, not
+  15.9.1.15's, and stays local in both builds, which is what keeps `Date.parse(x.toString())` round tripping.
+  See `docs/specs/ES5.1 vs modern divergences.md`.
 
 - **ES3 mode accepts two ES5 syntax relaxations.** ES5.1 `11.1.5` takes an `IdentifierName` as a property name and
   `11.2.1` does the same after the dot, so `{ if: 1 }` and `o.if` are legal; it also added the trailing comma to
