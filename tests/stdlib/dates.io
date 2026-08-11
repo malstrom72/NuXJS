@@ -233,3 +233,27 @@
 > print(new Date(0).getTimezoneOffset() === new Date(0).getTimezoneOffset())
 < true
 -
+// 15.9.4.2 opens "The parse function applies the ToString operator to its argument". It never did: parse read the
+// argument a character at a time, which a String object survives by indexing the same way, so the gap only showed
+// on everything else. undefined and null threw a TypeError where ToString makes them the strings "undefined" and
+// "null" and the answer is an ordinary NaN. Nothing here depends on the format, only on the coercion happening.
+> print(isNaN(Date.parse()) + " " + isNaN(Date.parse(undefined)) + " " + isNaN(Date.parse(null)))
+< true true true
+-
+// An array and a plain object with a toString both reach the same string, and both must parse as that string. The
+// constructor already coerced through toPrimitive, so new Date(x) and Date.parse(x) disagreed on the same argument.
+> var iso = "2011-10-10T14:48:00Z";
+> print(Date.parse([iso]) === Date.parse(iso))
+< true
+> print(Date.parse({ toString: function () { return iso } }) === Date.parse(iso))
+< true
+> print(Date.parse([iso]) === new Date([iso]).valueOf())
+< true
+-
+// ToString is ToPrimitive with hint String, so toString is asked before valueOf, and an object carrying only valueOf
+// falls through to Object.prototype.toString rather than to the date string.
+> var log = "";
+> Date.parse({ toString: function () { log += "S"; return iso }, valueOf: function () { log += "V"; return 1 } });
+> print(log + " " + isNaN(Date.parse({ valueOf: function () { return iso } })))
+< S true
+-
