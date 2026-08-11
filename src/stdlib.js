@@ -1276,7 +1276,7 @@ var parseDate, Date = support.distinctConstructor(function Date() {
 defineProperties(Date, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Date });
 defineProperties(Date, { dontEnum: true }, {
 	parse: unconstructable(parseDate = function parse(s) {
-		var z, y, i, ch, tz, tzh, tzm, i = 0;
+		var z, y, i, ch, tz = 0, tzh, tzm, i = 0;
 		function readPart(len) {
 			var v;
 			for (v = 0; --len >= 0;) if ("0" <= s[i] && s[i] <= "9") v = v * 10 + (+s[i++]); else return $NaN;
@@ -1294,13 +1294,13 @@ defineProperties(Date, { dontEnum: true }, {
 
 		while ((ch = s[i]) !== void 0 && ch !== "Z" && ch !== "z" && ch !== "+" && ch !== "-") ++i;
 
-		if (ch === "Z" || ch === "z") tz = 0;
-		else if (ch === "+" || ch === "-") {
+		// The value of an absent time zone offset is "Z", so a string without one is UTC and never local time.
+		if (ch === "+" || ch === "-") {
 			++i, tzh = readPart(2) * 36e5,
 			s[i] === ":" && ++i, tzh += $isNaN(tzm = readPart(2)) ? 0 : tzm * 6e4,
 			$isNaN(tzh) || (tz = ch === "-" ? -tzh : tzh);
 		}
-		return (tz === void 0 ? fromLocalTime(z) : z - tz)
+		return z - tz
 	}),
 	UTC: unconstructable(function UTC(year, month, date, hours, minutes, seconds, ms) { 
 		return timeClip($callWithArgs(makeDateTime, null, arguments));
