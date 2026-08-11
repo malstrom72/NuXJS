@@ -1292,9 +1292,19 @@ defineProperties(Date, { dontEnum: true }, {
 				s[i] === ":" && (++i, readPart(2)) || 0,
 				s[i] === "." && (++i, readPart(3)) || 0);
 
+//#if !ES5
 		// ES3 defines no date format at all, so a date-time carrying no offset is read as local. That is what
 		// makes Date.parse(x.toString()) round trip, toString printing exactly that shape, and it is what V8 and
 		// JavaScriptCore do too. A date-only string has no time to be local and so comes out UTC.
+//#else
+		/*
+			15.9.1.15 defines the T form and makes its absent offset "Z", so that form is UTC here and only the
+			space form, which is ours rather than the spec's, is still read as local; toString prints the space
+			form, so Date.parse(x.toString()) still round trips. A date-only string comes out UTC either way.
+			Deliberately unlike V8 and JavaScriptCore, see docs/specs/ES5.1 vs modern divergences.md.
+		*/
+		local = (ch === ' ');
+//#endif
 		while ((ch = s[i]) !== void 0 && ch !== "Z" && ch !== "z" && ch !== "+" && ch !== "-") ++i;
 
 		if (ch === "Z" || ch === "z") local = false;
