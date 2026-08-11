@@ -272,3 +272,25 @@
 > print(log + " " + isNaN(Date.parse({ valueOf: function () { return iso } })))
 < S true
 -
+// 15.9.5.10 to 15.9.5.13 all have "If t is NaN, return NaN" as step 2, worded identically in ES3, so an invalid date
+// has to answer NaN from every getter. Four of them did not: dateFromEpoch runs its era arithmetic through int(),
+// and ToInteger(NaN) is 0 by 9.4, so the year and month fell out as 0 and 2 while the day correctly did not.
+> var bad = new Date(NaN);
+> print(bad.getFullYear() + " " + bad.getUTCFullYear() + " " + bad.getMonth() + " " + bad.getUTCMonth())
+< NaN NaN NaN NaN
+-
+> print(bad.getDate() + " " + bad.getUTCDate() + " " + bad.getDay() + " " + bad.getUTCDay() + " " + bad.getHours())
+< NaN NaN NaN NaN NaN
+-
+> print(bad.getMinutes() + " " + bad.getSeconds() + " " + bad.getMilliseconds() + " " + bad.getTime())
+< NaN NaN NaN NaN
+-
+// 15.9.5.40 step 1 is the one place NaN does not propagate: setFullYear reads this time value "but if this time
+// value is NaN, let t be +0". Its siblings have no such step, so they stay NaN, and neither reading may change.
+> var a = new Date(NaN); a.setUTCFullYear(2011); print(a.toISOString())
+< 2011-01-01T00:00:00.000Z
+-
+> var b = new Date(NaN); b.setUTCMonth(3); var c = new Date(NaN); c.setUTCDate(5);
+> print(isNaN(b.valueOf()) + " " + isNaN(c.valueOf()))
+< true true
+-

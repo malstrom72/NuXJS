@@ -869,6 +869,9 @@ function timeClip(z) { return (!$isFinite(z) || abs(z) > 8.64e15 ? $NaN : int(z)
 function timeClipLocal(z) { return fromLocalTime(timeClip(z)); }
 
 function dateFromEpoch(z) {
+	// The era arithmetic below runs through int(), and ToInteger(NaN) is 0 by 9.4, so an invalid date came out of
+	// here as year 0 and month 2 where 15.9.5.10 and 15.9.5.12 step 2 want NaN. The day already fell out NaN.
+	if ($isNaN(z)) return [ z, z, z ];
 	z = $floor(z / 864e5) + 719468;
 	var era = int( (z >= 0 ? z : z - 146096) / 146097 );
 	var doe = z - era * 146097;
