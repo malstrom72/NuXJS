@@ -73,9 +73,15 @@ so `U+FEFF` is white space in the es5 build only. `tests/es5/whiteSpaceSet.io` a
   - ES2016 §20.3.1.16 onwards, unchanged since: "When the time zone offset is absent, date-only forms are
     interpreted as a UTC time and date-time forms are interpreted as a local time."
 
-  **The es5 build follows ES5.1**: `new Date("2011-10-10T14:48:00")` is `14:48Z`, where V8 and JavaScriptCore
-  answer `14:48` local. The es3 build reads it as local, ES3 §15.9.4.2 defining no format at all and leaving the
-  reading to the implementation; `tests/es3only/dateTimeWithoutOffsetIsLocal.io` and
+  **The es5 build follows ES5.1**, so an absent offset means UTC for the date-only forms *and* the `T` form:
+  `new Date("2011-10-10T14:48:00")` is `14:48Z`, where V8 and JavaScriptCore answer `14:48` local.
+
+  **The es3 build reads all of them as local**, which is not a bug there and never was. ES3 §15.9.4.2 dictates no
+  format at all - "The string may be interpreted as a local time, a UTC time, or a time in some other time zone,
+  depending on the contents of the string" - and the only thing it does require, that `Date.parse(x.toString())`
+  and `Date.parse(x.toUTCString())` round trip, is unaffected because neither method ever prints a date-only
+  string. Changing it would move every existing `new Date("2011-10-10")` by the zone offset to satisfy a rule ES3
+  does not have. `tests/es3only/dateTimeWithoutOffsetIsLocal.io` and
   `tests/es5/isoDateTimeWithoutOffsetIsUTC.io` are the pair.
 
   Only the `T` form divides them. §15.9.1.15 defines that separator alone, so the space-separated form NuXJS also
@@ -84,8 +90,8 @@ so `U+FEFF` is white space in the es5 build only. `tests/es5/whiteSpaceSet.io` a
   `Date.parse(x.toString())` to equal `x.valueOf()`. Making the space form UTC too would break that round trip,
   which is what a first attempt at this did.
 
-  Date-only is UTC in both builds and under every edition. Reading it as local was a plain bug, now fixed. The
-  single test262 case for the clause, `15.9.1.15-1`, is `new Date("1970")`, so the suite pins only that half.
+  The single test262 case for the clause, `15.9.1.15-1`, is `new Date("1970")`, so the suite pins the date-only
+  half and nothing else. It passes in the es5 build and is not in scope for es3.
 
 ### A plain V8 bug: a non-enumerable mapped arguments index
 Not a spec divergence, but it looks like one from the diff. After

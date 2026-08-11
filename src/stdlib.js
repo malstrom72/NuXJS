@@ -1276,7 +1276,7 @@ var parseDate, Date = support.distinctConstructor(function Date() {
 defineProperties(Date, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Date });
 defineProperties(Date, { dontEnum: true }, {
 	parse: unconstructable(parseDate = function parse(s) {
-		var z, y, i, ch, tz = 0, tzh, tzm, local, i = 0;
+		var z, y, i, ch, tz, tzh, tzm, i = 0;
 		function readPart(len) {
 			var v;
 			for (v = 0; --len >= 0;) if ("0" <= s[i] && s[i] <= "9") v = v * 10 + (+s[i++]); else return $NaN;
@@ -1287,33 +1287,34 @@ defineProperties(Date, { dontEnum: true }, {
 				s[i] === "-" && (++i, readPart(2) - 1) || 0,
 				s[i] === "-" && (++i, readPart(2)) || 1);
 		z += epochFromTime(
-				(local = (ch = s[i]) === "T" || ch === "t" || ch === ' ') && (++i, readPart(2)) || 0,
+				((ch = s[i]) === "T" || ch === "t" || ch === ' ') && (++i, readPart(2)) || 0,
 				s[i] === ":" && (++i, readPart(2)) || 0,
 				s[i] === ":" && (++i, readPart(2)) || 0,
 				s[i] === "." && (++i, readPart(3)) || 0);
-
-//#if !ES5
-		// ES3 defines no date format at all, so a date-time carrying no offset is read as local. That is what
-		// makes Date.parse(x.toString()) round trip, toString printing exactly that shape, and it is what V8 and
-		// JavaScriptCore do too. A date-only string has no time to be local and so comes out UTC.
-//#else
+//#if ES5
 		/*
-			15.9.1.15 defines the T form and makes its absent offset "Z", so that form is UTC here and only the
-			space form, which is ours rather than the spec's, is still read as local; toString prints the space
-			form, so Date.parse(x.toString()) still round trips. A date-only string comes out UTC either way.
-			Deliberately unlike V8 and JavaScriptCore, see docs/specs/ES5.1 vs modern divergences.md.
+			15.9.1.15 dictates the T form and makes its absent offset "Z", so that and the date-only forms come out
+			UTC here. The space form is ours rather than the spec's and is what toString prints, so it stays local
+			and 15.9.4.2's round trips keep working. Deliberately unlike V8 and JavaScriptCore, which follow a later
+			edition; see docs/specs/ES5.1 vs modern divergences.md. ES3 dictates none of it, so es3 reads them all
+			as local, as it always has.
 		*/
-		local = (ch === ' ');
+		var local = (ch === ' ');
 //#endif
+
 		while ((ch = s[i]) !== void 0 && ch !== "Z" && ch !== "z" && ch !== "+" && ch !== "-") ++i;
 
-		if (ch === "Z" || ch === "z") local = false;
+		if (ch === "Z" || ch === "z") tz = 0;
 		else if (ch === "+" || ch === "-") {
 			++i, tzh = readPart(2) * 36e5,
 			s[i] === ":" && ++i, tzh += $isNaN(tzm = readPart(2)) ? 0 : tzm * 6e4,
-			$isNaN(tzh) || (local = false, tz = ch === "-" ? -tzh : tzh);
+			$isNaN(tzh) || (tz = ch === "-" ? -tzh : tzh);
 		}
-		return local ? fromLocalTime(z) : z - tz
+//#if !ES5
+		return (tz === void 0 ? fromLocalTime(z) : z - tz)
+//#else
+		return (tz !== void 0 ? z - tz : local ? fromLocalTime(z) : z)
+//#endif
 	}),
 	UTC: unconstructable(function UTC(year, month, date, hours, minutes, seconds, ms) { 
 		return timeClip($callWithArgs(makeDateTime, null, arguments));
