@@ -195,7 +195,7 @@ static bool isWhiteSpace(Char c) {
 }
 /* end generated: unicode tables */
 
-static inline bool testUnicodeChar(Char c, const UInt16* offsets) {
+static bool testUnicodeChar(Char c, const UInt16* offsets) {
 	return (UNICODE_MASKS[offsets[c >> 8] + ((c & 255) >> 5)] & (1 << (c & 31))) != 0;
 }
 
