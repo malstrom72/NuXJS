@@ -80,7 +80,8 @@ gate than the binary `cmp`: it isolates the change from link paths and the Mach-
 - **Byte identity**: compile `NuXJS.cpp` and `stdlibJS.cpp` from a fixed directory with `-DNUXJS_ES5=0` before and
   after, and `cmp` the objects. For the binary, `cmp output/NuXJS /tmp/nuxjs-es3-baseline` after `./build.sh`
   works because the link path is constant, but a cross-directory `cmp` is invalid - the Mach-O UUID differs at
-  byte 1609.
+  byte 1609. Note what the binary cannot tell you: it links `tools/NuXJSREPL.cpp`, which this branch changes, so
+  the es3 binary is 272 bytes off `main`'s and always will be. Only the two objects answer D1.
 - **ES3 library**: `output/stdlib.es3.js` and the es3 blob inside `stdlibJS.cpp` must both stay byte-identical.
 - **V8**: the 36-cell pass-through matrix (`call`/`apply`/`bind` × `5`/`"x"`/`true`/`null`/`undefined`/object ×
   strict/non-strict) diffs clean, as do the method, getter and setter cases off a primitive base.
