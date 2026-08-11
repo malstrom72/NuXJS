@@ -383,8 +383,12 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
       ToPrimitive. Needs the value coerced before it reaches the object model, which may not run script; the
       `defineProperty` half is the §6 deferral, the plain-assignment half is not. 12 dashboard tests, documented
       in `docs/notes/ECMAScript Compatibility Notes.md`.
-- [ ] `Date.parse` reads the ISO *date-only* form as local time where §15.9.1.15 says UTC. The parser is shared with
-      es3, so fixing it moves the es3 binary; see `docs/notes/Todo.md`. No legacy fallback, which §15.9.4.2 permits.
+- [x] `Date.parse` now reads a string with no time zone offset as UTC (§15.9.1.15, "the value of an absent time zone
+      offset is `Z`"), where it read every such form as local time. The date-only case was the damaging one, since
+      every edition agrees on it: `Date.parse("2011-10-10")` landed on the 9th east of Greenwich. Fixed in shared
+      code with no guard, because ES3 §15.9.4.2 leaves the accepted format entirely to the implementation and has
+      no ISO format at all, so es3 gives up nothing it promised. It moves the es3 binary, agreed. No legacy
+      fallback, which §15.9.4.2 permits. (`tests/stdlib/dates.io`)
 - [x] `parseInt`/`parseFloat` radix and no-octal behaviour already match ES5 (§15.1.2); their whitespace handling
       was brought up to the full §7.2 set in §3. `Number.isNaN`/`isFinite` are ES6, not ES5.1, and are deliberately NOT added - this is an
       ES5.1 engine, and shipping ES6 globals would misreport what it supports.
