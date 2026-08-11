@@ -945,6 +945,9 @@ var parseDate, Date = support.distinctConstructor(function Date() {
 defineProperties(Date, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Date });
 defineProperties(Date, { dontEnum: true }, {
 	parse: unconstructable(parseDate = function parse(s) {
+		// 15.9.4.2 opens by applying ToString, and reading s a character at a time only looks like it: a String
+		// object indexes the same way, but anything else silently misses, and undefined and null threw outright.
+		s = str(s);
 		var z, y, i, ch, tz, tzh, tzm, i = 0;
 		function readPart(len) {
 			var v;
