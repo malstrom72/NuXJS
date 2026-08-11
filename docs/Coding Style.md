@@ -93,6 +93,9 @@ These are the most important principles in the codebase. Get them wrong and the 
   already uses.
 - **No heavy headers.** Big function bodies live in a `.cpp`; only small or hot inlines belong in a header. A large
   method defined inline in a header will be moved out in review.
+- **No `inline` keyword in a `.cpp`.** A file-scope helper is `static`, never `static inline`: the compiler sees the
+  whole translation unit and decides better than the author can. In a header `inline` means something else - it is
+  what makes a definition legal in every translation unit that includes it - so header definitions keep it.
 - **Keep the client surface minimal.** Internal helpers are not public API - make them protected members of the class
   that uses them, or namespace-internal, not part of what a client sees when they include the header.
 - **C++ standard is per-repo, not a universal rule.** Match whatever standard the target repo requires. Application and
