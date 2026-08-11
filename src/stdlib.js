@@ -1291,17 +1291,12 @@ defineProperties(Date, { dontEnum: true }, {
 				s[i] === ":" && (++i, readPart(2)) || 0,
 				s[i] === ":" && (++i, readPart(2)) || 0,
 				s[i] === "." && (++i, readPart(3)) || 0);
-//#if ES5
-		/*
-			15.9.1.15 dictates the T form and makes its absent offset "Z", so that and the date-only forms come out
-			UTC here. The space form is ours rather than the spec's and is what toString prints, so it stays local
-			and 15.9.4.2's round trips keep working. Deliberately unlike V8 and JavaScriptCore, which follow a later
-			edition; see docs/specs/ES5.1 vs modern divergences.md. ES3 dictates none of it, so es3 reads them all
-			as local, as it always has.
-		*/
-		var local = (ch === ' ');
-//#endif
 
+//#if ES5
+		// 15.9.1.15 makes an absent offset "Z": pinning tz defaults to UTC and suppresses the local shift below. The
+		// space form is ours, is what toString prints, and stays local. docs/specs/ES5.1 vs modern divergences.md.
+		if (ch !== ' ') tz = 0;
+//#endif
 		while ((ch = s[i]) !== void 0 && ch !== "Z" && ch !== "z" && ch !== "+" && ch !== "-") ++i;
 
 		if (ch === "Z" || ch === "z") tz = 0;
@@ -1310,11 +1305,7 @@ defineProperties(Date, { dontEnum: true }, {
 			s[i] === ":" && ++i, tzh += $isNaN(tzm = readPart(2)) ? 0 : tzm * 6e4,
 			$isNaN(tzh) || (tz = ch === "-" ? -tzh : tzh);
 		}
-//#if !ES5
 		return (tz === void 0 ? fromLocalTime(z) : z - tz)
-//#else
-		return (tz !== void 0 ? z - tz : local ? fromLocalTime(z) : z)
-//#endif
 	}),
 	UTC: unconstructable(function UTC(year, month, date, hours, minutes, seconds, ms) { 
 		return timeClip($callWithArgs(makeDateTime, null, arguments));
