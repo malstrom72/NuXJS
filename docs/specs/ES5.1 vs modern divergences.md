@@ -67,11 +67,13 @@ so `U+FEFF` is white space in the es5 build only. `tests/es5/whiteSpaceSet.io` a
   pills on a strict-mode arguments object, so `arguments.caller` throws a `TypeError`. ES2017 removed the `caller`
   pill, so V8 returns `undefined`. NuXJS follows ES5.1 (both throw). Verified against the spec text, not V8.
 - **An ISO date string with no time zone offset.** ES5.1 §15.9.1.15 says "the value of an absent time zone offset
-  is `Z`", with no exception, so `Date.parse("2011-10-10T14:48:00")` is `14:48Z`. ES2016 kept that for the
-  *date-only* form and made the *date-time* form local, so V8 answers `14:48` local. NuXJS follows ES5.1, so the
-  two agree on `"2011-10-10"` and differ by the zone offset on anything carrying a time. Do not "fix" this against
-  V8 without changing the edition NuXJS targets. Both editions make date-only UTC, so reading *that* as local was
-  a plain bug and is fixed.
+  is `Z`", with no exception, so by that text `Date.parse("2011-10-10T14:48:00")` would be `14:48Z`. A later
+  edition kept the rule for the *date-only* form and made the *date-time* form local, and V8 and JavaScriptCore
+  both do that. **NuXJS follows the later reading**, which is the one place in this file where it does not follow
+  ES5.1, because the ES5.1 reading silently moves the result of an existing `new Date("...T...")` by the zone
+  offset - no error, just a value under a day wrong. Reading *date-only* as local was a plain bug, since every
+  edition makes it UTC, and that is fixed. The single test262 case for the clause, `15.9.1.15-1`, uses
+  `new Date("1970")`, so nothing in the suite pins the other half.
 
 ### A plain V8 bug: a non-enumerable mapped arguments index
 Not a spec divergence, but it looks like one from the diff. After

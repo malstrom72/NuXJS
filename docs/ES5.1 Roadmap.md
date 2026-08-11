@@ -383,12 +383,15 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
       ToPrimitive. Needs the value coerced before it reaches the object model, which may not run script; the
       `defineProperty` half is the §6 deferral, the plain-assignment half is not. 12 dashboard tests, documented
       in `docs/notes/ECMAScript Compatibility Notes.md`.
-- [x] `Date.parse` now reads a string with no time zone offset as UTC (§15.9.1.15, "the value of an absent time zone
-      offset is `Z`"), where it read every such form as local time. The date-only case was the damaging one, since
-      every edition agrees on it: `Date.parse("2011-10-10")` landed on the 9th east of Greenwich. Fixed in shared
-      code with no guard, because ES3 §15.9.4.2 leaves the accepted format entirely to the implementation and has
-      no ISO format at all, so es3 gives up nothing it promised. It moves the es3 binary, agreed. No legacy
-      fallback, which §15.9.4.2 permits. (`tests/stdlib/dates.io`)
+- [x] `Date.parse` now reads the ISO *date-only* form as UTC (§15.9.1.15, "the value of an absent time zone offset
+      is `Z`"), where it read every offset-less form as local time. `Date.parse("2011-10-10")` landed on the 9th
+      east of Greenwich, and every edition agrees it should not have. The *date-time* form without an offset stays
+      local deliberately, following the later edition that V8 and JavaScriptCore implement: the §15.9.1.15 reading
+      would silently move the result of an existing `new Date("...T...")` by the zone offset, and no test262 case
+      pins it. Recorded in `docs/specs/ES5.1 vs modern divergences.md`. Fixed in shared code with no guard, since
+      ES3 §15.9.4.2 leaves the accepted format to the implementation and has no ISO format at all, so es3 gives up
+      nothing it promised; it does move the es3 binary. No legacy fallback, which §15.9.4.2 permits.
+      (`tests/stdlib/dates.io`)
 - [x] `parseInt`/`parseFloat` radix and no-octal behaviour already match ES5 (§15.1.2); their whitespace handling
       was brought up to the full §7.2 set in §3. `Number.isNaN`/`isFinite` are ES6, not ES5.1, and are deliberately NOT added - this is an
       ES5.1 engine, and shipping ES6 globals would misreport what it supports.
