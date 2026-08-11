@@ -397,6 +397,13 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
       with a space, which is what the note on §15.9.5.42 recommends, but indistinguishable from the local form
       `toString` prints. This one *is* a bug in both editions, so it is fixed on `main`, unguarded. All three of
       §15.9.4.2's round trips are now pinned in `tests/stdlib/dates.io`.
+- [x] `Date.parse` applies ToString to its argument, which §15.9.4.2 opens by requiring and which it never did: it
+      read the argument a character at a time, so a String object survived by indexing the same way while an array or
+      an object with a `toString` silently missed, and `undefined` and `null` threw a `TypeError` where ToString makes
+      them the ordinary unrecognisable strings `"undefined"` and `"null"`. The constructor had been coercing through
+      `toPrimitive` all along, so `new Date(x)` and `Date.parse(x)` disagreed on the very same argument, which is what
+      rules out reading this as ES3's freedom over the *format*: the coercion is not left open in either edition. A
+      bug in both, so it is fixed on `main`, unguarded, like the `toUTCString` one. (`tests/stdlib/dates.io`)
 - [x] `Date.parse` returns NaN for the strings §15.9.4.2 says it must reject: "Unrecognisable Strings or dates
       containing illegal element values in the format String shall cause `Date.parse` to return NaN", §15.9.1.15
       counting out-of-bounds values as illegal alongside syntax errors. `"2011-13-10"`, `"2011-10-45"`,
