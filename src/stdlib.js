@@ -1389,12 +1389,8 @@ defineProperties(Date.prototype, { dontEnum: true }, {
 	getFullYear: unconstructable(function getFullYear() { return dateFromEpoch(getLocalDateValue(this))[0] }),
 	getUTCFullYear: unconstructable(function getUTCFullYear() { return dateFromEpoch(getDateValue(this))[0] }),
 //#if ES5
-	// B.2.4, informative. Step 2 returns NaN for an invalid date, which the two above are missing: int(NaN) is 0 by
-	// 9.4, so dateFromEpoch answers year 0 and month 2 where 15.9.5.10 and 15.9.5.12 also want NaN.
-	getYear: unconstructable(function getYear() {
-		var v;
-		return ($isNaN(v = getLocalDateValue(this)) ? v : dateFromEpoch(v)[0] - 1900);
-	}),
+	// B.2.4, informative. Its step 2 NaN now falls out of dateFromEpoch, as it does for the getters either side.
+	getYear: unconstructable(function getYear() { return dateFromEpoch(getLocalDateValue(this))[0] - 1900 }),
 //#endif
 	getMonth: unconstructable(function getMonth() { return dateFromEpoch(getLocalDateValue(this))[1] }),
 	getUTCMonth: unconstructable(function getUTCMonth() { return dateFromEpoch(getDateValue(this))[1] }),

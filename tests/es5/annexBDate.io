@@ -9,8 +9,8 @@
 > print(new Date(1899, 0, 1).getYear())
 < -1
 -
-// B.2.4 step 2: an invalid date is NaN, not a year. dateFromEpoch cannot supply that on its own, since ToInteger
-// of NaN is 0 by 9.4, which is also why getFullYear and getMonth still answer 0 and 2 here.
+// B.2.4 step 2: an invalid date is NaN, not a year. It comes straight out of dateFromEpoch, which getFullYear and
+// the rest of 15.9.5.10 to 15.9.5.13 take their own step 2 from as well; tests/stdlib/dates.io pins those.
 > print(new Date(NaN).getYear())
 < NaN
 -
