@@ -362,12 +362,15 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 
 ## 7. Number / Date / JSON / global refinements
 
-- [ ] **`getFullYear`, `getUTCFullYear`, `getMonth` and `getUTCMonth` answer 0 / 0 / 2 / 2 for an invalid date**
-      where §15.9.5.10 and §15.9.5.12 step 2 want NaN. `dateFromEpoch` runs its era arithmetic through `int()`, and
-      ToInteger(NaN) is 0 by §9.4, so the year and month fall out as numbers while the date correctly does not. The
-      other seventeen getters are right. Shared with ES3, so a fix has to be guarded or the frozen binary moves.
-      Found while adding `getYear` (Annex B §B.2.4), whose step 2 states the same requirement and which therefore
-      carries its own NaN check rather than inheriting one.
+- [x] `getFullYear`, `getUTCFullYear`, `getMonth` and `getUTCMonth` answer NaN for an invalid date, where they gave
+      0 / 0 / 2 / 2. Step 2 of §15.9.5.10 to §15.9.5.13 is "If t is NaN, return NaN", worded identically in ES3, so
+      this was a bug in both and is fixed on `main`, unguarded. `dateFromEpoch` ran its era arithmetic through
+      `int()` and ToInteger(NaN) is 0 by §9.4, so only the day fell out right; it now returns NaN for NaN and all
+      four inherit it. The other sixteen getters were already correct, checked one by one rather than assumed. Every
+      caller that must not see NaN already tested for it, §15.9.5.40 step 1 ("but if this time value is NaN, let t
+      be +0") being the one place the spec substitutes, which `setFullYear` and `setUTCFullYear` spell out
+      themselves. `getYear` (Annex B §B.2.4) loses the NaN check it had been carrying for want of this.
+      (`tests/stdlib/dates.io`, `tests/es5/annexBDate.io`)
 
 - [ ] `Number.prototype.toFixed / toExponential / toPrecision` (§15.7.4): ES5 range checks and rounding verified
       correct. The one gap left is `toFixed` precision - `(1000000000000000128).toFixed(0)` loses the last digits
