@@ -297,14 +297,14 @@ function emitCppWhiteSpace(codes) {
 function whiteSpaceLiteral(codes) {
 	var s = '';
 	for (var i = 0; i < codes.length; ++i) s += charLiteral(codes[i], '"');
-	return '\t\t, WHITE_SPACES = "' + s + '";';
+	return '\t\t, WHITE_SPACES = "' + s + '"; // 7.2 WhiteSpace and 7.3 LineTerminator, <USP> being Zs of'
+			+ ' Unicode ' + VERSION;
 }
 
 function emitJSWhiteSpace(codes) {
 	var both = codes.concat(ES5_EXTRA_WHITE_SPACE);
 	both.sort(function (a, b) { return a - b });
-	return ['\t\t// 7.2 WhiteSpace and 7.3 LineTerminator, <USP> being Zs of Unicode ' + VERSION + '.'
-			, '//#if !ES5', whiteSpaceLiteral(codes), '//#else', whiteSpaceLiteral(both), '//#endif'].join('\n');
+	return ['//#if !ES5', whiteSpaceLiteral(codes), '//#else', whiteSpaceLiteral(both), '//#endif'].join('\n');
 }
 
 /* --- splicing --- */
