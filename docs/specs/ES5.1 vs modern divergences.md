@@ -93,6 +93,26 @@ so `U+FEFF` is white space in the es5 build only. `tests/es5/whiteSpaceSet.io` a
   The single test262 case for the clause, `15.9.1.15-1`, is `new Date("1970")`, so the suite pins the date-only
   half and nothing else. It passes in the es5 build and is not in scope for es3.
 
+- **What the es5 build refuses to parse.** §15.9.4.2 ends "Unrecognisable Strings or dates containing illegal
+  element values in the format String shall cause `Date.parse` to return NaN", and §15.9.1.15 counts out-of-bounds
+  values as illegal alongside syntax errors. The fallback to implementation-specific formats in the same clause is a
+  "may", and the es5 build declines it: the §15.9.1.15 grammar, plus the space and lowercase `t` separators our own
+  printers need, is all that parses. The ES5.1-vintage test262 has no case for any of this, so the clause text is the
+  only arbiter. Four results worth knowing before reaching for an oracle:
+
+  | String | es5 | V8 | JSC |
+  | --- | --- | --- | --- |
+  | `"1974-07-14 01:15:16 GMT-01:30"` | **NaN** | parses | NaN |
+  | `"1974-07-14T01:15:16+03"` (offset without minutes) | **NaN** | NaN | NaN |
+  | `"2011-02-31"` | **2011-03-03** | 2011-03-03 | NaN |
+  | `"2011-10-10T24:30"` | **next day 00:30** | NaN | NaN |
+
+  `DD` is bounded at 31 whatever the month, so a short month is *in* the format and `MakeDay` rolls it over; JSC
+  applies a calendar check the clause does not ask for. `HH` is bounded at 24 with no condition attached to the other
+  fields, so `24:30` is in the format too, where both engines treat 24 as legal only at exactly `24:00`. Both
+  readings follow the ES5.1 letter rather than an engine. The es3 build keeps its loose scan and parses all four;
+  `tests/es3only/dateFormatsLoose.io` and `tests/es5/dateParseRejectsInvalid.io` are the pair.
+
 ### A plain V8 bug: a non-enumerable mapped arguments index
 Not a spec divergence, but it looks like one from the diff. After
 `(function (a) { Object.defineProperty(arguments, "0", {enumerable: false}) })(1)`, V8 drops `"0"` from

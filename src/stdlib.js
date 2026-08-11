@@ -1263,6 +1263,42 @@ function isoDate(d) {
 	return $isNaN(z = getDateValue(d)) ? null : epochToDateString(z) + "T" + epochToTimeString(z, true) + "Z";
 }
 
+//#if ES5
+/*
+	15.9.4.2 wants NaN for a String that is not a valid instance of the 15.9.1.15 format, that clause counting out of
+	bounds values as illegal alongside syntax errors. The fall back to implementation specific formats it permits is
+	not taken, so this is the whole of what the es5 build accepts, bar the space and lowercase t separators toString
+	and toUTCString print and 15.9.4.2's round trips need. parse runs this first and then only ever sees a well formed
+	string, which is why it can go on swallowing a failed readPart. ES3 dictates no format at all, so the es3 build
+	keeps its tolerant scan and the looser offset spellings that come with it; see tests/es3only/dateFormatsLoose.io.
+*/
+function isDateTimeString(s) {
+	var i = 0, c;
+	function field(len, lo, hi) {
+		var v = 0, e = i + len;
+		for (; i < e; ++i) if ("0" <= (c = s[i]) && c <= "9") v = v * 10 + (+c); else return false;
+		return (lo <= v && v <= hi);
+	}
+	if ((c = s[0]) === "+" || c === "-") { if (++i, !field(6, 0, 999999)) return false }
+	else if (!field(4, 0, 9999)) return false;
+	if (s[i] === "-") {
+		if (++i, !field(2, 1, 12)) return false;
+		if (s[i] === "-" && (++i, !field(2, 1, 31))) return false;
+	}
+	if ((c = s[i]) === "T" || c === "t" || c === ' ') {
+		if (++i, !field(2, 0, 24) || s[i] !== ":" || (++i, !field(2, 0, 59))) return false;
+		if (s[i] === ":") {
+			if (++i, !field(2, 0, 59)) return false;
+			if (s[i] === "." && (++i, !field(3, 0, 999))) return false;
+		}
+		if ((c = s[i]) === "Z" || c === "z") ++i;
+		else if ((c === "+" || c === "-")
+				&& (++i, !field(2, 0, 24) || s[i] !== ":" || (++i, !field(2, 0, 59)))) return false;
+	}
+	return s[i] === void 0;
+}
+//#endif
+
 var parseDate, Date = support.distinctConstructor(function Date() {
 	return localDateTimeToString(support.getCurrentTime());
 }, function Date(year, month, date, hours, minutes, seconds, ms) {
@@ -1276,6 +1312,9 @@ var parseDate, Date = support.distinctConstructor(function Date() {
 defineProperties(Date, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Date });
 defineProperties(Date, { dontEnum: true }, {
 	parse: unconstructable(parseDate = function parse(s) {
+//#if ES5
+		if (!isDateTimeString(s)) return $NaN;
+//#endif
 		var z, y, i, ch, tz, tzh, tzm, i = 0;
 		function readPart(len) {
 			var v;
