@@ -29,27 +29,12 @@
 > utcDateTimeFromString("1974-07-14T01:15:16.017+01:00");
 < 1974-07-14T01:15:16.017+01:00 : 142992916017 = 1974-07-14T00:15:16.017Z
 -
-> utcDateTimeFromString("1974-07-14T01:15:16.017+02");
-< 1974-07-14T01:15:16.017+02 : 142989316017 = 1974-07-13T23:15:16.017Z
--
 > utcDateTimeFromString("1974-07-14T01:15:16.017+02:03");
 < 1974-07-14T01:15:16.017+02:03 : 142989136017 = 1974-07-13T23:12:16.017Z
 -
-> utcDateTimeFromString("1974-07-14T01:15:16+03");
-< 1974-07-14T01:15:16+03 : 142985716000 = 1974-07-13T22:15:16.000Z
--
-> utcDateTimeFromString("1974-07-14T01:15:16+04");
-< 1974-07-14T01:15:16+04 : 142982116000 = 1974-07-13T21:15:16.000Z
--
-> utcDateTimeFromString("1974-07-14T01:15+05:");
-< 1974-07-14T01:15+05: : 142978500000 = 1974-07-13T20:15:00.000Z
--
-> utcDateTimeFromString("1974-07-14 01:15:16 +0200");
-< 1974-07-14 01:15:16 +0200 : 142989316000 = 1974-07-13T23:15:16.000Z
--
-> utcDateTimeFromString("1974-07-14 01:15:16 GMT-01:30");
-< 1974-07-14 01:15:16 GMT-01:30 : 143001916000 = 1974-07-14T02:45:16.000Z
--
+// An hours-only offset, a trailing colon, the compact +0200 and a GMT prefix are all outside 15.9.1.15, which spells
+// the offset "+HH:mm" and nothing else. The es5 build takes 15.9.4.2's option of no implementation-specific fall back
+// and answers NaN, so that pair lives in tests/es3only/dateFormatsLoose.io and tests/es5/dateParseRejectsInvalid.io.
 > utcDateTimeFromString("+1974-07-14 01:15Z");
 ! !!!! RangeError: Invalid time value
 -

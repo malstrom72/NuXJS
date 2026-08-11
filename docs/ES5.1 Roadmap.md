@@ -397,12 +397,19 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
       with a space, which is what the note on §15.9.5.42 recommends, but indistinguishable from the local form
       `toString` prints. This one *is* a bug in both editions, so it is fixed on `main`, unguarded. All three of
       §15.9.4.2's round trips are now pinned in `tests/stdlib/dates.io`.
-- [ ] **`Date.parse` accepts strings §15.9.4.2 says it must reject.** "Unrecognisable Strings or dates containing
-      illegal element values in the format String shall cause `Date.parse` to return NaN", and §15.9.1.15 counts
-      out-of-bounds values as illegal. `"2011-13-10"`, `"2011-10-45"`, `"2011-10-10T25:00:00"`,
-      `"2011-10-10T14:60:00"` and `"2011-10-10garbage"` all parse instead, the fields never being range checked and
-      the scan for a time zone swallowing any trailing text. ES3 has no such sentence, so this is an es5-guarded
-      fix.
+- [x] `Date.parse` returns NaN for the strings §15.9.4.2 says it must reject: "Unrecognisable Strings or dates
+      containing illegal element values in the format String shall cause `Date.parse` to return NaN", §15.9.1.15
+      counting out-of-bounds values as illegal alongside syntax errors. `"2011-13-10"`, `"2011-10-45"`,
+      `"2011-10-10T25:00:00"`, `"2011-10-10T14:60:00"` and `"2011-10-10garbage"` all parsed instead, the fields never
+      being range checked and the scan for a time zone swallowing any trailing text. A guarded `isDateTimeString`
+      now validates the whole string against the §15.9.1.15 grammar before the parser proper runs, which is why the
+      parser can go on swallowing a failed `readPart`. The implementation-specific fallback the same clause permits
+      is declined, so the es5 build also stops taking the looser offset spellings the ES3 scan allowed
+      (`+03`, `+05:`, `+0200`, `GMT-01:30`); ES3 dictates no format at all, so es3 keeps every one of them.
+      Deliberately stricter than V8 on the last two and looser than both engines on `"2011-02-31"` and
+      `"T24:30"`, all four following the clause text; see `docs/specs/ES5.1 vs modern divergences.md`. This vintage
+      of test262 has no case for any of it. (`tests/es5/dateParseRejectsInvalid.io`,
+      `tests/es3only/dateFormatsLoose.io`)
 - [x] `parseInt`/`parseFloat` radix and no-octal behaviour already match ES5 (§15.1.2); their whitespace handling
       was brought up to the full §7.2 set in §3. `Number.isNaN`/`isFinite` are ES6, not ES5.1, and are deliberately NOT added - this is an
       ES5.1 engine, and shipping ES6 globals would misreport what it supports.
