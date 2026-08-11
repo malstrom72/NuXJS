@@ -4,9 +4,10 @@
 > localDateTimeFromString("1974-07-14 01:15");
 < 1974-07-14 01:15 = 1974-07-14 01:15:00
 -
-> localDateTimeFromString("1974");
-< 1974 = 1974-01-01 00:00:00
--
+// A bare year, and the other date-only forms, are the one shape the two builds read differently: es5 follows
+// 15.9.1.15 and answers UTC where es3 answers local. Printing local time here would say which build it is, so
+// the pair lives in tests/es3only/dateTimeWithoutOffsetIsLocal.io and tests/es5/isoDateTimeWithoutOffsetIsUTC.io,
+// which cover the bare-year syntax between them. Everything below carries a time and is local in both.
 > localDateTimeFromString("+1974-07-14 01:15");
 < +1974-07-14 01:15 = Invalid Date Invalid Date
 -
@@ -222,11 +223,23 @@
 < 2009-02-13T23:31:30.123Z true
 -
 // 15.9.5.42/3/4 are implementation-dependent in their format, so these pin OUR format, not a spec requirement.
+// The trailing Z is the exception: without it the string is the same shape toString prints for local time, and
+// 15.9.4.2 requires both to read back as the instant they came from.
 > print(new Date(0).toUTCString())
-< 1970-01-01 00:00:00
+< 1970-01-01 00:00:00Z
 -
 > print(new Date(1234567890123).toUTCString() + " | " + new Date(-1).toUTCString())
-< 2009-02-13 23:31:30 | 1969-12-31 23:59:59
+< 2009-02-13 23:31:30Z | 1969-12-31 23:59:59Z
+-
+// 15.9.4.2 does require these, whatever the format: for a Date whose milliseconds are zero, parsing back what the
+// engine printed has to give the instant. Independent of the machine's zone by construction.
+> var rt = new Date(1234567890000);
+> print(Date.parse(rt.toString()) === rt.valueOf());
+< true
+> print(Date.parse(rt.toUTCString()) === rt.valueOf());
+< true
+> print(Date.parse(rt.toISOString()) === rt.valueOf());
+< true
 -
 // Locale and zone dependent, so only the shape is checkable here.
 > print(typeof new Date(0).toLocaleDateString() + " " + typeof new Date(0).toLocaleTimeString() + " " + typeof new Date(0).getTimezoneOffset())
