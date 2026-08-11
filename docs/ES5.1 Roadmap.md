@@ -384,20 +384,25 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
       `defineProperty` half is the §6 deferral, the plain-assignment half is not. 12 dashboard tests, documented
       in `docs/notes/ECMAScript Compatibility Notes.md`.
 - [x] `Date.parse` conforms to §15.9.1.15, "the value of an absent time zone offset is `Z`", where it read every
-      offset-less form as local time. Two halves. *Date-only* was a plain bug in both builds, fixed in shared code:
-      `Date.parse("2011-10-10")` landed on the 9th east of Greenwich, and every edition agrees it should not have.
-      The *date-time* `T` form is now UTC in the es5 build only, guarded, because ES3 §15.9.4.2 defines no format
-      at all and reading it as local is the free choice es3 keeps. It is a deliberate difference from V8 and
-      JavaScriptCore, which follow a later edition; see `docs/specs/ES5.1 vs modern divergences.md`. The
-      space-separated form is NuXJS's own rather than §15.9.1.15's and stays local in both, which is what keeps the
-      §15.9.4.2 round trips working, `toString` printing exactly that form. No legacy fallback, which §15.9.4.2
-      permits. (`tests/stdlib/dates.io`, `tests/es5/isoDateTimeWithoutOffsetIsUTC.io`,
-      `tests/es3only/dateTimeWithoutOffsetIsLocal.io`)
+      offset-less form as local time. Guarded, es5 only: ES3 §15.9.4.2 dictates no format at all, so reading them
+      as local is a choice ES3 leaves open and `main` keeps it, rather than moving every existing
+      `new Date("2011-10-10")` by the zone offset for a rule ES3 does not have. The date-only forms and the `T`
+      form are UTC in the es5 build; the space-separated form is NuXJS's own rather than §15.9.1.15's and stays
+      local in both, which is what keeps the §15.9.4.2 round trips working, `toString` printing exactly that form.
+      A deliberate difference from V8 and JavaScriptCore, which follow a later edition; see
+      `docs/specs/ES5.1 vs modern divergences.md`. No legacy fallback, which §15.9.4.2 permits.
+      (`tests/es5/isoDateTimeWithoutOffsetIsUTC.io`, `tests/es3only/dateTimeWithoutOffsetIsLocal.io`)
 - [x] `Date.prototype.toUTCString` now marks its output UTC with a trailing `Z`. §15.9.4.2 requires
       `Date.parse(x.toUTCString())` to equal `x.valueOf()` and it did not: the string was the §15.9.1.15 format
       with a space, which is what the note on §15.9.5.42 recommends, but indistinguishable from the local form
-      `toString` prints. Fixed on `main`, since ES3 asks for the same round trip. All three of §15.9.4.2's
-      round trips are now pinned in `tests/stdlib/dates.io`.
+      `toString` prints. This one *is* a bug in both editions, so it is fixed on `main`, unguarded. All three of
+      §15.9.4.2's round trips are now pinned in `tests/stdlib/dates.io`.
+- [ ] **`Date.parse` accepts strings §15.9.4.2 says it must reject.** "Unrecognisable Strings or dates containing
+      illegal element values in the format String shall cause `Date.parse` to return NaN", and §15.9.1.15 counts
+      out-of-bounds values as illegal. `"2011-13-10"`, `"2011-10-45"`, `"2011-10-10T25:00:00"`,
+      `"2011-10-10T14:60:00"` and `"2011-10-10garbage"` all parse instead, the fields never being range checked and
+      the scan for a time zone swallowing any trailing text. ES3 has no such sentence, so this is an es5-guarded
+      fix.
 - [x] `parseInt`/`parseFloat` radix and no-octal behaviour already match ES5 (§15.1.2); their whitespace handling
       was brought up to the full §7.2 set in §3. `Number.isNaN`/`isFinite` are ES6, not ES5.1, and are deliberately NOT added - this is an
       ES5.1 engine, and shipping ES6 globals would misreport what it supports.
