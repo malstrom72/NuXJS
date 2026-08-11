@@ -1,35 +1,37 @@
-// These pin the year and separator syntax the parser accepts. 15.9.1.15 makes an absent time zone offset "Z", so
-// every one of them reads as UTC and the output does not depend on the machine's zone. They used to print local
-// time, which cancelled the zone out only because the parser read them as local too.
-> function dateFromString(s) { var d = new Date(s); print(s + " = " + (isNaN(d) ? "Invalid Date" : d.toISOString())) };
+> function localDateTimeFromString(s) { var d = new Date(s); print(s + " = " + d.toDateString() + ' ' + d.toTimeString()) };
 > function utcDateTimeFromString(s) { var d = new Date(s); print(s + " : " + d.valueOf() + " = " + d.toISOString()) };
 -
-> dateFromString("1974-07-14 01:15");
-< 1974-07-14 01:15 = 1974-07-14T01:15:00.000Z
+> localDateTimeFromString("1974-07-14 01:15");
+< 1974-07-14 01:15 = 1974-07-14 01:15:00
 -
-> dateFromString("1974");
+// A date-only string has no offset to be absent from, so 15.9.1.15 reads it as UTC. That is the one case here
+// that cannot be printed in local time without the answer depending on the machine's zone.
+> print("1974 = " + new Date("1974").toISOString());
 < 1974 = 1974-01-01T00:00:00.000Z
 -
-> dateFromString("+1974-07-14 01:15");
-< +1974-07-14 01:15 = Invalid Date
+> localDateTimeFromString("+1974-07-14 01:15");
+< +1974-07-14 01:15 = Invalid Date Invalid Date
 -
-> dateFromString("0074-07-14 01:15");
-< 0074-07-14 01:15 = 0074-07-14T01:15:00.000Z
+> localDateTimeFromString("0074-07-14 01:15");
+< 0074-07-14 01:15 = 0074-07-14 01:15:00
 -
-> dateFromString("74-07-14 01:15");
-< 74-07-14 01:15 = Invalid Date
+> localDateTimeFromString("74-07-14 01:15");
+< 74-07-14 01:15 = Invalid Date Invalid Date
 -
-> dateFromString("-000074-07-14 01:15");
-< -000074-07-14 01:15 = -000074-07-14T01:15:00.000Z
+> localDateTimeFromString("-000074-07-14 01:15");
+< -000074-07-14 01:15 = -000074-07-14 01:15:00
 -
-> dateFromString("+001974-07-14 01:15");
-< +001974-07-14 01:15 = 1974-07-14T01:15:00.000Z
+> localDateTimeFromString("+001974-07-14 01:15");
+< +001974-07-14 01:15 = 1974-07-14 01:15:00
 -
-// toDateString and toTimeString answer in local time, so they are pinned against the local component constructor,
-// which is the only pairing that still cancels the zone out. Midday, to stay clear of any DST transition.
-> var local = new Date(1974, 6, 14, 12, 15, 16);
-> print(local.toDateString() + ' ' + local.toTimeString());
-< 1974-07-14 12:15:16
+// The absent-offset rule itself. Date-only is UTC everywhere; a date-time without an offset is local, which can
+// only be pinned against the local component constructor if the test is to survive a change of zone.
+> print(new Date("2011-10-10").toISOString());
+< 2011-10-10T00:00:00.000Z
+> print(new Date("2011-10-10T14:48:00").valueOf() === new Date(2011, 9, 10, 14, 48).valueOf());
+< true
+> print(new Date("2011-10-10T14:48:00Z").toISOString());
+< 2011-10-10T14:48:00.000Z
 -
 > utcDateTimeFromString("1974-07-14T01:15:16.017Z");
 < 1974-07-14T01:15:16.017Z : 142996516017 = 1974-07-14T01:15:16.017Z
