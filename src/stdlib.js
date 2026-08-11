@@ -1276,7 +1276,7 @@ var parseDate, Date = support.distinctConstructor(function Date() {
 defineProperties(Date, { dontEnum: true, readOnly: true, dontDelete: true }, { prototype: support.prototypes.Date });
 defineProperties(Date, { dontEnum: true }, {
 	parse: unconstructable(parseDate = function parse(s) {
-		var z, y, i, ch, tz = 0, tzh, tzm, i = 0;
+		var z, y, i, ch, tz = 0, tzh, tzm, local, i = 0;
 		function readPart(len) {
 			var v;
 			for (v = 0; --len >= 0;) if ("0" <= s[i] && s[i] <= "9") v = v * 10 + (+s[i++]); else return $NaN;
@@ -1287,20 +1287,25 @@ defineProperties(Date, { dontEnum: true }, {
 				s[i] === "-" && (++i, readPart(2) - 1) || 0,
 				s[i] === "-" && (++i, readPart(2)) || 1);
 		z += epochFromTime(
-				((ch = s[i]) === "T" || ch === "t" || ch === ' ') && (++i, readPart(2)) || 0,
+				(local = (ch = s[i]) === "T" || ch === "t" || ch === ' ') && (++i, readPart(2)) || 0,
 				s[i] === ":" && (++i, readPart(2)) || 0,
 				s[i] === ":" && (++i, readPart(2)) || 0,
 				s[i] === "." && (++i, readPart(3)) || 0);
 
 		while ((ch = s[i]) !== void 0 && ch !== "Z" && ch !== "z" && ch !== "+" && ch !== "-") ++i;
 
-		// The value of an absent time zone offset is "Z", so a string without one is UTC and never local time.
-		if (ch === "+" || ch === "-") {
+		/*
+			15.9.1.15 makes an absent time zone offset "Z". A date-only string is read that way, which every
+			edition agrees on; a date-time without one is read as local, which is what a later edition changed to
+			and what V8 and JavaScriptCore both do. See docs/specs/ES5.1 vs modern divergences.md.
+		*/
+		if (ch === "Z" || ch === "z") local = false;
+		else if (ch === "+" || ch === "-") {
 			++i, tzh = readPart(2) * 36e5,
 			s[i] === ":" && ++i, tzh += $isNaN(tzm = readPart(2)) ? 0 : tzm * 6e4,
-			$isNaN(tzh) || (tz = ch === "-" ? -tzh : tzh);
+			$isNaN(tzh) || (local = false, tz = ch === "-" ? -tzh : tzh);
 		}
-		return z - tz
+		return local ? fromLocalTime(z) : z - tz
 	}),
 	UTC: unconstructable(function UTC(year, month, date, hours, minutes, seconds, ms) { 
 		return timeClip($callWithArgs(makeDateTime, null, arguments));
