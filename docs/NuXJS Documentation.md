@@ -122,7 +122,7 @@ Because `setOwnProperty` receives the attribute flags, it is responsible for enf
 
 #### Reusing the built-in storage helpers
 
-Deriving from `JSObject` is the quickest way to obtain a full ECMAScript property bag. `JSObject` couples `Object` with the internal `Table`, automatically handles key canonicalisation, and allocates enumerators that honour the `DONT_ENUM` bit. Passing `STANDARD_FLAGS` to `setOwnProperty` yields a normal writable, enumerable property; additional flags add const-like semantics. If you only need to materialise the property table lazily (for example, when exposing a large native object with rare script interaction) you can inherit from `LazyJSObject` instead and build the backing `JSObject` the first time a property hook fires.
+Deriving from `JSObject` is the quickest way to obtain a full ECMAScript property bag. `JSObject` couples `Object` with the internal `Table`, automatically handles key canonicalisation, and allocates enumerators that honour the `DONT_ENUM` bit. Passing `STANDARD_FLAGS` to `setOwnProperty` yields a normal writable, enumerable property; additional flags add const-like semantics. If you only need to materialise the property table lazily (for example, when exposing a large native object with rare script interaction) you can inherit from `LazyJSObject` instead and build the backing `JSObject` the first time a property hook fires. `LazyJSObject` is a class template parameterised on its own super-class, so it is used as `LazyJSObject<Object>` (the form `JSArray`, `Error` and `Arguments` take) or `LazyJSObject<Function>` (the form `ExtensibleFunction` takes), and the subclass supplies the deferred construction by implementing `constructCompleteObject`.
 
 When the host manages its own backing state and does not need `JSObject`'s hash table, overriding the base `Object` hooks directly avoids the bookkeeping overhead. Returning `NONEXISTENT` from `getOwnProperty` delegates the lookup to the prototype chain, while returning `false` from `setOwnProperty` causes assignments to silently do nothing-matching JavaScript's behaviour for read-only properties on non-strict code paths. Deletions mirror this pattern: `delete` succeeds only if your implementation returns `true` and the stored flags did not include `DONT_DELETE_FLAG`.
 
@@ -186,6 +186,96 @@ void exposePoint(Runtime& rt) {
 ```
 
 Because `Property::operator=` also routes through `Object::setProperty`, the same object can be updated from C++ in a fluent style - for example `rt.getGlobalsVar()["point"]["x"] = 7.5;` - and those writes still flow through the overrides above. This keeps host-side and script-side interactions consistent without duplicating bookkeeping.
+
+#### Exposing methods: hooks versus the prototype chain
+
+A native class that carries bulk data - a sample buffer, a matrix, a decoded image - usually needs fast indexed access from C++ as well as a set of methods callable from script. It is tempting to answer the method names directly in `getOwnProperty` alongside the indices, but the two cases pull in opposite directions. Answering a key is precisely what suppresses the prototype chain, so a method resolved inside `getOwnProperty` permanently shadows whatever the prototype offers: scripts cannot override it, cannot wrap it, and cannot delete it to fall back on something else. String-comparing each candidate method name on every property access also costs more than one hashed lookup.
+
+`JSArray` demonstrates the alternative. Its `getOwnProperty` resolves an array index against a dense `Vector` and returns `STANDARD_FLAGS`, answers `length` with `HIDDEN_CONST_FLAGS`, and defers everything else to `super::getOwnProperty` - which, because `JSArray` derives from `LazyJSObject<Object>`, consults the lazily built property table and then the prototype chain. The methods themselves live in `src/stdlib.js` on `Array.prototype` and are found by ordinary prototype resolution. `String::getOwnProperty` follows the same shape for indexed character access.
+
+The rule that generalises: let the hooks answer indices and a small fixed set of internal slots, return `NONEXISTENT` for everything else, and install the methods on a prototype. Test `Value::toArrayIndex` first so the common case exits early. The performance-critical paths stay in C++ while method lookup, shadowing and overriding remain ordinary JavaScript. When script must be able to replace the visible surface wholesale, the further step is to keep the native object out of script's hands entirely and have a JavaScript wrapper hold it in a property; NuXJS has no symbols, so such a slot is an ordinary string key made unobtrusive with `DONT_ENUM_FLAG` rather than genuinely private.
+
+A prototype built in C++ is a heap reference like any other. Whichever object owns it - the `Runtime`, a shared holder, or each instance - must mark it in `gcMarkReferences` and chain to the super-class implementation. Note also that a class whose hooks expose indices has to report them from `getOwnPropertyEnumerator` as well, or `for...in` will disagree with direct property access.
+
+#### Binding C++ functions to properties, and validating `this`
+
+A method installed on a prototype can be invoked with any receiver, so before casting `this` to the native class something has to confirm that it really is one. Whether anything does is decided by *which kind of C++ function you assign* - the four forms below are picked apart by overload resolution on `AccessorBase::makeValue`, and they behave differently. This is a safety decision rather than a matter of taste, so it is worth being deliberate about:
+
+| What is assigned | Signature | Adapter created | Receiver (`this`) |
+| --- | --- | --- | --- |
+| a free or static function | `Value (*)(Runtime&, Processor&, UInt32, const Value*, Object*)` (`NativeFunction`) | `FunctorAdapter` | passed through raw, **not checked** |
+| a free or static function | `Var (*)(Runtime&, const Var&, const VarList&)` (`VarFunction`) | `VarFunctorAdapter` | wrapped in a `Var`, **not checked** |
+| a pointer to a member function | `Var (C::*)(Runtime&, const Var&, const VarList&)` | `VarMemberFunctionAdapter<C>` | **checked**, then used as the C++ `this` |
+| `Var(rt, cppObject, &C::method)` | the same member signature, bound | `BoundVarMemberFunctionAdapter<C>` | ignored - the call always runs on `cppObject` |
+
+The distinction that catches people out is the first two versus the third. A static function and a member function can have identical-looking bodies and be installed on the same prototype, yet only the member function gets a receiver check. The static forms hand over whatever the call site supplied and do nothing else - `VarFunctorAdapter::invoke` is a single forwarding line. A static function that casts its receiver to its own class **must** validate it first, or `Type.prototype.method.call({}, ...)` will cast an unrelated object and corrupt memory instead of throwing.
+
+One further difference: `FunctorAdapter` derives from `Function`, while the other three derive from `ExtensibleFunction`. Only the latter can carry ordinary properties, so a constructor function whose `prototype` property must be assignable - as TypeScript's ES3 `__extends` emit requires of a base class - cannot use the raw `NativeFunction` form.
+
+##### The checked form
+
+Assigning a pointer to a member function with the signature `Var (C::*)(Runtime&, const Var&, const VarList&)` wraps it in an adapter that performs the check automatically. Before dispatching, the adapter compares the statically resolved `C::getClassName()` against the virtual `getClassName()` on the receiver, and throws a `TypeError` carrying the message `Invalid class` when the two differ:
+
+```cpp
+static const String VECTOR_CLASS_NAME("NativeVector");
+
+class NativeVector : public JSObject {
+public:
+    typedef JSObject super;
+    NativeVector(Heap& heap, Object* proto) : super(heap.managed(), proto), samples(&heap) { }
+
+    // The receiver check is driven entirely by this override, so it must return the same pointer every time.
+    const String* getClassName() const override { return &VECTOR_CLASS_NAME; }
+
+    Var scale(Runtime& rt, const Var& thisObject, const VarList& args) {
+        samples.resize(1);                     // reached only once `this` is known to be a NativeVector
+        samples[0] = args[0].to<double>();
+        return Var(rt, samples[0] * 2.0);
+    }
+
+private:
+    Vector<double> samples;                    // `Vector` takes its heap explicitly; it has no default constructor
+};
+
+Var protoVar(rt, rt.newJSObject());
+protoVar["scale"] = &NativeVector::scale;      // a member function pointer, not a static function
+
+NativeVector* v = new(heap) NativeVector(heap, protoVar.to<Object*>());
+rt.getGlobalsVar()["v"] = Var(rt, v);
+
+rt.eval("v.scale(21)");                                  // 42 - the receiver is a NativeVector
+rt.eval("var o = {}; o.scale = v.scale; o.scale(21)");   // throws TypeError: Invalid class
+```
+
+The two `eval` calls are the point of the example: the same function object, reached through the same property, either runs or is rejected purely on what `this` turns out to be. Nothing in `scale` performs the test, and the body of the second call is never entered.
+
+**The class must override `getClassName`, and nothing enforces it.** The comparison is between `C`'s statically resolved `getClassName()` and the receiver's virtual one. If `C` does not override it, the static side resolves to the inherited `JSObject`/`Object` implementation - which is also what any ordinary object returns virtually - so the two agree, the guard passes, and an unrelated object is `reinterpret_cast` into `C`. The check degenerates into a no-op precisely when it is needed, with no warning at compile time or run time. Treat the override as mandatory for any class bound this way, and give it a `String` constant of its own.
+
+Two further limits. The adapter validates the *receiver* only - any arguments that must also be of a native class still need checking by hand. And it is not null-safe: it reaches the receiver's virtual `getClassName()` through a `reinterpret_cast`, so a null receiver crashes rather than throwing. A hand-written check can test for null first.
+
+##### The unchecked form, and the manual check
+
+Static functions - `Counter::increment` in `docs/examples/examples.cpp`, and most native methods in practice - get no help at all, so the same test has to be written out. Compare `getClassName()` against the class's own `String*` by pointer identity, which is exactly what the adapter does, plus a null test:
+
+```cpp
+static NativeVector* checkedSelf(Runtime& rt, Object* o) {
+    if (o == 0 || o->getClassName() != &VECTOR_CLASS_NAME) {
+        ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "can only be used on NativeVector");
+    }
+    return static_cast<NativeVector*>(o);        // safe: the class name has been confirmed
+}
+
+static Var scale(Runtime& rt, const Var& thisObject, const VarList& args) {
+    NativeVector* self = checkedSelf(rt, thisObject.to<Object*>());
+    ...
+}
+
+protoVar["scale"] = scale;                       // a plain function - nothing checks the receiver
+```
+
+Omitting `checkedSelf` here would not be a lax cast that usually works; it would be an unchecked one that any script can exploit with `.call()`. A bare `static_cast` is only defensible when nothing else can reach the prototype, as in a self-contained example.
+
+For checked downcasts outside a call, the engine's own idiom is a virtual accessor: `Object::asFunction`, `asArray` and `asError` return `0` by default and the class that owns the type overrides it to return `this`. Giving a custom class an equivalent yields a cheap, safe conversion from an arbitrary `Object*`.
 
 ## Runtime Architecture
 
@@ -281,7 +371,7 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 
 ### ES3 deviations
 
-- `\0` is interpreted as a null character even if digits follow (octal escapes are not supported).
+- `\0` is interpreted as a null character only when no digit follows it. Octal escapes are not supported: `\1` through `\7`, and `\0` followed by any digit, are rejected with `SyntaxError: Invalid escape sequence` rather than decoded.
 - Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The zero-width no‑break space (`\uFEFF`) counts as white space only in the es5 build, since ES5.1 7.2 lists it and ES3 7.2 does not.
 - Case conversion, identifier classification and the `<USP>` white space class are all derived from Unicode 3.0. ES3 asks for "version 2.1 or later", so this conforms, but it parts company with modern engines in three places. The zero width space (`\u200B`) counts as white space, because it is category Zs in Unicode 3.0 and only became a format character in 4.0.1. `"\u10A0".toLowerCase()` returns its argument unchanged, because Unicode 3.0 made Georgian unicameral, where later versions map it to `\u2D00`. `\u2118` and `\u212E` are rejected in identifiers, because ES3 defines those by Unicode category and both are symbols in Unicode 3.0; ES2015 grandfathered them back in with `Other_ID_Start`.
 - Custom property getters and setters are not implemented.
@@ -289,20 +379,21 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 - Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers.
 - The `arguments` object follows ES3 mapping semantics; changing element attributes does not fully emulate the ES5 behaviour.
 - `Object.defineProperty` only accepts plain data descriptors (`value`, `writable`, `enumerable`, `configurable`). Missing
-  fields default to `false`, accessors are ignored, failures return `false` instead of throwing, and descriptor invariant checks
-  are not performed.
-- Every created function has a writable, enumerable, and configurable `name` property, and a function's `length` property cannot be deleted.
+  fields default to `false`, accessors are ignored, and descriptor invariant checks are not performed - redefining a
+  non-configurable property silently does nothing instead of throwing. The call always returns `undefined`: it neither returns
+  the target object as ES5 specifies nor reports whether the definition succeeded. `Object.getOwnPropertyDescriptor` and
+  `Object.defineProperties` are not implemented.
+- Every created function has a writable and configurable, but *non-enumerable*, `name` property, and its `length` property is read-only and cannot be deleted.
 - Evaluation order of member expressions follows the ES3 order (object and arguments evaluated before selecting the member).
 - When the identifier of a `catch` clause is called as a function, its `this` value is the global object.
-- Assignments evaluate the right-hand side before resolving the reference on the left-hand side.
-- Property access may convert the property key before converting the base object.
+- When the target of an assignment is a plain identifier, the right-hand side is evaluated before that identifier's binding is resolved, so a variable the right-hand side brings into scope becomes the assignment's target (see `tests/unconforming/rightSideBeforeAssignmentRef.io`). This applies to identifier bindings only; a member expression on the left is evaluated in full before the right-hand side, as ES3 11.13.1 requires.
 - In regular expressions the lookahead operators `?=` and `?!` cannot be quantified as in ES3; they behave like the ES5 assertions.
 - Case-insensitive ranges in regular expressions and zero-length captures inside repeats may not perfectly match other engines.
 - A semicolon is required after `do ... while` statements. This matches the ES3 and ES5 grammar, even though ES6 made the semicolon optional.
-- Creating a numeric property on an object can shadow a read-only numeric property in the prototype chain.
+- Creating a numeric property on an *array* can shadow a read-only numeric property in the prototype chain. This falls out of an optimization for array element writes and does not apply to ordinary objects, where the read-only property in the prototype still wins.
 - Several tests under `tests/unconforming` demonstrate additional corner cases.
 - Assigning an object to an array's `length` property is unsupported; attempts throw `RangeError` instead of converting the value.
-- Recursive grammar constructs are limited to 64 levels to avoid a C++ stack overflow.
+- Recursive grammar constructs are limited to `MAX_NESTED_COMPILE_DEPTH` (256) levels to avoid a C++ stack overflow; exceeding it raises a `RangeError` at compile time.
 
 ### Partial ES5 features
 
