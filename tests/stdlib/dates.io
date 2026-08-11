@@ -24,14 +24,17 @@
 > localDateTimeFromString("+001974-07-14 01:15");
 < +001974-07-14 01:15 = 1974-07-14 01:15:00
 -
-// The absent-offset rule itself. Date-only is UTC everywhere; a date-time without an offset is local, which can
-// only be pinned against the local component constructor if the test is to survive a change of zone.
+// A date-only string has no offset to be absent from and is UTC in every edition, so both builds agree here. What
+// a T-separated string with no offset means is where they part; that pair lives in es3only and es5.
 > print(new Date("2011-10-10").toISOString());
 < 2011-10-10T00:00:00.000Z
-> print(new Date("2011-10-10T14:48:00").valueOf() === new Date(2011, 9, 10, 14, 48).valueOf());
-< true
 > print(new Date("2011-10-10T14:48:00Z").toISOString());
 < 2011-10-10T14:48:00.000Z
+-
+// The space form is NuXJS's own, not 15.9.1.15's, so it is read as local in both builds. That is what makes
+// Date.parse(x.toString()) round trip, since toString prints exactly this.
+> print(new Date("2011-10-10 14:48:00").valueOf() === new Date(2011, 9, 10, 14, 48).valueOf());
+< true
 -
 > utcDateTimeFromString("1974-07-14T01:15:16.017Z");
 < 1974-07-14T01:15:16.017Z : 142996516017 = 1974-07-14T01:15:16.017Z
@@ -233,11 +236,23 @@
 < 2009-02-13T23:31:30.123Z true
 -
 // 15.9.5.42/3/4 are implementation-dependent in their format, so these pin OUR format, not a spec requirement.
+// The trailing Z is not decoration: it is what makes the string distinguishable from the local form toString
+// produces, and 15.9.4.2 requires both to read back as the same instant.
 > print(new Date(0).toUTCString())
-< 1970-01-01 00:00:00
+< 1970-01-01 00:00:00Z
 -
 > print(new Date(1234567890123).toUTCString() + " | " + new Date(-1).toUTCString())
-< 2009-02-13 23:31:30 | 1969-12-31 23:59:59
+< 2009-02-13 23:31:30Z | 1969-12-31 23:59:59Z
+-
+// 15.9.4.2 does require these, whatever the format: for a Date whose milliseconds are zero, parsing what the
+// engine printed has to give the instant back. Independent of the machine's zone by construction.
+> var rt = new Date(1234567890000);
+> print(Date.parse(rt.toString()) === rt.valueOf());
+< true
+> print(Date.parse(rt.toUTCString()) === rt.valueOf());
+< true
+> print(Date.parse(rt.toISOString()) === rt.valueOf());
+< true
 -
 // Locale and zone dependent, so only the shape is checkable here.
 > print(typeof new Date(0).toLocaleDateString() + " " + typeof new Date(0).toLocaleTimeString() + " " + typeof new Date(0).getTimezoneOffset())
