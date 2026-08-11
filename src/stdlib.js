@@ -77,11 +77,10 @@ var $isNaN = support.isNaN, $isFinite = support.isFinite, $floor = support.floor
 		, $charCodeAt = support.charCodeAt, abs, syntaxError, rangeError, typeError
 		, ALPHA_DIGITS_LOWER = "0123456789abcdefghijklmnopqrstuvwxyz", ALPHA_DIGITS_UPPER = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 // generated: white space (tools/work/generateUnicodeTables.js), do not edit by hand
-		// 7.2 WhiteSpace and 7.3 LineTerminator, <USP> being Zs of Unicode 3.0.0.
 //#if !ES5
-		, WHITE_SPACES = "\t\n\v\f\r \xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u3000";
+		, WHITE_SPACES = "\t\n\v\f\r \xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u3000"; // 7.2 WhiteSpace and 7.3 LineTerminator, <USP> being Zs of Unicode 3.0.0
 //#else
-		, WHITE_SPACES = "\t\n\v\f\r \xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u3000\ufeff";
+		, WHITE_SPACES = "\t\n\v\f\r \xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u3000\ufeff"; // 7.2 WhiteSpace and 7.3 LineTerminator, <USP> being Zs of Unicode 3.0.0
 //#endif
 // end generated: white space
 
