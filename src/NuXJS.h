@@ -2022,6 +2022,7 @@ class Processor : public GCItem {
 		bool checkStrictAssignable(Scope* scope, const String* name);	///< For a strict named write: throws ReferenceError (undeclared) or TypeError (read-only) and returns false, else true.
 	#if NUXJS_ES5
 		bool putThroughHolder(Object* holder, const String* name, const Value& v, bool strict);	// 8.12.5 on an object environment record; true means return to the loop
+		bool putThroughBase(Object* o, bool primitiveBase);	// 8.12.5 over SET_PROPERTY_POP_OP's stack triple; true means return to the loop
 	#endif
 	#endif
 		void pushFrame(const Code* code, Scope* scope, Receiver thisObject);
