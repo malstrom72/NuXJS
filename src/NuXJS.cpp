@@ -3517,6 +3517,39 @@ bool Processor::putThroughHolder(Object* holder, const String* name, const Value
 	}
 	return false;
 }
+
+/*
+	The same 8.12.5 [[Put]] over SET_PROPERTY_POP_OP's [object, name, value] triple, for everything its fast path
+	could not finish: run a setter, convert an array length that the object model may not convert itself, insert a
+	new own property, or throw in strict mode. As with putThroughHolder, true means return to the loop.
+*/
+bool Processor::putThroughBase(Object* o, bool primitiveBase) {
+	Value dummy;
+	Accessor* accessor;
+	const Flags flags = o->getPropertySlot(rt, sp[-1], &dummy, &accessor);
+	bool stored = false;
+	if (accessor != 0) {
+		if (accessor->set != 0) {
+			invokeFunction(accessor->set, 2, 1, sp[-2]);	// 8.12.5 (6) gives the setter the base, not the box
+			return true;	// the POP_OP behind the opcode discards the setter's return value once the frame returns
+		}	// no setter: silently ignored outside strict mode
+	} else if (sp[0].isObject() && (flags & READ_ONLY_FLAG) == 0 && rt.setArrayLengthFunction != 0
+			&& o->asArray() != 0 && sp[-1].equalsString(LENGTH_STRING)) {
+		// 15.4.5.1 (3.c): the array store path handed this back because ToUint32 of an object runs its valueOf. A
+		// stdlib helper is entered in its place, shaped and discarded exactly like the setter above. [[CanPut]] is
+		// step 1 of 8.12.5, so a read-only length never arrives here and nothing of it is converted.
+		invokeFunction(rt.setArrayLengthFunction, 2, 1, sp[-2]);
+		return true;
+	} else if (!primitiveBase && (flags & READ_ONLY_FLAG) == 0 && o->isExtensible()) {
+		stored = o->setOwnProperty(rt, sp[-1], sp[0]);	// 8.12.4 [[CanPut]]: a new own property requires extensibility
+	}
+	if (!stored && isCurrentCodeStrict()) {
+		// 8.12.5 / 11.13.1: strict mode throws where non-strict silently ignores the failed store.
+		error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[-1].toString(heap), CANNOT_ASSIGN_STRING));
+		return true;
+	}
+	return false;
+}
 #endif
 #endif
 
@@ -3809,31 +3842,9 @@ void Processor::innerRun() {
 				// with POP_OP so a JS setter frame can deposit its (discarded) return value. (See makeAssignment.)
 				// 8.7.2 special [[Put]]: a primitive base boxes into a transient object, so a store is never kept.
 				const bool primitiveBase = !sp[-2].isObject();
-				if (primitiveBase || !o->updateOwnProperty(rt, sp[-1], sp[0])) {	// fast path: existing own writable data property (same cost as es3)
-					Value dummy;
-					Accessor* accessor;
-					const Flags flags = o->getPropertySlot(rt, sp[-1], &dummy, &accessor);
-					bool stored = false;
-					if (accessor != 0) {
-						if (accessor->set != 0) {
-							invokeFunction(accessor->set, 2, 1, sp[-2]);	// ES5 8.12.5: step 6 gives the setter the base, not the box
-							return;	// the following POP_OP discards the setter's return value after the frame returns
-						}	// no setter: silently ignored outside strict mode
-					} else if (sp[0].isObject() && (flags & READ_ONLY_FLAG) == 0 && rt.setArrayLengthFunction != 0
-							&& o->asArray() != 0 && sp[-1].equalsString(LENGTH_STRING)) {
-						// 15.4.5.1 (3.c): the array store path handed this back because ToUint32 of an object runs
-						// its valueOf. A stdlib helper is entered in its place, shaped and discarded like a setter.
-						// 8.12.5 puts [[CanPut]] first, so a read-only length is left to the reject path untouched.
-						invokeFunction(rt.setArrayLengthFunction, 2, 1, sp[-2]);
-						return;
-					} else if (!primitiveBase && (flags & READ_ONLY_FLAG) == 0 && o->isExtensible()) {
-						stored = o->setOwnProperty(rt, sp[-1], sp[0]);	// 8.12.4 [[CanPut]]: a new own property requires extensibility
-					}
-					if (!stored && code->isStrict()) {
-						// 8.12.5 / 11.13.1: strict mode throws where non-strict silently ignores the failed store.
-						error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[-1].toString(heap), CANNOT_ASSIGN_STRING));
-						return;
-					}
+				// the fast path is an existing own writable data property, at the same cost as es3
+				if ((primitiveBase || !o->updateOwnProperty(rt, sp[-1], sp[0])) && putThroughBase(o, primitiveBase)) {
+					return;
 				}
 				assert(unpackInstruction(*ip).first == POP_OP);	// guaranteed by makeAssignment
 				++ip;	// data path: consume the following POP_OP here to spare a dispatch
