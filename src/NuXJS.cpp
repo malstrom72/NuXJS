@@ -1456,12 +1456,11 @@ Function* Object::getOwnSetter(Runtime&, const Value&, const Value&) const { ret
 	beyond it.
 */
 Flags Object::getProperty(Runtime& rt, const Value& key, Value* v, Function** getter) const {
-	*getter = 0;
 	for (const Object* o = this; o != 0; o = o->getPrototype(rt)) {
 		const Flags flags = o->getOwnProperty(rt, key, v);
 		if (flags != NONEXISTENT) {
 			if ((flags & ACCESSOR_FLAG) == 0) {
-				return flags;
+				return flags;	// *getter is left alone: only ACCESSOR_FLAG promises anything about it
 			}
 			return ((*getter = o->getOwnGetter(rt, key)) != 0 ? flags : (flags & ~ACCESSOR_FLAG));
 		}
@@ -1474,11 +1473,16 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v, Function** ge
 	past it, every level is asked for a setter before it is asked what it holds, since an exotic object's answer can
 	turn on the value being stored where a flag could not say so.
 */
-Flags Object::setProperty(Runtime& rt, const Value& key, const Value& v, Function** setter) {
-	*setter = 0;
-	if (updateOwnProperty(rt, key, v)) {
+Flags Object::setProperty(Runtime& rt, const Value& key, const Value& v, Function** setter, bool mayStore) {
+	if (mayStore && updateOwnProperty(rt, key, v)) {
+		*setter = 0;
 		return EXISTS_FLAG;
 	}
+	return setPropertySlow(rt, key, v, setter, mayStore);
+}
+
+Flags Object::setPropertySlow(Runtime& rt, const Value& key, const Value& v, Function** setter, bool mayStore) {
+	*setter = 0;
 	for (const Object* o = this; o != 0; o = o->getPrototype(rt)) {
 		if ((*setter = o->getOwnSetter(rt, key, v)) != 0) {
 			return ACCESSOR_FLAG;	// 8.12.5 (5): the caller runs it, on the base rather than on the holder
@@ -1487,11 +1491,13 @@ Flags Object::setProperty(Runtime& rt, const Value& key, const Value& v, Functio
 		const Flags flags = o->getOwnProperty(rt, key, &dummy);
 		if (flags != NONEXISTENT) {
 			// 8.12.4 [[CanPut]]: read-only refuses, and so does an accessor whose setter was answered as none.
+			// Reaching here means no own writable data property, so any store makes a new one: 8.12.4 wants
+			// extensibility for that even when the property this found was inherited and writable.
 			return ((flags & (ACCESSOR_FLAG | READ_ONLY_FLAG)) != 0 ? 0
-					: (setOwnProperty(rt, key, v) ? EXISTS_FLAG : 0));
+					: (mayStore && isExtensible() && setOwnProperty(rt, key, v) ? EXISTS_FLAG : 0));
 		}
 	}
-	return (isExtensible() && setOwnProperty(rt, key, v) ? EXISTS_FLAG : 0);
+	return (mayStore && isExtensible() && setOwnProperty(rt, key, v) ? EXISTS_FLAG : 0);
 }
 
 Flags Object::getPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const {
@@ -3588,38 +3594,6 @@ bool Processor::putThroughHolder(Object* holder, const String* name, const Value
 	return false;
 }
 
-/*
-	The same 8.12.5 [[Put]] over SET_PROPERTY_POP_OP's [object, name, value] triple, for everything its fast path
-	could not finish: run a setter, convert an array length that the object model may not convert itself, insert a
-	new own property, or throw in strict mode. As with putThroughHolder, true means return to the loop.
-*/
-bool Processor::putThroughBase(Object* o, bool primitiveBase) {
-	Value dummy;
-	Accessor* accessor;
-	const Flags flags = o->getPropertySlot(rt, sp[-1], &dummy, &accessor);
-	bool stored = false;
-	if (accessor != 0) {
-		if (accessor->set != 0) {
-			invokeFunction(accessor->set, 2, 1, sp[-2]);	// 8.12.5 (6) gives the setter the base, not the box
-			return true;	// the POP_OP behind the opcode discards the setter's return value once the frame returns
-		}	// no setter: silently ignored outside strict mode
-	} else if (sp[0].isObject() && (flags & READ_ONLY_FLAG) == 0 && rt.setArrayLengthFunction != 0
-			&& o->asArray() != 0 && sp[-1].equalsString(LENGTH_STRING)) {
-		// 15.4.5.1 (3.c): the array store path handed this back because ToUint32 of an object runs its valueOf. A
-		// stdlib helper is entered in its place, shaped and discarded exactly like the setter above. [[CanPut]] is
-		// step 1 of 8.12.5, so a read-only length never arrives here and nothing of it is converted.
-		invokeFunction(rt.setArrayLengthFunction, 2, 1, sp[-2]);
-		return true;
-	} else if (!primitiveBase && (flags & READ_ONLY_FLAG) == 0 && o->isExtensible()) {
-		stored = o->setOwnProperty(rt, sp[-1], sp[0]);	// 8.12.4 [[CanPut]]: a new own property requires extensibility
-	}
-	if (!stored && isCurrentCodeStrict()) {
-		// 8.12.5 / 11.13.1: strict mode throws where non-strict silently ignores the failed store.
-		error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[-1].toString(heap), CANNOT_ASSIGN_STRING));
-		return true;
-	}
-	return false;
-}
 #endif
 #endif
 
@@ -3710,15 +3684,14 @@ void Processor::innerRun() {
 				// binding as an accessor, and then the identifier has to run the getter. Data reads never get here.
 				if ((flags & ACCESSOR_FLAG) != 0) {
 					Value dummy;
-					Accessor* accessor;
-					Object* const holder = scope->resolveHolder(rt, name);	// rare second walk fetches the pair
+					Function* getter;
+					Object* const holder = scope->resolveHolder(rt, name);	// rare second walk finds the record
 					assert(holder != 0);
-					holder->getPropertySlot(rt, Value(name), &dummy, &accessor);
-					if (accessor->get == 0) {
+					if ((holder->getProperty(rt, Value(name), &dummy, &getter) & ACCESSOR_FLAG) == 0) {
 						sp[0] = UNDEFINED_VALUE;
 						break;
 					}
-					invokeFunction(accessor->get, 0, 0, holder);	// the getter's result replaces the pushed slot
+					invokeFunction(getter, 0, 0, holder);	// the getter's result replaces the pushed slot
 					return;
 				}
 			#endif
@@ -3778,13 +3751,12 @@ void Processor::innerRun() {
 				push(value);
 				if ((flags & ACCESSOR_FLAG) != 0) {
 					Value dummy;
-					Accessor* accessor;
-					holder->getPropertySlot(rt, Value(name), &dummy, &accessor);
-					if (accessor->get == 0) {
+					Function* getter;
+					if ((holder->getProperty(rt, Value(name), &dummy, &getter) & ACCESSOR_FLAG) == 0) {
 						sp[0] = UNDEFINED_VALUE;
 						break;
 					}
-					invokeFunction(accessor->get, 0, 0, holder);
+					invokeFunction(getter, 0, 0, holder);
 					return;
 				}
 				break;
@@ -3859,19 +3831,12 @@ void Processor::innerRun() {
 				if (o == 0) {
 					return;
 				}
-				const Flags flags = o->getProperty(rt, sp[0], sp - 1);	// data reads at full es3 speed
-				if (flags == NONEXISTENT) {
+				Function* getter;
+				const Flags found = o->getProperty(rt, sp[0], sp - 1, &getter);	// data reads at full es3 speed
+				if (found == NONEXISTENT) {
 					sp[-1] = UNDEFINED_VALUE;
-				} else if ((flags & ACCESSOR_FLAG) != 0) {
-					Value dummy;
-					Accessor* accessor;
-					o->getPropertySlot(rt, sp[0], &dummy, &accessor);	// rare second walk fetches the pair
-					if (accessor->get == 0) {
-						sp[-1] = UNDEFINED_VALUE;
-						pop(1);
-						break;
-					}
-					invokeFunction(accessor->get, 1, 0, base);	// ES5 8.12.3: the getter runs as an ordinary frame; its result replaces [object, name]
+				} else if ((found & ACCESSOR_FLAG) != 0) {
+					invokeFunction(getter, 1, 0, base);	// 8.12.3 runs it as an ordinary frame, its result replacing [object, name]
 					return;
 				}
 				pop(1);
@@ -3912,9 +3877,19 @@ void Processor::innerRun() {
 				// with POP_OP so a JS setter frame can deposit its (discarded) return value. (See makeAssignment.)
 				// 8.7.2 special [[Put]]: a primitive base boxes into a transient object, so a store is never kept.
 				const bool primitiveBase = !sp[-2].isObject();
-				// the fast path is an existing own writable data property, at the same cost as es3
-				if ((primitiveBase || !o->updateOwnProperty(rt, sp[-1], sp[0])) && putThroughBase(o, primitiveBase)) {
-					return;
+				// the fast path stays inline here: an existing own writable data property, at the same cost as es3
+				if (primitiveBase || !o->updateOwnProperty(rt, sp[-1], sp[0])) {
+					Function* setter;
+					const Flags stored = o->setPropertySlow(rt, sp[-1], sp[0], &setter, !primitiveBase);
+					if ((stored & ACCESSOR_FLAG) != 0) {
+						invokeFunction(setter, 2, 1, sp[-2]);	// 8.12.5 (6) gives it the base, not the box
+						return;	// the POP_OP behind the opcode discards the frame's return value
+					}
+					if ((stored & EXISTS_FLAG) == 0 && code->isStrict()) {
+						// 8.12.5 / 11.13.1: strict mode throws where non-strict silently ignores the failed store.
+						error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[-1].toString(heap), CANNOT_ASSIGN_STRING));
+						return;
+					}
 				}
 				assert(unpackInstruction(*ip).first == POP_OP);	// guaranteed by makeAssignment
 				++ip;	// data path: consume the following POP_OP here to spare a dispatch
@@ -4142,13 +4117,12 @@ void Processor::innerRun() {
 				*/
 				if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
 					Value dummy;
-					Accessor* accessor;
+					Function* getter;
 					Object* const holder = scope->resolveHolder(rt, name);
 					assert(holder != 0);
-					holder->getPropertySlot(rt, Value(name), &dummy, &accessor);
-					if (accessor->get != 0) {
+					if ((holder->getProperty(rt, Value(name), &dummy, &getter) & ACCESSOR_FLAG) != 0) {
 						push(UNDEFINED_VALUE);
-						invokeFunction(accessor->get, 0, 0, holder);
+						invokeFunction(getter, 0, 0, holder);
 						return;
 					}
 					v = UNDEFINED_VALUE;
@@ -4207,16 +4181,11 @@ void Processor::innerRun() {
 					return;
 				}
 				Value v(UNDEFINED_VALUE);
-				const Flags flags = o->getProperty(rt, sp[0], &v);
+				Function* getter;
+				const Flags flags = o->getProperty(rt, sp[0], &v, &getter);
 				if ((flags & ACCESSOR_FLAG) != 0) {
-					Value dummy;
-					Accessor* accessor;
-					o->getPropertySlot(rt, sp[0], &dummy, &accessor);	// rare second walk fetches the pair
-					if (accessor->get != 0) {
-						invokeFunction(accessor->get, 0, 0, sp[-1]);	// result replaces the name at sp[0]; callability is checked by CALL_THIS_OP
-						return;
-					}
-					v = UNDEFINED_VALUE;
+					invokeFunction(getter, 0, 0, sp[-1]);	// result replaces the name at sp[0]; CALL_THIS_OP checks callability
+					return;
 				}
 				if (flags == NONEXISTENT || v.asFunction() == 0) {
 					error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[0].toString(heap), IS_NOT_A_FUNCTION_STRING));

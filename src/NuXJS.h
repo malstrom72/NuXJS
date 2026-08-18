@@ -637,7 +637,8 @@ class Object : public GCItem {
 			chain twice, and neither runs script.
 		*/
 		Flags getProperty(Runtime& rt, const Value& key, Value* v, Function** getter) const;
-		Flags setProperty(Runtime& rt, const Value& key, const Value& v, Function** setter);
+		Flags setProperty(Runtime& rt, const Value& key, const Value& v, Function** setter, bool mayStore = true);	///< mayStore is false for the transient box 8.7.2 makes of a primitive base, where a store must never be kept but an inherited setter still runs.
+		Flags setPropertySlow(Runtime& rt, const Value& key, const Value& v, Function** setter, bool mayStore);	///< setProperty without the updateOwnProperty ahead of it, for a caller that has already tried that itself and wants it inline rather than behind this call.
 	#endif
 		bool isOwnPropertyEnumerable(Runtime& rt, const Value& key) const;
 		bool hasOwnProperty(Runtime& rt, const Value& key) const; 			///< Checks via getOwnProperty().
@@ -877,6 +878,12 @@ template<class SUPER> class LazyJSObject : public SUPER {
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 	#if NUXJS_ES5
+		virtual Function* getOwnGetter(Runtime& rt, const Value& key) const {
+			return getCompleteObject(rt)->getOwnGetter(rt, key);
+		}
+		virtual Function* getOwnSetter(Runtime& rt, const Value& key, const Value& v) const {
+			return getCompleteObject(rt)->getOwnSetter(rt, key, v);
+		}
 		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const {
 			// Normal lookup first so internal properties (e.g. array length) keep their precedence; only when it
 			// reports an accessor does the completeObject table hold the actual pair.
@@ -2047,7 +2054,6 @@ class Processor : public GCItem {
 		bool checkStrictAssignable(Scope* scope, const String* name);	///< For a strict named write: throws ReferenceError (undeclared) or TypeError (read-only) and returns false, else true.
 	#if NUXJS_ES5
 		bool putThroughHolder(Object* holder, const String* name, const Value& v, bool strict);	// 8.12.5 on an object environment record; true means return to the loop
-		bool putThroughBase(Object* o, bool primitiveBase);	// 8.12.5 over SET_PROPERTY_POP_OP's stack triple; true means return to the loop
 	#endif
 	#endif
 		void pushFrame(const Code* code, Scope* scope, Receiver thisObject);
