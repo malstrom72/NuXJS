@@ -1446,6 +1446,54 @@ Flags Object::getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Access
 	return getOwnProperty(rt, key, v);
 }
 
+Function* Object::getOwnGetter(Runtime&, const Value&) const { return 0; }
+Function* Object::getOwnSetter(Runtime&, const Value&, const Value&) const { return 0; }
+
+/*
+	8.12.3 for a caller that can run a function. The walk is getProperty's, and the getter costs one further lookup
+	on the object that turned out to hold the accessor rather than a second walk of the chain. An accessor with no
+	getter reads as undefined like any other absent value, so ACCESSOR_FLAG is cleared and the caller needs no test
+	beyond it.
+*/
+Flags Object::getProperty(Runtime& rt, const Value& key, Value* v, Function** getter) const {
+	*getter = 0;
+	for (const Object* o = this; o != 0; o = o->getPrototype(rt)) {
+		const Flags flags = o->getOwnProperty(rt, key, v);
+		if (flags != NONEXISTENT) {
+			if ((flags & ACCESSOR_FLAG) == 0) {
+				return flags;
+			}
+			return ((*getter = o->getOwnGetter(rt, key)) != 0 ? flags : (flags & ~ACCESSOR_FLAG));
+		}
+	}
+	return NONEXISTENT;
+}
+
+/*
+	8.12.5 for the same caller. updateOwnProperty settles the overwhelmingly common store without walking anything;
+	past it, every level is asked for a setter before it is asked what it holds, since an exotic object's answer can
+	turn on the value being stored where a flag could not say so.
+*/
+Flags Object::setProperty(Runtime& rt, const Value& key, const Value& v, Function** setter) {
+	*setter = 0;
+	if (updateOwnProperty(rt, key, v)) {
+		return EXISTS_FLAG;
+	}
+	for (const Object* o = this; o != 0; o = o->getPrototype(rt)) {
+		if ((*setter = o->getOwnSetter(rt, key, v)) != 0) {
+			return ACCESSOR_FLAG;	// 8.12.5 (5): the caller runs it, on the base rather than on the holder
+		}
+		Value dummy;
+		const Flags flags = o->getOwnProperty(rt, key, &dummy);
+		if (flags != NONEXISTENT) {
+			// 8.12.4 [[CanPut]]: read-only refuses, and so does an accessor whose setter was answered as none.
+			return ((flags & (ACCESSOR_FLAG | READ_ONLY_FLAG)) != 0 ? 0
+					: (setOwnProperty(rt, key, v) ? EXISTS_FLAG : 0));
+		}
+	}
+	return (isExtensible() && setOwnProperty(rt, key, v) ? EXISTS_FLAG : 0);
+}
+
 Flags Object::getPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const {
 	const Object* o = this;
 	do {
@@ -1714,6 +1762,16 @@ Flags JSObject::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 }
 
 #if NUXJS_ES5
+Function* JSObject::getOwnGetter(Runtime& rt, const Value& key) const {
+	const Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
+	return (bucket != 0 && (bucket->getFlags() & ACCESSOR_FLAG) != 0 ? getAccessor(bucket)->get : 0);
+}
+
+Function* JSObject::getOwnSetter(Runtime& rt, const Value& key, const Value&) const {
+	const Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
+	return (bucket != 0 && (bucket->getFlags() & ACCESSOR_FLAG) != 0 ? getAccessor(bucket)->set : 0);
+}
+
 Flags JSObject::getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const {
 	const Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
 	*accessor = 0;
@@ -2117,6 +2175,18 @@ UInt32 JSArray::truncateTo(Runtime& rt, UInt32 newLength) {
 	}
 	length = reached;
 	return reached;
+}
+
+/*
+	15.4.5.1 (3.c) runs ToUint32 over a new length, and for an object that means its valueOf, which no store path
+	may run itself. The array answers a stdlib helper instead, and whoever asked enters it exactly as it would a
+	setter. [[CanPut]] is step 1 of 8.12.5, so a read-only length has already refused and nothing of it is read.
+*/
+Function* JSArray::getOwnSetter(Runtime& rt, const Value& key, const Value& v) const {
+	if (v.isObject() && lengthWritable && key.equalsString(LENGTH_STRING)) {
+		return rt.getSetArrayLengthFunction();
+	}
+	return super::getOwnSetter(rt, key, v);
 }
 
 // 15.4.5.1 (3). `length` is not a table property here, so the default 8.12.9 is applied to it by hand; it is
