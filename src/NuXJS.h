@@ -610,6 +610,17 @@ class Object : public GCItem {
 		Flags getPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;				///< Prototype-chain walking version of getOwnPropertySlot. Never runs script.
 		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);	///< 8.12.9 [[DefineOwnProperty]]. Default rejects (throws TypeError when doThrow). Returns false on a rejected non-throwing call.
 		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;	///< Appends every own property name (including non-enumerable) as a String value, for 15.2.3.4. Default: none.
+
+		/*
+			What an object runs instead of answering a property itself. Both report a function for the caller to
+			enter as a frame and neither runs anything, the object model not being allowed to: 8.12.3 and 8.12.5
+			are finished by whoever asked, the interpreter with a frame of its own and the host through rt.call.
+			The getter is asked for only once getOwnProperty has reported ACCESSOR_FLAG, so an object with no
+			accessor storage never hears of it. The setter is asked at every level of the walk instead, since the
+			answer can turn on the value: an array wants one only when an object is assigned to its length.
+		*/
+		virtual Function* getOwnGetter(Runtime& rt, const Value& key) const;					///< 0 when the accessor has no getter, which then reads as undefined. Never runs script.
+		virtual Function* getOwnSetter(Runtime& rt, const Value& key, const Value& v) const;		///< 0 when nothing of this object's runs for this store. Never runs script.
 	#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);								///< Update existing property. Return false if it doesn't exist or can't be updated (e.g. read-only property exists). Can be overriden for optimization. (Default implementation checks existence with hasOwnProperty() first.)
@@ -618,6 +629,16 @@ class Object : public GCItem {
 
 		Flags getProperty(Runtime& rt, const Value& key, Value* v) const; 	///< Searches prototype chain.
 		bool setProperty(Runtime& rt, const Value& key, const Value& v); 	///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
+	#if NUXJS_ES5
+		/*
+			8.12.3 and 8.12.5 for a caller able to run a function. ACCESSOR_FLAG in the result means one was handed
+			over, never null when set: run it, and for a read its result is the value. On a write EXISTS_FLAG means
+			the store was made and its absence a refusal, which only 11.13.1 strict code acts on. Neither walks the
+			chain twice, and neither runs script.
+		*/
+		Flags getProperty(Runtime& rt, const Value& key, Value* v, Function** getter) const;
+		Flags setProperty(Runtime& rt, const Value& key, const Value& v, Function** setter);
+	#endif
 		bool isOwnPropertyEnumerable(Runtime& rt, const Value& key) const;
 		bool hasOwnProperty(Runtime& rt, const Value& key) const; 			///< Checks via getOwnProperty().
 		bool hasProperty(Runtime& rt, const Value& key) const;				///< Checks via getProperty().
@@ -815,6 +836,8 @@ class JSObject : public Object, public Table {
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 	#if NUXJS_ES5
 		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;
+		virtual Function* getOwnGetter(Runtime& rt, const Value& key) const;
+		virtual Function* getOwnSetter(Runtime& rt, const Value& key, const Value& v) const;
 		bool defineOwnAccessor(Runtime& rt, const Value& key, Function* f, bool isSetter);	///< Installs (or completes) an accessor property, as for a `get` / `set` object literal entry.
 		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);
 		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;
@@ -910,6 +933,7 @@ class JSArray : public LazyJSObject<Object> {
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
 	#if NUXJS_ES5
 		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);	// 15.4.5.1
+		virtual Function* getOwnSetter(Runtime& rt, const Value& key, const Value& v) const;	// 15.4.5.1 (3.c) on length
 		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;
 	#endif
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
@@ -1485,6 +1509,7 @@ class Runtime : public GCItem {
 		Function* setArrayLengthFunction;	///< 15.4.5.1 (3.c): stores an object into an array length, ToUint32 of it running script
 	public:
 		Function* getThrowTypeErrorFunction() const { return throwTypeErrorFunction; }
+		Function* getSetArrayLengthFunction() const { return setArrayLengthFunction; }
 	protected:
 	#endif
 		double unixEpochTimeDiff;
