@@ -52,4 +52,17 @@
 < TypeError
 > try { Object.isFrozen(1); } catch (e) { print(e.name) }
 < TypeError
+> try { Object.isSealed(true); } catch (e) { print(e.name) }
+< TypeError
+-
+// 15.2.3.8 on an accessor pair: sealing clears configurable but the pair keeps running, and with no writable bit
+// to stay true, an all-accessor sealed object is frozen as well (15.2.3.12 step 2 only looks at data properties).
+> var saLog = "", sa = { get p() { return 5 }, set p(v) { saLog += "set" + v } };
+> Object.seal(sa);
+> sa.p = 9; print(Object.isSealed(sa) + " " + sa.p + " " + saLog)
+< true 5 set9
+> var saD = Object.getOwnPropertyDescriptor(sa, "p"); print(saD.configurable + " " + ("writable" in saD) + " " + (typeof saD.set))
+< false false function
+> print(Object.isFrozen(sa))
+< true
 -

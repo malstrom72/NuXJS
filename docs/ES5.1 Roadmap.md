@@ -161,7 +161,9 @@ Gaps this section leaves open (pre-existing, not regressions; the array ones ove
 - [x] §8.12.9 step 3 is now covered, and was genuinely broken: a lazy object forwards to its complete object, which
       carries its own extensible flag, so `preventExtensions` then `defineProperty` succeeded on functions as well as
       arrays. Arrays under seal/freeze are covered too.
-- [ ] Still uncovered: enumerable `false→true` on a configurable property, and accessor→accessor partial redefine.
+- [x] Enumerable `false→true` on a configurable property (untouched attributes surviving), and accessor→accessor
+      partial redefine (absent `set` keeps the old one). Both conformed already; the engine matches V8 on each.
+      (`tests/es5/objectDefineProperty.io`)
 
 **Gate met:** full `both` build green (1222 test files) and the es3 release binary stayed **byte-identical**.
 
@@ -188,9 +190,12 @@ Pure `stdlib.js` + one upgraded native hook. Replaces the current data-only `Obj
 - [x] Grouped rather than one `.io` per method: `objectDefineProperty`, `objectReflection`, `objectCreate`,
       `objectExtensions`, `objectSealFreeze`. `create(null)`, freeze/seal on data properties and on a getter-only
       accessor, and graceful rejection of primitives are all covered.
-- [ ] Missing: an explicit descriptor round-trip (get → re-define → compare), `isSealed(primitive)`, `seal` on an
-      accessor, the `defineProperty`/`defineProperties` return value, and attribute / non-constructability
-      assertions for the new built-ins (`checkAllPrototypes.io` only checks `defineProperty` and `getPrototypeOf`).
+- [x] Descriptor round-trip (get → re-define → compare, accessors by function identity) and the
+      `defineProperty`/`defineProperties` return value (`tests/es5/objectDefineProperty.io`); `isSealed(primitive)`
+      TypeError and `seal` on an accessor pair - which also leaves the object *frozen*, 15.2.3.12 having no data
+      property to consult (`tests/es5/objectSealFreeze.io`); length, attributes and non-constructability of all
+      thirteen new `Object` built-ins, byte-identical to V8 (`tests/es5/objectReflection.io`). All conformed
+      already - the sweep found no engine bugs.
 
 ---
 
