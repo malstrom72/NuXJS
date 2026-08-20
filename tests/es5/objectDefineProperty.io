@@ -94,3 +94,47 @@
 > print("" + key)
 < vo
 -
+// 8.12.9 step 12: on a configurable property every attribute may change; enumerable false to true is the toggle
+// nothing else exercises, the seal/freeze paths only ever clearing it. The unmentioned attributes must survive.
+> var et = {}; Object.defineProperty(et, "p", { value: 1, enumerable: false, configurable: true });
+> var etSeen = ""; for (var etK in et) etSeen += etK; print("[" + etSeen + "]")
+< []
+> Object.defineProperty(et, "p", { enumerable: true });
+> for (var etK in et) etSeen += etK; print("[" + etSeen + "]")
+< [p]
+> var etD = Object.getOwnPropertyDescriptor(et, "p"); print(etD.enumerable + " " + etD.writable + " " + etD.configurable + " " + etD.value)
+< true false true 1
+-
+// 8.12.9 step 12 on an accessor pair: an absent get or set field leaves that half alone, so redefining only get
+// keeps the old set and the attribute bits, and the property stays an accessor.
+> var apLog = "", ap = {};
+> Object.defineProperty(ap, "p", { get: function () { return "g1" }, set: function (v) { apLog += "s1=" + v }, enumerable: true, configurable: true });
+> Object.defineProperty(ap, "p", { get: function () { return "g2" } });
+> ap.p = 7; print(ap.p + " " + apLog)
+< g2 s1=7
+> var apD = Object.getOwnPropertyDescriptor(ap, "p"); print(("value" in apD) + " " + ("writable" in apD) + " " + apD.enumerable + " " + apD.configurable)
+< false false true true
+-
+// 15.2.3.3 with 15.2.3.6 round trips: the descriptor read back is a plain object defineProperty accepts unchanged,
+// and the copy's descriptor matches field for field, an accessor pair by function identity.
+> var rtSrc = {}; Object.defineProperty(rtSrc, "d", { value: 3, writable: true, enumerable: false, configurable: true });
+> var rtD = Object.getOwnPropertyDescriptor(rtSrc, "d"), rtCopy = {};
+> Object.defineProperty(rtCopy, "d", rtD);
+> var rtD2 = Object.getOwnPropertyDescriptor(rtCopy, "d");
+> print((rtD2.value === rtD.value) + " " + (rtD2.writable === rtD.writable) + " " + (rtD2.enumerable === rtD.enumerable) + " " + (rtD2.configurable === rtD.configurable))
+< true true true true
+> var rtGet = function () { return 8 }, rtSet = function (v) {};
+> Object.defineProperty(rtSrc, "a", { get: rtGet, set: rtSet, enumerable: true, configurable: false });
+> var rtA = Object.getOwnPropertyDescriptor(rtSrc, "a");
+> Object.defineProperty(rtCopy, "a", rtA);
+> var rtA2 = Object.getOwnPropertyDescriptor(rtCopy, "a");
+> print((rtA2.get === rtGet) + " " + (rtA2.set === rtSet) + " " + rtA2.enumerable + " " + rtA2.configurable + " " + rtCopy.a)
+< true true true false 8
+-
+// 15.2.3.6 step 4 / 15.2.3.7 step 7: both return the object they were handed.
+> var rvO = {}; print(Object.defineProperty(rvO, "x", { value: 1 }) === rvO)
+< true
+> print(Object.defineProperties(rvO, { y: { value: 2 } }) === rvO); print(rvO.y)
+< true
+< 2
+-

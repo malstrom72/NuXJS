@@ -57,3 +57,27 @@
 > try { Object.getPrototypeOf(null); } catch (e) { print(e.name) }
 < TypeError
 -
+// 15.2.3: every new Object built-in carries the standard writable, non-enumerable, configurable attributes and
+// the length its clause fixes, and none is a constructor (13.2 gives [[Construct]] only where a clause says so).
+> var bNames = ["getPrototypeOf", "getOwnPropertyDescriptor", "getOwnPropertyNames", "create",
+>     "defineProperty", "defineProperties", "seal", "freeze", "preventExtensions",
+>     "isSealed", "isFrozen", "isExtensible", "keys"];
+> for (var bI = 0; bI < bNames.length; ++bI) {
+>     var bD = Object.getOwnPropertyDescriptor(Object, bNames[bI]), bC;
+>     try { new Object[bNames[bI]]({}); bC = "constructable"; } catch (e) { bC = e.name; }
+>     print(bNames[bI] + " " + Object[bNames[bI]].length + " " + bD.writable + " " + bD.enumerable + " " + bD.configurable + " " + bC);
+> }
+< getPrototypeOf 1 true false true TypeError
+< getOwnPropertyDescriptor 2 true false true TypeError
+< getOwnPropertyNames 1 true false true TypeError
+< create 2 true false true TypeError
+< defineProperty 3 true false true TypeError
+< defineProperties 2 true false true TypeError
+< seal 1 true false true TypeError
+< freeze 1 true false true TypeError
+< preventExtensions 1 true false true TypeError
+< isSealed 1 true false true TypeError
+< isFrozen 1 true false true TypeError
+< isExtensible 1 true false true TypeError
+< keys 1 true false true TypeError
+-
