@@ -1449,12 +1449,7 @@ Flags Object::getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Access
 Function* Object::getOwnGetter(Runtime&, const Value&) const { return 0; }
 Function* Object::getOwnSetter(Runtime&, const Value&, const Value&) const { return 0; }
 
-/*
-	8.12.3 for a caller that can run a function. The walk is getProperty's, and the getter costs one further lookup
-	on the object that turned out to hold the accessor rather than a second walk of the chain. An accessor with no
-	getter reads as undefined like any other absent value, so ACCESSOR_FLAG is cleared and the caller needs no test
-	beyond it.
-*/
+// 8.12.3, reporting the getter: one further own-lookup on the holder, never a second walk of the chain.
 Flags Object::getProperty(Runtime& rt, const Value& key, Value* v, Function** getter) const {
 	for (const Object* o = this; o != 0; o = o->getPrototype(rt)) {
 		const Flags flags = o->getOwnProperty(rt, key, v);
@@ -1468,12 +1463,7 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v, Function** ge
 	return NONEXISTENT;
 }
 
-/*
-	8.12.5 for the same caller. Every level is asked for a setter before it is asked what it holds, since an exotic
-	object's answer can turn on the value being stored where a flag could not say so. An own writable data property
-	updates in place; any other writable outcome makes a new own property, which 8.12.4 gates on extensibility. The
-	updateOwnProperty some callers run first is purely their fast path, never a correctness requirement.
-*/
+// 8.12.5, reporting the setter. Callers may try updateOwnProperty first as a fast path; it is never required.
 Flags Object::setProperty(Runtime& rt, const Value& key, const Value& v, Function** setter, bool mayStore) {
 	*setter = 0;
 	for (const Object* o = this; o != 0; o = o->getPrototype(rt)) {
