@@ -110,6 +110,20 @@ Rules for this implementation:
 - **Descriptor state is transient.** Presence bits ("was `value`/`get` specified?") live only in the stack-only
   C++ `PropertyDescriptor` during validation - never persisted into bucket flags (the archive's `HAS_VALUE_FLAG`
   mistake).
+- **Objects report the function; callers run it.** The `getOwnGetter`/`getOwnSetter` protocol (landed with the
+  es51-traps refactor): the walks stop where script would have to run and hand the `Function*` back, `ACCESSOR_FLAG`
+  meaning one was handed over (never null when set) and `EXISTS_FLAG` on a write meaning stored, its absence a
+  refusal only strict code acts on. The VM runs it as a frame, the host through `rt.call` - the two choke points
+  above, made literal. `JSArray`'s length-assigned-an-object case is one `getOwnSetter` override, and raw
+  `Accessor` pairs are read by reflection alone.
+- **Data reads keep the shared es3 walk; an accessor hit re-walks for its getter.** The one-walk alternative - the
+  four-argument walk under every read, the es5 build's three-argument `getProperty` forwarded into it - was built
+  and measured twice, at step 2 and again on the finished branch: every data read then carries a getter
+  out-parameter and an in-loop flag test it never uses, which cost `hash_bm_1` (little but property reads) +6.2%
+  with zero overlap and the step-2 suite a +1.19% median, where the two-walk shape measures parity. The re-walk
+  spends nanoseconds immediately ahead of a script frame that spends microseconds, and the named reads have always
+  had this shape (`resolveVar`, then the holder's `getProperty` once `ACCESSOR_FLAG` shows). A one-walk read is
+  the five-minute cleanup of the day the es3 build ever retires, not a thing to buy at the hot path's expense.
 - **Re-entrancy tests are part of the definition of done:** getter that throws, getter that allocates/triggers GC,
   getter that mutates the receiver during a prototype walk, recursive getter (must die on the existing bounds as a
   managed exception, never the C++ stack).
