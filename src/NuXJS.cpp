@@ -3810,13 +3810,18 @@ void Processor::innerRun() {
 				if (o == 0) {
 					return;
 				}
-				Function* getter;
-				const Flags found = o->getProperty(rt, sp[0], sp - 1, &getter);	// data reads at full es3 speed
+				const Flags found = o->getProperty(rt, sp[0], sp - 1);	// the shared walk: data reads at full es3 speed
 				if (found == NONEXISTENT) {
 					sp[-1] = UNDEFINED_VALUE;
 				} else if ((found & ACCESSOR_FLAG) != 0) {
-					invokeFunction(getter, 1, 0, base);	// 8.12.3 runs it as an ordinary frame, its result replacing [object, name]
-					return;
+					Value dummy;
+					Function* getter;
+					if ((o->getProperty(rt, sp[0], &dummy, &getter) & ACCESSOR_FLAG) == 0) {	// rare second walk finds the getter
+						sp[-1] = UNDEFINED_VALUE;
+					} else {
+						invokeFunction(getter, 1, 0, base);	// 8.12.3 runs it as an ordinary frame, its result replacing [object, name]
+						return;
+					}
 				}
 				pop(1);
 				break;
@@ -4160,11 +4165,13 @@ void Processor::innerRun() {
 					return;
 				}
 				Value v(UNDEFINED_VALUE);
-				Function* getter;
-				const Flags flags = o->getProperty(rt, sp[0], &v, &getter);
+				const Flags flags = o->getProperty(rt, sp[0], &v);
 				if ((flags & ACCESSOR_FLAG) != 0) {
-					invokeFunction(getter, 0, 0, sp[-1]);	// result replaces the name at sp[0]; CALL_THIS_OP checks callability
-					return;
+					Function* getter;
+					if ((o->getProperty(rt, sp[0], &v, &getter) & ACCESSOR_FLAG) != 0) {	// rare second walk finds the getter
+						invokeFunction(getter, 0, 0, sp[-1]);	// result replaces the name at sp[0]; CALL_THIS_OP checks callability
+						return;
+					}	// a getter-less accessor reads as undefined and fails the callability test below
 				}
 				if (flags == NONEXISTENT || v.asFunction() == 0) {
 					error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[0].toString(heap), IS_NOT_A_FUNCTION_STRING));
