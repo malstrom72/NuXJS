@@ -607,7 +607,6 @@ class Object : public GCItem {
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;								///< Don't touch v if you return NONEXISTENT. Default returns NONEXISTENT. (Under NUXJS_ES5 an accessor property yields *v == undefined; check ACCESSOR_FLAG in the returned flags.)
 	#if NUXJS_ES5
 		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;	///< Pure lookup like getOwnProperty but also reports the accessor pair (or null). Never runs script.
-		Flags getPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;				///< Prototype-chain walking version of getOwnPropertySlot. Never runs script.
 		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);	///< 8.12.9 [[DefineOwnProperty]]. Default rejects (throws TypeError when doThrow). Returns false on a rejected non-throwing call.
 		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;	///< Appends every own property name (including non-enumerable) as a String value, for 15.2.3.4. Default: none.
 
@@ -1685,13 +1684,39 @@ class Property : public AccessorBase {
 	friend class AccessorBase;
 	
 	public:
+	#if NUXJS_ES5
+		/// An assignment runs an accessor's setter blocking (through Runtime::call), so it can run script and throw.
+		template<typename T> const Property& operator=(const T& v) const {
+			const Var rooted(rt, v);
+			const Value value = rooted;
+			Function* setter;
+			if ((object->setProperty(rt, key, value, &setter) & ACCESSOR_FLAG) != 0) {
+				rt.call(setter, 1, &value, object);
+			}
+			return *this;
+		}
+		template<typename T> const Property& operator+=(const T& r) const { return *this = get().add(rt.getHeap(), makeValue(r)); }
+	#else
 		template<typename T> const Property& operator=(const T& v) const { object->setProperty(rt, key, Var(rt, v)); return *this; }
 		template<typename T> const Property& operator+=(const T& r) const { object->setProperty(rt, key, get().add(rt.getHeap(), makeValue(r))); return *this; }
+	#endif
 
 	protected:
 		typedef AccessorBase super;
 		Property(Runtime& rt, Object* object, const Var& key) : super(rt), object(object), key(key) { }
+	#if NUXJS_ES5
+		/// A read runs an accessor's getter blocking (through Runtime::call), so it can run script and throw.
+		virtual Value get() const {
+			Value v(UNDEFINED_VALUE);
+			Function* getter;
+			if ((object->getProperty(rt, key, &v, &getter) & ACCESSOR_FLAG) != 0) {
+				return rt.call(getter, 0, 0, object);
+			}
+			return v;
+		}
+	#else
 		virtual Value get() const { Value v(UNDEFINED_VALUE); object->getProperty(rt, key, &v); return v; }
+	#endif
 		virtual Var call(int argc, const Value* argv) const { return rt.call(*this, argc, argv, object); }
 		Object* const object;
 		const Var key;

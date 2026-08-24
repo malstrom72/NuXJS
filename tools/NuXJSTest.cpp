@@ -1064,6 +1064,42 @@ static void testHighLevelAPI() {
 	EXPECT(val.isString());
 }
 
+#if NUXJS_ES5
+/* --- Host accessor tests --- */
+
+static void testHostAccessors() {
+	std::cout << std::endl << "***** Host accessors *****" << std::endl << std::endl;
+	std::cout << "	- getters and setters through Var/Property" << std::endl;
+
+	Heap heap;
+	Runtime rt(heap);
+	rt.setupStandardLibrary();
+
+	Var obj = rt.eval("({ _x: 1, get x() { return this._x * 2 }, set x(v) { this._x = v + 10 },"
+			" get boom() { throw new TypeError('boom') }, get only() { return 7 } })");
+	EXPECT_EQUAL(obj["x"], 2);			// the getter runs blocking, with the object as `this`
+	obj["x"] = 5;						// the setter runs blocking
+	EXPECT_EQUAL(obj["_x"], 15);
+	EXPECT_EQUAL(obj["x"], 30);
+	obj["x"] += 4;						// compound: getter (30), add, setter (34 + 10)
+	EXPECT_EQUAL(obj["_x"], 44);
+	obj["only"] = 99;					// no setter: the host API is non-strict, so the store is silently ignored
+	EXPECT_EQUAL(obj["only"], 7);
+	obj["_x"] = 3;						// a plain data property still stores directly
+	EXPECT_EQUAL(obj["x"], 6);
+	EXPECT_EXCEPTION(obj["boom"].to<double>(), "TypeError: boom");	// a throwing getter reaches the host as an exception
+
+	std::cout << "	- inherited accessors and receivers" << std::endl;
+
+	Var child = rt.eval("(function () { var p = { get dbl() { return this.base * 2 } };"
+			" var c = Object.create(p); c.base = 21; return c; })()");
+	EXPECT_EQUAL(child["dbl"], 42);		// an inherited getter runs against the receiver, not the prototype
+}
+
+#endif
+
+/* --- README samples --- */
+
 static void readMeSample1() {
 	std::wstringstream strout;
 
@@ -1974,6 +2010,9 @@ int main(int argc, const char* argv[]) {
 		testLimits();
 		testExceptions();
 		testHighLevelAPI();
+	#if NUXJS_ES5
+		testHostAccessors();
+	#endif
 		readMeSample1();
 		readMeSample2();
 		std::cout << std::endl;

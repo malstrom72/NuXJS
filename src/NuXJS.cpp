@@ -1500,19 +1500,6 @@ Flags Object::setPropertySlow(Runtime& rt, const Value& key, const Value& v, Fun
 	return (mayStore && isExtensible() && setOwnProperty(rt, key, v) ? EXISTS_FLAG : 0);
 }
 
-Flags Object::getPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const {
-	const Object* o = this;
-	do {
-		Flags flags = o->getOwnPropertySlot(rt, key, v, accessor);
-		if (flags != NONEXISTENT) {
-			return flags;
-		}
-		o = o->getPrototype(rt);
-	} while (o != 0);
-	*accessor = 0;
-	return NONEXISTENT;
-}
-
 // 9.12 SameValue. Differs from === only for NaN (equal to itself) and +0 / -0 (distinct).
 static bool sameValue(const Value& a, const Value& b) {
 	if (a.isNumber() && b.isNumber()) {
@@ -3568,26 +3555,18 @@ bool Processor::checkStrictAssignable(Scope* scope, const String* name) {
 #if NUXJS_ES5
 /*
 	Finishes an 8.12.5 [[Put]] on an object environment record once the cheap update has failed, for both opcodes
-	that write a name: run the setter if the binding is an accessor, otherwise store if [[CanPut]] allows and throw
-	in strict mode if it did not. It is SET_PROPERTY_POP's body for `o.x = v`, which is the point: 10.2.1.2 says a
-	`with` object and the global object hold their bindings as ordinary properties, so the two must agree.
+	that write a name: the same setPropertySlow SET_PROPERTY_POP runs for `o.x = v`, which is the point: 10.2.1.2
+	says a `with` object and the global object hold their bindings as ordinary properties, so the two must agree.
 	Answers true when the caller has to return to the interpreter loop, either for a setter frame or for a throw.
 */
 bool Processor::putThroughHolder(Object* holder, const String* name, const Value& v, bool strict) {
-	const Value key(name);
-	Value dummy;
-	Accessor* accessor;
-	const Flags flags = holder->getPropertySlot(rt, key, &dummy, &accessor);
-	bool stored = false;
-	if (accessor != 0) {
-		if (accessor->set != 0) {
-			invokeFunction(accessor->set, 0, 1, holder);
-			return true;
-		}	// no setter: silently ignored outside strict mode
-	} else if ((flags & READ_ONLY_FLAG) == 0 && holder->isExtensible()) {
-		stored = holder->setOwnProperty(rt, key, v);	// 8.12.4 [[CanPut]]: a new own property requires extensibility
+	Function* setter;
+	const Flags stored = holder->setPropertySlow(rt, Value(name), v, &setter, true);
+	if ((stored & ACCESSOR_FLAG) != 0) {
+		invokeFunction(setter, 0, 1, holder);
+		return true;
 	}
-	if (!stored && strict) {
+	if ((stored & EXISTS_FLAG) == 0 && strict) {
 		error(TYPE_ERROR, new(heap) String(heap.managed(), *name, CANNOT_ASSIGN_STRING));
 		return true;
 	}
