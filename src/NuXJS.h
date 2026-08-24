@@ -637,7 +637,6 @@ class Object : public GCItem {
 		*/
 		Flags getProperty(Runtime& rt, const Value& key, Value* v, Function** getter) const;
 		Flags setProperty(Runtime& rt, const Value& key, const Value& v, Function** setter, bool mayStore = true);	///< mayStore is false for the transient box 8.7.2 makes of a primitive base, where a store must never be kept but an inherited setter still runs.
-		Flags setPropertySlow(Runtime& rt, const Value& key, const Value& v, Function** setter, bool mayStore);	///< setProperty without the updateOwnProperty ahead of it, for a caller that has already tried that itself and wants it inline rather than behind this call.
 	#endif
 		bool isOwnPropertyEnumerable(Runtime& rt, const Value& key) const;
 		bool hasOwnProperty(Runtime& rt, const Value& key) const; 			///< Checks via getOwnProperty().

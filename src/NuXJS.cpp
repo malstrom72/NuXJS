@@ -1469,19 +1469,12 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v, Function** ge
 }
 
 /*
-	8.12.5 for the same caller. updateOwnProperty settles the overwhelmingly common store without walking anything;
-	past it, every level is asked for a setter before it is asked what it holds, since an exotic object's answer can
-	turn on the value being stored where a flag could not say so.
+	8.12.5 for the same caller. Every level is asked for a setter before it is asked what it holds, since an exotic
+	object's answer can turn on the value being stored where a flag could not say so. An own writable data property
+	updates in place; any other writable outcome makes a new own property, which 8.12.4 gates on extensibility. The
+	updateOwnProperty some callers run first is purely their fast path, never a correctness requirement.
 */
 Flags Object::setProperty(Runtime& rt, const Value& key, const Value& v, Function** setter, bool mayStore) {
-	if (mayStore && updateOwnProperty(rt, key, v)) {
-		*setter = 0;
-		return EXISTS_FLAG;
-	}
-	return setPropertySlow(rt, key, v, setter, mayStore);
-}
-
-Flags Object::setPropertySlow(Runtime& rt, const Value& key, const Value& v, Function** setter, bool mayStore) {
 	*setter = 0;
 	for (const Object* o = this; o != 0; o = o->getPrototype(rt)) {
 		if ((*setter = o->getOwnSetter(rt, key, v)) != 0) {
@@ -1491,10 +1484,10 @@ Flags Object::setPropertySlow(Runtime& rt, const Value& key, const Value& v, Fun
 		const Flags flags = o->getOwnProperty(rt, key, &dummy);
 		if (flags != NONEXISTENT) {
 			// 8.12.4 [[CanPut]]: read-only refuses, and so does an accessor whose setter was answered as none.
-			// Reaching here means no own writable data property, so any store makes a new one: 8.12.4 wants
-			// extensibility for that even when the property this found was inherited and writable.
-			return ((flags & (ACCESSOR_FLAG | READ_ONLY_FLAG)) != 0 ? 0
-					: (mayStore && isExtensible() && setOwnProperty(rt, key, v) ? EXISTS_FLAG : 0));
+			if ((flags & (ACCESSOR_FLAG | READ_ONLY_FLAG)) != 0 || (o != this && !isExtensible())) {
+				return 0;	// an inherited writable still makes a *new* own property, so it needs extensibility
+			}
+			return (mayStore && setOwnProperty(rt, key, v) ? EXISTS_FLAG : 0);
 		}
 	}
 	return (mayStore && isExtensible() && setOwnProperty(rt, key, v) ? EXISTS_FLAG : 0);
@@ -3555,13 +3548,13 @@ bool Processor::checkStrictAssignable(Scope* scope, const String* name) {
 #if NUXJS_ES5
 /*
 	Finishes an 8.12.5 [[Put]] on an object environment record once the cheap update has failed, for both opcodes
-	that write a name: the same setPropertySlow SET_PROPERTY_POP runs for `o.x = v`, which is the point: 10.2.1.2
+	that write a name: the same setProperty SET_PROPERTY_POP runs for `o.x = v`, which is the point: 10.2.1.2
 	says a `with` object and the global object hold their bindings as ordinary properties, so the two must agree.
 	Answers true when the caller has to return to the interpreter loop, either for a setter frame or for a throw.
 */
 bool Processor::putThroughHolder(Object* holder, const String* name, const Value& v, bool strict) {
 	Function* setter;
-	const Flags stored = holder->setPropertySlow(rt, Value(name), v, &setter, true);
+	const Flags stored = holder->setProperty(rt, Value(name), v, &setter, true);
 	if ((stored & ACCESSOR_FLAG) != 0) {
 		invokeFunction(setter, 0, 1, holder);
 		return true;
@@ -3864,7 +3857,7 @@ void Processor::innerRun() {
 				// the fast path stays inline here: an existing own writable data property, at the same cost as es3
 				if (primitiveBase || !o->updateOwnProperty(rt, sp[-1], sp[0])) {
 					Function* setter;
-					const Flags stored = o->setPropertySlow(rt, sp[-1], sp[0], &setter, !primitiveBase);
+					const Flags stored = o->setProperty(rt, sp[-1], sp[0], &setter, !primitiveBase);
 					if ((stored & ACCESSOR_FLAG) != 0) {
 						invokeFunction(setter, 2, 1, sp[-2]);	// 8.12.5 (6) gives it the base, not the box
 						return;	// the POP_OP behind the opcode discards the frame's return value
