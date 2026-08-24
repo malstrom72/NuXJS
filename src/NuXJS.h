@@ -632,8 +632,8 @@ class Object : public GCItem {
 		/*
 			8.12.3 and 8.12.5 for a caller able to run a function. ACCESSOR_FLAG in the result means one was handed
 			over, never null when set: run it, and for a read its result is the value. On a write EXISTS_FLAG means
-			the store was made and its absence a refusal, which only 11.13.1 strict code acts on. Neither walks the
-			chain twice, and neither runs script.
+			the store was made and its absence a refusal, which only 11.13.1 strict code acts on. Each walks the
+			chain once, and neither runs script.
 		*/
 		Flags getProperty(Runtime& rt, const Value& key, Value* v, Function** getter) const;
 		Flags setProperty(Runtime& rt, const Value& key, const Value& v, Function** setter, bool mayStore = true);	///< mayStore is false for the transient box 8.7.2 makes of a primitive base, where a store must never be kept but an inherited setter still runs.

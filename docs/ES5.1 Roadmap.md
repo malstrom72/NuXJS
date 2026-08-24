@@ -141,8 +141,8 @@ Gaps this section leaves open (pre-existing, not regressions; the array ones ove
 
 ### VM wiring
 - [x] `GET_PROPERTY_OP` invokes getters via the standard `invokeFunction` continuation with the receiver as
-      `this` (undefined getter → `undefined`). Pure `getPropertySlot` walk reports the pair; invocation only in
-      the opcode. (§8.12.3, `tests/es5/accessorProperties.io`)
+      `this` (undefined getter → `undefined`). The pure walk reports `ACCESSOR_FLAG` and `getOwnGetter` hands the
+      function over; invocation only in the opcode. (§8.12.3, `tests/es5/accessorProperties.io`)
 - [x] Property stores route through `SET_PROPERTY_POP_OP` (es5 net effect −2 + compiler-emitted `POP_OP`) so a JS
       setter frame can deposit its discarded return value; undefined setter is silently ignored (strict throw
       comes in Phase 4). (§8.12.5)
