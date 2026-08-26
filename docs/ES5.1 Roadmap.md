@@ -124,6 +124,9 @@ Rules for this implementation:
   spends nanoseconds immediately ahead of a script frame that spends microseconds, and the named reads have always
   had this shape (`resolveVar`, then the holder's `getProperty` once `ACCESSOR_FLAG` shows). A one-walk read is
   the five-minute cleanup of the day the es3 build ever retires, not a thing to buy at the hot path's expense.
+  The finished protocol, review pass included, measures *below* the pre-refactor branch point: 31 benchmarks,
+  16 order-balanced samples a side, total -2.98% (lotsOfWaste -26.6%, its es5/es3 gap down from 1.79x to 1.28x),
+  median -0.16%, sign test p = 0.47 - per-benchmark parity, aggregate win.
 - **Re-entrancy tests are part of the definition of done:** getter that throws, getter that allocates/triggers GC,
   getter that mutates the receiver during a prototype walk, recursive getter (must die on the existing bounds as a
   managed exception, never the C++ stack).
