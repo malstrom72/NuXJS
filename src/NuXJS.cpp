@@ -3326,7 +3326,7 @@ struct Processor::WithScope : public Scope {
 			Value dummy;													// already fetches answer the accessor
 			const Flags flags = o->getOwnProperty(rt, key, &dummy);		// question at no extra cost
 			if (flags != NONEXISTENT) {
-				// Only the plain update is done here; anything else is handed back for putThroughHolder to
+				// Only the plain update is done here; anything else is handed back for putThrough to
 				// finish, since a store onto the object needs 8.12.4 [[CanPut]] and a setter needs a frame.
 				if ((flags & (ACCESSOR_FLAG | READ_ONLY_FLAG)) != 0 || o != withObject) {
 					return withObject;
@@ -3540,20 +3540,35 @@ bool Processor::checkStrictAssignable(Scope* scope, const String* name) {
 
 #if NUXJS_ES5
 /*
-	Finishes an 8.12.5 [[Put]] on an object environment record once the cheap update has failed, for both opcodes
-	that write a name: the same setProperty SET_PROPERTY_POP runs for `o.x = v`, which is the point: 10.2.1.2
-	says a `with` object and the global object hold their bindings as ordinary properties, so the two must agree.
-	Answers true when the caller has to return to the interpreter loop, either for a setter frame or for a throw.
+	The rare tail of a read that reported ACCESSOR_FLAG: a second walk fetches the getter and enters it as a frame
+	whose result lands at sp[-popCount]. Answers false when the accessor has no getter, the walk then having
+	deposited into *dest the undefined it reads as.
 */
-bool Processor::putThroughHolder(Object* holder, const String* name, const Value& v, bool strict) {
+bool Processor::enterGetter(const Object* o, const Value& key, Value* dest, Int32 popCount, Receiver thisObject) {
+	Function* getter;
+	if ((o->getProperty(rt, key, dest, &getter) & ACCESSOR_FLAG) == 0) {
+		return false;
+	}
+	invokeFunction(getter, popCount, 0, thisObject);
+	return true;
+}
+
+/*
+	Finishes an 8.12.5 [[Put]] once the cheap update has failed, for every store the engine makes: `o.x = v`, a
+	name written through a `with` or global record, and a write through a captured reference; 10.2.1.2 is why the
+	three must agree. The value sits at sp[0], which is also the setter's argument, and a setter frame's result
+	lands at sp[-popCount]. Answers true when the caller has to return to the interpreter loop, for the frame or
+	for a throw.
+*/
+bool Processor::putThrough(Object* o, const Value& key, Int32 popCount, Receiver receiver, bool strict, bool mayStore) {
 	Function* setter;
-	const Flags flags = holder->setProperty(rt, Value(name), v, &setter);
+	const Flags flags = o->setProperty(rt, key, sp[0], &setter, mayStore);
 	if ((flags & ACCESSOR_FLAG) != 0) {
-		invokeFunction(setter, 0, 1, holder);
+		invokeFunction(setter, popCount, 1, receiver);
 		return true;
 	}
 	if ((flags & EXISTS_FLAG) == 0 && strict) {
-		error(TYPE_ERROR, new(heap) String(heap.managed(), *name, CANNOT_ASSIGN_STRING));
+		error(TYPE_ERROR, new(heap) String(heap.managed(), *key.toString(heap), CANNOT_ASSIGN_STRING));
 		return true;
 	}
 	return false;
@@ -3648,14 +3663,11 @@ void Processor::innerRun() {
 				// 8.12.3 through an object environment record: a `with` object or the global object can hold the
 				// binding as an accessor, and then the identifier has to run the getter. Data reads never get here.
 				if ((flags & ACCESSOR_FLAG) != 0) {
-					Function* getter;
 					Object* const holder = scope->resolveHolder(rt, name);	// rare second walk finds the record
 					assert(holder != 0);
-					if ((holder->getProperty(rt, Value(name), sp, &getter) & ACCESSOR_FLAG) == 0) {
-						break;	// a getter-less accessor reads as the undefined the walk deposited
+					if (enterGetter(holder, Value(name), sp, 0, holder)) {
+						return;	// the getter's result replaces the pushed slot
 					}
-					invokeFunction(getter, 0, 0, holder);	// the getter's result replaces the pushed slot
-					return;
 				}
 			#endif
 				break;
@@ -3673,7 +3685,7 @@ void Processor::innerRun() {
 					to deposit its discarded return value in (see makeAssignment).
 				*/
 				Object* const holder = scope->writeVarOrAccessor(rt, name, sp[0]);
-				if (holder != 0 && putThroughHolder(holder, name, sp[0], code->isStrict())) {	// the cheap store did not happen
+				if (holder != 0 && putThrough(holder, Value(name), 0, holder, code->isStrict())) {	// the cheap store did not happen
 					return;	// a setter frame, or a throw; either way the loop takes over
 				}
 				assert(unpackInstruction(*ip).first == POP_OP);	// guaranteed by makeAssignment
@@ -3712,12 +3724,7 @@ void Processor::innerRun() {
 				}
 				push(holder != 0 ? Value(holder) : Value(depth));
 				push(value);
-				if ((flags & ACCESSOR_FLAG) != 0) {
-					Function* getter;
-					if ((holder->getProperty(rt, Value(name), sp, &getter) & ACCESSOR_FLAG) == 0) {
-						break;	// a getter-less accessor reads as the undefined the walk deposited
-					}
-					invokeFunction(getter, 0, 0, holder);
+				if ((flags & ACCESSOR_FLAG) != 0 && enterGetter(holder, Value(name), sp, 0, holder)) {
 					return;
 				}
 				break;
@@ -3754,7 +3761,7 @@ void Processor::innerRun() {
 					}
 					owner->writeVar(rt, name, sp[0]);
 				} else if (!holder->updateOwnProperty(rt, Value(name), sp[0])	// fast path, as SET_PROPERTY_POP does
-						&& putThroughHolder(holder, name, sp[0], code->isStrict())) {	// 8.7.2: [[Put]] on the base the reference captured
+						&& putThrough(holder, Value(name), 0, holder, code->isStrict())) {	// 8.7.2: [[Put]] on the base the reference captured
 					return;
 				}
 				assert(unpackInstruction(*ip).first == POP_OP);	// guaranteed by makeAssignment
@@ -3795,12 +3802,8 @@ void Processor::innerRun() {
 				const Flags flags = o->getProperty(rt, sp[0], sp - 1);	// the shared walk: data reads at full es3 speed
 				if (flags == NONEXISTENT) {
 					sp[-1] = UNDEFINED_VALUE;
-				} else if ((flags & ACCESSOR_FLAG) != 0) {
-					Function* getter;
-					if ((o->getProperty(rt, sp[0], sp - 1, &getter) & ACCESSOR_FLAG) != 0) {	// rare second walk finds the getter
-						invokeFunction(getter, 1, 0, base);	// 8.12.3 runs it as an ordinary frame, its result replacing [object, name]
-						return;
-					}	// a getter-less accessor reads as the undefined the walk just re-deposited
+				} else if ((flags & ACCESSOR_FLAG) != 0 && enterGetter(o, sp[0], sp - 1, 1, base)) {
+					return;	// 8.12.3 runs it as an ordinary frame, its result replacing [object, name]
 				}
 				pop(1);
 				break;
@@ -3841,18 +3844,9 @@ void Processor::innerRun() {
 				// 8.7.2 special [[Put]]: a primitive base boxes into a transient object, so a store is never kept.
 				const bool primitiveBase = !sp[-2].isObject();
 				// the fast path stays inline here: an existing own writable data property, at the same cost as es3
-				if (primitiveBase || !o->updateOwnProperty(rt, sp[-1], sp[0])) {
-					Function* setter;
-					const Flags flags = o->setProperty(rt, sp[-1], sp[0], &setter, !primitiveBase);
-					if ((flags & ACCESSOR_FLAG) != 0) {
-						invokeFunction(setter, 2, 1, sp[-2]);	// 8.12.5 (6) gives it the base, not the box
-						return;	// the POP_OP behind the opcode discards the frame's return value
-					}
-					if ((flags & EXISTS_FLAG) == 0 && code->isStrict()) {
-						// 8.12.5 / 11.13.1: strict mode throws where non-strict silently ignores the failed store.
-						error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[-1].toString(heap), CANNOT_ASSIGN_STRING));
-						return;
-					}
+				if ((primitiveBase || !o->updateOwnProperty(rt, sp[-1], sp[0]))
+						&& putThrough(o, sp[-1], 2, sp[-2], code->isStrict(), !primitiveBase)) {	// 8.12.5 (6) gives a setter the base, not the box
+					return;	// a setter frame (the POP_OP behind the opcode discards its result), or a strict throw
 				}
 				assert(unpackInstruction(*ip).first == POP_OP);	// guaranteed by makeAssignment
 				++ip;	// data path: consume the following POP_OP here to spare a dispatch
@@ -4074,21 +4068,20 @@ void Processor::innerRun() {
 				Value v(UNDEFINED_VALUE);
 				const Flags flags = scope->readVar(rt, name, &v);
 				/*
-					11.4.3 takes GetValue of the reference unless it is unresolvable, so a binding held as an
-					accessor has to run its getter here too. That means pushing the value and letting the TYPEOF_OP
-					the compiler now follows with turn it into the name, since a getter needs its own frame.
+					The tolerant read 11.4.3 needs: an unresolvable name reads as undefined instead of throwing,
+					and any other binding takes GetValue, so an accessor runs its getter here too. The value is
+					pushed and the TYPEOF_OP the compiler follows with turns it into the name, a getter needing
+					its own frame first.
 				*/
-				if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
-					Function* getter;
+				assert(unpackInstruction(*ip).first == TYPEOF_OP);	// guaranteed by the TYPE_OF emitter
+				push(v);
+				if ((flags & ACCESSOR_FLAG) != 0) {
 					Object* const holder = scope->resolveHolder(rt, name);
 					assert(holder != 0);
-					if ((holder->getProperty(rt, Value(name), &v, &getter) & ACCESSOR_FLAG) != 0) {
-						push(UNDEFINED_VALUE);
-						invokeFunction(getter, 0, 0, holder);
+					if (enterGetter(holder, Value(name), sp, 0, holder)) {
 						return;
 					}
 				}
-				push(v);
 			#endif
 				break;
 			}
@@ -4143,12 +4136,8 @@ void Processor::innerRun() {
 				}
 				Value v(UNDEFINED_VALUE);
 				const Flags flags = o->getProperty(rt, sp[0], &v);
-				if ((flags & ACCESSOR_FLAG) != 0) {
-					Function* getter;
-					if ((o->getProperty(rt, sp[0], &v, &getter) & ACCESSOR_FLAG) != 0) {	// rare second walk finds the getter
-						invokeFunction(getter, 0, 0, sp[-1]);	// result replaces the name at sp[0]; CALL_THIS_OP checks callability
-						return;
-					}	// a getter-less accessor reads as undefined and fails the callability test below
+				if ((flags & ACCESSOR_FLAG) != 0 && enterGetter(o, sp[0], &v, 0, sp[-1])) {
+					return;	// the result replaces the name at sp[0]; CALL_THIS_OP checks callability
 				}
 				if (flags == NONEXISTENT || v.asFunction() == 0) {
 					error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[0].toString(heap), IS_NOT_A_FUNCTION_STRING));
@@ -6460,7 +6449,7 @@ Object* Runtime::GlobalScope::writeVarOrAccessor(Runtime& rt, const String* name
 	if (globalObject->updateOwnProperty(rt, Value(name), v)) {
 		return 0;	// fast path: an existing writable data property, the overwhelmingly common global assignment
 	}
-	return globalObject;	// an accessor, a read-only or a new property: putThroughHolder decides, and can throw
+	return globalObject;	// an accessor, a read-only or a new property: putThrough decides, and can throw
 }
 
 Flags Runtime::GlobalScope::resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const {
