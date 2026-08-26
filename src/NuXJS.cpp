@@ -1446,8 +1446,19 @@ Flags Object::getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Access
 	return getOwnProperty(rt, key, v);
 }
 
-Function* Object::getOwnGetter(Runtime&, const Value&) const { return 0; }
-Function* Object::getOwnSetter(Runtime&, const Value&, const Value&) const { return 0; }
+Function* Object::getOwnGetter(Runtime& rt, const Value& key) const {
+	Value dummy;
+	Accessor* accessor;
+	getOwnPropertySlot(rt, key, &dummy, &accessor);
+	return (accessor != 0 ? accessor->get : 0);
+}
+
+Function* Object::getOwnSetter(Runtime& rt, const Value& key, const Value&) const {
+	Value dummy;
+	Accessor* accessor;
+	getOwnPropertySlot(rt, key, &dummy, &accessor);
+	return (accessor != 0 ? accessor->set : 0);
+}
 
 // 8.12.3, reporting the getter: one further own-lookup on the holder, never a second walk of the chain.
 Flags Object::getProperty(Runtime& rt, const Value& key, Value* v, Function** getter) const {
@@ -1465,14 +1476,16 @@ Flags Object::getProperty(Runtime& rt, const Value& key, Value* v, Function** ge
 
 // 8.12.5, reporting the setter. Callers may try updateOwnProperty first as a fast path; it is never required.
 Flags Object::setProperty(Runtime& rt, const Value& key, const Value& v, Function** setter, bool mayStore) {
-	*setter = 0;
 	for (const Object* o = this; o != 0; o = o->getPrototype(rt)) {
-		if ((*setter = o->getOwnSetter(rt, key, v)) != 0) {
-			return ACCESSOR_FLAG;	// 8.12.5 (5): the caller runs it, on the base rather than on the holder
-		}
 		Value dummy;
 		const Flags flags = o->getOwnProperty(rt, key, &dummy);
 		if (flags != NONEXISTENT) {
+			// Only a level that holds the key is asked for a setter, and past the base it is asked value-blind:
+			// 8.12.4 gives the chain a value-independent say, and a value-dependent answer (an array's length
+			// taking an object) is the base's own store completion, not something to inherit.
+			if ((*setter = o->getOwnSetter(rt, key, o == this ? v : UNDEFINED_VALUE)) != 0) {
+				return ACCESSOR_FLAG;	// 8.12.5 (5): the caller runs it, on the base rather than on the holder
+			}
 			// 8.12.4 [[CanPut]]: read-only refuses, and so does an accessor whose setter was answered as none.
 			if ((flags & (ACCESSOR_FLAG | READ_ONLY_FLAG)) != 0 || (o != this && !isExtensible())) {
 				return 0;	// an inherited writable still makes a *new* own property, so it needs extensibility
@@ -1738,16 +1751,6 @@ Flags JSObject::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 }
 
 #if NUXJS_ES5
-Function* JSObject::getOwnGetter(Runtime& rt, const Value& key) const {
-	const Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
-	return (bucket != 0 && (bucket->getFlags() & ACCESSOR_FLAG) != 0 ? getAccessor(bucket)->get : 0);
-}
-
-Function* JSObject::getOwnSetter(Runtime& rt, const Value& key, const Value&) const {
-	const Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
-	return (bucket != 0 && (bucket->getFlags() & ACCESSOR_FLAG) != 0 ? getAccessor(bucket)->set : 0);
-}
-
 Flags JSObject::getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const {
 	const Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
 	*accessor = 0;
@@ -3544,12 +3547,12 @@ bool Processor::checkStrictAssignable(Scope* scope, const String* name) {
 */
 bool Processor::putThroughHolder(Object* holder, const String* name, const Value& v, bool strict) {
 	Function* setter;
-	const Flags stored = holder->setProperty(rt, Value(name), v, &setter, true);
-	if ((stored & ACCESSOR_FLAG) != 0) {
+	const Flags flags = holder->setProperty(rt, Value(name), v, &setter);
+	if ((flags & ACCESSOR_FLAG) != 0) {
 		invokeFunction(setter, 0, 1, holder);
 		return true;
 	}
-	if ((stored & EXISTS_FLAG) == 0 && strict) {
+	if ((flags & EXISTS_FLAG) == 0 && strict) {
 		error(TYPE_ERROR, new(heap) String(heap.managed(), *name, CANNOT_ASSIGN_STRING));
 		return true;
 	}
@@ -3645,13 +3648,11 @@ void Processor::innerRun() {
 				// 8.12.3 through an object environment record: a `with` object or the global object can hold the
 				// binding as an accessor, and then the identifier has to run the getter. Data reads never get here.
 				if ((flags & ACCESSOR_FLAG) != 0) {
-					Value dummy;
 					Function* getter;
 					Object* const holder = scope->resolveHolder(rt, name);	// rare second walk finds the record
 					assert(holder != 0);
-					if ((holder->getProperty(rt, Value(name), &dummy, &getter) & ACCESSOR_FLAG) == 0) {
-						sp[0] = UNDEFINED_VALUE;
-						break;
+					if ((holder->getProperty(rt, Value(name), sp, &getter) & ACCESSOR_FLAG) == 0) {
+						break;	// a getter-less accessor reads as the undefined the walk deposited
 					}
 					invokeFunction(getter, 0, 0, holder);	// the getter's result replaces the pushed slot
 					return;
@@ -3712,11 +3713,9 @@ void Processor::innerRun() {
 				push(holder != 0 ? Value(holder) : Value(depth));
 				push(value);
 				if ((flags & ACCESSOR_FLAG) != 0) {
-					Value dummy;
 					Function* getter;
-					if ((holder->getProperty(rt, Value(name), &dummy, &getter) & ACCESSOR_FLAG) == 0) {
-						sp[0] = UNDEFINED_VALUE;
-						break;
+					if ((holder->getProperty(rt, Value(name), sp, &getter) & ACCESSOR_FLAG) == 0) {
+						break;	// a getter-less accessor reads as the undefined the walk deposited
 					}
 					invokeFunction(getter, 0, 0, holder);
 					return;
@@ -3793,18 +3792,15 @@ void Processor::innerRun() {
 				if (o == 0) {
 					return;
 				}
-				const Flags found = o->getProperty(rt, sp[0], sp - 1);	// the shared walk: data reads at full es3 speed
-				if (found == NONEXISTENT) {
+				const Flags flags = o->getProperty(rt, sp[0], sp - 1);	// the shared walk: data reads at full es3 speed
+				if (flags == NONEXISTENT) {
 					sp[-1] = UNDEFINED_VALUE;
-				} else if ((found & ACCESSOR_FLAG) != 0) {
-					Value dummy;
+				} else if ((flags & ACCESSOR_FLAG) != 0) {
 					Function* getter;
-					if ((o->getProperty(rt, sp[0], &dummy, &getter) & ACCESSOR_FLAG) == 0) {	// rare second walk finds the getter
-						sp[-1] = UNDEFINED_VALUE;
-					} else {
+					if ((o->getProperty(rt, sp[0], sp - 1, &getter) & ACCESSOR_FLAG) != 0) {	// rare second walk finds the getter
 						invokeFunction(getter, 1, 0, base);	// 8.12.3 runs it as an ordinary frame, its result replacing [object, name]
 						return;
-					}
+					}	// a getter-less accessor reads as the undefined the walk just re-deposited
 				}
 				pop(1);
 				break;
@@ -3847,12 +3843,12 @@ void Processor::innerRun() {
 				// the fast path stays inline here: an existing own writable data property, at the same cost as es3
 				if (primitiveBase || !o->updateOwnProperty(rt, sp[-1], sp[0])) {
 					Function* setter;
-					const Flags stored = o->setProperty(rt, sp[-1], sp[0], &setter, !primitiveBase);
-					if ((stored & ACCESSOR_FLAG) != 0) {
+					const Flags flags = o->setProperty(rt, sp[-1], sp[0], &setter, !primitiveBase);
+					if ((flags & ACCESSOR_FLAG) != 0) {
 						invokeFunction(setter, 2, 1, sp[-2]);	// 8.12.5 (6) gives it the base, not the box
 						return;	// the POP_OP behind the opcode discards the frame's return value
 					}
-					if ((stored & EXISTS_FLAG) == 0 && code->isStrict()) {
+					if ((flags & EXISTS_FLAG) == 0 && code->isStrict()) {
 						// 8.12.5 / 11.13.1: strict mode throws where non-strict silently ignores the failed store.
 						error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[-1].toString(heap), CANNOT_ASSIGN_STRING));
 						return;
@@ -4083,16 +4079,14 @@ void Processor::innerRun() {
 					the compiler now follows with turn it into the name, since a getter needs its own frame.
 				*/
 				if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
-					Value dummy;
 					Function* getter;
 					Object* const holder = scope->resolveHolder(rt, name);
 					assert(holder != 0);
-					if ((holder->getProperty(rt, Value(name), &dummy, &getter) & ACCESSOR_FLAG) != 0) {
+					if ((holder->getProperty(rt, Value(name), &v, &getter) & ACCESSOR_FLAG) != 0) {
 						push(UNDEFINED_VALUE);
 						invokeFunction(getter, 0, 0, holder);
 						return;
 					}
-					v = UNDEFINED_VALUE;
 				}
 				push(v);
 			#endif

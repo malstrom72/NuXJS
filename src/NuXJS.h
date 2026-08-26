@@ -614,12 +614,13 @@ class Object : public GCItem {
 			What an object runs instead of answering a property itself. Both report a function for the caller to
 			enter as a frame and neither runs anything, the object model not being allowed to: 8.12.3 and 8.12.5
 			are finished by whoever asked, the interpreter with a frame of its own and the host through rt.call.
-			The getter is asked for only once getOwnProperty has reported ACCESSOR_FLAG, so an object with no
-			accessor storage never hears of it. The setter is asked at every level of the walk instead, since the
-			answer can turn on the value: an array wants one only when an object is assigned to its length.
+			Either is asked only once getOwnProperty has reported the key at its level, so an object with no
+			accessor storage never hears of them, and past the base a setter is asked value-blind: a
+			value-dependent answer (an array's length taking an object) is the base's own store completion.
+			The defaults answer over getOwnPropertySlot, so most objects need no override of their own.
 		*/
-		virtual Function* getOwnGetter(Runtime& rt, const Value& key) const;					///< 0 when the accessor has no getter, which then reads as undefined. Never runs script.
-		virtual Function* getOwnSetter(Runtime& rt, const Value& key, const Value& v) const;		///< 0 when nothing of this object's runs for this store. Never runs script.
+		virtual Function* getOwnGetter(Runtime& rt, const Value& key) const;					///< 0 when the accessor has no getter, which then reads as undefined.
+		virtual Function* getOwnSetter(Runtime& rt, const Value& key, const Value& v) const;		///< 0 when nothing of this object's runs for this store.
 	#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);								///< Update existing property. Return false if it doesn't exist or can't be updated (e.g. read-only property exists). Can be overriden for optimization. (Default implementation checks existence with hasOwnProperty() first.)
@@ -835,8 +836,6 @@ class JSObject : public Object, public Table {
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 	#if NUXJS_ES5
 		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;
-		virtual Function* getOwnGetter(Runtime& rt, const Value& key) const;
-		virtual Function* getOwnSetter(Runtime& rt, const Value& key, const Value& v) const;
 		bool defineOwnAccessor(Runtime& rt, const Value& key, Function* f, bool isSetter);	///< Installs (or completes) an accessor property, as for a `get` / `set` object literal entry.
 		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);
 		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;
@@ -876,12 +875,6 @@ template<class SUPER> class LazyJSObject : public SUPER {
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 	#if NUXJS_ES5
-		virtual Function* getOwnGetter(Runtime& rt, const Value& key) const {
-			return getCompleteObject(rt)->getOwnGetter(rt, key);
-		}
-		virtual Function* getOwnSetter(Runtime& rt, const Value& key, const Value& v) const {
-			return getCompleteObject(rt)->getOwnSetter(rt, key, v);
-		}
 		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const {
 			// Normal lookup first so internal properties (e.g. array length) keep their precedence; only when it
 			// reports an accessor does the completeObject table hold the actual pair.
@@ -1689,7 +1682,8 @@ class Property : public AccessorBase {
 			const Var rooted(rt, v);
 			const Value value = rooted;
 			Function* setter;
-			if ((object->setProperty(rt, key, value, &setter) & ACCESSOR_FLAG) != 0) {
+			if (!object->updateOwnProperty(rt, key, value)
+					&& (object->setProperty(rt, key, value, &setter) & ACCESSOR_FLAG) != 0) {
 				rt.call(setter, 1, &value, object);
 			}
 			return *this;

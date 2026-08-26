@@ -92,3 +92,10 @@
 > print(desc.value + " " + desc.writable + " " + desc.enumerable + " " + desc.configurable + " " + ("get" in desc))
 < 2 false false false false
 -
+// An array on the prototype chain lends no length conversion: 8.12.4 gives the chain a value-independent say, so
+// the child gains an ordinary own data property holding the object itself, its valueOf never consulted.
+> var protoArr = [], child = Object.create(protoArr), protoValueOfRan = false;
+> child.length = { valueOf: function () { protoValueOfRan = true; return 7; } };
+> print(typeof child.length + " " + protoValueOfRan + " " + Object.prototype.hasOwnProperty.call(child, "length"))
+< object false true
+-
