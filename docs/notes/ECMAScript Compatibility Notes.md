@@ -6,21 +6,16 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
 
 ## ES5.1
 
-- **`Object.defineProperty` on array indices and `length` - partial *(deferred)*.** The full `Array`
-  `[[DefineOwnProperty]]` algorithm (15.4.5.1) - `length` maintenance and 8.12.9 validation for indices/`length`,
-  which interact with the engine's dense-vector element storage - is not yet implemented. A *data* (or generic)
-  descriptor on an array index or `length` still works (it maps to the ordinary set-with-attributes path); an
-  *accessor* descriptor on an index or `length` throws a `TypeError`. Named array properties and all ordinary
-  object / function properties follow 8.12.9 exactly. Tracked in `docs/ES5.1 Roadmap.md` §6.
-
 - **An array `length` set to an *object* throws a `RangeError` - es3 only.** 15.4.5.1 takes ToUint32 of the value,
   which for an object runs ToPrimitive and so `valueOf` / `toString`;
   `arr.length = { toString: function () { return "2" } }` should give 2. `Value::toDouble` answers NaN for an object
   instead, by design - proper ToNumber has to run script, and the object model is required not to
   (`docs/ES5.1 Roadmap.md` §1, "core lookups stay pure"). The **es5 build conforms**: `Object.defineProperty`
-  converts the value in `stdlib.js` before the native hook, and a plain assignment is handed to
-  `support.setArrayLength` through the same slow path `SET_PROPERTY_POP_OP` already uses for setters, so the
-  conversion runs in an ordinary frame and the object model still never runs script. The **es3 build keeps the
+  converts the value in `stdlib.js` before the native hook, and for a plain assignment the array's own
+  `getOwnSetter` answers `support.setArrayLength` as though `length` had a setter, so whoever asked - the store
+  opcode as a frame, the host API through `Runtime::call` - runs the conversion and the object model still never
+  runs script. An array on the *prototype chain* lends none of this: 8.12.4 gives the chain a value-independent
+  say, so a child object gains an ordinary own `length` holding the object itself. The **es3 build keeps the
   deviation**, its store opcode `SET_PROPERTY_OP` having neither the setter machinery nor the trailing `POP_OP` a
   frame needs to return into. Every primitive coerces correctly in both, `true`, `null`, `"3"` and a `Number`
   wrapper included. `tests/es3only/cantAssignObjectToArrayLength.io` and `tests/es5/arrayLengthCoercion.io`.
