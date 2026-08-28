@@ -1547,6 +1547,9 @@ bool Object::setProperty(Runtime& rt, const Value& key, const Value& v) {
 
 Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
 	Heap& heap = rt.getHeap();
+#if NUXJS_ES5
+	return new(heap) ShadowingChainEnumerator(heap.managed(), rt, this);
+#else
 	Enumerator* enumerator = getOwnPropertyEnumerator(rt);
 	const Object* o = getPrototype(rt);
 	while (o != 0) {
@@ -1554,6 +1557,7 @@ Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
 		o = o->getPrototype(rt);
 	}
 	return enumerator;
+#endif
 }
 
 /* --- Table --- */
@@ -1915,6 +1919,35 @@ StringListEnumerator::StringListEnumerator(GCList& gcList, UInt32 initialCapacit
 void StringListEnumerator::add(const String* s) { stringList.push(s); }
 const String* StringListEnumerator::nextPropertyName() { return (nextIndex < stringList.size() ? stringList[nextIndex++] : 0); }
 
+/* --- ShadowingChainEnumerator --- */
+
+#if NUXJS_ES5
+ShadowingChainEnumerator::ShadowingChainEnumerator(GCList& gcList, Runtime& rt, const Object* object)
+		: super(gcList), rt(rt), object(object), level(object), current(object->getOwnPropertyEnumerator(rt)) {
+}
+
+const String* ShadowingChainEnumerator::nextPropertyName() {
+	while (true) {
+		const String* name = current->nextPropertyName();
+		if (name == 0) {
+			if ((level = level->getPrototype(rt)) == 0) {
+				return 0;
+			}
+			current = level->getOwnPropertyEnumerator(rt);
+		} else {
+			const Value key(name);
+			const Object* o = object;	// free for the own level: the walk below starts already arrived
+			while (o != level && !o->hasOwnProperty(rt, key)) {
+				o = o->getPrototype(rt);
+			}
+			if (o == level) {
+				return name;	// nothing nearer owns the name, so this level's is the one 12.6.4 visits
+			}
+		}
+	}
+}
+
+#endif
 /* --- JoiningEnumerator --- */
 
 JoiningEnumerator::JoiningEnumerator(GCList& gcList, Runtime& rt, const Object* objectA, Enumerator* enumeratorB)

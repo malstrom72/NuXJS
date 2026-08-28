@@ -782,6 +782,26 @@
 	"built-ins/String/prototype/toUpperCase/special_casing": {
 		"category": "by_design"
 	},
+	"built-ins/String/prototype/trim/15.5.4.20-3-2": {
+		"category": "by_design",
+		"reason": "15.5.4.20 strips WhiteSpace+LineTerminator; 7.2 defines <USP> as Unicode Zs and clause 2 sets the floor at Unicode 3.0 or later. NuXJS's tables are Unicode 3.0 (documented in the compatibility notes), where U+205F does not exist and U+180E is not Zs; the test pins the circa-2011 Zs set, which current V8 also fails (it keeps U+180E, Cf since Unicode 6.3)."
+	},
+	"built-ins/String/prototype/trim/15.5.4.20-3-3": {
+		"category": "by_design",
+		"reason": "15.5.4.20 strips WhiteSpace+LineTerminator; 7.2 defines <USP> as Unicode Zs and clause 2 sets the floor at Unicode 3.0 or later. NuXJS's tables are Unicode 3.0 (documented in the compatibility notes), where U+205F does not exist and U+180E is not Zs; the test pins the circa-2011 Zs set, which current V8 also fails (it keeps U+180E, Cf since Unicode 6.3)."
+	},
+	"built-ins/String/prototype/trim/15.5.4.20-3-4": {
+		"category": "by_design",
+		"reason": "15.5.4.20 strips WhiteSpace+LineTerminator; 7.2 defines <USP> as Unicode Zs and clause 2 sets the floor at Unicode 3.0 or later. NuXJS's tables are Unicode 3.0 (documented in the compatibility notes), where U+205F does not exist and U+180E is not Zs; the test pins the circa-2011 Zs set, which current V8 also fails (it keeps U+180E, Cf since Unicode 6.3)."
+	},
+	"built-ins/String/prototype/trim/15.5.4.20-3-5": {
+		"category": "by_design",
+		"reason": "15.5.4.20 strips WhiteSpace+LineTerminator; 7.2 defines <USP> as Unicode Zs and clause 2 sets the floor at Unicode 3.0 or later. NuXJS's tables are Unicode 3.0 (documented in the compatibility notes), where U+205F does not exist and U+180E is not Zs; the test pins the circa-2011 Zs set, which current V8 also fails (it keeps U+180E, Cf since Unicode 6.3)."
+	},
+	"built-ins/String/prototype/trim/15.5.4.20-3-6": {
+		"category": "by_design",
+		"reason": "15.5.4.20 strips WhiteSpace+LineTerminator; 7.2 defines <USP> as Unicode Zs and clause 2 sets the floor at Unicode 3.0 or later. NuXJS's tables are Unicode 3.0 (documented in the compatibility notes), where U+205F does not exist and U+180E is not Zs; the test pins the circa-2011 Zs set, which current V8 also fails (it keeps U+180E, Cf since Unicode 6.3)."
+	},
 	"built-ins/String/prototype/valueOf/length": {
 		"category": "bad_test"
 	},
