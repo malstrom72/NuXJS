@@ -701,6 +701,32 @@ class RangeEnumerator : public Enumerator {
 	JoiningEnumerator chains two enumerators, yielding all properties from one followed by another. Used to join
 	property names in prototype chains and more.
 **/
+#if NUXJS_ES5
+/**
+	Walks a prototype chain for 12.6.4: own names first, then each prototype level, a name suppressed once any
+	nearer level holds it as an own property - enumerable or not, shadowing ignores [[Enumerable]].
+**/
+class ShadowingChainEnumerator : public Enumerator {
+	public:
+		typedef Enumerator super;
+		ShadowingChainEnumerator(GCList& gcList, Runtime& rt, const Object* object);
+		virtual const String* nextPropertyName();
+
+	protected:
+		Runtime& rt;
+		const Object* const object;
+		const Object* level;
+		Enumerator* current;
+
+		virtual void gcMarkReferences(Heap& heap) const {
+			gcMark(heap, object);
+			gcMark(heap, level);
+			gcMark(heap, current);
+			super::gcMarkReferences(heap);
+		}
+};
+
+#endif
 class JoiningEnumerator : public Enumerator {
 	public:
 		typedef Enumerator super;

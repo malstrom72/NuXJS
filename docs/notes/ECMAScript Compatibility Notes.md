@@ -66,7 +66,11 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   implementation), and NuXJS has always answered in its hash table's order where other engines answer in
   insertion order: `{ a: 1 }` given accessors `b` and `c` comes back `b,c,a`. Dense array indices, and a String
   object's characters-then-names-then-`length`, do follow the common shape; sparse indices and later-added names
-  still interleave in table order where other engines sort indices first.
+  still interleave in table order where other engines sort indices first. The **es5 build** walks the prototype
+  chain own-first with ES5.1 12.6.4's strengthened shadowing (an own property hides a prototype's name whatever
+  its [[Enumerable]] - the sentence ES5 added alongside `defineProperty`, the tool that first made the case
+  constructible). The **es3 build is conformant under its own edition's clause**, which asks only that a name is
+  never enumerated twice - a guarantee its enumerators have always kept - and so stays untouched.
 
 - **Annex B library functions - partial, by design.** Annex B is *informative* in ES5.1, so each entry is a
   separate decision rather than a block. `String.prototype.substr` (`B.2.3`) has always been there, and
