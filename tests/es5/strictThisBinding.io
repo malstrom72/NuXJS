@@ -132,3 +132,11 @@
 > print(n)
 < 3
 -
+// 10.4.3 through a library callback: replace calls its function with no receiver, so a strict callback
+// sees undefined (not null), on the string and RegExp paths alike.
+> var got = "unset"; function repl() { "use strict"; got = this; return "x"; }
+> print("ab".replace("b", repl) + " " + (got === void 0 ? "undefined" : "" + got))
+< ax undefined
+> got = "unset"; print("ab".replace(/b/, repl) + " " + (got === void 0 ? "undefined" : "" + got))
+< ax undefined
+-

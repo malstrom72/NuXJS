@@ -1946,8 +1946,8 @@ const String* ShadowingChainEnumerator::nextPropertyName() {
 		}
 	}
 }
-
 #endif
+
 /* --- JoiningEnumerator --- */
 
 JoiningEnumerator::JoiningEnumerator(GCList& gcList, Runtime& rt, const Object* objectA, Enumerator* enumeratorB)
