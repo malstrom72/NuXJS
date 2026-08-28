@@ -773,7 +773,7 @@ class StringWrapper : public JSObject {
 			for (UInt32 i = 0; i < len; ++i) {
 				out.push(Value(String::fromInt(heap, static_cast<Int32>(i))));	// 15.5.5.2 character indices
 			}
-			super::collectOwnPropertyNames(rt, out);	// extra own properties next, length last: the de facto order
+			super::collectOwnPropertyNames(rt, out);	// indices first, table names after, length pinned last
 			out.push(Value(&LENGTH_STRING));
 		}
 	#endif
@@ -4140,8 +4140,9 @@ void Processor::innerRun() {
 					return;	// the result replaces the name at sp[0]; CALL_THIS_OP checks callability
 				}
 				// 11.2.3 (4): not-callable is CALL_THIS's throw, after the arguments have run. The name stays in
-				// the slot for that case, so the error can still say who it was that is not a function.
-				if (flags != NONEXISTENT && v.asFunction() != 0) {
+				// the slot for that case, so the error can still say who it was that is not a function - and it is
+				// always a primitive (PROPERTY references carry converted keys), never mistakable for a callee.
+				if (v.asFunction() != 0) {
 					sp[0] = v;
 				}
 				break;
@@ -6769,7 +6770,7 @@ struct Support {
 				}
 			}
 			// FIX : we copy all arguments once to argv, and then chain will copy them again to a scope object, couldn't we short-cut that somehow?
-			// FIX : since only arrays and arguments are really valid here, perhaps even have a new virtual in object for implementing efficient apply with these?
+			// FIX : arrays and arguments dominate here (es5 admits any object), perhaps even have a new virtual in object for implementing efficient apply with these?
 			return callFunction->invoke(rt, processor, args.size(), args.begin(), newThis);
 		}
 	}

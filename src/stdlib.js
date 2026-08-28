@@ -405,9 +405,7 @@ defineProperties(Function.prototype, { dontEnum: true }, {
 			throw typeError("Argument list has wrong type");
 		};
 //#else
-		else if (typeof argArray !== "object" && typeof argArray !== "function") {	// 15.3.4.3 (3): any object serves as the list
-			throw typeError("Argument list has wrong type");
-		};
+		else if (isPrimitive(argArray)) throw typeError("Argument list has wrong type");	// 15.3.4.3 (3): any object serves as the list
 //#endif
 		return $callWithArgs(this, thisArg, argArray);
 	}),
@@ -2079,70 +2077,77 @@ defineProperties(globals, { dontEnum: true }, {
 
 //#if ES5
 (function () {	// 15.1.3: URI handling - Encode and Decode as written, over the exact UTF-8 table.
-	var RESERVED_HASH = ";/?:@&=+$,#", UNESCAPED =
-			"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.!~*'()";
-	function octet(s, i, n) {	// the byte spelled by the two hex digits after a '%', or -1
-		var h = PARSE_INT_CHARS[s[i + 1]], l = PARSE_INT_CHARS[s[i + 2]];	// null for white space, so != null
-		return (i + 2 < n && h != null && l != null && h < 16 && l < 16 ? (h << 4) | l : -1);
+	var pic = PARSE_INT_CHARS, $fromCharCode = support.fromCharCode;
+	function memberSet(chars) {
+		for (var t = { }, i = chars.length - 1; i >= 0; --i) t[chars[i]] = true;
+		return t;
 	}
-	function encode(s, unescapedSet) {
+	var RESERVED_CHARS = ";/?:@&=+$,#", UNESCAPED_CHARS =
+			"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.!~*'()";
+	var RESERVED = memberSet(RESERVED_CHARS), UNESCAPED = memberSet(UNESCAPED_CHARS)
+			, FULL_URI = memberSet(UNESCAPED_CHARS + RESERVED_CHARS), NONE = { };
+	function hex(b) { return '%' + ALPHA_DIGITS_UPPER[b >> 4] + ALPHA_DIGITS_UPPER[b & 15]; }
+	function octet(s, i) {	// the byte spelled by the two hex digits after a '%', or -1
+		var h = pic[s[i + 1]], l = pic[s[i + 2]];	// null for white space, undefined past the end: != null takes both
+		return (h != null && l != null && h < 16 && l < 16 ? (h << 4) | l : -1);
+	}
+	function encode(s, keep) {	// unescaped characters pass in runs; everything else UTF-8s into %XX triplets
 		s = str(s);
-		for (var r = '', i = 0, n = s.length; i < n; ++i) {
-			var c = s[i], v = $charCodeAt(s, i);
-			if (unescapedSet.indexOf(c) >= 0) r += c;
-			else {
+		for (var r = '', i = 0, j = 0, n = s.length; i < n; ++i) {
+			if (!keep[s[i]]) {
+				r += $sub(s, j, i);
+				var v = $charCodeAt(s, i);
 				if (v >= 0xDC00 && v <= 0xDFFF) throw uriError("URI malformed");
 				if (v >= 0xD800 && v <= 0xDBFF) {	// a pair encodes as one code point, a lone half never (step 4.d-e)
 					var w = (++i < n ? $charCodeAt(s, i) : 0);
 					if (w < 0xDC00 || w > 0xDFFF) throw uriError("URI malformed");
 					v = (v - 0xD800) * 0x400 + w - 0xDC00 + 0x10000;
 				}
-				var o = (v < 0x80 ? [ v ]
-						: v < 0x800 ? [ 0xC0 | (v >> 6), 0x80 | (v & 63) ]
-						: v < 0x10000 ? [ 0xE0 | (v >> 12), 0x80 | ((v >> 6) & 63), 0x80 | (v & 63) ]
-						: [ 0xF0 | (v >> 18), 0x80 | ((v >> 12) & 63), 0x80 | ((v >> 6) & 63), 0x80 | (v & 63) ]);
-				for (var j = 0; j < o.length; ++j) r += '%' + "0123456789ABCDEF"[o[j] >> 4] + "0123456789ABCDEF"[o[j] & 15];
+				r += (v < 0x80 ? hex(v)
+						: v < 0x800 ? hex(0xC0 | (v >> 6)) + hex(0x80 | (v & 63))
+						: v < 0x10000 ? hex(0xE0 | (v >> 12)) + hex(0x80 | ((v >> 6) & 63)) + hex(0x80 | (v & 63))
+						: hex(0xF0 | (v >> 18)) + hex(0x80 | ((v >> 12) & 63)) + hex(0x80 | ((v >> 6) & 63)) + hex(0x80 | (v & 63)));
+				j = i + 1;
 			}
 		}
-		return r;
+		return (j === 0 ? s : r + $sub(s, j, n));
 	}
-	function decode(s, reservedSet) {
+	function decode(s, keep) {	// an escaped character in `keep` stays escaped (15.1.3.1 reservedURISet)
 		s = str(s);
-		for (var r = '', i = 0, n = s.length; i < n; ++i) {
-			var c = s[i];
-			if (c !== '%') r += c;
-			else {
-				var start = i, b = octet(s, i, n);
+		for (var r = '', i = 0, j = 0, n = s.length; i < n; ++i) {
+			if (s[i] === '%') {
+				r += $sub(s, j, i);
+				var start = i, b = octet(s, i), c;
 				if (b < 0) throw uriError("URI malformed");
 				i += 2;
 				if (b < 0x80) {
-					c = support.fromCharCode(b);
-					r += (reservedSet.indexOf(c) >= 0 ? $sub(s, start, i + 1) : c);	// step 4.d.vii: reserved stays escaped
+					c = $fromCharCode(b);
+					r += (keep[c] ? $sub(s, start, i + 1) : c);
 				} else {
-					// 0xC0-0xC1 spell overlongs and 0xF5 up spells past 0x10FFFF, so neither opens a sequence.
-					var extra = (b >= 0xC2 && b < 0xE0 ? 1 : b >= 0xE0 && b < 0xF0 ? 2 : b >= 0xF0 && b < 0xF5 ? 3 : -1);
+					var extra = (b < 0xC0 ? -1 : b < 0xE0 ? 1 : b < 0xF0 ? 2 : b < 0xF8 ? 3 : -1);
 					if (extra < 0) throw uriError("URI malformed");
-					for (var v = b & (0x3F >> extra), j = 0; j < extra; ++j) {
-						if (s[++i] !== '%' || (b = octet(s, i, n)) < 0 || (b & 0xC0) !== 0x80) throw uriError("URI malformed");
+					for (var v = b & (0x3F >> extra), k = 0; k < extra; ++k) {
+						if (s[++i] !== '%' || ((b = octet(s, i)) & 0xC0) !== 0x80) throw uriError("URI malformed");	// -1 fails the mask too
 						i += 2;
 						v = (v << 6) | (b & 0x3F);
 					}
-					// the table's ranges exactly: overlong, the surrogate gap and past-0x10FFFF all refuse.
+					// the one rejection site, straight off the spec's table: overlong, the surrogate gap, past 0x10FFFF
 					if (v < (extra === 1 ? 0x80 : extra === 2 ? 0x800 : 0x10000) || (v >= 0xD800 && v <= 0xDFFF) || v > 0x10FFFF) {
 						throw uriError("URI malformed");
 					}
-					// a decoded multi-byte char is never in a reservedSet (those are ASCII), so no check here
-					r += (v < 0x10000 ? support.fromCharCode(v)
-							: support.fromCharCode(((v - 0x10000) >> 10) + 0xD800) + support.fromCharCode(((v - 0x10000) & 0x3FF) + 0xDC00));
+					// a decoded multi-byte char is never in `keep` (those are ASCII), so no check here
+					r += (v < 0x10000 ? $fromCharCode(v)
+							: $fromCharCode(((v -= 0x10000) >> 10) + 0xD800) + $fromCharCode((v & 0x3FF) + 0xDC00));
 				}
+				j = i + 1;
 			}
 		}
-		return r;
+		return (j === 0 ? s : r + $sub(s, j, n));
 	}
 	defineProperties(globals, { dontEnum: true }, {
-		decodeURI: unconstructable(function decodeURI(encodedURI) { return decode(encodedURI, RESERVED_HASH) }),
-		decodeURIComponent: unconstructable(function decodeURIComponent(encodedURIComponent) { return decode(encodedURIComponent, '') }),
-		encodeURI: unconstructable(function encodeURI(uri) { return encode(uri, UNESCAPED + RESERVED_HASH) }),
+		decodeURI: unconstructable(function decodeURI(encodedURI) { return decode(encodedURI, RESERVED) }),
+		decodeURIComponent: unconstructable(function decodeURIComponent(encodedURIComponent) { return decode(encodedURIComponent, NONE) }),
+		encodeURI: unconstructable(function encodeURI(uri) { return encode(uri, FULL_URI) }),
 		encodeURIComponent: unconstructable(function encodeURIComponent(uriComponent) { return encode(uriComponent, UNESCAPED) })
 	});
 })();

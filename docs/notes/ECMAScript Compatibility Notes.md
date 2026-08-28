@@ -64,8 +64,9 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
 - **Own-property order is the table's, not insertion order.** No ES5.1 clause fixes the order `for-in`,
   `Object.keys` or `Object.getOwnPropertyNames` deliver properties in (12.6.4 and 15.2.3.4 both leave it to the
   implementation), and NuXJS has always answered in its hash table's order where other engines answer in
-  insertion order: `{ a: 1 }` given accessors `b` and `c` comes back `b,c,a`. Array indices, and a String
-  object's characters-then-names-then-`length`, do follow the de facto order.
+  insertion order: `{ a: 1 }` given accessors `b` and `c` comes back `b,c,a`. Dense array indices, and a String
+  object's characters-then-names-then-`length`, do follow the common shape; sparse indices and later-added names
+  still interleave in table order where other engines sort indices first.
 
 - **Annex B library functions - partial, by design.** Annex B is *informative* in ES5.1, so each entry is a
   separate decision rather than a block. `String.prototype.substr` (`B.2.3`) has always been there, and
