@@ -1,4 +1,32 @@
 {
+	"annexB/built-ins/RegExp/RegExp-control-escape-russian-letter": {
+		"category": "not_es51",
+		"reason": "Demands the Annex B RegExp pattern extensions (identity escapes of identifier chars, loose decimal escapes), made normative-optional only in ES2015 B.1.4; ES5.1's Annex B has no RegExp section and the 15.10.1 grammar rejects these (IdentityEscape excludes IdentifierPart; a DecimalEscape beyond NCapturingParens is an error per 15.10.2.9). NuXJS implements the normative 5.1 grammar and throws SyntaxError, which 7.8.5 makes an early error."
+	},
+	"annexB/built-ins/RegExp/RegExp-decimal-escape-class-range": {
+		"category": "not_es51",
+		"reason": "Demands the Annex B RegExp pattern extensions (identity escapes of identifier chars, loose decimal escapes), made normative-optional only in ES2015 B.1.4; ES5.1's Annex B has no RegExp section and the 15.10.1 grammar rejects these (IdentityEscape excludes IdentifierPart; a DecimalEscape beyond NCapturingParens is an error per 15.10.2.9). NuXJS implements the normative 5.1 grammar and throws SyntaxError, which 7.8.5 makes an early error."
+	},
+	"annexB/built-ins/RegExp/RegExp-decimal-escape-not-capturing": {
+		"category": "not_es51",
+		"reason": "Demands the Annex B RegExp pattern extensions (identity escapes of identifier chars, loose decimal escapes), made normative-optional only in ES2015 B.1.4; ES5.1's Annex B has no RegExp section and the 15.10.1 grammar rejects these (IdentityEscape excludes IdentifierPart; a DecimalEscape beyond NCapturingParens is an error per 15.10.2.9). NuXJS implements the normative 5.1 grammar and throws SyntaxError, which 7.8.5 makes an early error."
+	},
+	"annexB/built-ins/RegExp/RegExp-leading-escape": {
+		"category": "not_es51",
+		"reason": "Demands the Annex B RegExp pattern extensions (identity escapes of identifier chars, loose decimal escapes), made normative-optional only in ES2015 B.1.4; ES5.1's Annex B has no RegExp section and the 15.10.1 grammar rejects these (IdentityEscape excludes IdentifierPart; a DecimalEscape beyond NCapturingParens is an error per 15.10.2.9). NuXJS implements the normative 5.1 grammar and throws SyntaxError, which 7.8.5 makes an early error."
+	},
+	"annexB/built-ins/RegExp/RegExp-leading-escape-BMP": {
+		"category": "not_es51",
+		"reason": "Demands the Annex B RegExp pattern extensions (identity escapes of identifier chars, loose decimal escapes), made normative-optional only in ES2015 B.1.4; ES5.1's Annex B has no RegExp section and the 15.10.1 grammar rejects these (IdentityEscape excludes IdentifierPart; a DecimalEscape beyond NCapturingParens is an error per 15.10.2.9). NuXJS implements the normative 5.1 grammar and throws SyntaxError, which 7.8.5 makes an early error."
+	},
+	"annexB/built-ins/RegExp/RegExp-trailing-escape": {
+		"category": "not_es51",
+		"reason": "Demands the Annex B RegExp pattern extensions (identity escapes of identifier chars, loose decimal escapes), made normative-optional only in ES2015 B.1.4; ES5.1's Annex B has no RegExp section and the 15.10.1 grammar rejects these (IdentityEscape excludes IdentifierPart; a DecimalEscape beyond NCapturingParens is an error per 15.10.2.9). NuXJS implements the normative 5.1 grammar and throws SyntaxError, which 7.8.5 makes an early error."
+	},
+	"annexB/built-ins/RegExp/RegExp-trailing-escape-BMP": {
+		"category": "not_es51",
+		"reason": "Demands the Annex B RegExp pattern extensions (identity escapes of identifier chars, loose decimal escapes), made normative-optional only in ES2015 B.1.4; ES5.1's Annex B has no RegExp section and the 15.10.1 grammar rejects these (IdentityEscape excludes IdentifierPart; a DecimalEscape beyond NCapturingParens is an error per 15.10.2.9). NuXJS implements the normative 5.1 grammar and throws SyntaxError, which 7.8.5 makes an early error."
+	},
 	"annexB/built-ins/String/prototype/anchor/B.2.3.2": {
 		"category": "bad_test"
 	},
@@ -147,6 +175,10 @@
 	"built-ins/Array/prototype/S15.4.3.1_A4": {
 		"category": "bad_test"
 	},
+	"built-ins/Array/prototype/concat/S15.4.4.4_A4.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
 	"built-ins/Array/prototype/concat/S15.4.4.4_A4.3": {
 		"category": "bad_test"
 	},
@@ -154,9 +186,17 @@
 		"category": "not_es51",
 		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue); ES2015 replaced it with ToLength, which clamps negatives to 0 and does not wrap at 2^32. This test asserts the ToLength result under an es5id. Verified: substituting the ToLength value for the object's length makes NuXJS pass it."
 	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-14": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
 	"built-ins/Array/prototype/every/15.4.4.16-3-25": {
 		"category": "not_es51",
 		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue); ES2015 replaced it with ToLength, which clamps negatives to 0 and does not wrap at 2^32. This test asserts the ToLength result under an es5id. Verified: substituting the ToLength value for the object's length makes NuXJS pass it."
+	},
+	"built-ins/Array/prototype/every/15.4.4.16-3-29": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
 	},
 	"built-ins/Array/prototype/every/15.4.4.16-3-7": {
 		"category": "not_es51",
@@ -194,9 +234,21 @@
 		"category": "not_es51",
 		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue); ES2015 replaced it with ToLength, which clamps negatives to 0 and does not wrap at 2^32. This test asserts the ToLength result under an es5id. Verified: substituting the ToLength value for the object's length makes NuXJS pass it."
 	},
+	"built-ins/Array/prototype/indexOf/15.4.4.14-3-14": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
 	"built-ins/Array/prototype/indexOf/15.4.4.14-3-25": {
 		"category": "not_es51",
 		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue); ES2015 replaced it with ToLength, which clamps negatives to 0 and does not wrap at 2^32. This test asserts the ToLength result under an es5id. Verified: substituting the ToLength value for the object's length makes NuXJS pass it."
+	},
+	"built-ins/Array/prototype/indexOf/15.4.4.14-3-28": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/indexOf/15.4.4.14-3-29": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
 	},
 	"built-ins/Array/prototype/indexOf/15.4.4.14-3-7": {
 		"category": "not_es51",
@@ -205,6 +257,10 @@
 	"built-ins/Array/prototype/indexOf/15.4.4.14-3-8": {
 		"category": "not_es51",
 		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue); ES2015 replaced it with ToLength, which clamps negatives to 0 and does not wrap at 2^32. This test asserts the ToLength result under an es5id. Verified: substituting the ToLength value for the object's length makes NuXJS pass it."
+	},
+	"built-ins/Array/prototype/join/S15.4.4.5_A4_T3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
 	},
 	"built-ins/Array/prototype/join/S15.4.4.5_A6.2": {
 		"category": "bad_test"
@@ -220,6 +276,10 @@
 		"category": "not_es51",
 		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue); ES2015 replaced it with ToLength, which clamps negatives to 0 and does not wrap at 2^32. This test asserts the ToLength result under an es5id. Verified: substituting the ToLength value for the object's length makes NuXJS pass it."
 	},
+	"built-ins/Array/prototype/lastIndexOf/15.4.4.15-3-28": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
 	"built-ins/Array/prototype/lastIndexOf/15.4.4.15-3-7": {
 		"category": "not_es51",
 		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue); ES2015 replaced it with ToLength, which clamps negatives to 0 and does not wrap at 2^32. This test asserts the ToLength result under an es5id. Verified: substituting the ToLength value for the object's length makes NuXJS pass it."
@@ -228,13 +288,65 @@
 		"category": "not_es51",
 		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue); ES2015 replaced it with ToLength, which clamps negatives to 0 and does not wrap at 2^32. This test asserts the ToLength result under an es5id. Verified: substituting the ToLength value for the object's length makes NuXJS pass it."
 	},
+	"built-ins/Array/prototype/map/15.4.4.19-3-14": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
 	"built-ins/Array/prototype/map/15.4.4.19-3-25": {
 		"category": "not_es51",
 		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue); ES2015 replaced it with ToLength, which clamps negatives to 0 and does not wrap at 2^32. This test asserts the ToLength result under an es5id. Verified: substituting the ToLength value for the object's length makes NuXJS pass it."
 	},
+	"built-ins/Array/prototype/map/15.4.4.19-3-28": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/map/15.4.4.19-3-29": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
 	"built-ins/Array/prototype/map/15.4.4.19-3-7": {
 		"category": "not_es51",
 		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue); ES2015 replaced it with ToLength, which clamps negatives to 0 and does not wrap at 2^32. This test asserts the ToLength result under an es5id. Verified: substituting the ToLength value for the object's length makes NuXJS pass it."
+	},
+	"built-ins/Array/prototype/map/15.4.4.19-3-8": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/pop/S15.4.4.6_A2_T2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/pop/S15.4.4.6_A3_T1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/pop/S15.4.4.6_A3_T2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/pop/S15.4.4.6_A3_T3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/pop/S15.4.4.6_A5.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Array/prototype/push/S15.4.4.7_A2_T2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/push/S15.4.4.7_A4_T1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/push/S15.4.4.7_A4_T3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/push/S15.4.4.7_A6.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
 	},
 	"built-ins/Array/prototype/reduce/15.4.4.21-3-12": {
 		"category": "not_es51",
@@ -260,13 +372,57 @@
 		"category": "not_es51",
 		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue); ES2015 replaced it with ToLength, which clamps negatives to 0 and does not wrap at 2^32. This test asserts the ToLength result under an es5id. Verified: substituting the ToLength value for the object's length makes NuXJS pass it."
 	},
+	"built-ins/Array/prototype/reverse/S15.4.4.8_A3_T3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/reverse/S15.4.4.8_A5.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Array/prototype/shift/S15.4.4.9_A3_T3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/shift/S15.4.4.9_A5.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Array/prototype/slice/S15.4.4.10_A3_T1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/slice/S15.4.4.10_A3_T2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/slice/S15.4.4.10_A3_T3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/slice/S15.4.4.10_A5.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
 	"built-ins/Array/prototype/some/15.4.4.17-3-12": {
 		"category": "not_es51",
 		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue); ES2015 replaced it with ToLength, which clamps negatives to 0 and does not wrap at 2^32. This test asserts the ToLength result under an es5id. Verified: substituting the ToLength value for the object's length makes NuXJS pass it."
 	},
+	"built-ins/Array/prototype/some/15.4.4.17-3-14": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
 	"built-ins/Array/prototype/some/15.4.4.17-3-25": {
 		"category": "not_es51",
 		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue); ES2015 replaced it with ToLength, which clamps negatives to 0 and does not wrap at 2^32. This test asserts the ToLength result under an es5id. Verified: substituting the ToLength value for the object's length makes NuXJS pass it."
+	},
+	"built-ins/Array/prototype/some/15.4.4.17-3-28": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/some/15.4.4.17-3-29": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
 	},
 	"built-ins/Array/prototype/some/15.4.4.17-3-7": {
 		"category": "not_es51",
@@ -275,6 +431,42 @@
 	"built-ins/Array/prototype/some/15.4.4.17-3-8": {
 		"category": "not_es51",
 		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue); ES2015 replaced it with ToLength, which clamps negatives to 0 and does not wrap at 2^32. This test asserts the ToLength result under an es5id. Verified: substituting the ToLength value for the object's length makes NuXJS pass it."
+	},
+	"built-ins/Array/prototype/sort/S15.4.4.11_A4_T3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/sort/S15.4.4.11_A7.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Array/prototype/splice/S15.4.4.12_A3_T1": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/splice/S15.4.4.12_A3_T3": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/splice/S15.4.4.12_A5.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Array/prototype/toLocaleString/S15.4.4.3_A4.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Array/prototype/toString/S15.4.4.2_A4.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Array/prototype/unshift/S15.4.4.13_A3_T2": {
+		"category": "not_es51",
+		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue), which wraps at 2^32 and sends negatives, NaN and Infinity through modular arithmetic; ES2015 replaced it with ToLength (and RangeError past 2^32-1 in ArrayCreate). The test asserts the ToLength numbers; NuXJS's actuals in the failure output are exactly the ToUint32 numbers (e.g. push with length -1 returns ToUint32(-1)+3 = 4294967298 where the test wants 3)."
+	},
+	"built-ins/Array/prototype/unshift/S15.4.4.13_A5.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
 	},
 	"built-ins/Date/S15.9.3.1_A5_T1": {
 		"category": "bad_test",
@@ -299,6 +491,182 @@
 	"built-ins/Date/S15.9.3.1_A5_T6": {
 		"category": "bad_test",
 		"reason": "Hardcodes UTC-environment expectations for the local-components constructor (e.g. new Date(1899, 11) === -2211638400000 is only true when local time IS UTC); NuXJS answers byte-identically to V8 in any zone, so the engine's 15.9.3.1 pipeline is right and the Sputnik test is environment-bound."
+	},
+	"built-ins/Date/UTC/S15.9.4.3_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/parse/S15.9.4.2_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/constructor/S15.9.5.1_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getDate/S15.9.5.14_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getDay/S15.9.5.16_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getFullYear/S15.9.5.10_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getHours/S15.9.5.18_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getMilliseconds/S15.9.5.24_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getMinutes/S15.9.5.20_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getMonth/S15.9.5.12_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getSeconds/S15.9.5.22_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getTime/S15.9.5.9_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getTimezoneOffset/S15.9.5.26_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getUTCDate/S15.9.5.15_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getUTCDay/S15.9.5.17_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getUTCFullYear/S15.9.5.11_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getUTCHours/S15.9.5.19_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getUTCMilliseconds/S15.9.5.25_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getUTCMinutes/S15.9.5.21_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getUTCMonth/S15.9.5.13_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/getUTCSeconds/S15.9.5.23_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/setDate/S15.9.5.36_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/setFullYear/S15.9.5.40_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/setHours/S15.9.5.34_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/setMilliseconds/S15.9.5.28_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/setMinutes/S15.9.5.32_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/setMonth/S15.9.5.38_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/setSeconds/S15.9.5.30_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/setTime/S15.9.5.27_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/setUTCDate/S15.9.5.37_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/setUTCFullYear/S15.9.5.41_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/setUTCHours/S15.9.5.35_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/setUTCMilliseconds/S15.9.5.29_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/setUTCMinutes/S15.9.5.33_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/setUTCMonth/S15.9.5.39_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/setUTCSeconds/S15.9.5.31_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/toDateString/S15.9.5.3_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/toLocaleDateString/S15.9.5.6_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/toLocaleString/S15.9.5.5_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/toLocaleTimeString/S15.9.5.7_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/toString/S15.9.5.2_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/toTimeString/S15.9.5.4_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/toUTCString/S15.9.5.42_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Date/prototype/valueOf/S15.9.5.8_A3_T2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
 	},
 	"built-ins/Error/prototype/S15.11.4_A2": {
 		"category": "bad_test"
@@ -327,8 +695,20 @@
 		"category": "not_es51",
 		"reason": "Expects a bound function's length configurable: true per ES2015; 15.3.4.5 (15) plus the clause 15 preamble make it non-configurable in 5.1."
 	},
+	"built-ins/Function/prototype/call/S15.3.4.4_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Function/prototype/toString/S15.3.4.2_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
 	"built-ins/GeneratorFunction/instance-restricted-properties": {
 		"category": "not_es51"
+	},
+	"built-ins/Math/round/S15.8.2.15_A7": {
+		"category": "not_es51",
+		"reason": "Checks #4-#5 build their operands from Number.EPSILON, an ES2015 addition (20.1.2.1) that does not exist in 5.1, so x becomes NaN and the assertions are vacuously wrong under any conforming 5.1 engine. Checks #1-#3 (the -0 results 15.8.2.15 mandates) all pass in NuXJS."
 	},
 	"built-ins/Number/S9.3.1_A2": {
 		"category": "by_design"
@@ -435,6 +815,30 @@
 		"category": "not_es51",
 		"reason": "ES5.1 15.2.3.2 step 1 throws a TypeError when Type(O) is not Object, so `Object.getPrototypeOf` on a primitive is a TypeError for this edition. A later edition applies ToObject to the argument instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not. This one also asserts the coerced result is the wrapper prototype, which ES5.1 never reaches."
 	},
+	"built-ins/Object/getPrototypeOf/15.2.3.2-2-12": {
+		"category": "not_es51",
+		"reason": "Asserts Object.getPrototypeOf(NativeError) === Error, the ES2015 change that made NativeError constructors extend Error; ES5.1 15.11.7.5 says a NativeError constructor's [[Prototype]] is the Function prototype object, which is exactly what NuXJS returns."
+	},
+	"built-ins/Object/getPrototypeOf/15.2.3.2-2-13": {
+		"category": "not_es51",
+		"reason": "Asserts Object.getPrototypeOf(NativeError) === Error, the ES2015 change that made NativeError constructors extend Error; ES5.1 15.11.7.5 says a NativeError constructor's [[Prototype]] is the Function prototype object, which is exactly what NuXJS returns."
+	},
+	"built-ins/Object/getPrototypeOf/15.2.3.2-2-14": {
+		"category": "not_es51",
+		"reason": "Asserts Object.getPrototypeOf(NativeError) === Error, the ES2015 change that made NativeError constructors extend Error; ES5.1 15.11.7.5 says a NativeError constructor's [[Prototype]] is the Function prototype object, which is exactly what NuXJS returns."
+	},
+	"built-ins/Object/getPrototypeOf/15.2.3.2-2-15": {
+		"category": "not_es51",
+		"reason": "Asserts Object.getPrototypeOf(NativeError) === Error, the ES2015 change that made NativeError constructors extend Error; ES5.1 15.11.7.5 says a NativeError constructor's [[Prototype]] is the Function prototype object, which is exactly what NuXJS returns."
+	},
+	"built-ins/Object/getPrototypeOf/15.2.3.2-2-16": {
+		"category": "not_es51",
+		"reason": "Asserts Object.getPrototypeOf(NativeError) === Error, the ES2015 change that made NativeError constructors extend Error; ES5.1 15.11.7.5 says a NativeError constructor's [[Prototype]] is the Function prototype object, which is exactly what NuXJS returns."
+	},
+	"built-ins/Object/getPrototypeOf/15.2.3.2-2-17": {
+		"category": "not_es51",
+		"reason": "Asserts Object.getPrototypeOf(NativeError) === Error, the ES2015 change that made NativeError constructors extend Error; ES5.1 15.11.7.5 says a NativeError constructor's [[Prototype]] is the Function prototype object, which is exactly what NuXJS returns."
+	},
 	"built-ins/Object/isExtensible/15.2.3.13-1": {
 		"category": "not_es51",
 		"reason": "ES5.1 15.2.3.13 step 1 throws a TypeError when Type(O) is not Object, so `Object.isExtensible` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
@@ -491,6 +895,18 @@
 		"category": "not_es51",
 		"reason": "ES5.1 15.2.3.14 step 1 throws a TypeError when Type(O) is not Object, so `Object.keys` on a primitive is a TypeError for this edition. A later edition applies ToObject to the argument instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
 	},
+	"built-ins/Object/keys/15.2.3.14-4-1": {
+		"category": "by_design",
+		"reason": "Pins definition order for named properties; 15.2.3.14 leaves the order implementation-defined in 5.1 (the NOTE binds only step 5 to for-in's order, and NuXJS's keys IS a for-in loop, so they always agree). NuXJS enumerates its hash table's bucket order."
+	},
+	"built-ins/Object/keys/15.2.3.14-5-13": {
+		"category": "by_design",
+		"reason": "Pins ascending integer-index order, the ES2015 [[OwnPropertyKeys]] rule; 15.2.3.14 leaves order implementation-defined in 5.1 and NuXJS returns its hash table's bucket order for sparse indices, identical to its own for-in as the clause's NOTE asks."
+	},
+	"built-ins/Object/keys/15.2.3.14-6-6": {
+		"category": "by_design",
+		"reason": "Requires enumeration order of the global object to be stable across two separate walks with property writes in between. NuXJS's Table self-organizes: find() swaps a collision-displaced bucket one slot toward its home on each successful lookup (NuXJS.cpp Table::find), so accesses can transpose adjacent names between walks. Each single walk is consistent - keys is literally a for-in loop, satisfying 15.2.3.14's NOTE - and 12.6.4 leaves the order itself unspecified in 5.1."
+	},
 	"built-ins/Object/preventExtensions/15.2.3.10-1": {
 		"category": "not_es51",
 		"reason": "ES5.1 15.2.3.10 step 1 throws a TypeError when Type(O) is not Object, so `Object.preventExtensions` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
@@ -510,6 +926,30 @@
 	"built-ins/Object/preventExtensions/15.2.3.10-1-4": {
 		"category": "not_es51",
 		"reason": "ES5.1 15.2.3.10 step 1 throws a TypeError when Type(O) is not Object, so `Object.preventExtensions` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Object/prototype/isPrototypeOf/S15.2.4.6_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Object/prototype/propertyIsEnumerable/S15.2.4.7_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Object/prototype/toLocaleString/S15.2.4.3_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Object/prototype/toString/S15.2.4.2_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/Object/prototype/valueOf/S15.2.4.4_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
 	},
 	"built-ins/Object/seal/15.2.3.8-1": {
 		"category": "not_es51",
@@ -531,8 +971,36 @@
 		"category": "not_es51",
 		"reason": "ES5.1 15.2.3.8 step 1 throws a TypeError when Type(O) is not Object, so `Object.seal` on a primitive is a TypeError for this edition. A later edition returns without requiring an object instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
 	},
+	"built-ins/RegExp/15.10.4.1-1": {
+		"category": "not_es51",
+		"reason": "Asserts ES2015 21.2.3.1: a RegExp pattern with defined flags is accepted (invalid flags then raising SyntaxError). ES5.1 15.10.4.1 step 1 instead mandates 'throw a TypeError exception' the moment pattern is a RegExp and flags is not undefined - exactly what NuXJS throws."
+	},
+	"built-ins/RegExp/S15.10.2.12_A1_T1": {
+		"category": "by_design",
+		"reason": "\\s is WhiteSpace+LineTerminator per 15.10.2.12; 7.2 <USP> is Unicode Zs and clause 2 sets the floor at Unicode 3.0 or later. Segment #6 pins the circa-2011 Zs set where U+180E was Zs; it is Cf since Unicode 6.3, NuXJS's /\\s/.test(\\u180E) answers false, and current V8 answers byte-identically (both fail the test)."
+	},
+	"built-ins/RegExp/S15.10.2.12_A2_T1": {
+		"category": "by_design",
+		"reason": "The \\S complement of the same segment: the test pins circa-2011 Zs where U+180E was whitespace. NuXJS treats U+180E as non-space (Cf since Unicode 6.3), matching current V8 exactly; clause 2 permits any Unicode 3.0-or-later table."
+	},
 	"built-ins/RegExp/S15.10.2.8_A3_T15": {
 		"category": "by_design"
+	},
+	"built-ins/RegExp/S15.10.3.1_A2_T1": {
+		"category": "not_es51",
+		"reason": "Asserts ES2015 21.2.3.1: a RegExp pattern with defined flags is accepted (invalid flags then raising SyntaxError). ES5.1 15.10.4.1 step 1 instead mandates 'throw a TypeError exception' the moment pattern is a RegExp and flags is not undefined - exactly what NuXJS throws."
+	},
+	"built-ins/RegExp/S15.10.3.1_A2_T2": {
+		"category": "not_es51",
+		"reason": "Asserts ES2015 21.2.3.1: a RegExp pattern with defined flags is accepted (invalid flags then raising SyntaxError). ES5.1 15.10.4.1 step 1 instead mandates 'throw a TypeError exception' the moment pattern is a RegExp and flags is not undefined - exactly what NuXJS throws."
+	},
+	"built-ins/RegExp/S15.10.4.1_A2_T1": {
+		"category": "not_es51",
+		"reason": "Asserts ES2015 21.2.3.1: a RegExp pattern with defined flags is accepted (invalid flags then raising SyntaxError). ES5.1 15.10.4.1 step 1 instead mandates 'throw a TypeError exception' the moment pattern is a RegExp and flags is not undefined - exactly what NuXJS throws."
+	},
+	"built-ins/RegExp/S15.10.4.1_A2_T2": {
+		"category": "not_es51",
+		"reason": "Asserts ES2015 21.2.3.1: a RegExp pattern with defined flags is accepted (invalid flags then raising SyntaxError). ES5.1 15.10.4.1 step 1 instead mandates 'throw a TypeError exception' the moment pattern is a RegExp and flags is not undefined - exactly what NuXJS throws."
 	},
 	"built-ins/RegExp/prototype/15.10.6": {
 		"category": "not_es51",
@@ -626,17 +1094,29 @@
 	"built-ins/String/prototype/charAt/S15.5.4.4_A10": {
 		"category": "bad_test"
 	},
+	"built-ins/String/prototype/charAt/S15.5.4.4_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
 	"built-ins/String/prototype/charAt/name": {
 		"category": "bad_test"
 	},
 	"built-ins/String/prototype/charCodeAt/S15.5.4.5_A10": {
 		"category": "bad_test"
 	},
+	"built-ins/String/prototype/charCodeAt/S15.5.4.5_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
 	"built-ins/String/prototype/charCodeAt/name": {
 		"category": "bad_test"
 	},
 	"built-ins/String/prototype/concat/S15.5.4.6_A10": {
 		"category": "bad_test"
+	},
+	"built-ins/String/prototype/concat/S15.5.4.6_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
 	},
 	"built-ins/String/prototype/concat/name": {
 		"category": "bad_test"
@@ -683,11 +1163,19 @@
 	"built-ins/String/prototype/indexOf/S15.5.4.7_A1_T11": {
 		"category": "bad_test"
 	},
+	"built-ins/String/prototype/indexOf/S15.5.4.7_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
 	"built-ins/String/prototype/indexOf/name": {
 		"category": "bad_test"
 	},
 	"built-ins/String/prototype/lastIndexOf/S15.5.4.8_A10": {
 		"category": "bad_test"
+	},
+	"built-ins/String/prototype/lastIndexOf/S15.5.4.8_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
 	},
 	"built-ins/String/prototype/lastIndexOf/name": {
 		"category": "bad_test"
@@ -695,11 +1183,19 @@
 	"built-ins/String/prototype/localeCompare/S15.5.4.9_A10": {
 		"category": "bad_test"
 	},
+	"built-ins/String/prototype/localeCompare/S15.5.4.9_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
 	"built-ins/String/prototype/localeCompare/name": {
 		"category": "bad_test"
 	},
 	"built-ins/String/prototype/match/S15.5.4.10_A1_T3": {
 		"category": "bad_test"
+	},
+	"built-ins/String/prototype/match/S15.5.4.10_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
 	},
 	"built-ins/String/prototype/match/length": {
 		"category": "bad_test"
@@ -713,17 +1209,29 @@
 	"built-ins/String/prototype/replace/S15.5.4.11_A12": {
 		"category": "by_design"
 	},
+	"built-ins/String/prototype/replace/S15.5.4.11_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
 	"built-ins/String/prototype/replace/name": {
 		"category": "bad_test"
 	},
 	"built-ins/String/prototype/search/S15.5.4.12_A10": {
 		"category": "bad_test"
 	},
+	"built-ins/String/prototype/search/S15.5.4.12_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
 	"built-ins/String/prototype/search/name": {
 		"category": "bad_test"
 	},
 	"built-ins/String/prototype/slice/S15.5.4.13_A10": {
 		"category": "bad_test"
+	},
+	"built-ins/String/prototype/slice/S15.5.4.13_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
 	},
 	"built-ins/String/prototype/slice/name": {
 		"category": "bad_test"
@@ -734,11 +1242,19 @@
 	"built-ins/String/prototype/split/S15.5.4.14_A1_T3": {
 		"category": "bad_test"
 	},
+	"built-ins/String/prototype/split/S15.5.4.14_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
 	"built-ins/String/prototype/split/name": {
 		"category": "bad_test"
 	},
 	"built-ins/String/prototype/substring/S15.5.4.15_A10": {
 		"category": "bad_test"
+	},
+	"built-ins/String/prototype/substring/S15.5.4.15_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
 	},
 	"built-ins/String/prototype/substring/name": {
 		"category": "bad_test"
@@ -746,11 +1262,23 @@
 	"built-ins/String/prototype/toLocaleLowerCase/S15.5.4.17_A10": {
 		"category": "bad_test"
 	},
+	"built-ins/String/prototype/toLocaleLowerCase/S15.5.4.17_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
 	"built-ins/String/prototype/toLocaleLowerCase/name": {
 		"category": "bad_test"
 	},
+	"built-ins/String/prototype/toLocaleLowerCase/special_casing_conditional": {
+		"category": "by_design",
+		"reason": "Demands SpecialCasing.txt's conditional Final_Sigma rule. NuXJS's shared case tables implement every unconditional SpecialCasing mapping (SS, ligatures, iota subscripts) but deliberately not the one conditional rule, which would need Cased and Case_Ignorable tables for a single character's benefit; documented in the compatibility notes."
+	},
 	"built-ins/String/prototype/toLocaleUpperCase/S15.5.4.19_A10": {
 		"category": "bad_test"
+	},
+	"built-ins/String/prototype/toLocaleUpperCase/S15.5.4.19_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
 	},
 	"built-ins/String/prototype/toLocaleUpperCase/name": {
 		"category": "bad_test"
@@ -760,6 +1288,10 @@
 	},
 	"built-ins/String/prototype/toLowerCase/S15.5.4.16_A10": {
 		"category": "bad_test"
+	},
+	"built-ins/String/prototype/toLowerCase/S15.5.4.16_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
 	},
 	"built-ins/String/prototype/toLowerCase/name": {
 		"category": "bad_test"
@@ -775,6 +1307,10 @@
 	},
 	"built-ins/String/prototype/toUpperCase/S15.5.4.18_A10": {
 		"category": "bad_test"
+	},
+	"built-ins/String/prototype/toUpperCase/S15.5.4.18_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
 	},
 	"built-ins/String/prototype/toUpperCase/name": {
 		"category": "bad_test"
@@ -808,6 +1344,10 @@
 	"built-ins/String/prototype/valueOf/name": {
 		"category": "bad_test"
 	},
+	"built-ins/eval/S15.1.2.1_A4.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
 	"built-ins/eval/S15.1.2.1_A4.3": {
 		"category": "bad_test"
 	},
@@ -820,8 +1360,16 @@
 	"built-ins/global/S10.2.3_A1.3_T2": {
 		"category": "bad_test"
 	},
+	"built-ins/isFinite/S15.1.2.5_A2.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
 	"built-ins/isFinite/S15.1.2.5_A2.3": {
 		"category": "bad_test"
+	},
+	"built-ins/isNaN/S15.1.2.4_A2.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
 	},
 	"built-ins/isNaN/S15.1.2.4_A2.3": {
 		"category": "bad_test"
@@ -829,8 +1377,20 @@
 	"built-ins/parseFloat/S15.1.2.3_A2_T10": {
 		"category": "by_design"
 	},
+	"built-ins/parseFloat/S15.1.2.3_A7.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
 	"built-ins/parseFloat/S15.1.2.3_A7.3": {
 		"category": "bad_test"
+	},
+	"built-ins/parseInt/S15.1.2.2_A2_T10": {
+		"category": "by_design",
+		"reason": "15.1.2.2 skips StrWhiteSpaceChar, whose <USP> is Unicode Zs; the test's USP list includes U+180E from the circa-2011 table. U+180E is Cf since Unicode 6.3; NuXJS and current V8 both refuse it as whitespace and fail this test identically. Clause 2 permits any Unicode 3.0-or-later table."
+	},
+	"built-ins/parseInt/S15.1.2.2_A9.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
 	},
 	"built-ins/parseInt/S15.1.2.2_A9.3": {
 		"category": "bad_test"
@@ -1003,6 +1563,38 @@
 	"language/expressions/compound-assignment/S11.13.2_A7.9_T2": {
 		"category": "not_es51"
 	},
+	"language/expressions/object/11.1.5_4-4-b-1": {
+		"category": "not_es51",
+		"reason": "Asserts no SyntaxError for data/accessor mixes and duplicate get/set in an object literal - the ES2015 relaxation. ES5.1 11.1.5 step 4 (conditions 2-4, the b/c/d of the test's own id) mandates SyntaxError in ANY mode for exactly these shapes, quoted verbatim in the clause; NuXJS throws as 5.1 requires."
+	},
+	"language/expressions/object/11.1.5_4-4-b-2": {
+		"category": "not_es51",
+		"reason": "Asserts no SyntaxError for data/accessor mixes and duplicate get/set in an object literal - the ES2015 relaxation. ES5.1 11.1.5 step 4 (conditions 2-4, the b/c/d of the test's own id) mandates SyntaxError in ANY mode for exactly these shapes, quoted verbatim in the clause; NuXJS throws as 5.1 requires."
+	},
+	"language/expressions/object/11.1.5_4-4-c-1": {
+		"category": "not_es51",
+		"reason": "Asserts no SyntaxError for data/accessor mixes and duplicate get/set in an object literal - the ES2015 relaxation. ES5.1 11.1.5 step 4 (conditions 2-4, the b/c/d of the test's own id) mandates SyntaxError in ANY mode for exactly these shapes, quoted verbatim in the clause; NuXJS throws as 5.1 requires."
+	},
+	"language/expressions/object/11.1.5_4-4-c-2": {
+		"category": "not_es51",
+		"reason": "Asserts no SyntaxError for data/accessor mixes and duplicate get/set in an object literal - the ES2015 relaxation. ES5.1 11.1.5 step 4 (conditions 2-4, the b/c/d of the test's own id) mandates SyntaxError in ANY mode for exactly these shapes, quoted verbatim in the clause; NuXJS throws as 5.1 requires."
+	},
+	"language/expressions/object/11.1.5_4-4-d-1": {
+		"category": "not_es51",
+		"reason": "Asserts no SyntaxError for data/accessor mixes and duplicate get/set in an object literal - the ES2015 relaxation. ES5.1 11.1.5 step 4 (conditions 2-4, the b/c/d of the test's own id) mandates SyntaxError in ANY mode for exactly these shapes, quoted verbatim in the clause; NuXJS throws as 5.1 requires."
+	},
+	"language/expressions/object/11.1.5_4-4-d-2": {
+		"category": "not_es51",
+		"reason": "Asserts no SyntaxError for data/accessor mixes and duplicate get/set in an object literal - the ES2015 relaxation. ES5.1 11.1.5 step 4 (conditions 2-4, the b/c/d of the test's own id) mandates SyntaxError in ANY mode for exactly these shapes, quoted verbatim in the clause; NuXJS throws as 5.1 requires."
+	},
+	"language/expressions/object/11.1.5_4-4-d-3": {
+		"category": "not_es51",
+		"reason": "Asserts no SyntaxError for data/accessor mixes and duplicate get/set in an object literal - the ES2015 relaxation. ES5.1 11.1.5 step 4 (conditions 2-4, the b/c/d of the test's own id) mandates SyntaxError in ANY mode for exactly these shapes, quoted verbatim in the clause; NuXJS throws as 5.1 requires."
+	},
+	"language/expressions/object/11.1.5_4-4-d-4": {
+		"category": "not_es51",
+		"reason": "Asserts no SyntaxError for data/accessor mixes and duplicate get/set in an object literal - the ES2015 relaxation. ES5.1 11.1.5 step 4 (conditions 2-4, the b/c/d of the test's own id) mandates SyntaxError in ANY mode for exactly these shapes, quoted verbatim in the clause; NuXJS throws as 5.1 requires."
+	},
 	"language/expressions/object/11.1.5_5-4-1": {
 		"category": "bad_test"
 	},
@@ -1029,6 +1621,22 @@
 	},
 	"language/expressions/prefix-increment/S11.4.4_A6_T2": {
 		"category": "by_design"
+	},
+	"language/literals/regexp/S7.8.5_A1.4_T2": {
+		"category": "not_es51",
+		"reason": "Evals /\\c/ literals for every BMP char expecting them all to parse; 7.8.5 makes a 15.10.4.1 rejection an early error, and the 15.10.1 grammar rejects IdentityEscape of any IdentifierPart char, so a strict-grammar 5.1 engine must throw for most of the loop. Passing requires the pattern extensions ES2015 B.1.4 later codified; NuXJS implements the normative 5.1 grammar only."
+	},
+	"language/literals/regexp/S7.8.5_A2.4_T2": {
+		"category": "not_es51",
+		"reason": "Evals /\\c/ literals for every BMP char expecting them all to parse; 7.8.5 makes a 15.10.4.1 rejection an early error, and the 15.10.1 grammar rejects IdentityEscape of any IdentifierPart char, so a strict-grammar 5.1 engine must throw for most of the loop. Passing requires the pattern extensions ES2015 B.1.4 later codified; NuXJS implements the normative 5.1 grammar only."
+	},
+	"language/statements/for/S12.6.3_A9": {
+		"category": "not_es51",
+		"reason": "Expects the eval of a broken-out for loop to be undefined - the ES2015 answer, where 13.6.7 wraps an if statement's completion in UpdateEmpty(stmt, undefined) so the break carries undefined. Under ES5.1 12.5 an abrupt if-completion propagates untouched with an empty value, and 12.6.3 then returns (normal, V, empty) with V = 4 from the last count++ - the value NuXJS returns, and the very value the test's own $ERROR text quotes ('__evaluated === 4')."
+	},
+	"language/statements/for/S12.6.3_A9.1": {
+		"category": "not_es51",
+		"reason": "Expects the eval of a broken-out for loop to be undefined - the ES2015 answer, where 13.6.7 wraps an if statement's completion in UpdateEmpty(stmt, undefined) so the break carries undefined. Under ES5.1 12.5 an abrupt if-completion propagates untouched with an empty value, and 12.6.3 then returns (normal, V, empty) with V = 4 from the last count++ - the value NuXJS returns, and the very value the test's own $ERROR text quotes ('__evaluated === 4')."
 	},
 	"language/statements/function/13.2-15-1": {
 		"category": "not_es51",
