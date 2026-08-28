@@ -773,8 +773,8 @@ class StringWrapper : public JSObject {
 			for (UInt32 i = 0; i < len; ++i) {
 				out.push(Value(String::fromInt(heap, static_cast<Int32>(i))));	// 15.5.5.2 character indices
 			}
+			super::collectOwnPropertyNames(rt, out);	// extra own properties next, length last: the de facto order
 			out.push(Value(&LENGTH_STRING));
-			super::collectOwnPropertyNames(rt, out);	// any extra own properties in the table
 		}
 	#endif
 
