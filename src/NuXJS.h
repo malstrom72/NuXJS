@@ -697,14 +697,11 @@ class RangeEnumerator : public Enumerator {
 		Int32 index;
 };
 
-/**
-	JoiningEnumerator chains two enumerators, yielding all properties from one followed by another. Used to join
-	property names in prototype chains and more.
-**/
 #if NUXJS_ES5
 /**
 	Walks a prototype chain for 12.6.4: own names first, then each prototype level, a name suppressed once any
-	nearer level holds it as an own property - enumerable or not, shadowing ignores [[Enumerable]].
+	nearer level holds it as an own property - enumerable or not, shadowing ignores [[Enumerable]]. Kept apart
+	from JoiningEnumerator below: no wrapper per level, and each level's own enumerator is made only on arrival.
 **/
 class ShadowingChainEnumerator : public Enumerator {
 	public:
@@ -725,8 +722,12 @@ class ShadowingChainEnumerator : public Enumerator {
 			super::gcMarkReferences(heap);
 		}
 };
-
 #endif
+
+/**
+	JoiningEnumerator chains two enumerators, yielding all properties from one followed by another. Used to join
+	property names in prototype chains and more.
+**/
 class JoiningEnumerator : public Enumerator {
 	public:
 		typedef Enumerator super;

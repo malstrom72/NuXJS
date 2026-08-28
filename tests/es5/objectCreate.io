@@ -39,3 +39,10 @@
 > try { Object.create(42); } catch (e) { print(e.name) }
 < TypeError
 -
+// 15.2.3.5 (4): a present-and-not-undefined bag goes to defineProperties, whose ToObject rejects null;
+// an undefined bag is simply absent.
+> try { Object.create({}, null); } catch (e) { print(e.name) }
+< TypeError
+> print(Object.create({}, undefined) !== null)
+< true
+-

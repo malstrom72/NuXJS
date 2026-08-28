@@ -2225,11 +2225,9 @@ function createErrorConstructor(name, prototype) {
 	defineProperties(Error.prototype, { dontEnum: true }, {
 		message: '',
 //#if ES5
-		toString: unconstructable(function toString() {	// 15.11.4.4 (8-10): an empty name yields the message alone, an empty message the name alone
-			var name = this.name, msg = this.message;
-			name = (name === void 0 ? "Error" : '' + name);
-			msg = (msg === void 0 ? '' : '' + msg);
-			return (name === '' ? msg : (msg === '' ? name : name + ": " + msg));
+		toString: unconstructable(function toString() {	// 15.11.4.4 (8-10): an empty name or message drops its side and the colon
+			var name = (this.name === void 0 ? "Error" : str(this.name)), msg = (this.message === void 0 ? '' : str(this.message));
+			return (name && msg ? name + ": " + msg : name + msg);
 		}),
 //#endif
 //#if !ES5

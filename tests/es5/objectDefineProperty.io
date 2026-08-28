@@ -138,3 +138,12 @@
 < true
 < 2
 -
+// 15.2.3.7 (1): the property bag runs through ToObject, so null and undefined are TypeErrors while a
+// primitive wraps (a number has no own enumerable names, so nothing lands).
+> try { Object.defineProperties({}, null); } catch (e) { print(e.name) }
+< TypeError
+> try { Object.defineProperties({}, undefined); } catch (e) { print(e.name) }
+< TypeError
+> print(Object.keys(Object.defineProperties({}, 42)).length)
+< 0
+-
