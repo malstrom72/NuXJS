@@ -394,9 +394,9 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
       themselves. `getYear` (Annex B §B.2.4) loses the NaN check it had been carrying for want of this.
       (`tests/stdlib/dates.io`, `tests/es5/annexBDate.io`)
 
-- [ ] `Number.prototype.toFixed / toExponential / toPrecision` (§15.7.4): ES5 range checks and rounding verified
-      correct. The one gap left is `toFixed` precision - `(1000000000000000128).toFixed(0)` loses the last digits
-      (the existing TODO in `docs/notes/Todo.md`).
+- [x] `Number.prototype.toFixed / toExponential / toPrecision` (§15.7.4): ES5 range checks verified, and all three
+      round on the double's exact decimal expansion (`9363ec8`, packed eight digits per element in `928eb92`), so
+      `(1000000000000000128).toFixed(0)` keeps every digit. Landed on `main` and merged here.
 - [x] `Date.now` (§15.9.4.4) and a fully generic `Date.prototype.toJSON` (§15.9.5.44) are guarded in `stdlib.js`; the
       base `toJSON` read the receiver's own date value instead of going through ToPrimitive and the receiver's own
       `toISOString`. (`tests/es5/dateES5.io`)
