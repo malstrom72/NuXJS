@@ -1916,7 +1916,7 @@ class Processor : public GCItem {
 			, CHECK_RESOLVE_PROPERTY_OP						// stack: object, name -> object, name	// check coercible, then resolve object
 			, GET_PROPERTY_OP								// stack: object, name -> value
 		#if NUXJS_ES5
-			, GET_METHOD_OP									// stack: value, name -> this_value, function		// full [[Get]] (runs accessors); errors early if not callable
+			, GET_METHOD_OP									// stack: value, name -> this_value, (function | name)	// full [[Get]] (runs accessors); a non-callable result leaves the name for CALL_THIS_OP's throw
 		#endif
 		#if !NUXJS_ES5										// es5 stores via SET_PROPERTY_POP_OP (+ POP), so the setter can run as a frame
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
