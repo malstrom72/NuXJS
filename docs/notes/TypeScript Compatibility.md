@@ -1,12 +1,22 @@
 # TypeScript Compatibility
 
-NuXJS targets ECMAScript 3 with a few ES5 additions. When compiling TypeScript code for the engine, emit ES3 (or ES5) output. The recommended compiler is **TypeScript 4.4.4**: it is the last release that down-levels untagged template literals into plain `+` string concatenations. Starting with 4.5, TypeScript instead emits `String.prototype.concat()` calls (e.g. `"Hello, ".concat(name)`). NuXJS does implement `String.prototype.concat`, so that output still runs correctly - but the inline `+` form produced by 4.4.4 is faster on the engine, which is why 4.4.4 is preferred if you want to freely use the `${}` syntax in your sources.
+NuXJS builds in two editions: the **es5 build** (`NUXJS_ES5`) implements ECMAScript 5.1, and the **es3 build**
+implements ECMAScript 3 with a few ES5 additions. When compiling TypeScript code for the engine, emit ES5 output for
+the es5 build, or ES3 output for the es3 build. The recommended compiler is **TypeScript 4.4.4**: it is the last release that down-levels untagged template literals into plain `+` string concatenations. Starting with 4.5, TypeScript instead emits `String.prototype.concat()` calls (e.g. `"Hello, ".concat(name)`). NuXJS does implement `String.prototype.concat`, so that output still runs correctly - but the inline `+` form produced by 4.4.4 is faster on the engine, which is why 4.4.4 is preferred if you want to freely use the `${}` syntax in your sources.
 
 (`--target ES3` itself remained available through TypeScript 5.4 - it was deprecated in 5.0 and stopped having any effect in 5.5 - but the template-literal emit style, not ES3 availability, is the reason for pinning to 4.4.4.)
 
-The file `docs/examples/lib.NuXJS.d.ts` contains a trimmed version of the standard library declarations that match the runtime features of NuXJS. Add it to your build with the `--lib` option to get accurate type checking.
+The declarations are layered the way TypeScript's own `lib.*` files are. `docs/examples/lib.NuXJS.d.ts` contains a
+trimmed version of the standard library declarations matching the **es3 build**; `docs/examples/lib.NuXJS.es5.d.ts`
+re-opens the same interfaces and adds what the **es5 build** provides (`Array.prototype.map`, `Function.prototype.bind`,
+the `Object` reflection statics, `String.prototype.trim`, `Date.now`, the URI handlers, accessor fields in
+`PropertyDescriptor`). Pass the base file alone with `--lib` when targeting the es3 build - calling an es5-only member
+is then a compile error rather than a runtime surprise - or both files when targeting the es5 build.
 
-NuXJS itself does not provide modern built‑ins such as `Object.assign` or `Array.prototype.map`. These helpers are not referenced by `lib.NuXJS.d.ts`, so TypeScript does not require them, but you may want them for compatibility with third‑party code. The following polyfills work well:
+The es5 build provides the full ES5.1 library - `Array.prototype.map`, `Function.prototype.bind`, `Date.now`, the
+`Object` reflection statics and so on - so no polyfills are needed there for ES5-level output. The **es3 build** does
+not provide them, and neither build provides ES6 additions such as `Object.assign` or `Math.sign`; you may want those
+for compatibility with third-party code. The following polyfills work well:
 
 ```ts
 // Simple (not strictly identical) polyfill for ES6 Object.assign

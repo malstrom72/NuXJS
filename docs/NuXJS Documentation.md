@@ -2,7 +2,7 @@
 
 ## Introduction
 
-NuXJS is a sandboxed JavaScript engine implemented in portable C++03. It has been tested with GCC and Clang on x86-64 and ARM, as well as with MSVC on Windows. The core consists of a single `.cpp` file, a single `.h` file, and a `.js` standard library (also available as a `.cpp` array for embedding). It features a fast, stack-based virtual machine, is fully compatible with ECMAScript 3, and includes partial support for useful ECMAScript 5 features like JSON and indexed string access.
+NuXJS is a sandboxed JavaScript engine implemented in portable C++03. It has been tested with GCC and Clang on x86-64 and ARM, as well as with MSVC on Windows. The core consists of a single `.cpp` file, a single `.h` file, and a `.js` standard library (also available as a `.cpp` array for embedding). It features a fast, stack-based virtual machine and builds in two editions: the **es5 build** (`NUXJS_ES5`) implements ECMAScript 5.1 - strict mode, accessors, the full `Object` reflection API and library included - while the **es3 build** is the original, fully ECMAScript 3 compatible core with a handful of ES5 conveniences like JSON and indexed string access.
 
 ## Building NuXJS
 
@@ -14,7 +14,7 @@ Helper scripts are available under `tools/` for building and running the test su
 
 On Windows, use `build.cmd` instead.
 
-This wrapper builds and tests both the `beta` and `release` configurations by invoking `tools/buildAndTest.sh`. Each build runs its own tests. When both complete, the native release REPL is saved as `output/NuXJS`.
+This wrapper builds and tests both editions (es3 and es5) in both the `beta` and `release` configurations by invoking `tools/buildAndTest.sh`; `./build.sh es5 release` selects a single combination (arguments are recognized by value, in any order). Each build runs its own tests - the es5 build additionally runs `tests/es5`, the es3 build `tests/es3only`. When everything completes, the native release REPLs are saved as `output/NuXJS` (es3) and `output/NuXJS_ES5` (es5).
 
 The implementation depends on IEEE-compliant floating-point math. `src/NuXJS.cpp` includes `#error` directives that trigger if `__FAST_MATH__` is defined. Avoid compiler flags like `-Ofast`, `-ffast-math`, or similar, at least for `src/NuXJS.cpp`.
 
@@ -369,56 +369,60 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 
 ## Conformance and Known Limitations
 
-### ES3 deviations
+The **es5 build** (`NUXJS_ES5`) implements ECMAScript 5.1: strict mode, accessor properties, the full 8.12.9
+`[[DefineOwnProperty]]` machinery, the `Object` reflection statics, `Function.prototype.bind`, the Array iteration
+methods, `String.prototype.trim`, the URI handlers, `Date.now` and the rest of the 15.9 additions. Its deviations are
+few, deliberate, and each documented with its rationale in `docs/notes/ECMAScript Compatibility Notes.md`; conformance
+is measured against Test262 (see `docs/Test262 Dashboard.md` and the numbers in the README). The **es3 build** is the
+original, fully ECMAScript 3 compatible core, kept byte-for-byte stable while the es5 build evolves.
 
-- `\0` is interpreted as a null character only when no digit follows it. Octal escapes are not supported: `\1` through `\7`, and `\0` followed by any digit, are rejected with `SyntaxError: Invalid escape sequence` rather than decoded.
+### Deviations shared by both builds
+
+- `\0` is interpreted as a null character only when no digit follows it. Octal escapes are not supported: `\1` through `\7`, and `\0` followed by any digit, are rejected with `SyntaxError: Invalid escape sequence` rather than decoded. This is what the core grammar of both editions says (octal lives in Annex B, which NuXJS does not implement).
 - Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The zero-width no‑break space (`\uFEFF`) counts as white space only in the es5 build, since ES5.1 7.2 lists it and ES3 7.2 does not.
-- Case conversion, identifier classification and the `<USP>` white space class are all derived from Unicode 3.0. ES3 asks for "version 2.1 or later", so this conforms, but it parts company with modern engines in three places. The zero width space (`\u200B`) counts as white space, because it is category Zs in Unicode 3.0 and only became a format character in 4.0.1. `"\u10A0".toLowerCase()` returns its argument unchanged, because Unicode 3.0 made Georgian unicameral, where later versions map it to `\u2D00`. `\u2118` and `\u212E` are rejected in identifiers, because ES3 defines those by Unicode category and both are symbols in Unicode 3.0; ES2015 grandfathered them back in with `Other_ID_Start`.
-- Custom property getters and setters are not implemented.
+- Case conversion, identifier classification and the `<USP>` white space class are all derived from Unicode 3.0. Both editions ask for a minimum version ("2.1 or later" in ES3, "3.0 or later" in ES5.1), so this conforms, but it parts company with modern engines in three places. The zero width space (`\u200B`) counts as white space, because it is category Zs in Unicode 3.0 and only became a format character in 4.0.1. `"\u10A0".toLowerCase()` returns its argument unchanged, because Unicode 3.0 made Georgian unicameral, where later versions map it to `\u2D00`. `\u2118` and `\u212E` are rejected in identifiers, because ES3 defines those by Unicode category and both are symbols in Unicode 3.0; ES2015 grandfathered them back in with `Other_ID_Start`. Case conversion also skips SpecialCasing's conditional Final_Sigma rule (see the compatibility notes).
 - Implicit `valueOf` and `toString` conversions may happen earlier than specified, for example, `v[o]++` only invokes `toString()` once.
-- Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers.
-- The `arguments` object follows ES3 mapping semantics; changing element attributes does not fully emulate the ES5 behaviour.
-- `Object.defineProperty` only accepts plain data descriptors (`value`, `writable`, `enumerable`, `configurable`). Missing
-  fields default to `false`, accessors are ignored, and descriptor invariant checks are not performed - redefining a
-  non-configurable property silently does nothing instead of throwing. The call always returns `undefined`: it neither returns
-  the target object as ES5 specifies nor reports whether the definition succeeded. `Object.getOwnPropertyDescriptor` and
-  `Object.defineProperties` are not implemented.
-- Every created function has a writable and configurable, but *non-enumerable*, `name` property, and its `length` property is read-only and cannot be deleted.
-- Evaluation order of member expressions follows the ES3 order (object and arguments evaluated before selecting the member).
-- When the identifier of a `catch` clause is called as a function, its `this` value is the global object.
-- When the target of an assignment is a plain identifier, the right-hand side is evaluated before that identifier's binding is resolved, so a variable the right-hand side brings into scope becomes the assignment's target (see `tests/unconforming/rightSideBeforeAssignmentRef.io`). This applies to identifier bindings only; a member expression on the left is evaluated in full before the right-hand side, as ES3 11.13.1 requires.
-- In regular expressions the lookahead operators `?=` and `?!` cannot be quantified as in ES3; they behave like the ES5 assertions.
+- Every created function has a writable and configurable, but *non-enumerable*, `name` property (a NuXJS extension; ES5.1 defines no `name`), and its `length` property is read-only and cannot be deleted, as ES5.1 requires.
 - Case-insensitive ranges in regular expressions and zero-length captures inside repeats may not perfectly match other engines.
 - A semicolon is required after `do ... while` statements. This matches the ES3 and ES5 grammar, even though ES6 made the semicolon optional.
 - Creating a numeric property on an *array* can shadow a read-only numeric property in the prototype chain. This falls out of an optimization for array element writes and does not apply to ordinary objects, where the read-only property in the prototype still wins.
+- Own-property enumeration order is the hash table's, not insertion order, and a lookup can transpose adjacent entries (see the compatibility notes).
+- Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers - an ES6 addition, so this conforms to both target editions.
+- Recursive grammar constructs are limited to `MAX_NESTED_COMPILE_DEPTH` (256) levels to avoid a C++ stack overflow; exceeding it raises a `RangeError` at compile time. `JSON.parse` / `JSON.stringify` similarly cap nesting at `MAX_JSON_DEPTH` (61).
 - Several tests under `tests/unconforming` demonstrate additional corner cases.
-- Assigning an object to an array's `length` property is unsupported; attempts throw `RangeError` instead of converting the value.
-- Recursive grammar constructs are limited to `MAX_NESTED_COMPILE_DEPTH` (256) levels to avoid a C++ stack overflow; exceeding it raises a `RangeError` at compile time.
 
-### Partial ES5 features
+### es3 build only
 
-NuXJS implements a subset of ECMAScript 5 functionality that covers the most widely used browser behaviours:
+These are resolved in the es5 build and remain only in the frozen es3 core:
+
+- Custom property getters and setters are not implemented.
+- `Object.defineProperty` only accepts plain data descriptors (`value`, `writable`, `enumerable`, `configurable`). Missing
+  fields default to `false`, accessors are ignored, and descriptor invariant checks are not performed - redefining a
+  non-configurable property silently does nothing instead of throwing. The call always returns `undefined`. `Object.getOwnPropertyDescriptor` and
+  `Object.defineProperties` are not implemented.
+- The `arguments` object follows ES3 mapping semantics; changing element attributes does not fully emulate the ES5 behaviour. Its elements do not appear in `for...in` enumeration, and `Object.prototype.toString` reports `[object Object]` for it where ES5.1 10.6 gives it the class `"Arguments"`.
+- Evaluation order of member expressions follows the ES3 order (object and arguments evaluated before selecting the member); the es5 build resolves the callee before evaluating the arguments, as 11.2.3 requires.
+- When the target of an assignment is a plain identifier, the right-hand side is evaluated before that identifier's binding is resolved, so a variable the right-hand side brings into scope becomes the assignment's target (see `tests/es3only/rightSideBeforeAssignmentRef.io`). This applies to identifier bindings only; a member expression on the left is evaluated in full before the right-hand side, as ES3 11.13.1 requires. The es5 build resolves the target up front and keeps the reference on the value stack.
+- When the identifier of a `catch` clause is called as a function, its `this` value is the global object (ES3 would pass the catch scope object; ES5.1 10.4.3 makes the global - or `undefined` in strict code - the conformant answer, so only the es3 build deviates).
+- In regular expressions the lookahead operators `?=` and `?!` cannot be quantified as in ES3; they behave like the ES5 assertions.
+- Assigning an object to an array's `length` property is unsupported; attempts throw `RangeError` instead of converting the value. The es5 build converts it as 15.4.5.1 requires.
+- `for...in` throws a `TypeError` when the object is `null` or `undefined`, where ES5.1 12.6.4 just skips the loop.
+- Function `prototype` properties are enumerable on user-defined functions, where ES5.1 13.2 makes them `{ DontEnum }`.
+- The URI handlers (`decodeURI` and friends), the Array iteration methods, `Function.prototype.bind`, `String.prototype.trim`, `Date.now`, `Object.keys` and the other reflection statics exist only in the es5 build.
+
+### ES5 features available in the es3 build
+
+The es3 build has always carried a small subset of ES5 conveniences:
 
 - `Array.isArray`.
-- `Object.prototype.hasOwnProperty`.
-- `Object.prototype.isPrototypeOf`.
 - `Object.getPrototypeOf`.
-- `Object.defineProperty` accepts only data descriptors (`value`, `writable`, `enumerable`, `configurable`). Missing fields default to `false`, accessors are ignored, failures return `false` instead of throwing, and descriptor invariants are not enforced.
+- `Object.defineProperty`, with the data-descriptor limitations listed above.
 - `JSON.parse` and `JSON.stringify`.
 - String objects allow indexed access to individual characters.
 - `String.prototype.match` returns `null` for global patterns with no match and always uses the built-in `RegExp.prototype.exec` implementation.
 - `eval()` distinguishes between direct and indirect calls.
-- Many `Date` object features introduced in ES5 are available.
+- Many `Date` object features introduced in ES5, `toISOString` and `toJSON` included.
 - Unicode format control characters are preserved in source text.
-
-### Unsupported ES5 features
-
-NuXJS still follows ES3 semantics for several constructs that changed in ES5:
-
-- `for...in` throws a `TypeError` when the object is `null` or `undefined`.
-- Function `prototype` properties are enumerable on user-defined functions.
-- `Object.prototype.toString` reports `[object Object]` for the `arguments` object.
-- Elements of the `arguments` object do not appear in `for...in` enumeration.
 
 ### ES6-inspired extras
 

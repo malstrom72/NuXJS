@@ -1344,6 +1344,22 @@
 	"built-ins/String/prototype/valueOf/name": {
 		"category": "bad_test"
 	},
+	"built-ins/decodeURI/S15.1.3.1_A5.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/decodeURIComponent/S15.1.3.2_A5.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/encodeURI/S15.1.3.3_A5.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
+	"built-ins/encodeURIComponent/S15.1.3.4_A5.2": {
+		"category": "bad_test",
+		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."
+	},
 	"built-ins/eval/S15.1.2.1_A4.2": {
 		"category": "bad_test",
 		"reason": "Demands delete fn.length succeed on a built-in; the clause 15 preamble gives every built-in length [[Configurable]]: false (ES3 clause 15 likewise said { ReadOnly, DontDelete, DontEnum }), so 11.4.1 answers false non-strict and throws TypeError strict - both of which NuXJS does. The test's '!DontDelete' premise only became true in ES2015, which made length configurable."

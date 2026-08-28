@@ -481,16 +481,22 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
     - [x] `--engine` selects the binary. It defaulted to the ES3 build, which would have scored the wrong engine.
     - [x] `--include-strict` drops `--non_strict_only`. That flag skips all 482 `onlyStrict` tests, so no strict
       mode behaviour was ever measured; ES5.1 conformance numbers are not meaningful without it.
-    - [~] First full run against the es5 build with `--include-strict`: 16255 total, 11151 passed, 268 failed,
-      4874 ignored, 230 still red. That is 98.0% of the 11381 in scope. Triage is under way rather than done:
-      the RegExp prototype family (20) and the 15.2.3.x non-object TypeErrors (38) are closed, each entry
-      verified by running the test's own expression in both engines and citing the clause. 230 to go.
+    - [x] Triage closed at **zero failures**: 16255 total, 11353 passed, 0 failed, 4902 ignored (ES >5.1: 4656,
+      BAD TEST: 199, BY DESIGN: 47), confirmed by a clean full run. Every excluded test carries a cited call in
+      `testdash.json`; the fixes the triage produced en route: any-object `apply` lists, 11.2.3 call order, the
+      15.1.3 URI quartet, strict callback receivers (`reduce`/`reduceRight`/`replace`), `toISOString`/timeClip,
+      12.6.4 shadowing, `defineProperties`/`create` ToObject, the 15.11.4.4 toString ladder, and `Math.round`'s
+      tie edge.
 - [x] `docs/notes/ECMAScript Compatibility Notes.md` exists again and has been kept current with each deviation as
       it landed: the JSON depth cap, no Annex B octal, `Date.parse`, the two ES5 syntax relaxations the es3 build
-      also accepts, and the array `[[DefineOwnProperty]]` note. The strict `this` entry was retired with §5.
-- [ ] Update `README.md` scope ("ES5.1" instead of "ES3 + focused ES5"), `docs/NuXJS Documentation.md`,
-      `docs/notes/TypeScript Compatibility.md`, and `docs/examples/lib.NuXJS.d.ts`.
-- [ ] Refresh the ES3-compliance numbers in the README from an actual dashboard run.
+      also accepts, and the array `[[DefineOwnProperty]]` note. The strict `this` entry was retired with §5;
+      the enumeration-order, URI, case-conversion and Annex B entries joined during the Test262 closure.
+- [x] `README.md` rewritten around the two editions with measured numbers, `docs/NuXJS Documentation.md`'s
+      conformance chapter restructured per build, `docs/notes/TypeScript Compatibility.md` updated, and the
+      declarations split TypeScript-style: `lib.NuXJS.d.ts` (es3 surface, probe-verified) plus a merging
+      `lib.NuXJS.es5.d.ts` delta, both checked with tsc against usage snippets.
+- [x] README compliance numbers come from actual dashboard runs: the ES5.1 block from this branch's zero-failure
+      run, the ES3 block from `main`.
 
 ---
 

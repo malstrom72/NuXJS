@@ -4,7 +4,7 @@ A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with prec
 
 ## Features
 
-- **Fully ECMAScript 3 compliant** with focused ECMAScript 5 additions (string indexing, JSON).
+- **Fully ECMAScript 5.1 compliant** (the es5 build) - strict mode, accessors, the complete `Object` reflection API and ES5 library. An **es3 build** of the same sources remains fully ECMAScript 3 compliant and byte-for-byte stable.
 - Entire engine fits in **one .cpp file, one .h file, and a `stdlib.js`** (~7 000 LOC of C++); the `stdlib.js` is also generated into a `stdlibJS.cpp` array for embedding.
 - Written in portable, standard **C++03** – no OS-specific code, just a few small compiler shims (e.g. MSVC math intrinsics). Tested with GCC and Clang (x86-64 and ARM) and MSVC.
 - Fully asynchronous, **non-blocking VM**; run as many cycles as you like between host calls.
@@ -28,14 +28,21 @@ A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with prec
 - Hosts may step execution and bound resources via `Runtime::setMemoryCap` and `Runtime::resetTimeOut`.
 - All failures surface as managed exceptions, preventing crashes and keeping untrusted code within the sandbox.
 
-## Why ECMAScript 3?
+## Two editions: ES5.1 and ES3
 
-ECMAScript 3 was the first broadly adopted JS standard; it provides everything needed in a _scripting_ language without
-a large runtime or a complex compiler. Staying with ES3 keeps the engine tiny and predictable. Selective ES5 features
-are “back-ported” where they add essential value, e.g.:
+The engine builds from one source tree into two editions, selected with the `NUXJS_ES5` compile switch:
 
-- Character indexing on `String` via `str[i]`
-- `JSON` support
+- The **es5 build** implements ECMAScript 5.1 in full: strict mode, getters and setters, `Object.defineProperty`
+  and the rest of the reflection statics, `Function.prototype.bind`, the Array iteration methods, the URI handlers,
+  and the ES5 `Date` and `JSON` refinements. ES5.1 is the last edition that is still a small _scripting_ language -
+  everything after it grows the runtime and the grammar substantially - which keeps the engine tiny and predictable.
+- The **es3 build** is the original, fully ECMAScript 3 compliant core, with a handful of ES5 conveniences it has
+  always carried (character indexing on `String` via `str[i]`, `JSON` support). It is kept byte-for-byte identical
+  while the es5 build evolves: the es3 object files must compile to the same bytes as the `main` branch, a gate
+  verified on every change, so embedders who depend on the frozen core lose nothing.
+
+The two builds share the interpreter, the compiler and most of `stdlib.js`; the ES5 additions live behind the
+`NUXJS_ES5` guard and `//#if ES5` fences.
 
 ## Why C++03?
 
@@ -55,8 +62,10 @@ You will need a standard C++ compiler with C++03 support.
 
 ## Build & Test
 
-Run `./build.sh` (or `build.cmd` on Windows) from the root. This calls `tools/buildAndTest.sh`, which builds both
-the **beta** and **release** configurations and runs all tests.
+Run `./build.sh` (or `build.cmd` on Windows) from the root. By default this builds **both editions** (es3 and es5)
+in both the **beta** and **release** configurations and runs each build's tests; `./build.sh es5 release` builds a
+single combination (arguments are recognized by value and may appear in any order). The release REPLs land in
+`output/` as `NuXJS` (es3) and `NuXJS_ES5` (es5).
 
 Both the **beta** and **release** targets are compiled with optimizations enabled. The **beta** build retains runtime
 assertions for debugging purposes, while the **release** build disables assertions for maximum performance.
@@ -70,22 +79,31 @@ bootstrappable on a fresh machine without first installing other language runtim
 We still leverage Node for auxiliary tooling—most notably the Test262 dashboard in `tools/testdash.*`—but
 those utilities are optional once the core engine has been built.
 
-The build outputs a console REPL named `NuXJS`. Type `help()` inside the REPL to see available helper functions and
+The build outputs console REPLs named `NuXJS` (es3) and `NuXJS_ES5` (es5). Type `help()` inside the REPL to see available helper functions and
 commands.
 
-## ECMAScript 3 Compliance
+## ECMAScript Compliance
 
-- Zero failures across 6542 applicable ES3 tests (Test262).
-- 9239 tests are excluded by category and not counted toward ES3 support:
-  - ES >3: 8943 (modern features not targeted for ES3, main)
-  - BAD TEST: 101 (tests depend on features not available in ES3)
-  - BY DESIGN: 195 (intentional, documented deviations)
+**ES5.1 (es5 build)** - measured with the Test262 harness in this repo, strict-mode runs included
+(`node tools/testdash.node.js --cli --include-strict`):
 
-These results come from the Test262 harness included in this repo; see `docs/Test262 Dashboard.md` for the developer-focused
-dashboard that reproduces them.
+- **Zero failures across 11353 applicable ES5.1 tests** out of 16255 in the snapshot.
+- 4902 tests are excluded by category and not counted toward ES5.1 support:
+  - ES >5.1: 4656 (the test's own `es6id`/missing `es5id` frontmatter, or verified ES2015+ semantics under an
+    `es5id` - each of the latter recorded with a clause citation in `tools/testdash.json`)
+  - BAD TEST: 199 (contradict the ES5.1 - and usually also the ES3 - spec text; each recorded with a citation)
+  - BY DESIGN: 47 (intentional deviations, documented in `docs/notes/ECMAScript Compatibility Notes.md`)
 
-About Test262: we use an older snapshot, the newest one we found that still runs ES3 engines. Newer Test262 assumes ES5+
-semantics and a different harness, so it would mark out-of-scope features as failures.
+**ES3 (es3 build)** - measured the same way on the `main` branch with ES3 scoping:
+
+- Zero failures across 6542 applicable ES3 tests.
+- 9239 tests are excluded by category: ES >3: 8943, BAD TEST: 101, BY DESIGN: 195.
+
+See `docs/Test262 Dashboard.md` for the developer-focused dashboard that reproduces these numbers, including the audit
+methodology behind every exclusion.
+
+About Test262: we use the newest snapshot we found that still runs pre-ES6 engines; the current suite assumes an ES6+
+harness. Each test's scope is derived from its own edition-id frontmatter.
 
 In addition, the build script performs regression tests written in C++ and JavaScript (over 4500 source code files with
 various tests at the moment).
@@ -101,7 +119,7 @@ using namespace NuXJS;
 int main(int argc, const char* argv[]) {
     Heap heap;                                          // We use the standard heap.
     Runtime rt(heap);                                   // Construct an empty engine.
-    rt.setupStandardLibrary();                          // Install the ES3 standard library.
+    rt.setupStandardLibrary();                          // Install the standard library.
     Var helloWorld = rt.eval("'hello ' + 'world'");     // Evaluate a JS expression.
     std::wcout << helloWorld << std::endl;
     return 0;
@@ -117,6 +135,7 @@ int main(int argc, const char* argv[]) {
 ## Documentation
 
 - [NuXJS Documentation](docs/NuXJS%20Documentation.md)
+- [ECMAScript Compatibility Notes](docs/notes/ECMAScript%20Compatibility%20Notes.md)
 - [TypeScript Compatibility](docs/notes/TypeScript%20Compatibility.md)
 
 ## Building the fuzz target
