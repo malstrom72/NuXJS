@@ -2224,9 +2224,19 @@ function createErrorConstructor(name, prototype) {
 
 	defineProperties(Error.prototype, { dontEnum: true }, {
 		message: '',
+//#if ES5
+		toString: unconstructable(function toString() {	// 15.11.4.4 (8-10): an empty name yields the message alone, an empty message the name alone
+			var name = this.name, msg = this.message;
+			name = (name === void 0 ? "Error" : '' + name);
+			msg = (msg === void 0 ? '' : '' + msg);
+			return (name === '' ? msg : (msg === '' ? name : name + ": " + msg));
+		}),
+//#endif
+//#if !ES5
 		toString: unconstructable(function toString() {
 			return (this.name === void 0 ? "Error" : this.name) + (this.message ? (": " + this.message) : '');
 		})
+//#endif
 	});
 
 	syntaxError = SyntaxError;
@@ -2503,6 +2513,7 @@ function define(o, key, d) {
 	the enumeration order of step 3 being for-in order by the note under the algorithm.
 */
 function defineAll(o, properties) {
+	if (properties == null) throw typeError("Cannot convert undefined or null to object");	// 15.2.3.7 (1): ToObject, which Object() would paper over with a fresh object
 	var props = Object(properties), pairs = [ ], p, i, n;
 	for (p in props) {
 		if (support.hasOwnProperty(props, p)) {

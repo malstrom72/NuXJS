@@ -66,8 +66,12 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   implementation), and NuXJS has always answered in its hash table's order where other engines answer in
   insertion order: `{ a: 1 }` given accessors `b` and `c` comes back `b,c,a`. Dense array indices, and a String
   object's characters-then-names-then-`length`, do follow the common shape; sparse indices and later-added names
-  still interleave in table order where other engines sort indices first. The **es5 build** walks the prototype
-  chain own-first with ES5.1 12.6.4's strengthened shadowing (an own property hides a prototype's name whatever
+  still interleave in table order where other engines sort indices first. The order is also *self-organizing*: a
+  successful lookup nudges a collision-displaced bucket one slot toward its home (`Table::find`), so two
+  enumerations separated by property accesses can differ by an adjacent transposition. Any single walk is
+  consistent, and `Object.keys` - a `for-in` loop in `stdlib.js` - always agrees with the `for-in` order of the
+  same moment, which is all 15.2.3.14's NOTE asks of an implementation that defines no fixed order. The
+  **es5 build** walks the prototype chain own-first with ES5.1 12.6.4's strengthened shadowing (an own property hides a prototype's name whatever
   its [[Enumerable]] - the sentence ES5 added alongside `defineProperty`, the tool that first made the case
   constructible). The **es3 build is conformant under its own edition's clause**, which asks only that a name is
   never enumerated twice - a guarantee its enumerators have always kept - and so stays untouched.
@@ -87,3 +91,12 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   browsers do implement Annex B, so `"\47"` is `"'"` and `010` is `8` there; code relying on that will not run.
   This is not an ES5-versus-ES3 difference - ES3 `7.8.4` has the identical core grammar and its own Annex B.1.2 -
   so the escape half of it is enforced by the shared ES3 lexer rather than behind `NUXJS_ES5`.
+
+- **Case conversion applies SpecialCasing's unconditional mappings only.** 15.5.4.16-19 name the Unicode
+  database's `SpecialCasing.txt` alongside `UnicodeData.txt`, and NuXJS's generated tables carry every
+  *unconditional* mapping - `"ß".toUpperCase()` is `"SS"`, the ligatures expand to `"FFI"` and friends, the
+  iota-subscript forms compose - but not the file's one locale-insensitive *conditional* rule, Final_Sigma:
+  `"ΑΣ".toLowerCase()` answers `"ασ"` where the rule (and V8) answer `"ας"`. Deciding finality takes the Cased
+  and Case_Ignorable classifications - whole new tables for one character's benefit - so the sigma stays
+  unconditional by design. The tables are shared, making the deviation edition-wide (ES3 15.5.4.16 cites the
+  same files). Test262's `special_casing_conditional` records the gap.
