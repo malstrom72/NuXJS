@@ -396,9 +396,15 @@ defineProperties(Function.prototype, { dontEnum: true }, {
 	apply: unconstructable(function apply(thisArg, argArray) { // FIX : <- 100% native version in the future I think
 		var theClass;
 		if (argArray == null) argArray = [ ];
+//#if !ES5
 		else if ((theClass = $getInternalProperty(argArray, "class")) !== "Array" && theClass !== "Arguments") {
 			throw typeError("Argument list has wrong type");
 		};
+//#else
+		else if (typeof argArray !== "object" && typeof argArray !== "function") {	// 15.3.4.3 (3): any object serves as the list
+			throw typeError("Argument list has wrong type");
+		};
+//#endif
 		return $callWithArgs(this, thisArg, argArray);
 	}),
 	call: unconstructable(function call(thisArg) { // FIX : <- 100% native version in the future I think

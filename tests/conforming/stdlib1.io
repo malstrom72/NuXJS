@@ -327,7 +327,6 @@
 >         test.apply("snuttelisnutt");
 >         (function() { test.apply(o, arguments); })(17,18,19,20);
 >         try { test.apply(o, "snuttelisnutt"); } catch (e) { print(e); }
->         try { test.apply(o, { 'wrong': 'type of object' }); } catch (e) { print(e); }
 < [object Object] (global)
 < count: 5
 < 1
@@ -395,6 +394,5 @@
 < 19
 < 20
 < -
-< TypeError: Argument list has wrong type
 < TypeError: Argument list has wrong type
 -
