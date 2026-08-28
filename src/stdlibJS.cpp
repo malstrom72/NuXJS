@@ -605,12 +605,12 @@ const char* STDLIB_JS =
 "var bI=0;bI<aT;++bI){if(bI in K){aZ[0]=H=K[bI];aZ[1]=bI;if(j(bk,I,aZ))b7[bS++]=H}}return b7}),reduce:c(function reduce"
 "(g1){var K=Q(this,\"reduce\"),aT=K.length>>>0,bk=fX(g1,\"reduce\"),bI=0,g2=(arguments.length>1),g3=arguments[1],aZ=[0,"
 "0,0,K];while(!g2&&bI<aT){if(g2=(bI in K))g3=K[bI];++bI}if(!g2)throw n(\"Reduce of empty array with no initial value\")"
-";for(;bI<aT;++bI){if(bI in K){aZ[0]=g3;aZ[1]=K[bI];aZ[2]=bI;g3=j(bk,null,aZ)}}return g3}),reduceRight:c(function reduc"
-"eRight(g1){var K=Q(this,\"reduceRight\"),aT=K.length>>>0,bk=fX(g1,\"reduceRight\"),bI=aT-1,g2=(arguments.length>1),g3="
-"arguments[1],aZ=[0,0,0,K];while(!g2&&bI>=0){if(g2=(bI in K))g3=K[bI];--bI}if(!g2)throw n(\"Reduce of empty array with "
-"no initial value\");for(;bI>=0;--bI){if(bI in K){aZ[0]=g3;aZ[1]=K[bI];aZ[2]=bI;g3=j(bk,null,aZ)}}return g3})})})();if("
-"g.toString()!==\"NaN\")throw Error(\"Internal self test failed. Check C++ compiler options concerning IEEE 754 complia"
-"nce.\")})"
+";for(;bI<aT;++bI){if(bI in K){aZ[0]=g3;aZ[1]=K[bI];aZ[2]=bI;g3=j(bk,void 0,aZ)}}return g3}),reduceRight:c(function red"
+"uceRight(g1){var K=Q(this,\"reduceRight\"),aT=K.length>>>0,bk=fX(g1,\"reduceRight\"),bI=aT-1,g2=(arguments.length>1),g"
+"3=arguments[1],aZ=[0,0,0,K];while(!g2&&bI>=0){if(g2=(bI in K))g3=K[bI];--bI}if(!g2)throw n(\"Reduce of empty array wit"
+"h no initial value\");for(;bI>=0;--bI){if(bI in K){aZ[0]=g3;aZ[1]=K[bI];aZ[2]=bI;g3=j(bk,void 0,aZ)}}return g3})})})()"
+";if(g.toString()!==\"NaN\")throw Error(\"Internal self test failed. Check C++ compiler options concerning IEEE 754 com"
+"pliance.\")})"
 ;
 #else
 const char* STDLIB_JS =

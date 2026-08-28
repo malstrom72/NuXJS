@@ -2728,7 +2728,7 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		while (!seeded && k < len) { if (seeded = (k in o)) acc = o[k]; ++k; }
 		if (!seeded) throw typeError("Reduce of empty array with no initial value");
 		for (; k < len; ++k) {
-			if (k in o) { args[0] = acc; args[1] = o[k]; args[2] = k; acc = $callWithArgs(f, null, args); }
+			if (k in o) { args[0] = acc; args[1] = o[k]; args[2] = k; acc = $callWithArgs(f, void 0, args); }
 		}
 		return acc;
 	}),
@@ -2738,7 +2738,7 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		while (!seeded && k >= 0) { if (seeded = (k in o)) acc = o[k]; --k; }
 		if (!seeded) throw typeError("Reduce of empty array with no initial value");
 		for (; k >= 0; --k) {
-			if (k in o) { args[0] = acc; args[1] = o[k]; args[2] = k; acc = $callWithArgs(f, null, args); }
+			if (k in o) { args[0] = acc; args[1] = o[k]; args[2] = k; acc = $callWithArgs(f, void 0, args); }
 		}
 		return acc;
 	})
