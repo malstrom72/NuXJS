@@ -47,7 +47,7 @@ function resolveEngine() {
 	const override = getString("engine", "");
 	if (override) return override;
 	const ext = process.platform === "win32" ? ".exe" : "";
-	const names = ["NuXJS_es5_release_native", "NuXJS_es5_beta_native", "NuXJS_es5_release_x64",
+	const names = ["NuXJS_ES5", "NuXJS_es5_release_native", "NuXJS_es5_beta_native", "NuXJS_es5_release_x64",
 			"NuXJS_es5_debug_x64", "NuXJS_beta_native", "NuXJS_release_native"];
 	for (let i = 0; i < names.length; i++) {
 		const p = path.join(".", "output", names[i] + ext);
