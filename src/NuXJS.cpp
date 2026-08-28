@@ -4139,11 +4139,11 @@ void Processor::innerRun() {
 				if ((flags & ACCESSOR_FLAG) != 0 && enterGetter(o, sp[0], &v, 0, sp[-1])) {
 					return;	// the result replaces the name at sp[0]; CALL_THIS_OP checks callability
 				}
-				if (flags == NONEXISTENT || v.asFunction() == 0) {
-					error(TYPE_ERROR, new(heap) String(heap.managed(), *sp[0].toString(heap), IS_NOT_A_FUNCTION_STRING));
-					return;
+				// 11.2.3 (4): not-callable is CALL_THIS's throw, after the arguments have run. The name stays in
+				// the slot for that case, so the error can still say who it was that is not a function.
+				if (flags != NONEXISTENT && v.asFunction() != 0) {
+					sp[0] = v;
 				}
-				sp[0] = v;
 				break;
 			}
 
