@@ -211,8 +211,10 @@
 < 86400000
 -
 // These had no behavioural test at all until now, which is how setTime stayed broken since the initial import.
-// getDay/getUTCDay are deterministic; 1970-01-01 was a Thursday and 2009-02-13T23:31:30Z a Friday.
-> print(new Date(0).getDay() + " " + new Date(0).getUTCDay() + " " + new Date(1234567890123).getUTCDay())
+// getDay/getUTCDay pinned zone-independently: getDay reads local time, so it gets a date built from local
+// components - 1970-01-01 was a Thursday in every zone that way - where new Date(0).getDay() would answer
+// Wednesday west of Greenwich. 2009-02-13T23:31:30Z was a Friday.
+> print(new Date(1970, 0, 1).getDay() + " " + new Date(0).getUTCDay() + " " + new Date(1234567890123).getUTCDay())
 < 4 4 5
 -
 > print(new Date(86400000 * 3).getUTCDay() + " " + new Date(86400000 * 4).getUTCDay())
