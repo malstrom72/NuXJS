@@ -471,7 +471,9 @@ oracle, with ES5.1-vs-modern divergences arbitrated by the spec and logged in `d
 
 ## 8. Conformance, docs & tooling
 
-- [ ] Retarget the Test262 dashboard to ES5.1 (`tools/testdash.*`, `docs/Test262 Dashboard.md`).
+- [x] Retarget the Test262 dashboard to ES5.1: done during the lift (`TARGET = es5id` in `tools/testdash.node.js`,
+      annexB enumerated in its own right, strict runs via `--include-strict`, triage methodology in
+      `docs/Test262 Dashboard.md`) - this box just went unticked at the time.
     - [x] Scope is derived from each test's own `es5id`/`es6id`/`esid` frontmatter instead of being recorded, so
       the 8943 hand-marked `ES >3` entries collapsed to the 58 that carry no edition id. `testdash.json` went from
       9427 entries to 349: 190 `BY DESIGN`, 101 `BAD TEST`, 58 `ES >5.1`, and 7 stale keys dropped. 5073 tests
