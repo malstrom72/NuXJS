@@ -566,7 +566,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 			while (matches = regExpExecMethod(searchValue, s)) {
 				matches[i = matches.length] = matches.index;
 				matches[i + 1] = s;
-				t.append($sub(s, p, matches.index) + str($callWithArgs(replaceFunction, null, matches)));
+				t.append($sub(s, p, matches.index) + str($callWithArgs(replaceFunction, void 0, matches)));
 				p = matches.index + (l = matches[0].length);
 				if (!searchValue.global) break;
 				if (l === 0) ++searchValue.lastIndex;
@@ -577,7 +577,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 			if (!replaceFunction) replaceFunction = makeStringReplacer(str(replacementValue));
 			e = sLength - (l = t.length);
 			for (var p = 0; !$match(s, p, t); ++p) if (p >= e) return s;
-			return $sub(s, 0, p) + str($callWithArgs(replaceFunction, null, [ t, p, s ])) + $sub(s, p + l, sLength);
+			return $sub(s, 0, p) + str($callWithArgs(replaceFunction, void 0, [ t, p, s ])) + $sub(s, p + l, sLength);
 		}
 	}),
 	search: unconstructable(function search(regexp) {
@@ -1677,7 +1677,10 @@ defineProperties(Math, { dontEnum: true }, {
 	min: unconstructable(function min(x, y) { var m = $Infinity, v, argv; for (var i = (argv = arguments).length - 1; i >= 0; --i) if ((v = +argv[i]) < m || $isNaN(v)) m = v; return m }),
 	pow: unconstructable(function pow(x, y) { x = +x; y = +y; return (!$isFinite(y) && abs(x) === 1 ? $NaN : support.pow(x, y)) }),
 	random: unconstructable(function random() { return support.random() }),
-	round: unconstructable(function round(v) { return ((v = +v) === 0.0 ? v : (v >= -0.5 && v < 0.0 ? -0.0 : $floor(v + 0.5))) }),
+	round: unconstructable(function round(v) {	// 15.8.2.15: floor(v + 0.5) double-rounds across a tie (0.49999999999999994 + 0.5 is 1); landing more than half above v means the true nearest is one below
+		var f = $floor((v = +v) + 0.5);
+		return (v === 0.0 ? v : (v >= -0.5 && v < 0.0 ? -0.0 : (f - 0.5 > v ? f - 1 : f)))
+	}),
 	sin: unconstructable(function sin(v) { return support.sin(+v) }),
 	sqrt: unconstructable(function sqrt(v) { return support.sqrt(+v) }),
 	tan: unconstructable(function tan(v) { return support.tan(+v) })
