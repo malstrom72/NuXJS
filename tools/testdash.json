@@ -276,6 +276,30 @@
 		"category": "not_es51",
 		"reason": "ES5.1 15.4.4.x step 2 takes ToUint32(lenValue); ES2015 replaced it with ToLength, which clamps negatives to 0 and does not wrap at 2^32. This test asserts the ToLength result under an es5id. Verified: substituting the ToLength value for the object's length makes NuXJS pass it."
 	},
+	"built-ins/Date/S15.9.3.1_A5_T1": {
+		"category": "bad_test",
+		"reason": "Hardcodes UTC-environment expectations for the local-components constructor (e.g. new Date(1899, 11) === -2211638400000 is only true when local time IS UTC); NuXJS answers byte-identically to V8 in any zone, so the engine's 15.9.3.1 pipeline is right and the Sputnik test is environment-bound."
+	},
+	"built-ins/Date/S15.9.3.1_A5_T2": {
+		"category": "bad_test",
+		"reason": "Hardcodes UTC-environment expectations for the local-components constructor (e.g. new Date(1899, 11) === -2211638400000 is only true when local time IS UTC); NuXJS answers byte-identically to V8 in any zone, so the engine's 15.9.3.1 pipeline is right and the Sputnik test is environment-bound."
+	},
+	"built-ins/Date/S15.9.3.1_A5_T3": {
+		"category": "bad_test",
+		"reason": "Hardcodes UTC-environment expectations for the local-components constructor (e.g. new Date(1899, 11) === -2211638400000 is only true when local time IS UTC); NuXJS answers byte-identically to V8 in any zone, so the engine's 15.9.3.1 pipeline is right and the Sputnik test is environment-bound."
+	},
+	"built-ins/Date/S15.9.3.1_A5_T4": {
+		"category": "bad_test",
+		"reason": "Hardcodes UTC-environment expectations for the local-components constructor (e.g. new Date(1899, 11) === -2211638400000 is only true when local time IS UTC); NuXJS answers byte-identically to V8 in any zone, so the engine's 15.9.3.1 pipeline is right and the Sputnik test is environment-bound."
+	},
+	"built-ins/Date/S15.9.3.1_A5_T5": {
+		"category": "bad_test",
+		"reason": "Hardcodes UTC-environment expectations for the local-components constructor (e.g. new Date(1899, 11) === -2211638400000 is only true when local time IS UTC); NuXJS answers byte-identically to V8 in any zone, so the engine's 15.9.3.1 pipeline is right and the Sputnik test is environment-bound."
+	},
+	"built-ins/Date/S15.9.3.1_A5_T6": {
+		"category": "bad_test",
+		"reason": "Hardcodes UTC-environment expectations for the local-components constructor (e.g. new Date(1899, 11) === -2211638400000 is only true when local time IS UTC); NuXJS answers byte-identically to V8 in any zone, so the engine's 15.9.3.1 pipeline is right and the Sputnik test is environment-bound."
+	},
 	"built-ins/Error/prototype/S15.11.4_A2": {
 		"category": "bad_test"
 	},
