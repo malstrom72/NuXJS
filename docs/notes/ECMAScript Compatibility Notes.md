@@ -55,6 +55,18 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
 - **JSON nesting depth is bounded.** `JSON.parse` / `JSON.stringify` cap nesting at `MAX_JSON_DEPTH` (61) to stay
   within the compiler's recursion limit; deeper structures throw a `TypeError`. The spec imposes no fixed limit.
 
+- **The URI handlers exist in the es5 build only.** `decodeURI`, `decodeURIComponent`, `encodeURI` and
+  `encodeURIComponent` (15.1.3) are implemented in `stdlib.js` behind the es5 fence - Encode and Decode as
+  written, over the spec's exact UTF-8 table, `URIError` on overlongs, the surrogate gap and everything past
+  0x10FFFF (`tests/es5/uriHandling.io`, byte-identical to V8 over a twenty-case battery). The **es3 build keeps
+  its historical gap**: ES3 15.1.3 specifies the same four, but adding them would move the frozen binary.
+
+- **Own-property order is the table's, not insertion order.** No ES5.1 clause fixes the order `for-in`,
+  `Object.keys` or `Object.getOwnPropertyNames` deliver properties in (12.6.4 and 15.2.3.4 both leave it to the
+  implementation), and NuXJS has always answered in its hash table's order where other engines answer in
+  insertion order: `{ a: 1 }` given accessors `b` and `c` comes back `b,c,a`. Array indices, and a String
+  object's characters-then-names-then-`length`, do follow the de facto order.
+
 - **Annex B library functions - partial, by design.** Annex B is *informative* in ES5.1, so each entry is a
   separate decision rather than a block. `String.prototype.substr` (`B.2.3`) has always been there, and
   `Date.prototype.getYear` / `setYear` / `toGMTString` (`B.2.4` - `B.2.6`) are implemented under `NUXJS_ES5`;
