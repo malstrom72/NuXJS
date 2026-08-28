@@ -279,6 +279,30 @@
 	"built-ins/Error/prototype/S15.11.4_A2": {
 		"category": "bad_test"
 	},
+	"built-ins/Function/length/15.3.3.2-1": {
+		"category": "not_es51",
+		"reason": "Expects Function.length configurable: true, the ES2015 change; the clause 15 preamble makes every built-in length [[Configurable]]: false. NuXJS reports false, matching 5.1."
+	},
+	"built-ins/Function/length/S15.3.5.1_A2_T1": {
+		"category": "bad_test",
+		"reason": "Demands delete f.length succeed; 15.3.5.1 gives a function instance's length [[Configurable]]: false, so 11.4.1 answers false. Verified: the sentence is quoted verbatim in the clause; NuXJS refuses the delete and keeps length = 3."
+	},
+	"built-ins/Function/length/S15.3.5.1_A2_T2": {
+		"category": "bad_test",
+		"reason": "Same demand as A2_T1 for Function('arg1,arg2,arg3', null) written differently; same 15.3.5.1 [[Configurable]]: false refusal."
+	},
+	"built-ins/Function/length/S15.3.5.1_A2_T3": {
+		"category": "bad_test",
+		"reason": "Same demand as A2_T1 via a FunctionExpression; same 15.3.5.1 [[Configurable]]: false refusal."
+	},
+	"built-ins/Function/prototype/apply/S15.3.4.3_A9": {
+		"category": "bad_test",
+		"reason": "Demands delete Function.prototype.apply.length succeed; the clause 15 preamble gives every built-in function length { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }. Sputnik-era expectation, wrong for the es5id it carries."
+	},
+	"built-ins/Function/prototype/bind/15.3.4.5-15-2": {
+		"category": "not_es51",
+		"reason": "Expects a bound function's length configurable: true per ES2015; 15.3.4.5 (15) plus the clause 15 preamble make it non-configurable in 5.1."
+	},
 	"built-ins/GeneratorFunction/instance-restricted-properties": {
 		"category": "not_es51"
 	},
@@ -322,6 +346,26 @@
 	"built-ins/Object/getOwnPropertyDescriptor/15.2.3.3-1-4": {
 		"category": "not_es51",
 		"reason": "ES5.1 15.2.3.3 step 1 throws a TypeError when Type(O) is not Object, so `Object.getOwnPropertyDescriptor` on a primitive is a TypeError for this edition. A later edition applies ToObject to the argument instead, which is the only way this test's expectation can hold, and the test carries an es5id regardless. Verified per test by running the exact expression it runs: NuXJS throws a TypeError, V8 does not."
+	},
+	"built-ins/Object/getOwnPropertyDescriptor/15.2.3.3-4-186": {
+		"category": "not_es51",
+		"reason": "Expects Function.length configurable: true; the clause 15 preamble gives every built-in function length { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }; ES2015 changed length to configurable: true. NuXJS answers false, matching 5.1."
+	},
+	"built-ins/Object/getOwnPropertyDescriptor/15.2.3.3-4-187": {
+		"category": "not_es51",
+		"reason": "Expects a function instance's length configurable: true; the clause 15 preamble gives every built-in function length { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }; ES2015 changed length to configurable: true. NuXJS answers false, matching 5.1."
+	},
+	"built-ins/Object/getOwnPropertyDescriptor/15.2.3.3-4-191": {
+		"category": "not_es51",
+		"reason": "Expects String.length configurable: true; the clause 15 preamble gives every built-in function length { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }; ES2015 changed length to configurable: true. NuXJS answers false, matching 5.1."
+	},
+	"built-ins/Object/getOwnPropertyDescriptor/15.2.3.3-4-194": {
+		"category": "not_es51",
+		"reason": "Expects Boolean.length configurable: true; the clause 15 preamble gives every built-in function length { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }; ES2015 changed length to configurable: true. NuXJS answers false, matching 5.1."
+	},
+	"built-ins/Object/getOwnPropertyDescriptor/15.2.3.3-4-201": {
+		"category": "not_es51",
+		"reason": "Expects Number.length configurable: true; the clause 15 preamble gives every built-in function length { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }; ES2015 changed length to configurable: true. NuXJS answers false, matching 5.1."
 	},
 	"built-ins/Object/getOwnPropertyNames/15.2.3.4-1": {
 		"category": "not_es51",
@@ -1401,6 +1445,10 @@
 	},
 	"language/expressions/prefix-increment/S11.4.4_A6_T2": {
 		"category": "by_design"
+	},
+	"language/statements/function/13.2-15-1": {
+		"category": "not_es51",
+		"reason": "Expects a declared function's own length configurable: true; 13.2 step 15 defines it with [[Configurable]]: false in 5.1, changed by ES2015. NuXJS follows 13.2."
 	},
 	"language/statements/function/13.2-30-s": {
 		"category": "not_es51"
