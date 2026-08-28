@@ -4,7 +4,7 @@ A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with prec
 
 ## Features
 
-- **Fully ECMAScript 5.1 compliant** (the es5 build) - strict mode, accessors, the complete `Object` reflection API and ES5 library. An **es3 build** of the same sources remains fully ECMAScript 3 compliant and byte-for-byte stable.
+- **Fully ECMAScript 5.1 compliant** (the es5 build): strict mode, accessors, the complete `Object` reflection API and ES5 library. An **es3 build** of the same sources remains fully ECMAScript 3 compliant and byte-for-byte stable.
 - Entire engine fits in **one .cpp file, one .h file, and a `stdlib.js`** (~7 000 LOC of C++); the `stdlib.js` is also generated into a `stdlibJS.cpp` array for embedding.
 - Written in portable, standard **C++03** – no OS-specific code, just a few small compiler shims (e.g. MSVC math intrinsics). Tested with GCC and Clang (x86-64 and ARM) and MSVC.
 - Fully asynchronous, **non-blocking VM**; run as many cycles as you like between host calls.
@@ -34,8 +34,9 @@ The engine builds from one source tree into two editions, selected with the `NUX
 
 - The **es5 build** implements ECMAScript 5.1 in full: strict mode, getters and setters, `Object.defineProperty`
   and the rest of the reflection statics, `Function.prototype.bind`, the Array iteration methods, the URI handlers,
-  and the ES5 `Date` and `JSON` refinements. ES5.1 is the last edition that is still a small _scripting_ language -
-  everything after it grows the runtime and the grammar substantially - which keeps the engine tiny and predictable.
+  and the ES5 `Date` and `JSON` refinements. ES5.1 is the last edition that is still a small _scripting_ language,
+  everything after it grows the runtime and the grammar substantially, and staying there keeps the engine tiny
+  and predictable.
 - The **es3 build** is the original, fully ECMAScript 3 compliant core, with a handful of ES5 conveniences it has
   always carried (character indexing on `String` via `str[i]`, `JSON` support). It is kept byte-for-byte identical
   while the es5 build evolves: the es3 object files must compile to the same bytes as the `main` branch, a gate
@@ -84,17 +85,17 @@ commands.
 
 ## ECMAScript Compliance
 
-**ES5.1 (es5 build)** - measured with the Test262 harness in this repo, strict-mode runs included
+**ES5.1 (es5 build)**, measured with the Test262 harness in this repo, strict-mode runs included
 (`node tools/testdash.node.js --cli --include-strict`):
 
 - **Zero failures across 11353 applicable ES5.1 tests** out of 16255 in the snapshot.
 - 4902 tests are excluded by category and not counted toward ES5.1 support:
   - ES >5.1: 4656 (the test's own `es6id`/missing `es5id` frontmatter, or verified ES2015+ semantics under an
-    `es5id` - each of the latter recorded with a clause citation in `tools/testdash.json`)
-  - BAD TEST: 199 (contradict the ES5.1 - and usually also the ES3 - spec text; each recorded with a citation)
+    `es5id`, each of the latter recorded with a clause citation in `tools/testdash.json`)
+  - BAD TEST: 199 (contradict the ES5.1, and usually also the ES3, spec text; each recorded with a citation)
   - BY DESIGN: 47 (intentional deviations, documented in `docs/notes/ECMAScript Compatibility Notes.md`)
 
-**ES3 (es3 build)** - measured the same way on the `main` branch with ES3 scoping:
+**ES3 (es3 build)**, measured the same way on the `main` branch with ES3 scoping:
 
 - Zero failures across 6542 applicable ES3 tests.
 - 9239 tests are excluded by category: ES >3: 8943, BAD TEST: 101, BY DESIGN: 195.
@@ -162,8 +163,11 @@ Each section of every test file is written as a separate entry in the specified 
 
 ## AI Usage
 
-AI tools (such as OpenAI Codex) have occasionally been used to assist with documentation, code comments, test
-generation, and repetitive edits. All core source code has been written and refined by hand over many years.
+The ES3 core, the engine, compiler, VM and original standard library, was written and refined by hand over many
+years. The ES5.1 lift is a different story: it was implemented in collaboration with an AI assistant (Anthropic's
+Claude), working from a clean-room roadmap under close human direction and review. Every change was gated on the
+es3 build staying byte-for-byte identical, both test suites, differential comparison against V8, and the Test262
+dashboard.
 
 ## License
 
