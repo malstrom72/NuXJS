@@ -296,3 +296,13 @@
 > print(isNaN(b.valueOf()) + " " + isNaN(c.valueOf()))
 < true true
 -
+// 15.9.3.1 (12) clips the UTC value, not the local intermediate: a local MakeDate past the 8.64e15 edge whose
+// UTC value lands back inside must survive, and one millisecond past it must not. The getTimezoneOffset arithmetic
+// keeps this zone-independent (the -60 absorbs any DST skew between today and the fallback offset at the edge).
+> var tzm = new Date().getTimezoneOffset() * (-1);
+> var edge = new Date(1970, 0, 100000001, 0, 0 + tzm - 60, 0, -1);
+> print(isFinite(edge.getTime()) + " " + (Math.abs(edge.getTime()) <= 8.64e15))
+< true true
+> print(isNaN(new Date(1970, 0, 100000001, 0, 0 + tzm + 60, 0, 1).getTime()))
+< true
+-

@@ -866,7 +866,7 @@ function minFromTime(z) { return floorMod($floor(z / 6e4), 60) }
 function secFromTime(z) { return floorMod($floor(z / 1e3), 60) }
 function msFromTime(z) { return floorMod(z, 1e3) }
 function timeClip(z) { return (!$isFinite(z) || abs(z) > 8.64e15 ? $NaN : int(z)) }
-function timeClipLocal(z) { return fromLocalTime(timeClip(z)); }
+function timeClipLocal(z) { return timeClip(fromLocalTime(z)); }	// 15.9.3.1 (12): TimeClip(UTC(t)) - convert first, so a local value past the edge whose UTC lands inside survives
 
 function dateFromEpoch(z) {
 	// The era arithmetic below runs through int(), and ToInteger(NaN) is 0 by 9.4, so an invalid date came out of
