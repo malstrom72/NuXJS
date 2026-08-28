@@ -1677,10 +1677,7 @@ defineProperties(Math, { dontEnum: true }, {
 	min: unconstructable(function min(x, y) { var m = $Infinity, v, argv; for (var i = (argv = arguments).length - 1; i >= 0; --i) if ((v = +argv[i]) < m || $isNaN(v)) m = v; return m }),
 	pow: unconstructable(function pow(x, y) { x = +x; y = +y; return (!$isFinite(y) && abs(x) === 1 ? $NaN : support.pow(x, y)) }),
 	random: unconstructable(function random() { return support.random() }),
-	round: unconstructable(function round(v) {	// 15.8.2.15: floor(v + 0.5) double-rounds across a tie (0.49999999999999994 + 0.5 is 1); landing more than half above v means the true nearest is one below
-		var f = $floor((v = +v) + 0.5);
-		return (v === 0.0 ? v : (v >= -0.5 && v < 0.0 ? -0.0 : (f - 0.5 > v ? f - 1 : f)))
-	}),
+	round: unconstructable(function round(v) { var f; return ((v = +v) === 0.0 ? v : (v >= -0.5 && v < 0.0 ? -0.0 : (v - (f = $floor(v)) >= 0.5 ? f + 1 : f))) }),	// 15.8.2.15: v - floor(v) is exact, so the tie test sees the true fraction where floor(v + 0.5) could double-round
 	sin: unconstructable(function sin(v) { return support.sin(+v) }),
 	sqrt: unconstructable(function sqrt(v) { return support.sqrt(+v) }),
 	tan: unconstructable(function tan(v) { return support.tan(+v) })
