@@ -2689,12 +2689,11 @@ void Arguments::collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const {
 }
 
 /**
-	10.6 [[DefineOwnProperty]]. An index in its slot is always a writable data property, so 8.12.9 can only ever
-	reject it over step 7 or step 9, both of which need it to be non-configurable; that is checked up front, and
-	nothing below can fail afterwards. A slot then holds whatever the descriptor leaves writable and data-kind,
-	which is exactly the case where step 5 keeps the parameter map: a value writes straight through to the mapped
-	parameter and the attribute bits go in the byte. An accessor or a cleared [[Writable]] severs the map in the
-	same breath as it outgrows the slot, so those move the index into the table for JSObject to finish 8.12.9.
+	10.6 [[DefineOwnProperty]]. An index in its slot is always a writable data property, so 8.12.9 can only reject
+	it over step 7 or 9, both needing it non-configurable; that is checked up front and nothing below can fail.
+	A descriptor that leaves it writable and data-kind keeps the parameter map, the value writing straight through
+	to the mapped parameter. An accessor or a cleared [[Writable]] severs the map and moves the index into the
+	table for JSObject to finish.
 **/
 bool Arguments::defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow) {
 	UInt32 i;
@@ -3582,10 +3581,9 @@ bool Processor::enterGetter(const Object* o, const Value& key, Value* dest, Int3
 
 /*
 	Finishes an 8.12.5 [[Put]] once the cheap update has failed, for every store the engine makes: `o.x = v`, a
-	name written through a `with` or global record, and a write through a captured reference; 10.2.1.2 is why the
-	three must agree. The value sits at sp[0], which is also the setter's argument, and a setter frame's result
-	lands at sp[-popCount]. Answers true when the caller has to return to the interpreter loop, for the frame or
-	for a throw.
+	name written through a `with` or global record, and a write through a captured reference, which 10.2.1.2
+	requires to agree. The value sits at sp[0], which is also the setter's argument, and a setter frame's result
+	lands at sp[-popCount]. Answers true when the caller must return to the interpreter loop.
 */
 bool Processor::putThrough(Object* o, const Value& key, Int32 popCount, Receiver receiver, bool strict, bool mayStore) {
 	Function* setter;
@@ -3763,11 +3761,10 @@ void Processor::innerRun() {
 				sp[-1] = sp[0];	// the assigned value takes the reference's slot, so it survives a setter frame
 				if (reference.isUndefined()) {
 					/*
-						8.7.2 step 3: the name resolved nowhere, so strict code throws and sloppy code [[Put]]s on
-						the global object, setter and all. That is why the unresolvable shape has to stay distinct
-						from a holder the walk did find: only here may a write conjure the binding it lands on.
-						It waits until now rather than until the capture because PutValue is 11.13.1 step 4, after
-						the right-hand side.
+						8.7.2 step 3: the name resolved nowhere, so strict code throws and sloppy code [[Put]]s on the
+						global object, setter and all. Only here may a write conjure the binding it lands on, which is
+						why the unresolvable shape stays distinct from a holder the walk found. It waits until now
+						because PutValue is 11.13.1 step 4.
 					*/
 					if (code->isStrict()) {
 						error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
@@ -4718,10 +4715,9 @@ Char* Compiler::unescape(Char* buffer, const Char* e) {
 #if NUXJS_ES5
 				/*
 					7.8.4 LineContinuation: a `\` before a LineTerminatorSequence contributes the *empty* character
-					sequence, so both characters vanish rather than becoming a newline. 7.3 counts CR LF as one
-					sequence, hence the extra step over the LF. ES3 has no such production at all, so the arm below
-					stays exactly as it was. Skipping to the top rather than falling through is what emits nothing:
-					the tail of this branch always writes one character.
+					sequence, so both characters vanish rather than becoming a newline; 7.3 counts CR LF as one, hence
+					the extra step over the LF. Skipping to the top rather than falling through is what emits nothing,
+					this branch's tail always writing one character.
 				*/
 				if (*p == '\r' && p + 1 != e && p[1] == '\n') {
 					++p;
@@ -4793,11 +4789,10 @@ void Compiler::returnSafeKept(const ExpressionResult& xr) {
 
 #if NUXJS_ES5
 /*
-	11.13.1, 11.13.2, 11.3, 11.4.4 and 12.2 all have the one shape: evaluate the left-hand side, then the right,
-	then hand PutValue the reference the *first* step made. So the four assignment productions capture their target
-	here, before anything else runs, and it stays on the value stack until makeAssignment writes through it. Only a
-	name needs it: a local cannot move, and a property already keeps its base. `resolveOp` is RESOLVE_READ_NAMED
-	when the target is read as well, which is the same walk and so costs nothing over the plain capture.
+	11.13.1, 11.13.2, 11.3, 11.4.4 and 12.2 share one shape: evaluate the left-hand side, then the right, then hand
+	PutValue the reference the *first* step made. So the four assignment productions capture their target here and
+	leave it on the value stack until makeAssignment writes through it. Only a name needs it, a local being unable
+	to move and a property already keeping its base.
 */
 void Compiler::captureReference(ExpressionResult& xr, Processor::Opcode resolveOp) {
 	if (xr.t == ExpressionResult::NAMED) {
@@ -4844,11 +4839,10 @@ Compiler::ExpressionResult Compiler::makeAssignment(const ExpressionResult& xr) 
 		case ExpressionResult::NAMED:
 		#if NUXJS_ES5
 			/*
-				The binding may be an accessor on a `with` or global object, and a JS setter frame leaves its
-				return value on top, so the value is duplicated below and the leftover slot popped, exactly as
-				PROPERTY does: [val] -> [val, val] -> [val, junk] -> [val]. WRITE_NAMED_POP rather than
-				WRITE_NAMED, because emitting the latter here would let the POP_OP peephole fuse the two and skip
-				the slot the setter needs; it consumes the POP itself on the data path.
+				The binding may be an accessor on a `with` or global object and a JS setter frame leaves its return on
+				top, so the value is duplicated below and the leftover slot popped, as PROPERTY does: [val] -> [val,
+				val] -> [val, junk] -> [val]. WRITE_NAMED_POP rather than WRITE_NAMED, which the POP_OP peephole would
+				fuse, taking away the slot the setter needs.
 			*/
 			emit(Processor::REPUSH_OP, 0);
 			emitWithConstant(Processor::WRITE_NAMED_POP_OP, xr.v);
