@@ -4448,6 +4448,9 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand, UInt32
 	if (inDeadCode()) {	// unknown stack depth = dead code
 		return;
 	}
+#if NUXJS_ES5
+	storeTailEnd = -1;
+#endif
 	const Processor::OpcodeInfo& opcodeInfo = Processor::getOpcodeInfo(opcode);
 	stackDepth += opcodeInfo.stackUse + (((opcodeInfo.flags & Processor::OpcodeInfo::POP_OPERAND) != 0) ? -operand : 0);
 	assert(stackDepth >= 0);
@@ -4489,9 +4492,35 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand, UInt32
 	lastEmitted = opcode;
 }
 
+#if NUXJS_ES5
+bool Compiler::CodeSection::dropStoreTailValue() {
+	if (inDeadCode() || storeTailEnd != static_cast<Int32>(code.size())) {
+		return false;
+	}
+	// The tail is [POST_SHUFFLE / REPUSH, write, POP], all three sharing one source offset, so removing the
+	// duplication and sliding the write and its POP down cannot orphan a mapping or a branch target: the marker
+	// dies at any emit or completed branch, which is what makes the opcode check below provenance, not guesswork.
+	const size_t n = code.size();
+	assert(n >= 3);
+	const Processor::Opcode duplicator = Processor::unpackInstruction(code[n - 3]).first;
+	assert(duplicator == Processor::POST_SHUFFLE_OP || duplicator == Processor::REPUSH_OP);
+	(void)duplicator;
+	code[n - 3] = code[n - 2];
+	code[n - 2] = code[n - 1];
+	code.pop();
+	--stackDepth;	// the duplication pushed one; the value it would have kept is the one being discarded
+	storeTailEnd = -1;
+	lastEmitted = Processor::POP_OP;
+	return true;
+}
+#endif
+
 void Compiler::CodeSection::insertSection(const CodeSection& section) {
 	const Int32 stackAdjust = stackDepth - section.initialStackDepth;
 	lastEmitted = Processor::INVALID_OP;
+#if NUXJS_ES5
+	storeTailEnd = -1;
+#endif
 	section.exportSourceMapping(codeOffsets, sourceOffsets, static_cast<UInt32>(code.size()));
 	code.insert(code.end(), section.code.begin(), section.code.end());
 	stackDepth = section.stackDepth + stackAdjust;
@@ -4527,6 +4556,9 @@ void Compiler::completeForwardBranch(const BranchPoint& point) {
 	assert(currentSection->inDeadCode() || point.inDeadCode() || point.stackDepth == currentSection->stackDepth);
 	if (!point.inDeadCode()) {
 		currentSection->lastEmitted = Processor::INVALID_OP;
+	#if NUXJS_ES5
+		currentSection->storeTailEnd = -1;
+	#endif
 		currentSection->stackDepth = point.stackDepth;
 		currentSection->maxStackDepth = std::max(currentSection->maxStackDepth, point.stackDepth);
 		const std::pair<Processor::Opcode, Int32> instruction = Processor::unpackInstruction(currentSection->code[point.codeOffset]);
@@ -4847,6 +4879,7 @@ Compiler::ExpressionResult Compiler::makeAssignment(const ExpressionResult& xr) 
 			emit(Processor::REPUSH_OP, 0);
 			emitWithConstant(Processor::WRITE_NAMED_POP_OP, xr.v);
 			emit(Processor::POP_OP, 1);
+			currentSection->storeTailEnd = static_cast<Int32>(currentSection->code.size());
 		#else
 			emitWithConstant(Processor::WRITE_NAMED_OP, xr.v);
 		#endif
@@ -4858,6 +4891,7 @@ Compiler::ExpressionResult Compiler::makeAssignment(const ExpressionResult& xr) 
 			emit(Processor::POST_SHUFFLE_OP);
 			emit(Processor::SET_PROPERTY_POP_OP);
 			emit(Processor::POP_OP, 1);
+			currentSection->storeTailEnd = static_cast<Int32>(currentSection->code.size());
 		#else
 			emit(Processor::SET_PROPERTY_OP);
 		#endif
@@ -4869,7 +4903,13 @@ Compiler::ExpressionResult Compiler::makeAssignment(const ExpressionResult& xr) 
 Compiler::ExpressionResult Compiler::discard(const ExpressionResult& xr) {
 	switch (xr.t) {
 		case ExpressionResult::PUSHED:
-		case ExpressionResult::PUSHED_PRIMITIVE: emit(Processor::POP_OP, 1); break;
+		case ExpressionResult::PUSHED_PRIMITIVE:
+		#if NUXJS_ES5
+			// A store whose value nobody reads drops its duplication instead of popping: 2 opcodes, as es3 fused.
+			if (currentSection->dropStoreTailValue()) break;
+		#endif
+			emit(Processor::POP_OP, 1);
+			break;
 		case ExpressionResult::NAMED: emitWithConstant(Processor::READ_NAMED_OP, xr.v); emit(Processor::POP_OP, 1); break;
 		case ExpressionResult::PROPERTY: emit(Processor::GET_PROPERTY_OP); emit(Processor::POP_OP, 1); break;
 	#if NUXJS_ES5

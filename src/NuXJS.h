@@ -2134,10 +2134,16 @@ class Compiler : public GCItem {
 				: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
 				, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth)
 				, codeOffsets(&heap), sourceOffsets(&heap)
+			#if NUXJS_ES5
+				, storeTailEnd(-1)
+			#endif
 		 	{
 			}
 			
 			void emit(Processor::Opcode opcode, Int32 operand, UInt32 sourceOffset);
+		#if NUXJS_ES5
+			bool dropStoreTailValue();	///< Rewrites the store tail makeAssignment just emitted into its discarded form. False when anything intervened; the caller then pops as usual.
+		#endif
 			void pushSourceMapping(UInt32 offset);
 			UInt32 popSourceMapping();
 			void exportSourceMapping(Vector<UInt32>& toCodeOffsets, Vector<UInt32>& toSourceOffsets
@@ -2151,6 +2157,9 @@ class Compiler : public GCItem {
 			Int32 maxStackDepth;
 			Vector<UInt32> codeOffsets;
 			Vector<UInt32> sourceOffsets;
+		#if NUXJS_ES5
+			Int32 storeTailEnd;	///< code.size() right after a value-producing store tail, -1 otherwise; any emit or branch completion invalidates it
+		#endif
 		};
 
 		struct BranchPoint {
