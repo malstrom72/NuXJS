@@ -155,13 +155,11 @@ function uint32(v) { return v >>> 0; }
 //#if ES5
 
 /*
-	9.9 ToObject for the Array.prototype methods, which reject null and undefined where the Object constructor makes
-	fresh objects of them. Its sibling, 9.10 CheckObjectCoercible, is step 1 of the String.prototype and
-	Object.prototype methods too, but is spelled out inline at each of those: they do so little else that a call
-	frame for the test measured 2.2% on a charCodeAt loop, where these read length and then loop. Either way the
-	callers have to be strict code, 10.4.3 otherwise substituting the global object for a null this at frame entry,
-	so that the step can never fail and the whole check is dead. Nor can the test fold into str(), which is applied
-	to arguments as well, where ToString(null) is correctly "null".
+	9.9 ToObject for the Array.prototype methods, which reject null and undefined where the Object constructor
+	makes fresh objects of them. Its sibling 9.10 CheckObjectCoercible is spelled out inline at each String and
+	Object method instead: they do so little else that a call frame for the test measured 2.2% on a charCodeAt
+	loop. Either way the callers must be strict code, 10.4.3 otherwise substituting the global object for a null
+	this and making the step unreachable.
 */
 function toObject(v, what) {
 	var t;
@@ -950,13 +948,11 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 	}),
 //#else
 	/*
-		15.4.4.6-13, the mutators, restated for ES5. The algorithms are the ones above, holes and array-likes
-		included; what the ES5 editions add is Throw = true on every [[Put]] and [[Delete]], where the ES3 editions
-		had no Throw flag at all and a refused store was silent. Being strict IS that flag, 8.7.2 and 11.4.1 raising
-		a refused store or delete into the TypeError the spec asks for, and it is also what keeps `length` from
-		running ahead of an element that was never stored, on a non-extensible array or past a read-only length.
-		The bodies genuinely differ beyond that, which is why these are whole alternative entries: an empty array
-		still gets its length store, and splice reads deleteCount through `arguments` rather than as a parameter.
+		15.4.4.6-13, the mutators, restated for ES5. The algorithms are the ones above; what the ES5 editions add is
+		Throw = true on every [[Put]] and [[Delete]], and being strict IS that flag, 8.7.2 and 11.4.1 raising a refused
+		store into the TypeError the spec asks for. The bodies differ beyond that, which is why these are whole
+		alternative entries: an empty array still gets its length store, and splice reads deleteCount through
+		`arguments` rather than as a parameter.
 	*/
 	// 4.a in both pop and shift: an empty array still gets the length store, so a read-only length throws there too.
 	pop: unconstructable(function pop() {
@@ -1286,12 +1282,11 @@ function isoDate(d) {
 
 //#if ES5
 /*
-	15.9.4.2 wants NaN for a String that is not a valid instance of the 15.9.1.15 format, that clause counting out of
-	bounds values as illegal alongside syntax errors. The fall back to implementation specific formats it permits is
-	not taken, so this is the whole of what the es5 build accepts, bar the space and lowercase t separators toString
-	and toUTCString print and 15.9.4.2's round trips need. parse runs this first and then only ever sees a well formed
-	string, which is why it can go on swallowing a failed readPart. ES3 dictates no format at all, so the es3 build
-	keeps its tolerant scan and the looser offset spellings that come with it; see tests/es3only/dateFormatsLoose.io.
+	15.9.4.2 wants NaN for a String that is not a valid instance of the 15.9.1.15 format, out of bounds values
+	counting as illegal alongside syntax errors. The permitted fall back to implementation specific formats is not
+	taken, bar the space and lowercase t separators toString and toUTCString print. parse runs this first and then
+	only ever sees a well formed string, which is why it can go on swallowing a failed readPart. ES3 dictates no
+	format at all, so the es3 build keeps its tolerant scan; see tests/es3only/dateFormatsLoose.io.
 */
 function isDateTimeString(s) {
 	var i = 0, c;
@@ -2017,11 +2012,9 @@ defineProperties(RegExp, { dontEnum: true, readOnly: true, dontDelete: true }, {
 //#else
 /*
 	15.10.6: the prototype is itself a regular expression object, its [[Class]] "RegExp" and its data properties
-	those of `new RegExp()`, where distinctConstructor hands out a plain object. So it is built here instead, with
-	the same attributes createRegExp gives an instance, and the methods below then land on it as before. Its
-	matcher is written out rather than compiled: compileRegExp goes through evalThere, and the globals table binds
-	`eval` further down. `[p, p]` is what compileRegExp emits for the empty pattern, an empty match wherever it is
-	tried, so RegExp.prototype.exec and .test answer as 15.10.6.2 and .3 require of `new RegExp()`.
+	those of `new RegExp()`, where distinctConstructor hands out a plain object. Its matcher is written out rather
+	than compiled, compileRegExp going through evalThere and the globals table binding `eval` further down. `[p, p]`
+	is what compileRegExp emits for the empty pattern, so exec and test answer as 15.10.6.2 and .3 require.
 */
 regExpPrototype = support.createWrapper("RegExp", function (s, p) { return [p, p] }
 		, support.prototypes.Object);
@@ -2615,11 +2608,10 @@ var $sort = Array.prototype.sort;	// captured before the entry below replaces it
 
 /*
 	Everything left whose first step is CheckObjectCoercible or ToObject on the this value, or that stores with
-	Throw = true. One IIFE rather than a directive prologue per function, since there are twelve of them: 10.4.3
-	substitutes the global object for a null or undefined this in a non-strict function, which would make the
-	required TypeError unreachable, and 8.7.2 and 11.4.1 only raise a refused store or delete into a TypeError when
-	the code is strict. Strict mode also leaves `arguments` unmapped, which is what the "was the argument supplied?"
-	tests below want. The file as a whole cannot be strict: evalThere assigns to `eval`, which strict mode forbids.
+	Throw = true. One IIFE rather than a directive prologue for each of the twelve: 10.4.3 would substitute the
+	global object for a null this and make the required TypeError unreachable, and 8.7.2 and 11.4.1 only raise a
+	refused store into one in strict code. Strict mode also leaves `arguments` unmapped, which the "was the
+	argument supplied?" tests below want. The file as a whole cannot be strict: evalThere assigns to `eval`.
 */
 (function() {
 "use strict";
@@ -2678,12 +2670,10 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		return o;
 	}),
 	/*
-		15.4.4.14-22. All nine are generic over array-likes, read length once up front, and visit only indices that
-		are actually present, so holes are skipped rather than passed as undefined. Each declares exactly one formal
-		parameter because the spec fixes its `length` at 1; the optional second argument comes from `arguments`.
-
-		The callback takes (element, index, O), so `args` below is one scratch argument list per call rather than per
-		element: callWithArgs copies it into the callee's frame before invoking and never retains it.
+		15.4.4.14-22. All nine are generic over array-likes, read length once up front, and visit only indices that are
+		present, so holes are skipped rather than passed as undefined. Each declares one formal parameter because the
+		spec fixes its `length` at 1, the optional second coming from `arguments`. `args` below is one scratch argument
+		list per call rather than per element, callWithArgs copying it into the callee's frame before invoking.
 	*/
 	indexOf: unconstructable(function indexOf(searchElement) {
 		var o = toObject(this, "indexOf"), len = o.length >>> 0, k;

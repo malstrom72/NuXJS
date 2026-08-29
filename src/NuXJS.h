@@ -28,9 +28,8 @@
 
 /*
 	NUXJS_ES5 compiles the ECMAScript 5.1 extensions and defaults to 1. Define it to 0 (-DNUXJS_ES5=0, the `es3`
-	build variant) for the pristine ECMAScript 3 engine, byte for byte: every guard is `#if`, never `#ifdef`, so 0
-	and undefined preprocess alike. Every ES5.1 change in the source is bracketed by `#if NUXJS_ES5` and must be
-	strictly additive. See docs/ES5.1 Roadmap.md.
+	build) for the pristine ECMAScript 3 engine, byte for byte: every guard is `#if`, never `#ifdef`, so 0 and
+	undefined preprocess alike, and every ES5.1 change must be strictly additive. See docs/ES5.1 Roadmap.md.
 */
 
 #ifndef NUXJS_ES5
@@ -611,13 +610,9 @@ class Object : public GCItem {
 		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;	///< Appends every own property name (including non-enumerable) as a String value, for 15.2.3.4. Default: none.
 
 		/*
-			What an object runs instead of answering a property itself. Both report a function for the caller to
-			enter as a frame and neither runs anything, the object model not being allowed to: 8.12.3 and 8.12.5
-			are finished by whoever asked, the interpreter with a frame of its own and the host through rt.call.
-			Either is asked only once getOwnProperty has reported the key at its level, so an object with no
-			accessor storage never hears of them, and past the base a setter is asked value-blind: a
-			value-dependent answer (an array's length taking an object) is the base's own store completion.
-			The defaults answer over getOwnPropertySlot, so most objects need no override of their own.
+			Report the accessor function; the caller enters it as a frame, the object model never running script itself.
+			Asked only once getOwnProperty has reported the key at that level, and past the base a setter is asked
+			value-blind. The defaults answer over getOwnPropertySlot, so most classes need no override.
 		*/
 		virtual Function* getOwnGetter(Runtime& rt, const Value& key) const;					///< 0 when the accessor has no getter, which then reads as undefined.
 		virtual Function* getOwnSetter(Runtime& rt, const Value& key, const Value& v) const;		///< 0 when nothing of this object's runs for this store.
@@ -631,10 +626,9 @@ class Object : public GCItem {
 		bool setProperty(Runtime& rt, const Value& key, const Value& v); 	///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
 	#if NUXJS_ES5
 		/*
-			8.12.3 and 8.12.5 for a caller able to run a function. ACCESSOR_FLAG in the result means one was handed
-			over, never null when set: run it, and for a read its result is the value. On a write EXISTS_FLAG means
-			the store was made and its absence a refusal, which only 11.13.1 strict code acts on. Each walks the
-			chain once, and neither runs script.
+			8.12.3 and 8.12.5 for a caller able to run a function. ACCESSOR_FLAG means one was handed over, never null
+			when set; on a write EXISTS_FLAG means the store was made, its absence a refusal only strict code acts on.
+			One walk each, and neither runs script.
 		*/
 		Flags getProperty(Runtime& rt, const Value& key, Value* v, Function** getter) const;
 		Flags setProperty(Runtime& rt, const Value& key, const Value& v, Function** setter, bool mayStore = true);	///< mayStore is false for the transient box 8.7.2 makes of a primitive base, where a store must never be kept but an inherited setter still runs.
@@ -699,9 +693,9 @@ class RangeEnumerator : public Enumerator {
 
 #if NUXJS_ES5
 /**
-	Walks a prototype chain for 12.6.4: own names first, then each prototype level, a name suppressed once any
-	nearer level holds it as an own property - enumerable or not, shadowing ignores [[Enumerable]]. Kept apart
-	from JoiningEnumerator below: no wrapper per level, and each level's own enumerator is made only on arrival.
+	Walks a prototype chain for 12.6.4: own names first, then each prototype level, a name suppressed once a
+	nearer level owns it, enumerable or not. Separate from JoiningEnumerator because it needs no wrapper per
+	level and builds each level's enumerator only on arrival.
 **/
 class ShadowingChainEnumerator : public Enumerator {
 	public:
@@ -1099,14 +1093,10 @@ class Code : public Object {
 	protected:
 		bool strict;								///< 14.1: this Code is strict-mode code (own "use strict" directive or inherited from enclosing strict code).
 		/**
-			The body can reach its own `arguments`, so a strict function must capture the passed values at entry
-			rather than let 10.6's non-mapped object be built later from parameter slots that may since have been
-			assigned. Set by two productions, and they have to stay a matched pair: a reference to the identifier
-			`arguments`, and a *direct* eval call, which reaches the scope by name and can therefore ask for
-			`arguments` without the body naming it. Nothing else gets at a strict function's own scope from the
-			inside: `with` is a SyntaxError in strict code, an indirect eval runs in the global scope, and a nested
-			function's `arguments` is its own.
-		*/
+			A strict function captures its argument values at entry, 10.6's non-mapped object otherwise being built
+			later from parameter slots that may have been assigned since. Set by two productions that must stay a pair:
+			a reference to `arguments`, and a *direct* eval, which can ask for it without the body naming it.
+		**/
 		bool usesArguments;
 	#endif
 
@@ -1125,9 +1115,9 @@ class Code : public Object {
 
 /*
 	The receiver a call carries, the slot a frame stores it in, and the unbound `this`. 10.4.3 lets a strict
-	function see a primitive or `null` `this` verbatim, which an `Object*` cannot express, so es5 widens these to a
-	`Value`; es3 10.2.3 requires the coercion and keeps the pointer. `noReceiver()` exists because a literal `0`
-	default would bind `Value(Int32)`, the *number* zero. See docs/ES5.1 Roadmap.md §5.
+	function see a primitive or `null` verbatim, which an `Object*` cannot express, so es5 widens these to a
+	`Value` where es3 10.2.3 requires the coercion and keeps the pointer. `noReceiver()` exists because a literal
+	`0` default would bind `Value(Int32)`, the number zero.
 */
 #if NUXJS_ES5
 typedef const Value& Receiver;
@@ -1210,31 +1200,18 @@ class Scope : public GCItem {
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 	#if NUXJS_ES5
 		/*
-			readVar's walk with the holder reported as well, so one lookup answers both halves of a captured
-			reference: `v` and the returned flags are exactly what readVar gives, while `*holder` is the object
-			holding the binding for the two scopes that are 10.2.1.2 *object* environment records, a `with` object
-			and the global object. A declarative record answers 0 there, as does a name that resolves nowhere. Only
-			an object record can hold an accessor, and readVar / writeVar cannot run one: they are plain calls, and
-			a getter needs a frame pushed by the opcode, so they hand the holder back and READ_NAMED / WRITE_NAMED
-			do the invoking, exactly as GET_PROPERTY already does for `o.x`. `depth` must be 0 on entry and comes
-			back as the number of levels climbed, which is how a declarative binding is identified in the absence
-			of a holder: a direct eval in a right-hand side can add a *more local* binding of the same name,
-			11.13.2 says the write belongs to the one resolved first, and the level says which, reachable in a few
-			pointer hops rather than a second search. Every override must stop wherever its own readVar stops, or a
-			shadowed name resolves to the wrong one.
+			readVar's walk, reporting the holder as well: the 10.2.1.2 object environment record a `with` or the global
+			keeps the binding on, 0 for a declarative one. `depth` comes back as the levels climbed, which is what
+			identifies a declarative binding when there is no holder, a direct eval being able to add a nearer one that
+			11.13.2 must not give the write to. Every override must stop where its own readVar stops.
 		*/
 		virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const;
 		Object* resolveHolder(Runtime& rt, const String* name) const;	// resolveVar for the callers that want only the holder
 
 		/*
-			Writes like writeVar, but only when the write is a plain update of an existing writable binding.
-			Anything else leaves the binding untouched and answers the object environment record holding it, so
-			that putThrough can finish the 8.12.5 [[Put]]: run a setter, refuse the store, or throw in
-			strict mode. A declarative record always answers 0, having nothing an accessor could live on.
-			Answering both questions in one walk is the point: asking resolveVar first and then writing walks the
-			chain twice, which costs ~50% on a global assignment and 5% across the benchmark suite. Only a read
-			can afford resolveVar, because there the accessor flag has already come back from readVar and the
-			walk is the rare case.
+			Writes like writeVar when the write is a plain update of an existing writable binding, and otherwise leaves
+			the binding alone and answers the object environment record holding it, so putThrough can finish the 8.12.5
+			[[Put]]. One walk rather than resolveVar and then a write, which costs ~50% on a global assignment.
 		*/
 		virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v);
 	#endif
@@ -1928,13 +1905,10 @@ class Processor : public GCItem {
 		#endif
 		#if NUXJS_ES5
 			/*
-				11.13 evaluates the left-hand side once and hands that same Reference to PutValue, so an assignment
-				resolves the name up front and keeps the reference on the stack rather than looking it up again
-				after the right-hand side has run. One Value carries all three shapes a resolved name takes: the
-				holder object for a 10.2.1.2 *object* environment record, the level climbed to for a declarative
-				one (which has no holder, but still has to be told apart from a nearer binding that a direct eval
-				in the right-hand side may add), and undefined for a name that resolves nowhere, which 8.7.2
-				sends to the global object, or to a ReferenceError in strict code.
+				11.13 evaluates the left-hand side once, so an assignment resolves the name up front and keeps the
+				reference on the stack instead of looking it up again after the right-hand side. One Value carries all
+				three shapes: the holder for an object environment record, the level climbed to for a declarative one,
+				and undefined for a name that resolves nowhere.
 			*/
 			, RESOLVE_NAMED_OP								// operand: const_index (name), stack: -> reference
 			, RESOLVE_READ_NAMED_OP							// operand: const_index (name), stack: -> reference, value
