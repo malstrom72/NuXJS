@@ -337,7 +337,9 @@ static void disassemble(Heap& heap, const Code& code) {
 			case Processor::CATCH_SCOPE_OP: std::wcerr << L" #" << constants[operand].toString(heap)->toWideString(); break;
 			case Processor::DECLARE_OP:
 			case Processor::READ_NAMED_OP:
+		#if !NUXJS_ES5
 			case Processor::WRITE_NAMED_OP:
+		#endif
 			case Processor::WRITE_NAMED_POP_OP:
 			case Processor::ADD_PROPERTY_OP:
 			case Processor::DELETE_NAMED_OP:

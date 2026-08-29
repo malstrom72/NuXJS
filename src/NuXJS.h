@@ -1918,7 +1918,9 @@ class Processor : public GCItem {
 			, WRITE_LOCAL_OP								// operand: local_index, stack: value -> value
 			, WRITE_LOCAL_POP_OP							// operand: local_index, stack: value ->
 			, READ_NAMED_OP									// operand: const_index (name), stack: -> value
+		#if !NUXJS_ES5	// es5 resolves the reference up front and emits WRITE_RESOLVED_OP instead: never emitted, no handler
 			, WRITE_NAMED_OP								// operand: const_index (name), stack: value -> value
+		#endif
 		#if !NUXJS_ES5
 			, WRITE_NAMED_POP_OP							// operand: const_index (name), stack: value ->
 		#else
@@ -2097,10 +2099,8 @@ class Processor : public GCItem {
 		void reset();
 	#if NUXJS_ES5
 		bool checkStrictAssignable(Scope* scope, const String* name);	///< For a strict named write: throws ReferenceError (undeclared) or TypeError (read-only) and returns false, else true.
-	#if NUXJS_ES5
 		bool enterGetter(const Object* o, const Value& key, Value* dest, Int32 popCount, Receiver thisObject);	// the accessor tail of a read; true means return to the loop
 		bool putThrough(Object* o, const Value& key, Int32 popCount, Receiver receiver, bool strict, bool mayStore = true);	// 8.12.5 past the cheap update; true means return to the loop
-	#endif
 	#endif
 		void pushFrame(const Code* code, Scope* scope, Receiver thisObject);
 		void popFrame();

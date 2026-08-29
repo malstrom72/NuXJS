@@ -164,8 +164,9 @@ function uint32(v) { return v >>> 0; }
 	to arguments as well, where ToString(null) is correctly "null".
 */
 function toObject(v, what) {
+	var t;
 	if (v == null) throw typeError("Array.prototype." + what + " called on null or undefined");
-	return Object(v)
+	return ((t = typeof v) === "object" || t === "function" ? v : Object(v))	// null is out, so an object or function is already the result, no second frame
 }
 //#endif
 
@@ -1447,10 +1448,12 @@ defineProperties(Date.prototype, { dontEnum: true }, {
 		if ($isNaN(y)) return setDateValue(this, $NaN);		// 3: an unusable year clears the date rather than clipping
 		if (0 <= (v = int(y)) && v <= 99) y = v + 1900;
 		return setDateValue(this, timeClipLocal(setDateParts($isNaN(t) ? 0 : toLocalTime(t), 0, [ y ])));
-	}),
+	})
 //#endif
+//#if !ES5
 	// TODO: this isn't as generic as in the ES5 spec, e.g. not converting this to object, not going via the objects reassignable `toISOString`.
 	toJSON: unconstructable(function toJSON() { return isoDate(this); })
+//#endif
 });
 //#if ES5
 
@@ -2082,10 +2085,14 @@ defineProperties(globals, { dontEnum: true }, {
 		for (var t = { }, i = chars.length - 1; i >= 0; --i) t[chars[i]] = true;
 		return t;
 	}
-	var RESERVED_CHARS = ";/?:@&=+$,#", UNESCAPED_CHARS =
-			"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.!~*'()";
-	var RESERVED = memberSet(RESERVED_CHARS), UNESCAPED = memberSet(UNESCAPED_CHARS)
-			, FULL_URI = memberSet(UNESCAPED_CHARS + RESERVED_CHARS), NONE = { };
+	var RESERVED, UNESCAPED, FULL_URI, NONE = { };
+	function createUriTables() {	// 162 interpreted inserts, so deferred to first use the way createCaseTables is
+		var RESERVED_CHARS = ";/?:@&=+$,#", UNESCAPED_CHARS =
+				"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.!~*'()";
+		RESERVED = memberSet(RESERVED_CHARS);
+		UNESCAPED = memberSet(UNESCAPED_CHARS);
+		FULL_URI = memberSet(UNESCAPED_CHARS + RESERVED_CHARS);
+	}
 	function hex(b) { return '%' + ALPHA_DIGITS_UPPER[b >> 4] + ALPHA_DIGITS_UPPER[b & 15]; }
 	function octet(s, i) {	// the byte spelled by the two hex digits after a '%', or -1
 		var h = pic[s[i + 1]], l = pic[s[i + 2]];	// null for white space, undefined past the end: != null takes both
@@ -2093,9 +2100,10 @@ defineProperties(globals, { dontEnum: true }, {
 	}
 	function encode(s, keep) {	// unescaped characters pass in runs; everything else UTF-8s into %XX triplets
 		s = str(s);
-		for (var r = '', i = 0, j = 0, n = s.length; i < n; ++i) {
+		for (var r = null, i = 0, j = 0, n = s.length; i < n; ++i) {
 			if (!keep[s[i]]) {
-				r += $sub(s, j, i);
+				if (r === null) r = new StringBuilder;	// only once an escape is due: an unescaped string returns untouched
+				r.append($sub(s, j, i));
 				var v = $charCodeAt(s, i);
 				if (v >= 0xDC00 && v <= 0xDFFF) throw uriError("URI malformed");
 				if (v >= 0xD800 && v <= 0xDBFF) {	// a pair encodes as one code point, a lone half never (step 4.d-e)
@@ -2103,26 +2111,27 @@ defineProperties(globals, { dontEnum: true }, {
 					if (w < 0xDC00 || w > 0xDFFF) throw uriError("URI malformed");
 					v = (v - 0xD800) * 0x400 + w - 0xDC00 + 0x10000;
 				}
-				r += (v < 0x80 ? hex(v)
+				r.append(v < 0x80 ? hex(v)
 						: v < 0x800 ? hex(0xC0 | (v >> 6)) + hex(0x80 | (v & 63))
 						: v < 0x10000 ? hex(0xE0 | (v >> 12)) + hex(0x80 | ((v >> 6) & 63)) + hex(0x80 | (v & 63))
 						: hex(0xF0 | (v >> 18)) + hex(0x80 | ((v >> 12) & 63)) + hex(0x80 | ((v >> 6) & 63)) + hex(0x80 | (v & 63)));
 				j = i + 1;
 			}
 		}
-		return (j === 0 ? s : r + $sub(s, j, n));
+		return (r === null ? s : r.append($sub(s, j, n)).build());
 	}
 	function decode(s, keep) {	// an escaped character in `keep` stays escaped (15.1.3.1 reservedURISet)
 		s = str(s);
-		for (var r = '', i = 0, j = 0, n = s.length; i < n; ++i) {
+		for (var r = null, i = 0, j = 0, n = s.length; i < n; ++i) {
 			if (s[i] === '%') {
-				r += $sub(s, j, i);
+				if (r === null) r = new StringBuilder;
+				r.append($sub(s, j, i));
 				var start = i, b = octet(s, i), c;
 				if (b < 0) throw uriError("URI malformed");
 				i += 2;
 				if (b < 0x80) {
 					c = $fromCharCode(b);
-					r += (keep[c] ? $sub(s, start, i + 1) : c);
+					r.append(keep[c] ? $sub(s, start, i + 1) : c);
 				} else {
 					var extra = (b < 0xC0 ? -1 : b < 0xE0 ? 1 : b < 0xF0 ? 2 : b < 0xF8 ? 3 : -1);
 					if (extra < 0) throw uriError("URI malformed");
@@ -2136,19 +2145,19 @@ defineProperties(globals, { dontEnum: true }, {
 						throw uriError("URI malformed");
 					}
 					// a decoded multi-byte char is never in `keep` (those are ASCII), so no check here
-					r += (v < 0x10000 ? $fromCharCode(v)
+					r.append(v < 0x10000 ? $fromCharCode(v)
 							: $fromCharCode(((v -= 0x10000) >> 10) + 0xD800) + $fromCharCode((v & 0x3FF) + 0xDC00));
 				}
 				j = i + 1;
 			}
 		}
-		return (j === 0 ? s : r + $sub(s, j, n));
+		return (r === null ? s : r.append($sub(s, j, n)).build());
 	}
 	defineProperties(globals, { dontEnum: true }, {
-		decodeURI: unconstructable(function decodeURI(encodedURI) { return decode(encodedURI, RESERVED) }),
+		decodeURI: unconstructable(function decodeURI(encodedURI) { if (!RESERVED) createUriTables(); return decode(encodedURI, RESERVED) }),
 		decodeURIComponent: unconstructable(function decodeURIComponent(encodedURIComponent) { return decode(encodedURIComponent, NONE) }),
-		encodeURI: unconstructable(function encodeURI(uri) { return encode(uri, FULL_URI) }),
-		encodeURIComponent: unconstructable(function encodeURIComponent(uriComponent) { return encode(uriComponent, UNESCAPED) })
+		encodeURI: unconstructable(function encodeURI(uri) { if (!RESERVED) createUriTables(); return encode(uri, FULL_URI) }),
+		encodeURIComponent: unconstructable(function encodeURIComponent(uriComponent) { if (!RESERVED) createUriTables(); return encode(uriComponent, UNESCAPED) })
 	});
 })();
 //#endif
@@ -2441,12 +2450,14 @@ defineProperties(Array, { dontEnum: true }, {
 	isArray: unconstructable(function isArray(o) { return $getInternalProperty(o, "class") === "Array"; })
 });
 
+//#if !ES5
 defineProperties(Object, { dontEnum: true }, {
 	defineProperty: unconstructable(function defineProperty(o, p, d) {
 		support.defineProperty(o, str(p), d.value, !d.writable, !d.enumerable, !d.configurable);
 	}),
 	getPrototypeOf: unconstructable(function getPrototypeOf(o) { return $getInternalProperty(o, "prototype"); })
 });
+//#endif
 //#if ES5
 
 /* --- ES5.1 additions --- */
