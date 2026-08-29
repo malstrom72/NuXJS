@@ -325,13 +325,8 @@ static bool isStrictReservedWord(size_t n, const Char* s) {
 	static const char* const WORDS[] = {
 		"implements", "interface", "let", "package", "private", "protected", "public", "static", "yield"
 	};
-	for (size_t i = 0; i < sizeof(WORDS) / sizeof(*WORDS); ++i) {
-		const char* const w = WORDS[i];
-		size_t j = 0;
-		while (j < n && w[j] != 0 && s[j] == static_cast<Char>(w[j])) {
-			++j;
-		}
-		if (j == n && w[j] == 0) {
+	for (size_t i = 0; i < sizeof (WORDS) / sizeof (*WORDS); ++i) {
+		if (strncmp(s, WORDS[i], n) == 0 && WORDS[i][n] == 0) {
 			return true;
 		}
 	}
@@ -3058,7 +3053,9 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ WRITE_LOCAL_OP             , "WRITE_LOCAL"             , 0      , 0 },
 	{ WRITE_LOCAL_POP_OP         , "WRITE_LOCAL_POP"         , -1     , 0 },
 	{ READ_NAMED_OP              , "READ_NAMED"              , 1      , 0 },
+#if !NUXJS_ES5
 	{ WRITE_NAMED_OP             , "WRITE_NAMED"             , 0      , 0 },
+#endif
 #if !NUXJS_ES5
 	{ WRITE_NAMED_POP_OP         , "WRITE_NAMED_POP"         , -1     , 0 },
 #else
@@ -3198,7 +3195,6 @@ struct Processor::EvalScope : public Scope {
 		}
 		parentScope->writeVar(rt, name, v);
 	}
-#if NUXJS_ES5
 	virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const {
 		if (ownVars != 0) {
 			const Flags flags = ownVars->getOwnProperty(rt, name, v);
@@ -3219,7 +3215,6 @@ struct Processor::EvalScope : public Scope {
 		}
 		return parentScope->writeVarOrAccessor(rt, name, v);
 	}
-#endif
 	virtual bool deleteVar(Runtime& rt, const String* name) {
 		if (ownVars != 0) {
 			Table::Bucket* bucket = ownVars->lookup(name);
@@ -3571,7 +3566,6 @@ bool Processor::checkStrictAssignable(Scope* scope, const String* name) {
 	return true;
 }
 
-#if NUXJS_ES5
 /*
 	The rare tail of a read that reported ACCESSOR_FLAG: a second walk fetches the getter and enters it as a frame
 	whose result lands at sp[-popCount]. Answers false when the accessor has no getter, the walk then having
@@ -3607,7 +3601,6 @@ bool Processor::putThrough(Object* o, const Value& key, Int32 popCount, Receiver
 	return false;
 }
 
-#endif
 #endif
 
 Object* Processor::convertToObject(const Value& v, const bool requireExtensible) {
@@ -4473,8 +4466,6 @@ void Compiler::CodeSection::emit(Processor::Opcode opcode, Int32 operand, UInt32
 			// guarded all the same: fusing takes away the slot a setter frame deposits its return value in.
 		#if !NUXJS_ES5
 			case Processor::WRITE_NAMED_OP: replacementOpcode = Processor::WRITE_NAMED_POP_OP; break;
-		#endif
-		#if !NUXJS_ES5
 			case Processor::SET_PROPERTY_OP: replacementOpcode = Processor::SET_PROPERTY_POP_OP; break;
 		#endif
 			case Processor::REPUSH_OP:
@@ -6621,13 +6612,18 @@ struct BoundFunction : public ExtensibleFunction {
 };
 
 Value BoundFunction::invoke(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Receiver) {
-	Heap& heap = rt.getHeap();
-	Vector<Value> args(boundArgs.begin(), boundArgs.end(), &heap);	// 15.3.4.5.1 (4): bound arguments, then these
+	if (boundArgs.empty()) {
+		return target->invoke(rt, processor, argc, argv, boundThis);	// f.bind(o) with nothing to prepend: pass the caller's own list
+	}
+	Vector<Value> args(boundArgs.begin(), boundArgs.end(), &rt.getHeap());	// 15.3.4.5.1 (4): bound arguments, then these
 	args.insert(args.end(), argv, argv + argc);
 	return target->invoke(rt, processor, args.size(), args.begin(), boundThis);	// 15.3.4.5.1 (5): verbatim
 }
 
 Value BoundFunction::construct(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Receiver thisObject) {
+	if (boundArgs.empty()) {
+		return target->construct(rt, processor, argc, argv, thisObject);
+	}
 	Vector<Value> args(boundArgs.begin(), boundArgs.end(), &rt.getHeap());	// 15.3.4.5.2 (4)
 	args.insert(args.end(), argv, argv + argc);
 	return target->construct(rt, processor, args.size(), args.begin(), thisObject);	// boundThis does not apply
@@ -6843,10 +6839,7 @@ struct Support {
 	// and packed the descriptor into presence/attribute bitmasks. Runs 8.12.9 with Throw = true and returns obj.
 	static Value defineOwnProperty(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Receiver) {
 		Object* o = (argc >= 1 ? argv[0].asObject() : 0);
-		if (o == 0) {
-			ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Object.defineProperty called on non-object");
-			return Value();
-		}
+		assert(o != 0 && "stdlib.js requires an object before it calls this");
 		const Int32 present = (argc >= 3 ? argv[2].toInt() : 0);
 		const Int32 attribs = (argc >= 7 ? argv[6].toInt() : 0);
 		PropertyDescriptor desc;
@@ -6864,10 +6857,7 @@ struct Support {
 	// 15.2.3.3 + FromPropertyDescriptor (8.10.4): a fresh, fully-populated descriptor object, or undefined.
 	static Value getOwnPropertyDescriptor(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Receiver) {
 		Object* o = (argc >= 1 ? argv[0].asObject() : 0);
-		if (o == 0) {
-			ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Object.getOwnPropertyDescriptor called on non-object");
-			return Value();
-		}
+		assert(o != 0 && "stdlib.js requires an object before it calls this");
 		Value v(UNDEFINED_VALUE);
 		Accessor* accessor;
 		const Flags flags = o->getOwnPropertySlot(rt, argv[1], &v, &accessor);
@@ -6891,10 +6881,7 @@ struct Support {
 	static Value getOwnPropertyNames(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Receiver) {
 		Heap& heap = rt.getHeap();
 		Object* o = (argc >= 1 ? argv[0].asObject() : 0);
-		if (o == 0) {
-			ScriptException::throwError(heap, TYPE_ERROR, "Object.getOwnPropertyNames called on non-object");
-			return Value();
-		}
+		assert(o != 0 && "stdlib.js requires an object before it calls this");
 		Vector<Value> names(0, &heap);
 		o->collectOwnPropertyNames(rt, names);	// no GC runs during a native call, so the raw Values stay valid
 		return new(heap) JSArray(heap.managed(), names.size(), names.begin());
