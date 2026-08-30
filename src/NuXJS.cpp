@@ -1532,6 +1532,19 @@ bool Object::defineOwnProperty(Runtime& rt, const Value&, const PropertyDescript
 	return rejectDefine(rt, doThrow);
 }
 
+/*
+	8.12.3 [[Get]] for native code that must honour accessors, which the object model itself never runs. The getter
+	is entered blocking, so it can run script and throw, and the caller must be prepared for both.
+*/
+static Flags getThroughAccessors(Runtime& rt, Object* object, const Value& key, Value* v) {
+	Function* getter;
+	const Flags flags = object->getProperty(rt, key, v, &getter);
+	if ((flags & ACCESSOR_FLAG) != 0) {
+		*v = rt.call(getter, 0, 0, object);
+	}
+	return flags;
+}
+
 void Object::collectOwnPropertyNames(Runtime&, Vector<Value>&) const { }
 #endif
 
@@ -6884,13 +6897,22 @@ struct Support {
 			Object* arrayObject = (argc > 2 ? argv[2].toObjectOrNull(heap, false) : 0);
 			if (arrayObject != 0) {
 				Value v;
+			#if NUXJS_ES5
+				// 15.3.4.3 (4, 8) reads argArray with [[Get]], so an accessor here runs, throws and is observed.
+				if (getThroughAccessors(rt, arrayObject, &LENGTH_STRING, &v) != NONEXISTENT) {
+			#else
 				if (arrayObject->getProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) { // FIX : in the future I think we should have a virtual getLength
+			#endif
 					Int32 offset = (argc > 3 ? argv[3].toInt() : 0);
 					UInt32 length = static_cast<UInt32>(std::max(v.toInt() - offset, 0));
 					args = Vector<Value>(length, &heap);
 					for (UInt32 i = 0; i < length; ++i) {
 						args[i] = UNDEFINED_VALUE;
+					#if NUXJS_ES5
+						getThroughAccessors(rt, arrayObject, i + offset, &args[i]);
+					#else
 						arrayObject->getProperty(rt, i + offset, &args[i]);
+					#endif
 					}
 				}
 			}
