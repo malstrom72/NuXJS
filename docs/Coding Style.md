@@ -117,7 +117,8 @@ These are the most important principles in the codebase. Get them wrong and the 
   	One or more sentences. Wrap `names` in back-ticks.
   */
   ```
-  Do NOT write a paragraph as a stack of `//` lines, and do NOT use decorative empty `//` banner lines.
+  A comment that wraps to two `//` lines may stay that way; at three lines or more it becomes a `/* */` block.
+  Do NOT use decorative empty `//` banner lines.
 - **Short inline comments** use a single end-of-line `//`, sitting at column 120 (the wrap column) padded with tabs -
   that is the general rule, with exceptions. A run of short related declarations may align to a common local column
   instead.

@@ -201,9 +201,11 @@ static bool doQuit = false;			// set by the quit() helper
 static bool pauseBeforeQuit = false;	// -p; read by main()
 static int timeOutSeconds = 0;			// -T; read by compileAndRun(), 0 for no limit
 
-// In-memory transcript of the interactive session, tagged for #save (see pushIOLines). It is recorded
-// only while an interactive session is running; PrintFunction appends to it through a pointer that is null
-// in script-file mode.
+/*
+	In-memory transcript of the interactive session, tagged for #save (see pushIOLines). It is recorded
+	only while an interactive session is running; PrintFunction appends to it through a pointer that is null
+	in script-file mode.
+*/
 static std::vector<std::string> ioLines;
 
 static void pushIOLines(char typeChar, const String& s) {
@@ -577,10 +579,12 @@ static const String* describeThrown(Runtime& rt, MyHeap& heap, const Value& thro
 	return thrown.toString(heap);
 }
 
-// Compiles one chunk of source and runs it to completion. All program-visible output (print() and `!!!!`
-// error/stack reporting) goes to stdout; the result echo and timing go to stderr. When `capture` is
-// non-null the `!!!!` lines are also appended to the interactive transcript. Returns true on success,
-// false if a compile-time or run-time error was reported.
+/*
+	Compiles one chunk of source and runs it to completion. All program-visible output (print() and `!!!!`
+	error/stack reporting) goes to stdout; the result echo and timing go to stderr. When `capture` is
+	non-null the `!!!!` lines are also appended to the interactive transcript. Returns true on success,
+	false if a compile-time or run-time error was reported.
+*/
 static bool compileAndRun(Runtime& rt, MyHeap& heap, Processor& processor, const String& source
 		, const String* scriptFileName, Compiler::Target compileFor, bool timing, bool echoResult
 		, bool legacyExceptions, std::vector<std::string>* capture, size_t& peakMemory) {
@@ -679,9 +683,11 @@ static int runScriptFile(Runtime& rt, MyHeap& heap, Processor& processor, const 
 	return ok ? 0 : 1;
 }
 
-// Reads lines (from a terminal or a piped stream), accumulating them until a blank line triggers
-// evaluation as eval-global code. Handles the #save / #undo / #purge / ?expr conveniences and records the
-// session transcript for #save. Returns a process exit code.
+/*
+	Reads lines (from a terminal or a piped stream), accumulating them until a blank line triggers
+	evaluation as eval-global code. Handles the #save / #undo / #purge / ?expr conveniences and records the
+	session transcript for #save. Returns a process exit code.
+*/
 static int runInteractive(Runtime& rt, MyHeap& heap, Processor& processor, std::istream& in
 		, bool timing, bool suppressResultEcho, bool legacyExceptions) {
 	const String LF_STRING("\n");

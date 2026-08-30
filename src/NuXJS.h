@@ -461,7 +461,7 @@ const Flags DONT_ENUM_FLAG = 4;
 const Flags DONT_DELETE_FLAG = 8;
 const Flags INDEX_TYPE_FLAG = 16;	///< internal index type, only used as an optimization for faster name -> local index lookup
 #if NUXJS_ES5
-const Flags ACCESSOR_FLAG = 32;		///< the bucket stores an Accessor (getter / setter pair) instead of a Value
+const Flags ACCESSOR_FLAG = 32;		// the bucket stores an Accessor (getter / setter pair) instead of a Value
 #endif
 const Flags STANDARD_FLAGS = EXISTS_FLAG;	///< use with setOwnProperty()
 const Flags HIDDEN_CONST_FLAGS = READ_ONLY_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG | EXISTS_FLAG;
@@ -488,7 +488,7 @@ class Accessor : public GCItem {
 
 /**
 	PropertyDescriptor is the transient (stack-only) reification of an ES5 property descriptor (spec 8.10). Fields
-	may be present or absent — `present` records which — so [[DefineOwnProperty]] (8.12.9) can distinguish "set to
+	may be present or absent, `present` recording which, so [[DefineOwnProperty]] (8.12.9) can distinguish "set to
 	default" from "leave unchanged". It is collapsed into the compact bucket form only after the accept/reject
 	decision. Its Value / Function* members are only ever live inside a single native call (no GC in between).
 **/
@@ -502,9 +502,9 @@ struct PropertyDescriptor {
 	PropertyDescriptor() : present(0), writable(false), enumerable(false), configurable(false)
 			, value(Value::UNDEFINED), get(0), set(0) { }
 	bool has(int field) const { return (present & field) != 0; }
-	bool isAccessor() const { return (present & (HAS_GET | HAS_SET)) != 0; }		///< 8.10.1
-	bool isData() const { return (present & (HAS_VALUE | HAS_WRITABLE)) != 0; }	///< 8.10.2
-	bool isGeneric() const { return !isAccessor() && !isData(); }				///< 8.10.3
+	bool isAccessor() const { return (present & (HAS_GET | HAS_SET)) != 0; }		// 8.10.1
+	bool isData() const { return (present & (HAS_VALUE | HAS_WRITABLE)) != 0; }	// 8.10.2
+	bool isGeneric() const { return !isAccessor() && !isData(); }				// 8.10.3
 };
 #endif
 
@@ -550,7 +550,7 @@ class Table {
 					Value::Variant var;
 					Int32 index;
 				#if NUXJS_ES5
-					Accessor* accessor;		///< valid only when (flags & ACCESSOR_FLAG) != 0
+					Accessor* accessor;		// valid only when (flags & ACCESSOR_FLAG) != 0
 				#endif
 				};
 				bool keyExists() const { return key != 0; }
@@ -565,9 +565,9 @@ class Table {
 		bool update(Bucket* bucket, const Value& value, Flags flags = 0);	///< Update value. Returns false if bucket is marked as read-only.
 		bool erase(Bucket* bucket);											///< Deletes bucket. Returns false if bucket is marked as dont-delete.
 	#if NUXJS_ES5
-		void defineData(Bucket* bucket, const Value& value, Flags exactFlags);		///< Writes a data property with exact attribute flags (clears + sets, unlike update()).
-		void defineAccessor(Bucket* bucket, Accessor* accessor, Flags exactFlags);	///< Writes an accessor property with exact attribute flags.
-		Accessor* getAccessor(const Bucket* bucket) const;							///< Only valid for buckets with ACCESSOR_FLAG set.
+		void defineData(Bucket* bucket, const Value& value, Flags exactFlags);		// Writes a data property with exact attribute flags (clears + sets, unlike update()).
+		void defineAccessor(Bucket* bucket, Accessor* accessor, Flags exactFlags);	// Writes an accessor property with exact attribute flags.
+		Accessor* getAccessor(const Bucket* bucket) const;							// Only valid for buckets with ACCESSOR_FLAG set.
 	#endif
 		UInt32 getLoadCount() const;										///< Returns number of used hash table entries (not necessarily the same as the number of existing buckets!).
 		void update(Bucket* bucket, const Int32 index);						///< Update value as an index. Only used by name to index tables as an optimization.
@@ -603,19 +603,19 @@ class Object : public GCItem {
 		virtual Value getInternalValue(Heap& heap) const;		///< Used by the standard library to retrieve internal value for wrappers (Number, String etc), source code for functions and parser function for RegExp. Default returns UNDEFINED_VALUE.
 		virtual Object* getPrototype(Runtime& rt) const;		///< Default returns the Object prototype.
 
-		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;								///< Don't touch v if you return NONEXISTENT. Default returns NONEXISTENT. (Under NUXJS_ES5 an accessor property yields *v == undefined; check ACCESSOR_FLAG in the returned flags.)
+		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;								// Don't touch v if you return NONEXISTENT. Default returns NONEXISTENT. (Under NUXJS_ES5 an accessor property yields *v == undefined; check ACCESSOR_FLAG in the returned flags.)
 	#if NUXJS_ES5
-		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;	///< Pure lookup like getOwnProperty but also reports the accessor pair (or null). Never runs script.
-		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);	///< 8.12.9 [[DefineOwnProperty]]. Default rejects (throws TypeError when doThrow). Returns false on a rejected non-throwing call.
-		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;	///< Appends every own property name (including non-enumerable) as a String value, for 15.2.3.4. Default: none.
+		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;	// Pure lookup like getOwnProperty but also reports the accessor pair (or null). Never runs script.
+		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);	// 8.12.9 [[DefineOwnProperty]]. Default rejects (throws TypeError when doThrow). Returns false on a rejected non-throwing call.
+		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;	// Appends every own property name (including non-enumerable) as a String value, for 15.2.3.4. Default: none.
 
 		/*
 			Report the accessor function; the caller enters it as a frame, the object model never running script itself.
 			Asked only once getOwnProperty has reported the key at that level, and past the base a setter is asked
 			value-blind. The defaults answer over getOwnPropertySlot, so most classes need no override.
 		*/
-		virtual Function* getOwnGetter(Runtime& rt, const Value& key) const;					///< 0 when the accessor has no getter, which then reads as undefined.
-		virtual Function* getOwnSetter(Runtime& rt, const Value& key, const Value& v) const;		///< 0 when nothing of this object's runs for this store.
+		virtual Function* getOwnGetter(Runtime& rt, const Value& key) const;					// 0 when the accessor has no getter, which then reads as undefined.
+		virtual Function* getOwnSetter(Runtime& rt, const Value& key, const Value& v) const;		// 0 when nothing of this object's runs for this store.
 	#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);								///< Update existing property. Return false if it doesn't exist or can't be updated (e.g. read-only property exists). Can be overriden for optimization. (Default implementation checks existence with hasOwnProperty() first.)
@@ -631,15 +631,15 @@ class Object : public GCItem {
 			One walk each, and neither runs script.
 		*/
 		Flags getProperty(Runtime& rt, const Value& key, Value* v, Function** getter) const;
-		Flags setProperty(Runtime& rt, const Value& key, const Value& v, Function** setter, bool mayStore = true);	///< mayStore is false for the transient box 8.7.2 makes of a primitive base, where a store must never be kept but an inherited setter still runs.
+		Flags setProperty(Runtime& rt, const Value& key, const Value& v, Function** setter, bool mayStore = true);	// mayStore is false for the transient box 8.7.2 makes of a primitive base, where a store must never be kept but an inherited setter still runs.
 	#endif
 		bool isOwnPropertyEnumerable(Runtime& rt, const Value& key) const;
 		bool hasOwnProperty(Runtime& rt, const Value& key) const; 			///< Checks via getOwnProperty().
 		bool hasProperty(Runtime& rt, const Value& key) const;				///< Checks via getProperty().
 		Enumerator* getPropertyEnumerator(Runtime& rt) const;				///< Unlike getOwnPropertyEnumerator() this one also enumerates all prototype properties.
 	#if NUXJS_ES5
-		bool isExtensible() const { return extensible; }					///< 8.6.2 [[Extensible]]; new objects are extensible.
-		void preventExtensions() { extensible = false; }					///< 15.2.3.10: extensibility only ever goes true -> false.
+		bool isExtensible() const { return extensible; }					// 8.6.2 [[Extensible]]; new objects are extensible.
+		void preventExtensions() { extensible = false; }					// 15.2.3.10: extensibility only ever goes true -> false.
 	#endif
 
 	protected:
@@ -857,7 +857,7 @@ class JSObject : public Object, public Table {
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 	#if NUXJS_ES5
 		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;
-		bool defineOwnAccessor(Runtime& rt, const Value& key, Function* f, bool isSetter);	///< Installs (or completes) an accessor property, as for a `get` / `set` object literal entry.
+		bool defineOwnAccessor(Runtime& rt, const Value& key, Function* f, bool isSetter);	// Installs (or completes) an accessor property, as for a `get` / `set` object literal entry.
 		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);
 		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;
 	#endif
@@ -1091,7 +1091,7 @@ class Code : public Object {
 		bool isStrict() const { return strict; }
 		bool getUsesArguments() const { return usesArguments; }
 	protected:
-		bool strict;								///< 14.1: this Code is strict-mode code (own "use strict" directive or inherited from enclosing strict code).
+		bool strict;								// 14.1: this Code is strict-mode code (own "use strict" directive or inherited from enclosing strict code).
 		/**
 			A strict function captures its argument values at entry, 10.6's non-mapped object otherwise being built
 			later from parameter slots that may have been assigned since. Set by two productions that must stay a pair:
@@ -1331,9 +1331,11 @@ class Arguments : public LazyJSObject<Object> {
 	#if NUXJS_ES5
 		Value* findProperty(const Value& key, UInt32& index) const;	// also reports the index, for the attribute byte
 	#endif
-		// `scope` is the weak back-link in both modes, so that whichever of the pair is destructed first can sever
-		// the other's pointer. Only a mapped (non-strict) object aliases that scope's parameter slots (10.6).
-		// (Cannot dereference `scope` here: FunctionScope is still incomplete at this point.)
+		/*
+			`scope` is the weak back-link in both modes, so that whichever of the pair is destructed first can sever
+			the other's pointer. Only a mapped (non-strict) object aliases that scope's parameter slots (10.6).
+			(Cannot dereference `scope` here: FunctionScope is still incomplete at this point.)
+		*/
 	#if NUXJS_ES5
 		bool isMapped() const { return scope != 0 && !strict; }
 	#else
@@ -1474,7 +1476,7 @@ class Runtime : public GCItem {
 		Var newObjectVar();								///< Convenience routine for `Var(rt, rt.newJSObject())`
 		Var newArrayVar(UInt32 initialLength = 0);		///< Convenience routine for `Var(rt, rt.newJSArray())`
 
-		Var call(Function* function, UInt32 argc, const Value* argv, Receiver thisObject = noReceiver());	///< Synchronous blocking JS function call. Throws if recursion depth becomes greater than MAX_CROSS_CALL_RECURSION (too prevent potential C++ stack overflows).
+		Var call(Function* function, UInt32 argc, const Value* argv, Receiver thisObject = noReceiver());	// Synchronous blocking JS function call. Throws if recursion depth becomes greater than MAX_CROSS_CALL_RECURSION (too prevent potential C++ stack overflows).
 		Var eval(const String& expression);
 		void run(const String& source, const String* filename = 0);
 
@@ -1499,7 +1501,7 @@ class Runtime : public GCItem {
 		size_t gcThreshold;
 		mutable Table evalCodeCache; ///< eval() has a cache of source code strings -> functions (as they are neutral to which closure they run in). It is emptied on each big gc sweep.
 	#if NUXJS_ES5
-		mutable Table strictEvalCodeCache; ///< 10.4.2: a direct eval inheriting caller strictness compiles a distinct (forced-strict) Code, so it needs a separate cache from the by-expression evalCodeCache.
+		mutable Table strictEvalCodeCache; // 10.4.2: a direct eval inheriting caller strictness compiles a distinct (forced-strict) Code, so it needs a separate cache from the by-expression evalCodeCache.
 	#endif
 		Object* prototypes[PROTOTYPE_COUNT];
 
@@ -1507,8 +1509,8 @@ class Runtime : public GCItem {
 		Function* createRegExpFunction;
 		Function* evalFunction;
 	#if NUXJS_ES5
-		Function* throwTypeErrorFunction;	///< 13.2.3 [[ThrowTypeError]]: the shared poison pill for strict callee/caller
-		Function* setArrayLengthFunction;	///< 15.4.5.1 (3.c): stores an object into an array length, ToUint32 of it running script
+		Function* throwTypeErrorFunction;	// 13.2.3 [[ThrowTypeError]]: the shared poison pill for strict callee/caller
+		Function* setArrayLengthFunction;	// 15.4.5.1 (3.c): stores an object into an array length, ToUint32 of it running script
 	public:
 		Function* getThrowTypeErrorFunction() const { return throwTypeErrorFunction; }
 		Function* getSetArrayLengthFunction() const { return setArrayLengthFunction; }
@@ -1681,7 +1683,7 @@ class Property : public AccessorBase {
 	
 	public:
 	#if NUXJS_ES5
-		/// An assignment runs an accessor's setter blocking (through Runtime::call), so it can run script and throw.
+		// An assignment runs an accessor's setter blocking (through Runtime::call), so it can run script and throw.
 		template<typename T> const Property& operator=(const T& v) const {
 			const Var rooted(rt, v);
 			const Value value = rooted;
@@ -1702,7 +1704,7 @@ class Property : public AccessorBase {
 		typedef AccessorBase super;
 		Property(Runtime& rt, Object* object, const Var& key) : super(rt), object(object), key(key) { }
 	#if NUXJS_ES5
-		/// A read runs an accessor's getter blocking (through Runtime::call), so it can run script and throw.
+		// A read runs an accessor's getter blocking (through Runtime::call), so it can run script and throw.
 		virtual Value get() const {
 			Value v(UNDEFINED_VALUE);
 			Function* getter;
@@ -2010,7 +2012,7 @@ class Processor : public GCItem {
 		void enterEvalCode(const Code* code, bool local = false);
 		void enterFunctionCode(JSFunction* func, UInt32 argc, const Value* argv, Receiver thisObject = noReceiver());
 	#if NUXJS_ES5
-		bool isCurrentCodeStrict() const { return currentFrame != 0 && currentFrame->code->isStrict(); }	///< 10.4.2: a direct eval inherits strictness from the calling code.
+		bool isCurrentCodeStrict() const { return currentFrame != 0 && currentFrame->code->isStrict(); }	// 10.4.2: a direct eval inherits strictness from the calling code.
 	#endif
 		void throwVirtualException(const Value& exception);
 		void addStackTrace(const Value& exception) const;
@@ -2072,7 +2074,7 @@ class Processor : public GCItem {
 		void newOperation(const Int32 argc);
 		void reset();
 	#if NUXJS_ES5
-		bool checkStrictAssignable(Scope* scope, const String* name);	///< For a strict named write: throws ReferenceError (undeclared) or TypeError (read-only) and returns false, else true.
+		bool checkStrictAssignable(Scope* scope, const String* name);	// For a strict named write: throws ReferenceError (undeclared) or TypeError (read-only) and returns false, else true.
 		bool enterGetter(const Object* o, const Value& key, Value* dest, Int32 popCount, Receiver thisObject);	// the accessor tail of a read; true means return to the loop
 		bool putThrough(Object* o, const Value& key, Int32 popCount, Receiver receiver, bool strict, bool mayStore = true);	// 8.12.5 past the cheap update; true means return to the loop
 	#endif
@@ -2124,7 +2126,7 @@ class Compiler : public GCItem {
 		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
 		void compile(const String& source);
 	#if NUXJS_ES5
-		void markStrict() { code->strict = true; }	///< 10.4.2: seed strict before compiling (a direct eval inheriting caller strictness).
+		void markStrict() { code->strict = true; }	// 10.4.2: seed strict before compiling (a direct eval inheriting caller strictness).
 	#endif
 		void getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const;
 
@@ -2142,7 +2144,7 @@ class Compiler : public GCItem {
 			
 			void emit(Processor::Opcode opcode, Int32 operand, UInt32 sourceOffset);
 		#if NUXJS_ES5
-			bool dropStoreTailValue();	///< Rewrites the store tail makeAssignment just emitted into its discarded form. False when anything intervened; the caller then pops as usual.
+			bool dropStoreTailValue();	// Rewrites the store tail makeAssignment just emitted into its discarded form. False when anything intervened; the caller then pops as usual.
 		#endif
 			void pushSourceMapping(UInt32 offset);
 			UInt32 popSourceMapping();
@@ -2158,7 +2160,7 @@ class Compiler : public GCItem {
 			Vector<UInt32> codeOffsets;
 			Vector<UInt32> sourceOffsets;
 		#if NUXJS_ES5
-			Int32 storeTailEnd;	///< code.size() right after a value-producing store tail, -1 otherwise; any emit or branch completion invalidates it
+			Int32 storeTailEnd;	// code.size() right after a value-producing store tail, -1 otherwise; any emit or branch completion invalidates it
 		#endif
 		};
 

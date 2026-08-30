@@ -1099,9 +1099,12 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 		var o = toObject(this, "splice"), a = [ ], len = o.length >>> 0, argv = arguments, argc = argv.length, k, n, to;
 		if ((start = int(start)) < 0) { if ((start += len) < 0) start = 0; }
 		else if (start > len) start = len;
-		// 7: min(max(ToInteger(deleteCount), 0), len - start). Taken literally that makes a.splice(i) delete nothing,
-		// since ToInteger(undefined) is 0; no engine has ever done that and ES2015 rewrote the step to say len - start,
-		// which is what the entry above does too, so es5 keeps it. With no arguments at all nothing is deleted either.
+		/*
+			7: min(max(ToInteger(deleteCount), 0), len - start). Taken literally that makes a.splice(i) delete
+			nothing, since ToInteger(undefined) is 0; no engine has ever done that and ES2015 rewrote the step to
+			say len - start, which is what the entry above does too, so es5 keeps it. With no arguments at all
+			nothing is deleted either.
+		*/
 		var count = (argc === 0 ? 0 : argc === 1 ? len - start : int(deleteCount));
 		if (count < 0) count = 0;
 		else if (count > len - start) count = len - start;
@@ -2623,9 +2626,11 @@ function checkCallback(f, what) {
 }
 
 defineProperties(String.prototype, { dontEnum: true }, {
-	// 15.5.4.20: strips WhiteSpace (7.2) and LineTerminator (7.3) from both ends, which is exactly the set 15.1.2.2
-	// parseInt skips, so it reads the one table above. Whitespace is the only key that maps to null there: a digit
-	// maps to its value and anything else is absent.
+	/*
+		15.5.4.20: strips WhiteSpace (7.2) and LineTerminator (7.3) from both ends, which is exactly the set 15.1.2.2
+		parseInt skips, so it reads the one table above. Whitespace is the only key that maps to null there: a digit
+		maps to its value and anything else is absent.
+	*/
 	trim: unconstructable(function trim() {
 		if (this == null) throw typeError("String.prototype.trim called on null or undefined");
 		var pic = PARSE_INT_CHARS, s = str(this), i = 0, j = s.length;
