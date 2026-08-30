@@ -20,6 +20,21 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   frame needs to return into. Every primitive coerces correctly in both, `true`, `null`, `"3"` and a `Number`
   wrapper included. `tests/es3only/cantAssignObjectToArrayLength.io` and `tests/es5/arrayLengthCoercion.io`.
 
+- **`apply` does not convert an *object* `argArray.length` - es3 only.** 15.3.4.3 (6) takes ToUint32 of the length,
+  which for an object runs ToPrimitive and so `valueOf` / `toString`, the same conversion the array `length` note
+  above turns on and the same cause, `Value::toInt` answering NaN for an object because proper ToNumber has to run
+  script. ES3 admits only an Array or an `arguments` object as the list, and an `arguments` object's `length` is an
+  ordinary property script may reassign, which is what makes it reachable:
+  `function g() { arguments.length = { valueOf: function () { return 2 } }; return f.apply(null, arguments) }`
+  passes no arguments where it should pass two. The **es5 build conforms**: `Function.prototype.apply` reads the
+  length once in `stdlib.js`, converts it there and hands the number down to `support.callWithArgs`, which is the
+  "convert before the native hook" shape `Object.defineProperty` already uses. Reading it once matters, `[[Get]]`
+  being observable, so the native takes the given length rather than looking again. A negative or unusable length
+  still yields no arguments in both builds, where ToUint32's letter would ask for four billion; every engine reads
+  it the later editions' way. The **es3 build keeps the deviation**: the same one line would serve there, but its
+  standard library and object code are held frozen by the lift, so that change belongs on the ES3 line rather than
+  here. `tests/es5/applyGetters.io`.
+
 - **`Date.parse` accepts no legacy formats.** 15.9.4.2 requires the 15.9.1.15 ISO format and says an implementation
   *may* fall back to other heuristics for anything else. NuXJS does not, so
   `Date.parse("Mon, 25 Dec 1995 13:30:00 GMT")` is `NaN` where V8 returns a time value. Conformant, but worth
