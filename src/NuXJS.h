@@ -1279,6 +1279,9 @@ class Error : public LazyJSObject<Object> {
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
+	#if NUXJS_ES5
+		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);
+	#endif
 		ErrorType getErrorType() const { return errorType; }
 		const String* getErrorName() const { assert(name != 0); return name; }	// never 0
 		const String* getErrorMessage() const { return message; };	// can be 0
