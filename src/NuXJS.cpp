@@ -335,6 +335,11 @@ static bool isStrictReservedWord(size_t n, const Char* s) {
 	return false;
 }
 static bool isStrictReservedWord(const String* name) { return isStrictReservedWord(name->size(), name->begin()); }
+
+// Every name a binding may not take in strict code: 7.6 (Identifier is not a ReservedWord) plus 12.2.1 / 13.1.
+static bool isForbiddenStrictName(const String* name) {
+	return (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING) || isStrictReservedWord(name));
+}
 #endif
 /* Built with https://github.com/malstrom72/QuickHashGen */
 static int findLiteralKeyword(size_t n /* string length */, const Char* s /* zero-terminated string */) {
@@ -6460,7 +6465,7 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 		if (nameIndexes.lookup(name) != 0) {
 			duplicateParam = true;
 		}
-		if (name->isEqualTo(EVAL_STRING) || name->isEqualTo(ARGUMENTS_STRING) || isStrictReservedWord(name)) {
+		if (isForbiddenStrictName(name)) {
 			reservedParamName = true;
 		}
 	#endif
@@ -6480,13 +6485,12 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 			error(SYNTAX_ERROR, "a reserved word (or eval/arguments) may not be a parameter name in strict mode");
 		}
 		/*
-			13.1: the function's own name (a FunctionDeclaration/FunctionExpression Identifier) may not be
-			eval/arguments in strict code. Declarations are also caught in the enclosing scope via declareIdentifier,
-			but a strict function's own directive requires checking the name here too.
+			13.1 and 7.6.1.2: the function's own name (a FunctionDeclaration/FunctionExpression Identifier) may be
+			neither eval/arguments nor a strict reserved word. Declarations are also caught in the enclosing scope via
+			declareIdentifier, but a strict function's own directive requires checking the name here too.
 		*/
-		if (functionName->isEqualTo(EVAL_STRING) || functionName->isEqualTo(ARGUMENTS_STRING)
-				|| (selfName != 0 && (selfName->isEqualTo(EVAL_STRING) || selfName->isEqualTo(ARGUMENTS_STRING)))) {
-			error(SYNTAX_ERROR, "a function named 'eval' or 'arguments' is not allowed in strict mode");
+		if (isForbiddenStrictName(functionName) || (selfName != 0 && isForbiddenStrictName(selfName))) {
+			error(SYNTAX_ERROR, "a reserved word (or eval/arguments) may not be a function name in strict mode");
 		}
 	}
 #endif
