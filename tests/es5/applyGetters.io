@@ -35,6 +35,30 @@
 > print(f.apply(null, { length: "2", 0: "p", 1: "q" }))
 < 2:p,q
 -
+// 15.3.4.3 (6) takes ToUint32 of the length, which for an object is ToNumber and so runs valueOf. A negative or
+// unusable length still yields no arguments rather than ToUint32's four billion, which is what every engine does.
+> print(f.apply(null, { length: { valueOf: function () { return 2 } }, 0: "p", 1: "q" }))
+< 2:p,q
+> print(f.apply(null, { length: new Number(2), 0: "p", 1: "q" }))
+< 2:p,q
+> print(f.apply(null, { length: { toString: function () { return "2" } }, 0: "p", 1: "q" }))
+< 2:p,q
+> print(f.apply(null, { length: -1, 0: "p" }))
+< 0:
+> print(f.apply(null, { length: null, 0: "p" }))
+< 0:
+> print(f.apply(null, { 0: "p" }))
+< 0:
+-
+// The length is read once, before the elements, and a throwing valueOf completes apply abruptly.
+> var order = [];
+> print(f.apply(null, { get length() { order.push("len"); return 1 }, get 0() { order.push("elem"); return "v" } }))
+< 1:v
+> print(order.join(","))
+< len,elem
+> try { f.apply(null, { length: { valueOf: function () { throw new TypeError("badlen") } } }); print("swallowed") } catch (e) { print(e.name + ": " + e.message) }
+< TypeError: badlen
+-
 // The ordinary paths are unchanged: call, a real array, and no argArray at all.
 > print(f.call(null, "c1", "c2"))
 < 2:c1,c2

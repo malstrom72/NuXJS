@@ -38,7 +38,7 @@
 		createWrapper(className: string, internalValue: any, prototype: object): object
 		distinctConstructor(regularCall: function): function									// = exception on construction and no .prototype either
 		distinctConstructor(regularCall: function, constructorCall: function): function
-		callWithArgs(func: function, [this: object], [args: array], [offset: number]): any
+		callWithArgs(func: function, [this: object], [args: array], [offset: number], [length: number]): any
 		getInternalProperty(o: object, "class"|"value"|"prototype"): any
 		hasOwnProperty(o: object, name: string): boolean
 		isPropertyEnumerable(o: object, name: string): boolean
@@ -405,6 +405,9 @@ defineProperties(Function.prototype, { dontEnum: true }, {
 		};
 //#else
 		else if (isPrimitive(argArray)) throw typeError("Argument list has wrong type");	// 15.3.4.3 (3): any object serves as the list
+		// 15.3.4.3 (6) takes ToUint32 of the length, which for an object runs valueOf. The native cannot run script
+		// on its own, so the conversion happens here and it reads the length only once, as [[Get]] is observable.
+		else return $callWithArgs(this, thisArg, argArray, 0, +argArray.length);
 //#endif
 		return $callWithArgs(this, thisArg, argArray);
 	}),

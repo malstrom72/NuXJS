@@ -6929,12 +6929,19 @@ struct Support {
 			Object* arrayObject = (argc > 2 ? argv[2].toObjectOrNull(heap, false) : 0);
 			if (arrayObject != 0) {
 				Value v;
+				bool lengthGiven = false;
 			#if NUXJS_ES5
-				// 15.3.4.3 (4, 8) reads argArray with [[Get]], so an accessor here runs, throws and is observed.
-				if (getThroughAccessors(rt, arrayObject, &LENGTH_STRING, &v) != NONEXISTENT) {
-			#else
-				if (arrayObject->getProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) { // FIX : in the future I think we should have a virtual getLength
+				/*
+					15.3.4.3 (4, 6) reads the length with [[Get]] and takes ToUint32 of it, and both halves can run
+					script, so apply does them in the stdlib and hands the result down. Every other caller passes a
+					real array or an arguments object, whose length is a plain number we read ourselves.
+				*/
+				if (argc > 4) {
+					v = argv[4];
+					lengthGiven = true;
+				}
 			#endif
+				if (lengthGiven || arrayObject->getProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) { // FIX : in the future I think we should have a virtual getLength
 					Int32 offset = (argc > 3 ? argv[3].toInt() : 0);
 					UInt32 length = static_cast<UInt32>(std::max(v.toInt() - offset, 0));
 					args = Vector<Value>(length, &heap);
