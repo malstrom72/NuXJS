@@ -524,9 +524,11 @@ static Char* doubleToString(Char buffer[32], const double value) {
 		assert(MIN_EXPONENT <= exponent + 1 && exponent + 1 <= MAX_EXPONENT);
 		const double factor = QUICK_CONSTANTS.exp10Factors[exponent + 1 - MIN_EXPONENT];
 
-		// Notice that in theory we could have a value that is considered equal to next magnitude but should be rounded
-		// downwards (to a lower exponential) and not upwards. However in reality, only the first denormal power of 10
-		// would be a candidate for this, and for both double and single precision floats, they round upwards.
+		/*
+			Notice that in theory we could have a value that is considered equal to next magnitude but should be rounded
+			downwards (to a lower exponential) and not upwards. However in reality, only the first denormal power of 10
+			would be a candidate for this, and for both double and single precision floats, they round upwards.
+		*/
 		if (absValue >= static_cast<double>(QUICK_CONSTANTS.exp10Normals[exponent + 1 - MIN_EXPONENT]) * factor) {
 			++exponent;
 		}
@@ -563,10 +565,12 @@ static Char* doubleToString(Char buffer[32], const double value) {
 		}
 		assert(next >= normalized); // Correct behavior is to never reach higher than digit 9.
 
-		// Decide between digit and digit + 1 under final rounding; bump the digit if the lower one doesn't reconstruct
-		// to the exact value, or if we are strictly past the half-step. (Ported from Numbstrict's realToString. The
-		// previous version overwrote `reconstructed` and so missed the "lower digit doesn't round-trip but the higher
-		// one does" case, emitting a last digit one too low for some values, e.g. String(7.120236347223045e-307).)
+		/*
+			Decide between digit and digit + 1 under final rounding; bump the digit if the lower one doesn't reconstruct
+			to the exact value, or if we are strictly past the half-step. (Ported from Numbstrict's realToString. The
+			previous version overwrote `reconstructed` and so missed the "lower digit doesn't round-trip but the higher
+			one does" case, emitting a last digit one too low for some values, e.g. String(7.120236347223045e-307).)
+		*/
 		reconstructed = scaleAndRound(accumulator, factor);
 		const double r1 = scaleAndRound(accumulator + magnitude, factor);
 		if ((reconstructed != absValue && r1 == absValue) || (reconstructed == absValue
@@ -1475,9 +1479,11 @@ Flags Object::setProperty(Runtime& rt, const Value& key, const Value& v, Functio
 		Value dummy;
 		const Flags flags = o->getOwnProperty(rt, key, &dummy);
 		if (flags != NONEXISTENT) {
-			// Only a level that holds the key is asked for a setter, and past the base it is asked value-blind:
-			// 8.12.4 gives the chain a value-independent say, and a value-dependent answer (an array's length
-			// taking an object) is the base's own store completion, not something to inherit.
+			/*
+				Only a level that holds the key is asked for a setter, and past the base it is asked value-blind:
+				8.12.4 gives the chain a value-independent say, and a value-dependent answer (an array's length
+				taking an object) is the base's own store completion, not something to inherit.
+			*/
 			if ((*setter = o->getOwnSetter(rt, key, o == this ? v : UNDEFINED_VALUE)) != 0) {
 				return ACCESSOR_FLAG;	// 8.12.5 (5): the caller runs it, on the base rather than on the holder
 			}
@@ -2199,9 +2205,11 @@ Function* JSArray::getOwnSetter(Runtime& rt, const Value& key, const Value& v) c
 // 15.4.5.1 (3). `length` is not a table property here, so the default 8.12.9 is applied to it by hand; it is
 // always a non-configurable, non-enumerable data property, which collapses most of that algorithm.
 bool JSArray::defineLength(Runtime& rt, const PropertyDescriptor& desc, bool doThrow) {
-	// 8.12.9 (7) / (10.a.i) / (10.b.i): length is non-configurable, so turning it into an accessor or asking for
-	// enumerable or configurable is always a reject, as is asking a read-only length to become writable. An absent
-	// field asks for nothing, which is why only a present-and-true writable can reject.
+	/*
+		8.12.9 (7) / (10.a.i) / (10.b.i): length is non-configurable, so turning it into an accessor or asking for
+		enumerable or configurable is always a reject, as is asking a read-only length to become writable. An absent
+		field asks for nothing, which is why only a present-and-true writable can reject.
+	*/
 	const bool keepWritable = !desc.has(PropertyDescriptor::HAS_WRITABLE) || desc.writable;
 	const bool rejectAttribs = desc.isAccessor()
 			|| (desc.has(PropertyDescriptor::HAS_ENUMERABLE) && desc.enumerable)
@@ -2326,9 +2334,11 @@ bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value&
 		if (!lengthWritable) {
 			return true;	// `result` stays false: 15.4.5.1 made length read-only
 		}
-		// 8.12.5 puts [[CanPut]] ahead of the store, so a read-only length is settled above without conversion.
-		// Past it, 15.4.5.1 (3.c) runs ToUint32 over the value, and an object's valueOf is script this path may not
-		// run. Reporting the store unhandled sends the VM down the slow path it already keeps for setters.
+		/*
+			8.12.5 puts [[CanPut]] ahead of the store, so a read-only length is settled above without conversion.
+			Past it, 15.4.5.1 (3.c) runs ToUint32 over the value, and an object's valueOf is script this path may not
+			run. Reporting the store unhandled sends the VM down the slow path it already keeps for setters.
+		*/
 		if (v.isObject()) {
 			return true;	// `result` stays false
 		}
@@ -2552,9 +2562,11 @@ void Error::constructCompleteObject(Runtime& rt) const {
 /* --- Arguments --- */
 
 #if NUXJS_ES5
-// Layout of a `deletedArguments` byte in es5 (10.6). DELETED_ARGUMENT is the bit es3 writes as a plain `true` when
-// an index leaves its slot; ARGUMENT_ATTRIBS are the attributes of an index that is still in it, and are the only
-// other bits the byte ever holds, which is what lets getOwnProperty hand them straight back as Flags.
+/*
+	Layout of a `deletedArguments` byte in es5 (10.6). DELETED_ARGUMENT is the bit es3 writes as a plain `true` when
+	an index leaves its slot; ARGUMENT_ATTRIBS are the attributes of an index that is still in it, and are the only
+	other bits the byte ever holds, which is what lets getOwnProperty hand them straight back as Flags.
+*/
 static const Byte DELETED_ARGUMENT = 1;
 static const Byte ARGUMENT_ATTRIBS = DONT_ENUM_FLAG | DONT_DELETE_FLAG;
 #endif
@@ -2602,9 +2614,11 @@ void Arguments::detach() {
 }
 
 #if NUXJS_ES5
-// The other bits of the byte are attributes, so only DELETED_ARGUMENT says the index left its slot (10.6). Every
-// es5 caller wants the index as well, to reach that byte. Letting the es3 overload below forward to this one would
-// be the obvious way to write it, but that shifts the es3 binary by 64 bytes, so the two stay separate.
+/*
+	The other bits of the byte are attributes, so only DELETED_ARGUMENT says the index left its slot (10.6). Every
+	es5 caller wants the index as well, to reach that byte. Letting the es3 overload below forward to this one would
+	be the obvious way to write it, but that shifts the es3 binary by 64 bytes, so the two stay separate.
+*/
 Value* Arguments::findProperty(const Value& key, UInt32& i) const {
 	if (key.toArrayIndex(i) && i < argumentsCount && (deletedArguments[i] & DELETED_ARGUMENT) == 0) {
 		return (isMapped() ? scope->getLocalsPointer() + i : values.begin() + i);
@@ -3642,9 +3656,11 @@ void Processor::newOperation(const Int32 argc) {
 		}
 		Object* newObject = new(heap) JSObject(heap.managed(), prototype != 0 ? prototype : rt.getObjectPrototype());
 		++sp;	// make room for the new object
-		// The slot just exposed by `++sp` is now inside the gc-marked stack range, so it must hold a valid Value
-		// before `construct()` runs (a re-entrant native constructor could trigger a gc). Storing `newObject` both
-		// initialises the slot and keeps `newObject` reachable across the call.
+		/*
+			The slot just exposed by `++sp` is now inside the gc-marked stack range, so it must hold a valid Value
+			before `construct()` runs (a re-entrant native constructor could trigger a gc). Storing `newObject` both
+			initialises the slot and keeps `newObject` reachable across the call.
+		*/
 		*sp = newObject;
 		sp[-argc] = f->construct(rt, *this, argc, sp - argc, newObject);
 		sp[-argc - 1] = newObject;
@@ -3862,9 +3878,11 @@ void Processor::innerRun() {
 					return;
 				}
 			#if NUXJS_ES5
-				// es5 semantics: [object, name, value] -> [junk / setter return]; the compiler always follows
-				// with POP_OP so a JS setter frame can deposit its (discarded) return value. (See makeAssignment.)
-				// 8.7.2 special [[Put]]: a primitive base boxes into a transient object, so a store is never kept.
+				/*
+					es5 semantics: [object, name, value] -> [junk / setter return]; the compiler always follows
+					with POP_OP so a JS setter frame can deposit its (discarded) return value. (See makeAssignment.)
+					8.7.2 special [[Put]]: a primitive base boxes into a transient object, so a store is never kept.
+				*/
 				const bool primitiveBase = !sp[-2].isObject();
 				// the fast path stays inline here: an existing own writable data property, at the same cost as es3
 				if ((primitiveBase || !o->updateOwnProperty(rt, sp[-1], sp[0]))
@@ -4162,9 +4180,11 @@ void Processor::innerRun() {
 				if ((flags & ACCESSOR_FLAG) != 0 && enterGetter(o, sp[0], &v, 0, sp[-1])) {
 					return;	// the result replaces the name at sp[0]; CALL_THIS_OP checks callability
 				}
-				// 11.2.3 (4): not-callable is CALL_THIS's throw, after the arguments have run. The name stays in
-				// the slot for that case, so the error can still say who it was that is not a function - and it is
-				// always a primitive (PROPERTY references carry converted keys), never mistakable for a callee.
+				/*
+					11.2.3 (4): not-callable is CALL_THIS's throw, after the arguments have run. The name stays in
+					the slot for that case, so the error can still say who it was that is not a function - and it is
+					always a primitive (PROPERTY references carry converted keys), never mistakable for a callee.
+				*/
 				if (v.asFunction() != 0) {
 					sp[0] = v;
 				}
@@ -4497,9 +4517,11 @@ bool Compiler::CodeSection::dropStoreTailValue() {
 	if (inDeadCode() || storeTailEnd != static_cast<Int32>(code.size())) {
 		return false;
 	}
-	// The tail is [POST_SHUFFLE / REPUSH, write, POP], all three sharing one source offset, so removing the
-	// duplication and sliding the write and its POP down cannot orphan a mapping or a branch target: the marker
-	// dies at any emit or completed branch, which is what makes the opcode check below provenance, not guesswork.
+	/*
+		The tail is [POST_SHUFFLE / REPUSH, write, POP], all three sharing one source offset, so removing the
+		duplication and sliding the write and its POP down cannot orphan a mapping or a branch target: the marker
+		dies at any emit or completed branch, which is what makes the opcode check below provenance, not guesswork.
+	*/
 	const size_t n = code.size();
 	assert(n >= 3);
 	const Processor::Opcode duplicator = Processor::unpackInstruction(code[n - 3]).first;
@@ -4957,10 +4979,12 @@ Value Compiler::stringOrNumberConstant() {
 		switch (*p) {
 			case '0': {
 			#if NUXJS_ES5
-				// 7.8.3: a DecimalIntegerLiteral is `0` or NonZeroDigit DecimalDigits, so a digit right after the
-				// leading zero never parses. Annex B.1.1 OctalIntegerLiteral is the extension we deliberately do
-				// not implement, and 08 / 09 are not even that. Diagnosed here rather than left to lex as two
-				// numbers, which is still a SyntaxError but reports whatever the stray second one runs into.
+				/*
+					7.8.3: a DecimalIntegerLiteral is `0` or NonZeroDigit DecimalDigits, so a digit right after the
+					leading zero never parses. Annex B.1.1 OctalIntegerLiteral is the extension we deliberately do
+					not implement, and 08 / 09 are not even that. Diagnosed here rather than left to lex as two
+					numbers, which is still a SyntaxError but reports whatever the stray second one runs into.
+				*/
 				if (p + 1 != e && p[1] >= '0' && p[1] <= '9') {
 					error(SYNTAX_ERROR, "Octal literals and leading zeros are not supported");
 				}
@@ -5399,9 +5423,11 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			if (xr.t == ExpressionResult::NAMED && xr.v.equalsString(EVAL_STRING)) {
 				callOp = Processor::CALL_EVAL_OP;
 			#if NUXJS_ES5
-				// 10.6: a direct eval reaches this function's scope by name, so it can ask for `arguments` without
-				// the body ever naming it. Only the FunctionScope constructor still has the entry values, so a
-				// strict function has to capture there; see usesArguments in NuXJS.h.
+				/*
+					10.6: a direct eval reaches this function's scope by name, so it can ask for `arguments` without
+					the body ever naming it. Only the FunctionScope constructor still has the entry values, so a
+					strict function has to capture there; see usesArguments in NuXJS.h.
+				*/
 				if (compilingFor == FOR_FUNCTION) {
 					code->usesArguments = true;
 				}
@@ -6310,11 +6336,13 @@ void Compiler::statement(SemanticScope* currentScope, SemanticScope* scopeLabels
 			ExpressionResult evalXR = (compilingFor == FOR_EVAL ? ExpressionResult::PUSHED : ExpressionResult::NONE);
 			optionalExpression(evalXR, LOWEST_PREC);
 		#if NUXJS_ES5
-			// 14.1: a Directive is an ExpressionStatement consisting *entirely* of a StringLiteral token. The
-			// statement is exactly that literal iff the last string parsed spans the whole expression source
-			// [b, p) — this correctly rejects `("...")`, `"..." + x`, `"...".m`, and `"a", "b"` (comma). A Use
-			// Strict Directive is the raw source `use strict` in quotes with no EscapeSequence, i.e. exactly the
-			// 12 source characters — any escape would make the span longer, so the length check enforces that.
+			/*
+				14.1: a Directive is an ExpressionStatement consisting *entirely* of a StringLiteral token. The
+				statement is exactly that literal iff the last string parsed spans the whole expression source
+				[b, p), which correctly rejects `("...")`, `"..." + x`, `"...".m`, and `"a", "b"` (comma). A Use
+				Strict Directive is the raw source `use strict` in quotes with no EscapeSequence, i.e. exactly the
+				12 source characters, any escape making the span longer, so the length check enforces that.
+			*/
 			if (wasInPrologue && lastStringLiteralStart == b && lastStringLiteralEnd == p) {
 				inDirectivePrologue = true;
 				if (p - b == 12 && b[11] == *b && b[1] == 'u' && b[2] == 's' && b[3] == 'e' && b[4] == ' '
@@ -6447,9 +6475,11 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 		if (reservedParamName) {
 			error(SYNTAX_ERROR, "a reserved word (or eval/arguments) may not be a parameter name in strict mode");
 		}
-		// 13.1: the function's own name (a FunctionDeclaration/FunctionExpression Identifier) may not be
-		// eval/arguments in strict code. Declarations are also caught in the enclosing scope via declareIdentifier,
-		// but a strict function's own directive requires checking the name here too.
+		/*
+			13.1: the function's own name (a FunctionDeclaration/FunctionExpression Identifier) may not be
+			eval/arguments in strict code. Declarations are also caught in the enclosing scope via declareIdentifier,
+			but a strict function's own directive requires checking the name here too.
+		*/
 		if (functionName->isEqualTo(EVAL_STRING) || functionName->isEqualTo(ARGUMENTS_STRING)
 				|| (selfName != 0 && (selfName->isEqualTo(EVAL_STRING) || selfName->isEqualTo(ARGUMENTS_STRING)))) {
 			error(SYNTAX_ERROR, "a function named 'eval' or 'arguments' is not allowed in strict mode");
