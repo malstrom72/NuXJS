@@ -29,11 +29,14 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   passes no arguments where it should pass two. The **es5 build conforms**: `Function.prototype.apply` reads the
   length once in `stdlib.js`, converts it there and hands the number down to `support.callWithArgs`, which is the
   "convert before the native hook" shape `Object.defineProperty` already uses. Reading it once matters, `[[Get]]`
-  being observable, so the native takes the given length rather than looking again. A negative or unusable length
-  still yields no arguments in both builds, where ToUint32's letter would ask for four billion; every engine reads
-  it the later editions' way. The **es3 build keeps the deviation**: the same one line would serve there, but its
-  standard library and object code are held frozen by the lift, so that change belongs on the ES3 line rather than
-  here. `tests/es5/applyGetters.io`.
+  being observable, so the native takes the given length rather than looking again. An accessor *element* is the
+  same problem one step on, and takes the same route: only the VM opcodes and the host API may run a getter, so the
+  native hands back the private token it was given, having called nothing, and `apply` reads the list itself as
+  ordinary property access before passing it on as a plain array. Nothing is observed twice, the reads the native
+  had already done being plain ones. A negative or unusable length still yields no arguments in both builds, where
+  ToUint32's letter would ask for four billion; every engine reads it the later editions' way. The **es3 build keeps
+  the deviation**: the same lines would serve there, but its standard library and object code are held frozen by the
+  lift, so that change belongs on the ES3 line rather than here. `tests/es5/applyGetters.io`.
 
 - **`Date.parse` accepts no legacy formats.** 15.9.4.2 requires the 15.9.1.15 ISO format and says an implementation
   *may* fall back to other heuristics for anything else. NuXJS does not, so

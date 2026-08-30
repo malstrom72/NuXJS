@@ -22,17 +22,20 @@
 > print(h.stack)
 < CUSTOM STACK
 -
-// An accessor is script the mirror must run: taking it for undefined used to put the literal "undefined" in the header.
+// An accessor would have to be run to be read, and the mirror is refreshed from the object model, which may not run
+// script. The field keeps its default instead: the header says Error rather than the literal "undefined" a pure
+// lookup yields for an accessor. toString is ordinary script and reports the accessor's value either way, so the two
+// disagree here, deliberately, and only over the non-standard stack.
 > var b = new Error("x");
 > Object.defineProperty(b, "name", { get: function () { return "Gotten" } });
 > try { throw b } catch (c) { print(c.toString()); print(head(c)) }
 < Gotten: x
-< Gotten: x
+< Error: x
 > var i = new Error("i");
 > Object.defineProperty(i, "message", { get: function () { return "gotmsg" } });
 > try { throw i } catch (c) { print(c.toString()); print(head(c)) }
 < Error: gotmsg
-< Error: gotmsg
+< Error
 -
 // Plain assignment and deletion, the paths that always refreshed the mirror, still do.
 > var d = new Error("plain");
@@ -46,9 +49,8 @@
 < Error
 < Error
 -
-// A throwing getter must not make an unrelated mutation of the error fail; that field falls back to its default
-// instead. NuXJS reads the accessors when the error is mutated, where V8 defers them to the stack being formatted,
-// so a throw from one is observable here and not there. Only the non-standard stack differs; toString agrees.
+// A getter that throws is no different, the mirror never running one: the mutation of the error goes through and the
+// header keeps the default. V8 formats the stack lazily and propagates the throw from that read instead.
 > var f = new Error("thrower");
 > Object.defineProperty(f, "name", { get: function () { throw new RangeError("nope") } });
 > try { f.extra = 1; print("mutation ok, extra=" + f.extra) } catch (x) { print("mutation threw " + x.name) }

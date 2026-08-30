@@ -38,7 +38,8 @@
 		createWrapper(className: string, internalValue: any, prototype: object): object
 		distinctConstructor(regularCall: function): function									// = exception on construction and no .prototype either
 		distinctConstructor(regularCall: function, constructorCall: function): function
-		callWithArgs(func: function, [this: object], [args: array], [offset: number], [length: number]): any
+		callWithArgs(func: function, [this: object], [args: array], [offset: number | token], [length: number]): any
+														// = an object for the offset means offset 0, and comes back uncalled if an element is an accessor
 		getInternalProperty(o: object, "class"|"value"|"prototype"): any
 		hasOwnProperty(o: object, name: string): boolean
 		isPropertyEnumerable(o: object, name: string): boolean
@@ -87,6 +88,20 @@ var $isNaN = support.isNaN, $isFinite = support.isFinite, $floor = support.floor
 		, WHITE_SPACES = "\t\n\v\f\r \xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u3000\ufeff"; // 7.2 WhiteSpace and 7.3 LineTerminator, <USP> being Zs of Unicode 3.0.0
 //#endif
 // end generated: white space
+
+//#if ES5
+// Private token handed to callWithArgs and handed straight back when an accessor element turns up in an argument
+// list: only the VM opcodes and the host API may run a getter, so the list is read here instead. Nothing outside
+// this closure can name it, so no applied function can return it and fake the retry.
+var RETRY_LIST = { };
+
+// apply's rare half, kept out of line so the ordinary call carries none of its locals.
+function readArgList(func, thisArg, argArray, n) {
+	var list = [ ];
+	for (var i = 0; i < n; ++i) list[i] = argArray[i];	// ordinary reads, so a getter runs as its own frame
+	return $callWithArgs(func, thisArg, list);
+}
+//#endif
 
 var PARSE_INT_CHARS = (function() {
 	var pic = { }, ws = WHITE_SPACES;
@@ -397,19 +412,25 @@ defineProperties(Function, { dontEnum: true, readOnly: true, dontDelete: true },
 defineProperties(Function.prototype, { dontEnum: true }, {
 	constructor: Function,
 	apply: unconstructable(function apply(thisArg, argArray) { // FIX : <- 100% native version in the future I think
+//#if !ES5
 		var theClass;
 		if (argArray == null) argArray = [ ];
-//#if !ES5
 		else if ((theClass = $getInternalProperty(argArray, "class")) !== "Array" && theClass !== "Arguments") {
 			throw typeError("Argument list has wrong type");
 		};
-//#else
-		else if (isPrimitive(argArray)) throw typeError("Argument list has wrong type");	// 15.3.4.3 (3): any object serves as the list
-		// 15.3.4.3 (6) takes ToUint32 of the length, which for an object runs valueOf. The native cannot run script
-		// on its own, so the conversion happens here and it reads the length only once, as [[Get]] is observable.
-		else return $callWithArgs(this, thisArg, argArray, 0, +argArray.length);
-//#endif
 		return $callWithArgs(this, thisArg, argArray);
+//#else
+		/*
+			15.3.4.3 (4, 6, 8): the [[Get]] of length, the ToUint32 over it and an accessor element are all script,
+			which a native may not run. The length is read once here, [[Get]] being observable, and converted; an
+			accessor element makes the native hand RETRY_LIST back, having called nothing, and readArgList takes over.
+		*/
+		if (argArray == null) return $callWithArgs(this, thisArg, [ ]);
+		if (isPrimitive(argArray)) throw typeError("Argument list has wrong type");	// 15.3.4.3 (3): any object serves as the list
+		var retry = RETRY_LIST, n = +argArray.length;
+		var result = $callWithArgs(this, thisArg, argArray, retry, n);
+		return (result !== retry ? result : readArgList(this, thisArg, argArray, n));
+//#endif
 	}),
 	call: unconstructable(function call(thisArg) { // FIX : <- 100% native version in the future I think
 		return $callWithArgs(this, thisArg, arguments, 1);

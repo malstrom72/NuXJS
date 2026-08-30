@@ -1532,19 +1532,6 @@ bool Object::defineOwnProperty(Runtime& rt, const Value&, const PropertyDescript
 	return rejectDefine(rt, doThrow);
 }
 
-/*
-	8.12.3 [[Get]] for native code that must honour accessors, which the object model itself never runs. The getter
-	is entered blocking, so it can run script and throw, and the caller must be prepared for both.
-*/
-static Flags getThroughAccessors(Runtime& rt, Object* object, const Value& key, Value* v) {
-	Function* getter;
-	const Flags flags = object->getProperty(rt, key, v, &getter);
-	if ((flags & ACCESSOR_FLAG) != 0) {
-		*v = rt.call(getter, 0, 0, object);
-	}
-	return flags;
-}
-
 void Object::collectOwnPropertyNames(Runtime&, Vector<Value>&) const { }
 #endif
 
@@ -2579,17 +2566,14 @@ const String* Error::toString(Heap& heap) const {
 
 #if NUXJS_ES5
 /*
-	An accessor is script that the mirror has to run to see the value at all, but it runs on an ordinary mutation of
-	the error, so a throw from it must not make that mutation fail: the field falls back to its default instead. A
-	time out or a blown stack is not script and still propagates.
+	A pure read, the mirror being refreshed from setOwnProperty and so from the object model itself. An accessor
+	would have to be run to be seen, which only the VM opcodes and the host API may do (see the Accessor contract in
+	NuXJS.h), so the field keeps its default rather than the undefined a pure lookup reports for one.
 */
-static const String* reflectString(Runtime& rt, Object* object, const String* key) {
-	try {
-		Value v;
-		return (getThroughAccessors(rt, object, key, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
-	} catch (const ScriptException&) {
-		return 0;
-	}
+static const String* reflectString(Runtime& rt, const Object* object, const String* key) {
+	Value v;
+	const Flags flags = object->getProperty(rt, key, &v);
+	return (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) == 0 ? v.toString(rt.getHeap()) : 0);
 }
 #endif
 
@@ -6942,13 +6926,21 @@ struct Support {
 				}
 			#endif
 				if (lengthGiven || arrayObject->getProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) { // FIX : in the future I think we should have a virtual getLength
-					Int32 offset = (argc > 3 ? argv[3].toInt() : 0);
+					Int32 offset = (argc > 3 ? argv[3].toInt() : 0);	// a retry token is not a number, so it reads as offset 0
 					UInt32 length = static_cast<UInt32>(std::max(v.toInt() - offset, 0));
 					args = Vector<Value>(length, &heap);
 					for (UInt32 i = 0; i < length; ++i) {
 						args[i] = UNDEFINED_VALUE;
 					#if NUXJS_ES5
-						getThroughAccessors(rt, arrayObject, i + offset, &args[i]);
+						/*
+							8.12.3 would run a getter here, which only the VM opcodes and the host API may do, so the
+							caller's token goes back instead and apply reads the list itself. Nothing has been
+							called yet and the reads so far were plain ones, so nothing is observed twice.
+						*/
+						if ((arrayObject->getProperty(rt, i + offset, &args[i]) & ACCESSOR_FLAG) != 0
+								&& offset == 0 && argc > 3 && argv[3].isObject()) {
+							return argv[3];
+						}
 					#else
 						arrayObject->getProperty(rt, i + offset, &args[i]);
 					#endif
