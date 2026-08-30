@@ -773,6 +773,7 @@ class StringWrapper : public JSObject {
 			return new(heap) JoiningEnumerator(heap.managed(), rt, wrapped, super::getOwnPropertyEnumerator(rt));
 		}
 	#if NUXJS_ES5
+		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);
 		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const {
 			Heap& heap = rt.getHeap();
 			const UInt32 len = wrapped->size();
@@ -1891,6 +1892,29 @@ bool JSObject::defineOwnProperty(Runtime& rt, const Value& key, const PropertyDe
 		if (desc.has(PropertyDescriptor::HAS_VALUE)) v = desc.value;
 		if (desc.has(PropertyDescriptor::HAS_WRITABLE)) writable = desc.writable;
 		defineData(bucket, v, EXISTS_FLAG | (writable ? 0 : READ_ONLY_FLAG) | attrs);
+	}
+	return true;
+}
+
+/*
+	The wrapped string owns the character indices and length, which the table below never sees, so the inherited
+	8.12.9 would take them for absent and insert a shadow property. 15.5.5.1 / 15.5.5.2 make them non-configurable,
+	non-writable data properties, and against such a current property 8.12.9 accepts only a descriptor that asks for
+	exactly what is already there (which is what lets Object.freeze through) and rejects everything else.
+*/
+bool StringWrapper::defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow) {
+	Value current;
+	const Flags flags = wrapped->getOwnProperty(rt, key, &current);
+	if (flags == NONEXISTENT) {
+		return super::defineOwnProperty(rt, key, desc, doThrow);
+	}
+	const bool enumerable = ((flags & DONT_ENUM_FLAG) == 0);
+	if (desc.isAccessor()													// step 9: data cannot become accessor
+			|| (desc.has(PropertyDescriptor::HAS_CONFIGURABLE) && desc.configurable)		// step 7
+			|| (desc.has(PropertyDescriptor::HAS_ENUMERABLE) && desc.enumerable != enumerable)
+			|| (desc.has(PropertyDescriptor::HAS_WRITABLE) && desc.writable)			// step 10.a.i
+			|| (desc.has(PropertyDescriptor::HAS_VALUE) && !sameValue(desc.value, current))) {	// step 10.a.ii
+		return rejectDefine(rt, doThrow);
 	}
 	return true;
 }
