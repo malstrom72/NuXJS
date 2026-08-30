@@ -2577,11 +2577,34 @@ const String* Error::toString(Heap& heap) const {
 	return (message == 0 ? name : String::concatenate(heap, String(heap.roots(), *name, COLON_SPACE), *message));
 }
 
+#if NUXJS_ES5
+/*
+	An accessor is script that the mirror has to run to see the value at all, but it runs on an ordinary mutation of
+	the error, so a throw from it must not make that mutation fail: the field falls back to its default instead. A
+	time out or a blown stack is not script and still propagates.
+*/
+static const String* reflectString(Runtime& rt, Object* object, const String* key) {
+	try {
+		Value v;
+		return (getThroughAccessors(rt, object, key, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
+	} catch (const ScriptException&) {
+		return 0;
+	}
+}
+#endif
+
 void Error::updateReflection(Runtime& rt) {
+#if NUXJS_ES5
+	const String* const reflectedName = reflectString(rt, this, &NAME_STRING);
+	name = (reflectedName != 0 ? reflectedName : &ERROR_NAMES[errorType]);
+	message = reflectString(rt, this, &MESSAGE_STRING);
+	stack = reflectString(rt, this, &STACK_STRING);
+#else
 	Value v;
 	name = (getProperty(rt, &NAME_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : &ERROR_NAMES[errorType]);
 	message = (getProperty(rt, &MESSAGE_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
 	stack = (getProperty(rt, &STACK_STRING, &v) != NONEXISTENT ? v.toString(rt.getHeap()) : 0);
+#endif
 }
 
 bool Error::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags) {
@@ -2595,6 +2618,15 @@ bool Error::deleteOwnProperty(Runtime& rt, const Value& key) {
 	updateReflection(rt);
 	return result;
 }
+
+#if NUXJS_ES5
+// 8.12.9 is the third way script reaches name / message / stack, and it writes past setOwnProperty into the table.
+bool Error::defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow) {
+	const bool result = super::defineOwnProperty(rt, key, desc, doThrow);
+	updateReflection(rt);
+	return result;
+}
+#endif
 
 void Error::constructCompleteObject(Runtime& rt) const {
 	if (message != 0) {
