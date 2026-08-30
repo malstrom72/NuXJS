@@ -271,7 +271,8 @@ static int strncmp(const Char* a, const char* b, size_t n) {
 	}
 	return (i == n ? 0 : a[i] - b[i]);
 }
-/* Built with QuickHashMaker.pika */
+
+/* Built with https://github.com/malstrom72/QuickHashGen */
 static int findStatementKeyword(size_t n /* string length */, const Char* s /* string (zero-termination not required) */) {
 	static const char* STRINGS[13] = {
 		"var", "if", "while", "do", "for", "return", "continue", "break", "try", 
@@ -287,7 +288,8 @@ static int findStatementKeyword(size_t n /* string length */, const Char* s /* s
 	int stringIndex = HASH_TABLE[(s[1] - s[0]) & 63];
 	return (stringIndex >= 0 && strncmp(s, STRINGS[stringIndex], n) == 0 && STRINGS[stringIndex][n] == 0) ? stringIndex : -1;
 }
-/* Built with QuickHashMaker.pika */
+
+/* Built with https://github.com/malstrom72/QuickHashGen */
 static int findReservedKeyword(size_t n /* string length */, const Char* s) {
 	static const char* STRINGS[36] = {
 		"break", "case", "catch", "continue", "debugger", "default", "delete", "do", 
@@ -334,7 +336,7 @@ static bool isStrictReservedWord(size_t n, const Char* s) {
 }
 static bool isStrictReservedWord(const String* name) { return isStrictReservedWord(name->size(), name->begin()); }
 #endif
-/* Built with QuickHashMaker.pika */
+/* Built with https://github.com/malstrom72/QuickHashGen */
 static int findLiteralKeyword(size_t n /* string length */, const Char* s /* zero-terminated string */) {
 	static const char* STRINGS[5] = {
 		"null", "false", "true", "function", "this"
