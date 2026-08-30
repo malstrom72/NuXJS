@@ -2494,7 +2494,9 @@ Value JSFunction::invoke(Runtime&, Processor& processor, UInt32 argc, const Valu
 // 13.2.3 / 10.6 / 15.3.4.5: gives `object` a pair of properties that are both the [[ThrowTypeError]] accessor.
 static void definePoisonPills(Runtime& rt, JSObject* object, const String* first, const String* second) {
 	Heap& heap = rt.getHeap();
-	Accessor* poison = new(heap) Accessor(heap.managed(), rt.getThrowTypeErrorFunction(), rt.getThrowTypeErrorFunction());
+	Function* const thrower = rt.getThrowTypeErrorFunction();
+	assert(thrower != 0);	// live from construction: a pill is non-configurable, so a null one could never be healed
+	Accessor* poison = new(heap) Accessor(heap.managed(), thrower, thrower);
 	const Flags pillFlags = EXISTS_FLAG | ACCESSOR_FLAG | DONT_ENUM_FLAG | DONT_DELETE_FLAG;
 	object->defineAccessor(object->insert(first), poison, pillFlags);
 	object->defineAccessor(object->insert(second), poison, pillFlags);
@@ -7083,7 +7085,6 @@ static struct {
 	{ "random", Support::random }, { "updateDateValue", Support::updateDateValue }
 #if NUXJS_ES5
 	, { "preventExtensions", Support::preventExtensions }, { "isExtensible", Support::isExtensible }
-	, { "throwTypeError", Support::throwTypeError }
 	, { "defineOwnProperty", Support::defineOwnProperty }, { "bindFunction", Support::bindFunction }
 	, { "getOwnPropertyDescriptor", Support::getOwnPropertyDescriptor }
 	, { "getOwnPropertyNames", Support::getOwnPropertyNames }, { "createObject", Support::createObject }
@@ -7092,6 +7093,11 @@ static struct {
 
 static UnaryMathFunction<bool (double)> IS_NAN_FUNCTION(isNaN);
 static UnaryMathFunction<bool (double)> IS_FINITE_FUNCTION(isFinite);
+#if NUXJS_ES5
+// Static, not fetched from the stdlib, so that strict code compiled before setupStandardLibrary() still gets live
+// poison pills. They are non-configurable, so a null baked in early could never be healed afterwards.
+static FunctorAdapter<NativeFunction> THROW_TYPE_ERROR_FUNCTION(Support::throwTypeError);
+#endif
 
 static struct DefaultConversion : public Function {
 	virtual Value invoke(Runtime&, Processor&, UInt32, const Value* argv, Receiver) {
@@ -7111,7 +7117,7 @@ Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap
 		, timeOut(0), memoryCap(MAX_MEMORY_CAP), gcThreshold(AUTO_GC_MIN_SIZE), createRegExpFunction(&NO_REG_EXP_SUPPORT)
 		, evalFunction(&EVAL_FUNCTION)
 #if NUXJS_ES5
-		, throwTypeErrorFunction(0), setArrayLengthFunction(0)
+		, throwTypeErrorFunction(&THROW_TYPE_ERROR_FUNCTION), setArrayLengthFunction(0)
 #endif
 		, unixEpochTimeDiff(0.0), evalCodeCache(&heap)
 #if NUXJS_ES5
@@ -7358,7 +7364,6 @@ void Runtime::setupStandardLibrary() {
 	fetchFunction(supportObject, "createRegExp", &createRegExpFunction);
 	fetchFunction(supportObject, "evalFunction", &evalFunction);
 #if NUXJS_ES5
-	fetchFunction(supportObject, "throwTypeError", &throwTypeErrorFunction);
 	fetchFunction(supportObject, "setArrayLength", &setArrayLengthFunction);
 #endif
 
