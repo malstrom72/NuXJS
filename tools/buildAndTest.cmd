@@ -45,7 +45,11 @@ FOR /D %%D IN (..\tests\*) DO (
 	SET useDir=1
 	IF /I "%%~nxD"=="es5" IF NOT "%variant%"=="es5" SET useDir=0
 	IF /I "%%~nxD"=="es3only" IF "%variant%"=="es5" SET useDir=0
-	IF "!useDir!"=="1" SET testDirs=!testDirs! "%%D\"
+	REM The trailing slash has to be a forward one. A backslash immediately before the closing quote is an
+	REM escaped quote to the C runtime that parses the callee's command line, so "..\tests\stdlib\" never
+	REM closes: the directories pair up into one nonexistent argument each, dir() finds nothing in them, and
+	REM the whole .io suite reports success having run no test at all. test.pika uses / as its own separator.
+	IF "!useDir!"=="1" SET testDirs=!testDirs! "%%D/"
 )
 ..\externals\PikaCmd\PikaCmd.exe .\test.pika -e -x "..\output\NuXJS%suffix%_%target%_%model% -s --legacy-exceptions" !testDirs! || GOTO error
 
