@@ -26,17 +26,16 @@ by default and ECMAScript 5.1 when built with `NUXJS_ES5` (see `docs/ES5.1 Roadm
   script. ES3 admits only an Array or an `arguments` object as the list, and an `arguments` object's `length` is an
   ordinary property script may reassign, which is what makes it reachable:
   `function g() { arguments.length = { valueOf: function () { return 2 } }; return f.apply(null, arguments) }`
-  passes no arguments where it should pass two. The **es5 build conforms**: `Function.prototype.apply` reads the
-  length once in `stdlib.js`, converts it there and hands the number down to `support.callWithArgs`, which is the
-  "convert before the native hook" shape `Object.defineProperty` already uses. Reading it once matters, `[[Get]]`
-  being observable, so the native takes the given length rather than looking again. An accessor *element* is the
-  same problem one step on, and takes the same route: only the VM opcodes and the host API may run a getter, so the
-  native hands back the private token it was given, having called nothing, and `apply` reads the list itself as
-  ordinary property access before passing it on as a plain array. Nothing is observed twice, the reads the native
-  had already done being plain ones. A negative or unusable length still yields no arguments in both builds, where
-  ToUint32's letter would ask for four billion; every engine reads it the later editions' way. The **es3 build keeps
-  the deviation**: the same lines would serve there, but its standard library and object code are held frozen by the
-  lift, so that change belongs on the ES3 line rather than here. `tests/es5/applyGetters.io`.
+  passes no arguments where it should pass two. An accessor `length`, or an accessor *element*, is the same problem:
+  reading it is script. The **es5 build conforms** by refusing rather than converting: `support.callWithArgs` is
+  given a private token, and the moment it meets an accessor or a length that needs `ToNumber` it hands that token
+  straight back, having called nothing, so `Function.prototype.apply` reads the whole list in `stdlib.js` as
+  ordinary property access, where a getter runs as its own frame. Nothing is observed twice, every read the native
+  had done being a plain one, and the ordinary list, a real array, never leaves the native at all. A negative or
+  unusable length still yields no arguments in both builds, where ToUint32's letter would ask for four billion;
+  every engine reads it the later editions' way. The **es3 build keeps the deviation**: the same lines would serve
+  there, but its standard library and object code are held frozen by the lift, so that change belongs on the ES3
+  line rather than here. `tests/es5/applyGetters.io`.
 
 - **`Date.parse` accepts no legacy formats.** 15.9.4.2 requires the 15.9.1.15 ISO format and says an implementation
   *may* fall back to other heuristics for anything else. NuXJS does not, so

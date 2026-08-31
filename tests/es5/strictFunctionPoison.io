@@ -26,6 +26,13 @@
 < false
 < false
 -
+// 13.2.3 asks for one [[ThrowTypeError]] object, so all four halves are the very same function.
+> var e = Object.getOwnPropertyDescriptor(f, "arguments");
+> print(d.get === d.set); print(d.get === e.get); print(d.get === e.set)
+< true
+< true
+< true
+-
 // A non-strict function is unaffected (caller / arguments are the legacy undefined here, not poison pills).
 > function g() { return 1; }
 > print(typeof g.caller); print(typeof g.arguments)

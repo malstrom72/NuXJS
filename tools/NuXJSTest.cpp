@@ -1098,21 +1098,17 @@ static void testHostAccessors() {
 
 /* --- Poison pills before the standard library --- */
 
-static const char* POISON_PILL_MESSAGE
-		= "TypeError: 'caller', 'callee', and 'arguments' may not be accessed on strict-mode functions or their arguments";
-
 static void testPreSetupPoisonPills() {
 	std::cout << std::endl << "***** Pre-setup poison pills *****" << std::endl << std::endl;
 	std::cout << "	- 13.2 pills on strict code compiled before setupStandardLibrary()" << std::endl;
 
+	static const char* const POISON_PILL_MESSAGE = "TypeError: 'caller', 'callee', and 'arguments'"
+			" may not be accessed on strict-mode functions or their arguments";
 	Heap heap;
 	Runtime rt(heap);
 
-	/*
-		Running script before the standard library is installed is a supported embedding path, and the pills a strict
-		function gets are non-configurable, so whatever they hold at materialization is permanent. Reading `caller`
-		here both asserts 13.2.3 and forces the complete object into existence at the earliest possible moment.
-	*/
+	// A pill is non-configurable, so whatever it holds when the complete object materializes is permanent, and
+	// reading `caller` before setupStandardLibrary() is what forces that to happen at the earliest moment.
 	Var early = rt.eval("(function () { 'use strict' })");
 	EXPECT_EXCEPTION(early["caller"].to<Value>(), POISON_PILL_MESSAGE);
 	EXPECT_EXCEPTION(early["arguments"].to<Value>(), POISON_PILL_MESSAGE);
@@ -1123,9 +1119,6 @@ static void testPreSetupPoisonPills() {
 	EXPECT_EXCEPTION(early["arguments"].to<Value>(), POISON_PILL_MESSAGE);
 	Var late = rt.eval("(function () { 'use strict' })");
 	EXPECT_EXCEPTION(late["caller"].to<Value>(), POISON_PILL_MESSAGE);
-	rt.getGlobalsVar()["early"] = early;
-	EXPECT(rt.eval("Object.getOwnPropertyDescriptor(early, 'caller').get"				// 13.2.3: one shared thrower
-			" === Object.getOwnPropertyDescriptor(early, 'arguments').set").to<bool>());
 }
 
 #endif
