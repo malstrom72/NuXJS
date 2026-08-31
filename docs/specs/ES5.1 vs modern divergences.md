@@ -66,6 +66,15 @@ so `U+FEFF` is white space in the es5 build only. `tests/es5/whiteSpaceSet.io` a
 - **Strict `arguments.caller`.** ES5.1 §10.6 defines *both* `caller` and `callee` as `[[ThrowTypeError]]` poison
   pills on a strict-mode arguments object, so `arguments.caller` throws a `TypeError`. ES2017 removed the `caller`
   pill, so V8 returns `undefined`. NuXJS follows ES5.1 (both throw). Verified against the spec text, not V8.
+- **`caller` and `arguments` on a built-in or on `Function.prototype`.** ES5.1 puts the pills exactly two places,
+  §13.2 step 19 (a strict function instance) and §15.3.4.5 steps 20-21 (a bound function); §15.3.4 gives
+  `Function.prototype` no such properties, and §15 gives the built-ins none either. So `"".charAt.caller` and
+  `Function.prototype.caller` read `undefined` in NuXJS, where V8 throws a `TypeError` for both: ES2015 §9.2.7
+  moved the accessors onto `Function.prototype` itself, from which every function inherits them. Both engines
+  agree there is no *own* property on a built-in, so the whole difference is that one prototype. NuXJS is
+  conformant here and the two spec-mandated cases match V8, strict and bound alike; a sloppy function's `.caller`
+  reads `undefined` too, ES5.1 defining no such thing (V8 answers the calling function, an ES3 legacy).
+  `tests/es5/strictFunctionPoison.io` pins the two that are specified.
 - **An ISO date string with no time zone offset.** The rule has moved twice, so the exact texts matter:
   - ES5.1 §15.9.1.15: "The value of an absent time zone offset is `Z`." No exception, so every form is UTC.
   - ES2015 §20.3.1.16: "If the time zone offset is absent, the date-time is interpreted as a local time." The
