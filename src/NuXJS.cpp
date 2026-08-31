@@ -2566,21 +2566,19 @@ const String* Error::toString(Heap& heap) const {
 
 #if NUXJS_ES5
 /*
-	A pure read, the mirror being refreshed from setOwnProperty and so from the object model itself. An accessor
-	would have to be run to be seen, which only the VM opcodes and the host API may do (see the Accessor contract in
-	NuXJS.h), so the field keeps its default rather than the undefined a pure lookup reports for one.
+	A pure read: the mirror is refreshed from the object model itself, and an accessor would have to be run to be
+	seen, which only the VM opcodes and the host API may do, so such a field keeps `dflt` instead.
 */
-static const String* reflectString(Runtime& rt, const Object* object, const String* key) {
+static const String* reflectString(Runtime& rt, const Object* object, const String* key, const String* dflt = 0) {
 	Value v;
 	const Flags flags = object->getProperty(rt, key, &v);
-	return (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) == 0 ? v.toString(rt.getHeap()) : 0);
+	return (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) == 0 ? v.toString(rt.getHeap()) : dflt);
 }
 #endif
 
 void Error::updateReflection(Runtime& rt) {
 #if NUXJS_ES5
-	const String* const reflectedName = reflectString(rt, this, &NAME_STRING);
-	name = (reflectedName != 0 ? reflectedName : &ERROR_NAMES[errorType]);
+	name = reflectString(rt, this, &NAME_STRING, &ERROR_NAMES[errorType]);
 	message = reflectString(rt, this, &MESSAGE_STRING);
 	stack = reflectString(rt, this, &STACK_STRING);
 #else
@@ -6913,33 +6911,29 @@ struct Support {
 			Object* arrayObject = (argc > 2 ? argv[2].toObjectOrNull(heap, false) : 0);
 			if (arrayObject != 0) {
 				Value v;
-				bool lengthGiven = false;
 			#if NUXJS_ES5
 				/*
-					15.3.4.3 (4, 6) reads the length with [[Get]] and takes ToUint32 of it, and both halves can run
-					script, so apply does them in the stdlib and hands the result down. Every other caller passes a
-					real array or an arguments object, whose length is a plain number we read ourselves.
+					15.3.4.3 (4, 6, 8): an accessor, or a length that needs ToNumber, is script a native may not run, so
+					apply's token goes back instead and the list is read in the stdlib. Nothing has been called by then
+					and every read here is a plain one, so nothing is observed twice.
 				*/
-				if (argc > 4) {
-					v = argv[4];
-					lengthGiven = true;
+				const bool canRetry = (argc > 4);
+			#endif
+				const Flags lengthFlags = arrayObject->getProperty(rt, &LENGTH_STRING, &v); // FIX : in the future I think we should have a virtual getLength
+			#if NUXJS_ES5
+				if (canRetry && ((lengthFlags & ACCESSOR_FLAG) != 0 || v.isObject())) {
+					return argv[4];
 				}
 			#endif
-				if (lengthGiven || arrayObject->getProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) { // FIX : in the future I think we should have a virtual getLength
-					Int32 offset = (argc > 3 ? argv[3].toInt() : 0);	// a retry token is not a number, so it reads as offset 0
+				if (lengthFlags != NONEXISTENT) {
+					Int32 offset = (argc > 3 ? argv[3].toInt() : 0);
 					UInt32 length = static_cast<UInt32>(std::max(v.toInt() - offset, 0));
 					args = Vector<Value>(length, &heap);
 					for (UInt32 i = 0; i < length; ++i) {
 						args[i] = UNDEFINED_VALUE;
 					#if NUXJS_ES5
-						/*
-							8.12.3 would run a getter here, which only the VM opcodes and the host API may do, so the
-							caller's token goes back instead and apply reads the list itself. Nothing has been
-							called yet and the reads so far were plain ones, so nothing is observed twice.
-						*/
-						if ((arrayObject->getProperty(rt, i + offset, &args[i]) & ACCESSOR_FLAG) != 0
-								&& offset == 0 && argc > 3 && argv[3].isObject()) {
-							return argv[3];
+						if ((arrayObject->getProperty(rt, i + offset, &args[i]) & ACCESSOR_FLAG) != 0 && canRetry) {
+							return argv[4];
 						}
 					#else
 						arrayObject->getProperty(rt, i + offset, &args[i]);

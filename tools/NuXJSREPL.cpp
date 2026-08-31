@@ -567,14 +567,10 @@ void printUsage() {
 	runtime that has already given up.
 */
 static const Int32 DESCRIBE_TIME_OUT_SECONDS = 5;
-static const Int32 UNLIMITED_TIME_OUT_SECONDS = 24 * 60 * 60;	// a day of CPU time, no limit in any real session
 
 static const String* describeThrown(Runtime& rt, MyHeap& heap, const Value& thrown) {
 	if (thrown.isObject()) {	// a thrown primitive already stringifies without running anything
-		/*
-			The describing toString is script and need not terminate, so a session without -T gets a bound of its
-			own here. A time out cannot be disarmed, only pushed away again, which is what the session had.
-		*/
+		// The describing toString is script and need not terminate, so a session that set no bound gets one here.
 		const bool bound = (timeOutSeconds <= 0);
 		if (bound) {
 			rt.resetTimeOut(DESCRIBE_TIME_OUT_SECONDS);
@@ -588,7 +584,7 @@ static const String* describeThrown(Runtime& rt, MyHeap& heap, const Value& thro
 		}
 		catch (const Exception&) { }	// describing a failure must never replace the failure being described
 		if (bound) {
-			rt.resetTimeOut(UNLIMITED_TIME_OUT_SECONDS);
+			rt.noTimeOut();
 		}
 		if (described != 0) {
 			return described;
