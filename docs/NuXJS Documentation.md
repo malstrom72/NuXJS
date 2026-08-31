@@ -203,12 +203,14 @@ A method installed on a prototype can be invoked with any receiver, so before ca
 
 | What is assigned | Signature | Adapter created | Receiver (`this`) |
 | --- | --- | --- | --- |
-| a free or static function | `Value (*)(Runtime&, Processor&, UInt32, const Value*, Object*)` (`NativeFunction`) | `FunctorAdapter` | passed through raw, **not checked** |
+| a free or static function | `Value (*)(Runtime&, Processor&, UInt32, const Value*, Receiver)` (`NativeFunction`) | `FunctorAdapter` | passed through raw, **not checked** |
 | a free or static function | `Var (*)(Runtime&, const Var&, const VarList&)` (`VarFunction`) | `VarFunctorAdapter` | wrapped in a `Var`, **not checked** |
 | a pointer to a member function | `Var (C::*)(Runtime&, const Var&, const VarList&)` | `VarMemberFunctionAdapter<C>` | **checked**, then used as the C++ `this` |
 | `Var(rt, cppObject, &C::method)` | the same member signature, bound | `BoundVarMemberFunctionAdapter<C>` | ignored - the call always runs on `cppObject` |
 
 The distinction that catches people out is the first two versus the third. A static function and a member function can have identical-looking bodies and be installed on the same prototype, yet only the member function gets a receiver check. The static forms hand over whatever the call site supplied and do nothing else - `VarFunctorAdapter::invoke` is a single forwarding line. A static function that casts its receiver to its own class **must** validate it first, or `Type.prototype.method.call({}, ...)` will cast an unrelated object and corrupt memory instead of throwing.
+
+`Receiver` is the one type in this table that differs between the builds: `Object*` in the es3 build, `const Value&` under `NUXJS_ES5`, because ES5.1 strict mode lets `this` be a primitive, `null` or `undefined` rather than always an object. A native written against the es3 signature therefore stops compiling when the build is switched; `receiverObject(r)` answers the `Object*` again, and `docs/notes/This as a Value.md` covers the reasoning and the call sites it touched.
 
 One further difference: `FunctorAdapter` derives from `Function`, while the other three derive from `ExtensibleFunction`. Only the latter can carry ordinary properties, so a constructor function whose `prototype` property must be assignable - as TypeScript's ES3 `__extends` emit requires of a base class - cannot use the raw `NativeFunction` form.
 
@@ -408,6 +410,7 @@ These are resolved in the es5 build and remain only in the frozen es3 core:
 - Assigning an object to an array's `length` property is unsupported; attempts throw `RangeError` instead of converting the value. The es5 build converts it as 15.4.5.1 requires.
 - `for...in` throws a `TypeError` when the object is `null` or `undefined`, where ES5.1 12.6.4 just skips the loop.
 - Function `prototype` properties are enumerable on user-defined functions, where ES5.1 13.2 makes them `{ DontEnum }`.
+- A `"use strict"` directive is an ordinary string expression statement here and does nothing: ES3 has no strict mode. Code carrying the directive runs unchanged, so it is worth knowing that the same code becomes strict the moment it is run on the es5 build, where an assignment to an undeclared variable throws instead of creating a global, `this` is `undefined` rather than the global object in a plain call, and `with` and a duplicate parameter name are SyntaxErrors.
 - The URI handlers (`decodeURI` and friends), the Array iteration methods, `Function.prototype.bind`, `String.prototype.trim`, `Date.now`, `Object.keys` and the other reflection statics exist only in the es5 build.
 
 ### ES5 features available in the es3 build
