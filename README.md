@@ -58,8 +58,10 @@ You will need a standard C++ compiler with C++03 support.
 
 - On **macOS** or **Linux**, use `g++` or `clang++`.
 - On **Windows**, the build requires Microsoft Visual C++. Any version from Visual Studio 2008 (VC9.0) onward should
-  work. The build script automatically locates the latest version using `vswhere.exe`, falling back to older versions
-  if needed.
+  work for the **es3** edition. The **es5** edition needs **Visual Studio 2019 or later**: its standard library
+  arrives as one string literal of 65,865 characters, and compilers up to and including Visual Studio 2017 cap a
+  literal at 65,535 bytes after concatenation, rejecting it with `C1091`. The build script automatically locates the
+  latest version using `vswhere.exe`, falling back to older versions if needed.
 
 ## Build & Test
 

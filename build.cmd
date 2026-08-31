@@ -14,7 +14,7 @@ FOR %%A IN (%*) DO (
 	) ELSE IF "%%~A"=="both" ( SET variant=both
 	) ELSE IF "%%~A"=="beta" ( SET targets=beta
 	) ELSE IF "%%~A"=="release" ( SET targets=release
-	) ELSE ( SET model=%%~A )
+	) ELSE ( SET "model=%%~A" )
 )
 
 SET variants=%variant%

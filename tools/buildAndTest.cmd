@@ -36,12 +36,16 @@ CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJSTest%suffix%_%target%_%model
 CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJS%suffix%_%target%_%model%.exe .\NuXJSREPL.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
 
 REM Select test directories for the variant: tests\es5 runs only under es5, tests\es3only only under es3.
+REM The flag must not be named "include": environment variables are case-insensitive on Windows, so that
+REM name overwrites INCLUDE and the examples build below loses every header path (C1083). It only bites
+REM when the toolchain is already set up and BuildCpp.cmd therefore skips vcvarsall, which is exactly what
+REM happens in a Visual Studio developer prompt, and never in CI, where each call sets INCLUDE up afresh.
 SET testDirs=
 FOR /D %%D IN (..\tests\*) DO (
-	SET include=1
-	IF /I "%%~nxD"=="es5" IF NOT "%variant%"=="es5" SET include=0
-	IF /I "%%~nxD"=="es3only" IF "%variant%"=="es5" SET include=0
-	IF "!include!"=="1" SET testDirs=!testDirs! "%%D\"
+	SET useDir=1
+	IF /I "%%~nxD"=="es5" IF NOT "%variant%"=="es5" SET useDir=0
+	IF /I "%%~nxD"=="es3only" IF "%variant%"=="es5" SET useDir=0
+	IF "!useDir!"=="1" SET testDirs=!testDirs! "%%D\"
 )
 ..\externals\PikaCmd\PikaCmd.exe .\test.pika -e -x "..\output\NuXJS%suffix%_%target%_%model% -s --legacy-exceptions" !testDirs! || GOTO error
 
@@ -49,7 +53,7 @@ IF NOT EXIST ..\output\examples MKDIR ..\output\examples
 SET "examplesExe=..\output\examples\examples.exe"
 
 ECHO Building examples
-CALL .\BuildCpp.cmd %target% "%examplesExe%" ..\docs\examples\examples.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
+CALL .\BuildCpp.cmd %target% %model% "%examplesExe%" ..\docs\examples\examples.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
 
 ECHO Running examples
 %examplesExe% > ..\output\examples\all.log 2>&1 || GOTO error
