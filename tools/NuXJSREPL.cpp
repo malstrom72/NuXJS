@@ -673,8 +673,15 @@ static int runInteractive(Runtime& rt, MyHeap& heap, Processor& processor, std::
 				} else {
 					const time_t t = time(0);
 					char buf[256];
-					strftime(buf, sizeof (buf), "tests/%Y%m%d_%H%M%S.io", localtime(&t));
-					fn = buf;
+					// localtime answers null for a clock it cannot represent and strftime would dereference it;
+					// strftime itself answers 0 when the result does not fit, leaving buf unwritten. Only a
+					// machine clock set outside the CRT's range reaches either, and any name beats both.
+					const struct tm* const lt = (t == static_cast<time_t>(-1) ? 0 : localtime(&t));
+					if (lt != 0 && strftime(buf, sizeof (buf), "tests/%Y%m%d_%H%M%S.io", lt) != 0) {
+						fn = buf;
+					} else {
+						fn = "tests/unnamed.io";
+					}
 				}
 				std::ofstream saveStream(fn.c_str());
 				for (std::vector<std::string>::const_iterator it = ioLines.begin(); it != ioLines.end(); ++it) {

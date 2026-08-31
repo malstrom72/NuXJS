@@ -306,3 +306,15 @@
 > print(isNaN(new Date(1970, 0, 100000001, 0, 0 + tzm + 60, 0, 1).getTime()))
 < true
 -
+// The same conversion, reached by an ordinary date rather than the edge: MSVC's CRT refuses a local time past
+// 3000-12-31T23:59:59Z and answers null, which the engine dereferenced, so new Date(3100, 0, 1) took the whole
+// process down - a one-liner from guest script, which the sandbox promise does not allow. Past the limit the
+// offset falls back to the zone's standard time, so DST-dependent values differ from a platform whose CRT goes
+// the distance; what is checkable everywhere is that the round trip through local components survives.
+> var far = new Date(3100, 0, 1);
+> print(isFinite(far.getTime()) + " " + far.getFullYear() + " " + far.getMonth() + " " + far.getDate())
+< true 3100 0 1
+-
+> print(isFinite(new Date(275760, 8, 12).getTime()) + " " + isFinite(new Date(3100, 0, 1).getTimezoneOffset()))
+< true true
+-

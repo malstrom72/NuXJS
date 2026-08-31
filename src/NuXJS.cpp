@@ -5173,9 +5173,25 @@ struct Support {
 		if (dt < 0.0) { // MSVC can crash on conversion although documentation says it should return null.
 			return NAN_VALUE;
 		}
+		if (dt > static_cast<double>(std::numeric_limits<std::time_t>::max())) {
+			return NAN_VALUE;
+		}
 		t = static_cast<std::time_t>(dt);
-		const struct std::tm localTM = *std::localtime(&t);
-		const struct std::tm utcTM = *std::gmtime(&t);
+		// std::time_t spanning the value says nothing about the conversions accepting it: MSVC's CRT stops at
+		// 3000-12-31T23:59:59Z and returns null past that, where the Date range reaches the year 275760, so
+		// new Date(3100, 0, 1) dereferenced null and took the process down. A null answers NaN like the
+		// pre-epoch case above, which is what localTimeDiff in the stdlib already substitutes a fixed offset
+		// for. The copy has to happen before the next call: the two may share one static tm.
+		const struct std::tm* const localPtr = std::localtime(&t);
+		if (localPtr == 0) {
+			return NAN_VALUE;
+		}
+		const struct std::tm localTM = *localPtr;
+		const struct std::tm* const utcPtr = std::gmtime(&t);
+		if (utcPtr == 0) {
+			return NAN_VALUE;
+		}
+		const struct std::tm utcTM = *utcPtr;
 		struct std::tm newTM;
 		std::memset(&newTM, 0, sizeof (newTM));
 		newTM.tm_year = utcTM.tm_year;
@@ -5415,9 +5431,15 @@ void Runtime::setupStandardLibrary() {
 		refTM.tm_year = 80;
 		refTM.tm_mday = 1;
 		const std::time_t refTime = std::mktime(&refTM);
-		const std::time_t refTimeAsUTC = std::mktime(std::gmtime(&refTime));
+		// gmtime answers null for a time it cannot represent and mktime would dereference it. 1980 is in range
+		// for every plausible zone and time_t, so this guards a path that should not open rather than one that
+		// does; the assert below has always come after the dereference and is gone in a release build. With no
+		// probe to go on, assume time() already counts from the unix epoch, which POSIX and Windows both do.
+		struct std::tm* const refUTC = (refTime == static_cast<std::time_t>(-1) ? 0 : std::gmtime(&refTime));
+		const std::time_t refTimeAsUTC = (refUTC == 0 ? static_cast<std::time_t>(-1) : std::mktime(refUTC));
 		assert(refTime != -1 && refTimeAsUTC != -1);
-		unixEpochTimeDiff = 315532800000.0 - refTime * 2000.0 + refTimeAsUTC * 1000.0;
+		unixEpochTimeDiff = (refTime == static_cast<std::time_t>(-1) || refTimeAsUTC == static_cast<std::time_t>(-1))
+				? 0.0 : 315532800000.0 - refTime * 2000.0 + refTimeAsUTC * 1000.0;
 	}
 	
 	JSObject* supportObject = new(heap) JSObject(heap.managed(), getObjectPrototype());
