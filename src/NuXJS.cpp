@@ -5173,9 +5173,20 @@ struct Support {
 		if (dt < 0.0) { // MSVC can crash on conversion although documentation says it should return null.
 			return NAN_VALUE;
 		}
+		if (dt > static_cast<double>(std::numeric_limits<std::time_t>::max())) {
+			return NAN_VALUE;
+		}
 		t = static_cast<std::time_t>(dt);
-		const struct std::tm localTM = *std::localtime(&t);
-		const struct std::tm utcTM = *std::gmtime(&t);
+		const struct std::tm* const localPtr = std::localtime(&t);
+		if (localPtr == 0) {
+			return NAN_VALUE;
+		}
+		const struct std::tm localTM = *localPtr;
+		const struct std::tm* const utcPtr = std::gmtime(&t);
+		if (utcPtr == 0) {
+			return NAN_VALUE;
+		}
+		const struct std::tm utcTM = *utcPtr;
 		struct std::tm newTM;
 		std::memset(&newTM, 0, sizeof (newTM));
 		newTM.tm_year = utcTM.tm_year;
@@ -5415,9 +5426,11 @@ void Runtime::setupStandardLibrary() {
 		refTM.tm_year = 80;
 		refTM.tm_mday = 1;
 		const std::time_t refTime = std::mktime(&refTM);
-		const std::time_t refTimeAsUTC = std::mktime(std::gmtime(&refTime));
+		struct std::tm* const refUTC = (refTime == static_cast<std::time_t>(-1) ? 0 : std::gmtime(&refTime));
+		const std::time_t refTimeAsUTC = (refUTC == 0 ? static_cast<std::time_t>(-1) : std::mktime(refUTC));
 		assert(refTime != -1 && refTimeAsUTC != -1);
-		unixEpochTimeDiff = 315532800000.0 - refTime * 2000.0 + refTimeAsUTC * 1000.0;
+		unixEpochTimeDiff = (refTime == static_cast<std::time_t>(-1) || refTimeAsUTC == static_cast<std::time_t>(-1))
+				? 0.0 : 315532800000.0 - refTime * 2000.0 + refTimeAsUTC * 1000.0;
 	}
 	
 	JSObject* supportObject = new(heap) JSObject(heap.managed(), getObjectPrototype());
