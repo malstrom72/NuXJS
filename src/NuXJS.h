@@ -2276,6 +2276,13 @@ class Compiler : public GCItem {
 		int nestCounter;
 	#if NUXJS_ES5
 		bool inDirectivePrologue;	// 14.1: true while still parsing the leading string-literal directive prologue
+		/**
+			11.1.5 names an accessor with a PropertyName, where IdentifierName and so every reserved word is legal;
+			the production has no Identifier at all, so 13.1's and 7.6.1.2's rules on a function's own name do not
+			reach it. Set on the sub-compiler by accessorFunctionDefinition, which is the only production that needs
+			it. The PropertySetParameterList is a separate 11.1.5 rule and stays checked.
+		**/
+		bool nameIsPropertyName;
 		const Char* lastStringLiteralStart;	// source span of the most recently parsed string literal token, so a
 		const Char* lastStringLiteralEnd;	// directive can require the statement to be *entirely* one string literal
 	#endif

@@ -4478,7 +4478,7 @@ Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNes
 	, mainSection(heap, 1), b(0), p(0), e(0), sourceUnitBase(code->getSourceUnit()->getSource()->begin())
 	, currentSection(0), acceptInOperator(true), withScopeCounter(0), nestCounter(initialNestCounter)
 #if NUXJS_ES5
-	, inDirectivePrologue(false), lastStringLiteralStart(0), lastStringLiteralEnd(0)
+	, inDirectivePrologue(false), nameIsPropertyName(false), lastStringLiteralStart(0), lastStringLiteralEnd(0)
 #endif
 {
 }
@@ -5596,6 +5596,7 @@ Code* Compiler::accessorFunctionDefinition(const String* functionName) {
 	Code* func = new(heap) Code(heap.managed(), code->constants, code->getSourceUnit());
 	func->strict = code->strict;	// 14.1: strict mode propagates into accessor bodies too
 	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
+	funcCompiler.nameIsPropertyName = true;	// 11.1.5: the name is a PropertyName, not an Identifier
 	try {
 		p = funcCompiler.compileFunction(p, e, functionName, 0);
 	}
@@ -6544,9 +6545,11 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 		/*
 			13.1 and 7.6.1.2: the function's own name (a FunctionDeclaration/FunctionExpression Identifier) may be
 			neither eval/arguments nor a strict reserved word. Declarations are also caught in the enclosing scope via
-			declareIdentifier, but a strict function's own directive requires checking the name here too.
+			declareIdentifier, but a strict function's own directive requires checking the name here too. An 11.1.5
+			accessor is exempt, its name being a PropertyName; the parameter list it does have is checked just above.
 		*/
-		if (isForbiddenStrictName(functionName) || (selfName != 0 && isForbiddenStrictName(selfName))) {
+		if (!nameIsPropertyName && (isForbiddenStrictName(functionName)
+				|| (selfName != 0 && isForbiddenStrictName(selfName)))) {
 			error(SYNTAX_ERROR, "a reserved word (or eval/arguments) may not be a function name in strict mode");
 		}
 	}
