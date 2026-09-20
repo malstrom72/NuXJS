@@ -2163,7 +2163,7 @@ class Compiler : public GCItem {
 			Vector<UInt32> codeOffsets;
 			Vector<UInt32> sourceOffsets;
 		#if NUXJS_ES5
-			Int32 storeTailEnd;	// code.size() right after a value-producing store tail, -1 otherwise; any emit or branch completion invalidates it
+			Int32 storeTailEnd;	// code.size() right after a value-producing store tail, -1 otherwise; any emit, section insert, or branch mark or completion invalidates it
 		#endif
 		};
 

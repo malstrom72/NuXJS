@@ -4580,7 +4580,8 @@ bool Compiler::CodeSection::dropStoreTailValue() {
 	/*
 		The tail is [POST_SHUFFLE / REPUSH, write, POP], all three sharing one source offset, so removing the
 		duplication and sliding the write and its POP down cannot orphan a mapping or a branch target: the marker
-		dies at any emit or completed branch, which is what makes the opcode check below provenance, not guesswork.
+		dies at any emit, insert or marked or completed branch, which makes the opcode check below provenance rather
+		than guesswork.
 	*/
 	const size_t n = code.size();
 	assert(n >= 3);
@@ -4657,11 +4658,8 @@ void Compiler::completeForwardBranches(const BranchPoint* begin, const BranchPoi
 Compiler::BranchPoint Compiler::markBackwardBranch() {
 	currentSection->lastEmitted = Processor::INVALID_OP;
 #if NUXJS_ES5
-	/*
-		The same reason as lastEmitted above, for the other peephole. Nothing is emitted here, so a store tail is
-		still live, and dropStoreTailValue() would then shift code out from under the offset recorded below,
-		leaving the branch one instruction into the loop body. Covers switchStatement's two marks as well.
-	*/
+	// The same reason as lastEmitted above, for the other peephole: nothing is emitted here, so a live store tail
+	// would let dropStoreTailValue() slide code out from under the offset returned below.
 	currentSection->storeTailEnd = -1;
 #endif
 	return BranchPoint(currentSection->code.size(), currentSection->stackDepth);

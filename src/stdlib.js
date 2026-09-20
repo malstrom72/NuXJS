@@ -99,8 +99,9 @@ var RETRY_LIST = { };
 
 // apply's rare half, out of line so the ordinary call carries none of its locals.
 function readArgList(func, thisArg, argArray) {
-	var list = [ ], n = int32(argArray.length);	// 15.3.4.3 (4, 6): the [[Get]] and the conversion over it, both here
-	if (n < 0) n = 0;	// ToInt32 then clamp is exactly what the native half does, so the two can never disagree
+	// 15.3.4.3 (4, 6): the [[Get]] and the conversion over it, both here, and ToInt32 rather than the step's
+	// ToUint32 because that is what the native half answers - a negative length must not become four billion.
+	var list = [ ], n = int32(argArray.length);
 	for (var i = 0; i < n; ++i) list[i] = argArray[i];	// ordinary reads, so a getter runs as its own frame
 	return $callWithArgs(func, thisArg, list);
 }
@@ -1376,10 +1377,8 @@ defineProperties(Date, { dontEnum: true }, {
 //#if !ES5
 				((ch = s[i]) === "+" || ch === "-") && (++i, y = readPart(6), ch === "-" ? -y : y) || readPart(4),
 //#else
-				// An expanded year is a value, not a truth: +000000 is year zero, and the `||` below it read that
-				// as "no expanded year" and re-read four digits from the middle of the string, giving NaN. es5 can
-				// use a conditional instead because isDateTimeString has already settled the shape (and rejected
-				// -000000), so a short six-digit year can no longer reach here to need the fall-through.
+				// An expanded year is a value, not a truth, so the es3 `||` read +000000 as "no expanded year" and
+				// re-read four digits mid-string. isDateTimeString has settled the shape, so nothing falls through.
 				((ch = s[i]) === "+" || ch === "-") ? (++i, y = readPart(6), ch === "-" ? -y : y) : readPart(4),
 //#endif
 				s[i] === "-" && (++i, readPart(2) - 1) || 0,
