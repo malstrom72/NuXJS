@@ -769,6 +769,7 @@ defineProperties(Array.prototype, { dontEnum: true }, {
 					if (mid === low || mid === high) mid ^= high ^ low;
 					if (low < high) swp(arr, low, high);
 				}
+				if (low <= from) low = from + 1; else if (low > to) low = to;
 				qsort(from, low)
 			}
 			if (from < to && cmp(arr, from, to) > 0) swp(arr, from, to)
