@@ -76,3 +76,18 @@
 // puts no extra condition on the other fields at 24, so 24:30 is in the format too; V8 and JavaScriptCore reject it.
 > print(new Date("2011-10-10T24:00:00Z").toISOString() + " " + new Date("2011-10-10T24:30:00Z").toISOString());
 < 2011-10-11T00:00:00.000Z 2011-10-11T00:30:00.000Z
+// 15.9.1.15 permits the six-digit expanded year +000000 as year zero, and forbids -000000. The value zero used to
+// read as "no expanded year" and send the parser back for four digits from the middle of the string, giving NaN.
+> print(Date.parse("+000000-01-01T00:00:00.000Z") + " " + Date.parse("0000-01-01T00:00:00.000Z"))
+< -62167219200000 -62167219200000
+> print(Date.parse("+000000-06-15T12:00:00Z"))
+< -62152833600000
+> print(new Date(Date.parse("+000000-01-01T00:00:00.000Z")).toISOString())
+< 0000-01-01T00:00:00.000Z
+-
+// -000000 stays out of the format, while every other signed year is in it.
+> print(isNaN(Date.parse("-000000-01-01T00:00:00.000Z")))
+< true
+> print(Date.parse("+000001-01-01T00:00:00Z") + " " + Date.parse("-000001-01-01T00:00:00Z"))
+< -62135596800000 -62198755200000
+-

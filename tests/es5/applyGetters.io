@@ -67,3 +67,21 @@
 > print(f.apply(null))
 < 0:
 -
+// 15.3.4.3 (6) converts the length, and the retry path has to answer exactly what the native half answers - the
+// same call must not depend on whether a getter forced the detour. A fractional length truncates, a negative one
+// and NaN clamp to zero, and an out-of-range one wraps rather than being materialized (which used to kill the
+// interpreter with an uncatchable allocation failure, uncatchable because the try/catch never ran).
+> function n() { return arguments.length }
+> var LENS = [2.5, 1.9, 0, -3, NaN, Infinity, -Infinity, 4294967295, 4294967296, 4294967297, 1e21];
+> var out = [];
+> for (var k = 0; k < LENS.length; ++k) {
+>	var L = LENS[k];
+>	var plain = { 0: 'a', 1: 'b', 2: 'c' }; plain.length = L;
+>	var acc = { 0: 'a', 1: 'b', 2: 'c' };
+>	Object.defineProperty(acc, "length", { get: (function (v) { return function () { return v } })(L) });
+>	var a = n.apply(null, plain), b = n.apply(null, acc);
+>	out.push(a === b ? String(a) : "MISMATCH " + a + "/" + b);
+> }
+> print(out.join(","))
+< 2,1,0,0,0,0,0,0,0,1,0
+-

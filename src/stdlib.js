@@ -99,7 +99,8 @@ var RETRY_LIST = { };
 
 // apply's rare half, out of line so the ordinary call carries none of its locals.
 function readArgList(func, thisArg, argArray) {
-	var list = [ ], n = +argArray.length;	// 15.3.4.3 (4, 6): the [[Get]] and the ToNumber over it, both here
+	var list = [ ], n = int32(argArray.length);	// 15.3.4.3 (4, 6): the [[Get]] and the conversion over it, both here
+	if (n < 0) n = 0;	// ToInt32 then clamp is exactly what the native half does, so the two can never disagree
 	for (var i = 0; i < n; ++i) list[i] = argArray[i];	// ordinary reads, so a getter runs as its own frame
 	return $callWithArgs(func, thisArg, list);
 }
@@ -1325,7 +1326,8 @@ function isDateTimeString(s) {
 		for (; i < e; ++i) if ("0" <= (c = s[i]) && c <= "9") v = v * 10 + (+c); else return false;
 		return (lo <= v && v <= hi);
 	}
-	if ((c = s[0]) === "+" || c === "-") { if (++i, !field(6, 0, 999999)) return false }
+	// 15.9.1.15 permits +000000 as year zero but forbids -000000, which is the only reason the low bound varies.
+	if ((c = s[0]) === "+" || c === "-") { if (++i, !field(6, c === "-" ? 1 : 0, 999999)) return false }
 	else if (!field(4, 0, 9999)) return false;
 	if (s[i] === "-") {
 		if (++i, !field(2, 1, 12)) return false;
@@ -1371,7 +1373,15 @@ defineProperties(Date, { dontEnum: true }, {
 			return v;
 		}
 		z = epochFromDate(
+//#if !ES5
 				((ch = s[i]) === "+" || ch === "-") && (++i, y = readPart(6), ch === "-" ? -y : y) || readPart(4),
+//#else
+				// An expanded year is a value, not a truth: +000000 is year zero, and the `||` below it read that
+				// as "no expanded year" and re-read four digits from the middle of the string, giving NaN. es5 can
+				// use a conditional instead because isDateTimeString has already settled the shape (and rejected
+				// -000000), so a short six-digit year can no longer reach here to need the fall-through.
+				((ch = s[i]) === "+" || ch === "-") ? (++i, y = readPart(6), ch === "-" ? -y : y) : readPart(4),
+//#endif
 				s[i] === "-" && (++i, readPart(2) - 1) || 0,
 				s[i] === "-" && (++i, readPart(2)) || 1);
 		z += epochFromTime(
@@ -2257,8 +2267,16 @@ function createErrorConstructor(name, prototype) {
 	defineProperties(Error.prototype, { dontEnum: true }, {
 		message: '',
 //#if ES5
-		toString: unconstructable(function toString() {	// 15.11.4.4 (8-10): an empty name or message drops its side and the colon
-			var name = (this.name === void 0 ? "Error" : str(this.name)), msg = (this.message === void 0 ? '' : str(this.message));
+		/*
+			15.11.4.4: (1) rejects a non-object receiver, which only strict code can see at all - 10.4.3 would
+			otherwise have boxed it into the global object and reported its `name` and `message` as the error's.
+			(2) and (5) read each field once, so they are read into locals. (8-10) drop an empty side and the colon.
+		*/
+		toString: unconstructable(function toString() {
+			"use strict";
+			if (isPrimitive(this)) throw typeError("Error.prototype.toString called on a non-object");
+			var n = this.name, m = this.message;
+			var name = (n === void 0 ? "Error" : str(n)), msg = (m === void 0 ? '' : str(m));
 			return (name && msg ? name + ": " + msg : name + msg);
 		}),
 //#endif
