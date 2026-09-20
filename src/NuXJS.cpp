@@ -4656,6 +4656,14 @@ void Compiler::completeForwardBranches(const BranchPoint* begin, const BranchPoi
 
 Compiler::BranchPoint Compiler::markBackwardBranch() {
 	currentSection->lastEmitted = Processor::INVALID_OP;
+#if NUXJS_ES5
+	/*
+		The same reason as lastEmitted above, for the other peephole. Nothing is emitted here, so a store tail is
+		still live, and dropStoreTailValue() would then shift code out from under the offset recorded below,
+		leaving the branch one instruction into the loop body. Covers switchStatement's two marks as well.
+	*/
+	currentSection->storeTailEnd = -1;
+#endif
 	return BranchPoint(currentSection->code.size(), currentSection->stackDepth);
 }
 
