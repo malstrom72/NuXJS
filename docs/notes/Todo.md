@@ -4,6 +4,27 @@ TODO
 Run-time
 ========
 
+	* 8.12.5 (found 2026-09-19, es5 only, review): an array element store never consults the prototype chain, so an inherited setter never runs, an inherited read-only element is overwritten, and a strict store never throws. JSArray::updateOwnProperty shares setOwnPropertyInternal with setOwnProperty, so the VM's pre-[[CanPut]] fast path CREATES the element (and bumps length) and always reports success; putThrough / Object::setProperty is never reached.
+		- `Object.defineProperty(Array.prototype, "7", { set: function (v) { log += v }, configurable: true }); var a = []; a[7] = 3` -> the setter never runs, `a` gains an own "7" and length 8. V8: setter runs, no own property, length stays 0. Same for a hole strictly inside length. The strict form silently succeeds where V8 throws a TypeError. A plain object with the identical shape behaves correctly, so this is JSArray alone.
+		- tests/unconforming/readOnlyNumericProps.io blesses the read-only *data* half ("isn't a part of Ecmascript 3 standard"), which stops being true under es5; inherited accessors are a new ES5 case and are neither documented nor tested. Fixing this means moving that test to tests/es3only/ with an es5 twin asserting 456, adding the inherited-accessor case, and moving the "numeric property can shadow a read-only prototype property" bullet in docs/NuXJS Documentation.md from the shared deviations to es3 only.
+		- the fix is small but costly. Making updateOwnProperty refuse to create (dense hit updates in place, sparse goes to completeObject->updateOwnProperty, everything else falls through) is correct and ALSO removes the duplicate-getOwnPropertyNames entry below, but every append then walks the chain: measured bigArray 1.22 -> 2.13s and lz4_bm_1 0.47 -> 2.23s. Two causes: three hash lookups per append, and LazyJSObject::getOwnProperty calling getCompleteObject unconditionally, which allocates a table per array just to miss in it (bigArray memory 100 -> 167 MiB).
+		- the materializing miss is worth fixing on its own and carries no invariant: JSArray::constructCompleteObject is a no-op, so for an array a null completeObject really does mean "no properties". An early `if (completeObject == 0) return NONEXISTENT;` in JSArray::getOwnProperty took lz4_bm_1 back from 2.23 to 1.28s.
+		- skipping the walk needs to know whether Array.prototype or Object.prototype owns any array-index property. JSArray::getPrototype hardcodes the chain to those two and ES5 has no __proto__ / setPrototypeOf, so it is one global question, not a per-array one. A flag maintained by the call sites that create properties was considered and REJECTED: five hooks, a silent failure mode, and the failure IS this same bug returning. If it is done at all it should be derived at the one choke point every property creation funnels through - Table::insert's `if (!bucket->keyExists())` branch - plus a plain denseVector.size() != 0 test for Array.prototype's own dense range, and it needs the inherited-accessor regression test or it will drift.
+		- NOT yet measured: how much of the remaining gap after the completeObject early-out is actually the two prototype lookups. Measure that before adding any invariant at all.
+
+	* 15.4.5.1 (found 2026-09-19, es5 only, review): Object.getOwnPropertyNames on an array can report the same index twice. defineElement puts a standard-attribute element into the sparse table even when index == denseVector.size(); a later plain store then takes setElement's `bucket == 0 || bucket->hasStandardFlags()` branch, pushes into denseVector and never erases the bucket.
+		- `var a = []; Object.defineProperty(a, "0", { value: 1, writable: true, enumerable: true, configurable: true }); a[0] = 5; Object.getOwnPropertyNames(a)` -> ["0", "0", "length"]. Also reachable through Object.defineProperties / Object.create, and on non-empty arrays. es3 cannot reach the state at all.
+		- Object.keys and for-in dedupe, and the next non-standard define heals it, so the damage is confined to getOwnPropertyNames and whatever iterates it (seal / freeze just do the work twice).
+		- the updateOwnProperty fix above removes this as a side effect, the store then updating the existing bucket instead of shadowing it. Otherwise: erase the bucket in that setElement branch.
+
+	* 15.4.5.1 / 8.7.2 (found 2026-09-19, es5 only, review): an object-valued array length store loses the strict TypeError. support.setArrayLength sits outside the strict IIFEs, so its `this.length = +v` is a non-strict store: a refused truncation is swallowed and the setter's return value discarded.
+		- `"use strict"; var a = [1,2,3]; Object.seal(a); a.length = 1` throws a TypeError (correct), but `a.length = { valueOf: function () { return 1 } }` on the same array silently leaves length 3 and throws nothing. Same shape for a non-configurable element blocking the truncation. V8 throws in all of them, and docs/notes/ECMAScript Compatibility Notes.md claims "The es5 build conforms" for exactly this path.
+		- fix: make setArrayLength strict, so the inner store raises the refusal itself.
+
+	* 11.2.3 / 10.2.1.2.6 (found 2026-09-19, BOTH builds, review): a call through a `with` binding gets the global object as `this` instead of the with object. Only a PROPERTY callee gets GET_METHOD_OP + CALL_THIS_OP; a NAMED callee always takes CALL_OP with noReceiver(), so there is no ImplicitThisValue step.
+		- `var o = { m: function () { return this === o } }; with (o) { print(m()) }` -> false in both builds; V8 and both ES3 11.2.3 and ES5.1 11.2.3 give true.
+		- not a regression, but it is the one call shape the new CALL_THIS_OP path does not cover, and docs/NuXJS Documentation.md asserts that the catch-identifier case is the only `this` deviation and that only the es3 build deviates.
+
 	* Make gc async/incremental in the sense that you actively and repeatdly call it until it is done (doesn't block native cpu, even if it "blocks" vm cpu).
 
 	* FIXED 2026-08-01 (es5 only, found 2026-07-30): a strict function referencing `arguments` that threw an exception caught by JS segfaulted the process on the next sweep. Regression test in tests/es5/strictArgumentsThrowUseAfterFree.io.
@@ -43,6 +64,16 @@ Run-time
 Compiler
 ========
 
+	* FIXED 2026-09-20 (es5 only, found 2026-09-19): Compiler::markBackwardBranch did not clear storeTailEnd, so the store-tail peephole could delete an instruction at exactly the offset a backward-branch target had just been recorded at. The loop then re-entered one instruction into its own body, the operand stack desynchronised, and eval code segfaulted the process. Regression test in tests/es5/evalStoreTailBackwardBranch.io.
+		- `var o = {}, i = 0; eval("o.a = 1; do { i = i + 1; } while (i < 3); i")` -> segmentation fault (exit 139) in the release build, and `assert(0)` at NuXJS.cpp:829 (Value::toDouble on a garbage type) under asserts. `eval("o.a = 1; do { m++; o.b = m; } while (m < 3); o.b")` -> bogus `TypeError: undefined is not a function`. `eval("o.p = 1; do o.q = ++i; while (i < 3); o.q")` -> silently 1 instead of 3. es3 and V8 give 3 for all three.
+		- only FOR_EVAL code can reach it: eval keeps the completion value, so makeRValue emits nothing for PUSHED and storeTailEnd survives the end of the statement; the next statement's first identifier calls discard() -> dropStoreTailValue() as its very first action. A do/while between the two puts markBackwardBranch() precisely in that gap. Global and function code discard at the end of their own statement, before any mark, so they are immune. makeAssignment only arms storeTailEnd for NAMED and PROPERTY targets, so the pending statement has to be a property store or a for-in / function-declaration name store.
+		- fix: `currentSection->storeTailEnd = -1;` in markBackwardBranch, beside the lastEmitted reset that is there for the other peephole and for the same reason. switchStatement marks backwards for every `case` and for `default` and had the identical hole, which the same line closes. changeSection needs nothing: storeTailEnd is a CodeSection member, so each section's marker describes only its own code vector.
+		- verified: the es3 preprocessed translation unit is unchanged bar the eight blank lines /EP leaves for the guarded block, so the frozen build cannot have moved (MSVC objects are not reproducible even with /Brepro, so hashing them is not a usable gate). Both .io suites pass, both NuXJSTest self tests pass, an asserts build runs all 364 es5 inputs and 3500 differential fuzz programs with no assertion, and eval-heavy benchmarks are unchanged - the peephole only stops firing in the adjacency that was broken.
+
+	* 11.1.5 (found 2026-09-19, es5 only, review): a strict object literal rejects an accessor whose PROPERTY NAME is eval, arguments or a future reserved word. objectInitialiser hands the accessor's PropertyName to accessorFunctionDefinition as the function name, and compileFunction then applies the 13.1 / 7.6.1.2 restriction on a function's own Identifier to it. 11.1.5 PropertyName is an IdentifierName, where every one of those is legal.
+		- `"use strict"; ({ get eval() { return 1 } }).eval` -> SyntaxError where V8 gives 1. Same for arguments, implements, interface, let, package, private, protected, public, static and yield, as getters and as setters, inside strict eval and inside functions that inherit strictness. The data form `({ eval: 1 })` is fine, which is why tests/conforming/reservedWordsAsPropertyNames.io (data properties only) misses it.
+		- fix: let accessorFunctionDefinition skip the name check - a flag on compileFunction, or pass &EMPTY_STRING as the checked name while still setting code->name for toString.
+
 	
 	* 7.1: strip Unicode format-control (Cf) characters - LRM (U+200E), RLM (U+200F), ZWNJ (U+200C), ZWJ (U+200D), BOM (U+FEFF) - from the source before lexing. ES3 removes them *everywhere*, even inside string/regexp literals (so they'd need \uXXXX to appear in a string). Currently NOT done: a BOM/LRM etc. in code gives a SyntaxError, and they survive as chars inside string literals (e.g. "a<BOM>b".length is 3, should be 2).
 		- ES5.1 7.1 abandons the stripping and names the two places it matters instead, so both are now done for the es5 build and this entry describes es3 alone: the BOM became 7.2 WhiteSpace (see below), and ZWNJ / ZWJ became 7.6 IdentifierPart, which the generator handles by building a second part bitmap for es5 and packing it into the same mask array, so no lexer code is involved. LRM and RLM have no ES5.1 treatment at all and stay a SyntaxError in both builds, correctly for es5. Test in tests/es5/identifierFormatControl.io.
@@ -58,6 +89,21 @@ GC
 
 Stdlib
 ======
+
+	* 15.3.4.3 (found 2026-09-19, es5 only, review): readArgList takes `+argArray.length` where step 6 wants ToUint32, so apply's retry path disagrees with its own native fast path and an out-of-range length is materialized instead of wrapping.
+		- `f.apply(null, { length: 2.5, 0: 'a', 1: 'b', 2: 'c' })` passes 2 arguments (correct), but `f.apply(null, { length: 2.5, get 0() { return 'a' }, 1: 'b', 2: 'c' })` passes 3 - the same call, a different answer depending only on whether a getter forces the RETRY_LIST detour. Same for an accessor or object length.
+		- `{ get length() { return 4294967297 }, 0: 'a' }` (ToUint32 = 1) tries to build four billion entries and kills the interpreter with an uncatchable "Memory allocation failure"; the surrounding try/catch never runs. V8 answers 1 argument.
+		- tests/es5/applyGetters.io asserts "length is converted with ToUint32 as before" without covering a fractional or out-of-range length, and docs/notes/ECMAScript Compatibility Notes.md claims the es5 build conforms. fix: `n = uint32(argArray.length)`.
+
+	* 15.11.4.4 (found 2026-09-19, es5 only, review): Error.prototype.toString omits step 1 ("If Type(this) is not Object, throw a TypeError") and, the entry not being strict, boxes a primitive receiver to the global object. It also performs two [[Get]]s per field where steps 2 and 5 do one each.
+		- `var name = "GLOBALNAME", message = "GLOBALMSG"; Error.prototype.toString.call(null)` -> "GLOBALNAME: GLOBALMSG", reporting global variables as the error, where V8 throws a TypeError; `.call("x")`, `.call(5)` and `.call(true)` return "Error" instead of throwing. With `{ get name() {...}, get message() {...} }` counting their calls, NuXJS reads each twice and V8 once.
+
+	* 15.9.4.2 (found 2026-09-19, es5 only, review): Date.parse rejects the expanded year +000000. isDateTimeString admits +YYYYYY through field(6, 0, 999999), but the parser's `(++i, y = readPart(6), ...) || readPart(4)` idiom treats the *value* 0 as falsy and falls through to a four-digit read at the wrong offset.
+		- `Date.parse("+000000-01-01T00:00:00.000Z")` -> NaN, where V8 gives -62167219200000. `"0000-01-01T00:00:00.000Z"` works, so two legal spellings of the same instant disagree; only year zero is affected, 15.9.1.15 forbidding just -000000.
+
+	* sort (found 2026-09-19, BOTH builds, review, pre-existing): qsort loops forever on a comparator that never returns a negative value - `high` is driven below `from` while `low` stays at `from`, so `from = low` makes no progress and the outer for repeats identically.
+		- `[3,1,2].sort(function () { return 1 })`, and the very common boolean form `[3,1,2].sort(function (a, b) { return a > b })`, spin at 100% CPU forever; one such run reached 1107 CPU-seconds during the review before being killed. V8 returns immediately.
+		- not a regression, but the new es5 wrapper is now the only route into qsort and newly exposes it to array-likes and primitives (`Array.prototype.sort.call("abc", function () { return true })` hangs too). The `v === v ? v : 0` guard already anticipates this failure shape for NaN; the non-negative case needs the same progress guarantee.
 
 	* FIXED 2026-08-04: toFixed rounded on double arithmetic where 15.7.4.5 step 10 asks for the integer nearest the EXACT value of val * 10^f, ties upward. Fixed in the es3 engine unguarded, like the comma operator before it, since it is a plain conformance bug in shared code and the same requirement in ES3 15.7.4.5 as in ES5.1. Tests in tests/stdlib/numberToString.io.
 		- the entry this replaces named only (1000000000000000128).toFixed(0) -> "1000000000000000100", which is the rarest corner of it. The common case was ordinary rounding: (0.35).toFixed(1) answered "0.4" where 0.35 is really 0.34999999999999997779 and must round DOWN, and (1.45).toFixed(1) answered "1.5". Roughly one in nine random doubles was wrong.
@@ -106,6 +152,10 @@ Compiler
 
 Other
 =====
+
+	* diagB.js at the repository root is a six-line ad-hoc diagnostic for the Error reflection work, committed by the ES51 branch and referenced by nothing. Delete it or move it under tests/. (found 2026-09-19, review)
+
+	* tools/buildAndTest.sh builds the examples with `BuildCpp.sh "$target" "$exe" ...`, dropping $model; the .cmd twin got that fix on the ES51 branch but the POSIX script did not, so `./build.sh es5 x86` builds the examples for `native`. It fails quietly because $exe does not match BuildCpp.sh's model regex and is taken as the output path instead. (found 2026-09-19, review)
 
 	* included in tests should be to config the gc to sweep after every instruction
 
