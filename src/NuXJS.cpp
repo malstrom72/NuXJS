@@ -2827,9 +2827,9 @@ Scope::Scope(GCList& gcList, Scope* parentScope)
 		: super(gcList), parentScope(parentScope), localsPointer(parentScope != 0 ? parentScope->localsPointer : 0)
 		, deleteOnPop(true) { }
 
-Flags Scope::readVar(Runtime& rt, const String* name, Value* v) const {
+Flags Scope::readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
 	assert(parentScope != 0);
-	return parentScope->readVar(rt, name, v);
+	return parentScope->readVar(rt, name, v, implicitThis);
 }
 
 void Scope::writeVar(Runtime& rt, const String* name, const Value& v) {
@@ -2915,7 +2915,7 @@ JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
 	return dynamicVars;
 }
 
-Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v) const {
+Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
 	const UInt32 bloomCode = name->createBloomCode();
 	if ((bloomSet & bloomCode) == bloomCode) {
 		Int32 index;
@@ -2936,7 +2936,7 @@ Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v) const {
 			return DONT_DELETE_FLAG | READ_ONLY_FLAG | EXISTS_FLAG;
 		}
 	}
-	return parentScope->readVar(rt, name, v);
+	return parentScope->readVar(rt, name, v, implicitThis);
 }
 
 void FunctionScope::writeVar(Runtime& rt, const String* name, const Value& v) {
@@ -3202,8 +3202,6 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ CALL_OP                    , "CALL"                    , 0      , OpcodeInfo::POP_OPERAND },
 #if !NUXJS_ES5
 	{ CALL_METHOD_OP             , "CALL_METHOD"             , -1     , OpcodeInfo::POP_OPERAND },
-#else
-	{ CALL_THIS_OP               , "CALL_THIS"               , -1     , OpcodeInfo::POP_OPERAND },
 #endif
 	{ CALL_EVAL_OP               , "CALL_EVAL"               , 0      , OpcodeInfo::POP_OPERAND },
 	{ NEW_OP                     , "NEW"                     , +1     , OpcodeInfo::POP_OPERAND },
@@ -3229,7 +3227,9 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ TYPEOF_OP                  , "TYPEOF"                  , 0      , 0 },
 	{ TYPEOF_NAMED_OP            , "TYPEOF_NAMED"            , 1      , 0 },
 	{ GET_ENUMERATOR_OP          , "GET_ENUMERATOR"          , 0      , 0 },
-	{ NEXT_PROPERTY_OP           , "NEXT_PROPERTY"           , 0      , OpcodeInfo::POP_ON_BRANCH }
+	{ NEXT_PROPERTY_OP           , "NEXT_PROPERTY"           , 0      , OpcodeInfo::POP_ON_BRANCH },
+	{ READ_NAMED_WITH_THIS_OP    , "READ_NAMED_WITH_THIS"    , 2      , 0 },
+	{ CALL_WITH_THIS_OP          , "CALL_WITH_THIS"          , -1     , OpcodeInfo::POP_OPERAND }
 };
 
 const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
@@ -3249,14 +3249,14 @@ struct Processor::EvalScope : public Scope {
 	// but strict eval gets its OWN environment so its var/function declarations are discarded when it returns.
 	EvalScope(GCList& gcList, Scope* parentScope, bool strict)
 			: super(gcList, parentScope), ownVars(0), strict(strict) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
+	virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
 		if (ownVars != 0) {
 			const Flags flags = ownVars->getOwnProperty(rt, name, v);
 			if (flags != NONEXISTENT) {
-				return flags;
+				return flags;	// 10.4.2: a strict eval's own bindings are declarative, so they supply no receiver
 			}
 		}
-		return parentScope->readVar(rt, name, v);
+		return parentScope->readVar(rt, name, v, implicitThis);
 	}
 	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
 		if (ownVars != 0) {
@@ -3339,12 +3339,12 @@ struct Processor::CatchScope : public Scope {
 
 	CatchScope(GCList& gcList, Scope* parentScope, const String* exceptionName, const Value& exceptionValue)
 			: super(gcList, parentScope), exceptionName(exceptionName), exceptionValue(exceptionValue) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const  {
+	virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const  {
 		if (name->isEqualTo(*exceptionName)) {
 			*v = exceptionValue;
 			return DONT_DELETE_FLAG | EXISTS_FLAG;
 		} else {
-			return parentScope->readVar(rt, name, v);
+			return parentScope->readVar(rt, name, v, implicitThis);
 		}
 	}
 	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
@@ -3393,9 +3393,15 @@ struct Processor::WithScope : public Scope {
 	typedef Scope super;
 	WithScope(GCList& gcList, Scope* parentScope, Object* withObject)
 	 		: super(gcList, parentScope), withObject(withObject) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
+	virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
 		Flags flags = withObject->getProperty(rt, name, v);
-		return (flags != NONEXISTENT ? flags : parentScope->readVar(rt, name, v));
+		if (flags == NONEXISTENT) {
+			return parentScope->readVar(rt, name, v, implicitThis);
+		}
+		if (implicitThis != 0) {
+			*implicitThis = withObject;
+		}
+		return flags;
 	}
 	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
 		const Value key(name);
@@ -3627,7 +3633,7 @@ void Processor::error(ErrorType errorType, const String* message) {
 #if NUXJS_ES5
 bool Processor::checkStrictAssignable(Scope* scope, const String* name) {
 	Value dummy;
-	const Flags flags = scope->readVar(rt, name, &dummy);	// walks the same scope chain writeVar will
+	const Flags flags = scope->readVar(rt, name, &dummy, 0);	// walks the same scope chain writeVar will
 	if (flags == NONEXISTENT) {
 		error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));	// 11.13.1: assign to undeclared
 		return false;
@@ -3750,12 +3756,12 @@ void Processor::innerRun() {
 			case READ_NAMED_OP: {
 				const String* name = constants[im].getString();
 			#if !NUXJS_ES5
-				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
+				if (scope->readVar(rt, name, ++sp, 0) == NONEXISTENT) {
 					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
 					return;
 				}
 			#else
-				const Flags flags = scope->readVar(rt, name, ++sp);
+				const Flags flags = scope->readVar(rt, name, ++sp, 0);
 				if (flags == NONEXISTENT) {
 					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
 					return;
@@ -3767,6 +3773,33 @@ void Processor::innerRun() {
 					assert(holder != 0);
 					if (enterGetter(holder, Value(name), sp, 0, holder)) {
 						return;	// the getter's result replaces the pushed slot
+					}
+				}
+			#endif
+				break;
+			}
+			case READ_NAMED_WITH_THIS_OP: {
+				const String* name = constants[im].getString();
+				sp[1] = UNDEFINED_VALUE;	// the receiver slot enters the gc-marked range with `sp += 2`, so fill it first,
+				sp += 2;					// and it is what stands unless a with scope overwrites it below
+			#if !NUXJS_ES5
+				if (scope->readVar(rt, name, sp, sp - 1) == NONEXISTENT) {
+					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+					return;
+				}
+			#else
+				const Flags flags = scope->readVar(rt, name, sp, sp - 1);
+				if (flags == NONEXISTENT) {
+					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+					return;
+				}
+				// The accessor path of READ_NAMED_OP above, which a callee reached by name needs just the same; the
+				// receiver already sits below the slot the getter's result will replace.
+				if ((flags & ACCESSOR_FLAG) != 0) {
+					Object* const holder = scope->resolveHolder(rt, name);
+					assert(holder != 0);
+					if (enterGetter(holder, Value(name), sp, 0, holder)) {
+						return;
 					}
 				}
 			#endif
@@ -4056,7 +4089,19 @@ void Processor::innerRun() {
 				return;
 			}
 		#endif
-
+			
+			case CALL_WITH_THIS_OP: {
+				Function* const f = asFunction(sp[-im]);
+				if (f != 0) {
+			#if !NUXJS_ES5
+					invokeFunction(f, im + 1, im, sp[-im - 1].asObject());
+			#else
+					invokeFunction(f, im + 1, im, sp[-im - 1]);	// 11.2.3: the base as written, primitive or not
+			#endif
+				}
+				return;
+			}
+			
 			case CALL_EVAL_OP: {
 				Function* f = asFunction(sp[-im]);
 				if (f != 0) {
@@ -4162,12 +4207,12 @@ void Processor::innerRun() {
 			case TYPEOF_NAMED_OP: {
 			#if !NUXJS_ES5
 				Value v(UNDEFINED_VALUE);
-				scope->readVar(rt, constants[im].getString(), &v);
+				scope->readVar(rt, constants[im].getString(), &v, 0);
 				push(v.typeOfString());
 			#else
 				const String* name = constants[im].getString();
 				Value v(UNDEFINED_VALUE);
-				const Flags flags = scope->readVar(rt, name, &v);
+				const Flags flags = scope->readVar(rt, name, &v, 0);
 				/*
 					The tolerant read 11.4.3 needs: an unresolvable name reads as undefined instead of throwing,
 					and any other binding takes GetValue, so an accessor runs its getter here too. The value is
@@ -4229,7 +4274,7 @@ void Processor::innerRun() {
 			}
 
 			case GET_METHOD_OP: {
-				// sp[-1] stays put for CALL_THIS_OP; `o` is only walked, so it need not be an extensible wrapper,
+				// sp[-1] stays put for CALL_WITH_THIS_OP; `o` is only walked, so it need not be an extensible wrapper,
 				// which for a string base is the difference between a fresh StringWrapper and no allocation.
 				Object* o = convertToObject(sp[-1], false);
 				if (o == 0) {
@@ -4238,10 +4283,10 @@ void Processor::innerRun() {
 				Value v(UNDEFINED_VALUE);
 				const Flags flags = o->getProperty(rt, sp[0], &v);
 				if ((flags & ACCESSOR_FLAG) != 0 && enterGetter(o, sp[0], &v, 0, sp[-1])) {
-					return;	// the result replaces the name at sp[0]; CALL_THIS_OP checks callability
+					return;	// the result replaces the name at sp[0]; CALL_WITH_THIS_OP checks callability
 				}
 				/*
-					11.2.3 (4): not-callable is CALL_THIS's throw, after the arguments have run. The name stays in
+					11.2.3 (4): not-callable is CALL_WITH_THIS's throw, after the arguments have run. The name stays in
 					the slot for that case, so the error can still say who it was that is not a function - and it is
 					always a primitive (PROPERTY references carry converted keys), never mistakable for a callee.
 				*/
@@ -4249,14 +4294,6 @@ void Processor::innerRun() {
 					sp[0] = v;
 				}
 				break;
-			}
-
-			case CALL_THIS_OP: {
-				Function* const f = asFunction(sp[-im]);
-				if (f != 0) {
-					invokeFunction(f, im + 1, im, sp[-im - 1]);	// 11.2.3: the base as written, primitive or not
-				}
-				return;
 			}
 		#endif
 
@@ -5503,10 +5540,13 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			#if NUXJS_ES5
 				// ES5 11.2.3: the function is fetched (running any getter) before the arguments are evaluated.
 				emit(Processor::GET_METHOD_OP);
-				callOp = Processor::CALL_THIS_OP;
+				callOp = Processor::CALL_WITH_THIS_OP;
 			#else
 				callOp = Processor::CALL_METHOD_OP;
 			#endif
+			} else if (xr.t == ExpressionResult::NAMED && callOp != Processor::CALL_EVAL_OP) {
+				emitWithConstant(Processor::READ_NAMED_WITH_THIS_OP, xr.v);
+				callOp = Processor::CALL_WITH_THIS_OP;
 			} else {
 				makeRValue(xr, false);
 			}
@@ -6592,7 +6632,8 @@ Object* Runtime::ErrorPrototype::getPrototype(Runtime& rt) const {
 
 Runtime::GlobalScope::GlobalScope(GCList& gcList) : super(gcList, 0) { deleteOnPop = false; }
 
-Flags Runtime::GlobalScope::readVar(Runtime& rt, const String* name, Value* v) const {
+Flags Runtime::GlobalScope::readVar(Runtime& rt, const String* name, Value* v, Value*) const {
+	// No implicit this here: the global object is the scope of last resort, never an object scope introduced by `with`.
 	return rt.getGlobalObject()->getProperty(rt, name, v);
 }
 

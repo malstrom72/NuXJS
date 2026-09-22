@@ -1194,7 +1194,7 @@ class Scope : public GCItem {
 	public:
 		typedef GCItem super;
 		Scope(GCList& gcList, Scope* parentScope);
-		virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
+		virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
@@ -1376,7 +1376,7 @@ class FunctionScope : public Scope {
 		typedef Scope super;
 
 		FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, const Value* argv);
-		virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
+		virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 	#if NUXJS_ES5
 		virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const;
@@ -1427,7 +1427,7 @@ class Runtime : public GCItem {
 		struct GlobalScope : public Scope {
 			typedef Scope super;
 			GlobalScope(GCList& gcList);
-			virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
+			virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
 			virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		#if NUXJS_ES5
 			virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const;
@@ -1924,7 +1924,7 @@ class Processor : public GCItem {
 			, CHECK_RESOLVE_PROPERTY_OP						// stack: object, name -> object, name	// check coercible, then resolve object
 			, GET_PROPERTY_OP								// stack: object, name -> value
 		#if NUXJS_ES5
-			, GET_METHOD_OP									// stack: value, name -> this_value, (function | name)	// full [[Get]] (runs accessors); a non-callable result leaves the name for CALL_THIS_OP's throw
+			, GET_METHOD_OP									// stack: value, name -> this_value, (function | name)	// full [[Get]] (runs accessors); a non-callable result leaves the name for CALL_WITH_THIS_OP's throw
 		#endif
 		#if !NUXJS_ES5										// es5 stores via SET_PROPERTY_POP_OP (+ POP), so the setter can run as a frame
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
@@ -1958,10 +1958,8 @@ class Processor : public GCItem {
 			, REPUSH_2_OP									// stack: value_1, value_2 -> value_1, value_2, value_1, value_2	// used for duplicating property reference with assignment operators like += etc
 			, POST_SHUFFLE_OP								// stack: object, name, value -> value, object, name, value			// used for special post inc/dec logic on properties (see code)
 			, CALL_OP										// operand: n, stack: function, n * args -> return_value
-		#if !NUXJS_ES5
+		#if !NUXJS_ES5										// es5 fetches the callee before the args (11.2.3): GET_METHOD_OP leaves this+function, then CALL_WITH_THIS_OP below
 			, CALL_METHOD_OP								// operand: n, stack: object, name, n * args -> return_value
-		#else											// es5 fetches the callee before the args (11.2.3): GET_METHOD_OP leaves this+function, then CALL_THIS_OP
-			, CALL_THIS_OP									// operand: n, stack: this_value, function, n * args -> return_value
 		#endif
 			, CALL_EVAL_OP									// operand: n, stack: function, n * args -> return_value			// special eval call is required because of need to differentiate direct or indirect call to eval
 			, NEW_OP										// operand: n, stack: constructor object, n * args -> new_object, return_value
@@ -1993,6 +1991,8 @@ class Processor : public GCItem {
 		#endif
 			, GET_ENUMERATOR_OP								// stack: object -> enumerator
 			, NEXT_PROPERTY_OP								// operand: exit_loop_offset, stack: enumerator -> string (unless end of loop)
+			, READ_NAMED_WITH_THIS_OP						// operand: const_index (name), stack: -> implicit_this, value
+			, CALL_WITH_THIS_OP								// operand: n, stack: this_value, function, n * args -> return_value
 			, OP_COUNT
 		};
 	

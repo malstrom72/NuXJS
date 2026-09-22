@@ -325,9 +325,8 @@ static void disassemble(Heap& heap, const Code& code) {
 			case Processor::CALL_OP:
 		#if !NUXJS_ES5
 			case Processor::CALL_METHOD_OP:
-		#else
-			case Processor::CALL_THIS_OP:
 		#endif
+			case Processor::CALL_WITH_THIS_OP:
 			case Processor::CALL_EVAL_OP:
 			case Processor::NEW_OP:
 			case Processor::POP_OP:
