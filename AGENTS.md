@@ -81,3 +81,28 @@ EXIT /b 0
 :error
 EXIT /b %ERRORLEVEL%
 ```
+
+## Silent failures
+
+The traps in this repository do not produce wrong answers, they produce convincing silences. Each of these has cost
+someone a working session:
+
+- **Building by hand opts out of every rail in the build scripts.** `NuXJS.h` defaults `NUXJS_ES5` to 1, so a bare
+  `BuildCpp` call gives you an es5 engine; run `tests/es3only/` against it and you get nineteen plausible failures
+  rather than an error. `buildAndTest` passes `-DNUXJS_ES5=0` for the es3 variant and filters the test directories
+  per variant. Use it rather than invoking `BuildCpp` or `test.pika` directly.
+- **A `/* */` comment in a `.io` file disables the test.** Every line must begin with `> < ! - * or /`
+  (`tools/test.pika`), so a block comment's body discards the section being collected and `*/` reads as the
+  disabled-section marker: the suite goes green by not running. `//` is the only comment form `.io` has, which is
+  why the three-lines-becomes-a-block rule in `docs/Coding Style.md` section 5 does not apply there - shorten the
+  prose instead of reformatting it.
+- **`assert` is compiled out of release.** Release-only work, benchmarking above all, silently skips every invariant
+  guarded that way - `getOpcodeInfo`'s check that `opcodeInfo[]` agrees with the opcode enum among them. Run the beta
+  build over anything that touches such a table.
+- **A benchmark delta under about 2% is not evidence.** Two builds of identical machine code measured 0.24-0.46%
+  apart; two carrying the same never-emitted opcodes at different enum positions measured 1.2-1.4% apart; and a
+  control doing provably nothing read as a four-sigma regression. msvc/x64 and clang/arm64 agree. Any claim needs an
+  A/A control measured in the same session, not a comparison against a golden time.
+- **Never match working-tree text against blob contents.** Git stores LF whatever the checkout shows, so a script
+  comparing the two finds nothing and reports success - a `filter-branch` over 197 commits printed "Ref is unchanged"
+  and exited 0.
