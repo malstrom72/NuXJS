@@ -107,9 +107,9 @@
 -
 // Strict. The direct store and the object-valued one refuse for the same reason and must report it the same way,
 // message included - a difference here is the bug this section was written for.
-> var direct = p("strict direct", function () { "use strict"; var a = seal3(); a.length = 1; return a.length })
+> p("strict direct", function () { "use strict"; var a = seal3(); a.length = 1; return a.length })
 < strict direct: THREW TypeError
-> var viaObj = p("strict object", function () { "use strict"; var a = seal3(); a.length = obj1(); return a.length })
+> p("strict object", function () { "use strict"; var a = seal3(); a.length = obj1(); return a.length })
 < strict object: THREW TypeError
 -
 // Sloppy. 8.7.2 discards the refusal, so neither spelling throws and the length is left where it was.

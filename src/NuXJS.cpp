@@ -7417,6 +7417,8 @@ void Runtime::setupStandardLibrary() {
 #if NUXJS_ES5
 	fetchFunction(supportObject, "setArrayLength", &setArrayLengthFunction);
 	fetchFunction(supportObject, "setArrayLengthStrict", &setArrayLengthStrictFunction);
+	// putThrough enters the strict one without a null test, and fetchFunction reports a miss by leaving the 0.
+	assert(setArrayLengthFunction != 0 && setArrayLengthStrictFunction != 0);
 #endif
 
 	heap.gc();
