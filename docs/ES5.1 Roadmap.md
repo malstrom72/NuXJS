@@ -164,7 +164,7 @@ Gaps this section leaves open (pre-existing, not regressions; the array ones ove
       setter frame can deposit its discarded return value; undefined setter is silently ignored (strict throw
       comes in Phase 4). (§8.12.5)
 - [x] Accessors participate in the prototype chain; inherited setters run against the receiver.
-- [x] Method calls split into guarded `GET_METHOD_OP` + `CALL_THIS_OP`, which also lands the ES5 11.2.3
+- [x] Method calls split into guarded `GET_METHOD_OP` + `CALL_WITH_THIS_OP`, which also lands the ES5 11.2.3
       evaluation-order fix (callee fetched before arguments). ES3-order tests moved to `tests/es3only/` with ES5
       twins (`tests/es5/callTargetResolvedBeforeArgs.io`, `tests/es5/methodCallTypeErrorTrace.io`).
 
