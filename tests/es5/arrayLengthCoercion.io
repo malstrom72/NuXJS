@@ -99,3 +99,36 @@
 > print(typeof child.length + " " + protoValueOfRan + " " + Object.prototype.hasOwnProperty.call(child, "length"))
 < object false true
 -
+// 8.7.2 raises a refused store into a TypeError only in strict code, and a length store carrying an object is
+// finished by a stdlib helper rather than in the VM. The Throw flag is the store's, so both spellings of the same
+// refusal have to answer alike: strict throws, sloppy stays silent, whichever path the value took.
+> function seal3() { var a = [1,2,3]; Object.seal(a); return a }
+> function obj1() { return { valueOf: function () { return 1 } } }
+-
+// Strict. The direct store and the object-valued one refuse for the same reason and must report it the same way,
+// message included - a difference here is the bug this section was written for.
+> var direct = p("strict direct", function () { "use strict"; var a = seal3(); a.length = 1; return a.length })
+< strict direct: THREW TypeError
+> var viaObj = p("strict object", function () { "use strict"; var a = seal3(); a.length = obj1(); return a.length })
+< strict object: THREW TypeError
+-
+// Sloppy. 8.7.2 discards the refusal, so neither spelling throws and the length is left where it was.
+> p("sloppy direct", function () { var a = seal3(); a.length = 1; return a.length })
+< sloppy direct: 3
+> p("sloppy object", function () { var a = seal3(); a.length = obj1(); return a.length })
+< sloppy object: 3
+-
+// The conversion happens before the refusal is known, so its side effects survive a throw. How many times valueOf
+// runs is not pinned here: 15.4.5.1 steps 3 and 4 convert twice and we convert once, which is its own deviation.
+> var ran = false; function counted() { return { valueOf: function () { ran = true; return 1 } } }
+> p("strict, converted", function () { "use strict"; var a = seal3(); try { a.length = counted() } catch (e) {} return ran })
+< strict, converted: true
+> ran = false; p("sloppy, converted", function () { var a = seal3(); a.length = counted(); return ran })
+< sloppy, converted: true
+-
+// An unsealed array is untouched by any of this: the object path still stores, in strict code and out of it.
+> p("strict, open", function () { "use strict"; var a = [1,2,3]; a.length = obj1(); return a.length })
+< strict, open: 1
+> p("sloppy, open", function () { var a = [1,2,3]; a.length = obj1(); return a.length })
+< sloppy, open: 1
+-

@@ -3636,7 +3636,8 @@ bool Processor::putThrough(Object* o, const Value& key, Int32 popCount, Receiver
 	Function* setter;
 	const Flags flags = o->setProperty(rt, key, sp[0], &setter, mayStore);
 	if ((flags & ACCESSOR_FLAG) != 0) {
-		invokeFunction(setter, popCount, 1, receiver);
+		invokeFunction(strict && setter == rt.setArrayLengthFunction ? rt.setArrayLengthStrictFunction : setter
+				, popCount, 1, receiver);	// 8.7.2: the Throw flag is the store's, not the helper's
 		return true;
 	}
 	if ((flags & EXISTS_FLAG) == 0 && strict) {
@@ -7165,7 +7166,7 @@ Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap
 		, timeOut(0), memoryCap(MAX_MEMORY_CAP), gcThreshold(AUTO_GC_MIN_SIZE), createRegExpFunction(&NO_REG_EXP_SUPPORT)
 		, evalFunction(&EVAL_FUNCTION)
 #if NUXJS_ES5
-		, throwTypeErrorFunction(&THROW_TYPE_ERROR_FUNCTION), setArrayLengthFunction(0)
+		, throwTypeErrorFunction(&THROW_TYPE_ERROR_FUNCTION), setArrayLengthFunction(0), setArrayLengthStrictFunction(0)
 #endif
 		, unixEpochTimeDiff(0.0), evalCodeCache(&heap)
 #if NUXJS_ES5
@@ -7415,6 +7416,7 @@ void Runtime::setupStandardLibrary() {
 	fetchFunction(supportObject, "evalFunction", &evalFunction);
 #if NUXJS_ES5
 	fetchFunction(supportObject, "setArrayLength", &setArrayLengthFunction);
+	fetchFunction(supportObject, "setArrayLengthStrict", &setArrayLengthStrictFunction);
 #endif
 
 	heap.gc();
