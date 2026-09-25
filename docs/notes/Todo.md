@@ -157,9 +157,9 @@ Compiler
 Other
 =====
 
-	* diagB.js at the repository root is a six-line ad-hoc diagnostic for the Error reflection work, committed by the ES51 branch and referenced by nothing. Delete it or move it under tests/. (found 2026-09-19, review)
+	* FIXED 2026-09-25 (found 2026-09-19, review): diagB.js, a six-line ad-hoc diagnostic for the Error reflection work left at the repository root, is deleted. Its case, an Error whose name is a getter, is already asserted properly in tests/es5/errorReflection.io.
 
-	* tools/buildAndTest.sh builds the examples with `BuildCpp.sh "$target" "$exe" ...`, dropping $model; the .cmd twin got that fix on the ES51 branch but the POSIX script did not, so `./build.sh es5 x86` builds the examples for `native`. It fails quietly because $exe does not match BuildCpp.sh's model regex and is taken as the output path instead. (found 2026-09-19, review)
+	* FIXED 2026-09-25 (found 2026-09-19, review): the examples were built without the model, in BOTH scripts on main rather than only the .sh as first recorded - the output path failed BuildCpp's model check and the model fell back to native. Fixed on main and merged; `buildAndTest.cmd release x86` now yields an x86 examples binary.
 
 	* included in tests should be to config the gc to sweep after every instruction
 
