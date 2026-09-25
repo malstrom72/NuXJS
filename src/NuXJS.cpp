@@ -678,7 +678,7 @@ class GenericWrapper : public JSObject {
 		typedef JSObject super;
 		GenericWrapper(GCList& gcList, const String* className, const Value& value, Runtime::PrototypeId prototypeId
 				, Object* prototype = 0)
-				: super(gcList, prototype), className(className), wrapped(value), prototypeId(prototypeId) {
+				: super(gcList, prototype), className(className), prototypeId(prototypeId), wrapped(value) {
 			assert(prototypeId != Runtime::ARBITRARY_PROTOTYPE || prototype != 0);
 		}
 		virtual const String* getClassName() const { return className; }
@@ -1576,7 +1576,7 @@ Enumerator* JSObject::getOwnPropertyEnumerator(Runtime& rt) const {
 /* --- RangeEnumerator --- */
 
 RangeEnumerator::RangeEnumerator(GCList& gcList, Int32 from, Int32 count) : super(gcList), heap(gcList.getHeap())
-		, index(from), to(from + count) { }
+		, to(from + count), index(from) { }
 const String* RangeEnumerator::nextPropertyName() { return (index >= to ? 0 : String::fromInt(heap, index++)); }
 
 /* --- StringListEnumerator --- */
@@ -3113,12 +3113,12 @@ struct Compiler::SemanticScope {
 	enum Type { ROOT_TYPE, LABEL_TYPE, ITERATOR_LABEL_TYPE, TRY_TYPE, CATCH_TYPE, FINALLY_TYPE, WITH_TYPE };
 	
 	SemanticScope(Heap& heap, Type type, Int32 stackDepthOnEntry, SemanticScope* next)
-			: breaks(&heap), continues(&heap), finallys(&heap), type(type), stackDepthOnEntry(stackDepthOnEntry)
-			, next(next) { }
+			: type(type), next(next), stackDepthOnEntry(stackDepthOnEntry), breaks(&heap), continues(&heap)
+			, finallys(&heap) { }
 	
 	SemanticScope(Heap& heap, const String& label, Int32 stackDepthOnEntry, SemanticScope* next)
-			: breaks(&heap), continues(&heap), finallys(&heap), type(LABEL_TYPE), label(label)
-			, stackDepthOnEntry(stackDepthOnEntry), next(next) { }
+			: type(LABEL_TYPE), label(label), next(next), stackDepthOnEntry(stackDepthOnEntry), breaks(&heap)
+			, continues(&heap), finallys(&heap) { }
 	
 	void makeIteratorScopes(SemanticScope* untilScope) {
 		for (SemanticScope* s = this; s != untilScope; s = s->next) {
@@ -5277,8 +5277,8 @@ static struct NoRegExpSupport : public Function {
 
 Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap.roots()), globalObject(0)
 		, stackSize(STANDARD_JS_STACK_SIZE), callNestCounter(0), checkTimeOutCounter(0)
-		, timeOut(0), memoryCap(MAX_MEMORY_CAP), gcThreshold(AUTO_GC_MIN_SIZE), createRegExpFunction(&NO_REG_EXP_SUPPORT)
-		, evalFunction(&EVAL_FUNCTION), unixEpochTimeDiff(0.0), evalCodeCache(&heap) {
+		, timeOut(0), memoryCap(MAX_MEMORY_CAP), gcThreshold(AUTO_GC_MIN_SIZE), evalCodeCache(&heap)
+		, createRegExpFunction(&NO_REG_EXP_SUPPORT), evalFunction(&EVAL_FUNCTION), unixEpochTimeDiff(0.0) {
 	std::fill(stringConstantsCache, stringConstantsCache + (1 << STRING_CONSTANTS_CACHE_SIZE_N), (const String*)(0));
 	std::fill(prototypes, prototypes + PROTOTYPE_COUNT, (Object*)(0));
 	std::fill(toPrimitiveFunctions + 0, toPrimitiveFunctions + 3, &DEFAULT_CONVERSION);
