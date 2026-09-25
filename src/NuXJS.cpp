@@ -5197,7 +5197,8 @@ struct Support {
 		newTM.tm_sec = utcTM.tm_sec;
 		newTM.tm_isdst = localTM.tm_isdst;
 		const std::time_t newTime = std::mktime(&newTM);
-		return (newTime == -1 ? NAN_VALUE : Value(t * 1000.0 - newTime * 1000.0));
+		return (newTime == -1 ? NAN_VALUE
+				: Value(static_cast<double>(t) * 1000.0 - static_cast<double>(newTime) * 1000.0));
 	}
 	
 	static Value random(Runtime&, Processor&, UInt32, const Value*, Object*) {
@@ -5281,9 +5282,10 @@ void Runtime::autoGC(bool checkOutOfMemory) {
 	}
 }
 
-// Handle wrapping if clock_t is an integer type but not if it is a double.
-template<typename T> static bool clockExceeds(T a, T b) { return wrapToInt32(static_cast<UInt32>(a) - static_cast<UInt32>(b)) >= 0; }
-static bool clockExceeds(double a, double b) { return a >= b; }
+// clock_t may be an integer that wraps or a floating type that does not; static_cast<T>(0.5) tells them apart.
+template<typename T> static bool clockExceeds(T a, T b) {
+	return (static_cast<T>(0.5) != 0 ? a >= b : wrapToInt32(static_cast<UInt32>(a) - static_cast<UInt32>(b)) >= 0);
+}
 
 void Runtime::checkTimeOut() {
 	if (checkTimeOutCounter != 0 && --checkTimeOutCounter == 0) {
@@ -5309,7 +5311,7 @@ Object* Runtime::getPrototypeObject(PrototypeId prototype) const {
 
 Object* Runtime::getErrorPrototype(ErrorType error) const {
 	assert(0 <= error && error < ERROR_TYPE_COUNT);
-	return prototypes[static_cast<PrototypeId>(FIRST_ERROR_PROTOTYPE + error)];
+	return prototypes[static_cast<PrototypeId>(FIRST_ERROR_PROTOTYPE + static_cast<int>(error))];
 }
 
 JSObject* Runtime::newJSObject() const { return new(heap) JSObject(heap.managed(), getObjectPrototype()); }
@@ -5416,7 +5418,7 @@ extern const char* STDLIB_JS;
 double Runtime::getCurrentEpochTime() {
 	std::time_t t;
 	std::time(&t);
-	return t * 1000.0 + unixEpochTimeDiff;
+	return static_cast<double>(t) * 1000.0 + unixEpochTimeDiff;
 }
 
 void Runtime::setupStandardLibrary() {
@@ -5430,7 +5432,8 @@ void Runtime::setupStandardLibrary() {
 		const std::time_t refTimeAsUTC = (refUTC == 0 ? static_cast<std::time_t>(-1) : std::mktime(refUTC));
 		assert(refTime != -1 && refTimeAsUTC != -1);
 		unixEpochTimeDiff = (refTime == static_cast<std::time_t>(-1) || refTimeAsUTC == static_cast<std::time_t>(-1))
-				? 0.0 : 315532800000.0 - refTime * 2000.0 + refTimeAsUTC * 1000.0;
+				? 0.0 : 315532800000.0 - static_cast<double>(refTime) * 2000.0
+				+ static_cast<double>(refTimeAsUTC) * 1000.0;
 	}
 	
 	JSObject* supportObject = new(heap) JSObject(heap.managed(), getObjectPrototype());
