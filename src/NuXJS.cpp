@@ -2050,9 +2050,9 @@ Scope::Scope(GCList& gcList, Scope* parentScope)
 		: super(gcList), parentScope(parentScope), localsPointer(parentScope != 0 ? parentScope->localsPointer : 0)
 		, deleteOnPop(true) { }
 
-Flags Scope::readVar(Runtime& rt, const String* name, Value* v) const {
+Flags Scope::readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
 	assert(parentScope != 0);
-	return parentScope->readVar(rt, name, v);
+	return parentScope->readVar(rt, name, v, implicitThis);
 }
 
 void Scope::writeVar(Runtime& rt, const String* name, const Value& v) {
@@ -2102,7 +2102,7 @@ JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
 	return dynamicVars;
 }
 
-Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v) const {
+Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
 	const UInt32 bloomCode = name->createBloomCode();
 	if ((bloomSet & bloomCode) == bloomCode) {
 		Int32 index;
@@ -2123,7 +2123,7 @@ Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v) const {
 			return DONT_DELETE_FLAG | READ_ONLY_FLAG | EXISTS_FLAG;
 		}
 	}
-	return parentScope->readVar(rt, name, v);
+	return parentScope->readVar(rt, name, v, implicitThis);
 }
 
 void FunctionScope::writeVar(Runtime& rt, const String* name, const Value& v) {
@@ -2331,7 +2331,9 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ TYPEOF_OP                  , "TYPEOF"                  , 0      , 0 },
 	{ TYPEOF_NAMED_OP            , "TYPEOF_NAMED"            , 1      , 0 },
 	{ GET_ENUMERATOR_OP          , "GET_ENUMERATOR"          , 0      , 0 },
-	{ NEXT_PROPERTY_OP           , "NEXT_PROPERTY"           , 0      , OpcodeInfo::POP_ON_BRANCH }
+	{ NEXT_PROPERTY_OP           , "NEXT_PROPERTY"           , 0      , OpcodeInfo::POP_ON_BRANCH },
+	{ READ_NAMED_WITH_THIS_OP    , "READ_NAMED_WITH_THIS"    , 2      , 0 },
+	{ CALL_WITH_THIS_OP          , "CALL_WITH_THIS"          , -1     , OpcodeInfo::POP_OPERAND }
 };
 
 const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
@@ -2363,12 +2365,12 @@ struct Processor::CatchScope : public Scope {
 
 	CatchScope(GCList& gcList, Scope* parentScope, const String* exceptionName, const Value& exceptionValue)
 			: super(gcList, parentScope), exceptionName(exceptionName), exceptionValue(exceptionValue) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const  {
+	virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const  {
 		if (name->isEqualTo(*exceptionName)) {
 			*v = exceptionValue;
 			return DONT_DELETE_FLAG | EXISTS_FLAG;
 		} else {
-			return parentScope->readVar(rt, name, v);
+			return parentScope->readVar(rt, name, v, implicitThis);
 		}
 	}
 	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
@@ -2400,9 +2402,15 @@ struct Processor::WithScope : public Scope {
 	typedef Scope super;
 	WithScope(GCList& gcList, Scope* parentScope, Object* withObject)
 	 		: super(gcList, parentScope), withObject(withObject) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
+	virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
 		Flags flags = withObject->getProperty(rt, name, v);
-		return (flags != NONEXISTENT ? flags : parentScope->readVar(rt, name, v));
+		if (flags == NONEXISTENT) {
+			return parentScope->readVar(rt, name, v, implicitThis);
+		}
+		if (implicitThis != 0) {
+			*implicitThis = withObject;
+		}
+		return flags;
 	}
 	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
 		const Value key(name);
@@ -2654,7 +2662,17 @@ void Processor::innerRun() {
 			case WRITE_LOCAL_POP_OP:	assert(locals != 0); locals[im] = sp[0]; pop(1); break;
 			case READ_NAMED_OP: {
 				const String* name = constants[im].getString();
-				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
+				if (scope->readVar(rt, name, ++sp, 0) == NONEXISTENT) {
+					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+					return;
+				}
+				break;
+			}
+			case READ_NAMED_WITH_THIS_OP: {
+				const String* name = constants[im].getString();
+				sp[1] = UNDEFINED_VALUE;	// the receiver slot enters the gc-marked range with `sp += 2`, so fill it first,
+				sp += 2;					// and it is what stands unless a with scope overwrites it below
+				if (scope->readVar(rt, name, sp, sp - 1) == NONEXISTENT) {
 					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
 					return;
 				}
@@ -2808,6 +2826,14 @@ void Processor::innerRun() {
 				return;
 			}
 			
+			case CALL_WITH_THIS_OP: {
+				Function* const f = asFunction(sp[-im]);
+				if (f != 0) {
+					invokeFunction(f, im + 1, im, sp[-im - 1].asObject());
+				}
+				return;
+			}
+			
 			case CALL_EVAL_OP: {
 				Function* f = asFunction(sp[-im]);
 				if (f != 0) {
@@ -2904,7 +2930,7 @@ void Processor::innerRun() {
 			case TYPEOF_OP: sp[0] = sp[0].typeOfString(); break;
 			case TYPEOF_NAMED_OP: {
 				Value v(UNDEFINED_VALUE);
-				scope->readVar(rt, constants[im].getString(), &v);
+				scope->readVar(rt, constants[im].getString(), &v, 0);
 				push(v.typeOfString());
 				break;
 			}
@@ -3894,6 +3920,9 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			}
 			if (xr.t == ExpressionResult::PROPERTY) {
 				callOp = Processor::CALL_METHOD_OP;
+			} else if (xr.t == ExpressionResult::NAMED && callOp != Processor::CALL_EVAL_OP) {
+				emitWithConstant(Processor::READ_NAMED_WITH_THIS_OP, xr.v);
+				callOp = Processor::CALL_WITH_THIS_OP;
 			} else {
 				makeRValue(xr, false);
 			}
@@ -4853,7 +4882,8 @@ Object* Runtime::ErrorPrototype::getPrototype(Runtime& rt) const {
 
 Runtime::GlobalScope::GlobalScope(GCList& gcList) : super(gcList, 0) { deleteOnPop = false; }
 
-Flags Runtime::GlobalScope::readVar(Runtime& rt, const String* name, Value* v) const {
+Flags Runtime::GlobalScope::readVar(Runtime& rt, const String* name, Value* v, Value*) const {
+	// No implicit this here: the global object is the scope of last resort, never an object scope introduced by `with`.
 	return rt.getGlobalObject()->getProperty(rt, name, v);
 }
 

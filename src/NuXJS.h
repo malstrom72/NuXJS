@@ -986,7 +986,7 @@ class Scope : public GCItem {
 	public:
 		typedef GCItem super;
 		Scope(GCList& gcList, Scope* parentScope);
-		virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
+		virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
@@ -1121,7 +1121,7 @@ class FunctionScope : public Scope {
 		typedef Scope super;
 
 		FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, const Value* argv);
-		virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
+		virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
@@ -1168,7 +1168,7 @@ class Runtime : public GCItem {
 		struct GlobalScope : public Scope {
 			typedef Scope super;
 			GlobalScope(GCList& gcList);
-			virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
+			virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
 			virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 			virtual bool deleteVar(Runtime& rt, const String* name);
 			virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
@@ -1644,6 +1644,8 @@ class Processor : public GCItem {
 			, TYPEOF_NAMED_OP								// operand: const_index (name), stack: -> string
 			, GET_ENUMERATOR_OP								// stack: object -> enumerator
 			, NEXT_PROPERTY_OP								// operand: exit_loop_offset, stack: enumerator -> string (unless end of loop)
+			, READ_NAMED_WITH_THIS_OP						// operand: const_index (name), stack: -> implicit_this, value
+			, CALL_WITH_THIS_OP								// operand: n, stack: this_value, function, n * args -> return_value
 			, OP_COUNT
 		};
 	
