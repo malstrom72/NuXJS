@@ -1731,17 +1731,17 @@ class VarList : public GCItem, public Vector<Value> {
 	public:
 		typedef GCItem super;
 		VarList(Runtime& rt, UInt32 initialCount = 0)
-			: super(rt.getHeap().roots()), rt(rt), Vector<Value>(initialCount, &rt.getHeap()) { }
+			: super(rt.getHeap().roots()), Vector<Value>(initialCount, &rt.getHeap()), rt(rt) { }
 		VarList(Runtime& rt, const Value& a0)
-			: super(rt.getHeap().roots()), rt(rt), Vector<Value>(1, &rt.getHeap()) { begin()[0] = a0; }
+			: super(rt.getHeap().roots()), Vector<Value>(1, &rt.getHeap()), rt(rt) { begin()[0] = a0; }
 		VarList(Runtime& rt, const Value& a0, const Value& a1)
-			: super(rt.getHeap().roots()), rt(rt), Vector<Value>(2, &rt.getHeap()) { const Value v[] = { a0, a1 }; std::copy(v, v + 2, begin()); }
+			: super(rt.getHeap().roots()), Vector<Value>(2, &rt.getHeap()), rt(rt) { const Value v[] = { a0, a1 }; std::copy(v, v + 2, begin()); }
 		VarList(Runtime& rt, const Value& a0, const Value& a1, const Value& a2)
-			: super(rt.getHeap().roots()), rt(rt), Vector<Value>(3, &rt.getHeap()) { const Value v[] = { a0, a1, a2 }; std::copy(v, v + 3, begin()); }
+			: super(rt.getHeap().roots()), Vector<Value>(3, &rt.getHeap()), rt(rt) { const Value v[] = { a0, a1, a2 }; std::copy(v, v + 3, begin()); }
 		template<typename T> VarList(Runtime& rt, UInt32 count, const T* values)
-			: super(rt.getHeap().roots()), rt(rt), Vector<Value>(count, &rt.getHeap()) { std::copy(values, values + count, begin()); }
+			: super(rt.getHeap().roots()), Vector<Value>(count, &rt.getHeap()), rt(rt) { std::copy(values, values + count, begin()); }
 		template<typename T> explicit VarList(Runtime& rt, const std::vector<T>& container)
-			: super(rt.getHeap().roots()), rt(rt), Vector<Value>(container.data(), container.data() + container.size(), &rt.getHeap()) { } // Use with std::vector or C++11 std::array
+			: super(rt.getHeap().roots()), Vector<Value>(container.data(), container.data() + container.size(), &rt.getHeap()), rt(rt) { } // Use with std::vector or C++11 std::array
 		Value& operator[](ptrdiff_t index) { return Vector<Value>::operator[](index); }
 		Var operator[](ptrdiff_t index) const { return Var(rt, (static_cast<size_t>(index) < size() ? *(begin() + index) : UNDEFINED_VALUE)); }
 
