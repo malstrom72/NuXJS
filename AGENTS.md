@@ -121,3 +121,8 @@ someone a working session:
 - **Never match working-tree text against blob contents.** Git stores LF whatever the checkout shows, so a script
   comparing the two finds nothing and reports success - a `filter-branch` over 197 commits printed "Ref is unchanged"
   and exited 0.
+- **clang-tidy hides headers and, with no real check enabled, runs nothing.** Without `--header-filter='.*'` every
+  diagnostic in `NuXJS.h` is dropped, which hid six of the eleven `-Wreorder-ctor` sites. With
+  `--checks='-*,clang-diagnostic-*'` alone it prints its usage and exits 1, which a `grep warning:` reads as a clean
+  run. Enable one real check alongside, as in `--checks='-*,misc-unused-alias-decls,clang-diagnostic-*'`, and look
+  at the exit code.
