@@ -613,6 +613,9 @@ class Object : public GCItem {
 		// Past the base a setter is asked value-blind.
 		virtual Function* getOwnGetter(Runtime& rt, const Value& key) const;					// 0 when the accessor has no getter, which then reads as undefined.
 		virtual Function* getOwnSetter(Runtime& rt, const Value& key, const Value& v) const;		// 0 when nothing of this object's runs for this store.
+		// Whether this object may own an array-index property. True is always safe; a class answering index keys outside
+		// a table must keep saying true, exactly as it must override getOwnProperty.
+		virtual bool mayOwnIndexProperty() const;
 	#endif
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);	///< Insert a new or update an existing property. Return false if not possible (e.g. read-only property already exists). Default returns false.
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);								///< Update existing property. Return false if it doesn't exist or can't be updated (e.g. read-only property exists). Can be overriden for optimization. (Default implementation checks existence with hasOwnProperty() first.)
@@ -840,6 +843,9 @@ class JSObject : public Object, public Table {
 		typedef Object super;
 	
 		JSObject(GCList& gcList, Object* prototype);
+	#if NUXJS_ES5
+		virtual bool mayOwnIndexProperty() const;
+	#endif
 		virtual Object* getPrototype(Runtime& rt) const;
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
@@ -937,6 +943,9 @@ class JSArray : public LazyJSObject<Object> {
 		virtual const String* getClassName() const;	// &A_RRAY_STRING
 		virtual JSArray* asArray();
 		virtual Object* getPrototype(Runtime& rt) const;
+	#if NUXJS_ES5
+		virtual bool mayOwnIndexProperty() const;
+	#endif
 		// FIX : toString too?
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);

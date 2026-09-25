@@ -758,6 +758,9 @@ class StringWrapper : public JSObject {
 			Object* stringPrototype = rt.getPrototypeObject(Runtime::STRING_PROTOTYPE);
 			return (this == stringPrototype ? rt.getObjectPrototype() : stringPrototype);
 		}
+	#if NUXJS_ES5
+		virtual bool mayOwnIndexProperty() const { return true; }	// its characters are indices the table never sees
+	#endif
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 			Flags flags = wrapped->getOwnProperty(rt, key, v);
 			return (flags != NONEXISTENT ? flags : super::getOwnProperty(rt, key, v));
@@ -1753,6 +1756,11 @@ bool JSObject::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) 
 	return (bucket != 0 && update(bucket, v));
 }
 
+#if NUXJS_ES5
+bool Object::mayOwnIndexProperty() const { return true; }
+bool JSObject::mayOwnIndexProperty() const { return mayHoldIndexKey; }
+#endif
+
 Flags JSObject::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 #if NUXJS_ES5
 	// A numeric key past the cached range would allocate a string just to miss; every index starts with a digit.
@@ -2148,6 +2156,13 @@ JSArray::JSArray(GCList& gcList, UInt32 initialLength, const Value* initialEleme
 const String* JSArray::getClassName() const { return &A_RRAY_STRING; }
 JSArray* JSArray::asArray() { return this; }
 
+#if NUXJS_ES5
+bool JSArray::mayOwnIndexProperty() const {
+	return (denseVector.size() != 0 || (completeObject != 0 && completeObject->mayOwnIndexProperty()));
+}
+#endif
+
+// updateOwnProperty's gate assumes this chain is fixed; anything able to change it must remove that gate.
 Object* JSArray::getPrototype(Runtime& rt) const { // FIX : have a sep. ArrayPrototype object like we have for Function?
 	Object* arrayPrototype = rt.getPrototypeObject(Runtime::ARRAY_PROTOTYPE);
 	return (this == arrayPrototype ? rt.getObjectPrototype() : arrayPrototype);
@@ -2445,16 +2460,14 @@ bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flag
 bool JSArray::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
 #if NUXJS_ES5
 	/*
-		8.12.5 (3) is the only step this fast path may stand in for, and it needs the property to be own already:
-		creating one is step 6, which 8.12.5 (1) and (4) reach only after [[CanPut]] has walked the chain and an
-		inherited accessor has had its say. So an index outside the dense range refuses here and lets the VM finish.
+		Creating an element is 8.12.5 step 6, which [[CanPut]] must clear first, and it can only refuse when the chain
+		holds an index. getPrototype hardcodes that chain and ES5 has no setPrototypeOf, so while neither prototype may
+		own one the old path is exact; otherwise an index outside the dense range refuses and lets the VM walk.
 	*/
 	UInt32 index;
-	if (key.toArrayIndex(index)) {
-		if (index < denseVector.size()) {
-			denseVector[index] = v;
-			return true;
-		}
+	if (key.toArrayIndex(index) && index >= denseVector.size()
+			&& (rt.getPrototypeObject(Runtime::ARRAY_PROTOTYPE)->mayOwnIndexProperty()
+			|| rt.getObjectPrototype()->mayOwnIndexProperty())) {
 		return (completeObject != 0 && completeObject->updateOwnProperty(rt, key, v));
 	}
 #endif
