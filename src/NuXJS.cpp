@@ -6616,7 +6616,7 @@ Object* Runtime::GlobalScope::writeVarOrAccessor(Runtime& rt, const String* name
 	return globalObject;	// an accessor, a read-only or a new property: putThrough decides, and can throw
 }
 
-Flags Runtime::GlobalScope::resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const {
+Flags Runtime::GlobalScope::resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32&) const {
 	Object* const globalObject = rt.getGlobalObject();
 	const Flags flags = globalObject->getProperty(rt, name, v);
 	if (flags != NONEXISTENT) {
