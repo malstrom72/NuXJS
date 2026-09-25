@@ -577,6 +577,9 @@ class Table {
 
 		Vector<Bucket, 1U << TABLE_BUILT_IN_N> buckets;
 		UInt32 loadCount;													///< Count of buckets with defined keys.
+	#if NUXJS_ES5
+		bool mayHoldIndexKey;	// set by insert on any key starting with a digit, never cleared: so false proves no array index
+	#endif
 };
 
 class Enumerator;
