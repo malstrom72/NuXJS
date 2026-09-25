@@ -758,6 +758,9 @@ class StringWrapper : public JSObject {
 			Object* stringPrototype = rt.getPrototypeObject(Runtime::STRING_PROTOTYPE);
 			return (this == stringPrototype ? rt.getObjectPrototype() : stringPrototype);
 		}
+	#if NUXJS_ES5
+		virtual bool mayOwnIndexProperty() const { return true; }	// its characters are indices the table never sees
+	#endif
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 			Flags flags = wrapped->getOwnProperty(rt, key, v);
 			return (flags != NONEXISTENT ? flags : super::getOwnProperty(rt, key, v));
@@ -1568,7 +1571,11 @@ Enumerator* Object::getPropertyEnumerator(Runtime& rt) const {
 /* --- Table --- */
 
 UInt32 Table::calcMaxLoad(UInt32 bucketCount) { return (bucketCount - (bucketCount >> 4) - 1); }
+#if NUXJS_ES5
+Table::Table(Heap* heap) : buckets(1U << TABLE_BUILT_IN_N, heap), loadCount(0), mayHoldIndexKey(false) { }
+#else
 Table::Table(Heap* heap) : buckets(1U << TABLE_BUILT_IN_N, heap), loadCount(0) { }
+#endif
 UInt32 Table::getLoadCount() const { return loadCount; }
 Table::Bucket* Table::getFirst() const { return getNext(buckets.begin() - 1); }
 const Table::Bucket* Table::lookup(const String* key) const { return const_cast<Table*>(this)->lookup(key); }	// OK because lookup does not modify, only exposes non-const pointer
@@ -1599,6 +1606,11 @@ Table::Bucket* Table::insert(const String* key) {
 		bucket->flags = 0;
 		bucket->hash16 = static_cast<UInt16>(hash & 0xFFFF);
 		bucket->key = key;
+	#if NUXJS_ES5
+		if (key->size() != 0 && *key->begin() >= '0' && *key->begin() <= '9') {
+			mayHoldIndexKey = true;
+		}
+	#endif
 	}
 	return bucket;
 }
@@ -1744,7 +1756,19 @@ bool JSObject::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) 
 	return (bucket != 0 && update(bucket, v));
 }
 
+#if NUXJS_ES5
+bool Object::mayOwnIndexProperty() const { return true; }
+bool JSObject::mayOwnIndexProperty() const { return mayHoldIndexKey; }
+#endif
+
 Flags JSObject::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
+#if NUXJS_ES5
+	// A numeric key past the cached range would allocate a string just to miss; every index starts with a digit.
+	UInt32 index;
+	if (!mayHoldIndexKey && key.isNumber() && key.toArrayIndex(index)) {
+		return NONEXISTENT;
+	}
+#endif
 	const Table::Bucket* bucket = lookup(key.toString(rt.getHeap()));
 	if (bucket != 0) {
 	#if NUXJS_ES5
@@ -2132,6 +2156,13 @@ JSArray::JSArray(GCList& gcList, UInt32 initialLength, const Value* initialEleme
 const String* JSArray::getClassName() const { return &A_RRAY_STRING; }
 JSArray* JSArray::asArray() { return this; }
 
+#if NUXJS_ES5
+bool JSArray::mayOwnIndexProperty() const {
+	return (denseVector.size() != 0 || (completeObject != 0 && completeObject->mayOwnIndexProperty()));
+}
+#endif
+
+// updateOwnProperty's gate assumes this chain is fixed; anything able to change it must remove that gate.
 Object* JSArray::getPrototype(Runtime& rt) const { // FIX : have a sep. ArrayPrototype object like we have for Function?
 	Object* arrayPrototype = rt.getPrototypeObject(Runtime::ARRAY_PROTOTYPE);
 	return (this == arrayPrototype ? rt.getObjectPrototype() : arrayPrototype);
@@ -2177,6 +2208,11 @@ Flags JSArray::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 		return HIDDEN_CONST_FLAGS;
 	#endif
 	}
+#if NUXJS_ES5
+	if (completeObject == 0) {
+		return NONEXISTENT;	// constructCompleteObject is a no-op here, so no table really does mean no properties
+	}
+#endif
 	return super::getOwnProperty(rt, key, v);
 }
 
@@ -2422,6 +2458,19 @@ bool JSArray::setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flag
 }
 
 bool JSArray::updateOwnProperty(Runtime& rt, const Value& key, const Value& v) {
+#if NUXJS_ES5
+	/*
+		Creating an element is 8.12.5 step 6, which [[CanPut]] must clear first, and it can only refuse when the chain
+		holds an index. getPrototype hardcodes that chain and ES5 has no setPrototypeOf, so while neither prototype may
+		own one the old path is exact; otherwise an index outside the dense range refuses and lets the VM walk.
+	*/
+	UInt32 index;
+	if (key.toArrayIndex(index) && index >= denseVector.size()
+			&& (rt.getPrototypeObject(Runtime::ARRAY_PROTOTYPE)->mayOwnIndexProperty()
+			|| rt.getObjectPrototype()->mayOwnIndexProperty())) {
+		return (completeObject != 0 && completeObject->updateOwnProperty(rt, key, v));
+	}
+#endif
 	bool result;
 	return (setOwnPropertyInternal(rt, key, v, STANDARD_FLAGS, result) ? result : super::updateOwnProperty(rt, key, v));
 }

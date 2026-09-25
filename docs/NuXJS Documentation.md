@@ -387,7 +387,6 @@ original, fully ECMAScript 3 compatible core, kept byte-for-byte stable while th
 - Every created function has a writable and configurable, but *non-enumerable*, `name` property (a NuXJS extension; ES5.1 defines no `name`), and its `length` property is read-only and cannot be deleted, as ES5.1 requires.
 - Case-insensitive ranges in regular expressions and zero-length captures inside repeats may not perfectly match other engines.
 - A semicolon is required after `do ... while` statements. This matches the ES3 and ES5 grammar, even though ES6 made the semicolon optional.
-- Creating a numeric property on an *array* can shadow a read-only numeric property in the prototype chain. This falls out of an optimization for array element writes and does not apply to ordinary objects, where the read-only property in the prototype still wins.
 - Own-property enumeration order is the hash table's, not insertion order, and a lookup can transpose adjacent entries (see the compatibility notes).
 - Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers - an ES6 addition, so this conforms to both target editions.
 - Recursive grammar constructs are limited to `MAX_NESTED_COMPILE_DEPTH` (256) levels to avoid a C++ stack overflow; exceeding it raises a `RangeError` at compile time. `JSON.parse` / `JSON.stringify` similarly cap nesting at `MAX_JSON_DEPTH` (61).
@@ -410,6 +409,7 @@ These are resolved in the es5 build and remain only in the frozen es3 core:
 - Assigning an object to an array's `length` property is unsupported; attempts throw `RangeError` instead of converting the value. The es5 build converts it as 15.4.5.1 requires.
 - `for...in` throws a `TypeError` when the object is `null` or `undefined`, where ES5.1 12.6.4 just skips the loop.
 - Function `prototype` properties are enumerable on user-defined functions, where ES5.1 13.2 makes them `{ DontEnum }`.
+- Creating a numeric property on an *array* can shadow a read-only numeric property in the prototype chain, and skips the chain altogether, so an inherited element is never consulted. This falls out of an optimization for array element writes and does not apply to ordinary objects. The es5 build asks 8.12.4 [[CanPut]] first, so the read-only property wins and an inherited setter runs.
 - A `"use strict"` directive is an ordinary string expression statement here and does nothing: ES3 has no strict mode. Code carrying the directive runs unchanged, so it is worth knowing that the same code becomes strict the moment it is run on the es5 build, where an assignment to an undeclared variable throws instead of creating a global, `this` is `undefined` rather than the global object in a plain call, and `with` and a duplicate parameter name are SyntaxErrors.
 - The URI handlers (`decodeURI` and friends), the Array iteration methods, `Function.prototype.bind`, `String.prototype.trim`, `Date.now`, `Object.keys` and the other reflection statics exist only in the es5 build.
 
