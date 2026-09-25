@@ -29,7 +29,7 @@ mkdir -p ../output/examples
 exe=../output/examples/examples
 
 echo "Building examples"
-bash ./BuildCpp.sh "$target" "$exe" ../docs/examples/examples.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
+bash ./BuildCpp.sh "$target" "$model" "$exe" ../docs/examples/examples.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
 
 echo "Running examples"
 "$exe" > ../output/examples/all.log 2>&1
