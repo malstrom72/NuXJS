@@ -469,12 +469,11 @@ const Flags NONEXISTENT = 0;		///< use with getOwnProperty() to check for existe
 const UInt32 TABLE_BUILT_IN_N = 3; ///< 1 << 3 == 8
 
 #if NUXJS_ES5
-/**
-	Accessor holds the getter / setter pair of an ES5 accessor property (either may be null). It is deliberately a
-	plain GCItem and *not* an Object, and it is stored through its own Bucket union member, so it can never be
-	materialized as a JS Value. Property lookups stay pure: they only ever *report* the pair, and invocation happens
-	solely at the VM opcodes (as ordinary frames) and the host Var/Property API (through Runtime::call).
-**/
+/*
+	The getter / setter pair of an ES5 accessor property, either of which may be null. Deliberately a plain GCItem
+	and not an Object, stored through its own Bucket member, so it can never be materialized as a JS Value: lookups
+	only ever report the pair, and invocation happens at the VM opcodes and the host API.
+*/
 class Accessor : public GCItem {
 	public:
 		typedef GCItem super;
@@ -486,12 +485,10 @@ class Accessor : public GCItem {
 		virtual void gcMarkReferences(Heap& heap) const;
 };
 
-/**
-	PropertyDescriptor is the transient (stack-only) reification of an ES5 property descriptor (spec 8.10). Fields
-	may be present or absent, `present` recording which, so [[DefineOwnProperty]] (8.12.9) can distinguish "set to
-	default" from "leave unchanged". It is collapsed into the compact bucket form only after the accept/reject
-	decision. Its Value / Function* members are only ever live inside a single native call (no GC in between).
-**/
+/*
+	The transient reification of an 8.10 property descriptor. present records which fields are there, so 8.12.9 can
+	tell set-to-default from leave-unchanged. Its members are only live inside a single native call, no GC between.
+*/
 struct PropertyDescriptor {
 	enum { HAS_VALUE = 1, HAS_WRITABLE = 2, HAS_GET = 4, HAS_SET = 8, HAS_ENUMERABLE = 16, HAS_CONFIGURABLE = 32 };
 	Byte present;
@@ -609,11 +606,8 @@ class Object : public GCItem {
 		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);	// 8.12.9 [[DefineOwnProperty]]. Default rejects (throws TypeError when doThrow). Returns false on a rejected non-throwing call.
 		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;	// Appends every own property name (including non-enumerable) as a String value, for 15.2.3.4. Default: none.
 
-		/*
-			Report the accessor function; the caller enters it as a frame, the object model never running script itself.
-			Asked only once getOwnProperty has reported the key at that level, and past the base a setter is asked
-			value-blind. The defaults answer over getOwnPropertySlot, so most classes need no override.
-		*/
+		// Report the accessor function; the caller enters it as a frame, the object model never running script itself.
+		// Past the base a setter is asked value-blind.
 		virtual Function* getOwnGetter(Runtime& rt, const Value& key) const;					// 0 when the accessor has no getter, which then reads as undefined.
 		virtual Function* getOwnSetter(Runtime& rt, const Value& key, const Value& v) const;		// 0 when nothing of this object's runs for this store.
 	#endif
@@ -625,11 +619,8 @@ class Object : public GCItem {
 		Flags getProperty(Runtime& rt, const Value& key, Value* v) const; 	///< Searches prototype chain.
 		bool setProperty(Runtime& rt, const Value& key, const Value& v); 	///< First tries updateOwnProperty(). If that fails, checks prototype chain for read-only property with the same name and returns false if found. Otherwise attempts to insert a new property with setOwnProperty() and returns its outcome.
 	#if NUXJS_ES5
-		/*
-			8.12.3 and 8.12.5 for a caller able to run a function. ACCESSOR_FLAG means one was handed over, never null
-			when set; on a write EXISTS_FLAG means the store was made, its absence a refusal only strict code acts on.
-			One walk each, and neither runs script.
-		*/
+		// 8.12.3 and 8.12.5 for a caller able to run a function. ACCESSOR_FLAG means one was handed over, never null when
+		// set; on a write EXISTS_FLAG means the store was made, its absence a refusal only strict code acts on.
 		Flags getProperty(Runtime& rt, const Value& key, Value* v, Function** getter) const;
 		Flags setProperty(Runtime& rt, const Value& key, const Value& v, Function** setter, bool mayStore = true);	// mayStore is false for the transient box 8.7.2 makes of a primitive base, where a store must never be kept but an inherited setter still runs.
 	#endif
@@ -692,11 +683,8 @@ class RangeEnumerator : public Enumerator {
 };
 
 #if NUXJS_ES5
-/**
-	Walks a prototype chain for 12.6.4: own names first, then each prototype level, a name suppressed once a
-	nearer level owns it, enumerable or not. Separate from JoiningEnumerator because it needs no wrapper per
-	level and builds each level's enumerator only on arrival.
-**/
+// 12.6.4: own names first, then each prototype level, a name suppressed once a nearer level owns it. Separate from
+// JoiningEnumerator because it builds each level's enumerator only on arrival.
 class ShadowingChainEnumerator : public Enumerator {
 	public:
 		typedef Enumerator super;
@@ -1092,11 +1080,11 @@ class Code : public Object {
 		bool getUsesArguments() const { return usesArguments; }
 	protected:
 		bool strict;								// 14.1: this Code is strict-mode code (own "use strict" directive or inherited from enclosing strict code).
-		/**
-			A strict function captures its argument values at entry, 10.6's non-mapped object otherwise being built
-			later from parameter slots that may have been assigned since. Set by two productions that must stay a pair:
-			a reference to `arguments`, and a *direct* eval, which can ask for it without the body naming it.
-		**/
+		/*
+			A strict function captures its argument values at entry, 10.6's non-mapped object otherwise being built later
+			from slots that may have been assigned since. Set by two productions that must stay a pair: a reference to
+			arguments, and a direct eval, which can ask for it without the body naming it.
+		*/
 		bool usesArguments;
 	#endif
 
@@ -1194,24 +1182,22 @@ class Scope : public GCItem {
 	public:
 		typedef GCItem super;
 		Scope(GCList& gcList, Scope* parentScope);
-		virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
+		virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		virtual bool deleteVar(Runtime& rt, const String* name);
 		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 	#if NUXJS_ES5
 		/*
-			readVar's walk, reporting the holder as well: the 10.2.1.2 object environment record a `with` or the global
-			keeps the binding on, 0 for a declarative one. `depth` comes back as the levels climbed, which is what
-			identifies a declarative binding when there is no holder, a direct eval being able to add a nearer one that
-			11.13.2 must not give the write to. Every override must stop where its own readVar stops.
+			readVar's walk, reporting the holder as well: the 10.2.1.2 object environment record, or 0 for a declarative
+			binding, which depth then identifies - a direct eval can add a nearer one that 11.13.2 must not give the write
+			to. Every override must stop where its own readVar stops.
 		*/
 		virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const;
 		Object* resolveHolder(Runtime& rt, const String* name) const;	// resolveVar for the callers that want only the holder
 
 		/*
-			Writes like writeVar when the write is a plain update of an existing writable binding, and otherwise leaves
-			the binding alone and answers the object environment record holding it, so putThrough can finish the 8.12.5
-			[[Put]]. One walk rather than resolveVar and then a write, which costs ~50% on a global assignment.
+			Writes like writeVar for a plain update of an existing writable binding, and otherwise leaves it alone and answers
+			the object environment record holding it, for putThrough to finish. One walk rather than two, ~50% on a global.
 		*/
 		virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v);
 	#endif
@@ -1376,7 +1362,7 @@ class FunctionScope : public Scope {
 		typedef Scope super;
 
 		FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, const Value* argv);
-		virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
+		virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
 		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 	#if NUXJS_ES5
 		virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const;
@@ -1427,7 +1413,7 @@ class Runtime : public GCItem {
 		struct GlobalScope : public Scope {
 			typedef Scope super;
 			GlobalScope(GCList& gcList);
-			virtual Flags readVar(Runtime& rt, const String* name, Value* v) const;
+			virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
 			virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		#if NUXJS_ES5
 			virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const;
@@ -1514,6 +1500,7 @@ class Runtime : public GCItem {
 	#if NUXJS_ES5
 		Function* throwTypeErrorFunction;	// 13.2.3 [[ThrowTypeError]]: the shared poison pill for strict callee/caller
 		Function* setArrayLengthFunction;	// 15.4.5.1 (3.c): stores an object into an array length, ToUint32 of it running script
+		Function* setArrayLengthStrictFunction;	// the same store from strict code, where 8.7.2 raises a refusal into a throw
 	public:
 		Function* getThrowTypeErrorFunction() const { return throwTypeErrorFunction; }
 		Function* getSetArrayLengthFunction() const { return setArrayLengthFunction; }
@@ -1533,6 +1520,7 @@ class Runtime : public GCItem {
 		#if NUXJS_ES5
 			gcMark(heap, throwTypeErrorFunction);
 			gcMark(heap, setArrayLengthFunction);
+			gcMark(heap, setArrayLengthStrictFunction);
 		#endif
 			// Yeah we just empty caches on each gc sweep
 			std::fill(stringConstantsCache + 0, stringConstantsCache + STRING_CONSTANTS_CACHE_SIZE, (const String*)(0));
@@ -1909,12 +1897,8 @@ class Processor : public GCItem {
 			, WRITE_NAMED_POP_OP							// operand: const_index (name), stack: value -> value, junk (a POP_OP always follows)
 		#endif
 		#if NUXJS_ES5
-			/*
-				11.13 evaluates the left-hand side once, so an assignment resolves the name up front and keeps the
-				reference on the stack instead of looking it up again after the right-hand side. One Value carries all
-				three shapes: the holder for an object environment record, the level climbed to for a declarative one,
-				and undefined for a name that resolves nowhere.
-			*/
+			// 11.13 evaluates the left-hand side once, so the reference is resolved up front and kept on the stack. One Value
+			// carries all three shapes: a holder, the level climbed to for a declarative binding, or undefined for nowhere.
 			, RESOLVE_NAMED_OP								// operand: const_index (name), stack: -> reference
 			, RESOLVE_READ_NAMED_OP							// operand: const_index (name), stack: -> reference, value
 			, WRITE_RESOLVED_OP								// operand: const_index (name), stack: reference, value -> value, junk
@@ -1924,7 +1908,7 @@ class Processor : public GCItem {
 			, CHECK_RESOLVE_PROPERTY_OP						// stack: object, name -> object, name	// check coercible, then resolve object
 			, GET_PROPERTY_OP								// stack: object, name -> value
 		#if NUXJS_ES5
-			, GET_METHOD_OP									// stack: value, name -> this_value, (function | name)	// full [[Get]] (runs accessors); a non-callable result leaves the name for CALL_THIS_OP's throw
+			, GET_METHOD_OP									// stack: value, name -> this_value, (function | name)	// full [[Get]] (runs accessors); a non-callable result leaves the name for CALL_WITH_THIS_OP's throw
 		#endif
 		#if !NUXJS_ES5										// es5 stores via SET_PROPERTY_POP_OP (+ POP), so the setter can run as a frame
 			, SET_PROPERTY_OP								// stack: object, name, value -> value
@@ -1958,10 +1942,8 @@ class Processor : public GCItem {
 			, REPUSH_2_OP									// stack: value_1, value_2 -> value_1, value_2, value_1, value_2	// used for duplicating property reference with assignment operators like += etc
 			, POST_SHUFFLE_OP								// stack: object, name, value -> value, object, name, value			// used for special post inc/dec logic on properties (see code)
 			, CALL_OP										// operand: n, stack: function, n * args -> return_value
-		#if !NUXJS_ES5
+		#if !NUXJS_ES5										// es5 fetches the callee before the args (11.2.3): GET_METHOD_OP leaves this+function, then CALL_WITH_THIS_OP below
 			, CALL_METHOD_OP								// operand: n, stack: object, name, n * args -> return_value
-		#else											// es5 fetches the callee before the args (11.2.3): GET_METHOD_OP leaves this+function, then CALL_THIS_OP
-			, CALL_THIS_OP									// operand: n, stack: this_value, function, n * args -> return_value
 		#endif
 			, CALL_EVAL_OP									// operand: n, stack: function, n * args -> return_value			// special eval call is required because of need to differentiate direct or indirect call to eval
 			, NEW_OP										// operand: n, stack: constructor object, n * args -> new_object, return_value
@@ -1993,6 +1975,8 @@ class Processor : public GCItem {
 		#endif
 			, GET_ENUMERATOR_OP								// stack: object -> enumerator
 			, NEXT_PROPERTY_OP								// operand: exit_loop_offset, stack: enumerator -> string (unless end of loop)
+			, READ_NAMED_WITH_THIS_OP						// operand: const_index (name), stack: -> implicit_this, value
+			, CALL_WITH_THIS_OP								// operand: n, stack: this_value, function, n * args -> return_value
 			, OP_COUNT
 		};
 	
@@ -2276,12 +2260,11 @@ class Compiler : public GCItem {
 		int nestCounter;
 	#if NUXJS_ES5
 		bool inDirectivePrologue;	// 14.1: true while still parsing the leading string-literal directive prologue
-		/**
-			11.1.5 names an accessor with a PropertyName, where IdentifierName and so every reserved word is legal;
-			the production has no Identifier at all, so 13.1's and 7.6.1.2's rules on a function's own name do not
-			reach it. Set on the sub-compiler by accessorFunctionDefinition, which is the only production that needs
-			it. The PropertySetParameterList is a separate 11.1.5 rule and stays checked.
-		**/
+		/*
+			11.1.5 names an accessor with a PropertyName, so 13.1's and 7.6.1.2's rules on a function's own name do not reach
+			it. Set by accessorFunctionDefinition, the only production that needs it; the PropertySetParameterList is a
+			separate 11.1.5 rule and stays checked.
+		*/
 		bool nameIsPropertyName;
 		const Char* lastStringLiteralStart;	// source span of the most recently parsed string literal token, so a
 		const Char* lastStringLiteralEnd;	// directive can require the statement to be *entirely* one string literal

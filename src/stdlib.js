@@ -23,6 +23,7 @@
 	@preserve: trim,preventExtensions,isExtensible,defineOwnProperty,get,set,keys,create,now,seal,freeze,isSealed
 	@preserve: getOwnPropertyDescriptor,getOwnPropertyNames,createObject,isFrozen,bind,bindFunction,forEach,map
 	@preserve: filter,some,every,reduce,reduceRight,getYear,setYear,toGMTString,setArrayLength
+	@preserve: setArrayLengthStrict
 	@preserve: decodeURI,decodeURIComponent,encodeURI,encodeURIComponent,URIError
 //#endif
 
@@ -164,6 +165,7 @@ support.toPrimitive = function(o) {
 	below takes the ordinary path and this cannot re-enter.
 */
 support.setArrayLength = function setArrayLength(v) { this.length = +v };
+// Its strict twin is in the strict section below; putThrough picks between them by the Throw flag of the store.
 //#endif
 
 // 9.4 ToInteger. Infinities need no special case: floor leaves them as they are.
@@ -2663,6 +2665,10 @@ var $sort = Array.prototype.sort;	// captured before the entry below replaces it
 */
 (function() {
 "use strict";
+
+// 8.7.2 raises a refused store into a throw only in strict code, and strictness belongs to the store that
+// reached support.setArrayLength above, not to the helper, so the two differ in nothing else.
+support.setArrayLengthStrict = function setArrayLengthStrict(v) { this.length = +v };
 
 // "If IsCallable(callbackfn) is false, throw a TypeError exception." Runs after length is read, never before.
 function checkCallback(f, what) {

@@ -1487,11 +1487,7 @@ Flags Object::setProperty(Runtime& rt, const Value& key, const Value& v, Functio
 		Value dummy;
 		const Flags flags = o->getOwnProperty(rt, key, &dummy);
 		if (flags != NONEXISTENT) {
-			/*
-				Only a level that holds the key is asked for a setter, and past the base it is asked value-blind:
-				8.12.4 gives the chain a value-independent say, and a value-dependent answer (an array's length
-				taking an object) is the base's own store completion, not something to inherit.
-			*/
+			// 8.12.4: past the base the chain is asked value-blind, a value-dependent answer being the base's own business.
 			if ((*setter = o->getOwnSetter(rt, key, o == this ? v : UNDEFINED_VALUE)) != 0) {
 				return ACCESSOR_FLAG;	// 8.12.5 (5): the caller runs it, on the base rather than on the holder
 			}
@@ -1897,10 +1893,8 @@ bool JSObject::defineOwnProperty(Runtime& rt, const Value& key, const PropertyDe
 }
 
 /*
-	The wrapped string owns the character indices and length, which the table below never sees, so the inherited
-	8.12.9 would take them for absent and insert a shadow property. 15.5.5.1 / 15.5.5.2 make them non-configurable,
-	non-writable data properties, and against such a current property 8.12.9 accepts only a descriptor that asks for
-	exactly what is already there (which is what lets Object.freeze through) and rejects everything else.
+	The wrapped string owns the indices and length, which the table never sees, so the inherited 8.12.9 would take
+	them for absent and insert a shadow. 15.5.5.1 / 15.5.5.2 make them non-configurable and non-writable.
 */
 bool StringWrapper::defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow) {
 	Value current;
@@ -2188,10 +2182,8 @@ Flags JSArray::getOwnProperty(Runtime& rt, const Value& key, Value* v) const {
 
 #if NUXJS_ES5
 /*
-	Deletes elements from the top down, exactly as 15.4.5.1 step 12 does, and answers the length actually reached.
-	The spec walks index by index and stops at the first element it cannot delete; since every dense element is
-	configurable, only the sparse table can block, so scanning it for the highest non-deletable index in range gives
-	the identical answer without walking a range that may be billions wide.
+	15.4.5.1 step 12 walks index by index; only the sparse table can block, so scanning it for the highest
+	non-deletable index gives the identical answer without walking a range that may be billions wide.
 */
 UInt32 JSArray::truncateTo(Runtime& rt, UInt32 newLength) {
 	(void)rt;
@@ -2222,9 +2214,8 @@ UInt32 JSArray::truncateTo(Runtime& rt, UInt32 newLength) {
 }
 
 /*
-	15.4.5.1 (3.c) runs ToUint32 over a new length, and for an object that means its valueOf, which no store path
-	may run itself. The array answers a stdlib helper instead, and whoever asked enters it exactly as it would a
-	setter. [[CanPut]] is step 1 of 8.12.5, so a read-only length has already refused and nothing of it is read.
+	15.4.5.1 (3.c) runs ToUint32 over a new length, which for an object is its valueOf - script no store path may
+	run. The array answers a stdlib helper instead, entered exactly as a setter would be.
 */
 Function* JSArray::getOwnSetter(Runtime& rt, const Value& key, const Value& v) const {
 	if (v.isObject() && lengthWritable && key.equalsString(LENGTH_STRING)) {
@@ -2236,11 +2227,7 @@ Function* JSArray::getOwnSetter(Runtime& rt, const Value& key, const Value& v) c
 // 15.4.5.1 (3). `length` is not a table property here, so the default 8.12.9 is applied to it by hand; it is
 // always a non-configurable, non-enumerable data property, which collapses most of that algorithm.
 bool JSArray::defineLength(Runtime& rt, const PropertyDescriptor& desc, bool doThrow) {
-	/*
-		8.12.9 (7) / (10.a.i) / (10.b.i): length is non-configurable, so turning it into an accessor or asking for
-		enumerable or configurable is always a reject, as is asking a read-only length to become writable. An absent
-		field asks for nothing, which is why only a present-and-true writable can reject.
-	*/
+	// 8.12.9 (7) / (10.a.i) / (10.b.i). An absent field asks for nothing, so only a present-and-true writable rejects.
 	const bool keepWritable = !desc.has(PropertyDescriptor::HAS_WRITABLE) || desc.writable;
 	const bool rejectAttribs = desc.isAccessor()
 			|| (desc.has(PropertyDescriptor::HAS_ENUMERABLE) && desc.enumerable)
@@ -2365,11 +2352,7 @@ bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value&
 		if (!lengthWritable) {
 			return true;	// `result` stays false: 15.4.5.1 made length read-only
 		}
-		/*
-			8.12.5 puts [[CanPut]] ahead of the store, so a read-only length is settled above without conversion.
-			Past it, 15.4.5.1 (3.c) runs ToUint32 over the value, and an object's valueOf is script this path may not
-			run. Reporting the store unhandled sends the VM down the slow path it already keeps for setters.
-		*/
+		// 15.4.5.1 (3.c) needs valueOf for an object, so report the store unhandled and let the VM take the setter path.
 		if (v.isObject()) {
 			return true;	// `result` stays false
 		}
@@ -2565,10 +2548,7 @@ const String* Error::toString(Heap& heap) const {
 }
 
 #if NUXJS_ES5
-/*
-	A pure read: the mirror is refreshed from the object model itself, and an accessor would have to be run to be
-	seen, which only the VM opcodes and the host API may do, so such a field keeps `dflt` instead.
-*/
+// An accessor would have to be run to be seen, which only the opcodes and the host API may do, so it keeps dflt.
 static const String* reflectString(Runtime& rt, const Object* object, const String* key, const String* dflt = 0) {
 	Value v;
 	const Flags flags = object->getProperty(rt, key, &v);
@@ -2623,9 +2603,8 @@ void Error::constructCompleteObject(Runtime& rt) const {
 
 #if NUXJS_ES5
 /*
-	Layout of a `deletedArguments` byte in es5 (10.6). DELETED_ARGUMENT is the bit es3 writes as a plain `true` when
-	an index leaves its slot; ARGUMENT_ATTRIBS are the attributes of an index that is still in it, and are the only
-	other bits the byte ever holds, which is what lets getOwnProperty hand them straight back as Flags.
+	10.6: DELETED_ARGUMENT is the bit es3 writes as a plain true; ARGUMENT_ATTRIBS are the attributes of an index
+	still in its slot, and the only other bits the byte holds, which lets getOwnProperty return them as Flags.
 */
 static const Byte DELETED_ARGUMENT = 1;
 static const Byte ARGUMENT_ATTRIBS = DONT_ENUM_FLAG | DONT_DELETE_FLAG;
@@ -2674,11 +2653,7 @@ void Arguments::detach() {
 }
 
 #if NUXJS_ES5
-/*
-	The other bits of the byte are attributes, so only DELETED_ARGUMENT says the index left its slot (10.6). Every
-	es5 caller wants the index as well, to reach that byte. Letting the es3 overload below forward to this one would
-	be the obvious way to write it, but that shifts the es3 binary by 64 bytes, so the two stay separate.
-*/
+// Letting the es3 overload forward to this one shifts the es3 binary by 64 bytes, so the two stay separate.
 Value* Arguments::findProperty(const Value& key, UInt32& i) const {
 	if (key.toArrayIndex(i) && i < argumentsCount && (deletedArguments[i] & DELETED_ARGUMENT) == 0) {
 		return (isMapped() ? scope->getLocalsPointer() + i : values.begin() + i);
@@ -2762,13 +2737,11 @@ void Arguments::collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const {
 	super::collectOwnPropertyNames(rt, out);	// length, callee / caller, and any index that moved into the table
 }
 
-/**
-	10.6 [[DefineOwnProperty]]. An index in its slot is always a writable data property, so 8.12.9 can only reject
-	it over step 7 or 9, both needing it non-configurable; that is checked up front and nothing below can fail.
-	A descriptor that leaves it writable and data-kind keeps the parameter map, the value writing straight through
-	to the mapped parameter. An accessor or a cleared [[Writable]] severs the map and moves the index into the
-	table for JSObject to finish.
-**/
+/*
+	10.6 [[DefineOwnProperty]]. An index in its slot is a writable data property, so 8.12.9 can only reject over step
+	7 or 9; both need it non-configurable, checked up front so nothing below can fail. An accessor or a cleared
+	[[Writable]] severs the parameter map and moves the index into the table.
+*/
 bool Arguments::defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow) {
 	UInt32 i;
 	Value* p = findProperty(key, i);
@@ -2827,9 +2800,9 @@ Scope::Scope(GCList& gcList, Scope* parentScope)
 		: super(gcList), parentScope(parentScope), localsPointer(parentScope != 0 ? parentScope->localsPointer : 0)
 		, deleteOnPop(true) { }
 
-Flags Scope::readVar(Runtime& rt, const String* name, Value* v) const {
+Flags Scope::readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
 	assert(parentScope != 0);
-	return parentScope->readVar(rt, name, v);
+	return parentScope->readVar(rt, name, v, implicitThis);
 }
 
 void Scope::writeVar(Runtime& rt, const String* name, const Value& v) {
@@ -2915,7 +2888,7 @@ JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
 	return dynamicVars;
 }
 
-Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v) const {
+Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
 	const UInt32 bloomCode = name->createBloomCode();
 	if ((bloomSet & bloomCode) == bloomCode) {
 		Int32 index;
@@ -2936,7 +2909,7 @@ Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v) const {
 			return DONT_DELETE_FLAG | READ_ONLY_FLAG | EXISTS_FLAG;
 		}
 	}
-	return parentScope->readVar(rt, name, v);
+	return parentScope->readVar(rt, name, v, implicitThis);
 }
 
 void FunctionScope::writeVar(Runtime& rt, const String* name, const Value& v) {
@@ -3202,8 +3175,6 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ CALL_OP                    , "CALL"                    , 0      , OpcodeInfo::POP_OPERAND },
 #if !NUXJS_ES5
 	{ CALL_METHOD_OP             , "CALL_METHOD"             , -1     , OpcodeInfo::POP_OPERAND },
-#else
-	{ CALL_THIS_OP               , "CALL_THIS"               , -1     , OpcodeInfo::POP_OPERAND },
 #endif
 	{ CALL_EVAL_OP               , "CALL_EVAL"               , 0      , OpcodeInfo::POP_OPERAND },
 	{ NEW_OP                     , "NEW"                     , +1     , OpcodeInfo::POP_OPERAND },
@@ -3229,7 +3200,9 @@ const Processor::OpcodeInfo Processor::opcodeInfo[Processor::OP_COUNT] = {
 	{ TYPEOF_OP                  , "TYPEOF"                  , 0      , 0 },
 	{ TYPEOF_NAMED_OP            , "TYPEOF_NAMED"            , 1      , 0 },
 	{ GET_ENUMERATOR_OP          , "GET_ENUMERATOR"          , 0      , 0 },
-	{ NEXT_PROPERTY_OP           , "NEXT_PROPERTY"           , 0      , OpcodeInfo::POP_ON_BRANCH }
+	{ NEXT_PROPERTY_OP           , "NEXT_PROPERTY"           , 0      , OpcodeInfo::POP_ON_BRANCH },
+	{ READ_NAMED_WITH_THIS_OP    , "READ_NAMED_WITH_THIS"    , 2      , 0 },
+	{ CALL_WITH_THIS_OP          , "CALL_WITH_THIS"          , -1     , OpcodeInfo::POP_OPERAND }
 };
 
 const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
@@ -3249,14 +3222,14 @@ struct Processor::EvalScope : public Scope {
 	// but strict eval gets its OWN environment so its var/function declarations are discarded when it returns.
 	EvalScope(GCList& gcList, Scope* parentScope, bool strict)
 			: super(gcList, parentScope), ownVars(0), strict(strict) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
+	virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
 		if (ownVars != 0) {
 			const Flags flags = ownVars->getOwnProperty(rt, name, v);
 			if (flags != NONEXISTENT) {
-				return flags;
+				return flags;	// 10.4.2: a strict eval's own bindings are declarative, so they supply no receiver
 			}
 		}
-		return parentScope->readVar(rt, name, v);
+		return parentScope->readVar(rt, name, v, implicitThis);
 	}
 	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
 		if (ownVars != 0) {
@@ -3339,12 +3312,12 @@ struct Processor::CatchScope : public Scope {
 
 	CatchScope(GCList& gcList, Scope* parentScope, const String* exceptionName, const Value& exceptionValue)
 			: super(gcList, parentScope), exceptionName(exceptionName), exceptionValue(exceptionValue) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const  {
+	virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const  {
 		if (name->isEqualTo(*exceptionName)) {
 			*v = exceptionValue;
 			return DONT_DELETE_FLAG | EXISTS_FLAG;
 		} else {
-			return parentScope->readVar(rt, name, v);
+			return parentScope->readVar(rt, name, v, implicitThis);
 		}
 	}
 	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
@@ -3393,9 +3366,15 @@ struct Processor::WithScope : public Scope {
 	typedef Scope super;
 	WithScope(GCList& gcList, Scope* parentScope, Object* withObject)
 	 		: super(gcList, parentScope), withObject(withObject) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v) const {
+	virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
 		Flags flags = withObject->getProperty(rt, name, v);
-		return (flags != NONEXISTENT ? flags : parentScope->readVar(rt, name, v));
+		if (flags == NONEXISTENT) {
+			return parentScope->readVar(rt, name, v, implicitThis);
+		}
+		if (implicitThis != 0) {
+			*implicitThis = withObject;
+		}
+		return flags;
 	}
 	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
 		const Value key(name);
@@ -3627,7 +3606,7 @@ void Processor::error(ErrorType errorType, const String* message) {
 #if NUXJS_ES5
 bool Processor::checkStrictAssignable(Scope* scope, const String* name) {
 	Value dummy;
-	const Flags flags = scope->readVar(rt, name, &dummy);	// walks the same scope chain writeVar will
+	const Flags flags = scope->readVar(rt, name, &dummy, 0);	// walks the same scope chain writeVar will
 	if (flags == NONEXISTENT) {
 		error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));	// 11.13.1: assign to undeclared
 		return false;
@@ -3639,11 +3618,7 @@ bool Processor::checkStrictAssignable(Scope* scope, const String* name) {
 	return true;
 }
 
-/*
-	The rare tail of a read that reported ACCESSOR_FLAG: a second walk fetches the getter and enters it as a frame
-	whose result lands at sp[-popCount]. Answers false when the accessor has no getter, the walk then having
-	deposited into *dest the undefined it reads as.
-*/
+// Answers false when the accessor has no getter, the walk having deposited the undefined it reads as into *dest.
 bool Processor::enterGetter(const Object* o, const Value& key, Value* dest, Int32 popCount, Receiver thisObject) {
 	Function* getter;
 	if ((o->getProperty(rt, key, dest, &getter) & ACCESSOR_FLAG) == 0) {
@@ -3654,16 +3629,15 @@ bool Processor::enterGetter(const Object* o, const Value& key, Value* dest, Int3
 }
 
 /*
-	Finishes an 8.12.5 [[Put]] once the cheap update has failed, for every store the engine makes: `o.x = v`, a
-	name written through a `with` or global record, and a write through a captured reference, which 10.2.1.2
-	requires to agree. The value sits at sp[0], which is also the setter's argument, and a setter frame's result
-	lands at sp[-popCount]. Answers true when the caller must return to the interpreter loop.
+	Finishes an 8.12.5 [[Put]] once the cheap update has failed. The value sits at sp[0], which is also the setter's
+	argument, and a setter frame's result lands at sp[-popCount]. True when the caller must return to the loop.
 */
 bool Processor::putThrough(Object* o, const Value& key, Int32 popCount, Receiver receiver, bool strict, bool mayStore) {
 	Function* setter;
 	const Flags flags = o->setProperty(rt, key, sp[0], &setter, mayStore);
 	if ((flags & ACCESSOR_FLAG) != 0) {
-		invokeFunction(setter, popCount, 1, receiver);
+		invokeFunction(strict && setter == rt.setArrayLengthFunction ? rt.setArrayLengthStrictFunction : setter
+				, popCount, 1, receiver);	// 8.7.2: the Throw flag is the store's, not the helper's
 		return true;
 	}
 	if ((flags & EXISTS_FLAG) == 0 && strict) {
@@ -3750,12 +3724,12 @@ void Processor::innerRun() {
 			case READ_NAMED_OP: {
 				const String* name = constants[im].getString();
 			#if !NUXJS_ES5
-				if (scope->readVar(rt, name, ++sp) == NONEXISTENT) {
+				if (scope->readVar(rt, name, ++sp, 0) == NONEXISTENT) {
 					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
 					return;
 				}
 			#else
-				const Flags flags = scope->readVar(rt, name, ++sp);
+				const Flags flags = scope->readVar(rt, name, ++sp, 0);
 				if (flags == NONEXISTENT) {
 					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
 					return;
@@ -3772,18 +3746,41 @@ void Processor::innerRun() {
 			#endif
 				break;
 			}
+			case READ_NAMED_WITH_THIS_OP: {
+				const String* name = constants[im].getString();
+				sp[1] = UNDEFINED_VALUE;	// the receiver slot enters the gc-marked range with `sp += 2`, so fill it first,
+				sp += 2;					// and it is what stands unless a with scope overwrites it below
+			#if !NUXJS_ES5
+				if (scope->readVar(rt, name, sp, sp - 1) == NONEXISTENT) {
+					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+					return;
+				}
+			#else
+				const Flags flags = scope->readVar(rt, name, sp, sp - 1);
+				if (flags == NONEXISTENT) {
+					error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
+					return;
+				}
+				// The accessor path of READ_NAMED_OP above, which a callee reached by name needs just the same; the
+				// receiver already sits below the slot the getter's result will replace.
+				if ((flags & ACCESSOR_FLAG) != 0) {
+					Object* const holder = scope->resolveHolder(rt, name);
+					assert(holder != 0);
+					if (enterGetter(holder, Value(name), sp, 0, holder)) {
+						return;
+					}
+				}
+			#endif
+				break;
+			}
 		#if NUXJS_ES5
 			case WRITE_NAMED_POP_OP: {
 				const String* name = constants[im].getString();
 				if (code->isStrict() && !checkStrictAssignable(scope, name)) {
 					return;
 				}
-				/*
-					8.12.5 through an object environment record, the mirror of the read above: a `with` object or
-					the global object can hold the binding as an accessor, and then the setter runs instead of a
-					store. The compiler duplicated the value and follows with POP_OP, so a setter frame has a slot
-					to deposit its discarded return value in (see makeAssignment).
-				*/
+				// The compiler duplicated the value and follows with POP_OP, so a setter frame has a slot for its discarded
+				// return value (see makeAssignment).
 				Object* const holder = scope->writeVarOrAccessor(rt, name, sp[0]);
 				if (holder != 0 && putThrough(holder, Value(name), 0, holder, code->isStrict())) {	// the cheap store did not happen
 					return;	// a setter frame, or a throw; either way the loop takes over
@@ -3836,12 +3833,8 @@ void Processor::innerRun() {
 				Object* holder = reference.asObject();
 				sp[-1] = sp[0];	// the assigned value takes the reference's slot, so it survives a setter frame
 				if (reference.isUndefined()) {
-					/*
-						8.7.2 step 3: the name resolved nowhere, so strict code throws and sloppy code [[Put]]s on the
-						global object, setter and all. Only here may a write conjure the binding it lands on, which is
-						why the unresolvable shape stays distinct from a holder the walk found. It waits until now
-						because PutValue is 11.13.1 step 4.
-					*/
+					// 8.7.2 step 3: only here may a write conjure the binding it lands on, which is why the unresolvable shape
+					// stays distinct from a holder the walk found.
 					if (code->isStrict()) {
 						error(REFERENCE_ERROR, new(heap) String(heap.managed(), *name, IS_NOT_DEFINED_STRING));
 						return;
@@ -3938,11 +3931,8 @@ void Processor::innerRun() {
 					return;
 				}
 			#if NUXJS_ES5
-				/*
-					es5 semantics: [object, name, value] -> [junk / setter return]; the compiler always follows
-					with POP_OP so a JS setter frame can deposit its (discarded) return value. (See makeAssignment.)
-					8.7.2 special [[Put]]: a primitive base boxes into a transient object, so a store is never kept.
-				*/
+				// 8.7.2: a primitive base boxes into a transient object, so a store is never kept. The POP_OP the compiler
+				// follows with gives a JS setter frame somewhere to deposit its discarded result.
 				const bool primitiveBase = !sp[-2].isObject();
 				// the fast path stays inline here: an existing own writable data property, at the same cost as es3
 				if ((primitiveBase || !o->updateOwnProperty(rt, sp[-1], sp[0]))
@@ -4056,7 +4046,19 @@ void Processor::innerRun() {
 				return;
 			}
 		#endif
-
+			
+			case CALL_WITH_THIS_OP: {
+				Function* const f = asFunction(sp[-im]);
+				if (f != 0) {
+			#if !NUXJS_ES5
+					invokeFunction(f, im + 1, im, sp[-im - 1].asObject());
+			#else
+					invokeFunction(f, im + 1, im, sp[-im - 1]);	// 11.2.3: the base as written, primitive or not
+			#endif
+				}
+				return;
+			}
+			
 			case CALL_EVAL_OP: {
 				Function* f = asFunction(sp[-im]);
 				if (f != 0) {
@@ -4162,18 +4164,14 @@ void Processor::innerRun() {
 			case TYPEOF_NAMED_OP: {
 			#if !NUXJS_ES5
 				Value v(UNDEFINED_VALUE);
-				scope->readVar(rt, constants[im].getString(), &v);
+				scope->readVar(rt, constants[im].getString(), &v, 0);
 				push(v.typeOfString());
 			#else
 				const String* name = constants[im].getString();
 				Value v(UNDEFINED_VALUE);
-				const Flags flags = scope->readVar(rt, name, &v);
-				/*
-					The tolerant read 11.4.3 needs: an unresolvable name reads as undefined instead of throwing,
-					and any other binding takes GetValue, so an accessor runs its getter here too. The value is
-					pushed and the TYPEOF_OP the compiler follows with turns it into the name, a getter needing
-					its own frame first.
-				*/
+				const Flags flags = scope->readVar(rt, name, &v, 0);
+				// 11.4.3 reads tolerantly: an unresolvable name is undefined rather than a throw, but any other binding takes
+				// GetValue, so an accessor runs its getter here and needs its own frame first.
 				assert(unpackInstruction(*ip).first == TYPEOF_OP);	// guaranteed by the TYPE_OF emitter
 				push(v);
 				if ((flags & ACCESSOR_FLAG) != 0) {
@@ -4229,7 +4227,7 @@ void Processor::innerRun() {
 			}
 
 			case GET_METHOD_OP: {
-				// sp[-1] stays put for CALL_THIS_OP; `o` is only walked, so it need not be an extensible wrapper,
+				// sp[-1] stays put for CALL_WITH_THIS_OP; `o` is only walked, so it need not be an extensible wrapper,
 				// which for a string base is the difference between a fresh StringWrapper and no allocation.
 				Object* o = convertToObject(sp[-1], false);
 				if (o == 0) {
@@ -4238,25 +4236,14 @@ void Processor::innerRun() {
 				Value v(UNDEFINED_VALUE);
 				const Flags flags = o->getProperty(rt, sp[0], &v);
 				if ((flags & ACCESSOR_FLAG) != 0 && enterGetter(o, sp[0], &v, 0, sp[-1])) {
-					return;	// the result replaces the name at sp[0]; CALL_THIS_OP checks callability
+					return;	// the result replaces the name at sp[0]; CALL_WITH_THIS_OP checks callability
 				}
-				/*
-					11.2.3 (4): not-callable is CALL_THIS's throw, after the arguments have run. The name stays in
-					the slot for that case, so the error can still say who it was that is not a function - and it is
-					always a primitive (PROPERTY references carry converted keys), never mistakable for a callee.
-				*/
+				// 11.2.3 (4): not-callable is CALL_WITH_THIS's throw, after the arguments have run, so the name stays in the
+				// slot for the error to name.
 				if (v.asFunction() != 0) {
 					sp[0] = v;
 				}
 				break;
-			}
-
-			case CALL_THIS_OP: {
-				Function* const f = asFunction(sp[-im]);
-				if (f != 0) {
-					invokeFunction(f, im + 1, im, sp[-im - 1]);	// 11.2.3: the base as written, primitive or not
-				}
-				return;
 			}
 		#endif
 
@@ -4577,12 +4564,8 @@ bool Compiler::CodeSection::dropStoreTailValue() {
 	if (inDeadCode() || storeTailEnd != static_cast<Int32>(code.size())) {
 		return false;
 	}
-	/*
-		The tail is [POST_SHUFFLE / REPUSH, write, POP], all three sharing one source offset, so removing the
-		duplication and sliding the write and its POP down cannot orphan a mapping or a branch target: the marker
-		dies at any emit, insert or marked or completed branch, which makes the opcode check below provenance rather
-		than guesswork.
-	*/
+	// The marker dies at any emit, insert or marked or completed branch, which makes the opcode check below
+	// provenance rather than guesswork.
 	const size_t n = code.size();
 	assert(n >= 3);
 	const Processor::Opcode duplicator = Processor::unpackInstruction(code[n - 3]).first;
@@ -4833,12 +4816,8 @@ Char* Compiler::unescape(Char* buffer, const Char* e) {
 				p += n;
 			} else if (isLineTerminator(*p)) {
 #if NUXJS_ES5
-				/*
-					7.8.4 LineContinuation: a `\` before a LineTerminatorSequence contributes the *empty* character
-					sequence, so both characters vanish rather than becoming a newline; 7.3 counts CR LF as one, hence
-					the extra step over the LF. Skipping to the top rather than falling through is what emits nothing,
-					this branch's tail always writing one character.
-				*/
+				// 7.8.4: a LineContinuation contributes the empty character sequence, and 7.3 counts CR LF as one, hence the
+				// extra step. Skipping to the top rather than falling through is what emits nothing.
 				if (*p == '\r' && p + 1 != e && p[1] == '\n') {
 					++p;
 				}
@@ -4909,10 +4888,8 @@ void Compiler::returnSafeKept(const ExpressionResult& xr) {
 
 #if NUXJS_ES5
 /*
-	11.13.1, 11.13.2, 11.3, 11.4.4 and 12.2 share one shape: evaluate the left-hand side, then the right, then hand
-	PutValue the reference the *first* step made. So the four assignment productions capture their target here and
-	leave it on the value stack until makeAssignment writes through it. Only a name needs it, a local being unable
-	to move and a property already keeping its base.
+	11.13.1, 11.13.2, 11.3, 11.4.4 and 12.2 all hand PutValue the reference their *first* step made, so the target is
+	captured here and left on the stack until makeAssignment writes through it. Only a name needs it.
 */
 void Compiler::captureReference(ExpressionResult& xr, Processor::Opcode resolveOp) {
 	if (xr.t == ExpressionResult::NAMED) {
@@ -4921,10 +4898,7 @@ void Compiler::captureReference(ExpressionResult& xr, Processor::Opcode resolveO
 	}
 }
 
-/*
-	The read half of a read-modify-write: RESOLVE_READ_NAMED leaves the value above the reference, so makeRValue
-	then has only the conversion left to do.
-*/
+// RESOLVE_READ_NAMED leaves the value above the reference, so only the conversion is left to do.
 Compiler::ExpressionResult Compiler::makeCapturedRValue(ExpressionResult& xr, Processor::Opcode toPrimitiveOp) {
 	if (xr.t != ExpressionResult::NAMED) {
 		return makeRValue(xr, true, toPrimitiveOp);
@@ -4958,12 +4932,8 @@ Compiler::ExpressionResult Compiler::makeAssignment(const ExpressionResult& xr) 
 	#endif
 		case ExpressionResult::NAMED:
 		#if NUXJS_ES5
-			/*
-				The binding may be an accessor on a `with` or global object and a JS setter frame leaves its return on
-				top, so the value is duplicated below and the leftover slot popped, as PROPERTY does: [val] -> [val,
-				val] -> [val, junk] -> [val]. WRITE_NAMED_POP rather than WRITE_NAMED, which the POP_OP peephole would
-				fuse, taking away the slot the setter needs.
-			*/
+			// WRITE_NAMED_POP rather than WRITE_NAMED, which the POP_OP peephole would fuse, taking away the slot a JS
+			// setter frame needs for its discarded return value.
 			emit(Processor::REPUSH_OP, 0);
 			emitWithConstant(Processor::WRITE_NAMED_POP_OP, xr.v);
 			emit(Processor::POP_OP, 1);
@@ -5045,12 +5015,8 @@ Value Compiler::stringOrNumberConstant() {
 		switch (*p) {
 			case '0': {
 			#if NUXJS_ES5
-				/*
-					7.8.3: a DecimalIntegerLiteral is `0` or NonZeroDigit DecimalDigits, so a digit right after the
-					leading zero never parses. Annex B.1.1 OctalIntegerLiteral is the extension we deliberately do
-					not implement, and 08 / 09 are not even that. Diagnosed here rather than left to lex as two
-					numbers, which is still a SyntaxError but reports whatever the stray second one runs into.
-				*/
+				// 7.8.3: a digit after a leading zero never parses. Diagnosed here rather than left to lex as two numbers,
+				// which is still a SyntaxError but reports whatever the stray second one runs into.
 				if (p + 1 != e && p[1] >= '0' && p[1] <= '9') {
 					error(SYNTAX_ERROR, "Octal literals and leading zeros are not supported");
 				}
@@ -5489,11 +5455,8 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			if (xr.t == ExpressionResult::NAMED && xr.v.equalsString(EVAL_STRING)) {
 				callOp = Processor::CALL_EVAL_OP;
 			#if NUXJS_ES5
-				/*
-					10.6: a direct eval reaches this function's scope by name, so it can ask for `arguments` without
-					the body ever naming it. Only the FunctionScope constructor still has the entry values, so a
-					strict function has to capture there; see usesArguments in NuXJS.h.
-				*/
+				// 10.6: a direct eval can ask for arguments without the body naming it, and only the FunctionScope constructor
+				// still has the entry values; see usesArguments in NuXJS.h.
 				if (compilingFor == FOR_FUNCTION) {
 					code->usesArguments = true;
 				}
@@ -5503,10 +5466,13 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 			#if NUXJS_ES5
 				// ES5 11.2.3: the function is fetched (running any getter) before the arguments are evaluated.
 				emit(Processor::GET_METHOD_OP);
-				callOp = Processor::CALL_THIS_OP;
+				callOp = Processor::CALL_WITH_THIS_OP;
 			#else
 				callOp = Processor::CALL_METHOD_OP;
 			#endif
+			} else if (xr.t == ExpressionResult::NAMED && callOp != Processor::CALL_EVAL_OP) {
+				emitWithConstant(Processor::READ_NAMED_WITH_THIS_OP, xr.v);
+				callOp = Processor::CALL_WITH_THIS_OP;
 			} else {
 				makeRValue(xr, false);
 			}
@@ -5806,11 +5772,8 @@ Compiler::ExpressionResult Compiler::varDeclaration() {
 	ExpressionResult lxr(declareIdentifier(identifier(true, false), false));
 	if (token("=", true)) {
 	#if NUXJS_ES5
-		/*
-			12.2 evaluates the Identifier at step 1 and the Initialiser at step 2, and its NOTE spells the case
-			out: inside a `with` whose object carries the same name, the write belongs to that object even if the
-			initialiser has since removed it. `lxr` is handed back unchanged, since for-in wants the name instead.
-		*/
+		// 12.2 and its NOTE: inside a with carrying the same name the write belongs to that object even if the
+		// initialiser has since removed it. lxr is handed back unchanged, for-in wanting the name instead.
 		ExpressionResult target(lxr);
 		captureReference(target, Processor::RESOLVE_NAMED_OP);
 		rvalueExpression(COMMA_PREC);
@@ -6404,11 +6367,9 @@ void Compiler::statement(SemanticScope* currentScope, SemanticScope* scopeLabels
 			optionalExpression(evalXR, LOWEST_PREC);
 		#if NUXJS_ES5
 			/*
-				14.1: a Directive is an ExpressionStatement consisting *entirely* of a StringLiteral token. The
-				statement is exactly that literal iff the last string parsed spans the whole expression source
-				[b, p), which correctly rejects `("...")`, `"..." + x`, `"...".m`, and `"a", "b"` (comma). A Use
-				Strict Directive is the raw source `use strict` in quotes with no EscapeSequence, i.e. exactly the
-				12 source characters, any escape making the span longer, so the length check enforces that.
+				14.1: the statement is a Directive iff the last string parsed spans the whole expression source [b, p), which
+				rejects a parenthesised, concatenated, member-accessed or comma-separated one. Any EscapeSequence makes the span
+				longer than the 12 characters of use strict in quotes, so the length check is what forbids one.
 			*/
 			if (wasInPrologue && lastStringLiteralStart == b && lastStringLiteralEnd == p) {
 				inDirectivePrologue = true;
@@ -6542,12 +6503,8 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 		if (reservedParamName) {
 			error(SYNTAX_ERROR, "a reserved word (or eval/arguments) may not be a parameter name in strict mode");
 		}
-		/*
-			13.1 and 7.6.1.2: the function's own name (a FunctionDeclaration/FunctionExpression Identifier) may be
-			neither eval/arguments nor a strict reserved word. Declarations are also caught in the enclosing scope via
-			declareIdentifier, but a strict function's own directive requires checking the name here too. An 11.1.5
-			accessor is exempt, its name being a PropertyName; the parameter list it does have is checked just above.
-		*/
+		// 13.1 and 7.6.1.2. Declarations are also caught by declareIdentifier, but a strict function's own directive
+		// needs the name checked here too. An 11.1.5 accessor is exempt, its name being a PropertyName.
 		if (!nameIsPropertyName && (isForbiddenStrictName(functionName)
 				|| (selfName != 0 && isForbiddenStrictName(selfName)))) {
 			error(SYNTAX_ERROR, "a reserved word (or eval/arguments) may not be a function name in strict mode");
@@ -6592,7 +6549,8 @@ Object* Runtime::ErrorPrototype::getPrototype(Runtime& rt) const {
 
 Runtime::GlobalScope::GlobalScope(GCList& gcList) : super(gcList, 0) { deleteOnPop = false; }
 
-Flags Runtime::GlobalScope::readVar(Runtime& rt, const String* name, Value* v) const {
+Flags Runtime::GlobalScope::readVar(Runtime& rt, const String* name, Value* v, Value*) const {
+	// No implicit this here: the global object is the scope of last resort, never an object scope introduced by `with`.
 	return rt.getGlobalObject()->getProperty(rt, name, v);
 }
 
@@ -6713,11 +6671,10 @@ void SeparateConstructorFunction::constructCompleteObject(Runtime& rt) const {
 }
 
 #if NUXJS_ES5
-/**
-	15.3.4.5: the function object Function.prototype.bind returns. It has no [[Code]] and no `prototype` property;
-	calling or constructing it forwards to the target with the bound arguments prepended, and instanceof defers to
-	the target entirely. Constructing ignores the bound this, per 15.3.4.5.2.
-**/
+/*
+	15.3.4.5: no [[Code]] and no prototype property; calling or constructing forwards to the target with the bound
+	arguments prepended, instanceof defers to the target, and constructing ignores the bound this (15.3.4.5.2).
+*/
 struct BoundFunction : public ExtensibleFunction {
 	typedef ExtensibleFunction super;
 	BoundFunction(GCList& gcList, Function* target, const Value& boundThis, const Value* b, const Value* e)
@@ -6921,11 +6878,8 @@ struct Support {
 			if (arrayObject != 0) {
 				Value v;
 			#if NUXJS_ES5
-				/*
-					15.3.4.3 (4, 6, 8): an accessor, or a length that needs ToNumber, is script a native may not run, so
-					apply's token goes back instead and the list is read in the stdlib. Nothing has been called by then
-					and every read here is a plain one, so nothing is observed twice.
-				*/
+				// 15.3.4.3 (4, 6, 8): an accessor, or a length needing ToNumber, is script a native may not run, so apply's token
+				// goes back and the list is read in the stdlib. Nothing is observed twice, every read here being a plain one.
 				const bool canRetry = (argc > 4);
 			#endif
 				const Flags lengthFlags = arrayObject->getProperty(rt, &LENGTH_STRING, &v); // FIX : in the future I think we should have a virtual getLength
@@ -7213,7 +7167,7 @@ Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap
 		, timeOut(0), memoryCap(MAX_MEMORY_CAP), gcThreshold(AUTO_GC_MIN_SIZE), createRegExpFunction(&NO_REG_EXP_SUPPORT)
 		, evalFunction(&EVAL_FUNCTION)
 #if NUXJS_ES5
-		, throwTypeErrorFunction(&THROW_TYPE_ERROR_FUNCTION), setArrayLengthFunction(0)
+		, throwTypeErrorFunction(&THROW_TYPE_ERROR_FUNCTION), setArrayLengthFunction(0), setArrayLengthStrictFunction(0)
 #endif
 		, unixEpochTimeDiff(0.0), evalCodeCache(&heap)
 #if NUXJS_ES5
@@ -7465,6 +7419,9 @@ void Runtime::setupStandardLibrary() {
 	fetchFunction(supportObject, "evalFunction", &evalFunction);
 #if NUXJS_ES5
 	fetchFunction(supportObject, "setArrayLength", &setArrayLengthFunction);
+	fetchFunction(supportObject, "setArrayLengthStrict", &setArrayLengthStrictFunction);
+	// putThrough enters the strict one without a null test, and fetchFunction reports a miss by leaving the 0.
+	assert(setArrayLengthFunction != 0 && setArrayLengthStrictFunction != 0);
 #endif
 
 	heap.gc();
