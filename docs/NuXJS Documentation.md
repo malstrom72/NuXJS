@@ -18,6 +18,8 @@ This wrapper builds and tests both editions (es3 and es5) in both the `beta` and
 
 The implementation depends on IEEE-compliant floating-point math. `src/NuXJS.cpp` includes `#error` directives that trigger if `__FAST_MATH__` is defined. Avoid compiler flags like `-Ofast`, `-ffast-math`, or similar, at least for `src/NuXJS.cpp`.
 
+The same holds at run time: NuXJS expects the default floating-point environment, round-to-nearest with denormals intact (no flush-to-zero or denormals-are-zero), and neither sets nor restores it itself. A host that changes it, for DSP code say, must restore the default on that thread before calling into NuXJS. Otherwise number conversion breaks: with flush-to-zero and denormals-are-zero on, a literal like `1e-310` parses as `Infinity`, and under another rounding mode `(0.1).toFixed(20)` prints invalid digits.
+
 The standard library lives in `src/stdlib.js`.
 During the build, it is minified and converted to C++ via `tools/stdlibToCpp.pika` using `PikaCmd`.
 The build scripts automatically regenerate `src/stdlibJS.cpp` when `stdlib.js` changes.
