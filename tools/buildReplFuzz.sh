@@ -13,6 +13,13 @@ common_flags=(-std=c++17 -DLIBFUZZ -fsanitize=fuzzer,address)
 declare -a mac_compile_flags=()
 declare -a mac_link_flags=()
 declare -a user_flags=()
+declare -a fuzz_flags=()
+fuzz_output=output/NuXJSFuzz
+if [[ "${1:-}" == "stdlib" ]]; then
+	fuzz_flags+=(-DLIBFUZZ_STDLIB)	# reaches src/stdlib.js and its bindings, which the default harness cannot
+	fuzz_output=output/NuXJSFuzzStdlib
+	shift
+fi
 
 if [[ -n "$CPP_OPTIONS" ]]; then
 	eval "set -- $CPP_OPTIONS"
@@ -51,7 +58,10 @@ fi
 if (( ${#user_flags[@]} )); then
 	compile_cmd+=("${user_flags[@]}")
 fi
-compile_cmd+=(tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp -o output/NuXJSFuzz)
+if (( ${#fuzz_flags[@]} )); then
+	compile_cmd+=("${fuzz_flags[@]}")
+fi
+compile_cmd+=(tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp -o "$fuzz_output")
 if (( ${#mac_link_flags[@]} )); then
 	compile_cmd+=("${mac_link_flags[@]}")
 fi

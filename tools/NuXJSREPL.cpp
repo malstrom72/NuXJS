@@ -868,9 +868,29 @@ int replMain(int argc, const char* argv[]) {
 }
 
 #ifdef LIBFUZZ
+#if (_MSC_VER)
+#pragma comment(linker, "/STACK:8388608")
+#endif
+
+extern "C" int LLVMFuzzerInitialize(int*, char***) {
+#if (_MSC_VER)
+	/*
+		A sanitizer's frames exhaust the default 1 MB stack well before the engine reaches its own recursion limit, and
+		without a guarantee the overflow goes unreported, so the crash is lost rather than saved. The reserve above and
+		the guarantee here are what make stackOverflow.io's depth a finding instead of a silence.
+	*/
+	::ULONG stackGuarantee = 1024 * 1024;
+	::SetThreadStackGuarantee(&stackGuarantee);
+#endif
+	return 0;
+}
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
 	Heap heap;
 	Runtime rt(heap);
+#ifdef LIBFUZZ_STDLIB
+	rt.setupStandardLibrary();	// before the limits below, so the library is not charged to the input budget
+#endif
 	rt.resetTimeOut(2);
 	rt.setMemoryCap(64*1024*1024);
 	try {
