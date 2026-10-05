@@ -64,9 +64,9 @@ Since the minifier does nothing at the expression level, that is where hand work
   result is provably identical**: evaluation order bites. Folding a compound assignment into the *right* operand of a
   `-` changes the answer, because 11.6.2 evaluates the left operand first.
 - **Drop braces around a single statement** and put it on the control line. This is the file's overwhelming
-  convention and it overrides `docs/Coding Style.md` §6 here. It is not only cosmetic: the minifier does not remove
+  convention and it overrides `docs/Coding Style.md` section 6 here. It is not only cosmetic: the minifier does not remove
   braces, so each pair dropped is two characters off the blob. A two-statement body goes on one braced line,
-  `if (val < 0) { val = -val; sign = '-'; }`. Longer bodies stay braced and indented per §6.
+  `if (val < 0) { val = -val; sign = '-'; }`. Longer bodies stay braced and indented per section 6.
 - **An `if`/`else if`/`return` cascade is usually a `?:` cascade**, broken with the operator leading the continuation
   line.
 - **Count down when iteration order does not matter.** `for (i = n; --i >= 0; )` is 8 VM instructions per pass
@@ -75,7 +75,7 @@ Since the minifier does nothing at the expression level, that is where hand work
   rather than `WRITE_LOCAL_POP`, so the decremented value stays on the stack and feeds the compare directly, fusing
   the update into the test. Do not "tidy" these into forward loops.
 - **Nest a helper inside its only caller.** `sort` keeps `swap`, `compare` and `qsort`; the date parser keeps
-  `readPart`. ES3 §12 has no `FunctionDeclaration` statement, so the declaration belongs at the top of the enclosing
+  `readPart`. ES3 section 12 has no `FunctionDeclaration` statement, so the declaration belongs at the top of the enclosing
   function body, never inside an `if` or a loop.
 - `void 0` over `undefined`, `undefined` being a preserved name that costs nine characters every time.
 - The comma operator is legal and occasionally right, but rarely shrinks anything without costing more in syntax than

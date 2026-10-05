@@ -43,7 +43,7 @@ formatting. Read it before writing code here. This file adds only the NuXJS-spec
 Two NuXJS-specific notes on top of it:
 
 - The existing sources still carry a lot of the abandoned Doxygen comment style (`///`, `///<`, `/** **/`) and
-  per-declaration access specifiers. Do not copy either into new or edited code; see `docs/Coding Style.md` §4 and §5.
+  per-declaration access specifiers. Do not copy either into new or edited code; see `docs/Coding Style.md` sections 4 and 5.
 - When handling files with command-line tools, always run `expand -t 4` on the file before processing and
   `unexpand -t 4` on it afterwards.
 
