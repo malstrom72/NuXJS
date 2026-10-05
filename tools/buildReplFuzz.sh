@@ -9,7 +9,9 @@ if [ -z "${CPP_COMPILER+x}" ]; then
 fi
 CPP_COMPILER="${CPP_COMPILER:-clang++}"
 
-common_flags=(-std=c++17 -DLIBFUZZ -fsanitize=fuzzer,address)
+# -O1 rather than no optimization at all: measured 295 exec/s against 1330 over the same corpus. NDEBUG is never
+# defined here, so asserts stay live, which is the point of fuzzing an engine that is full of them.
+common_flags=(-std=c++17 -O1 -g -DLIBFUZZ -fsanitize=fuzzer,address)
 declare -a mac_compile_flags=()
 declare -a mac_link_flags=()
 declare -a user_flags=()
