@@ -1290,16 +1290,22 @@ void Heap::free(void* ptr) {
 	}
 }
 
+#ifndef NDEBUG
+void Heap::gcMarkChecked(const GCItem* item) {
+	item->_gcReferenceMarkingComplete = false;	// every subclass must chain gcMarkReferences() up to GCItem
+	item->gcMarkReferences(*this);
+	assert(item->_gcReferenceMarkingComplete);
+}
+#else
+void Heap::gcMarkChecked(const GCItem* item) { item->gcMarkReferences(*this); }
+#endif
+
 void Heap::gc() {
 	for (const GCItem* item = rootList._gcNext; item != &rootList; item = item->_gcNext) {
-		assert((item->_gcReferenceMarkingComplete = false, true));
-		item->gcMarkReferences(*this);
-		assert(item->_gcReferenceMarkingComplete);
+		gcMarkChecked(item);
 	}
 	for (const GCItem* item = newList->_gcPrev; item != newList; item = item->_gcPrev) {
-		assert((item->_gcReferenceMarkingComplete = false, true));
-		item->gcMarkReferences(*this);
-		assert(item->_gcReferenceMarkingComplete);
+		gcMarkChecked(item);
 	}
 	std::swap(currentList, newList);
 	newList->deleteAll();
