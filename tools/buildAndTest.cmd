@@ -34,7 +34,8 @@ CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJSTest%suffix%_%target%_%model
 ..\output\NuXJSTest%suffix%_%target%_%model% -s >NUL 2>&1 || GOTO error
 REM Unpack the fuzz corpus so NuXJSTest can replay it. The system tar is bsdtar; a plain `tar` can pick up a GNU tar
 REM from another tool's bin directory, which reads .tar.gz but not the .zip this used to be.
-IF NOT EXIST ..\output\fuzzReplay MKDIR ..\output\fuzzReplay
+IF EXIST ..\output\fuzzReplay RMDIR /S /Q ..\output\fuzzReplay
+MKDIR ..\output\fuzzReplay
 "%SystemRoot%\System32\tar.exe" -xzf ..\tests\fuzz\corpus.tar.gz --strip-components=1 -C ..\output\fuzzReplay || GOTO error
 DIR /B /S /A-D ..\output\fuzzReplay > ..\output\fuzzReplay.txt || GOTO error
 ..\output\NuXJSTest%suffix%_%target%_%model% ..\output\fuzzReplay.txt || GOTO error
