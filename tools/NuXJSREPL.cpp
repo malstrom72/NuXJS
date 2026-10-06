@@ -316,7 +316,9 @@ static void disassemble(Heap& heap, const Code& code) {
 			case Processor::WRITE_LOCAL_POP_OP: {
 				const Int32 index = operand;
 				const String* name = code.getLocalName(index);
-				if (name != 0) std::wcerr << L" $" << name->toWideString();
+				if (name != 0) {
+					std::wcerr << L" $" << name->toWideString();
+				}
 				std::wcerr << L" (" << index << L")";
 				break;
 			}
@@ -578,7 +580,9 @@ static bool compileAndRun(Runtime& rt, MyHeap& heap, Processor& processor, const
 		processor.enterGlobalCode(&globalCode);
 		bool done = false;
 		// Re-armed per chunk, so an interactive session gets the full allowance on each entry.
-		if (timeOutSeconds > 0) rt.resetTimeOut(timeOutSeconds);
+		if (timeOutSeconds > 0) {
+			rt.resetTimeOut(timeOutSeconds);
+		}
 		const double start = getCPUSecs();
 		do {
 			done = !processor.run(STANDARD_CYCLES_BETWEEN_AUTO_GC);
@@ -703,7 +707,9 @@ static int runInteractive(Runtime& rt, MyHeap& heap, Processor& processor, std::
 			} else if (!utf8Line.empty()) {
 				const std::vector<Char> u = utf8ToUtf16(utf8Line.data(), utf8Line.size());
 				const String line(heap.roots(), u.empty() ? 0 : u.data(), u.empty() ? 0 : u.data() + u.size());
-				if (!source.empty()) source = String(heap.roots(), source, LF_STRING);
+				if (!source.empty()) {
+					source = String(heap.roots(), source, LF_STRING);
+				}
 				source = String(heap.roots(), source, line);
 			} else {
 				if (source.size() > 0 && source[0] == '?') {
@@ -753,10 +759,18 @@ int replMain(int argc, const char* argv[]) {
 		for (int argi = 1; argi < argc; ++argi) {
 			if (!inputFilePath.empty()) {
 				scriptArguments.push_back(argv[argi]);
-			} else if (strcmp(argv[argi], "-t") == 0) doTime = true;
-			else if (strcmp(argv[argi], "-s") == 0) suppressResultEcho = true;
-			else if (strcmp(argv[argi], "-p") == 0) pauseBeforeQuit = true;
-			else if (strcmp(argv[argi], "-n") == 0) loadStdLib = false;
+			} else if (strcmp(argv[argi], "-t") == 0) {
+				doTime = true;
+			}
+			else if (strcmp(argv[argi], "-s") == 0) {
+				suppressResultEcho = true;
+			}
+			else if (strcmp(argv[argi], "-p") == 0) {
+				pauseBeforeQuit = true;
+			}
+			else if (strcmp(argv[argi], "-n") == 0) {
+				loadStdLib = false;
+			}
 			else if (strcmp(argv[argi], "--timeout") == 0 || strcmp(argv[argi], "-T") == 0) {
 				char* end;		// a missing value parses as the empty string, which fails on seconds <= 0 like any other
 				const long seconds = strtol(argi + 1 < argc ? argv[++argi] : "", &end, 10);
@@ -766,7 +780,9 @@ int replMain(int argc, const char* argv[]) {
 				}
 				timeOutSeconds = static_cast<int>(seconds);
 			}
-			else if (strcmp(argv[argi], "--legacy-exceptions") == 0 || strcmp(argv[argi], "-E") == 0) legacyExceptions = true;
+			else if (strcmp(argv[argi], "--legacy-exceptions") == 0 || strcmp(argv[argi], "-E") == 0) {
+				legacyExceptions = true;
+			}
 			else if (strcmp(argv[argi], "--help") == 0 || strcmp(argv[argi], "-h") == 0) {
 				printUsage();
 				return 0;
@@ -913,7 +929,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
 #ifndef LIBFUZZ
 int main(int argc, const char* argv[]) {
 	int rc = replMain(argc, argv);
-	if (pauseBeforeQuit) std::wcin.get();
+	if (pauseBeforeQuit) {
+		std::wcin.get();
+	}
 	return rc;
 }
 #endif

@@ -1001,7 +1001,9 @@ static void testHighLevelAPI() {
 	EXPECT(!object.has("baz"));
 
 	Var array(rt.newArrayVar());
-	for (int i = 0; i < 5; ++i) array[i] = i * 2;
+	for (int i = 0; i < 5; ++i) {
+		array[i] = i * 2;
+	}
 	EXPECT_EQUAL(array.size(), 5);
 	EXPECT_EQUAL(array[2], 4);
 	EXPECT(array.has(4));
