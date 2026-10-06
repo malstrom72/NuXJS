@@ -21,6 +21,7 @@ mkdir ../output >/dev/null 2>&1 || true
 bash ./BuildCpp.sh $target $model ../output/NuXJSTest_${target}_${model} ../tools/NuXJSTest.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
 ../output/NuXJSTest_${target}_${model} -s >/dev/null 2>&1
 # Unpack the fuzz corpus so NuXJSTest can replay it.
+rm -rf ../output/fuzzReplay
 mkdir -p ../output/fuzzReplay
 tar -xzf ../tests/fuzz/corpus.tar.gz --strip-components=1 -C ../output/fuzzReplay
 find ../output/fuzzReplay -type f > ../output/fuzzReplay.txt
