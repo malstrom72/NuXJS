@@ -113,6 +113,12 @@ Turn off CRT dialogs in `LLVMFuzzerInitialize`, or a failed assert hangs the wor
   the lexer, parser, compiler and VM are reachable, and `String`, `Array`, `JSON`, `Math`, `Date` and the
   `Number.prototype` conversions are not. That build costs about 18x per input, 88 exec/s against 5 under MSVC,
   because every input recompiles and reruns the library, so it is for targeted runs rather than bulk.
+- **The corpus replay lives inside `NuXJSTest` rather than a separate `main()`.** `buildAndTest` unpacks
+  `tests/fuzz/corpus.tar.gz` into `output/fuzzReplay`, writes the file list, and passes it as `NuXJSTest`'s argument,
+  which replays every input through the harness's own entry conditions. One binary fewer, and the corpus is exercised
+  by the program that already runs on every build: about 8 seconds of a 62 second build for 2846 inputs on each
+  target. The list comes from the scripts because enumerating a directory is not portable, and a replay that found
+  nothing to replay would otherwise pass, so the test fails if it sees fewer than 2000 inputs.
 - **Two clang-cl builds have passed the throw test here**, replaying 2658 inputs that are mostly rejected with zero
   crashes: `-fsanitize=fuzzer,undefined` at 500 exec/s, and `-fsanitize=fuzzer,address,undefined` with
   `-fsanitize-address-use-after-return=never` at 800 exec/s. Both also need `/Ob0`, the two annotation defines and the

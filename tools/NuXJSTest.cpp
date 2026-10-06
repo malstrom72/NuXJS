@@ -1957,6 +1957,49 @@ void testTables() {
 
 // --- main ---
 
+/*
+	Replays the committed fuzz corpus through the same entry point the libFuzzer harness uses, so that every input the
+	campaigns accumulated is exercised on an ordinary build instead of only when someone fuzzes. The input is UTF-16LE
+	and a ScriptException is a legitimate answer for most of it, so only a crash, a hang or an exception from outside
+	the engine is a failure. The paths come from a list file because enumerating a directory is not portable, and
+	buildAndTest writes it. See docs/fuzzing.md.
+*/
+static void testFuzzCorpus(const char* listPath) {
+	std::cout << std::endl << "***** Fuzz corpus *****" << std::endl << std::endl;
+
+	std::ifstream list(listPath);
+	EXPECT(list.good());
+	int replayed = 0;
+	std::string path;
+	while (std::getline(list, path)) {
+		while (!path.empty() && (path[path.size() - 1] == '\r' || path[path.size() - 1] == '\n')) {
+			path.erase(path.size() - 1);
+		}
+		if (path.empty()) {
+			continue;
+		}
+		std::ifstream file(path.c_str(), std::ios::binary);
+		const std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+		if (data.size() < 2) {
+			continue;
+		}
+		EXPECT_NO_EXCEPTION({
+			Heap heap;
+			Runtime rt(heap);
+			rt.resetTimeOut(2);
+			rt.setMemoryCap(64 * 1024 * 1024);
+			try {
+				rt.run(String(reinterpret_cast<const Char*>(data.data())
+						, reinterpret_cast<const Char*>(data.data()) + data.size() / 2));
+			}
+			catch (const Exception&) { }
+		});
+		++replayed;
+	}
+	std::cout << "  - " << replayed << " inputs replayed" << std::endl;
+	EXPECT(replayed > 2000);	// a mistake in the unpacking would otherwise pass as an empty run
+}
+
 int main(int argc, const char* argv[]) {
 	if (argc >= 2 && strcmp(argv[1], "-s") == 0) {
 		return selfTest();
@@ -1975,6 +2018,9 @@ int main(int argc, const char* argv[]) {
 		testHighLevelAPI();
 		readMeSample1();
 		readMeSample2();
+		if (argc >= 2) {
+			testFuzzCorpus(argv[1]);
+		}
 		std::cout << std::endl;
 		if (failureCount == 0) {
 			std::cout << "All " << testCount << " checks passed successfully" << std::endl << std::endl;

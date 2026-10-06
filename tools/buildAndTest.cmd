@@ -17,7 +17,12 @@ IF "%target%"=="release" SET CPP_OPTIONS=/GR- %CPP_OPTIONS%
 MKDIR ..\output >NUL 2>&1
 CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJSTest_%target%_%model%.exe .\NuXJSTest.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
 ..\output\NuXJSTest_%target%_%model% -s >NUL 2>&1 || GOTO error
-..\output\NuXJSTest_%target%_%model% || GOTO error
+REM Unpack the fuzz corpus so NuXJSTest can replay it. The system tar is bsdtar; a plain `tar` can pick up a GNU tar
+REM from another tool's bin directory, which reads .tar.gz but not the .zip this used to be.
+IF NOT EXIST ..\output\fuzzReplay MKDIR ..\output\fuzzReplay
+"%SystemRoot%\System32\tar.exe" -xzf ..\tests\fuzz\corpus.tar.gz --strip-components=1 -C ..\output\fuzzReplay || GOTO error
+DIR /B /S /A-D ..\output\fuzzReplay > ..\output\fuzzReplay.txt || GOTO error
+..\output\NuXJSTest_%target%_%model% ..\output\fuzzReplay.txt || GOTO error
 CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJS_%target%_%model%.exe .\NuXJSREPL.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
 ..\externals\PikaCmd\PikaCmd.exe .\test.pika -e -x "..\output\NuXJS_%target%_%model% -s --legacy-exceptions" ..\tests\ || GOTO error
 
