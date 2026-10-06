@@ -874,6 +874,13 @@ int replMain(int argc, const char* argv[]) {
 
 extern "C" int LLVMFuzzerInitialize(int*, char***) {
 #if (_MSC_VER)
+	// These builds keep asserts live, and a failing one would otherwise hang the worker on a message box.
+	_set_error_mode(_OUT_TO_STDERR);
+	_set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+	_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+	_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+	_CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
+	_CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
 	/*
 		A sanitizer's frames exhaust the default 1 MB stack well before the engine reaches its own recursion limit, and
 		without a guarantee the overflow goes unreported, so the crash is lost rather than saved. The reserve above and
