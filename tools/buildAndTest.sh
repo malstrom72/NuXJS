@@ -34,7 +34,11 @@ fi
 export CPP_OPTIONS="$opts"	# always reset so a CPP_OPTIONS inherited from the environment cannot leak into a build
 bash ./BuildCpp.sh $target $model ../output/NuXJSTest${suffix}_${target}_${model} ../tools/NuXJSTest.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
 ../output/NuXJSTest${suffix}_${target}_${model} -s >/dev/null 2>&1
-../output/NuXJSTest${suffix}_${target}_${model}
+# Unpack the fuzz corpus so NuXJSTest can replay it.
+mkdir -p ../output/fuzzReplay
+tar -xzf ../tests/fuzz/corpus.tar.gz --strip-components=1 -C ../output/fuzzReplay
+find ../output/fuzzReplay -type f > ../output/fuzzReplay.txt
+../output/NuXJSTest${suffix}_${target}_${model} ../output/fuzzReplay.txt
 bash ./BuildCpp.sh $target $model ../output/NuXJS${suffix}_${target}_${model} ../tools/NuXJSREPL.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
 (cd work && ../../output/NuXJS${suffix}_${target}_${model} -s generateUnicodeTables.js --check)
 

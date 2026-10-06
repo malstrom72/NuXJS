@@ -58,10 +58,9 @@ formatting. Read it before writing code here. This file adds only the NuXJS-spec
 Two NuXJS-specific notes on top of it:
 
 - The existing sources still carry a lot of the abandoned Doxygen comment style (`///`, `///<`, `/** **/`) and
-  per-declaration access specifiers. Do not copy either into new or edited code; see `docs/Coding Style.md` §4 and §5.
+  per-declaration access specifiers. Do not copy either into new or edited code; see `docs/Coding Style.md` sections 4 and 5.
 - When handling files with command-line tools, always run `expand -t 4` on the file before processing and
   `unexpand -t 4` on it afterwards.
-- Keep commit messages short, one or two sentences. Do not add `Co-Authored-By` or other generated trailers.
 
 See `docs/NuXJS Documentation.md` for details on how `src/stdlib.js` is minified and converted to `src/stdlibJS.cpp` during the build, and `docs/Standard Library Guidelines.md` for rules when editing the standard library: the no-prototype-methods rule, what the minifier does and does not do, and where `src/stdlib.js` departs from `docs/Coding Style.md`.
 

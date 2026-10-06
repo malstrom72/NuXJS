@@ -9,10 +9,19 @@ if [ -z "${CPP_COMPILER+x}" ]; then
 fi
 CPP_COMPILER="${CPP_COMPILER:-clang++}"
 
-common_flags=(-std=c++17 -DLIBFUZZ -fsanitize=fuzzer,address)
+# -O1 rather than no optimization at all: measured 295 exec/s against 1330 over the same corpus. NDEBUG is never
+# defined here, so asserts stay live, which is the point of fuzzing an engine that is full of them.
+common_flags=(-std=c++17 -O1 -g -DLIBFUZZ -fsanitize=fuzzer,address)
 declare -a mac_compile_flags=()
 declare -a mac_link_flags=()
 declare -a user_flags=()
+declare -a fuzz_flags=()
+fuzz_output=output/NuXJSFuzz
+if [[ "${1:-}" == "stdlib" ]]; then
+	fuzz_flags+=(-DLIBFUZZ_STDLIB)	# reaches src/stdlib.js and its bindings, which the default harness cannot
+	fuzz_output=output/NuXJSFuzzStdlib
+	shift
+fi
 
 if [[ -n "$CPP_OPTIONS" ]]; then
 	eval "set -- $CPP_OPTIONS"
@@ -51,7 +60,10 @@ fi
 if (( ${#user_flags[@]} )); then
 	compile_cmd+=("${user_flags[@]}")
 fi
-compile_cmd+=(tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp -o output/NuXJSFuzz)
+if (( ${#fuzz_flags[@]} )); then
+	compile_cmd+=("${fuzz_flags[@]}")
+fi
+compile_cmd+=(tools/NuXJSREPL.cpp src/NuXJS.cpp src/stdlibJS.cpp -o "$fuzz_output")
 if (( ${#mac_link_flags[@]} )); then
 	compile_cmd+=("${mac_link_flags[@]}")
 fi

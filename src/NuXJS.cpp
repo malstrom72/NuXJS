@@ -361,9 +361,12 @@ static const Char* parseHex(const Char* p, const Char* e, UInt32& i) {
 	return p;
 }
 
-static const Char* parseUnsignedInt(const Char* p, const Char* e, UInt32& i) {
+// Saturates: 8.5 rounds anything past a few hundred to infinity or zero, so further digits cannot matter.
+static const Char* parseExponentDigits(const Char* p, const Char* e, UInt32& i) {
 	for (i = 0; p != e && *p >= '0' && *p <= '9'; ++p) {
-		i = i * 10 + (*p - '0');
+		if (i <= 100000) {
+			i = i * 10 + (*p - '0');
+		}
 	}
 	return p;
 }
@@ -655,9 +658,9 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 				++p;
 			}
 			UInt32 ui;
-			const Char* q = parseUnsignedInt(p, e, ui);
+			const Char* q = parseExponentDigits(p, e, ui);
 			if (q != p) {
-				exponent += sign * wrapToInt32(ui);
+				exponent += sign * static_cast<Int32>(ui);
 				numberEnd = q;
 			}
 		}
@@ -847,7 +850,7 @@ Int32 Value::toInt() const {
 		return 0;
 	} else {
 		const UInt32 ui = static_cast<UInt32>(fmod(fabs(v), 4294967296.0));
-		return (v >= 0 ? wrapToInt32(ui) : -wrapToInt32(ui));
+		return wrapToInt32(v >= 0 ? ui : 0u - ui);	// 9.5 (4) takes the modulo of the signed value
 	}
 }
 
@@ -1351,16 +1354,22 @@ void Heap::free(void* ptr) {
 	}
 }
 
+#ifndef NDEBUG
+void Heap::gcMarkChecked(const GCItem* item) {
+	item->_gcReferenceMarkingComplete = false;	// every subclass must chain gcMarkReferences() up to GCItem
+	item->gcMarkReferences(*this);
+	assert(item->_gcReferenceMarkingComplete);
+}
+#else
+void Heap::gcMarkChecked(const GCItem* item) { item->gcMarkReferences(*this); }
+#endif
+
 void Heap::gc() {
 	for (const GCItem* item = rootList._gcNext; item != &rootList; item = item->_gcNext) {
-		assert((item->_gcReferenceMarkingComplete = false, true));
-		item->gcMarkReferences(*this);
-		assert(item->_gcReferenceMarkingComplete);
+		gcMarkChecked(item);
 	}
 	for (const GCItem* item = newList->_gcPrev; item != newList; item = item->_gcPrev) {
-		assert((item->_gcReferenceMarkingComplete = false, true));
-		item->gcMarkReferences(*this);
-		assert(item->_gcReferenceMarkingComplete);
+		gcMarkChecked(item);
 	}
 	std::swap(currentList, newList);
 	newList->deleteAll();

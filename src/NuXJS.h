@@ -101,7 +101,11 @@ class GCItem {
 		GCItem(const GCItem& copy) throw();
 		GCItem& operator=(const GCItem&) throw() { return *this; }
 		Heap& gcGetHeap() const;
-		virtual void gcMarkReferences(Heap&) const { assert(_gcReferenceMarkingComplete = true); }
+		virtual void gcMarkReferences(Heap&) const {
+	#ifndef NDEBUG
+			_gcReferenceMarkingComplete = true;
+	#endif
+		}
 		virtual ~GCItem();
 		friend void gcMark(Heap& heap, const GCItem* item);
 
@@ -170,6 +174,7 @@ class Heap {
 		virtual void* acquireMemory(size_t size);
 		virtual void releaseMemory(void* ptr, size_t size);
 		static int calcPoolIndex(size_t size);
+		void gcMarkChecked(const GCItem* item);
 		void* pools[MAX_POOLED_SIZE / POOL_SIZE_GRANULARITY];
 		UInt32 allocatedCount;
 		size_t allocatedSize;
