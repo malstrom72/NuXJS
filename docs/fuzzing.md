@@ -1,6 +1,6 @@
 # Fuzzing
 
-Version: 2026-10-05
+Version: 2026-10-07
 
 How these projects fuzz with libFuzzer. Every copy of this file is identical apart from the "Local additions" section
 at the end, which holds a project's targets, scripts and exceptions.
@@ -23,7 +23,8 @@ static release runtime.
 
 - Mac clang: `-fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all -UNDEBUG`.
 - MSVC: `/fsanitize=address /fsanitize=fuzzer /U NDEBUG`, and copy MSVC's `clang_rt.asan_dynamic-x86_64.dll` next to
-  the executable.
+  the executable. The two options must be separate: MSVC ignores clang's comma form with only a warning, and the link
+  then fails with a misleading missing-entry-point error.
 
 Link with an 8 MB stack on Windows (`/link /STACK:8388608`), since deep recursion otherwise overflows the 1 MB default
 long before it would on the Mac.
@@ -45,8 +46,10 @@ Copy LLVM's `clang_rt.asan_dynamic-x86_64.dll` (from `lib\clang\<version>\lib\wi
 quote the compiler path because it contains a space:
 `CPP_COMPILER="C:\Program Files\LLVM\bin\clang-cl.exe"`.
 
-The throw test: before a clang-cl build is trusted, replay a corpus in which most inputs make the target throw, with
-zero crashes. Repeat it whenever LLVM is updated.
+The throw test: before a clang-cl build is trusted, replay a corpus in which most inputs make the target throw through
+both that build and a plain build of the same target without sanitizers, and require identical outcomes (status and
+output) for every input. Zero crashes is not enough, since a handler cut short can run on to the wrong result without
+crashing. Repeat the test whenever LLVM is updated.
 
 ## The harness
 
@@ -93,7 +96,8 @@ Turn off CRT dialogs in `LLVMFuzzerInitialize`, or a failed assert hangs the wor
   GNU tar and bsdtar do not produce identical archives, so refresh with GNU tar. Use `xz -9` only where it saves a
   lot: the `tar.exe` that ships with Windows cannot read xz and hangs instead of failing.
 - The normal build replays the corpus, the seeds and every past crash input through a plain `main()` that reads files
-  and calls `LLVMFuzzerTestOneInput`. It is built without fuzzer instrumentation, with every compiler the project uses.
+  and calls `LLVMFuzzerTestOneInput`. It is built without fuzzer instrumentation, with every compiler the project uses,
+  and never with clang-cl's sanitizers, which would bring back the exception handling bugs above.
 - Commit the input of each fixed crash as a regression input.
 - Keep a crash file from a Windows clang-cl build only if it also crashes with MSVC or on the Mac.
 
@@ -119,8 +123,18 @@ Turn off CRT dialogs in `LLVMFuzzerInitialize`, or a failed assert hangs the wor
   by the program that already runs on every build: about 8 seconds of a 62 second build for 2846 inputs on each
   target. The list comes from the scripts because enumerating a directory is not portable, and a replay that found
   nothing to replay would otherwise pass, so the test fails if it sees fewer than 2000 inputs.
-- **Two clang-cl builds have passed the throw test here**, replaying 2658 inputs that are mostly rejected with zero
-  crashes: `-fsanitize=fuzzer,undefined` at 500 exec/s, and `-fsanitize=fuzzer,address,undefined` with
-  `-fsanitize-address-use-after-return=never` at 800 exec/s. Both also need `/Ob0`, the two annotation defines and the
-  release target. For this engine `/Ob0` alone was not enough: ASan was the cause, and every throwing input crashed
-  until the use-after-return flag was added.
+- **Two clang-cl builds pass the differential throw test here.** `-fsanitize=fuzzer,undefined` at 500 exec/s and
+  `-fsanitize=fuzzer,address,undefined` with `-fsanitize-address-use-after-return=never` at 800 exec/s, both also
+  needing `/Ob0`, the two annotation defines and the release target. Every one of the 2847 corpus inputs executes under
+  both, with no crash and no sanitizer report; most of them throw, since the harness rejects malformed source. For this
+  engine `/Ob0` alone was not enough: ASan's fake stack was the cause, and every throwing input crashed until the
+  use-after-return flag was added.
+- **The outcome comparison is done without coverage instrumentation, which is what makes it possible.** A libFuzzer
+  binary reports no per-input outcome, so for those two builds the differential is per-input status. To compare the
+  answers themselves, the same replay source is built twice with clang-cl, once plain and once with
+  `-fsanitize=address,undefined -fsanitize-address-use-after-return=never` and no fuzzer instrumentation, and each input's
+  outcome line, `ran` or the exact exception text, is diffed. All 2847 match exactly.
+- **Do not add coverage instrumentation to a replay main(), as the shared guide says.** Building the replay source
+  with `-fsanitize=fuzzer-no-link` alongside the sanitizers crashes on the FIRST throwing input, while the same
+  sanitizers without it return the correct exception and the real libFuzzer builds are unaffected. That isolates
+  SanitizerCoverage in a non-libFuzzer main as the cause, which is llvm#212404, and it is why the rule exists.
