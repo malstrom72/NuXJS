@@ -192,6 +192,21 @@ inline void gcMark(Heap& heap, const GCItem* item) {
 	}
 }
 
+/*
+	assert(isA<Code>(o)) instead of assert(dynamic_cast<const Code*>(o) != 0), because a public library must not
+	require RTTI to be either on or off. A dynamic_cast is ill-formed under -fno-rtti even where it can never be
+	evaluated, and a release assert that expands to ((void)(0 && (a))) still has to compile: clang rejects that,
+	msvc only warns. Where RTTI is unavailable there is nothing to check and this answers true.
+*/
+template<class T, class U> bool isA(const U* o) {
+#if defined(__cpp_rtti)
+	return dynamic_cast<const T*>(o) != 0;
+#else
+	(void)o;
+	return true;
+#endif
+}
+
 inline void GCItem::operator delete(void* ptr, Heap& heap) {
 	::operator delete(reinterpret_cast<Heap**>(ptr) - 1, &heap);
 }
@@ -1551,7 +1566,7 @@ template<class C> struct AccessorBase::VarMemberFunctionAdapter : public Extensi
 		if ((me->C::getClassName()) != (me->getClassName())) {
 			ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Invalid class");
 		}
-		assert(dynamic_cast<const C*>(thisObject) != 0);
+		assert(isA<C>(thisObject));
 		return (me->*cppMethod)(rt, Var(rt, thisObject), VarList(rt, argc, argv));
 	}
 	Var (C::*cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args);
