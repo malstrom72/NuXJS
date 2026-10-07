@@ -97,3 +97,31 @@
 > print(Number('9007199254740993.0000000000000001') === 9007199254740992)
 < true
 -
+// Double to string: shortest round-tripping decimal, closest of its length, the upper on an exact half. The
+// double-double formatter printed the first of these one ulp low, so it did not read back, and the second with
+// 17 digits where 12 suffice. The third is an exact tie between two 17-digit decimals, where 9.8.1 says the last
+// digit is not uniquely determined and its non-normative NOTE suggests the even one; we take the upper and V8
+// takes the lower, both conforming. Do not 'fix' the third to match V8.
+> print(String(1.4888287984713299e-99))
+< 1.4888287984713299e-99
+-
+> print(String(8120350406779211 * Math.pow(2, -250)))
+< 4.48823774972e-60
+-
+> print(String(1700687411567516.25))
+< 1700687411567516.3
+-
+// the layout thresholds of 9.8.1: decimal notation from 1e-6 to just under 1e21, exponential outside it
+> var v = [1e20, 1e21, 1.2e21, 0.000001, 1e-7, 1.5e-7, 5e-324, 1.7976931348623157e308, 12345.6789, -0], i
+> for (i = 0; i < v.length; ++i) { print(String(v[i])) }
+< 100000000000000000000
+< 1e+21
+< 1.2e+21
+< 0.000001
+< 1e-7
+< 1.5e-7
+< 5e-324
+< 1.7976931348623157e+308
+< 12345.6789
+< 0
+-

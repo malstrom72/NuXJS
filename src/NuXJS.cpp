@@ -330,85 +330,6 @@ static const Char* parseExponentDigits(const Char* p, const Char* e, UInt32& i) 
 }
 
 /*
-	Helper class for high-precision double <=> string conversion routines. 52*2 bits of two doubles allows accurate
-	representation of integers between 0 and 81129638414606681695789005144064.
-*/
-struct DoubleDouble {
-	DoubleDouble() { }
-	DoubleDouble(double d) : high(floor(d)), low(d - high) { }
-	DoubleDouble(double high, double low) : high(high), low(low) {
-		assert(high < ldexp(1.0, 53));
-		assert(low < 1.0);
-	}
-	DoubleDouble operator+(const DoubleDouble& other) {
-		const double lowSum = low + other.low;
-		const double overflow = floor(lowSum);
-		return DoubleDouble((high + other.high) + overflow, lowSum - overflow);
-	}
-	DoubleDouble operator*(int factor) const {
-		const double lowTimesFactor = low * factor;
-		const double overflow = floor(lowTimesFactor);
-		return DoubleDouble((high * factor) + overflow, lowTimesFactor - overflow);
-	}
-	DoubleDouble operator/(int divisor) const {
-		const double floored = floor(high / divisor);
-		const double remainder = high - floored * divisor;
-		return DoubleDouble(floored, (low + remainder) / divisor);
-	}
-	bool operator<(const DoubleDouble& other) const {
-		return high < other.high || (high == other.high && low < other.low);
-	}
-	operator double() const {
-		return high + low;
-	}
-	double high;
-	double low;
-};
-
-/**
-	If we just do (high + low) first, that sum is rounded to 53 bits once, possibly nudging the result slightly upward.
-	Then when we scale down into the subnormal range (right-shift the mantissa) we hit what looks like an exact halfway
-	case — and since the current mantissa is odd, IEEE-754 rounds up again. In reality, the exact (high+low) value was
-	just below that halfway point, so it should have rounded down to the even mantissa. This is a classic "double
-	rounding" problem.
-
-	scaleAndRound avoids this by combining high and low at full precision under the final exponent window and
-	performing a *single* correct round-to-nearest-even step. This matches the Decimal oracle and fixes all denormal
-	boundary mismatches.
-
-	Assumptions:
-	- 'factor' is an exact power-of-two (normal or subnormal) from the table.
-	- 'acc.high' is integral in [0, 2^53) and 'acc.low' ∈ [0,1).
-	- Table ensures factorExponent >= -1073 so T = factorExponent + 1073 >= 0.
-**/
-static double scaleAndRound(const DoubleDouble& acc, double factor) {
-	if (acc.high == 0.0 && acc.low == 0.0) {
-		return 0.0;
-	}
-	
-	const double fastResult = (acc.high + acc.low) * factor;
-	if (fastResult >= 2.2250738585072014e-308) {
-		return fastResult;												// normal result; fast path is exact here
-	}
-	
-	int factorExponent;													// slow path: denormal/transition region
-	frexp(factor, &factorExponent);										// assemble payload then single rounding
-	
-	const int t = factorExponent + 1073;								// guaranteed by table construction
-	assert(t >= 0);														// (no right-shift branch needed)	
-	const double bf = ldexp(acc.low, t);								// align (high, low) into the 52-bit subnormal payload scale
-	const double bi = floor(bf);
-	const double fraction = bf - bi;									// fractional contribution
-	
-	double ni = ldexp(acc.high, t) + bi;								// integer payload (exact in double)
-	if (fraction > 0.5 || (fraction == 0.5 && fmod(ni, 2.0) != 0.0)) {
-		ni += 1.0;														// round to nearest, ties-to-even
-	}
-	
-	return ldexp(ni, -1074);											// subnormal construction (or DBL_MIN when ni == 2^52)
-}
-
-/*
 	Decimal to double conversion in integer arithmetic on `Words<N>`, an unsigned integer of N 32-bit words, least
 	significant word first. The only approximation is a table of powers of five truncated to 128 bits, and since
 	truncation errs in one direction only, every decision is taken on an interval of relative width below 2^-127 that
@@ -628,6 +549,7 @@ static const PowerOfFiveTable POWERS_OF_FIVE;
 const int MANTISSA_BITS = 53;							// including the implicit one
 const int MIN_BINARY_EXPONENT = -1074;					// of the smallest subnormal
 const int MAX_SIGNIFICANT_DIGITS = 20;					// the most 9.3.1 obliges us to read exactly
+const int MAX_SHORTEST_DIGITS = 17;					// always enough to tell two doubles apart
 
 /*
 	Splits `x` into the integer part above bit `position` and the rest, for an exact value known to lie in
@@ -669,6 +591,82 @@ static double convertDecimal(const Words<3>& significand, int power) {
 	const UInt64 rounded = mantissa + (half > 0 || (half == 0 && (mantissa & 1) != 0) ? 1 : 0);
 	return ldexp(static_cast<double>(rounded), position + scale);
 }
+/*
+	Takes `value` apart into an exact `mantissa` below 2^53 and `exponent2` with value = mantissa * 2^exponent2.
+	frexp normalizes subnormals too, so the mantissa always carries 53 significant bits and both steps are exact.
+*/
+static void decompose(double value, UInt64& mantissa, int& exponent2) {
+	int exponent;
+	const double fraction = frexp(value, &exponent);
+	mantissa = static_cast<UInt64>(ldexp(fraction, MANTISSA_BITS));
+	exponent2 = exponent - MANTISSA_BITS;
+}
+
+/*
+	floor(mantissa * 2^exponent2 * 10^power), which the caller keeps below 10^18, and in `halfComparison` where the
+	remainder lies relative to one half (see `splitAtBit`).
+*/
+static UInt64 scaledFloor(UInt64 mantissa, int exponent2, int power, int& halfComparison) {
+	const PowerOfFiveTable::Entry& entry = POWERS_OF_FIVE.entry(power);
+	Words<8> x;
+	x.setProduct(Words<2>(mantissa), entry.significand);
+	const int shift = -(exponent2 + entry.exponent + power);
+	assert(shift >= 54 && shift < 256);					// the value is below 10^18, the product above 2^127
+	return splitAtBit(x, Words<8>(mantissa), shift, halfComparison);
+}
+
+/*
+	The shortest decimal that converts back to the positive finite `value`: its digits as an integer, and in
+	`exponent10` the decimal exponent of the leading digit. For n digits the candidates are the truncation F of
+	value * 10^(n-1-k) and F + 1; the smallest n at which one converts back wins, and when both do the closer one,
+	taking the upper on an exact half, which is the spelling NuXJS has always printed and which 9.8.1 leaves open
+	(its tie NOTE is not normative). "Some n-digit decimal converts back" is monotone in n, so n is binary searched.
+	The largest finite value never takes the upper candidate, so its text stays below the overflow threshold for
+	parsers that read anything above it as infinity.
+*/
+static UInt64 shortestDigits(double value, int& exponent10) {
+	UInt64 mantissa;
+	int exponent2;
+	decompose(value, mantissa, exponent2);
+	const int binaryExponent = exponent2 + Words<2>(mantissa).bitLength() - 1;
+	const int scaled = binaryExponent * 1233;			// 1233 / 4096 is log10(2) closely enough to be off by one
+	int k = (scaled >= 0 ? scaled : scaled - 4095) / 4096;
+	int half;
+	UInt64 first = scaledFloor(mantissa, exponent2, -k, half);
+	while (first >= 10) {
+		++k;
+		first = scaledFloor(mantissa, exponent2, -k, half);
+	}
+	while (first == 0) {
+		--k;
+		first = scaledFloor(mantissa, exponent2, -k, half);
+	}
+	const bool isMax = (value == std::numeric_limits<double>::max());
+	UInt64 digits = 0;
+	int low = 1;
+	int high = MAX_SHORTEST_DIGITS;
+	while (low <= high) {
+		const int n = (low + high) / 2;
+		const int power = k - n + 1;
+		const UInt64 truncated = scaledFloor(mantissa, exponent2, -power, half);
+		const bool lowerFits = (convertDecimal(Words<3>(truncated), power) == value);
+		const bool upperFits = ((!lowerFits || half >= 0)
+				&& convertDecimal(Words<3>(truncated + 1), power) == value);
+		if (lowerFits || upperFits) {
+			digits = (!lowerFits || (half >= 0 && upperFits && !isMax) ? truncated + 1 : truncated);
+			exponent10 = k;
+			high = n - 1;
+		} else {
+			low = n + 1;
+		}
+	}
+	assert(digits != 0);								// MAX_SHORTEST_DIGITS digits always convert back
+	if (digits == 10) {									// the only carry that survives the search
+		digits = 1;
+		++exponent10;
+	}
+	return digits;
+}
 
 const int QUICK_CONSTANTS_INTEGERS_RANGE = 1000;
 struct QuickConstants {
@@ -683,47 +681,10 @@ struct QuickConstants {
 			integers[i + QUICK_CONSTANTS_INTEGERS_RANGE] = String(intToString(buffer, i), buffer + 32); // FIX : newHashedString
 			integers[i + QUICK_CONSTANTS_INTEGERS_RANGE].createBloomCode();
 		}
-
-		/*
-			Generate a table of `DoubleDoubles` for all powers of 10 from -324 to 308. The `DoubleDoubles` are
-			normalized to take up as many bits as possible while leaving enough headroom to allow multiplications of up
-			to 10 without overflowing. The exp10Factors array will contain the multiplication factors required to
-			revert the normalization. I.e. `static_cast<double>(normals[1 - (-324)]) * factors[1 - (-324)] == 10.0`.
-			Notice that for the very lowest exponents we refrain from normalizing to correctly handle denormal values.
-		*/
-		const double WIDTH = ldexp(1.0, 53 - 4);
-
-		DoubleDouble normal(WIDTH, 0.0);
-		double factor = 1.0 / WIDTH;
-		for (int i = 0; i <= MAX_EXPONENT; ++i) {
-			if (normal.high >= WIDTH) {
-				factor *= 16.0;
-				normal = normal / 16;
-			}
-			assert(factor < std::numeric_limits<double>::infinity());
-			exp10Normals[i - MIN_EXPONENT] = normal;
-			exp10Factors[i - MIN_EXPONENT] = factor;
-			normal = normal * 10;
-		}
-	
-		normal = DoubleDouble(WIDTH, 0.0);
-		factor = 1.0 / WIDTH;
-		for (int i = -1; i >= MIN_EXPONENT; --i) {
-			// Check factor / 16.0 > 0.0 to avoid normalizing denormal exponents.
-			if (normal.high < WIDTH && factor / 16.0 > 0.0) {
-				factor /= 16.0;
-				normal = normal * 16;
-			}
-			normal = normal / 10;
-			exp10Normals[i - MIN_EXPONENT] = normal;
-			exp10Factors[i - MIN_EXPONENT] = factor;
-		}
 	}
 	Value ascii[127];
 	String asciiChars[127];
 	String integers[QUICK_CONSTANTS_INTEGERS_RANGE * 2 + 1];
-	DoubleDouble exp10Normals[MAX_EXPONENT + 1 - MIN_EXPONENT];
-	double exp10Factors[MAX_EXPONENT + 1 - MIN_EXPONENT];
 } QUICK_CONSTANTS;
 
 static Char* doubleToString(Char buffer[32], const double value) {
@@ -734,90 +695,52 @@ static Char* doubleToString(Char buffer[32], const double value) {
 		*p++ = '-';
 		absValue = -value;
 	}
-	
 	if (absValue == 0.0) {
 		*p++ = '0';
 		return p;
 	}
 
-	// frexp is fast and precise and gives log2(x), log10(x) = log2(x) / log2(10)
-	int base2Exponent;
-	(void) frexp(absValue, &base2Exponent);
-	int exponent = std::max(static_cast<int>(ceil(0.30102999566398119521 * (base2Exponent - 1))) - 1, MIN_EXPONENT);
-	if (exponent < MAX_EXPONENT) {
-		assert(MIN_EXPONENT <= exponent + 1 && exponent + 1 <= MAX_EXPONENT);
-		const double factor = QUICK_CONSTANTS.exp10Factors[exponent + 1 - MIN_EXPONENT];
-
-		// Notice that in theory we could have a value that is considered equal to next magnitude but should be rounded
-		// downwards (to a lower exponential) and not upwards. However in reality, only the first denormal power of 10
-		// would be a candidate for this, and for both double and single precision floats, they round upwards.
-		if (absValue >= static_cast<double>(QUICK_CONSTANTS.exp10Normals[exponent + 1 - MIN_EXPONENT]) * factor) {
-			++exponent;
-		}
-	}
-	
-	const bool eNotation = (exponent < NEGATIVE_E_NOTATION_START || exponent >= POSITIVE_E_NOTATION_START);
-	Char* periodPosition = p + (eNotation || exponent < 0 ? 0 : exponent) + 1;
-	if (!eNotation && exponent < 0) {
-		*p++ = '0';
-		*p++ = '.';
-		while (p < periodPosition - exponent) {
-			*p++ = '0';
-		}
+	int exponent;
+	const UInt64 digits = shortestDigits(absValue, exponent);
+	Char reversed[MAX_SHORTEST_DIGITS + 1];				// the digits come out least significant first
+	int count = 0;
+	for (UInt64 rest = digits; rest != 0; rest /= 10) {
+		reversed[count] = static_cast<Char>('0' + static_cast<int>(rest % 10));
+		++count;
 	}
 
-	assert(MIN_EXPONENT <= exponent && exponent <= MAX_EXPONENT);
-	const double factor = QUICK_CONSTANTS.exp10Factors[exponent - MIN_EXPONENT];
-	DoubleDouble magnitude = QUICK_CONSTANTS.exp10Normals[exponent - MIN_EXPONENT];
-	const DoubleDouble normalized = absValue / factor;
-	DoubleDouble accumulator = 0.0;
-	double reconstructed;
-	do {
-		if (p == periodPosition) {
+	if (exponent < NEGATIVE_E_NOTATION_START || exponent >= POSITIVE_E_NOTATION_START) {
+		*p++ = reversed[count - 1];
+		if (count > 1) {
 			*p++ = '.';
+			for (int i = count - 2; i >= 0; --i) {
+				*p++ = reversed[i];
+			}
 		}
-		
-		// Incrementally find the max digit that keeps accumulator < normalized target (instead of using division).
-		DoubleDouble next = accumulator + magnitude;
-		int digit = 0;
-		while (next < normalized && digit < 9) {
-			accumulator = next;
-			next = next + magnitude;
-			++digit;
-		}
-		assert(next >= normalized); // Correct behavior is to never reach higher than digit 9.
-
-		// Decide between digit and digit + 1 under final rounding; bump the digit if the lower one doesn't reconstruct
-		// to the exact value, or if we are strictly past the half-step. (Ported from Numbstrict's realToString. The
-		// previous version overwrote `reconstructed` and so missed the "lower digit doesn't round-trip but the higher
-		// one does" case, emitting a last digit one too low for some values, e.g. String(7.120236347223045e-307).)
-		reconstructed = scaleAndRound(accumulator, factor);
-		const double r1 = scaleAndRound(accumulator + magnitude, factor);
-		if ((reconstructed != absValue && r1 == absValue) || (reconstructed == absValue
-				&& accumulator + magnitude / 2 < normalized && absValue != std::numeric_limits<double>::max())) {
-			reconstructed = r1;
-			++digit;
-			assert(digit < 10); // If this happens we have failed to calculate the correct exponent above.
-		}
-
-		*p++ = '0' + digit;
-		magnitude = magnitude / 10;
-		
-		// p < buffer + 27 is an extra precaution if the correct value is never reached (e.g. because of too aggressive
-		// optimizations). 27 leaves room for longest exponent.
-	} while (p < buffer + 27 && reconstructed != absValue);
-
-	while (p < periodPosition) {
-		*p++ = '0';
-	}
-	
-	if (eNotation) {
 		*p++ = 'e';
 		*p++ = (exponent < 0 ? '-' : '+');
-
-		// intToString fills the buffer from right (buffer + 32) to left and there should always be enough space
 		p = std::copy(intToString(buffer, exponent < 0 ? -exponent : exponent), buffer + 32, p);
+	} else if (exponent < 0) {
+		*p++ = '0';
+		*p++ = '.';
+		for (int i = -exponent - 1; i > 0; --i) {
+			*p++ = '0';
+		}
+		for (int i = count - 1; i >= 0; --i) {
+			*p++ = reversed[i];
+		}
+	} else {
+		for (int i = 0; i <= exponent; ++i) {			// zero-padded where the digits run out before the point
+			*p++ = (i < count ? reversed[count - 1 - i] : '0');
+		}
+		if (count > exponent + 1) {
+			*p++ = '.';
+			for (int i = count - exponent - 2; i >= 0; --i) {
+				*p++ = reversed[i];
+			}
+		}
 	}
+
 	assert(p <= buffer + 32);
 	return p;
 }
