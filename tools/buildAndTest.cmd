@@ -30,7 +30,9 @@ MKDIR ..\output >NUL 2>&1
 ..\externals\PikaCmd\PikaCmd.exe .\stdlibToCpp.pika ..\src\stdlib.js ..\src\stdlibJS.cpp || GOTO error
 ..\externals\PikaCmd\PikaCmd.exe .\stdlibToCpp.pika ..\src\stdlib.js ..\output\stdlib.es3.js es3 || GOTO error
 IF "%target%"=="release" SET CPP_OPTIONS=/GR- %CPP_OPTIONS%
-CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJSTest%suffix%_%target%_%model%.exe .\NuXJSTest.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
+REM The 8 MB stack reserve is for the corpus replay below: the default 1 MB is not enough for the deeply nested
+REM inputs the fuzzer found, and the engine's own recursion limit does not bound the parser's native recursion.
+CALL .\BuildCpp.cmd %target% %model% ..\output\NuXJSTest%suffix%_%target%_%model%.exe .\NuXJSTest.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp /link /STACK:8388608 || GOTO error
 ..\output\NuXJSTest%suffix%_%target%_%model% -s >NUL 2>&1 || GOTO error
 REM Unpack the fuzz corpus so NuXJSTest can replay it. The system tar is bsdtar; a plain `tar` can pick up a GNU tar
 REM from another tool's bin directory, which reads .tar.gz but not the .zip this used to be.

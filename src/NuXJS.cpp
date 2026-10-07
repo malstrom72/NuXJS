@@ -4136,7 +4136,7 @@ void Processor::innerRun() {
 			
 			case GEN_FUNC_OP: {
 				const Object* o = constants[im].getObject();
-				assert(dynamic_cast<const Code*>(o) != 0);
+				assert(isA<Code>(o));
 				scope->makeClosure();
 				push(new(heap) JSFunction(heap.managed(), reinterpret_cast<const Code*>(o), scope));
 				break;
@@ -4153,7 +4153,7 @@ void Processor::innerRun() {
 			
 			case PUSH_ELEMENTS_OP: {
 				Object* o = sp[-im].getObject();
-				assert(dynamic_cast<JSArray*>(o) != 0);
+				assert(isA<JSArray>(o));
 				reinterpret_cast<JSArray*>(o)->pushElements(rt, im, sp - im + 1);
 				pop(im);
 				break;
@@ -4261,7 +4261,7 @@ void Processor::innerRun() {
 			
 			case NEXT_PROPERTY_OP: {
 				Object* o = sp[0].getObject();
-				assert(dynamic_cast<Enumerator*>(o) != 0);
+				assert(isA<Enumerator>(o));
 				const String* name = reinterpret_cast<Enumerator*>(o)->nextPropertyName();
  				if (name != 0) {
 					sp[0] = name;
@@ -6822,7 +6822,7 @@ struct Support {
 		if (argc >= 2) {
 			Object* o = argv[0].asObject();
 			if (o != 0 && o->getClassName()->isEqualTo(D_ATE_STRING)) {
-				assert(dynamic_cast<GenericWrapper*>(o) != 0);
+				assert(isA<GenericWrapper>(o));
 				reinterpret_cast<GenericWrapper*>(o)->setInternalValue(argv[1]);
 			}
 		}
@@ -7374,7 +7374,7 @@ Code* Runtime::compileEvalCode(const String* expression) {
 	const Table::Bucket* bucket = evalCodeCache.lookup(expression);
 	if (bucket != 0) {
 		Object* o = bucket->getValue().getObject();
-		assert(dynamic_cast<Code*>(o) != 0);
+		assert(isA<Code>(o));
 		return reinterpret_cast<Code*>(o);
 	} else {
 		SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), expression, &EVAL_CODE_STRING);
