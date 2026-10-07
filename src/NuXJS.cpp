@@ -4004,22 +4004,21 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 /*
 	Caps total live compile-time recursion depth. Expressions and statements share this one counter (it is threaded
 	into nested function compilers), so deeply nested source cannot overflow the C++ stack during compilation. It is a
-	proxy for stack bytes, and the shapes cost different amounts of it, about three levels per function expression
-	against one per array level, so the window of workable values is narrower than it looks. Measured on msvc/x64 with
-	the 1 MB default stack of Windows, release and beta alike:
+	proxy for stack bytes, and the shapes cost different amounts of it. Measured on msvc/x64 with the beta flags, a
+	nested function declaration costs one level and about 2.4 kB, a function expression three levels at 1.2 kB each,
+	an array or parenthesis level one level and 0.7 kB. Declarations are therefore the binding shape, and the budget
+	is the 1 MB default stack of Windows.
 
-		- 86 nested function EXPRESSIONS exhaust the stack, which is roughly 258 of these levels. That is why the
-		  previous value of 256 was useless: the limit and the real ceiling coincided, so the guard could not fire
-		  first and such source crashed the process instead of raising this RangeError.
-		- from about 84 upwards the error cannot be delivered either, because unwinding through that many live
-		  compiler frames needs more stack than is left.
-		- below about 68 JSON.parse() breaks, since it eval()s its input and tests/stdlib/JSON.io requires 62 levels.
+	The wall is toolchain-dependent, so this must sit well below it rather than just under it. 400 nested
+	declarations crash with 0xC00000FD at a limit of 80 here and raise this RangeError at 72, yet 72 crashed the
+	GitHub runner's build of the same source: frames differ enough between compilers to move the wall by several
+	levels. Below, the floor is stdlib.js, whose own compile reaches 30 of these levels, and MAX_JSON_DEPTH + 1,
+	since JSON.parse() eval()s input that its walker has already bounded.
 
-	So anything from 68 to 80 works and 72 sits in the middle of it, with margin at both ends rather than against one
-	wall. stdlib.js bounds its own walker at MAX_JSON_DEPTH 61, below this. A counter can only ever approximate the
-	real constraint; measuring the remaining stack instead would be the robust answer.
+	48 is a third below the lowest wall measured and 18 levels above that floor. A counter can only ever approximate
+	the real constraint; measuring the remaining stack instead would be the robust answer.
 */
-const Int32 MAX_NESTED_COMPILE_DEPTH = 72;
+const Int32 MAX_NESTED_COMPILE_DEPTH = 48;
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
 
 Compiler::NestGuard::NestGuard(Compiler& compiler) : compiler(compiler) {
