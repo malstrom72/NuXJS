@@ -4003,12 +4003,23 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 
 /*
 	Caps total live compile-time recursion depth. Expressions and statements share this one counter (it is threaded
-	into nested function compilers), so deeply nested source cannot overflow the C++ stack during compilation. It must
-	stay well below the real stack ceiling - nested function definitions, the largest frames, overflow at a few thousand
-	levels - while leaving ample room for real code and for JSON.parse(), which eval()s validated input that is already
-	bounded far below this by MAX_JSON_DEPTH in stdlib.js.
+	into nested function compilers), so deeply nested source cannot overflow the C++ stack during compilation. It is a
+	proxy for stack bytes, and the shapes cost different amounts of it, about three levels per function expression
+	against one per array level, so the window of workable values is narrower than it looks. Measured on msvc/x64 with
+	the 1 MB default stack of Windows, release and beta alike:
+
+		- 86 nested function EXPRESSIONS exhaust the stack, which is roughly 258 of these levels. That is why the
+		  previous value of 256 was useless: the limit and the real ceiling coincided, so the guard could not fire
+		  first and such source crashed the process instead of raising this RangeError.
+		- from about 84 upwards the error cannot be delivered either, because unwinding through that many live
+		  compiler frames needs more stack than is left.
+		- below about 68 JSON.parse() breaks, since it eval()s its input and tests/stdlib/JSON.io requires 62 levels.
+
+	So anything from 68 to 80 works and 72 sits in the middle of it, with margin at both ends rather than against one
+	wall. stdlib.js bounds its own walker at MAX_JSON_DEPTH 61, below this. A counter can only ever approximate the
+	real constraint; measuring the remaining stack instead would be the robust answer.
 */
-const Int32 MAX_NESTED_COMPILE_DEPTH = 256;
+const Int32 MAX_NESTED_COMPILE_DEPTH = 72;
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
 
 Compiler::NestGuard::NestGuard(Compiler& compiler) : compiler(compiler) {
