@@ -108,8 +108,8 @@ someone a working session:
 - **A `/* */` comment in a `.io` file disables the test.** Every line must begin with `> < ! - * or /`
   (`tools/test.pika`), so a block comment's body discards the section being collected and `*/` reads as the
   disabled-section marker: the suite goes green by not running. `//` is the only comment form `.io` has, which is
-  why the three-lines-becomes-a-block rule in `docs/Coding Style.md` section 5 does not apply there - shorten the
-  prose instead of reformatting it.
+  why section 5's "do NOT write a paragraph as a stack of `//` lines" cannot be answered here by switching to a block:
+  shorten the prose instead.
 - **`assert` is compiled out of release.** Release-only work, benchmarking above all, silently skips every invariant
   guarded that way - `getOpcodeInfo`'s check that `opcodeInfo[]` agrees with the opcode enum among them. Run the beta
   build over anything that touches such a table.
