@@ -18,7 +18,13 @@ This wrapper builds and tests both the `beta` and `release` configurations by in
 
 The implementation depends on IEEE-compliant floating-point math. `src/NuXJS.cpp` includes `#error` directives that trigger if `__FAST_MATH__` is defined. Avoid compiler flags like `-Ofast`, `-ffast-math`, or similar, at least for `src/NuXJS.cpp`.
 
-The same holds at run time: NuXJS expects the default floating-point environment, round-to-nearest with denormals intact (no flush-to-zero or denormals-are-zero), and neither sets nor restores it itself. A host that changes it, for DSP code say, must restore the default on that thread before calling into NuXJS. Otherwise number conversion breaks: with flush-to-zero and denormals-are-zero on, a literal like `1e-310` parses as `Infinity`, and under another rounding mode `(0.1).toFixed(20)` prints invalid digits.
+The same holds at run time: NuXJS expects the default floating-point environment, round-to-nearest with denormals
+intact (no flush-to-zero or denormals-are-zero), and neither sets nor restores it itself. A host that changes it, for
+DSP code say, must restore the default on that thread before calling into NuXJS. Since the decimal conversions became
+exact integer arithmetic they no longer care about the rounding mode, measured identical under all four modes, but
+flush-to-zero and denormals-are-zero still cost you the subnormals: `1e-310` and `5e-324` then parse as `0`. Ordinary
+JavaScript arithmetic is of course affected throughout, and `(0.1).toFixed(20)` prints invalid digits under another
+rounding mode.
 
 The standard library lives in `src/stdlib.js`.
 During the build, it is minified and converted to C++ via `tools/stdlibToCpp.pika` using `PikaCmd`.
