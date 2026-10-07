@@ -4012,11 +4012,13 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 	The wall is toolchain-dependent, so this must sit well below it rather than just under it. 400 nested
 	declarations crash with 0xC00000FD at a limit of 80 here and raise this RangeError at 72, yet 72 crashed the
 	GitHub runner's build of the same source: frames differ enough between compilers to move the wall by several
-	levels. Below, the floor is stdlib.js, whose own compile reaches 30 of these levels, and MAX_JSON_DEPTH + 1,
-	since JSON.parse() eval()s input that its walker has already bounded.
+	levels. Below, the floor is JSON.parse(), which eval()s input its walker has already bounded: the deepest
+	structure MAX_JSON_DEPTH permits costs MAX_JSON_DEPTH + 3 of these levels, measured at 43 of 48. stdlib.js
+	compiles itself in 33 of them on the es5 branch and 30 here, so JSON sets the floor, not the library.
 
-	48 is a third below the lowest wall measured and 18 levels above that floor. A counter can only ever approximate
-	the real constraint; measuring the remaining stack instead would be the robust answer.
+	48 is a third below the lowest wall measured and 5 levels above that floor, and that floor is a fixed path: the
+	walker refuses anything deeper before eval() ever sees it, so input cannot eat the margin. A counter can only
+	ever approximate the real constraint; measuring the remaining stack instead would be the robust answer.
 */
 const Int32 MAX_NESTED_COMPILE_DEPTH = 48;
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;

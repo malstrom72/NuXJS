@@ -110,3 +110,8 @@ someone a working session:
   `--checks='-*,clang-diagnostic-*'` alone it prints its usage and exits 1, which a `grep warning:` reads as a clean
   run. Enable one real check alongside, as in `--checks='-*,misc-unused-alias-decls,clang-diagnostic-*'`, and look
   at the exit code.
+- **A merge can leave `src/stdlibJS.cpp` disagreeing with `src/stdlib.js`.** The generated blob is committed, so a
+  textual merge can keep one branch's constant while taking the other branch's `stdlib.js`: merging a lowered
+  `MAX_JSON_DEPTH` into ES51 left `var fj=61` in the blob next to `40` in the source. The build regenerates the
+  file, so the local build and the suite both pass on a file the commit does not contain. After any merge that
+  touches `stdlib.js`, build and commit the regenerated `stdlibJS.cpp` with the merge.
