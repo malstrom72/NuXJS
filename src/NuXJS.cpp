@@ -5634,12 +5634,22 @@ Code* Compiler::accessorFunctionDefinition(const String* functionName) {
 
 /*
 	Caps total live compile-time recursion depth. Expressions and statements share this one counter (it is threaded
-	into nested function compilers), so deeply nested source cannot overflow the C++ stack during compilation. It must
-	stay well below the real stack ceiling - nested function definitions, the largest frames, overflow at a few thousand
-	levels - while leaving ample room for real code and for JSON.parse(), which eval()s validated input that is already
-	bounded far below this by MAX_JSON_DEPTH in stdlib.js.
+	into nested function compilers), so deeply nested source cannot overflow the C++ stack during compilation. It is a
+	proxy for stack bytes, and the shapes cost different amounts of it. Measured on msvc/x64 with the beta flags, a
+	nested function declaration costs one level and about 2.4 kB, a function expression three levels at 1.2 kB each,
+	an array or parenthesis level one level and 0.7 kB. Declarations are therefore the binding shape, and the budget
+	is the 1 MB default stack of Windows.
+
+	The wall is toolchain-dependent, so this must sit well below it rather than just under it. 400 nested
+	declarations crash with 0xC00000FD at a limit of 80 here and raise this RangeError at 72, yet 72 crashed the
+	GitHub runner's build of the same source: frames differ enough between compilers to move the wall by several
+	levels. Below, the floor is stdlib.js, whose own compile reaches 30 of these levels, and MAX_JSON_DEPTH + 1,
+	since JSON.parse() eval()s input that its walker has already bounded.
+
+	48 is a third below the lowest wall measured and 18 levels above that floor. A counter can only ever approximate
+	the real constraint; measuring the remaining stack instead would be the robust answer.
 */
-const Int32 MAX_NESTED_COMPILE_DEPTH = 256;
+const Int32 MAX_NESTED_COMPILE_DEPTH = 48;
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
 
 Compiler::NestGuard::NestGuard(Compiler& compiler) : compiler(compiler) {
