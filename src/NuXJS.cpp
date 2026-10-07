@@ -365,12 +365,6 @@ struct DoubleDouble {
 	double low;
 };
 
-static DoubleDouble multiplyAndAdd(const DoubleDouble& term, const DoubleDouble& factorA, double factorB) {
-	const double fmaLow = factorA.low * factorB + term.low;
-	const double overflow = floor(fmaLow);
-	return DoubleDouble(factorA.high * factorB + term.high + overflow, fmaLow - overflow);
-}
-
 /**
 	If we just do (high + low) first, that sum is rounded to 53 bits once, possibly nudging the result slightly upward.
 	Then when we scale down into the subnormal range (right-shift the mantissa) we hit what looks like an exact halfway
@@ -412,6 +406,268 @@ static double scaleAndRound(const DoubleDouble& acc, double factor) {
 	}
 	
 	return ldexp(ni, -1074);											// subnormal construction (or DBL_MIN when ni == 2^52)
+}
+
+/*
+	Decimal to double conversion in integer arithmetic on `Words<N>`, an unsigned integer of N 32-bit words, least
+	significant word first. The only approximation is a table of powers of five truncated to 128 bits, and since
+	truncation errs in one direction only, every decision is taken on an interval of relative width below 2^-127 that
+	is known to contain the exact value. A decimal of at most 20 significant digits never comes that close to a
+	rounding midpoint without lying exactly on it, so the interval either falls wholly on one side of every midpoint
+	or holds one, which is then an exact tie. 9.3.1 lets us drop everything after the 20th digit, which is what makes
+	that bound apply. The number theory is in Numbstrict's docs/RealConversion.md.
+*/
+template<int N> class Words {
+	public:
+		Words() { clear(); }
+		explicit Words(UInt64 value) {
+			clear();
+			words[0] = static_cast<UInt32>(value);
+			words[1] = static_cast<UInt32>(value >> 32);
+		}
+		template<int M> explicit Words(const Words<M>& other) {
+			clear();
+			for (int i = 0; i < M; ++i) {
+				assert(i < N || other.word(i) == 0);
+				if (i < N) {
+					words[i] = other.word(i);
+				}
+			}
+		}
+		static Words powerOfTwo(int bit) {
+			Words result;
+			result.setBit(bit);
+			return result;
+		}
+		UInt32 word(int i) const { return words[i]; }
+		int bitLength() const {
+			for (int i = N; i > 0; --i) {
+				if (words[i - 1] != 0) {
+					int bits = (i - 1) * 32 + 1;
+					for (UInt32 top = words[i - 1], step = 16; step != 0; step >>= 1) {
+						if (top >= (static_cast<UInt32>(1) << step)) {
+							bits += step;
+							top >>= step;
+						}
+					}
+					return bits;
+				}
+			}
+			return 0;
+		}
+		UInt64 bitsFrom(int bit) const {					// the low 64 bits of *this >> bit
+			const int index = bit / 32;
+			const int shift = bit % 32;
+			UInt64 low = 0;
+			UInt64 high = 0;
+			if (index < N) {
+				low = words[index];
+			}
+			if (index + 1 < N) {
+				low |= static_cast<UInt64>(words[index + 1]) << 32;
+			}
+			if (index + 2 < N) {
+				high = words[index + 2];
+			}
+			return (shift == 0 ? low : (low >> shift) | (high << (64 - shift)));
+		}
+		int compare(const Words& other) const {
+			for (int i = N; i > 0; --i) {
+				if (words[i - 1] != other.words[i - 1]) {
+					return (words[i - 1] < other.words[i - 1] ? -1 : 1);
+				}
+			}
+			return 0;
+		}
+		void setBit(int bit) { words[bit / 32] |= static_cast<UInt32>(1) << (bit % 32); }
+		void multiplyAdd(UInt32 factor, UInt32 addend) {
+			UInt64 carry = addend;
+			for (int i = 0; i < N; ++i) {
+				carry += static_cast<UInt64>(words[i]) * factor;
+				words[i] = static_cast<UInt32>(carry);
+				carry >>= 32;
+			}
+			assert(carry == 0);								// the product must fit in N words
+		}
+		void add(const Words& other) {
+			UInt64 carry = 0;
+			for (int i = 0; i < N; ++i) {
+				carry += static_cast<UInt64>(words[i]) + other.words[i];
+				words[i] = static_cast<UInt32>(carry);
+				carry >>= 32;
+			}
+			assert(carry == 0);								// the sum must fit in N words
+		}
+		void subtract(const Words& other) {
+			UInt64 borrow = 0;
+			for (int i = 0; i < N; ++i) {
+				const UInt64 difference = static_cast<UInt64>(words[i]) - other.words[i] - borrow;
+				words[i] = static_cast<UInt32>(difference);
+				borrow = ((difference >> 32) != 0 ? 1 : 0);	// unsigned wrap-around marks the borrow
+			}
+			assert(borrow == 0);							// the difference must not go below zero
+		}
+		void shiftLeft(int bits) {
+			assert(bitLength() + bits <= N * 32);
+			const int wordShift = bits / 32;
+			const int bitShift = bits % 32;
+			for (int i = N; i > 0; --i) {
+				const int source = i - 1 - wordShift;
+				UInt32 value = (source >= 0 ? words[source] << bitShift : 0);
+				if (bitShift != 0 && source > 0) {
+					value |= words[source - 1] >> (32 - bitShift);
+				}
+				words[i - 1] = value;
+			}
+		}
+		void shiftRight(int bits) {
+			const int wordShift = bits / 32;
+			const int bitShift = bits % 32;
+			for (int i = 0; i < N; ++i) {
+				const int source = i + wordShift;
+				UInt32 value = (source < N ? words[source] >> bitShift : 0);
+				if (bitShift != 0 && source + 1 < N) {
+					value |= words[source + 1] << (32 - bitShift);
+				}
+				words[i] = value;
+			}
+		}
+		void keepLowBits(int bits) {
+			for (int i = 0; i < N; ++i) {
+				if (i * 32 >= bits) {
+					words[i] = 0;
+				} else if (i * 32 + 32 > bits) {
+					words[i] &= (static_cast<UInt32>(1) << (bits - i * 32)) - 1;
+				}
+			}
+		}
+		template<int A, int B> void setProduct(const Words<A>& a, const Words<B>& b) {
+			clear();
+			for (int i = 0; i < A; ++i) {
+				UInt64 carry = 0;
+				for (int j = 0; j < B; ++j) {
+					carry += static_cast<UInt64>(a.word(i)) * b.word(j) + words[i + j];
+					words[i + j] = static_cast<UInt32>(carry);
+					carry >>= 32;
+				}
+				words[i + B] = static_cast<UInt32>(carry);
+			}
+		}
+
+	private:
+		void clear() {
+			for (int i = 0; i < N; ++i) {
+				words[i] = 0;
+			}
+		}
+
+		UInt32 words[N];
+};
+
+/*
+	Powers of five truncated to 128 bits: entry `q` holds `significand` P and `exponent` e with 5^q = (P + f) * 2^e,
+	0 <= f < 1 and P in [2^127, 2^128); negative `q` hold 1 / 5^-q in the same form. P is truncated and never
+	rounded, because every decision below relies on the true value never lying below it. Entries up to 5^55 are
+	exact, which covers every input where a tie can occur. Parsing needs q in -343..308, formatting up to 343.
+*/
+class PowerOfFiveTable {
+	public:
+		struct Entry {
+			Words<4> significand;
+			int exponent;
+		};
+
+		enum { MIN_POWER = -343, MAX_POWER = 343, COUNT = MAX_POWER + 1 - MIN_POWER };
+
+		PowerOfFiveTable() {
+			Words<32> power(1);
+			for (int q = 0; q <= MAX_POWER; ++q) {
+				const int length = power.bitLength();
+				Words<32> top = power;
+				if (length > 128) {
+					top.shiftRight(length - 128);
+				} else {
+					top.shiftLeft(128 - length);
+				}
+				entries[q - MIN_POWER].significand = Words<4>(top);
+				entries[q - MIN_POWER].exponent = length - 128;
+				power.multiplyAdd(5, 0);
+			}
+			power = Words<32>(1);
+			for (int k = 1; k <= -MIN_POWER; ++k) {			// 1 / 5^k is floor(2^(length + 127) / 5^k)
+				power.multiplyAdd(5, 0);
+				const int length = power.bitLength();
+				Words<32> remainder = Words<32>::powerOfTwo(length + 127);
+				Words<32> divisor = power;
+				divisor.shiftLeft(127);
+				Words<4> quotient;
+				for (int bit = 127; bit >= 0; --bit) {
+					if (remainder.compare(divisor) >= 0) {
+						remainder.subtract(divisor);
+						quotient.setBit(bit);
+					}
+					divisor.shiftRight(1);
+				}
+				assert(quotient.bitLength() == 128);		// normalized by construction
+				entries[-k - MIN_POWER].significand = quotient;
+				entries[-k - MIN_POWER].exponent = -(length + 127);
+			}
+		}
+
+		const Entry& entry(int power) const {
+			assert(MIN_POWER <= power && power <= MAX_POWER);
+			return entries[power - MIN_POWER];
+		}
+
+	private:
+		Entry entries[COUNT];
+};
+
+static const PowerOfFiveTable POWERS_OF_FIVE;
+
+const int MANTISSA_BITS = 53;							// including the implicit one
+const int MIN_BINARY_EXPONENT = -1074;					// of the smallest subnormal
+const int MAX_SIGNIFICANT_DIGITS = 20;					// the most 9.3.1 obliges us to read exactly
+
+/*
+	Splits `x` into the integer part above bit `position` and the rest, for an exact value known to lie in
+	[x, x + delta) with delta below 2^(position - 1). Returns that integer part, and in `halfComparison` where the
+	rest lies relative to one half: -1 below, 0 exactly on it, 1 above. If the interval reaches the next integer then
+	the value is exactly that integer, so the integer part is one higher and the rest zero.
+*/
+static UInt64 splitAtBit(const Words<8>& x, const Words<8>& delta, int position, int& halfComparison) {
+	UInt64 result = x.bitsFrom(position);
+	Words<8> rest = x;
+	rest.keepLowBits(position);
+	const Words<8> half = Words<8>::powerOfTwo(position - 1);
+	const bool aboveHalf = (rest.compare(half) > 0);
+	rest.add(delta);
+	if (rest.compare(Words<8>::powerOfTwo(position)) > 0) {
+		++result;
+		halfComparison = -1;
+	} else {
+		halfComparison = (aboveHalf ? 1 : rest.compare(half) <= 0 ? -1 : 0);
+	}
+	return result;
+}
+
+/*
+	`significand` * 10^`power` rounded to the nearest double, ties to even, for 0 < significand < 10^20 and `power`
+	inside the table. With x = significand * P the exact scaled value lies in [x, x + significand), so the interval
+	lies below the rounding midpoint, above it, or holds it, and the last happens only for an exact tie. The result
+	is assembled with ldexp rather than from its bits, so this makes no assumption about the layout of a double, and
+	a mantissa that carries to 2^53 and a magnitude past the largest finite double both come out right by themselves.
+*/
+static double convertDecimal(const Words<3>& significand, int power) {
+	const PowerOfFiveTable::Entry& entry = POWERS_OF_FIVE.entry(power);
+	Words<8> x;
+	x.setProduct(significand, entry.significand);
+	const int scale = power + entry.exponent;			// the value is x * 2^scale
+	const int position = std::max(x.bitLength() - MANTISSA_BITS, MIN_BINARY_EXPONENT - scale);
+	int half;
+	const UInt64 mantissa = splitAtBit(x, Words<8>(significand), position, half);
+	const UInt64 rounded = mantissa + (half > 0 || (half == 0 && (mantissa & 1) != 0) ? 1 : 0);
+	return ldexp(static_cast<double>(rounded), position + scale);
 }
 
 const int QUICK_CONSTANTS_INTEGERS_RANGE = 1000;
@@ -632,17 +888,16 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 		} else if (exponent > MAX_EXPONENT) {
 			value = std::numeric_limits<double>::infinity();
 		} else {
-			DoubleDouble magnitude = QUICK_CONSTANTS.exp10Normals[exponent - MIN_EXPONENT];
-			DoubleDouble accumulator(0.0, 0.0);
+			Words<3> digits;								// 10^20 < 2^67, so 20 digits are exact in three words
+			int count = 0;
 			while (p != significandEnd) {
-				if (*p != '.') {
-					accumulator = multiplyAndAdd(accumulator, magnitude, (*p - '0'));
-					magnitude = magnitude / 10;
+				if (*p != '.' && count < MAX_SIGNIFICANT_DIGITS) {
+					digits.multiplyAdd(10, static_cast<UInt32>(*p - '0'));
+					++count;
 				}
 				++p;
 			}
-			const double factor = QUICK_CONSTANTS.exp10Factors[exponent - MIN_EXPONENT];
-			value = scaleAndRound(accumulator, factor);
+			value = convertDecimal(digits, exponent + 1 - count);
 		}
 	}
 	value *= sign;
