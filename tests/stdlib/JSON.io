@@ -309,13 +309,13 @@
 > try { print(JSON.stringify(JSON.parse("[1eE2]"))) } catch (x) { print(x) }
 < SyntaxError: Error parsing JSON
 -
-> var s = ''; for (var i = 0; i < 63; ++i) s += '['; s += '234'; for (var i = 0; i < 63; ++i) s += ']'; try { print(JSON.stringify(JSON.parse(s))) } catch (x) { print(x) }
+> var s = ''; for (var i = 0; i < 42; ++i) s += '['; s += '234'; for (var i = 0; i < 42; ++i) s += ']'; try { print(JSON.stringify(JSON.parse(s))) } catch (x) { print(x) }
 < TypeError: Structure too deeply nested for JSON conversion
 -
-> var s = ''; for (var i = 0; i < 62; ++i) s += '['; s += '234'; for (var i = 0; i < 62; ++i) s += ']'; try { print(JSON.stringify(JSON.parse(s))) } catch (x) { print(x) }
-< [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[234]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+> var s = ''; for (var i = 0; i < 41; ++i) s += '['; s += '234'; for (var i = 0; i < 41; ++i) s += ']'; try { print(JSON.stringify(JSON.parse(s))) } catch (x) { print(x) }
+< [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[234]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
 -
-> var s = ''; for (var i = 0; i < 62; ++i) s += '['; s += '234'; for (var i = 0; i < 62; ++i) s += ']'; try { print(JSON.stringify([JSON.parse(s)])) } catch (x) { print(x) }
+> var s = ''; for (var i = 0; i < 41; ++i) s += '['; s += '234'; for (var i = 0; i < 41; ++i) s += ']'; try { print(JSON.stringify([JSON.parse(s)])) } catch (x) { print(x) }
 < TypeError: Structure too deeply nested for JSON conversion
 -
 > print(JSON.stringify(new Date("2019-03-03T04:00:03.000Z")))
