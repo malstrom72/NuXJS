@@ -619,10 +619,10 @@ static UInt64 scaledFloor(UInt64 mantissa, int exponent2, int power, int& halfCo
 	The shortest decimal that converts back to the positive finite `value`: its digits as an integer, and in
 	`exponent10` the decimal exponent of the leading digit. For n digits the candidates are the truncation F of
 	value * 10^(n-1-k) and F + 1; the smallest n at which one converts back wins, and when both do the closer one,
-	taking the upper on an exact half, which is the spelling NuXJS has always printed and which 9.8.1 leaves open
-	(its tie NOTE is not normative). "Some n-digit decimal converts back" is monotone in n, so n is binary searched.
-	The largest finite value never takes the upper candidate, so its text stays below the overflow threshold for
-	parsers that read anything above it as infinity.
+	the even one on an exact half: 9.8.1 leaves that digit open, and following its non-normative NOTE, as V8 does,
+	makes the two print identical text. "Some n-digit decimal converts back" is monotone in n, so n is binary
+	searched. The largest finite value never takes the upper candidate, so its text stays below the overflow
+	threshold for parsers that read anything above it as infinity.
 */
 static UInt64 shortestDigits(double value, int& exponent10) {
 	UInt64 mantissa;
@@ -653,7 +653,8 @@ static UInt64 shortestDigits(double value, int& exponent10) {
 		const bool upperFits = ((!lowerFits || half >= 0)
 				&& convertDecimal(Words<3>(truncated + 1), power) == value);
 		if (lowerFits || upperFits) {
-			digits = (!lowerFits || (half >= 0 && upperFits && !isMax) ? truncated + 1 : truncated);
+			const bool preferUpper = (half > 0 || (half == 0 && (truncated & 1) != 0));
+			digits = (!lowerFits || (upperFits && preferUpper && !isMax) ? truncated + 1 : truncated);
 			exponent10 = k;
 			high = n - 1;
 		} else {
