@@ -330,24 +330,20 @@ static const Char* parseExponentDigits(const Char* p, const Char* e, UInt32& i) 
 }
 
 /*
-	Exact decimal to double conversion in both directions, in integer arithmetic: docs/Number Conversion.md has the
-	design and why it is exact. `Words<N>` is an unsigned integer of N 32-bit words, least significant word first.
+	An unsigned integer of N 32-bit words, least significant first, with only the operations the decimal conversions
+	need; docs/Number Conversion.md describes those.
 */
 template<int N> class Words {
 	public:
-		Words() { clear(); }
-		explicit Words(UInt64 value) {
-			clear();
-			words[0] = static_cast<UInt32>(value);
-			words[1] = static_cast<UInt32>(value >> 32);
+		explicit Words(UInt64 value = 0) {
+			for (int i = 0; i < N; ++i) {
+				words[i] = (i == 0 ? static_cast<UInt32>(value) : i == 1 ? static_cast<UInt32>(value >> 32) : 0);
+			}
 		}
 		template<int M> explicit Words(const Words<M>& other) {
-			clear();
-			for (int i = 0; i < M; ++i) {
-				assert(i < N || other.word(i) == 0);
-				if (i < N) {
-					words[i] = other.word(i);
-				}
+			assert(other.bitLength() <= N * 32);
+			for (int i = 0; i < N; ++i) {
+				words[i] = (i < M ? other.word(i) : 0);
 			}
 		}
 		static Words powerOfTwo(int bit) {
@@ -357,35 +353,23 @@ template<int N> class Words {
 		}
 		UInt32 word(int i) const { return words[i]; }
 		int bitLength() const {
-			for (int i = N; i > 0; --i) {
-				if (words[i - 1] != 0) {
-					int bits = (i - 1) * 32 + 1;
-					for (UInt32 top = words[i - 1], step = 16; step != 0; step >>= 1) {
-						if (top >= (static_cast<UInt32>(1) << step)) {
-							bits += step;
-							top >>= step;
-						}
-					}
-					return bits;
-				}
+			int i = N;
+			while (i > 0 && words[i - 1] == 0) {
+				--i;
 			}
-			return 0;
+			int bits = i * 32;
+			for (UInt32 top = (i > 0 ? words[i - 1] : 0x80000000u); (top & 0x80000000u) == 0; top <<= 1) {
+				--bits;
+			}
+			return bits;
 		}
 		UInt64 bitsFrom(int bit) const {					// the low 64 bits of *this >> bit
 			const int index = bit / 32;
 			const int shift = bit % 32;
-			UInt64 low = 0;
-			UInt64 high = 0;
-			if (index < N) {
-				low = words[index];
-			}
-			if (index + 1 < N) {
-				low |= static_cast<UInt64>(words[index + 1]) << 32;
-			}
-			if (index + 2 < N) {
-				high = words[index + 2];
-			}
-			return (shift == 0 ? low : (low >> shift) | (high << (64 - shift)));
+			const UInt64 low = (index < N ? words[index] : 0)
+					| (index + 1 < N ? static_cast<UInt64>(words[index + 1]) << 32 : 0);
+			const UInt64 high = (index + 2 < N ? static_cast<UInt64>(words[index + 2]) : 0);	// shifted by up to 63
+			return (shift == 0 ? low : ((low >> shift) | (high << (64 - shift))));
 		}
 		int compare(const Words& other) const {
 			for (int i = N; i > 0; --i) {
@@ -429,11 +413,8 @@ template<int N> class Words {
 			const int bitShift = bits % 32;
 			for (int i = N; i > 0; --i) {
 				const int source = i - 1 - wordShift;
-				UInt32 value = (source >= 0 ? words[source] << bitShift : 0);
-				if (bitShift != 0 && source > 0) {
-					value |= words[source - 1] >> (32 - bitShift);
-				}
-				words[i - 1] = value;
+				words[i - 1] = (source >= 0 ? words[source] << bitShift : 0)
+						| (bitShift != 0 && source > 0 ? words[source - 1] >> (32 - bitShift) : 0);
 			}
 		}
 		void shiftRight(int bits) {
@@ -441,24 +422,18 @@ template<int N> class Words {
 			const int bitShift = bits % 32;
 			for (int i = 0; i < N; ++i) {
 				const int source = i + wordShift;
-				UInt32 value = (source < N ? words[source] >> bitShift : 0);
-				if (bitShift != 0 && source + 1 < N) {
-					value |= words[source + 1] << (32 - bitShift);
-				}
-				words[i] = value;
+				words[i] = (source < N ? words[source] >> bitShift : 0)
+						| (bitShift != 0 && source + 1 < N ? words[source + 1] << (32 - bitShift) : 0);
 			}
 		}
 		void keepLowBits(int bits) {
 			for (int i = 0; i < N; ++i) {
-				if (i * 32 >= bits) {
-					words[i] = 0;
-				} else if (i * 32 + 32 > bits) {
-					words[i] &= (static_cast<UInt32>(1) << (bits - i * 32)) - 1;
-				}
+				const int kept = bits - i * 32;					// low bits of this word that survive
+				words[i] &= (kept >= 32 ? 0xFFFFFFFFu : kept <= 0 ? 0 : (static_cast<UInt32>(1) << kept) - 1);
 			}
 		}
 		template<int A, int B> void setProduct(const Words<A>& a, const Words<B>& b) {
-			clear();
+			*this = Words();
 			for (int i = 0; i < A; ++i) {
 				UInt64 carry = 0;
 				for (int j = 0; j < B; ++j) {
@@ -471,12 +446,6 @@ template<int N> class Words {
 		}
 
 	protected:
-		void clear() {
-			for (int i = 0; i < N; ++i) {
-				words[i] = 0;
-			}
-		}
-
 		UInt32 words[N];
 };
 
@@ -498,11 +467,8 @@ class PowerOfFiveTable {
 			for (int q = 0; q <= MAX_POWER; ++q) {
 				const int length = power.bitLength();
 				Words<32> top = power;
-				if (length > 128) {
-					top.shiftRight(length - 128);
-				} else {
-					top.shiftLeft(128 - length);
-				}
+				top.shiftLeft(128);								// then down to exactly 128 bits, from either side
+				top.shiftRight(length);
 				entries[q - MIN_POWER].significand = Words<4>(top);
 				entries[q - MIN_POWER].exponent = length - 128;
 				power.multiplyAdd(5, 0);
@@ -550,19 +516,14 @@ const int MAX_SHORTEST_DIGITS = 17;					// always enough to tell two doubles apa
 	that reaches the next integer means the value is that integer.
 */
 static UInt64 splitAtBit(const Words<8>& x, const Words<8>& delta, int position, int& halfComparison) {
-	UInt64 result = x.bitsFrom(position);
 	Words<8> rest = x;
 	rest.keepLowBits(position);
 	const Words<8> half = Words<8>::powerOfTwo(position - 1);
 	const bool aboveHalf = (rest.compare(half) > 0);
 	rest.add(delta);
-	if (rest.compare(Words<8>::powerOfTwo(position)) > 0) {
-		++result;
-		halfComparison = -1;
-	} else {
-		halfComparison = (aboveHalf ? 1 : rest.compare(half) <= 0 ? -1 : 0);
-	}
-	return result;
+	const bool reachesNext = (rest.compare(Words<8>::powerOfTwo(position)) > 0);
+	halfComparison = (reachesNext ? -1 : aboveHalf ? 1 : rest.compare(half) <= 0 ? -1 : 0);
+	return x.bitsFrom(position) + (reachesNext ? 1 : 0);
 }
 
 /*
@@ -616,14 +577,11 @@ static UInt64 shortestDigits(double value, int& exponent10) {
 	const int scaled = binaryExponent * 1233;			// 1233 / 4096 is log10(2) closely enough to be off by one
 	int k = (scaled >= 0 ? scaled : scaled - 4095) / 4096;
 	int half;
-	UInt64 first = scaledFloor(mantissa, exponent2, -k, half);
-	while (first >= 10) {
+	while (scaledFloor(mantissa, exponent2, -k, half) >= 10) {
 		++k;
-		first = scaledFloor(mantissa, exponent2, -k, half);
 	}
-	while (first == 0) {
+	while (scaledFloor(mantissa, exponent2, -k, half) == 0) {
 		--k;
-		first = scaledFloor(mantissa, exponent2, -k, half);
 	}
 	const bool isMax = (value == std::numeric_limits<double>::max());	// never rounded up past the overflow line
 	UInt64 digits = 0;
@@ -639,18 +597,14 @@ static UInt64 shortestDigits(double value, int& exponent10) {
 		if (lowerFits || upperFits) {
 			const bool preferUpper = (half > 0 || (half == 0 && (truncated & 1) != 0));
 			digits = (!lowerFits || (upperFits && preferUpper && !isMax) ? truncated + 1 : truncated);
-			exponent10 = k;
 			high = n - 1;
 		} else {
 			low = n + 1;
 		}
 	}
 	assert(digits != 0);								// MAX_SHORTEST_DIGITS digits always convert back
-	if (digits == 10) {									// the only carry that survives the search
-		digits = 1;
-		++exponent10;
-	}
-	return digits;
+	exponent10 = k + (digits == 10 ? 1 : 0);			// 10 is the only carry that survives the search
+	return (digits == 10 ? 1 : digits);
 }
 
 const int QUICK_CONSTANTS_INTEGERS_RANGE = 1000;
@@ -674,12 +628,10 @@ struct QuickConstants {
 
 static Char* doubleToString(Char buffer[32], const double value) {
 	Char* p = buffer;
-
-	double absValue = value;
 	if (value < 0) {
 		*p++ = '-';
-		absValue = -value;
 	}
+	const double absValue = (value < 0 ? -value : value);
 	if (absValue == 0.0) {
 		*p++ = '0';
 		return p;
