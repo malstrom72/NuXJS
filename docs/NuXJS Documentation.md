@@ -307,6 +307,12 @@ Every sub-class of `GCItem` is responsible for overriding `gcMarkReferences(Heap
 
 Garbage collection is either invoked manually with `Heap::gc()` or automatically via `Runtime::autoGC()`. Automatic garbage collection occurs when the number of bytes on a heap reaches a threshold that is two times the heap's size after the last garbage collection. It is also possible to impose a hard limit on the heap's size.
 
+## Number Conversion
+
+Decimal text and doubles are converted in both directions with exact integer arithmetic, so parsing always gives the
+nearest double and printing the shortest text that reads back. `Number Conversion.md` explains the design, why it is
+exact, and what testing a change to it requires.
+
 ## Creating Strings
 
 Strings store UTF‑16 data. When a new string should live on a heap, you may allocate it directly with `new(heap) String(heap.managed(), text)` or use the helper `String::allocate(heap, "text")`. Temporary root strings can be constructed on the stack using `String(heap.roots(), ...)`. Global constant strings can be created without a heap using `String string("text")`.

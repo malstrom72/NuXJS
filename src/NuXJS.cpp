@@ -330,13 +330,8 @@ static const Char* parseExponentDigits(const Char* p, const Char* e, UInt32& i) 
 }
 
 /*
-	Decimal to double conversion in integer arithmetic on `Words<N>`, an unsigned integer of N 32-bit words, least
-	significant word first. The only approximation is a table of powers of five truncated to 128 bits, and since
-	truncation errs in one direction only, every decision is taken on an interval of relative width below 2^-127 that
-	is known to contain the exact value. A decimal of at most 20 significant digits never comes that close to a
-	rounding midpoint without lying exactly on it, so the interval either falls wholly on one side of every midpoint
-	or holds one, which is then an exact tie. 9.3.1 lets us drop everything after the 20th digit, which is what makes
-	that bound apply. The number theory is in Numbstrict's docs/RealConversion.md.
+	Exact decimal to double conversion in both directions, in integer arithmetic: docs/Number Conversion.md has the
+	design and why it is exact. `Words<N>` is an unsigned integer of N 32-bit words, least significant word first.
 */
 template<int N> class Words {
 	public:
@@ -486,10 +481,8 @@ template<int N> class Words {
 };
 
 /*
-	Powers of five truncated to 128 bits: entry `q` holds `significand` P and `exponent` e with 5^q = (P + f) * 2^e,
-	0 <= f < 1 and P in [2^127, 2^128); negative `q` hold 1 / 5^-q in the same form. P is truncated and never
-	rounded, because every decision below relies on the true value never lying below it. Entries up to 5^55 are
-	exact, which covers every input where a tie can occur. Parsing needs q in -343..308, formatting up to 343.
+	5^q for q in -343..343 as a 128-bit `significand` P and `exponent` e, 5^q = (P + f) * 2^e with 0 <= f < 1. P is
+	truncated, never rounded: every decision relies on the true value never lying below it.
 */
 class PowerOfFiveTable {
 	public:
@@ -552,10 +545,9 @@ const int MAX_SIGNIFICANT_DIGITS = 20;					// the most 9.3.1 obliges us to read 
 const int MAX_SHORTEST_DIGITS = 17;					// always enough to tell two doubles apart
 
 /*
-	Splits `x` into the integer part above bit `position` and the rest, for an exact value known to lie in
-	[x, x + delta) with delta below 2^(position - 1). Returns that integer part, and in `halfComparison` where the
-	rest lies relative to one half: -1 below, 0 exactly on it, 1 above. If the interval reaches the next integer then
-	the value is exactly that integer, so the integer part is one higher and the rest zero.
+	The integer part of `x` above bit `position`, for an exact value known to lie in [x, x + delta) with delta below
+	2^(position - 1), and in `halfComparison` -1, 0 or 1 as the rest lies below, on or above one half. An interval
+	that reaches the next integer means the value is that integer.
 */
 static UInt64 splitAtBit(const Words<8>& x, const Words<8>& delta, int position, int& halfComparison) {
 	UInt64 result = x.bitsFrom(position);
@@ -575,10 +567,7 @@ static UInt64 splitAtBit(const Words<8>& x, const Words<8>& delta, int position,
 
 /*
 	`significand` * 10^`power` rounded to the nearest double, ties to even, for 0 < significand < 10^20 and `power`
-	inside the table. With x = significand * P the exact scaled value lies in [x, x + significand), so the interval
-	lies below the rounding midpoint, above it, or holds it, and the last happens only for an exact tie. The result
-	is assembled with ldexp rather than from its bits, so this makes no assumption about the layout of a double, and
-	a mantissa that carries to 2^53 and a magnitude past the largest finite double both come out right by themselves.
+	inside the table.
 */
 static double convertDecimal(const Words<3>& significand, int power) {
 	const PowerOfFiveTable::Entry& entry = POWERS_OF_FIVE.entry(power);
@@ -591,9 +580,9 @@ static double convertDecimal(const Words<3>& significand, int power) {
 	const UInt64 rounded = mantissa + (half > 0 || (half == 0 && (mantissa & 1) != 0) ? 1 : 0);
 	return ldexp(static_cast<double>(rounded), position + scale);
 }
+
 /*
-	Takes `value` apart into an exact `mantissa` below 2^53 and `exponent2` with value = mantissa * 2^exponent2.
-	frexp normalizes subnormals too, so the mantissa always carries 53 significant bits and both steps are exact.
+	`value` as an exact `mantissa` below 2^53 times 2^`exponent2`.
 */
 static void decompose(double value, UInt64& mantissa, int& exponent2) {
 	int exponent;
@@ -616,13 +605,8 @@ static UInt64 scaledFloor(UInt64 mantissa, int exponent2, int power, int& halfCo
 }
 
 /*
-	The shortest decimal that converts back to the positive finite `value`: its digits as an integer, and in
-	`exponent10` the decimal exponent of the leading digit. For n digits the candidates are the truncation F of
-	value * 10^(n-1-k) and F + 1; the smallest n at which one converts back wins, and when both do the closer one,
-	the even one on an exact half: 9.8.1 leaves that digit open, and following its non-normative NOTE, as V8 does,
-	makes the two print identical text. "Some n-digit decimal converts back" is monotone in n, so n is binary
-	searched. The largest finite value never takes the upper candidate, so its text stays below the overflow
-	threshold for parsers that read anything above it as infinity.
+	The shortest decimal that converts back to the positive finite `value`, the closest of its length and the even
+	digit on an exact half: its digits as an integer, and in `exponent10` the decimal exponent of the leading digit.
 */
 static UInt64 shortestDigits(double value, int& exponent10) {
 	UInt64 mantissa;
@@ -641,7 +625,7 @@ static UInt64 shortestDigits(double value, int& exponent10) {
 		--k;
 		first = scaledFloor(mantissa, exponent2, -k, half);
 	}
-	const bool isMax = (value == std::numeric_limits<double>::max());
+	const bool isMax = (value == std::numeric_limits<double>::max());	// never rounded up past the overflow line
 	UInt64 digits = 0;
 	int low = 1;
 	int high = MAX_SHORTEST_DIGITS;
