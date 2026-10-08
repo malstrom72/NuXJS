@@ -1,9 +1,5 @@
-// MAX_NESTED_COMPILE_DEPTH turns deeply nested source into a catchable RangeError rather than a crash. The limit
-// counts nesting levels but the real resource is stack bytes, and shapes differ: a nested function declaration
-// costs one level and about 2.4 kB, a function expression three levels at 1.2 kB each. Declarations are the
-// binding shape. It was 256 until 2026-10-07, above the real ceiling of the 1 MB default stack of Windows, so such
-// source crashed instead of reporting anything; 72 then proved to sit on the wall, surviving here and crashing the
-// GitHub runner's build of the same source. 48 leaves margin at both ends. These cases pin them.
+// MAX_NESTED_COMPILE_DEPTH turns deeply nested source into a catchable RangeError rather than a crash. These cases
+// pin both ends of its margin; "Nesting limits" in NuXJS Documentation.md has the measurements behind them.
 > function nest(open, close, n) { var s = '', i; for (i = 0; i < n; ++i) s += open; for (i = 0; i < n; ++i) s += close; return s }
 > function tryIt(s) { try { eval(s); return 'compiled' } catch (e) { return String(e) } }
 > print(tryIt(nest('(function(){', '})', 10)))

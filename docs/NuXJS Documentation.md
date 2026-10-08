@@ -18,7 +18,12 @@ This wrapper builds and tests both the `beta` and `release` configurations by in
 
 The implementation depends on IEEE-compliant floating-point math. `src/NuXJS.cpp` includes `#error` directives that trigger if `__FAST_MATH__` is defined. Avoid compiler flags like `-Ofast`, `-ffast-math`, or similar, at least for `src/NuXJS.cpp`.
 
-The same holds at run time: NuXJS expects the default floating-point environment, round-to-nearest with denormals intact (no flush-to-zero or denormals-are-zero), and neither sets nor restores it itself. A host that changes it, for DSP code say, must restore the default on that thread before calling into NuXJS. Otherwise number conversion breaks: with flush-to-zero and denormals-are-zero on, a literal like `1e-310` parses as `Infinity`, and under another rounding mode `(0.1).toFixed(20)` prints invalid digits.
+The same holds at run time: NuXJS expects the default floating-point environment, round-to-nearest with denormals
+intact (no flush-to-zero or denormals-are-zero), and neither sets nor restores it itself. A host that changes it, for
+DSP code say, must restore the default on that thread before calling into NuXJS. Otherwise number conversion breaks:
+with flush-to-zero and denormals-are-zero on, `1e-310` and `5e-324` parse as `0`, and under round toward zero
+`String(2 / 3)` prints `0.6666666666666667`, one digit off, while `(0.1).toFixed(20)` prints invalid digits. Ordinary
+JavaScript arithmetic is of course affected throughout.
 
 The standard library lives in `src/stdlib.js`.
 During the build, it is minified and converted to C++ via `tools/stdlibToCpp.pika` using `PikaCmd`.
@@ -301,6 +306,12 @@ Every sub-class of `GCItem` is responsible for overriding `gcMarkReferences(Heap
 
 Garbage collection is either invoked manually with `Heap::gc()` or automatically via `Runtime::autoGC()`. Automatic garbage collection occurs when the number of bytes on a heap reaches a threshold that is two times the heap's size after the last garbage collection. It is also possible to impose a hard limit on the heap's size.
 
+## Number Conversion
+
+Decimal text and doubles are converted in both directions with exact integer arithmetic, so parsing always gives the
+nearest double and printing the shortest text that reads back. `Number Conversion.md` explains the design, why it is
+exact, and what testing a change to it requires.
+
 ## Creating Strings
 
 Strings store UTF‑16 data. When a new string should live on a heap, you may allocate it directly with `new(heap) String(heap.managed(), text)` or use the helper `String::allocate(heap, "text")`. Temporary root strings can be constructed on the stack using `String(heap.roots(), ...)`. Global constant strings can be created without a heap using `String string("text")`.
@@ -434,6 +445,38 @@ NuXJS also implements several spec corner cases that are easy to overlook when e
 - **Hidden `ToObject` on every property access.** The specification converts primitive bases to objects before retrieving a property. Strings would therefore need a wrapper object for every indexed read. The engine uses _shallow_ string wrappers so indexing does not allocate, while method calls still turn `this` into a full `String` object as required.
 - **`catch (x)` really is its own scope.** A catch clause introduces a new declarative environment that shadows outer bindings and must be visible to `eval`. NuXJS creates a transient `CatchScope` at run time so dynamic code inside the block sees the correct variable.
 - **Built-ins can distinguish call vs construct.** Native functions may have separate `[[Call]]` and `[[Construct]]` paths. User-defined functions cannot emulate this because they share one body. Built-ins in `stdlib.js` use `support.distinctConstructor` to implement behaviours like `String` where the result differs when invoked with `new`.
+
+### Nesting limits
+
+Two limits keep deeply nested input from overflowing the C++ stack. Source nested more than `MAX_NESTED_COMPILE_DEPTH`
+(48) levels deep raises a `RangeError` at compile time, and `JSON.parse()` and `JSON.stringify()` refuse structures
+deeper than 41 levels with a `TypeError` (`MAX_JSON_DEPTH` in `stdlib.js` is 40, and the first depth refused is 42). A
+level is a step of the compiler's recursion, not a source construct: a function expression costs three, most other
+constructs one or two.
+
+The compile limit is a proxy for stack bytes, calibrated for the 1 MB default stack of Windows, so a host running
+NuXJS on a smaller stack needs a lower value. Measured on msvc/x64 with the beta flags:
+
+| shape                       | levels per nesting | stack per level |
+| --------------------------- | ------------------ | --------------- |
+| nested function declaration | 1                  | 2.4 kB          |
+| nested function expression  | 3                  | 1.2 kB          |
+| `try`/`catch`               | 1                  | 1.6 kB          |
+| block, `if`                 | 1 to 2             | 0.9 kB          |
+| array, parenthesis, object  | 1 to 2             | 0.7 kB          |
+
+Declarations are the binding shape. 400 nested declarations crash with 0xC00000FD at a limit of 80 and raise the
+`RangeError` at 72, yet 72 crashed the GitHub runner's build of the same source: frames differ enough between
+compilers to move the wall by several levels, so the limit must sit well below it rather than just under it. The
+floor is `JSON.parse()`, which `eval()`s input its walker has already bounded: the deepest structure `MAX_JSON_DEPTH`
+permits costs `MAX_JSON_DEPTH + 3` levels, measured at 43. The standard library compiles itself in 33 levels on the
+es5 branch and 30 on the es3 one, so JSON sets the floor, not the library. 48 is a third below the lowest wall
+measured and 5 levels above that floor, and the floor is a fixed path: the walker refuses deeper input before
+`eval()` ever sees it, so no input can eat the margin.
+
+The limit was 256 until 2026-10-07, above the real wall, so such source crashed the process instead of raising the
+error. A counter can only approximate the real constraint; measuring the remaining stack would be the robust answer.
+`tests/extremes/compileDepth.io` pins both ends.
 
 ## Testing and Benchmarking
 
