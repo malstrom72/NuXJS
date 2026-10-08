@@ -755,16 +755,21 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 		} else if (exponent > MAX_EXPONENT) {
 			value = std::numeric_limits<double>::infinity();
 		} else {
-			Words<3> digits;								// 10^20 < 2^67, so 20 digits are exact in three words
+			UInt64 leading = 0;								// the first 19 digits fit: 10^19 < 2^64
 			int count = 0;
-			while (p != significandEnd) {
-				if (*p != '.' && count < MAX_SIGNIFICANT_DIGITS) {
-					digits.multiplyAdd(10, static_cast<UInt32>(*p - '0'));
+			for (; p != significandEnd && count < MAX_SIGNIFICANT_DIGITS - 1; ++p) {
+				if (*p != '.') {
+					leading = leading * 10 + static_cast<UInt64>(*p - '0');
 					++count;
 				}
+			}
+			while (p != significandEnd && *p == '.') {
 				++p;
 			}
-			value = convertDecimal(digits, exponent + 1 - count);
+			const bool hasTwentieth = (p != significandEnd);	// 9.3.1 drops only the digits after it
+			Words<3> digits(leading);
+			digits.multiplyAdd(hasTwentieth ? 10 : 1, hasTwentieth ? static_cast<UInt32>(*p - '0') : 0);
+			value = convertDecimal(digits, exponent + 1 - count - (hasTwentieth ? 1 : 0));
 		}
 	}
 	value *= sign;

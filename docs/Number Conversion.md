@@ -55,8 +55,9 @@ nothing of that length can lie so close to an integer without being one; the int
 ## Parsing
 
 `parseDouble` keeps the existing front end (signs, `Infinity`, the grammar, the decimal exponent of the leading digit)
-and reads at most 20 significant digits exactly into a `Words<3>`. A leading exponent below -324 gives 0, and one above
-308 gives infinity, before any of the following.
+and reads at most 20 significant digits exactly. The first 19 go into a plain `UInt64`, one register multiply-add per
+digit since 10^19 < 2^64, and only a 20th digit, which 9.3.1 obliges us to honour, needs the `Words<3>` it is then
+converted into. A leading exponent below -324 gives 0, and one above 308 gives infinity, before any of the following.
 
 `convertDecimal(w, q)` forms x = w * P(q), places the result's least significant bit at
 position = max(bitLength(x) - 53, -1074 - scale) with scale = q + e(q), and rounds the mantissa that `splitAtBit`
