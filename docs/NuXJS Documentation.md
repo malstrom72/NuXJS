@@ -447,6 +447,38 @@ NuXJS also implements several spec corner cases that are easy to overlook when e
 - **`catch (x)` really is its own scope.** A catch clause introduces a new declarative environment that shadows outer bindings and must be visible to `eval`. NuXJS creates a transient `CatchScope` at run time so dynamic code inside the block sees the correct variable.
 - **Built-ins can distinguish call vs construct.** Native functions may have separate `[[Call]]` and `[[Construct]]` paths. User-defined functions cannot emulate this because they share one body. Built-ins in `stdlib.js` use `support.distinctConstructor` to implement behaviours like `String` where the result differs when invoked with `new`.
 
+### Nesting limits
+
+Two limits keep deeply nested input from overflowing the C++ stack. Source nested more than `MAX_NESTED_COMPILE_DEPTH`
+(48) levels deep raises a `RangeError` at compile time, and `JSON.parse()` and `JSON.stringify()` refuse structures
+deeper than 41 levels with a `TypeError` (`MAX_JSON_DEPTH` in `stdlib.js` is 40, and the first depth refused is 42). A
+level is a step of the compiler's recursion, not a source construct: a function expression costs three, most other
+constructs one or two.
+
+The compile limit is a proxy for stack bytes, calibrated for the 1 MB default stack of Windows, so a host running
+NuXJS on a smaller stack needs a lower value. Measured on msvc/x64 with the beta flags:
+
+| shape                       | levels per nesting | stack per level |
+| --------------------------- | ------------------ | --------------- |
+| nested function declaration | 1                  | 2.4 kB          |
+| nested function expression  | 3                  | 1.2 kB          |
+| `try`/`catch`               | 1                  | 1.6 kB          |
+| block, `if`                 | 1 to 2             | 0.9 kB          |
+| array, parenthesis, object  | 1 to 2             | 0.7 kB          |
+
+Declarations are the binding shape. 400 nested declarations crash with 0xC00000FD at a limit of 80 and raise the
+`RangeError` at 72, yet 72 crashed the GitHub runner's build of the same source: frames differ enough between
+compilers to move the wall by several levels, so the limit must sit well below it rather than just under it. The
+floor is `JSON.parse()`, which `eval()`s input its walker has already bounded: the deepest structure `MAX_JSON_DEPTH`
+permits costs `MAX_JSON_DEPTH + 3` levels, measured at 43. The standard library compiles itself in 33 levels on the
+es5 branch and 30 on the es3 one, so JSON sets the floor, not the library. 48 is a third below the lowest wall
+measured and 5 levels above that floor, and the floor is a fixed path: the walker refuses deeper input before
+`eval()` ever sees it, so no input can eat the margin.
+
+The limit was 256 until 2026-10-07, above the real wall, so such source crashed the process instead of raising the
+error. A counter can only approximate the real constraint; measuring the remaining stack would be the robust answer.
+`tests/extremes/compileDepth.io` pins both ends.
+
 ## Testing and Benchmarking
 
 The test suite resides in the `tests/` directory and is exercised by running the helper script `tools/buildAndTest.sh`. Additional benchmark programs are found under `benchmarks/`.

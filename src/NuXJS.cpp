@@ -4165,23 +4165,10 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 }
 
 /*
-	Caps total live compile-time recursion depth. Expressions and statements share this one counter (it is threaded
-	into nested function compilers), so deeply nested source cannot overflow the C++ stack during compilation. It is a
-	proxy for stack bytes, and the shapes cost different amounts of it. Measured on msvc/x64 with the beta flags, a
-	nested function declaration costs one level and about 2.4 kB, a function expression three levels at 1.2 kB each,
-	an array or parenthesis level one level and 0.7 kB. Declarations are therefore the binding shape, and the budget
-	is the 1 MB default stack of Windows.
-
-	The wall is toolchain-dependent, so this must sit well below it rather than just under it. 400 nested
-	declarations crash with 0xC00000FD at a limit of 80 here and raise this RangeError at 72, yet 72 crashed the
-	GitHub runner's build of the same source: frames differ enough between compilers to move the wall by several
-	levels. Below, the floor is JSON.parse(), which eval()s input its walker has already bounded: the deepest
-	structure MAX_JSON_DEPTH permits costs MAX_JSON_DEPTH + 3 of these levels, measured at 43 of 48. stdlib.js
-	compiles itself in 33 of them on the es5 branch and 30 here, so JSON sets the floor, not the library.
-
-	48 is a third below the lowest wall measured and 5 levels above that floor, and that floor is a fixed path: the
-	walker refuses anything deeper before eval() ever sees it, so input cannot eat the margin. A counter can only
-	ever approximate the real constraint; measuring the remaining stack instead would be the robust answer.
+	Caps total live compile-time recursion depth, shared by expressions and statements and threaded into nested
+	function compilers, so deeply nested source raises a RangeError instead of overflowing the C++ stack. It must stay
+	above MAX_JSON_DEPTH + 3, which JSON.parse() needs, and well below the stack wall: see "Nesting limits" in
+	NuXJS Documentation.md.
 */
 const Int32 MAX_NESTED_COMPILE_DEPTH = 48;
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
