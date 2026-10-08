@@ -5551,6 +5551,18 @@ void Runtime::run(const String& source, const String* filename) {
 	runUntilReturn(processor);
 }
 
+static Code* compileCode(Heap& heap, const String* source, const String* filename, Compiler::Target target) {
+	Code* code = new(heap) Code(heap.managed(), 0, new(heap) SourceCodeUnit(heap.managed(), source, filename));
+	Compiler compiler(heap.roots(), code, target);
+	try {
+		compiler.compile(*source);
+	}
+	catch (const ScriptException& x) {
+		throw CompilationError(x, filename, compiler);
+	}
+	return code;
+}
+
 Code* Runtime::compileEvalCode(const String* expression) {
 	const Table::Bucket* bucket = evalCodeCache.lookup(expression);
 	if (bucket != 0) {
@@ -5558,10 +5570,7 @@ Code* Runtime::compileEvalCode(const String* expression) {
 		assert(isA<Code>(o));
 		return reinterpret_cast<Code*>(o);
 	} else {
-		SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), expression, &EVAL_CODE_STRING);
-		Code* code = new(heap) Code(heap.managed(), 0, unit);
-		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
-		compiler.compile(*expression);
+		Code* code = compileCode(heap, expression, &EVAL_CODE_STRING, Compiler::FOR_EVAL);
 		evalCodeCache.update(evalCodeCache.insert(expression), code);
 		return code;
 	}
@@ -5576,19 +5585,9 @@ Var Runtime::eval(const String& expression) {
 }
 
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
-	const String* effectiveFileName = (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING);
 	const String* retainedSource = (heap.managed().owns(&source)
 			? &source : new(heap) String(heap.managed(), source.begin(), source.end()));
-	SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), retainedSource, effectiveFileName);
-	Code* code = new(heap) Code(heap.managed(), 0, unit);
-	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
-	try {
-		compiler.compile(*retainedSource);
-	}
-	catch (const ScriptException& x) {
-		throw CompilationError(x, effectiveFileName, compiler);
-	}
-	return code;
+	return compileCode(heap, retainedSource, (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING), Compiler::FOR_GLOBAL);
 }
 
 void Runtime::fetchFunction(const Object* supportObject, const char* name, Function** f) {

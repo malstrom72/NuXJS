@@ -1931,9 +1931,9 @@ class Compiler : public GCItem {
 		}
 };
 
-/**
-	Extended ScriptException thrown by Runtime::compileGlobalCode that includes the filename, character offset, line and
-	column where the compilation error occurred.
+/*
+	The ScriptException that `Runtime::compileGlobalCode` and `compileEvalCode` throw for source that does not compile,
+	extended with the filename and the offset, line and column where compilation stopped.
 */
 struct CompilationError : public ScriptException {
 	CompilationError(const ScriptException& sourceException, const String* filename, const Compiler& fromCompiler)
