@@ -67,6 +67,7 @@ typedef short Int16;
 typedef unsigned short UInt16;
 typedef int Int32;
 typedef unsigned int UInt32;
+typedef uint64_t UInt64;			// only the decimal conversions need 64 bits; <stdint.h> is already required
 typedef UInt16 Char;
 typedef Int32 CodeWord;
 
@@ -1029,7 +1030,6 @@ class Constants : public GCItem, public Vector<Value> {
 			super::gcMarkReferences(heap);
 		}
 
-	private:
 		mutable Table stringIndexes;			// string constant -> its index in this list
 		mutable Vector<UInt32> otherIndexes;	// indexes of the non-strings worth scanning
 };
