@@ -3252,16 +3252,21 @@ struct Compiler::ExpressionResult {
 	Type t;
 	Value v;
 };
-	
+
+/*
+	Kept small because every nested loop, `try`, `with` and label holds one on the C++ stack, and the compiler inlines
+	some of those into `statement`, which every nesting level pays for: the label is borrowed from the labelled
+	statement that owns it, and the branch lists keep two points inline and spill to the heap beyond that.
+*/
 struct Compiler::SemanticScope {
 	enum Type { ROOT_TYPE, LABEL_TYPE, ITERATOR_LABEL_TYPE, TRY_TYPE, CATCH_TYPE, FINALLY_TYPE, WITH_TYPE };
 	
 	SemanticScope(Heap& heap, Type type, Int32 stackDepthOnEntry, SemanticScope* next)
-			: type(type), next(next), stackDepthOnEntry(stackDepthOnEntry), breaks(&heap), continues(&heap)
-			, finallys(&heap) { }
-	
+			: type(type), label(&EMPTY_STRING), next(next), stackDepthOnEntry(stackDepthOnEntry), breaks(&heap)
+			, continues(&heap), finallys(&heap) { }
+
 	SemanticScope(Heap& heap, const String& label, Int32 stackDepthOnEntry, SemanticScope* next)
-			: type(LABEL_TYPE), label(label), next(next), stackDepthOnEntry(stackDepthOnEntry), breaks(&heap)
+			: type(LABEL_TYPE), label(&label), next(next), stackDepthOnEntry(stackDepthOnEntry), breaks(&heap)
 			, continues(&heap), finallys(&heap) { }
 	
 	void makeIteratorScopes(SemanticScope* untilScope) {
@@ -3303,18 +3308,19 @@ struct Compiler::SemanticScope {
 	}
 	
 	Type type;
-	const String label; 				// empty for automatic while, for, case labels
+	const String* const label;			// &EMPTY_STRING for automatic while, for, case labels
 	SemanticScope* const next;
 	Int32 stackDepthOnEntry;
-	Vector<BranchPoint> breaks; 		// source points for break jmp's
-	Vector<BranchPoint> continues; 		// source points for continue jmp's
-	Vector<BranchPoint> finallys; 		// source points for finally jsr's
+	Vector<BranchPoint, 2> breaks;		// source points for break jmp's
+	Vector<BranchPoint, 2> continues;	// source points for continue jmp's
+	Vector<BranchPoint, 2> finallys;	// source points for finally jsr's
 };
 
-Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter)
-	: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), setupSection(heap, 1)
-	, mainSection(heap, 1), b(0), p(0), e(0), sourceUnitBase(code->getSourceUnit()->getSource()->begin())
-	, currentSection(0), acceptInOperator(true), withScopeCounter(0), nestCounter(initialNestCounter)
+Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, Compiler* outer)
+	: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), root(outer != 0 ? outer->root : *this)
+	, setupSection(heap, 1), mainSection(heap, 1), b(0), p(0), e(0)
+	, sourceUnitBase(code->getSourceUnit()->getSource()->begin()), currentSection(0), acceptInOperator(true)
+	, withScopeCounter(0), nestCounter(0)
 {
 }
 
@@ -3327,7 +3333,12 @@ const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e
 	return s;
 }
 
-void Compiler::error(ErrorType type, const char* message) { ScriptException::throwError(heap, type, message); }
+void Compiler::error(ErrorType type, const String* message) {
+	root.p = p;
+	ScriptException::throwError(heap, type, message);
+}
+
+void Compiler::error(ErrorType type, const char* message) { error(type, String::allocate(heap, message)); }
 
 void Compiler::CodeSection::pushSourceMapping(UInt32 offset) {
 	if (sourceOffsets.empty() || sourceOffsets[sourceOffsets.size() - 1] != offset) {
@@ -3527,8 +3538,7 @@ bool Compiler::token(const char* t, bool eatLeadingWhite) {
 
 void Compiler::expectToken(const char* t, bool eatLeadingWhite) {
 	if (!token(t, eatLeadingWhite)) {
-		ScriptException::throwError(heap, SYNTAX_ERROR
-				, String::concatenate(heap, *String::concatenate(heap, "Expected '", t), "'"));
+		error(SYNTAX_ERROR, String::concatenate(heap, *String::concatenate(heap, "Expected '", t), "'"));
 	}
 }
 
@@ -4125,33 +4135,27 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
 	Code* func = new(heap) Code(heap.managed(), code->constants, code->getSourceUnit());
-	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, nestCounter);
-	try {
-		p = funcCompiler.compileFunction(p, e, functionName, selfName);
-	}
-	catch (const Exception&) { // FIX : a bit Q & D ish
-		p = funcCompiler.p;
-		throw;
-	}
+	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, this);
+	p = funcCompiler.compileFunction(p, e, functionName, selfName);
 	emitWithConstant(Processor::GEN_FUNC_OP, func);
 }
 
 /*
-	Caps total live compile-time recursion depth, shared by expressions and statements and threaded into nested
-	function compilers, so deeply nested source raises a RangeError instead of overflowing the C++ stack. It must stay
-	above MAX_JSON_DEPTH + 3, which JSON.parse() needs, and well below the stack wall: see "Nesting limits" in
-	NuXJS Documentation.md.
+	Caps total live compile-time recursion depth, shared by expressions, statements and nested function compilers, so
+	deeply nested source raises a RangeError instead of overflowing the C++ stack. It must stay above the 57 levels a
+	real generated parser (GAZL's Impala compiler) needs and well below the stack wall: see "Nesting limits" in NuXJS
+	Documentation.md.
 */
-const Int32 MAX_NESTED_COMPILE_DEPTH = 48;
+const Int32 MAX_NESTED_COMPILE_DEPTH = 128;
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
 
 Compiler::NestGuard::NestGuard(Compiler& compiler) : compiler(compiler) {
-	if (compiler.nestCounter >= MAX_NESTED_COMPILE_DEPTH) {
+	if (compiler.root.nestCounter >= MAX_NESTED_COMPILE_DEPTH) {
 		compiler.error(RANGE_ERROR, "Internal compiler limitations reached. Reduce code complexity.");
 	}
-	++compiler.nestCounter;
+	++compiler.root.nestCounter;
 }
-Compiler::NestGuard::~NestGuard() { --compiler.nestCounter; }
+Compiler::NestGuard::~NestGuard() { --compiler.root.nestCounter; }
 
 bool Compiler::optionalExpression(ExpressionResult& xr, Precedence precedence) {
 	NestGuard nestGuard(*this);
@@ -4456,7 +4460,7 @@ void Compiler::breakStatement(SemanticScope* currentScope) {
 	const String* label = (whiteNoLF() ? identifier(false, false) : &EMPTY_STRING);
 	Int32 rollbackStackDepth = currentSection->stackDepth;
 	for (SemanticScope* s = currentScope; s != 0; s = s->next) {
-		if (s->label.isEqualTo(*label)
+		if (s->label->isEqualTo(*label)
 				&& (s->type == SemanticScope::ITERATOR_LABEL_TYPE || s->type == SemanticScope::LABEL_TYPE)) {
 			s->popStack(*this, rollbackStackDepth, evalPopOpcode());
 			s->breaks.push(emitForwardBranch(Processor::JMP_OP));
@@ -4472,7 +4476,7 @@ void Compiler::continueStatement(SemanticScope* currentScope) {
 	const String* label = (whiteNoLF() ? identifier(false, false) : &EMPTY_STRING);
 	Int32 rollbackStackDepth = currentSection->stackDepth;
 	for (SemanticScope* s = currentScope; s != 0; s = s->next) {
-		if (s->label.isEqualTo(*label) && (s->type == SemanticScope::ITERATOR_LABEL_TYPE
+		if (s->label->isEqualTo(*label) && (s->type == SemanticScope::ITERATOR_LABEL_TYPE
 				|| (s->type == SemanticScope::LABEL_TYPE && !label->empty()))) {
 			if (s->type != SemanticScope::ITERATOR_LABEL_TYPE) {
 				error(SYNTAX_ERROR, "Illegal label for continue");
@@ -4851,6 +4855,29 @@ void Compiler::switchStatement(SemanticScope* currentScope) {
 	because it is legal to give while loops etc multiple alternative labels to be used with 'continue'.
 	(These should all be converted to 'ITERATOR_LABEL_TYPE' upon entry.)
 */
+/*
+	Kept out of `statement` because labels are rare while every level of statement nesting pays for its frame: the
+	label's `SemanticScope` alone would otherwise sit on the stack of every nested block and function body.
+*/
+void Compiler::labelledStatement(const Char* labelBegin, const Char* labelEnd, SemanticScope* currentScope
+		, SemanticScope* scopeLabelsEnd) {
+	const String label(labelBegin, labelEnd);
+	assert(!label.empty());
+	if (findReservedKeyword(label.size(), label.begin()) >= 0) {
+		error(SYNTAX_ERROR, "Illegal use of keyword");
+	}
+	for (SemanticScope* s = currentScope; s != 0; s = s->next) {
+		if (!s->label->empty() && s->label->isEqualTo(label)) {
+			error(SYNTAX_ERROR, "Duplicate label");
+		}
+	}
+	SemanticScope newLabelScope(heap, label, currentSection->stackDepth, currentScope);
+	statement(&newLabelScope, scopeLabelsEnd);
+	if (newLabelScope.type != SemanticScope::ITERATOR_LABEL_TYPE) {
+		completeBreaks(&newLabelScope);
+	}
+}
+
 void Compiler::statement(SemanticScope* currentScope, SemanticScope* scopeLabelsEnd) {
 	assert(currentSection == &mainSection); // statements must produce into main-section because of breaks etc...
 
@@ -4869,21 +4896,7 @@ void Compiler::statement(SemanticScope* currentScope, SemanticScope* scopeLabels
 	int statementTokenIndex = findStatementKeyword(p - b, &*b);
 	if (statementTokenIndex < 0) {
 		if (p != b && token(":", true)) {
-			const String label = String(parsed.begin(), parsed.end());
-			assert(!label.empty());
-			if (findReservedKeyword(label.size(), label.begin()) >= 0) {
-				error(SYNTAX_ERROR, "Illegal use of keyword");
-			}
-			for (SemanticScope* s = currentScope; s != 0; s = s->next) {
-				if (!s->label.empty() && s->label.isEqualTo(label)) {
-					error(SYNTAX_ERROR, "Duplicate label");
-				}
-			}
-			SemanticScope newLabelScope(heap, label, currentSection->stackDepth, currentScope);
-			statement(&newLabelScope, scopeLabelsEnd);
-			if (newLabelScope.type != SemanticScope::ITERATOR_LABEL_TYPE) {
-				completeBreaks(&newLabelScope);
-			}
+			labelledStatement(parsed.begin(), parsed.end(), currentScope, scopeLabelsEnd);
 		} else {
 			p = b;
 			ExpressionResult evalXR = (compilingFor == FOR_EVAL ? ExpressionResult::PUSHED : ExpressionResult::NONE);
