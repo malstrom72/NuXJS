@@ -607,7 +607,7 @@ static bool compileAndRun(Runtime& rt, MyHeap& heap, Processor& processor, const
 		const String* scriptSource = new(heap) String(heap.managed(), source.begin(), source.end());
 		SourceCodeUnit* sourceCodeUnit = new(heap) SourceCodeUnit(heap.managed(), scriptSource, scriptFileName);
 		Code globalCode(heap.roots(), 0, sourceCodeUnit);
-		Compiler compiler(heap.roots(), &globalCode, compileFor, 1);
+		Compiler compiler(heap.roots(), &globalCode, compileFor);
 		try {
 			compiler.compile(*scriptSource);
 		}

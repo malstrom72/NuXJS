@@ -5,6 +5,12 @@
 > print(tryIt(nest('(function(){', '})', 10)))
 < compiled
 -
+// real generated code nests this deep: GAZL's Impala compiler needs a limit of 57, and so do 55 nested declarations
+> function nest(open, close, n) { var s = '', i; for (i = 0; i < n; ++i) s += open; for (i = 0; i < n; ++i) s += close; return s }
+> function tryIt(s) { try { eval(s); return 'compiled' } catch (e) { return String(e) } }
+> print(tryIt(nest('function f(){', '}', 55)))
+< compiled
+-
 // the shape that used to exhaust the stack before the guard could fire
 > function nest(open, close, n) { var s = '', i; for (i = 0; i < n; ++i) s += open; for (i = 0; i < n; ++i) s += close; return s }
 > function tryIt(s) { try { eval(s); return 'compiled' } catch (e) { return String(e) } }
@@ -23,11 +29,11 @@
 > print(tryIt(nest('[', ']', 500)))
 < RangeError: Internal compiler limitations reached. Reduce code complexity.
 -
-// the limit must stay above the 40 levels tests/stdlib/JSON.io requires, since JSON.parse eval()s its input
+// the limit must stay above the 62 levels tests/stdlib/JSON.io requires, since JSON.parse eval()s its input
 > var s = '', i
-> for (i = 0; i < 40; ++i) s += '['
+> for (i = 0; i < 62; ++i) s += '['
 > s += '234'
-> for (i = 0; i < 40; ++i) s += ']'
+> for (i = 0; i < 62; ++i) s += ']'
 > print(JSON.stringify(JSON.parse(s)).length)
-< 83
+< 127
 -

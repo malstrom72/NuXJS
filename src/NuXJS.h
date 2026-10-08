@@ -2140,7 +2140,7 @@ class Compiler : public GCItem {
 
 		enum Target { FOR_GLOBAL, FOR_FUNCTION, FOR_EVAL };
 
-		Compiler(GCList& gcList, Code* code, Target compileFor, int initialNestCounter = 0);
+		Compiler(GCList& gcList, Code* code, Target compileFor, Compiler* outer = 0);
 		const Char* compile(const Char* b, const Char* e);
 		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
 		void compile(const String& source);
@@ -2203,6 +2203,7 @@ class Compiler : public GCItem {
 		struct SemanticScope;
 
 		static const String* newHashedString(Heap& heap, const Char* b, const Char* e);
+		void error(ErrorType type, const String* message);
 		void error(ErrorType type, const char* message);
 		void emit(Processor::Opcode opcode, Int32 operand = 0);
 		CodeSection* changeSection(CodeSection* newOutputSection);
@@ -2265,6 +2266,8 @@ class Compiler : public GCItem {
 		void throwStatement();
 		void tryStatement(SemanticScope* currentScope);
 		void switchStatement(SemanticScope* currentScope);
+		void labelledStatement(const Char* labelBegin, const Char* labelEnd, SemanticScope* currentScope
+				, SemanticScope* scopeLabelsEnd);
 		void statement(SemanticScope* firstScope, SemanticScope* scopeLabelsEnd);
 		void statementList(SemanticScope* firstScope);
 		bool token(const char* t, bool eatLeadingWhite);
@@ -2280,6 +2283,7 @@ class Compiler : public GCItem {
 		Heap& heap;
 		Code* const code;
 		const Target compilingFor;
+		Compiler& root;			// the outermost compiler: it counts the nesting and holds the position of a compilation error
 		CodeSection setupSection; ///< function declarations (and vars in eval code), inserted at top of function when finalizing
 		CodeSection mainSection;
 		const Char* b;
@@ -2289,7 +2293,7 @@ class Compiler : public GCItem {
 		CodeSection* currentSection;
 		bool acceptInOperator;
 		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
-		int nestCounter;
+		int nestCounter;			// used in the root compiler only
 	#if NUXJS_ES5
 		bool inDirectivePrologue;	// 14.1: true while still parsing the leading string-literal directive prologue
 		/*
