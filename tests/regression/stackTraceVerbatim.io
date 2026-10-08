@@ -25,22 +25,22 @@
 > throw "done"
 < Error: E_direct
 <     at <eval>:2:34
-<     at <anonymous>:23:10
+<     at <eval>:23:10
 < Error: E_named
 <     at f_named (<eval>:7:48)
 <     at <eval>:8:16
-<     at <anonymous>:23:10
+<     at <eval>:23:10
 < Error: E_iife
 <     at <eval>:13:45
 <     at <eval>:13:51
-<     at <anonymous>:23:10
+<     at <eval>:23:10
 < Error: E_namedExpr
 <     at namedExpr (<eval>:18:67)
 <     at <eval>:19:15
-<     at <anonymous>:23:10
+<     at <eval>:23:10
 < Error: E_eval
 <     at <eval>:1:26
 <     at <eval>:24:42
-<     at <anonymous>:23:10
+<     at <eval>:23:10
 ! !!!! done
 -

@@ -2,5 +2,5 @@
 // TypeError for a non-callable method call maps to the position after ')'. (ES5 twin: tests/es5.)
 > try { ({}).notAFunction(); } catch (err) { print(err.stack) }
 < TypeError: notAFunction is not a function
-<     at <anonymous>:1:26
+<     at <eval>:1:26
 -

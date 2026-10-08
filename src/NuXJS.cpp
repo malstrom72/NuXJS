@@ -7485,6 +7485,26 @@ void Runtime::run(const String& source, const String* filename) {
 	runUntilReturn(processor);
 }
 
+static Code* compileCode(Heap& heap, const String* source, const String* filename, Compiler::Target target
+		, bool strict = false) {
+	Code* code = new(heap) Code(heap.managed(), 0, new(heap) SourceCodeUnit(heap.managed(), source, filename));
+	Compiler compiler(heap.roots(), code, target);
+#if NUXJS_ES5
+	if (strict) {
+		compiler.markStrict();	// before compiling, so the parse-time strict checks (with, octal, ...) apply
+	}
+#else
+	(void)strict;
+#endif
+	try {
+		compiler.compile(*source);
+	}
+	catch (const ScriptException& x) {
+		throw CompilationError(x, filename, compiler);
+	}
+	return code;
+}
+
 #if NUXJS_ES5
 Code* Runtime::compileEvalCode(const String* expression, bool inheritStrict) {
 	// 10.4.2: eval inheriting caller strictness compiles to a distinct forced-strict Code, cached separately.
@@ -7495,13 +7515,7 @@ Code* Runtime::compileEvalCode(const String* expression, bool inheritStrict) {
 		assert(dynamic_cast<Code*>(o) != 0);
 		return reinterpret_cast<Code*>(o);
 	} else {
-		SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), expression, &EVAL_CODE_STRING);
-		Code* code = new(heap) Code(heap.managed(), 0, unit);
-		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
-		if (inheritStrict) {
-			compiler.markStrict();	// force strict before compiling so parse-time strict checks (with, octal, ...) apply
-		}
-		compiler.compile(*expression);
+		Code* code = compileCode(heap, expression, &EVAL_CODE_STRING, Compiler::FOR_EVAL, inheritStrict);
 		cache.update(cache.insert(expression), code);
 		return code;
 	}
@@ -7514,10 +7528,7 @@ Code* Runtime::compileEvalCode(const String* expression) {
 		assert(isA<Code>(o));
 		return reinterpret_cast<Code*>(o);
 	} else {
-		SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), expression, &EVAL_CODE_STRING);
-		Code* code = new(heap) Code(heap.managed(), 0, unit);
-		Compiler compiler(heap.roots(), code, Compiler::FOR_EVAL);
-		compiler.compile(*expression);
+		Code* code = compileCode(heap, expression, &EVAL_CODE_STRING, Compiler::FOR_EVAL);
 		evalCodeCache.update(evalCodeCache.insert(expression), code);
 		return code;
 	}
@@ -7533,19 +7544,9 @@ Var Runtime::eval(const String& expression) {
 }
 
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
-	const String* effectiveFileName = (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING);
 	const String* retainedSource = (heap.managed().owns(&source)
 			? &source : new(heap) String(heap.managed(), source.begin(), source.end()));
-	SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), retainedSource, effectiveFileName);
-	Code* code = new(heap) Code(heap.managed(), 0, unit);
-	Compiler compiler(heap.roots(), code, Compiler::FOR_GLOBAL);
-	try {
-		compiler.compile(*retainedSource);
-	}
-	catch (const ScriptException& x) {
-		throw CompilationError(x, effectiveFileName, compiler);
-	}
-	return code;
+	return compileCode(heap, retainedSource, (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING), Compiler::FOR_GLOBAL);
 }
 
 void Runtime::fetchFunction(const Object* supportObject, const char* name, Function** f) {
