@@ -143,7 +143,6 @@ function runBenchmark(options) {
         let times = "";
         let mem1 = "";
         let mem2 = "";
-        let mem3 = "";
         for (let i = 0; i < runs && times !== "FAIL"; ++i) {
                 const result = child_process.spawnSync(command, { shell: true, stdio: "ignore" });
                 if (result.error) throw result.error;
@@ -161,7 +160,6 @@ function runBenchmark(options) {
                         runValues.push(tokens[0]);
                         mem1 = tokens[1] || "";
                         mem2 = tokens[2] || "";
-                        mem3 = tokens[3] || "";
                 }
         }
 
@@ -205,7 +203,6 @@ function runBenchmark(options) {
 	entries[0] = medianString;
 	entries[1] = mem1;
 	entries[2] = mem2;
-	entries[3] = mem3;
 	for (const entry of entries) widths[name] = Math.max(widths[name], entry.length);
 	console.log("median: " + medianString + "\n");
 	return { value: medianValue, raw: medianRaw };
@@ -256,7 +253,7 @@ function buildSummaryLines(names, widths, timeLines) {
         const lines = [];
         lines[0] = "        ";
         lines[1] = "        ";
-        const labels = ["median", "mem1", "mem2", "mem3"];
+        const labels = ["median", "heap", "peak"];
 	for (let i = 0; i < labels.length; ++i) {
 		lines[i + 2] = labels[i] + " ".repeat(8 - labels[i].length);
 	}
@@ -265,7 +262,7 @@ function buildSummaryLines(names, widths, timeLines) {
 		lines[0] += padColumn(name, width) + "  ";
 		lines[1] += "-".repeat(width) + "  ";
 		const entries = timeLines[name];
-		for (let i = 0; i < 4; ++i) {
+		for (let i = 0; i < labels.length; ++i) {
 			const value = entries[i] || "";
 			lines[i + 2] += padColumn(value, width) + "  ";
 		}
@@ -274,7 +271,7 @@ function buildSummaryLines(names, widths, timeLines) {
 }
 
 function buildFlippedLines(names, runColumns, timeLines) {
-        const metricLabels = ["median", "mem1", "mem2", "mem3"];
+        const metricLabels = ["median", "heap", "peak"];
         const headerLabel = "benchmark";
         let firstWidth = headerLabel.length;
         let maxRuns = 0;
