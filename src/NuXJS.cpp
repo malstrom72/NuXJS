@@ -389,6 +389,11 @@ template<int N> class Words {
 			}
 			assert(carry == 0);								// the product must fit in N words
 		}
+		Words timesTenPlus(UInt32 digit) const {
+			Words result = *this;
+			result.multiplyAdd(10, digit);
+			return result;
+		}
 		void add(const Words& other) {
 			UInt64 carry = 0;
 			for (int i = 0; i < N; ++i) {
@@ -532,15 +537,9 @@ static UInt64 splitAtBit(const Words<8>& x, const Words<8>& delta, int position,
 
 /*
 	`significand` * 10^`power` rounded to the nearest double, ties to even, for 0 < significand < 10^20 and `power`
-	inside the table. A significand below 2^53 with a power of ten within 10^+-22 takes one IEEE operation on two
-	exact operands instead, which rounds the same under the default round-to-nearest.
+	inside the table.
 */
-static double convertDecimal(const Words<3>& significand, int power) {
-	const UInt64 low = significand.bitsFrom(0);
-	if (significand.word(2) == 0 && (low >> MANTISSA_BITS) == 0 && -22 <= power && power <= 22) {
-		return (power >= 0 ? static_cast<double>(low) * EXACT_POWERS_OF_TEN[power]
-				: static_cast<double>(low) / EXACT_POWERS_OF_TEN[-power]);
-	}
+static double convertExact(const Words<3>& significand, int power) {
 	const PowerOfFiveTable::Entry& entry = POWERS_OF_FIVE.entry(power);
 	Words<8> x;
 	x.setProduct(significand, entry.significand);
@@ -550,6 +549,17 @@ static double convertDecimal(const Words<3>& significand, int power) {
 	const UInt64 mantissa = splitAtBit(x, Words<8>(significand), position, half);
 	const UInt64 rounded = mantissa + (half > 0 || (half == 0 && (mantissa & 1) != 0) ? 1 : 0);
 	return ldexp(static_cast<double>(rounded), position + scale);
+}
+
+/*
+	As `convertExact`, for a significand that fits 64 bits. One below 2^53 with a power of ten within 10^+-22 takes a
+	single IEEE operation on two exact operands instead, which rounds the same under the default round-to-nearest.
+*/
+static double convertDecimal(UInt64 significand, int power) {
+	const bool operandsExact = ((significand >> MANTISSA_BITS) == 0 && -22 <= power && power <= 22);
+	return (!operandsExact ? convertExact(Words<3>(significand), power)
+			: power >= 0 ? static_cast<double>(significand) * EXACT_POWERS_OF_TEN[power]
+			: static_cast<double>(significand) / EXACT_POWERS_OF_TEN[-power]);
 }
 
 /*
@@ -598,9 +608,8 @@ static UInt64 shortestDigits(double value, int& exponent10) {
 		const int n = (low + high) / 2;
 		const int power = k - n + 1;
 		const UInt64 truncated = scaledFloor(mantissa, exponent2, -power, half);
-		const bool lowerFits = (convertDecimal(Words<3>(truncated), power) == value);
-		const bool upperFits = ((!lowerFits || half >= 0)
-				&& convertDecimal(Words<3>(truncated + 1), power) == value);
+		const bool lowerFits = (convertDecimal(truncated, power) == value);
+		const bool upperFits = ((!lowerFits || half >= 0) && convertDecimal(truncated + 1, power) == value);
 		if (lowerFits || upperFits) {
 			const bool preferUpper = (half > 0 || (half == 0 && (truncated & 1) != 0));
 			digits = (!lowerFits || (upperFits && preferUpper && !isMax) ? truncated + 1 : truncated);
@@ -767,9 +776,8 @@ static const Char* parseDouble(const Char* const b, const Char* const e, double&
 				++p;
 			}
 			const bool hasTwentieth = (p != significandEnd);	// 9.3.1 drops only the digits after it
-			Words<3> digits(leading);
-			digits.multiplyAdd(hasTwentieth ? 10 : 1, hasTwentieth ? static_cast<UInt32>(*p - '0') : 0);
-			value = convertDecimal(digits, exponent + 1 - count - (hasTwentieth ? 1 : 0));
+			value = (hasTwentieth ? convertExact(Words<3>(leading).timesTenPlus(static_cast<UInt32>(*p - '0'))
+					, exponent + 1 - MAX_SIGNIFICANT_DIGITS) : convertDecimal(leading, exponent + 1 - count));
 		}
 	}
 	value *= sign;

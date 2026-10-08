@@ -59,18 +59,18 @@ and reads at most 20 significant digits exactly. The first 19 go into a plain `U
 digit since 10^19 < 2^64, and only a 20th digit, which 9.3.1 obliges us to honour, needs the `Words<3>` it is then
 converted into. A leading exponent below -324 gives 0, and one above 308 gives infinity, before any of the following.
 
-`convertDecimal(w, q)` forms x = w * P(q), places the result's least significant bit at
+`convertExact(w, q)` forms x = w * P(q), places the result's least significant bit at
 position = max(bitLength(x) - 53, -1074 - scale) with scale = q + e(q), and rounds the mantissa that `splitAtBit`
 returns: up when the rest is above half, and on an exact half up only if the mantissa is odd, which is round half to
 even. The result is put together with `ldexp(mantissa, position + scale)` rather than from its bits, so no layout of a
 double is assumed, and a mantissa that carries to 2^53, a subnormal result and a magnitude past the largest finite
 double all come out right by themselves.
 
-Most inputs never reach that path. When w is below 2^53 and q lies within -22..22, both w and 10^|q| are exact
-doubles, so a single multiplication or division by 10^|q| is already correctly rounded (Clinger's fast path). That
-covers nearly all everyday numbers, and since the formatter checks its candidates through `convertDecimal` too, it
-speeds up both directions: two to three times as fast as the exact path on typical values, and at least level with
-the old double-double code in every case measured.
+Most inputs never reach that path. `convertDecimal(w, q)` takes w as a plain 64-bit integer, and when it is below 2^53
+and q lies within -22..22, both w and 10^|q| are exact doubles, so a single multiplication or division by 10^|q| is
+already correctly rounded (Clinger's fast path). Only otherwise does it build the `Words<3>` for `convertExact`, and
+only a 20th digit sends the parser to `convertExact` directly. That covers nearly all everyday numbers, and since the
+formatter checks its candidates through `convertDecimal` too, it speeds up both directions.
 
 ## Printing
 
