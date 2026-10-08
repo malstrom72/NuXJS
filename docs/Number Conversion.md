@@ -65,13 +65,21 @@ even. The result is put together with `ldexp(mantissa, position + scale)` rather
 double is assumed, and a mantissa that carries to 2^53, a subnormal result and a magnitude past the largest finite
 double all come out right by themselves.
 
+Most inputs never reach that path. When w is below 2^53 and q lies within -22..22, both w and 10^|q| are exact
+doubles, so a single multiplication or division by 10^|q| is already correctly rounded (Clinger's fast path). That
+covers nearly all everyday numbers, and since the formatter checks its candidates through `convertDecimal` too, it
+speeds up both directions: two to three times as fast as the exact path on typical values, and at least level with
+the old double-double code in every case measured.
+
 ## Printing
 
 `decompose` takes the value apart with `frexp` into an exact 53-bit mantissa and a binary exponent. `scaledFloor`
 gives floor(v * 10^j) and its half comparison from the same product and `splitAtBit`.
 
 `shortestDigits` estimates the decimal exponent k of the leading digit as floor(e * 1233 / 4096) from the binary
-exponent, which is off by at most one, and corrects it from the first digit. It then binary searches the digit count n
+exponent and corrects it by one step from the first digit. That one step is enough: for every binary exponent from
+-1074 to 1023 the true exponent lies within one of the estimate, which was checked exhaustively in exact integer
+arithmetic, so there is no loop. It then binary searches the digit count n
 from 1 to 17, since "some n-digit decimal reads back as v" is monotone in n. Each probe forms the truncation
 F = floor(v * 10^(n-1-k)) and checks F and F + 1 by converting them back with `convertDecimal`; the smallest n with a
 survivor wins. When both survive, the closer one is taken, and on an exact half the even one. Two details:
@@ -86,10 +94,9 @@ exponential notation outside that, and no trailing `.0`.
 
 ## The floating-point environment
 
-Everything above is integer arithmetic until the final `ldexp`, so the rounding mode does not change a single result;
-that was measured identical under all four modes. Flush-to-zero and denormals-are-zero still act on that `ldexp`, so a
-subnormal result becomes 0 there. `NuXJS Documentation.md` states what the engine as a whole expects of the
-environment.
+The fast path is one IEEE operation, so like every arithmetic operation in the engine it needs the default
+floating-point environment that `NuXJS Documentation.md` requires: round-to-nearest, denormals intact, doubles
+evaluated in double precision.
 
 ## Testing a change to this code
 

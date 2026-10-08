@@ -433,7 +433,9 @@ template<int N> class Words {
 			}
 		}
 		template<int A, int B> void setProduct(const Words<A>& a, const Words<B>& b) {
-			*this = Words();
+			for (int i = 0; i < N; ++i) {						// zeroed in place: a temporary costs MSVC a copy here
+				words[i] = 0;
+			}
 			for (int i = 0; i < A; ++i) {
 				UInt64 carry = 0;
 				for (int j = 0; j < B; ++j) {
@@ -509,6 +511,8 @@ const int MANTISSA_BITS = 53;							// including the implicit one
 const int MIN_BINARY_EXPONENT = -1074;					// of the smallest subnormal
 const int MAX_SIGNIFICANT_DIGITS = 20;					// the most 9.3.1 obliges us to read exactly
 const int MAX_SHORTEST_DIGITS = 17;					// always enough to tell two doubles apart
+static const double EXACT_POWERS_OF_TEN[] = { 1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12,
+		1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22 };	// the most a double holds exactly
 
 /*
 	The integer part of `x` above bit `position`, for an exact value known to lie in [x, x + delta) with delta below
@@ -528,9 +532,15 @@ static UInt64 splitAtBit(const Words<8>& x, const Words<8>& delta, int position,
 
 /*
 	`significand` * 10^`power` rounded to the nearest double, ties to even, for 0 < significand < 10^20 and `power`
-	inside the table.
+	inside the table. A significand below 2^53 with a power of ten within 10^+-22 takes one IEEE operation on two
+	exact operands instead, which rounds the same under the default round-to-nearest.
 */
 static double convertDecimal(const Words<3>& significand, int power) {
+	const UInt64 low = significand.bitsFrom(0);
+	if (significand.word(2) == 0 && (low >> MANTISSA_BITS) == 0 && -22 <= power && power <= 22) {
+		return (power >= 0 ? static_cast<double>(low) * EXACT_POWERS_OF_TEN[power]
+				: static_cast<double>(low) / EXACT_POWERS_OF_TEN[-power]);
+	}
 	const PowerOfFiveTable::Entry& entry = POWERS_OF_FIVE.entry(power);
 	Words<8> x;
 	x.setProduct(significand, entry.significand);
@@ -575,14 +585,11 @@ static UInt64 shortestDigits(double value, int& exponent10) {
 	decompose(value, mantissa, exponent2);
 	const int binaryExponent = exponent2 + Words<2>(mantissa).bitLength() - 1;
 	const int scaled = binaryExponent * 1233;			// 1233 / 4096 is log10(2) closely enough to be off by one
-	int k = (scaled >= 0 ? scaled : scaled - 4095) / 4096;
+	const int estimate = (scaled >= 0 ? scaled : scaled - 4095) / 4096;	// at most one off in every binade
 	int half;
-	while (scaledFloor(mantissa, exponent2, -k, half) >= 10) {
-		++k;
-	}
-	while (scaledFloor(mantissa, exponent2, -k, half) == 0) {
-		--k;
-	}
+	const UInt64 first = scaledFloor(mantissa, exponent2, -estimate, half);
+	const int k = estimate + (first >= 10 ? 1 : first == 0 ? -1 : 0);
+	assert(scaledFloor(mantissa, exponent2, -k, half) - 1 < 9);	// the leading digit is now 1 to 9
 	const bool isMax = (value == std::numeric_limits<double>::max());	// never rounded up past the overflow line
 	UInt64 digits = 0;
 	int low = 1;

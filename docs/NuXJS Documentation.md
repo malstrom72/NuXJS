@@ -20,11 +20,10 @@ The implementation depends on IEEE-compliant floating-point math. `src/NuXJS.cpp
 
 The same holds at run time: NuXJS expects the default floating-point environment, round-to-nearest with denormals
 intact (no flush-to-zero or denormals-are-zero), and neither sets nor restores it itself. A host that changes it, for
-DSP code say, must restore the default on that thread before calling into NuXJS. Since the decimal conversions became
-exact integer arithmetic they no longer care about the rounding mode, measured identical under all four modes, but
-flush-to-zero and denormals-are-zero still cost you the subnormals: `1e-310` and `5e-324` then parse as `0`. Ordinary
-JavaScript arithmetic is of course affected throughout, and `(0.1).toFixed(20)` prints invalid digits under another
-rounding mode.
+DSP code say, must restore the default on that thread before calling into NuXJS. Otherwise number conversion breaks:
+with flush-to-zero and denormals-are-zero on, `1e-310` and `5e-324` parse as `0`, and under round toward zero
+`String(2 / 3)` prints `0.6666666666666667`, one digit off, while `(0.1).toFixed(20)` prints invalid digits. Ordinary
+JavaScript arithmetic is of course affected throughout.
 
 The standard library lives in `src/stdlib.js`.
 During the build, it is minified and converted to C++ via `tools/stdlibToCpp.pika` using `PikaCmd`.
