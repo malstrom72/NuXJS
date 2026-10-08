@@ -1725,7 +1725,7 @@ function createErrorConstructor(name, prototype) {
 // These are not guaranteed to be 100% compatible
 
 var JSON_ESCAPE_SEQUENCES = { '\\': "\\\\", '"': "\\\"", '\b': "\\b", '\f': "\\f", '\n': "\\n", '\r': "\\r", '\t': "\\t" };
-var MAX_JSON_DEPTH = 40;	// well under MAX_NESTED_COMPILE_DEPTH (48), so the eval() this walker feeds cannot reach the compiler limit
+var MAX_JSON_DEPTH = 40;	// well under MAX_NESTED_COMPILE_DEPTH (64), so the eval() this walker feeds cannot reach the compiler limit
 
 // TODO : use StringBuilder?
 defineProperties(JSON, { dontEnum: true }, {

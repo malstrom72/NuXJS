@@ -4139,10 +4139,10 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 /*
 	Caps total live compile-time recursion depth, shared by expressions and statements and threaded into nested
 	function compilers, so deeply nested source raises a RangeError instead of overflowing the C++ stack. It must stay
-	above MAX_JSON_DEPTH + 3, which JSON.parse() needs, and well below the stack wall: see "Nesting limits" in
-	NuXJS Documentation.md.
+	above the 57 levels a real generated parser (GAZL's Impala compiler) needs and well below the stack wall: see
+	"Nesting limits" in NuXJS Documentation.md.
 */
-const Int32 MAX_NESTED_COMPILE_DEPTH = 48;
+const Int32 MAX_NESTED_COMPILE_DEPTH = 64;
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
 
 Compiler::NestGuard::NestGuard(Compiler& compiler) : compiler(compiler) {

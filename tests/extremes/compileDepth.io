@@ -5,6 +5,12 @@
 > print(tryIt(nest('(function(){', '})', 10)))
 < compiled
 -
+// real generated code nests this deep: GAZL's Impala compiler needs a limit of 57, and so do 55 nested declarations
+> function nest(open, close, n) { var s = '', i; for (i = 0; i < n; ++i) s += open; for (i = 0; i < n; ++i) s += close; return s }
+> function tryIt(s) { try { eval(s); return 'compiled' } catch (e) { return String(e) } }
+> print(tryIt(nest('function f(){', '}', 55)))
+< compiled
+-
 // the shape that used to exhaust the stack before the guard could fire
 > function nest(open, close, n) { var s = '', i; for (i = 0; i < n; ++i) s += open; for (i = 0; i < n; ++i) s += close; return s }
 > function tryIt(s) { try { eval(s); return 'compiled' } catch (e) { return String(e) } }
