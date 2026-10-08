@@ -4146,7 +4146,7 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 	real generated parser (GAZL's Impala compiler) needs and well below the stack wall: see "Nesting limits" in NuXJS
 	Documentation.md.
 */
-const Int32 MAX_NESTED_COMPILE_DEPTH = 64;
+const Int32 MAX_NESTED_COMPILE_DEPTH = 128;
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
 
 Compiler::NestGuard::NestGuard(Compiler& compiler) : compiler(compiler) {

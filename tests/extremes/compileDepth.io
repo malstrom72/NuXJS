@@ -29,11 +29,11 @@
 > print(tryIt(nest('[', ']', 500)))
 < RangeError: Internal compiler limitations reached. Reduce code complexity.
 -
-// the limit must stay above the 40 levels tests/stdlib/JSON.io requires, since JSON.parse eval()s its input
+// the limit must stay above the 62 levels tests/stdlib/JSON.io requires, since JSON.parse eval()s its input
 > var s = '', i
-> for (i = 0; i < 40; ++i) s += '['
+> for (i = 0; i < 62; ++i) s += '['
 > s += '234'
-> for (i = 0; i < 40; ++i) s += ']'
+> for (i = 0; i < 62; ++i) s += ']'
 > print(JSON.stringify(JSON.parse(s)).length)
-< 83
+< 127
 -

@@ -472,7 +472,7 @@ const char* STDLIB_JS =
 "tEnum:true,readOnly:true,dontDelete:true},{prototype:X});Q(X,{dontEnum:true},{constructor:aK,name:C})}Q(Error.prototyp"
 "e,{dontEnum:true},{message:'',toString:c(function toString(){return(this.name===void 0?\"Error\":this.name)+(this.mess"
 "age?(\": \"+this.message):'')})});l=SyntaxError;m=RangeError;n=TypeError})();var eG={'\\\\':\"\\\\\\\\\",'\"':\"\\\\\\"
-"\"\",'\\b':\"\\\\b\",'\\f':\"\\\\f\",'\\n':\"\\\\n\",'\\r':\"\\\\r\",'\\t':\"\\\\t\"};var eH=40;Q(JSON,{dontEnum:true}"
+"\"\",'\\b':\"\\\\b\",'\\f':\"\\\\f\",'\\n':\"\\\\n\",'\\r':\"\\\\r\",'\\t':\"\\\\t\"};var eH=61;Q(JSON,{dontEnum:true}"
 ",{stringify:c(function stringify(ad,eI,eJ){var eK=[],eL=(typeof eI===\"function\"?eI:null),eM='',eN;if(i(eI,\"class\")"
 "===\"Array\"){eN={};for(var u=eI.length;--u>=0;)eN[eI[u]]=true}if(typeof eJ===\"number\"||(typeof eJ===\"object\"&&i(e"
 "J,\"class\")===\"Number\")){eJ=+eJ;for(var u=(eJ>10?10:eJ);--u>=0;)eM+=' '}else if(typeof eJ===\"string\"||(typeof eJ="
