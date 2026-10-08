@@ -858,7 +858,6 @@ class Constants : public GCItem, public Vector<Value> {
 			super::gcMarkReferences(heap);
 		}
 
-	private:
 		mutable Table stringIndexes;			// string constant -> its index in this list
 		mutable Vector<UInt32> otherIndexes;	// indexes of the non-strings worth scanning
 };

@@ -470,7 +470,7 @@ template<int N> class Words {
 			}
 		}
 
-	private:
+	protected:
 		void clear() {
 			for (int i = 0; i < N; ++i) {
 				words[i] = 0;
@@ -533,7 +533,7 @@ class PowerOfFiveTable {
 			return entries[power - MIN_POWER];
 		}
 
-	private:
+	protected:
 		Entry entries[COUNT];
 };
 
