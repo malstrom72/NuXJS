@@ -4407,7 +4407,7 @@ void Processor::innerRun() {
 			case ADD_GETTER_OP:
 			case ADD_SETTER_OP: {
 				Object* o = sp[-1].getObject();
-				assert(dynamic_cast<JSObject*>(o) != 0);	// object literals always construct plain JSObjects
+				assert(isA<JSObject>(o));	// object literals always construct plain JSObjects
 				Function* f = sp[0].getObject()->asFunction();
 				assert(f != 0);
 				reinterpret_cast<JSObject*>(o)->defineOwnAccessor(rt, constants[im], f, opcode == ADD_SETTER_OP);
@@ -7512,7 +7512,7 @@ Code* Runtime::compileEvalCode(const String* expression, bool inheritStrict) {
 	const Table::Bucket* bucket = cache.lookup(expression);
 	if (bucket != 0) {
 		Object* o = bucket->getValue().getObject();
-		assert(dynamic_cast<Code*>(o) != 0);
+		assert(isA<Code>(o));
 		return reinterpret_cast<Code*>(o);
 	} else {
 		Code* code = compileCode(heap, expression, &EVAL_CODE_STRING, Compiler::FOR_EVAL, inheritStrict);
