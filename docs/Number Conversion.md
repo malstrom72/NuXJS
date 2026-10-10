@@ -106,7 +106,7 @@ range edges, the 9.8.1 layout thresholds and both directions of the tie rule. A 
 two traps make a passing check worthless:
 
 - **Random inputs do not discriminate.** Random decimals almost never land near a rounding midpoint: 200,000 random
-  decimals of 1 to 20 digits pass on the old double-double parser too, and so do exact midpoints truncated to 20
+  decimals of 1 to 20 digits pass on a parser that is only nearly correct, and so do exact midpoints truncated to 20
   digits, which still leaves them 2^-63 away. Only inputs constructed within about 2^-125 of a midpoint, such as those
   from Numbstrict's residue-class generator, tell a correct conversion from a nearly correct one. Validate any new
   check against a known broken build before trusting it.
