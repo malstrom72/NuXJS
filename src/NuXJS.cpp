@@ -2079,7 +2079,7 @@ void JSFunction::constructCompleteObject(Runtime& rt) const {
 /* --- Error --- */
 
 Error::Error(GCList& gcList, ErrorType type, const String* message)
-	: super(gcList), errorType(type), name(&ERROR_NAMES[errorType]), message(message), stack(0)
+	: super(gcList), errorType(type), name(&ERROR_NAMES[errorType]), message(message), stack(0), compilePosition()
 {
 	assert(0 <= errorType && errorType < ERROR_TYPE_COUNT);
 }
@@ -2677,6 +2677,30 @@ static void appendASCII(Vector<Char>& buffer, const char* literal) {
 	}
 }
 
+static void appendLocation(Vector<Char>& buffer, const Code::SourceLocation& location) {
+	const bool named = (location.functionName != 0 && !location.functionName->empty());
+	appendASCII(buffer, "\n    at ");
+	if (named) {
+		appendString(buffer, location.functionName);
+		appendASCII(buffer, " (");
+	}
+	appendString(buffer, location.fileName);
+	if (location.line > 0) {
+		Char digits[32];
+		buffer.push(static_cast<Char>(':'));
+		const Char* digitsBegin = intToString(digits, location.line);
+		buffer.insert(buffer.end(), digitsBegin, digits + 32);
+		if (location.column > 0) {
+			buffer.push(static_cast<Char>(':'));
+			digitsBegin = intToString(digits, location.column);
+			buffer.insert(buffer.end(), digitsBegin, digits + 32);
+		}
+	}
+	if (named) {
+		buffer.push(static_cast<Char>(')'));
+	}
+}
+
 void Processor::addStackTrace(const Value& exception) const {
 	Error* errorObject = exception.asError();
 	if (errorObject != 0) {
@@ -2689,33 +2713,13 @@ void Processor::addStackTrace(const Value& exception) const {
 				appendASCII(buffer, ": ");
 				appendString(buffer, message);
 			}
-
-			Char digits[32];
+			if (errorObject->getCompilePosition().fileName != 0) {
+				appendLocation(buffer, errorObject->getCompilePosition());
+			}
 			const Frame* frameWalker = currentFrame;
 			const CodeWord* nextIP = ip;
 			while (frameWalker != 0 && nextIP != 0) {
-				const Code::SourceLocation location = frameWalker->code->lookupSourceLocation(nextIP - 1);
-				
-				appendASCII(buffer, "\n    at ");
-				if (location.functionName != 0 && !location.functionName->empty()) {
-					appendString(buffer, location.functionName);
-					appendASCII(buffer, " (");
-				}
-				appendString(buffer, location.fileName);
-				if (location.line > 0) {
-					buffer.push(static_cast<Char>(':'));
-					const Char* digitsBegin = intToString(digits, location.line);
-					buffer.insert(buffer.end(), digitsBegin, digits + 32);
-					if (location.column > 0) {
-						buffer.push(static_cast<Char>(':'));
-						digitsBegin = intToString(digits, location.column);
-						buffer.insert(buffer.end(), digitsBegin, digits + 32);
-					}
-				}
-				if (location.functionName != 0 && !location.functionName->empty()) {
-					buffer.push(static_cast<Char>(')'));
-				}
-
+				appendLocation(buffer, frameWalker->code->lookupSourceLocation(nextIP - 1));
 				nextIP = frameWalker->returnIP;
 				frameWalker = frameWalker->previousFrame;
 			}
@@ -5023,7 +5027,7 @@ void Compiler::compile(const String& source) {
 }
 
 void Compiler::getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const {
-	offset = static_cast<UInt32>(p - b);
+	offset = static_cast<UInt32>(p - sourceUnitBase);
 	code->getSourceUnit()->computeLineColumn(offset, lineNumber, columnNumber);
 }
 
@@ -5241,8 +5245,13 @@ struct Support {
 			SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), source, &ANONYMOUS_SCRIPT_STRING);
 			Code* code = new(heap) Code(heap.managed(), 0, unit);
 			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
-			compiler.compileFunction(source->begin(), source->end()
-					, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING), 0);
+			try {
+				compiler.compileFunction(source->begin(), source->end()
+						, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING), 0);
+			}
+			catch (const ScriptException& x) {
+				throw CompilationError(x, &ANONYMOUS_SCRIPT_STRING, compiler);
+			}
 			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
 		}
 		return UNDEFINED_VALUE;
