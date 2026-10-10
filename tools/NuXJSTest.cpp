@@ -771,6 +771,15 @@ static void testLimits() {
 
 	rt.setMemoryCap(8192);
 	EXPECT_EXCEPTION(rt.eval("var a=[]; for(var i=0;i<1e6;i++) a[i]=i;"), "Out of memory");
+	{
+		Heap cappedHeap;
+		cappedHeap.setMaxAllocationSize(16 * 1024 * 1024);
+		Runtime cappedRuntime(cappedHeap);
+		cappedRuntime.setMemoryCap(16 * 1024 * 1024);
+		EXPECT_EXCEPTION(cappedRuntime.eval("var s = 'x'; while (true) s += s;")
+				, "Memory allocation failure (size too large)");
+		EXPECT(cappedHeap.size() < 48 * 1024 * 1024);
+	}
 
 	std::cout << "	- execution timeouts" << std::endl;
 
