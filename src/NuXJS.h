@@ -397,7 +397,9 @@ class Value {
 		Value(UInt32 number) : type(NUMBER_TYPE) { var.number = number; }
 		Value(double number) : type(NUMBER_TYPE) { var.number = number; }
 		Value(const String* string) : type(STRING_TYPE) { var.string = string; }
+		Value(String* string) : type(STRING_TYPE) { var.string = string; }
 		Value(Object* object) : type(OBJECT_TYPE) { var.object = object; }
+		template<class T> Value(T* object) : type(OBJECT_TYPE) { var.object = object; }	// else a bool
 
 		bool isUndefined() const { return type == UNDEFINED_TYPE; }
 		bool isNull() const { return type == NULL_TYPE; }

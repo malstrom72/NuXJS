@@ -1673,6 +1673,11 @@ void testValues() {
 	std::cout << std::endl << "***** Value *****" << std::endl << std::endl;
 	
 	Heap heap;
+
+	{
+		String* const mutableString = new(heap) String(heap.managed(), "text");
+		EXPECT(Value(mutableString).isString());
+	}
 	
 	{
 		EXPECT(Value::UNDEFINED.isUndefined());
