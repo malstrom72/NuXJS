@@ -1303,13 +1303,14 @@ struct ScriptException : public Exception {
 	static void throwError(Heap& heap, ErrorType type, const String* message = 0);
 	static void throwError(Heap& heap, ErrorType type, const char* message);
 	ScriptException(Heap& heap, const Value& value) throw();
-	virtual const char* what() const throw() { return utf8String.c_str(); }
+	virtual const char* what() const throw() { return (fallback != 0 ? fallback : utf8String.c_str()); }
 	Error* asErrorObject() const { return value.asError(); }
 	const char* getStackTrace() const;
 	virtual ~ScriptException() throw() { }
 
 	Value value;
 	std::string utf8String;
+	const char* fallback;		// "out of memory" if utf8String could not be built, else 0
 	mutable std::string stackTrace;
 };
 

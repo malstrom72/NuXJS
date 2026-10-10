@@ -8,7 +8,7 @@ Run-time
 
 	* is the logic correct when changing array length containing a few undeletable elements?
 
-	* exception what() should be the one doing the conversion job etc (because exception constructors should never have a risk of throwing), but how can we do that without a heap?
+	* FIXED 2026-10-10: the ScriptException constructor is throw() but converts its value to UTF-8, which allocates, so running out of memory there called std::terminate. It now catches the failure and what() answers the literal "out of memory", which needs no allocation; NuXJSTest forces the failure with a Heap whose acquireMemory throws. The conversion stays in the constructor because what() has no heap to convert with.
 		- actually I think we should merge ScriptException and Exception, no point in having a separate Exception
 
 	* CompilationError is a hack to get access to error line number when using the high-level API. It is problematic because if you catch a compilation error in Javascript you lose this information. Also, it would be neat to have a full stack trace in exceptions for run-time errors. But this is not a standard part of ES3 of course.
