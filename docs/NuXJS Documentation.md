@@ -206,22 +206,23 @@ A prototype built in C++ is a heap reference like any other. Whichever object ow
 
 #### Binding C++ functions to properties, and validating `this`
 
-A method installed on a prototype can be invoked with any receiver, so before casting `this` to the native class something has to confirm that it really is one. Whether anything does is decided by *which kind of C++ function you assign* - the four forms below are picked apart by overload resolution on `AccessorBase::makeValue`, and they behave differently. This is a safety decision rather than a matter of taste, so it is worth being deliberate about:
+A method installed on a prototype can be invoked with any receiver, so before casting `this` to the native class the method itself has to confirm that it really is one. Three kinds of C++ function can be assigned to a property, picked apart by overload resolution on `AccessorBase::makeValue`:
 
 | What is assigned | Signature | Adapter created | Receiver (`this`) |
 | --- | --- | --- | --- |
 | a free or static function | `Value (*)(Runtime&, Processor&, UInt32, const Value*, Object*)` (`NativeFunction`) | `FunctorAdapter` | passed through raw, **not checked** |
 | a free or static function | `Var (*)(Runtime&, const Var&, const VarList&)` (`VarFunction`) | `VarFunctorAdapter` | wrapped in a `Var`, **not checked** |
-| a pointer to a member function | `Var (C::*)(Runtime&, const Var&, const VarList&)` | `VarMemberFunctionAdapter<C>` | **checked**, then used as the C++ `this` |
-| `Var(rt, cppObject, &C::method)` | the same member signature, bound | `BoundVarMemberFunctionAdapter<C>` | ignored - the call always runs on `cppObject` |
+| `Var(rt, cppObject, &C::method)` | `Var (C::*)(Runtime&, const Var&, const VarList&)`, bound | `BoundVarMemberFunctionAdapter<C>` | ignored - the call always runs on `cppObject` |
 
-The distinction that catches people out is the first two versus the third. A static function and a member function can have identical-looking bodies and be installed on the same prototype, yet only the member function gets a receiver check. The static forms hand over whatever the call site supplied and do nothing else - `VarFunctorAdapter::invoke` is a single forwarding line. A static function that casts its receiver to its own class **must** validate it first, or `Type.prototype.method.call({}, ...)` will cast an unrelated object and corrupt memory instead of throwing.
+The static forms hand over whatever the call site supplied and do nothing else - `VarFunctorAdapter::invoke` is a single forwarding line. A static function that casts its receiver to its own class **must** validate it first, or `Type.prototype.method.call({}, ...)` will cast an unrelated object and corrupt memory instead of throwing. The bound form is safe by construction: the C++ object is fixed when the function is created, and the receiver is only passed along as a `Var`.
 
-One further difference: `FunctorAdapter` derives from `Function`, while the other three derive from `ExtensibleFunction`. Only the latter can carry ordinary properties, so a constructor function whose `prototype` property must be assignable - as TypeScript's ES3 `__extends` emit requires of a base class - cannot use the raw `NativeFunction` form.
+An unbound pointer to a member function, `protoVar["scale"] = &NativeVector::scale`, was accepted until 2026-10-10, with a built-in receiver check that compared the statically resolved `C::getClassName()` against the receiver's virtual one. It was removed because the check failed open: when `C` did not override `getClassName()`, both sides returned the inherited name, so any object passed and was cast to `C`; a null receiver crashed; and a subclass with its own name was wrongly refused. Assigning one is now a compile error. Write a static method with the check below, or bind the method to its object.
 
-##### The checked form
+One further difference: `FunctorAdapter` derives from `Function`, while the other two derive from `ExtensibleFunction`. Only the latter can carry ordinary properties, so a constructor function whose `prototype` property must be assignable - as TypeScript's ES3 `__extends` emit requires of a base class - cannot use the raw `NativeFunction` form.
 
-Assigning a pointer to a member function with the signature `Var (C::*)(Runtime&, const Var&, const VarList&)` wraps it in an adapter that performs the check automatically. Before dispatching, the adapter compares the statically resolved `C::getClassName()` against the virtual `getClassName()` on the receiver, and throws a `TypeError` carrying the message `Invalid class` when the two differ:
+##### Checking the receiver
+
+Compare `getClassName()` against the class's own `String*` by pointer identity, and test for null first:
 
 ```cpp
 static const String VECTOR_CLASS_NAME("NativeVector");
@@ -231,40 +232,12 @@ public:
     typedef JSObject super;
     NativeVector(Heap& heap, Object* proto) : super(heap.managed(), proto), samples(&heap) { }
 
-    // The receiver check is driven entirely by this override, so it must return the same pointer every time.
+    // The receiver check compares against this pointer, so it must return the same one every time.
     const String* getClassName() const override { return &VECTOR_CLASS_NAME; }
 
-    Var scale(Runtime& rt, const Var& thisObject, const VarList& args) {
-        samples.resize(1);                     // reached only once `this` is known to be a NativeVector
-        samples[0] = args[0].to<double>();
-        return Var(rt, samples[0] * 2.0);
-    }
-
-private:
     Vector<double> samples;                    // `Vector` takes its heap explicitly; it has no default constructor
 };
 
-Var protoVar(rt, rt.newJSObject());
-protoVar["scale"] = &NativeVector::scale;      // a member function pointer, not a static function
-
-NativeVector* v = new(heap) NativeVector(heap, protoVar.to<Object*>());
-rt.getGlobalsVar()["v"] = Var(rt, v);
-
-rt.eval("v.scale(21)");                                  // 42 - the receiver is a NativeVector
-rt.eval("var o = {}; o.scale = v.scale; o.scale(21)");   // throws TypeError: Invalid class
-```
-
-The two `eval` calls are the point of the example: the same function object, reached through the same property, either runs or is rejected purely on what `this` turns out to be. Nothing in `scale` performs the test, and the body of the second call is never entered.
-
-**The class must override `getClassName`, and nothing enforces it.** The comparison is between `C`'s statically resolved `getClassName()` and the receiver's virtual one. If `C` does not override it, the static side resolves to the inherited `JSObject`/`Object` implementation - which is also what any ordinary object returns virtually - so the two agree, the guard passes, and an unrelated object is `reinterpret_cast` into `C`. The check degenerates into a no-op precisely when it is needed, with no warning at compile time or run time. Treat the override as mandatory for any class bound this way, and give it a `String` constant of its own.
-
-Two further limits. The adapter validates the *receiver* only - any arguments that must also be of a native class still need checking by hand. And it is not null-safe: it reaches the receiver's virtual `getClassName()` through a `reinterpret_cast`, so a null receiver crashes rather than throwing. A hand-written check can test for null first.
-
-##### The unchecked form, and the manual check
-
-Static functions - `Counter::increment` in `docs/examples/examples.cpp`, and most native methods in practice - get no help at all, so the same test has to be written out. Compare `getClassName()` against the class's own `String*` by pointer identity, which is exactly what the adapter does, plus a null test:
-
-```cpp
 static NativeVector* checkedSelf(Runtime& rt, Object* o) {
     if (o == 0 || o->getClassName() != &VECTOR_CLASS_NAME) {
         ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "can only be used on NativeVector");
@@ -274,13 +247,22 @@ static NativeVector* checkedSelf(Runtime& rt, Object* o) {
 
 static Var scale(Runtime& rt, const Var& thisObject, const VarList& args) {
     NativeVector* self = checkedSelf(rt, thisObject.to<Object*>());
-    ...
+    self->samples.resize(1);
+    self->samples[0] = args[0].to<double>();
+    return Var(rt, self->samples[0] * 2.0);
 }
 
-protoVar["scale"] = scale;                       // a plain function - nothing checks the receiver
+Var protoVar(rt, rt.newJSObject());
+protoVar["scale"] = scale;                       // a plain function, so the check above is the only one
+
+NativeVector* v = new(heap) NativeVector(heap, protoVar.to<Object*>());
+rt.getGlobalsVar()["v"] = Var(rt, v);
+
+rt.eval("v.scale(21)");                                  // 42 - the receiver is a NativeVector
+rt.eval("var o = {}; o.scale = v.scale; o.scale(21)");   // throws TypeError: can only be used on NativeVector
 ```
 
-Omitting `checkedSelf` here would not be a lax cast that usually works; it would be an unchecked one that any script can exploit with `.call()`. A bare `static_cast` is only defensible when nothing else can reach the prototype, as in a self-contained example.
+The two `eval` calls are the point of the example: the same function object, reached through the same property, either runs or is rejected purely on what `this` turns out to be. Omitting `checkedSelf` would not be a lax cast that usually works; it would be an unchecked one that any script can exploit with `.call()`. A bare `static_cast` is only defensible when nothing else can reach the prototype, as in a self-contained example. The check covers the receiver only: arguments that must also be of a native class need the same test.
 
 For checked downcasts outside a call, the engine's own idiom is a virtual accessor: `Object::asFunction`, `asArray` and `asError` return `0` by default and the class that owns the type overrides it to return `this`. Giving a custom class an equivalent yields a cheap, safe conversion from an arbitrary `Object*`.
 
