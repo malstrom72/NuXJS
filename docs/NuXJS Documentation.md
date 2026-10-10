@@ -204,67 +204,92 @@ The rule that generalises: let the hooks answer indices and a small fixed set of
 
 A prototype built in C++ is a heap reference like any other. Whichever object owns it - the `Runtime`, a shared holder, or each instance - must mark it in `gcMarkReferences` and chain to the super-class implementation. Note also that a class whose hooks expose indices has to report them from `getOwnPropertyEnumerator` as well, or `for...in` will disagree with direct property access.
 
-#### Binding C++ functions to properties, and validating `this`
+#### Binding C++ functions
 
-A method installed on a prototype can be invoked with any receiver, so before casting `this` to the native class the method itself has to confirm that it really is one. Three kinds of C++ function can be assigned to a property, picked apart by overload resolution on `AccessorBase::makeValue`:
-
-| What is assigned | Signature | Adapter created | Receiver (`this`) |
-| --- | --- | --- | --- |
-| a free or static function | `Value (*)(Runtime&, Processor&, UInt32, const Value*, Object*)` (`NativeFunction`) | `FunctorAdapter` | passed through raw, **not checked** |
-| a free or static function | `Var (*)(Runtime&, const Var&, const VarList&)` (`VarFunction`) | `VarFunctorAdapter` | wrapped in a `Var`, **not checked** |
-| `Var(rt, cppObject, &C::method)` | `Var (C::*)(Runtime&, const Var&, const VarList&)`, bound | `BoundVarMemberFunctionAdapter<C>` | ignored - the call always runs on `cppObject` |
-
-The static forms hand over whatever the call site supplied and do nothing else - `VarFunctorAdapter::invoke` is a single forwarding line. A static function that casts its receiver to its own class **must** validate it first, or `Type.prototype.method.call({}, ...)` will cast an unrelated object and corrupt memory instead of throwing. The bound form is safe by construction: the C++ object is fixed when the function is created, and the receiver is only passed along as a `Var`.
-
-An unbound pointer to a member function, `protoVar["scale"] = &NativeVector::scale`, was accepted until 2026-10-10, with a built-in receiver check that compared the statically resolved `C::getClassName()` against the receiver's virtual one. It was removed because the check failed open: when `C` did not override `getClassName()`, both sides returned the inherited name, so any object passed and was cast to `C`; a null receiver crashed; and a subclass with its own name was wrongly refused. Assigning one is now a compile error. Write a static method with the check below, or bind the method to its object.
-
-One further difference: `FunctorAdapter` derives from `Function`, while the other two derive from `ExtensibleFunction`. Only the latter can carry ordinary properties, so a constructor function whose `prototype` property must be assignable - as TypeScript's ES3 `__extends` emit requires of a base class - cannot use the raw `NativeFunction` form.
-
-##### Checking the receiver
-
-Compare `getClassName()` against the class's own `String*` by pointer identity, and test for null first:
+A property becomes callable from script by assigning one of three things to it:
 
 ```cpp
-static const String VECTOR_CLASS_NAME("NativeVector");
+Value f(Runtime& rt, Processor& processor, UInt32 argc, const Value* argv, Object* thisObject);   // a NativeFunction
+Var f(Runtime& rt, const Var& thisObject, const VarList& args);                                    // a VarFunction
+Var(rt, cppObject, &C::method)       // C::method has the VarFunction signature and runs on cppObject
+```
 
+The bound form is for a function that belongs to one C++ object, such as the host's own engine class: the object is fixed when the function is created, so the method never needs to inspect `this`. A bare member pointer, `&C::method` without an object, is refused at compile time. Of the static forms, only `VarFunction` can carry properties of its own, which a constructor needs when its `prototype` must be assignable, as TypeScript's ES3 `__extends` emit requires of a base class.
+
+##### Checking `this`
+
+A function installed on a prototype can be called with any `this`, through `.call()` if nothing else. A static function that casts `thisObject` to its own class must therefore check it first, or a script can make it cast an unrelated object and corrupt memory. Test for null, then compare `getClassName()` against the class's own name by pointer identity. A native class typically keeps that name, the check, its methods and a constructor function together as statics:
+
+```cpp
 class NativeVector : public JSObject {
 public:
     typedef JSObject super;
-    NativeVector(Heap& heap, Object* proto) : super(heap.managed(), proto), samples(&heap) { }
+    static const String CLASS_NAME;
 
-    // The receiver check compares against this pointer, so it must return the same one every time.
-    const String* getClassName() const override { return &VECTOR_CLASS_NAME; }
+    NativeVector(GCList& gcList, UInt32 size, Object* prototype)
+            : super(gcList, prototype), samples(size, &gcList.getHeap()) {
+        std::fill(samples.begin(), samples.end(), 0.0);
+    }
 
+    // checkedSelf compares against this pointer, so it must return the same one every time.
+    virtual const String* getClassName() const { return &CLASS_NAME; }
+
+    static Var construct(Runtime& rt, const Var& thisObject, const VarList& args) {
+        Heap& heap = rt.getHeap();
+        Object* const self = thisObject.to<Value>().asObject();
+        if (self == 0 || self == rt.getGlobalObject()) {
+            ScriptException::throwError(heap, TYPE_ERROR, "must be called with new");
+        }
+        const Int32 size = args[0].to<Int32>();
+        if (size < 0 || size > 65536) {
+            ScriptException::throwError(heap, RANGE_ERROR, "invalid size for NativeVector");
+        }
+        return Var(rt, new(heap) NativeVector(heap.managed(), static_cast<UInt32>(size), self->getPrototype(rt)));
+    }
+
+    static Var createConstructor(Runtime& rt) {
+        Var proto = rt.newObjectVar();
+        proto["fill"] = fill;
+        proto["sum"] = sum;
+        Var constructor(rt, construct);
+        constructor["prototype"] = proto;
+        proto["constructor"] = constructor;
+        return constructor;
+    }
+
+protected:
     Vector<double> samples;                    // `Vector` takes its heap explicitly; it has no default constructor
+
+    static NativeVector* checkedSelf(Runtime& rt, const Var& thisObject) {
+        Object* const object = thisObject.to<Value>().asObject();
+        if (object == 0 || object->getClassName() != &CLASS_NAME) {
+            ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "can only be used on NativeVector");
+        }
+        return static_cast<NativeVector*>(object);
+    }
+
+    static Var fill(Runtime& rt, const Var& thisObject, const VarList& args) {
+        NativeVector* const self = checkedSelf(rt, thisObject);
+        std::fill(self->samples.begin(), self->samples.end(), args[0].to<double>());
+        return thisObject;
+    }
+
+    static Var sum(Runtime& rt, const Var& thisObject, const VarList& args) {
+        const NativeVector* const self = checkedSelf(rt, thisObject);
+        return Var(rt, std::accumulate(self->samples.begin(), self->samples.end(), 0.0));
+    }
 };
 
-static NativeVector* checkedSelf(Runtime& rt, Object* o) {
-    if (o == 0 || o->getClassName() != &VECTOR_CLASS_NAME) {
-        ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "can only be used on NativeVector");
-    }
-    return static_cast<NativeVector*>(o);        // safe: the class name has been confirmed
-}
+const String NativeVector::CLASS_NAME("NativeVector");
 
-static Var scale(Runtime& rt, const Var& thisObject, const VarList& args) {
-    NativeVector* self = checkedSelf(rt, thisObject.to<Object*>());
-    self->samples.resize(1);
-    self->samples[0] = args[0].to<double>();
-    return Var(rt, self->samples[0] * 2.0);
-}
+rt.getGlobalsVar()["NativeVector"] = NativeVector::createConstructor(rt);
 
-Var protoVar(rt, rt.newJSObject());
-protoVar["scale"] = scale;                       // a plain function, so the check above is the only one
-
-NativeVector* v = new(heap) NativeVector(heap, protoVar.to<Object*>());
-rt.getGlobalsVar()["v"] = Var(rt, v);
-
-rt.eval("v.scale(21)");                                  // 42 - the receiver is a NativeVector
-rt.eval("var o = {}; o.scale = v.scale; o.scale(21)");   // throws TypeError: can only be used on NativeVector
+rt.eval("new NativeVector(4).fill(2.5).sum()");    // 10
+rt.eval("NativeVector.prototype.sum.call({})");    // throws TypeError: can only be used on NativeVector
+rt.eval("NativeVector(4)");                        // throws TypeError: must be called with new
 ```
 
-The two `eval` calls are the point of the example: the same function object, reached through the same property, either runs or is rejected purely on what `this` turns out to be. Omitting `checkedSelf` would not be a lax cast that usually works; it would be an unchecked one that any script can exploit with `.call()`. A bare `static_cast` is only defensible when nothing else can reach the prototype, as in a self-contained example. The check covers the receiver only: arguments that must also be of a native class need the same test.
-
-For checked downcasts outside a call, the engine's own idiom is a virtual accessor: `Object::asFunction`, `asArray` and `asError` return `0` by default and the class that owns the type overrides it to return `this`. Giving a custom class an equivalent yields a cheap, safe conversion from an arbitrary `Object*`.
+`thisObject.to<Value>().asObject()` is null for a call without an object receiver, which is what the null test catches; converting with `to<Object*>()` instead would throw its own TypeError first. Arguments that must be of a native class need the same check. For a checked downcast outside a call, give the class a virtual accessor in the style of `Object::asFunction`, `asArray` and `asError`, which return `0` by default and `this` in the class that overrides them.
 
 ## Runtime Architecture
 
@@ -450,12 +475,11 @@ the `-O3 -flto` flags the products ship, es5 build:
 | array, parenthesis, object  | 1 to 2             | 0.7 kB        | 1.34 kB (array) |
 
 Declarations are the binding shape. On the 1 MB default stack of Windows, 400 nested declarations raise the
-`RangeError` at any limit up to 549 and crash with 0xC00000FD from 550, so 128 levels spend about 230 KB of it. The
-wall used to be near 80: each nested function compiler caught the error and rethrew it to record where compilation
-stopped, and msvc/x64 runs a catch block on top of the stack it is unwinding, so the throw from depth N stacked a
-handler per level on the full depth of the compile. Limits of 72 and 64 crashed the GitHub runner's build that way.
-Now `error()` records the position in the root compiler and throws once, and frames that differ between compilers move
-a wall this far away by too little to matter.
+`RangeError` at any limit up to 549 and crash with 0xC00000FD from 550, so 128 levels spend about 230 KB of it. That
+needs the error to cost no more stack than the compile it interrupts: msvc/x64 runs a catch block on top of the stack
+it is unwinding, so a catch-and-rethrow in every nested function compiler would stack a handler per level and bring
+the wall down to about 80. `error()` therefore records the stop position in the root compiler and throws once. Frames
+that differ between compilers move a wall this far away by too little to matter.
 
 On the 512 KB default stack of secondary threads on macOS and iOS, nested declarations still raise the `RangeError`
 cleanly at a limit of 290 in the shipping es5 build, so 128 spends about 220 KB there, a margin of 2.3, and the other
@@ -465,13 +489,9 @@ more than compiling, at any depth. Beyond that the flags matter: link-time inlin
 expressions and arrays in the es5 build, so measure the flags that ship, not `-Os` or beta.
 
 The floor is real code. GAZL's Impala compiler, a 360 KB parser generated by JSPEG, needs 57 levels: it compiles at
-57 and fails at 56. A limit of 48 broke it, and the products built on it, for a day in October 2026. That figure is
-whatever today's grammar happens to produce, not a designed budget, so GAZL checks it on its side and fails loudly if
-it grows. `JSON.parse()` needs `MAX_JSON_DEPTH + 3` = 64 levels, and the standard library compiles itself in 33 on the
-es5 branch and 30 on the es3 one. 128 is twice what Impala needs.
-
-The limit was 256 until 2026-10-07, above the real wall, so such source crashed the process instead of raising the
-error. A counter can only approximate the real constraint; measuring the remaining stack would be the robust answer.
+57 and fails at 56. That figure is whatever today's grammar happens to produce, not a designed budget, so GAZL checks
+it on its side and fails loudly if it grows. `JSON.parse()` needs `MAX_JSON_DEPTH + 3` = 64 levels, and the standard
+library compiles itself in 33 on the es5 branch and 30 on the es3 one. 128 is twice what Impala needs.
 `tests/extremes/compileDepth.io` pins both ends.
 
 ## Testing and Benchmarking
