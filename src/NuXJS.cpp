@@ -1412,8 +1412,8 @@ void GCList::deleteAll() throw() {
 
 /* --- Heap --- */
 
-Heap::Heap() : allocatedCount(0), allocatedSize(0), pooledSize(0), managedListA(*this), managedListB(*this)
-		, rootList(*this), currentList(&managedListA), newList(&managedListB) {
+Heap::Heap() : allocatedCount(0), allocatedSize(0), pooledSize(0), maxAllocationSize(MAX_SINGLE_ALLOCATION_SIZE - 1)
+		, managedListA(*this), managedListB(*this), rootList(*this), currentList(&managedListA), newList(&managedListB) {
 	std::fill(pools + 0, pools + MAX_POOLED_SIZE / POOL_SIZE_GRANULARITY, (void*)(0));
 }
 
@@ -1424,7 +1424,7 @@ int Heap::calcPoolIndex(const size_t size) {
 }
 
 void* Heap::acquireMemory(size_t size) {
-	if (size >= MAX_SINGLE_ALLOCATION_SIZE) {
+	if (size > maxAllocationSize) {
 		throw ConstStringException("Memory allocation failure (size too large)");
 	}
 	void* ptr = ::operator new(size, std::nothrow);
