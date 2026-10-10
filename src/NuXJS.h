@@ -157,6 +157,7 @@ class Heap {
 		UInt32 count() const { return allocatedCount; }
 		size_t size() const { return allocatedSize; }
 		size_t pooled() const { return pooledSize; }
+		void setMaxAllocationSize(size_t maxSize) { maxAllocationSize = maxSize; }
 		void gc();
 		virtual ~Heap();
 		friend void gcMark(Heap& heap, const GCItem* item);
@@ -170,6 +171,7 @@ class Heap {
 		UInt32 allocatedCount;
 		size_t allocatedSize;
 		size_t pooledSize;
+		size_t maxAllocationSize;
 		GCList managedListA;
 		GCList managedListB;
 		GCList rootList;
