@@ -42,7 +42,7 @@ Run-time
 
 	* is the logic correct when changing array length containing a few undeletable elements?
 
-	* exception what() should be the one doing the conversion job etc (because exception constructors should never have a risk of throwing), but how can we do that without a heap?
+	* FIXED 2026-10-10: the ScriptException constructor is throw() but converts its value to UTF-8, which allocates, so running out of memory there called std::terminate. It now catches the failure and what() answers the literal "out of memory", which needs no allocation; NuXJSTest forces the failure with a Heap whose acquireMemory throws. The conversion stays in the constructor because what() has no heap to convert with.
 		- actually I think we should merge ScriptException and Exception, no point in having a separate Exception
 
 	* CompilationError is a hack to get access to error line number when using the high-level API. It is problematic because if you catch a compilation error in Javascript you lose this information. Also, it would be neat to have a full stack trace in exceptions for run-time errors. But this is not a standard part of ES3 of course.
@@ -55,7 +55,7 @@ Run-time
 		- also rejected: GC inside allocate (would bound it tightest, no false positives) - breaks the "GC only at cycle boundaries when the VM stack is consistent" invariant; would need every allocation site audited for unrooted live pointers.
 		- decision: deferred for now (reviewed 2026-06-28). B is the clean, coupling-free win; A adds the Heap<->Processor wiring needed to also bound accumulation.
 
-	* AccessorBase::VarMemberFunctionAdapter's receiver check fails OPEN, so the one binding form that looks safe is the least trustworthy. Decide whether to fix it or drop the form (reviewed 2026-08-10, kept as-is for now).
+	* FIXED 2026-10-10 by removing the form (candidate 2 below): AccessorBase::VarMemberFunctionAdapter's receiver check failed OPEN, so the one binding form that looked safe was the least trustworthy.
 		- background: four things can be assigned to a property to make it callable, and only one validates the receiver. NativeFunction -> FunctorAdapter and VarFunction -> VarFunctorAdapter both forward `thisObject` unchecked; a member function pointer `Var (C::*)(Runtime&, const Var&, const VarList&)` -> VarMemberFunctionAdapter<C> checks; Var(rt, cppObject, &C::method) -> BoundVarMemberFunctionAdapter ignores the receiver entirely. A static and a member function with identical bodies on the same prototype differ in safety with nothing at the call site to show it. Now documented in "Binding C++ functions to properties, and validating `this`".
 		- the bug: the check is `me->C::getClassName() != me->getClassName()`. If C does not override getClassName(), the left side resolves to the inherited Object/JSObject implementation, which is exactly what an ordinary object returns on the right, so they compare equal and an unrelated object is reinterpret_cast into C and its method body runs. Verified: binding a member function on a class with no override and calling it with a plain {} receiver does not throw and the body runs; the same class with an override throws TypeError "Invalid class".
 		- the check is also wrong in the other direction: a C++ subclass of C that overrides getClassName() with its own name is rejected from methods it legitimately inherits.
@@ -66,6 +66,7 @@ Run-time
 		- rejected fix C (required `static const String CLASS_NAME` member): compile error when missing and fails closed when the override is forgotten, but no precedent - the codebase forces subclass contributions with pure virtuals (Enumerator::nextPropertyName, LazyJSObject::constructCompleteObject, Function::invoke), never with a magically named static, and the engine's own class-name constants are file-scope in NuXJS.cpp, not members.
 		- candidate 1: make the check RTTI-conditional. dynamic_cast is the correct answer, gets both the fail-open and the subclass case right, and handles pointer adjustment; it is already present as the debug assert on the next line. Blocked in release only by -fno-rtti, which buildAndTest.sh sets for the release target alone (beta and debug keep RTTI). Costs two code paths and a fallback decision for embedders who disable RTTI themselves.
 		- candidate 2: delete the member function pointer binding. Nothing in src/, tools/ or docs/examples/ uses it - only the declaration and definition in NuXJS.h - so in-tree breakage is zero. Leaves three forms where validation is unambiguously the method's job, done as NativeFloat32Array::checkedCorrectType already does it (getClassName pointer identity plus a null test).
+		- why candidate 2: no consumer used the form either. GAZL, NuXLib, the Permut8, Microtonic and Synplant SDKs and SonicCharge all bind with Var(rt, obj, &C::m), so dropping it broke nothing, and a host that did use it now gets a compile error rather than a silent cast. Candidate 1 would have left a weaker fallback for builds without RTTI, against the style guide's rule that a public library works with RTTI on or off. docs/NuXJS Documentation.md now describes three forms and the manual check.
 
 
 Compiler

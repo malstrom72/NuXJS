@@ -25,6 +25,7 @@
 #include "../src/NuXJS.h"
 #include <fstream>
 #include <memory>
+#include <new>
 #include <vector>
 #include <sstream>
 #include <ctime>
@@ -845,6 +846,18 @@ static Var rethrowNative(Runtime& rt, const Var&, const VarList& args) {
 	return Var(rt);
 }
 
+// Refuses memory on demand. Heap::allocate serves pooled blocks without asking, so drain() the pools first.
+struct FailingHeap : public Heap {
+	FailingHeap() : failing(false) { }
+	virtual void* acquireMemory(size_t size) {
+		if (failing) {
+			throw std::bad_alloc();
+		}
+		return Heap::acquireMemory(size);
+	}
+	bool failing;
+};
+
 static void testExceptions() {
 	std::cout << std::endl << "***** Exceptions *****" << std::endl << std::endl;
 
@@ -972,6 +985,28 @@ static void testExceptions() {
 	EXPECT(!gTrackedStackMismatch);
 	gFirstTrackedStackString = 0;
 	gTrackedStackMismatch = false;
+
+	// what() when its text cannot be built for lack of memory
+	{
+		FailingHeap failingHeap;
+		const Value error(new(failingHeap) Error(failingHeap.managed(), GENERIC_ERROR
+				, String::allocate(failingHeap, "conversion fodder")));
+		ScriptException* const original = new ScriptException(failingHeap, error);
+		const ScriptException copy(*original);
+		delete original;
+		EXPECT(strcmp(copy.what(), "Error: conversion fodder") == 0);
+		EXPECT(copy.what() == copy.utf8String.c_str());
+		failingHeap.drain();
+		failingHeap.failing = true;
+		const ScriptException starved(failingHeap, error);
+		failingHeap.failing = false;
+		EXPECT(strcmp(starved.what(), "out of memory") == 0);
+		ScriptException assigned(starved);
+		EXPECT(strcmp(assigned.what(), "out of memory") == 0);
+		assigned = copy;
+		EXPECT(strcmp(assigned.what(), "Error: conversion fodder") == 0);
+		EXPECT(assigned.what() == assigned.utf8String.c_str());
+	}
 }
 
 static void testHighLevelAPI() {

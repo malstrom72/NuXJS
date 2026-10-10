@@ -3234,8 +3234,14 @@ void ScriptException::throwError(Heap& heap, ErrorType type, const char* message
 }
 
 ScriptException::ScriptException(Heap& heap, const Value& value) throw()
-	: value(value), utf8String(value.toString(heap)->toUTF8String())
+	: value(value), fallback(0)
 {
+	try {
+		utf8String = value.toString(heap)->toUTF8String();
+	}
+	catch (...) {
+		fallback = "out of memory";
+	}
 }
 
 const char* ScriptException::getStackTrace() const {

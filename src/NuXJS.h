@@ -1589,13 +1589,14 @@ struct ScriptException : public Exception {
 	static void throwError(Heap& heap, ErrorType type, const String* message = 0);
 	static void throwError(Heap& heap, ErrorType type, const char* message);
 	ScriptException(Heap& heap, const Value& value) throw();
-	virtual const char* what() const throw() { return utf8String.c_str(); }
+	virtual const char* what() const throw() { return (fallback != 0 ? fallback : utf8String.c_str()); }
 	Error* asErrorObject() const { return value.asError(); }
 	const char* getStackTrace() const;
 	virtual ~ScriptException() throw() { }
 
 	Value value;
 	std::string utf8String;
+	const char* fallback;		// "out of memory" if utf8String could not be built, else 0
 	mutable std::string stackTrace;
 };
 
@@ -1655,7 +1656,6 @@ class AccessorBase {
 
 	protected:
 		template<class F> struct VarFunctorAdapter;
-		template<class F> struct VarMemberFunctionAdapter;
 		AccessorBase(Runtime& rt) : rt(rt) { }
 		virtual Value get() const = 0;
 		virtual Var call(int argc, const Value* argv) const = 0;
@@ -1666,7 +1666,10 @@ class AccessorBase {
 		Value makeValue(const std::wstring& s) const { return new(rt.getHeap()) String(rt.getHeap().managed(), s); }
 		Value makeValue(const NativeFunction& f) const { return new(rt.getHeap()) FunctorAdapter<NativeFunction>(rt.getHeap().managed(), f); }
 		Value makeValue(const VarFunction& f) const;
-		template<class C> Value makeValue(Var (C::*const& cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args)) const;
+		// An unbound member function would convert to bool and store `true`: naming a type no class has refuses it.
+		template<class C> Value makeValue(Var (C::*const&)(Runtime&, const Var&, const VarList&)) const {
+			return typename C::BindMemberFunctionsAsVarOfRuntimeObjectAndMethod();
+		}
 		Runtime& rt;
 };
 template<> inline bool AccessorBase::to<bool>() const { return get().toBool(); }	// operator bool() is ambiguous and notoriously dangerous so we left it out. Use var.to<bool>() instead.
@@ -1868,25 +1871,6 @@ template<typename T> const Property AccessorBase::operator[](const T& key) const
 
 template<typename T> Var operator+(const AccessorBase& l, const T& r) {
 	return Var(l.rt, l.get().add(l.rt.getHeap(), l.makeValue(r)));
-}
-
-template<class C> struct AccessorBase::VarMemberFunctionAdapter : public ExtensibleFunction {
-	typedef ExtensibleFunction super;
-	VarMemberFunctionAdapter(GCList& gcList, Var (C::*const &cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args))
-			: super(gcList), cppMethod(cppMethod) { }
-	virtual Value invoke(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Receiver thisObject) {
-		Object* const o = receiverObject(thisObject);	// an unbound member function needs the object, not the value
-		C* me = reinterpret_cast<C*>(o);
-		if ((me->C::getClassName()) != (me->getClassName())) {
-			ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Invalid class");
-		}
-		assert(isA<C>(o));
-		return (me->*cppMethod)(rt, Var(rt, thisObject), VarList(rt, argc, argv));
-	}
-	Var (C::*cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args);
-};
-template<class C> Value AccessorBase::makeValue(Var (C::*const &cppMethod)(Runtime& rt, const Var& thisObject, const VarList& args)) const {
-	return new(rt.getHeap()) VarMemberFunctionAdapter<C>(rt.getHeap().managed(), cppMethod);
 }
 
 template<class C> struct BoundVarMemberFunctionAdapter : public ExtensibleFunction {
