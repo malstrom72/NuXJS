@@ -407,7 +407,9 @@ class Value {
 		Value(UInt32 number) : type(NUMBER_TYPE) { var.number = number; }
 		Value(double number) : type(NUMBER_TYPE) { var.number = number; }
 		Value(const String* string) : type(STRING_TYPE) { var.string = string; }
+		Value(String* string) : type(STRING_TYPE) { var.string = string; }
 		Value(Object* object) : type(OBJECT_TYPE) { var.object = object; }
+		template<class T> Value(T* object) : type(OBJECT_TYPE) { var.object = object; }	// else a bool
 
 		bool isUndefined() const { return type == UNDEFINED_TYPE; }
 		bool isNull() const { return type == NULL_TYPE; }
@@ -1304,6 +1306,8 @@ class Error : public LazyJSObject<Object> {
 		const String* getErrorName() const { assert(name != 0); return name; }	// never 0
 		const String* getErrorMessage() const { return message; };	// can be 0
 		const String* getStackString() const { return stack; }	// can be 0
+		const Code::SourceLocation& getCompilePosition() const { return compilePosition; }
+		void setCompilePosition(const Code::SourceLocation& position) { compilePosition = position; }
 	
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
@@ -1313,10 +1317,12 @@ class Error : public LazyJSObject<Object> {
 		const String* name; 	// may get updated by script code
 		const String* message; 	// may get updated by script code
 		const String* stack; 		// may get updated by script code
+		Code::SourceLocation compilePosition;	// where compilation stopped, if it did: fileName is 0 otherwise
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, name);
 			gcMark(heap, message);
 			gcMark(heap, stack);
+			gcMark(heap, compilePosition.fileName);
 			super::gcMarkReferences(heap);
 		}
 };
@@ -2304,6 +2310,11 @@ struct CompilationError : public ScriptException {
 	CompilationError(const ScriptException& sourceException, const String* filename, const Compiler& fromCompiler)
 			: ScriptException(sourceException), filename(filename) {
 		fromCompiler.getStopPosition(offset, lineNumber, columnNumber);
+		Error* const error = value.asError();
+		if (error != 0) {
+			const Code::SourceLocation position = { filename, 0, offset, lineNumber, columnNumber };
+			error->setCompilePosition(position);
+		}
 	}
 	const String* filename;
 	UInt32 offset;
