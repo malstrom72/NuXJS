@@ -201,7 +201,7 @@
 > o = new(function() { });
 -
 > s = "not a function"; s(1,2,3);
-! !!!! TypeError: not a function is not a function
+! !!!! TypeError: "not a function" is not a function
 -
 > o.s = "also not a function"; o.s(1,2,3)
 ! !!!! TypeError: s is not a function
@@ -213,7 +213,7 @@
 ! !!!! TypeError: b is not a function
 -
 > andAgain = new s
-! !!!! TypeError: not a function is not a function
+! !!!! TypeError: "not a function" is not a function
 -
 > andAgain = new o
 ! !!!! TypeError: [object Object] is not a function

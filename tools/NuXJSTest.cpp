@@ -532,7 +532,7 @@ static void testVars() {
 	EXPECT(stringVar.to<bool>());
 	EXPECT(isNaN(stringVar.to<double>()));
 	EXPECT_NOT_EQUAL(stringVar.to<Object*>(), (Object*)(0));
-	EXPECT_EXCEPTION(stringVar.to<Function*>(), "TypeError: Eeny, meeny, miny, moe is not a function");
+	EXPECT_EXCEPTION(stringVar.to<Function*>(), "TypeError: \"Eeny, meeny, miny, moe\" is not a function");
 	EXPECT_EQUAL(stringVar.to<std::wstring>(), L"Eeny, meeny, miny, moe");
 	EXPECT(stringVar.to<const String&>().isEqualTo("Eeny, meeny, miny, moe"));
 	EXPECT(stringVar.to<const String&>().isEqualTo(L"Eeny, meeny, miny, moe"));
@@ -552,7 +552,7 @@ static void testVars() {
 	EXPECT(!emptyStringVar.to<bool>());
 	EXPECT_EQUAL(emptyStringVar.to<double>(), 0);
 	EXPECT_NOT_EQUAL(emptyStringVar.to<Object*>(), (Object*)(0));
-	EXPECT_EXCEPTION(emptyStringVar.to<Function*>(), "TypeError:  is not a function");
+	EXPECT_EXCEPTION(emptyStringVar.to<Function*>(), "TypeError: \"\" is not a function");
 	EXPECT_EQUAL(emptyStringVar.to<std::wstring>(), L"");
 	EXPECT(emptyStringVar.to<const String&>().isEqualTo(""));
 	EXPECT(emptyStringVar.to<const String&>().isEqualTo(L""));
@@ -573,7 +573,7 @@ static void testVars() {
 	EXPECT(falseStringVar.to<bool>());
 	EXPECT(isNaN(falseStringVar.to<double>()));
 	EXPECT_NOT_EQUAL(falseStringVar.to<Object*>(), (Object*)(0));
-	EXPECT_EXCEPTION(falseStringVar.to<Function*>(), "TypeError: false is not a function");
+	EXPECT_EXCEPTION(falseStringVar.to<Function*>(), "TypeError: \"false\" is not a function");
 	EXPECT(falseStringVar.equals(falseStringVar));
 	EXPECT_EQUAL(falseStringVar, falseStringVar);
 	EXPECT(!(falseStringVar < falseStringVar));
@@ -1818,7 +1818,7 @@ void testValues() {
 		EXPECT(!numberStringValue.toArrayIndex(index));
 		EXPECT(intStringValue.toArrayIndex(index));
 		EXPECT_EQUAL(index, 3493);
-		EXPECT_EXCEPTION(stringValue.toFunction(heap), "TypeError: KONSTANT! is not a function");
+		EXPECT_EXCEPTION(stringValue.toFunction(heap), "TypeError: \"KONSTANT!\" is not a function");
 		EXPECT(stringValue.toString(heap)->isEqualTo(CONSTANT_STRING));
 		EXPECT_EQUAL(stringValue.toWideString(heap), L"KONSTANT!");
 		EXPECT_NOT_EQUAL(stringValue.toObjectOrNull(heap, false), (Object*)(0));

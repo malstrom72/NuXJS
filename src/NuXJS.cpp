@@ -877,11 +877,47 @@ const String* Value::TYPE_STRINGS[5] = {
 	&UNDEFINED_STRING, &OBJECT_STRING, &BOOLEAN_STRING, &NUMBER_STRING, &STRING_STRING
 };
 
+// Escaped and cut short, so an empty string or a megabyte of text still reads as one line.
+static String* newNotAFunctionString(Heap& heap, const Value& subject, bool quoteString) {
+	const UInt32 MAX_SUBJECT_LENGTH = 40;
+	static const char HEX_DIGITS[] = "0123456789abcdef";
+	const String* const text = subject.toString(heap);
+	const bool quote = (quoteString && subject.isString());
+	Vector<Char> buffer(&heap);
+	if (quote) {
+		buffer.push('"');
+	}
+	const UInt32 length = std::min(text->size(), MAX_SUBJECT_LENGTH);
+	for (UInt32 i = 0; i < length; ++i) {
+		const Char c = text->begin()[i];
+		const char escape = (c == '\n' ? 'n' : c == '\r' ? 'r' : c == '\t' ? 't' : c == '\\' ? '\\'
+				: (c == '"' && quote) ? '"' : 0);
+		if (escape != 0) {
+			buffer.push('\\');
+			buffer.push(escape);
+		} else if (c < 0x20 || c == 0x2028 || c == 0x2029) {
+			const Char u[6] = { '\\', 'u', HEX_DIGITS[c >> 12], HEX_DIGITS[(c >> 8) & 15], HEX_DIGITS[(c >> 4) & 15]
+					, HEX_DIGITS[c & 15] };
+			buffer.insert(buffer.end(), u, u + 6);
+		} else {
+			buffer.push(c);
+		}
+	}
+	if (text->size() > MAX_SUBJECT_LENGTH) {
+		const Char ellipsis[3] = { '.', '.', '.' };
+		buffer.insert(buffer.end(), ellipsis, ellipsis + 3);
+	}
+	if (quote) {
+		buffer.push('"');
+	}
+	buffer.insert(buffer.end(), IS_NOT_A_FUNCTION_STRING.begin(), IS_NOT_A_FUNCTION_STRING.end());
+	return new(heap) String(heap.managed(), buffer.begin(), buffer.end());
+}
+
 Function* Value::toFunction(Heap& heap) const {
 	Function* f = asFunction();
 	if (f == 0) {
-		throw ScriptException(heap, new(heap) Error(heap.managed(), TYPE_ERROR
-				, new(heap) String(heap.managed(), *toString(heap), IS_NOT_A_FUNCTION_STRING)));
+		throw ScriptException(heap, new(heap) Error(heap.managed(), TYPE_ERROR, newNotAFunctionString(heap, *this, true)));
 	}
 	return f;
 }
@@ -2755,11 +2791,10 @@ Object* Processor::convertToObject(const Value& v, const bool requireExtensible)
 	return object;
 }
 
-// FIX : should we continue this non-throwing approach or simply use toFunction everywhere? If keeping, we should share error creation with toFunction()
 Function* Processor::asFunction(const Value& v) {
 	Function* const f = v.asFunction();
 	if (f == 0) {
-		error(TYPE_ERROR, new(heap) String(heap.managed(), *v.toString(heap), IS_NOT_A_FUNCTION_STRING));
+		error(TYPE_ERROR, newNotAFunctionString(heap, v, true));
 	}
 	return f;
 }
@@ -2971,7 +3006,7 @@ void Processor::innerRun() {
 					Function* f;
 					const Value& name = sp[-im];
 					if (o->getProperty(rt, name, &v) == NONEXISTENT || (f = v.asFunction()) == 0) {
-						error(TYPE_ERROR, new(heap) String(heap.managed(), *name.toString(heap), IS_NOT_A_FUNCTION_STRING));
+						error(TYPE_ERROR, newNotAFunctionString(heap, name, false));
 					} else {
 						invokeFromStack(f, im + 1, im, o);
 					}
