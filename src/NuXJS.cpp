@@ -5188,6 +5188,11 @@ struct Support {
 		return UNDEFINED_VALUE;
 	}
 
+	static Value createTable(Runtime& rt, Processor&, UInt32, const Value*, Object*) {
+		Heap& heap = rt.getHeap();
+		return new(heap) JSObject(heap.managed(), 0);
+	}
+
 	static Value createWrapper(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Object*) {
 		if (argc >= 2) {
 			Heap& heap = rt.getHeap();
@@ -5421,6 +5426,7 @@ static struct {
 	FunctorAdapter<NativeFunction> func;
 } SUPPORT_FUNCTIONS[] = {
 	{ "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
+	{ "createTable", Support::createTable },
 	{ "defineProperty", Support::defineProperty }, { "compileFunction", Support::compileFunction },
 	{ "distinctConstructor", Support::distinctConstructor }, { "callWithArgs", Support::callWithArgs },
 	{ "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
