@@ -178,10 +178,13 @@
 > print("Function.prototype.isPrototypeOf(Function.prototype): "+Function.prototype.isPrototypeOf(Function.prototype));
 < Function.prototype.isPrototypeOf(Function.prototype): false
 -
-> // fix : print("Function instanceof Object: "+(Function instanceof Object));
-> // fix : print("Function instanceof Function: "+(Function instanceof Function));
-> // fix : print("(function(){}) instanceof Function: "+((function(){}) instanceof Function));
+> print("Function instanceof Object: "+(Function instanceof Object));
+> print("Function instanceof Function: "+(Function instanceof Function));
+> print("(function(){}) instanceof Function: "+((function(){}) instanceof Function));
 > print("Function.prototype.length: "+Function.prototype.length);
+< Function instanceof Object: true
+< Function instanceof Function: true
+< (function(){}) instanceof Function: true
 < Function.prototype.length: 0
 -
 > 
