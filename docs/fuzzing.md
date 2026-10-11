@@ -151,6 +151,10 @@ Turn off CRT dialogs in `LLVMFuzzerInitialize`, or a failed assert hangs the wor
   Run it from the generated seeds, which beat the committed corpus for it anyway: 2999 features against 2752 over
   equal runs, because `tests/**/*.io` exercises library calls that source-only fuzzing never reaches. Nothing from
   such a run is committed as an input; a crash it finds becomes an ordinary `.io` case, as below.
+- **Before every freeze, run the long campaigns and the number checks.** That is the stdlib target under MSVC ASan on
+  Windows and both targets under clang ASan and UBSan on the Mac, about 4 workers overnight each, plus, when number
+  conversion has changed, the constructed near-midpoint inputs described in `docs/Number Conversion.md` against an
+  exact oracle. The full corpus replay above runs at the same point.
 - **Two clang-cl builds pass the differential throw test here.** `-fsanitize=fuzzer,undefined` at 500 exec/s and
   `-fsanitize=fuzzer,address,undefined` with `-fsanitize-address-use-after-return=never` at 800 exec/s, both also
   needing `/Ob0`, the two annotation defines and the release target. Every one of the 2847 corpus inputs executes under
