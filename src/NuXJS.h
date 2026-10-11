@@ -1736,7 +1736,7 @@ class Processor : public GCItem {
 		void innerRun();
 		Object* convertToObject(const Value& v, bool requireExtensible);
 		Function* asFunction(const Value& v);
-		void invokeFunction(Function* f, Int32 popCount, Int32 argc, Object* thisObject = 0); // FIX : rename, unnecessary with the same name as the public method
+		void invokeFromStack(Function* f, Int32 popCount, Int32 argc, Object* thisObject = 0);
 		void newOperation(const Int32 argc);
 		void reset();
 		void pushFrame(const Code* code, Scope* scope, Object* thisObject);

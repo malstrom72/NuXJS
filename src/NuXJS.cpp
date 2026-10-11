@@ -2766,7 +2766,7 @@ Function* Processor::asFunction(const Value& v) {
 	return f;
 }
 
-void Processor::invokeFunction(Function* f, Int32 popCount, Int32 argc, Object* thisObject) {
+void Processor::invokeFromStack(Function* f, Int32 popCount, Int32 argc, Object* thisObject) {
 	sp[-popCount] = f->invoke(rt, *this, argc, sp - argc + 1, thisObject);
 	pop(popCount);
 }
@@ -2892,7 +2892,7 @@ void Processor::innerRun() {
 				const Object* o = sp[0].asObject();
 				if (o != 0) {
 					assert(0 <= opcode - OBJ_TO_PRIMITIVE_OP && opcode - OBJ_TO_PRIMITIVE_OP < 3);
-					invokeFunction(rt.toPrimitiveFunctions[opcode - OBJ_TO_PRIMITIVE_OP], 0, 1);
+					invokeFromStack(rt.toPrimitiveFunctions[opcode - OBJ_TO_PRIMITIVE_OP], 0, 1);
 					return;
 				}
 				break;
@@ -2905,7 +2905,7 @@ void Processor::innerRun() {
 						std::swap(sp[-1], sp[0]);
 					}
 					if (sp[-1].isString() || sp[-1].isNumber() || sp[-1].isBoolean()) {
-						invokeFunction(rt.toPrimitiveFunctions[OBJ_TO_PRIMITIVE_OP - OBJ_TO_PRIMITIVE_OP], 0, 1);
+						invokeFromStack(rt.toPrimitiveFunctions[OBJ_TO_PRIMITIVE_OP - OBJ_TO_PRIMITIVE_OP], 0, 1);
 						return;
 					}
 				}
@@ -2961,7 +2961,7 @@ void Processor::innerRun() {
 			case CALL_OP: {
 				Function* const f = asFunction(sp[-im]);
 				if (f != 0) {
-					invokeFunction(f, im, im);
+					invokeFromStack(f, im, im);
 				}
 				return;
 			}
@@ -2975,7 +2975,7 @@ void Processor::innerRun() {
 					if (o->getProperty(rt, name, &v) == NONEXISTENT || (f = v.asFunction()) == 0) {
 						error(TYPE_ERROR, new(heap) String(heap.managed(), *name.toString(heap), IS_NOT_A_FUNCTION_STRING));
 					} else {
-						invokeFunction(f, im + 1, im, o);
+						invokeFromStack(f, im + 1, im, o);
 					}
 				}
 				return;
@@ -2984,7 +2984,7 @@ void Processor::innerRun() {
 			case CALL_WITH_THIS_OP: {
 				Function* const f = asFunction(sp[-im]);
 				if (f != 0) {
-					invokeFunction(f, im + 1, im, sp[-im - 1].asObject());
+					invokeFromStack(f, im + 1, im, sp[-im - 1].asObject());
 				}
 				return;
 			}
@@ -2992,7 +2992,7 @@ void Processor::innerRun() {
 			case CALL_EVAL_OP: {
 				Function* f = asFunction(sp[-im]);
 				if (f != 0) {
-					invokeFunction((f == rt.evalFunction ? &DIRECT_EVAL_FUNCTION : f), im, im);
+					invokeFromStack((f == rt.evalFunction ? &DIRECT_EVAL_FUNCTION : f), im, im);
 				}
 				return;
 			}
@@ -3001,7 +3001,7 @@ void Processor::innerRun() {
 			case NEW_RESULT_OP: pop2push1(sp[0].isObject() ? sp[0] : sp[-1]); break;
 			case NEW_OBJECT_OP: push(new(heap) JSObject(heap.managed(), rt.getObjectPrototype())); break;
 			case NEW_ARRAY_OP: push(new(heap) JSArray(heap.managed())); break;
-			case NEW_REG_EXP_OP: invokeFunction(rt.createRegExpFunction, 1, 2); return;
+			case NEW_REG_EXP_OP: invokeFromStack(rt.createRegExpFunction, 1, 2); return;
 			case RETURN_OP:	ip = currentFrame->returnIP; popFrame(); return;
 			case THIS_OP: push(thisObject); break;
 			case VOID_OP: push(UNDEFINED_VALUE); break;
@@ -3444,12 +3444,9 @@ Compiler::CodeSection* Compiler::changeSection(CodeSection* newOutputSection) {
 }
 
 Compiler::BranchPoint Compiler::emitForwardBranch(Processor::Opcode opcode) {
-// FIX : share code somehow
 	const Processor::OpcodeInfo& opcodeInfo = Processor::getOpcodeInfo(opcode);
-	const Int32 operand = 0;
 	const Int32 targetStackDepth = (currentSection->inDeadCode() ? DEAD_CODE_STACK_DEPTH
-			: currentSection->stackDepth
-			+ opcodeInfo.stackUse + (((opcodeInfo.flags & Processor::OpcodeInfo::POP_OPERAND) != 0) ? -operand : 0)
+			: currentSection->stackDepth + opcodeInfo.stackUse	// the operand is 0 until completeForwardBranch
 			+ (((opcodeInfo.flags & Processor::OpcodeInfo::NO_POP_ON_BRANCH) != 0) ? 1 : 0)
 			+ (((opcodeInfo.flags & Processor::OpcodeInfo::POP_ON_BRANCH) != 0) ? -1 : 0));
 	emit(opcode);
