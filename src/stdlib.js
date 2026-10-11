@@ -1538,7 +1538,9 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 	return code
 }
 
-var REG_EXP_FLAG_TO_PROPERTY = support.createTable(), regExpCache = support.createTable(), regExpPrototype;
+var REG_EXP_FLAG_TO_PROPERTY = support.createTable(), regExpCache = support.createTable(), regExpCacheSize = 0
+		, regExpPrototype;
+var MAX_REG_EXP_CACHE_SIZE = 256;
 REG_EXP_FLAG_TO_PROPERTY['g'] = "global";
 REG_EXP_FLAG_TO_PROPERTY['i'] = "ignoreCase";
 REG_EXP_FLAG_TO_PROPERTY['m'] = "multiline";
@@ -1592,8 +1594,13 @@ var RegExp = support.distinctConstructor(function RegExp(pattern, flags) {
 		template[p] = true;
 	}
 	var key, func;
-	if (!(func = regExpCache[key = pattern + ',' + template.ignoreCase + ',' + template.multiline]))
+	if (!(func = regExpCache[key = pattern + ',' + template.ignoreCase + ',' + template.multiline])) {
+		if (++regExpCacheSize > MAX_REG_EXP_CACHE_SIZE) {
+			regExpCache = support.createTable();
+			regExpCacheSize = 1;
+		}
 		regExpCache[key] = func = evalThere(compileRegExp(pattern, template.ignoreCase, template.multiline));
+	}
 	var re = support.createWrapper("RegExp", func, regExpPrototype);
 	defineProperties(re, { dontEnum: true, readOnly: true, dontDelete: true }, template);
 	defineProperties(re, { dontEnum: true, dontDelete: true }, { lastIndex: 0 });
