@@ -3178,9 +3178,12 @@ UInt32 Constants::findOrAdd(const Value& constant) {
 	} else if (constant.isObject()) {	// objects compare by identity, so a fresh one never matches
 		push(constant);
 	} else {
-		for (UInt32 i = otherIndexes.size(); i > 0; --i) {
-			if ((*this)[otherIndexes[i - 1]].isStrictlyEqualTo(constant)) {
-				return otherIndexes[i - 1];
+		const UInt32 n = otherIndexes.size();
+		for (UInt32 i = n; i > 0 && i + 64 > n; --i) {	// only the 64 most recently used, so many distinct numbers stay linear
+			const UInt32 index = otherIndexes[i - 1];
+			if ((*this)[index].isStrictlyEqualTo(constant)) {
+				std::rotate(otherIndexes.begin() + i - 1, otherIndexes.begin() + i, otherIndexes.end());
+				return index;
 			}
 		}
 		push(constant);

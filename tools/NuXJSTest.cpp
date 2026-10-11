@@ -794,6 +794,9 @@ static void testLimits() {
 	rt.setMemoryCap(512*1024*1024);
 	rt.resetTimeOut(1);
 	EXPECT_EXCEPTION(rt.run("while(true) {}"), "Time out");
+	rt.resetTimeOut(10);	// a constant lookup quadratic in the number of distinct numbers takes over 20 s here
+	EXPECT_EQUAL(rt.eval("var a = []; for (var i = 0; i < 200000; ++i) a[i] = i + 0.5; "
+			"JSON.parse('[' + a.join(',') + ']')[199999]"), 199999.5);
 	rt.noTimeOut();
 }
 
