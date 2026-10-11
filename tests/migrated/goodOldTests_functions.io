@@ -64,7 +64,6 @@
 > (function() { print(g.length); function g(a,b) { }; function g(a,b,c,d) { } })(); // 4
 < 4
 -
-> // FIX : js doesn't like -> (function() { print(g.length); if (false) function g(a,b) { }; if (false) function g(a,b,c,d) { } })(); // 4
 > print("del: " + delete g);
 < del: true
 -

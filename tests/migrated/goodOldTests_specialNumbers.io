@@ -1,5 +1,3 @@
-> // FIX : infinity etc
--
 > o = new (function(){});
 > print(o.a+0) // NaN
 > garlicNan=o.a+0

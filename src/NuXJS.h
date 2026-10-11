@@ -469,8 +469,8 @@ class Value {
 		Value(const void* v); // N/A. Just to avoid unwanted casting of a pointer to bool.
 };
 
-typedef Byte Flags; // FIX : turn into enum
-const Flags EXISTS_FLAG = 1; // FIX : turn these into enum, that's ok
+typedef Byte Flags;
+const Flags EXISTS_FLAG = 1;
 const Flags READ_ONLY_FLAG = 2;
 const Flags DONT_ENUM_FLAG = 4;
 const Flags DONT_DELETE_FLAG = 8;
@@ -812,15 +812,14 @@ class JSArray : public LazyJSObject<Object> {
 		virtual const String* getClassName() const;	// &A_RRAY_STRING
 		virtual JSArray* asArray();
 		virtual Object* getPrototype(Runtime& rt) const;
-		// FIX : toString too?
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 		void pushElements(Runtime& rt, Int32 count, const Value* elements);
-		UInt32 getLength() const { return length; }	// fix: make virtual and have for all objects?
-		void updateLength(UInt32 newLength);	// fix: make virtual and have for all objects?
+		UInt32 getLength() const { return length; }
+		void updateLength(UInt32 newLength);
 		Value getElement(Runtime& rt, UInt32 index) const;
 		bool setElement(Runtime& rt, UInt32 index, const Value& v);
 
@@ -831,7 +830,7 @@ class JSArray : public LazyJSObject<Object> {
 		UInt32 length;
 		Vector<Value> denseVector;
 		virtual void gcMarkReferences(Heap& heap) const {
-			const_cast<JSArray*>(this)->denseVector.shrink(); // FIX : split into two different gc-things? it really *is* different to just mark stuff and actively shrink / compress stuff
+			const_cast<JSArray*>(this)->denseVector.shrink();
 			gcMark(heap, denseVector.begin(), denseVector.end());
 			super::gcMarkReferences(heap);
 		}
@@ -897,7 +896,7 @@ class SourceCodeUnit : public GCItem {
 **/
 class Code : public Object {
 	friend class FunctionScope;
-	friend class Compiler; // FIX : maybe not one day?
+	friend class Compiler;
 	
 	public:
 		typedef Object super;
@@ -978,7 +977,6 @@ class Function : public Object {
 
 typedef Value (*NativeFunction)(Runtime&, Processor&, UInt32, const Value*, Object*);
 
-// FIX : overkill?
 template<class F> struct FunctorAdapter : public Function {
 	typedef Function super;
 	FunctorAdapter(const F& f) : f(f) { }
@@ -1496,7 +1494,6 @@ class AccessorBase::const_iterator : public GCItem {
 		}
 };
 
-// FIX : why template?
 template<class F> struct AccessorBase::VarFunctorAdapter : public ExtensibleFunction {
 	typedef ExtensibleFunction super;
 	VarFunctorAdapter(GCList& gcList, const F& f) : super(gcList), f(f) { }
@@ -1534,7 +1531,6 @@ inline Value AccessorBase::makeValue(const VarFunction& f) const {
 	return new(rt.getHeap()) VarFunctorAdapter<VarFunction>(rt.getHeap().managed(), f);
 }
 
-// FIX : vvv I think there should be a getLength() in Object*
 inline UInt32 AccessorBase::size() const {
 	const JSArray* a = get().asArray();
 	return (a != 0 ? a->getLength() : static_cast<Int32>(operator[](&LENGTH_STRING)));
@@ -1592,8 +1588,8 @@ class Processor : public GCItem {
 	public:
 		typedef GCItem super;
 	
-		enum Opcode {	// FIX : sort
-			INVALID_OP = -1 // FIX : why?!
+		enum Opcode {
+			INVALID_OP = -1 // sentinel: no opcode
 			, CONST_OP										// operand: const_index, stack: -> constant
 			, READ_LOCAL_OP									// operand: local_index, stack: -> value
 			, WRITE_LOCAL_OP								// operand: local_index, stack: value -> value
@@ -1623,7 +1619,6 @@ class Processor : public GCItem {
 			, JT_OP, JF_OP									// operand: offset, stack: boolean ->
 			, JT_OR_POP_OP, JF_OR_POP_OP					// operand: offset, stack: boolean ->				// only pops when not jumping, for logical and/or instructions
 			, POP_OP										// operand: count, stack: ... ->
-			// FIX : push back is a really bad name, it's really pop back and then push sort of
 			, PUSH_BACK_OP									// operand: count, stack: ..., back -> back
 			, REPUSH_OP										// operand: offset, stack: ..., value, ... -> ..., value, ..., value
 			, SWAP_OP
@@ -1784,7 +1779,7 @@ class Compiler : public GCItem {
 
 		Compiler(GCList& gcList, Code* code, Target compileFor, Compiler* outer = 0);
 		const Char* compile(const Char* b, const Char* e);
-		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
+		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName);
 		void compile(const String& source);
 		void getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const;
 
@@ -1915,7 +1910,7 @@ class Compiler : public GCItem {
 		const Char* sourceUnitBase;
 		CodeSection* currentSection;
 		bool acceptInOperator;
-		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
+		int withScopeCounter;
 		int nestCounter;			// used in the root compiler only
 
 		virtual void gcMarkReferences(Heap& heap) const {

@@ -108,7 +108,6 @@ bool isFinite(double d) { return (_finite(d) != 0); }
 static double modulo(double x, double y) { return (!_finite(y) && !_isnan(y) && _finite(x) ? x : fmod(x, y)); }
 #else
 static double modulo(double x, double y) { return fmod(x, y); }
-// FIX : if c++11 use std::isnan and std::isfinite
 bool isNaN(double d) { return d != d; }
 bool isFinite(double d) { return !isNaN(d) && fabs(d) != std::numeric_limits<double>::infinity(); }
 #endif
@@ -244,7 +243,6 @@ const int MAX_EXPONENT = 308;
 const int NEGATIVE_E_NOTATION_START = -6;
 const int POSITIVE_E_NOTATION_START = 21;
 
-// FIX : shouldn't need this, used in quick-hash-finders and they should be optimized somehow i think
 static int strncmp(const Char* a, const char* b, size_t n) {
 	size_t i = 0;
 	while (i < n && a[i] == b[i] && a[i] != 0 && b[i] != 0) {
@@ -633,7 +631,7 @@ struct QuickConstants {
 		}
 		for (int i = -QUICK_CONSTANTS_INTEGERS_RANGE; i <= QUICK_CONSTANTS_INTEGERS_RANGE; ++i) {
 			Char buffer[32];
-			integers[i + QUICK_CONSTANTS_INTEGERS_RANGE] = String(intToString(buffer, i), buffer + 32); // FIX : newHashedString
+			integers[i + QUICK_CONSTANTS_INTEGERS_RANGE] = String(intToString(buffer, i), buffer + 32);
 			integers[i + QUICK_CONSTANTS_INTEGERS_RANGE].createBloomCode();
 		}
 	}
@@ -1752,7 +1750,7 @@ const String* JoiningEnumerator::nextPropertyName() {
 	return name;
 }
 
-static const Char LINE_TERMINATORS[] = { '\n', 0x2028, 0x2029, '\r' }; // FIX : '\r' must be last for line count to work, but I think we should change line counting algo in the future, a single '\r' without '\n' should count too really
+static const Char LINE_TERMINATORS[] = { '\n', 0x2028, 0x2029, '\r' };
 
 static bool isLineTerminator(Char c) {
 	return (std::find(LINE_TERMINATORS, LINE_TERMINATORS + 4, c) != LINE_TERMINATORS + 4);
@@ -1872,7 +1870,7 @@ JSArray::JSArray(GCList& gcList, UInt32 initialLength, const Value* initialEleme
 const String* JSArray::getClassName() const { return &A_RRAY_STRING; }
 JSArray* JSArray::asArray() { return this; }
 
-Object* JSArray::getPrototype(Runtime& rt) const { // FIX : have a sep. ArrayPrototype object like we have for Function?
+Object* JSArray::getPrototype(Runtime& rt) const {
 	Object* arrayPrototype = rt.getPrototypeObject(Runtime::ARRAY_PROTOTYPE);
 	return (this == arrayPrototype ? rt.getObjectPrototype() : arrayPrototype);
 }
@@ -2773,7 +2771,7 @@ void Processor::invokeFromStack(Function* f, Int32 popCount, Int32 argc, Object*
 
 void Processor::newOperation(const Int32 argc) {
 	Function* f = asFunction(sp[-argc]);
-	if (f != 0) { // FIX : sub
+	if (f != 0) {
 		Value v(UNDEFINED_VALUE);
 		f->getProperty(rt, &PROTOTYPE_STRING, &v);
 		Object* prototype = v.asObject();
@@ -3690,7 +3688,7 @@ void Compiler::returnSafeKept(const ExpressionResult& xr) {
 
 Compiler::ExpressionResult Compiler::makeAssignment(const ExpressionResult& xr) {
 	switch (xr.t) {
-		default: error(REFERENCE_ERROR, "Illegal l-value"); // FIX : ECMA like the word "reference"
+		default: error(REFERENCE_ERROR, "Illegal l-value");
 		case ExpressionResult::LOCAL: emit(Processor::WRITE_LOCAL_OP, xr.v.toInt()); break;
 		case ExpressionResult::NAMED: emitWithConstant(Processor::WRITE_NAMED_OP, xr.v); break;
 		case ExpressionResult::PROPERTY: emit(Processor::SET_PROPERTY_OP); break;
@@ -3782,7 +3780,7 @@ Value Compiler::stringOrNumberConstant() {
 	return Value();
 }
 
-Compiler::ExpressionResult Compiler::arrayInitialiser() { // FIX : share stuff with functionCall and arrayInitialiser
+Compiler::ExpressionResult Compiler::arrayInitialiser() {
 	emit(Processor::NEW_ARRAY_OP);
 	
 	Int32 index = 0;
@@ -3825,7 +3823,7 @@ Compiler::ExpressionResult Compiler::arrayInitialiser() { // FIX : share stuff w
 	return ExpressionResult(ExpressionResult::PUSHED);
 }
 
-Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff with functionCall and arrayInitialiser
+Compiler::ExpressionResult Compiler::objectInitialiser() {
 	emit(Processor::NEW_OBJECT_OP);
 	
 	white();
@@ -3908,7 +3906,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 				white();
 				functionCall(Processor::NEW_OP);
 			}
-			emit(Processor::NEW_RESULT_OP); // FIX : make a chain for script constructors and require returning object for native constructors instead?
+			emit(Processor::NEW_RESULT_OP);
 			assert(!op.primitiveOutput);
 			xr = ExpressionResult::PUSHED;
 			break;
@@ -4296,7 +4294,6 @@ void Compiler::rvalueGroup() {
 	expectToken(")", true);
 }
 
-// FIX : ok, this is serious mess
 Compiler::ExpressionResult Compiler::declareIdentifier(const String* name, bool func) {
 	ExpressionResult lxr(ExpressionResult::NAMED, name);
 	if (compilingFor != FOR_FUNCTION) {
@@ -4434,8 +4431,6 @@ void Compiler::semicolon(bool acceptLF) {
 		error(SYNTAX_ERROR, "Syntax error");
 	}
 }
-
-// FIX : sort all statement funcs
 
 void Compiler::varStatement() {
 	white();
@@ -4686,7 +4681,7 @@ void Compiler::block(SemanticScope* scope) {
 void Compiler::tryStatement(SemanticScope* currentScope) {
 	white();
 
-/* FIX : I thought we could drop if we keep the reserve-one-element-for-return-on-stack-solution, but rethrower needs a place to safe-keep its throw value and this is here*/
+	// the rethrower needs this slot
 	if (compilingFor != FOR_EVAL) { // space holder for return value so that we can break out of finallys (with the same stack pop count) regardless if try scope returns a value or not
 		emit(Processor::VOID_OP, 0);
 	}
@@ -4720,7 +4715,7 @@ void Compiler::tryStatement(SemanticScope* currentScope) {
 		const String* exceptionVarName = identifier(true, false);
 		Int32 previousLocalIndex = 0;
 		Table& nameIndexes = code->nameIndexes;
-		bool didExist = false; // FIX : can use NON_EXISTENT type if we choose to keep it
+		bool didExist = false;
 		Table::Bucket* indexBucket = nameIndexes.lookup(exceptionVarName);
 		if (indexBucket != 0) {
 			didExist = true;
@@ -4779,7 +4774,7 @@ void Compiler::tryStatement(SemanticScope* currentScope) {
 	completeForwardBranch(tryEndPoint);
 	completeForwardBranch(catchEndPoint);
 
-/* FIX : I thought we could drop if we keep the reserve-one-element-for-return-on-stack-solution */
+	// the rethrower needs this slot
 	if (compilingFor != FOR_EVAL) { // pop return space holder
 		emit(Processor::POP_OP, 1);
 	}
@@ -4982,7 +4977,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 }
 
 const Char* Compiler::compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName) {
-	assert(compilingFor == FOR_FUNCTION);  // FIX : messy, why do we have compilerFor if we separate this anyhow? Maybe subclass Compiler instead?
+	assert(compilingFor == FOR_FUNCTION);
 	assert(functionName != 0);
 	p = b;
 	this->e = e;
@@ -5007,7 +5002,7 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 		white();
 	}
 	expectToken("{", true);
-	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
+	compile(p, e);
 	expectToken("}", false);
 	code->name = functionName;
 	code->selfName = selfName;
@@ -5138,11 +5133,11 @@ void SeparateConstructorFunction::constructCompleteObject(Runtime& rt) const {
 	}
 	Value v;
 	Flags flags = templateFunction->getProperty(rt, &NAME_STRING, &v);
-	if (flags != NONEXISTENT) { // FIX : getName?
+	if (flags != NONEXISTENT) {
 		completeObject->setOwnProperty(rt, &NAME_STRING, v, flags);
 	}
 	flags = templateFunction->getProperty(rt, &LENGTH_STRING, &v);
-	if (flags != NONEXISTENT) { // FIX : in the future I think we should have a getLength
+	if (flags != NONEXISTENT) {
 		completeObject->setOwnProperty(rt, &LENGTH_STRING, v, flags);
 	}
 }
@@ -5272,7 +5267,7 @@ struct Support {
 			Object* arrayObject = (argc > 2 ? argv[2].toObjectOrNull(heap, false) : 0);
 			if (arrayObject != 0) {
 				Value v;
-				if (arrayObject->getProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) { // FIX : in the future I think we should have a virtual getLength
+				if (arrayObject->getProperty(rt, &LENGTH_STRING, &v) != NONEXISTENT) {
 					Int32 offset = (argc > 3 ? argv[3].toInt() : 0);
 					UInt32 length = static_cast<UInt32>(std::max(v.toInt() - offset, 0));
 					args = Vector<Value>(length, &heap);
@@ -5552,7 +5547,7 @@ const String* Runtime::newStringConstantWithHash(UInt32 hash, const char* s) {
 
 Var Runtime::call(Function* function, UInt32 argc, const Value* argv, Object* thisObject) {
 	if (callNestCounter >= MAX_CROSS_CALL_RECURSION) {
-		ScriptException::throwError(heap, RANGE_ERROR, &STACK_OVERFLOW_STRING); // FIX : other string?
+		ScriptException::throwError(heap, RANGE_ERROR, &STACK_OVERFLOW_STRING);
 	}
 	struct NestCounter {
 		NestCounter(Runtime& rt) : rt(rt) { ++rt.callNestCounter; };
