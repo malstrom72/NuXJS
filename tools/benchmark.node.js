@@ -6,6 +6,8 @@ const path = require("path");
 const os = require("os");
 const child_process = require("child_process");
 
+let timeUnit = "s";
+
 function main() {
         let tests;
         let exe;
@@ -112,8 +114,8 @@ function main() {
                 else overallDisplay = formatNumber((overallMedians[mid - 1].value + overallMedians[mid].value) / 2);
                 const total = overallMedians.reduce((sum, entry) => sum + entry.value, 0);
                 const averageDisplay = formatNumber(total / overallMedians.length);
-                console.log("\nmedian of all tests: " + overallDisplay + "s");
-                console.log("average of all tests: " + averageDisplay + "s");
+                console.log("\nmedian of all tests: " + overallDisplay + timeUnit);
+                console.log("average of all tests: " + averageDisplay + timeUnit);
         }
 
 	if (deferredError) {
@@ -152,12 +154,14 @@ function runBenchmark(options) {
                 } else {
                         const tokens = parseTimeOutput(times);
                         if (tokens.length === 0) throw new Error("No timing data captured.");
-                        console.log(tokens[0]);
-                        const raw = tokens[0].endsWith("s") ? tokens[0].slice(0, -1) : tokens[0];
+                        const timeToken = (tokens.length > 3 ? tokens[3] : tokens[0]);	// the thread's own CPU time, where the REPL reports it
+                        console.log(timeToken);
+                        timeUnit = (timeToken.match(/[a-zA-Z]+$/) || ["s"])[0];
+                        const raw = timeToken.slice(0, timeToken.length - timeUnit.length);
                         const value = Number(raw);
-                        if (!Number.isFinite(value)) throw new Error("Invalid timing output: " + tokens[0]);
+                        if (!Number.isFinite(value)) throw new Error("Invalid timing output: " + timeToken);
                         timeSamples.push({ value, raw });
-                        runValues.push(tokens[0]);
+                        runValues.push(timeToken);
                         mem1 = tokens[1] || "";
                         mem2 = tokens[2] || "";
                 }
@@ -199,7 +203,7 @@ function runBenchmark(options) {
 		medianValue = (timeSamples[mid - 1].value + timeSamples[mid].value) / 2;
 		medianRaw = formatNumber(medianValue);
 	}
-	const medianString = medianRaw + "s";
+	const medianString = medianRaw + timeUnit;
 	entries[0] = medianString;
 	entries[1] = mem1;
 	entries[2] = mem2;
