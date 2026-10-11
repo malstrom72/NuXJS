@@ -436,6 +436,7 @@ These are resolved in the es5 build and remain only in the frozen es3 core:
 - In regular expressions the lookahead operators `?=` and `?!` cannot be quantified as in ES3; they behave like the ES5 assertions.
 - Assigning an object to an array's `length` property is unsupported; attempts throw `RangeError` instead of converting the value. The es5 build converts it as 15.4.5.1 requires.
 - `for...in` throws a `TypeError` when the object is `null` or `undefined`, where ES5.1 12.6.4 just skips the loop.
+- Unicode format control characters (category Cf) follow ES5 7.1 rather than ES3 7.1, which removes them before lexing: they stay as characters in string and regular expression literals and comments, so a string literal holding `a`, a raw `\uFEFF` and `b` has length 3 rather than 2. Anywhere else they are a `SyntaxError`, because the es3 build has neither ES5's zero width joiners in identifiers nor its `\uFEFF` white space (see `tests/es3only/formatControlKept.io`).
 - Function `prototype` properties are enumerable on user-defined functions, where ES5.1 13.2 makes them `{ DontEnum }`.
 - Creating a numeric property on an *array* can shadow a read-only numeric property in the prototype chain, and skips the chain altogether, so an inherited element is never consulted. This falls out of an optimization for array element writes and does not apply to ordinary objects. The es5 build asks 8.12.4 [[CanPut]] first, so the read-only property wins and an inherited setter runs.
 - A `"use strict"` directive is an ordinary string expression statement here and does nothing: ES3 has no strict mode. Code carrying the directive runs unchanged, so it is worth knowing that the same code becomes strict the moment it is run on the es5 build, where an assignment to an undeclared variable throws instead of creating a global, `this` is `undefined` rather than the global object in a plain call, and `with` and a duplicate parameter name are SyntaxErrors.
@@ -453,7 +454,6 @@ The es3 build has always carried a small subset of ES5 conveniences:
 - `String.prototype.match` returns `null` for global patterns with no match and always uses the built-in `RegExp.prototype.exec` implementation.
 - `eval()` distinguishes between direct and indirect calls.
 - Many `Date` object features introduced in ES5, `toISOString` and `toJSON` included.
-- Unicode format control characters are preserved in source text.
 
 ### ES6-inspired extras
 

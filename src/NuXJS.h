@@ -984,7 +984,7 @@ class JSArray : public LazyJSObject<Object> {
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 		void pushElements(Runtime& rt, Int32 count, const Value* elements);
 		UInt32 getLength() const { return length; }	// fix: make virtual and have for all objects?
-		bool updateLength(UInt32 newLength);	// fix: make virtual and have for all objects?
+		void updateLength(UInt32 newLength);	// fix: make virtual and have for all objects?
 		Value getElement(Runtime& rt, UInt32 index) const;
 		bool setElement(Runtime& rt, UInt32 index, const Value& v);
 

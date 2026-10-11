@@ -2308,20 +2308,20 @@ Object* JSArray::getPrototype(Runtime& rt) const { // FIX : have a sep. ArrayPro
 	return (this == arrayPrototype ? rt.getObjectPrototype() : arrayPrototype);
 }
 
-bool JSArray::updateLength(UInt32 newLength) {
+void JSArray::updateLength(UInt32 newLength) {
 	if (newLength < denseVector.size()) {
 		denseVector.resize(newLength);
 	}
+	UInt32 reached = newLength;
 	if (completeObject != 0) {
 		for (Table::Bucket* bucket = completeObject->getFirst(); bucket != 0; bucket = completeObject->getNext(bucket)) {
 			UInt32 i;
 			if (Value(bucket->getKey()).toArrayIndex(i) && i >= newLength && !completeObject->erase(bucket)) {
-				return false;
+				reached = std::max(reached, i + 1);
 			}
 		}
 	}
-	length = newLength;
-	return true;
+	length = reached;	// ES3 15.4.5.1 sets newLength regardless, which breaks 15.4.5.2 when a DontDelete element stays
 }
 
 Value JSArray::getElement(Runtime& rt, UInt32 index) const {
@@ -2550,7 +2550,8 @@ bool JSArray::setOwnPropertyInternal(Runtime& rt, const Value& key, const Value&
 			result = (truncateTo(rt, coercedLength) == coercedLength);
 		}
 	#else
-		result = updateLength(coercedLength);
+		updateLength(coercedLength);
+		result = true;
 	#endif
 		return true;
 	}
