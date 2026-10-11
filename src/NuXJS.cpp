@@ -2230,8 +2230,13 @@ bool Scope::deleteLocalVar(Runtime&, const String*, bool&) {
 }
 
 void Scope::declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete) {
-	assert(parentScope != 0);
-	return parentScope->declareVar(rt, name, initValue, dontDelete);
+	for (Scope* s = this; !s->declareLocalVar(rt, name, initValue, dontDelete); s = s->parentScope) {
+		assert(s->parentScope != 0);
+	}
+}
+
+bool Scope::declareLocalVar(Runtime&, const String*, const Value&, bool&) {
+	return false;
 }
 
 void Scope::makeClosure() const {
@@ -2341,7 +2346,7 @@ bool FunctionScope::deleteLocalVar(Runtime& rt, const String* name, bool& result
 	return false;
 }
 
-void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete) {
+bool FunctionScope::declareLocalVar(Runtime& rt, const String* name, const Value& initValue, bool& dontDelete) {
 	Int32 index;
 	if (!function->code->lookupNameIndex(name, index)) {
 		Table& props = *getDynamicVars(rt);
@@ -2354,6 +2359,7 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
 	if (!initValue.isUndefined()) {
 		writeVar(rt, name, initValue);
 	}
+	return true;
 }
 
 FunctionScope::~FunctionScope() {
@@ -2522,8 +2528,9 @@ const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
 struct Processor::EvalScope : public Scope {
 	typedef Scope super;
 	EvalScope(GCList& gcList, Scope* parentScope) : super(gcList, parentScope) { }
-	virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool) {
-		parentScope->declareVar(rt, name, initValue, false);
+	virtual bool declareLocalVar(Runtime&, const String*, const Value&, bool& dontDelete) {
+		dontDelete = false;	// eval code declares deletable vars
+		return false;
 	}
 };
 	
@@ -5079,13 +5086,14 @@ bool Runtime::GlobalScope::deleteLocalVar(Runtime& rt, const String* name, bool&
 	return true;
 }
 
-void Runtime::GlobalScope::declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete) {
+bool Runtime::GlobalScope::declareLocalVar(Runtime& rt, const String* name, const Value& initValue, bool& dontDelete) {
 	Value v;
 	// FIX : deep or not?!
 	const Flags flags = rt.getGlobalObject()->getOwnProperty(rt, name, &v);
 	if (flags == NONEXISTENT || !initValue.isUndefined()) {
 		rt.getGlobalObject()->setOwnProperty(rt, name, initValue, dontDelete ? DONT_DELETE_FLAG : 0);
 	}
+	return true;
 }
 
 struct Runtime::FunctionPrototypeFunction : public ExtensibleFunction {

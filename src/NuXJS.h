@@ -1011,7 +1011,7 @@ class Scope : public GCItem {
 		Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
 		void writeVar(Runtime& rt, const String* name, const Value& v);
 		bool deleteVar(Runtime& rt, const String* name);
-		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
+		void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		Value* getLocalsPointer() const { return localsPointer; }
 		Scope* getParentScope() const { return parentScope; }
 		void makeClosure() const;
@@ -1026,6 +1026,7 @@ class Scope : public GCItem {
 		virtual Flags readLocalVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const; // NONEXISTENT if not here
 		virtual bool writeLocalVar(Runtime& rt, const String* name, const Value& v);	// false if not here
 		virtual bool deleteLocalVar(Runtime& rt, const String* name, bool& result);		// false if not here
+		virtual bool declareLocalVar(Runtime& rt, const String* name, const Value& initValue, bool& dontDelete); // false to pass it on
 
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, parentScope);
@@ -1152,7 +1153,6 @@ class FunctionScope : public Scope {
 		typedef Scope super;
 
 		FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, const Value* argv);
-		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		JSObject* getDynamicVars(Runtime& rt) const;
 	   	virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
 
@@ -1160,6 +1160,7 @@ class FunctionScope : public Scope {
 		virtual Flags readLocalVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
 		virtual bool writeLocalVar(Runtime& rt, const String* name, const Value& v);
 		virtual bool deleteLocalVar(Runtime& rt, const String* name, bool& result);
+		virtual bool declareLocalVar(Runtime& rt, const String* name, const Value& initValue, bool& dontDelete);
 		JSFunction* const function;
 		const UInt32 passedArgumentsCount;
 		Vector<Value> locals; // Includes variables and arguments.
@@ -1199,7 +1200,7 @@ class Runtime : public GCItem {
 		struct GlobalScope : public Scope {
 			typedef Scope super;
 			GlobalScope(GCList& gcList);
-			virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
+			virtual bool declareLocalVar(Runtime& rt, const String* name, const Value& initValue, bool& dontDelete);
 			virtual Flags readLocalVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
 			virtual bool writeLocalVar(Runtime& rt, const String* name, const Value& v);
 			virtual bool deleteLocalVar(Runtime& rt, const String* name, bool& result);
