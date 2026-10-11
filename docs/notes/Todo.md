@@ -6,7 +6,7 @@ Run-time
 
 	* Make gc async/incremental in the sense that you actively and repeatdly call it until it is done (doesn't block native cpu, even if it "blocks" vm cpu).
 
-	* is the logic correct when changing array length containing a few undeletable elements?
+	* FIXED 2026-10-11: shrinking an array's length past a non-deletable element (made with Object.defineProperty) stopped deleting at the first one it met, in hash order, and left length unchanged. The es3 build now deletes every element it can, as ES3 15.4.5.1 step 14 says, and sets length to the new value or just above the highest element that stayed, whichever is larger: step 15 would set the new value regardless, which breaks the 15.4.5.2 invariant that length exceeds every index. The es5 build stops deleting at that element, as ES5 15.4.5.1 says. tests/regression/arrayLengthKeepsUndeletable.io.
 
 	* FIXED 2026-10-10: the ScriptException constructor is throw() but converts its value to UTF-8, which allocates, so running out of memory there called std::terminate. It now catches the failure and what() answers the literal "out of memory", which needs no allocation; NuXJSTest forces the failure with a Heap whose acquireMemory throws. The conversion stays in the constructor because what() has no heap to convert with.
 		- actually I think we should merge ScriptException and Exception, no point in having a separate Exception
