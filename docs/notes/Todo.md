@@ -68,10 +68,6 @@ LOW PRIO
 Run-time
 ========
 
-	* I don't know but the "emulation" in arguments object feels a bit over the top (registering deleted items etc)
-
-	* perhaps it would have been better to split Frame into different pointers (more similar to ES-spec): one for running code (not changed by catch and with), one for variable object (not changed by catch, with or eval) and "current scope object" (changed by them all). This way we wouldn't have to declare so many dummy virtuals that just passes stuff upwards the Frame chain.
-
 	* array object: type-specialized storage. (DONE: length property + a dense continuous-vector that falls back to a normal ScriptObject when the array becomes sparse or gets non-integer keys - see JSArray denseVector / sliceDenseVector / constructCompleteObject.)
 		- still open: use different compressed variations (templates) when the type is homogenous over the whole array, e.g. number array, object array, string array. One could even consider an int array.
 
@@ -87,10 +83,6 @@ Other
 	* included in tests should be to config the gc to sweep after every instruction
 
 
-	* optional version without exceptions?!
-		- would work except for the compiler, how to abort compiler? longjump? I know it is ugly, but this woul be for embedded systems etc that disable exceptions. Would be nice to support them.
-		  ... or I suppose we could change all methods to return a bool :(
-
 OPTIMIZE
 ########
 
@@ -102,8 +94,6 @@ Run-time
 	* if we can guarantee that vsp is always at function entry level for each catch scope we should try a table-based exception handler, e.g.
 		- struct TryRange { Int32 offset; Int32 length; Int32 catchIndex; String* catchName; } // catchName != 0 then create temporary "catch frame"
 		- TRY_OP, TRIED_OP and CATCH_FRAME_OP would go away then...
-
-	* if we supplied a local variable index to CatchFrame (for the exception variable) we could access it by index instead of by name in the catch scope (and in the CatchFrame property getters/setters), but I am not convinced it would make an enormous performance improvement.
 
 	* Make writes terminal and REPUSH in a = b = c type of expression...
 		- after a lot of experiments with this I think we better expand this in the future to a general opcode pattern reducer instead (see rev 19228)
@@ -139,6 +129,16 @@ Run-time
 
 
 	* have an int index Element AccessorBase for quick array accesses
+
+	* FIX notes in the code kept for later, performance or message quality only:
+		- RETURN_OP could take a pop count and RETURN_VOID_OP drop the trailing POP and VOID; the gain is below the 2% noise floor, so it needs an A/A control.
+		- Function.prototype.apply copies its arguments twice; a virtual on array-like objects could hand them over directly.
+		- apply and call could be native instead of stdlib.js wrappers around $callWithArgs.
+		- str() in stdlib.js pays for a full ToString where a string-hint ToPrimitive intrinsic would do.
+		- the regexp code generator emits identical class-test functions and a redundant `b=p+0,e=p+Infinity` setup, and $match could take start and end positions instead of a $sub copy.
+		- more of RegExp construction could go through regExpCache.
+		- trailing garbage after a complete program gives a bare "Syntax error" that could name the token.
+	* "ΑΣ".toLowerCase() gives σ, not the final ς: the conditional mappings in SpecialCasing.txt are not applied (the TODO in tools/work/unicase.js). Both editions point at SpecialCasing.txt, so whether this is a deviation is arguable.
 
 Compiler
 ========
@@ -183,19 +183,6 @@ Compiler
 		- if (s->type == Scope::CATCH_TYPE || s->type == Scope::FINALLY_TYPE) emit(Processor::POP_FRAME_OP);
 
 	* don't like the outputCode solution, setting / resetting stuff manually isn't good programming style
-
-	* fast lookup of operators (some clever quick hashing)
-		- can't do normal quick-hashing since it requires string length... perhaps I can develop a quick hashing that matches beginning of strings only?
-			- it would be required to use && to never look beyond the max length of all "current candidates"
-
-	* couldn't we share identical strings in the same engine? any disadvantage to that?
-		- we did for a while (shared constants with stdlib etc), but it went away when I added the blocking eval() etc utility functions and I believe there was even some performance benefit to *not* sharing (but why?)
-
-	* simple constants pre-calculations
-		- can we instantiate a small processor to do this?
-		- problem is that we first emit the left constant then compile the right constant and in case we have something like `(a,5)+(b,6)` the opcode order will be: a,5,b,6,+ ... how can we then remove the first 5?
-		- I guess we need to temporarily change output (as usual) for the second operand (if first is constant) *or* remove an earlier element (never done before)
-		- Preliminary tests found little to gain in practice cause you rarely have complicated constants without involvment of variables.
 
 	* instead of flushing/discarding results of statements directly, couldn't we keep them until the next statement? i.e. eliminating stuff like "WRITE_INDEXED #-1", "POP", "READ_INDEXED #-1" (except when branch targets of course)
 
