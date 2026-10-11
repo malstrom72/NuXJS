@@ -1045,7 +1045,6 @@ defineProperties(Date.prototype, { dontEnum: true }, {
 	setUTCMonth: unconstructable(function setUTCMonth(month, date) { return setDateValue(this, timeClip(setDateParts(getDateValue(this), 1, arguments))) }),
 	setFullYear: unconstructable(function setFullYear(year, month, date) { var v; return setDateValue(this, timeClipLocal(setDateParts($isNaN(v = getDateValue(this)) ? 0 : toLocalTime(v), 0, arguments))) }),
 	setUTCFullYear: unconstructable(function setUTCFullYear(year, month, date) { var v; return setDateValue(this, timeClip(setDateParts($isNaN(v = getDateValue(this)) ? 0 : v, 0, arguments))) }),
-	// TODO: this isn't as generic as in the ES5 spec, e.g. not converting this to object, not going via the objects reassignable `toISOString`.
 	toJSON: unconstructable(function toJSON() { return isoDate(this); })
 });
 
@@ -1094,7 +1093,7 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 
 	function isClass(char, mask) { return ((CC[char] & mask) !== 0); }
 
-	function areClass(s, mask) { // FIX : only used once
+	function areClass(s, mask) {
 		for (var i = s.length - 1; i >= 0; --i) if ((CC[s[i]] & mask) === 0) return false;
 		return true;
 	}
@@ -1111,7 +1110,7 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 		if (isClass(s[p], DECIMAL_CHAR)) {
 			n = 0;
 			do {
-				n = n * 10 + ($charCodeAt(s, p) - 48); // FIX : +s[p] faster?
+				n = n * 10 + ($charCodeAt(s, p) - 48);
 				++p;
 			} while (isClass(s[p], DECIMAL_CHAR))
 		}
@@ -1140,7 +1139,7 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 					return null;
 				}
 				if (mini > maxi) {
-					throw syntaxError("Min greater than max in regular expression quantifier"); // FIX
+					throw syntaxError("Min greater than max in regular expression quantifier");
 				}
 				++p;
 				break;
@@ -1156,7 +1155,6 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 
 	function escapeCharacter(c) {
 		if (isClass(c, OK_IN_STRING_LITERAL)) return c;
-		// TODO : shorter escapes for \n etc
 		return (c <= '~' ? "\\x" : "\\u") + leftPad(numberToRadix($charCodeAt(c, 0), 16), (c <= '~' ? 2 : 4));
 	}
 
@@ -1336,7 +1334,7 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 				}
 				code = and(code, literalSequenceToCode(literalSequence, offset));
 				offset += literalSequence.length;
-			} else { // TODO: make subs of these
+			} else {
 				var c, condition, tail, useCall, inner;
 				switch (c = s[p]) {
 					case '^': {
@@ -1450,7 +1448,7 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 							(closeCapture = (openCapture = (captureCounter++) * 2) + 1);
 							closureVars += ",c" + openCapture + ",c" + closeCapture;
 						}
-						var innerCapturesStart = captureCounter // FIX : these two are only used for negative lookAhead, use for open/close captures too?
+						var innerCapturesStart = captureCounter
 								, disjunction = compileDisjunction(0, (lookAhead ? void 0 : junctionName))
 								, innerCapturesEnd = captureCounter;
 						if ((c = s[p]) !== ')') {
