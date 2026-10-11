@@ -334,9 +334,11 @@
 > this.isGlobal = "yeah, is global";
 > var o = new (function() { this.eval = eval; this.isGlobal = "no, is not global"; this.test1 = function() { this.eval("print(this.isGlobal)")
 >         this.test2 = function() { eval("print(this.isGlobal)") } } });
-> // o.eval("print(this.isGlobal)"); // FIX : jsc doesn't like this
-> // o.test1(); // FIX : jsc doesn't like this
+> o.eval("print(this.isGlobal)");
+> o.test1();
 > // o.test2();
+< yeah, is global
+< yeah, is global
 -
 > 
 -

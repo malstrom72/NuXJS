@@ -60,21 +60,15 @@
 > print(newedArray.length);
 < 0
 -
-> /* FIX : should throw
 > newedArray = new Array(-1);
-> print(newedArray.length);
-> print(newedArray[0]);
-> */
+! !!!! RangeError: Invalid array length
 -
 > newedArray = new Array(50);
 > print(newedArray.length);
 < 50
 -
-> /* FIX : should throw
 > newedArray = new Array(50.5);
-> print(newedArray.length);
-> print(newedArray[0]);
-> */
+! !!!! RangeError: Invalid array length
 -
 > print(Array.prototype.length);
 > print(delete Array.prototype.length);

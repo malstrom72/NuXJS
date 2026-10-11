@@ -43,15 +43,14 @@
 > print("name" in objectFromCustomConstructor);
 > print("age" in objectFromCustomConstructor);
 > print("nope" in objectFromCustomConstructor);
-> // FIX : enable once we have toString in object.prototype
-> // print(objectFromCustomConstructor in objectFromCustomConstructor);
+> print(objectFromCustomConstructor in objectFromCustomConstructor);
 > print("objectFromCustomConstructor" in this);
 < true
 < true
 < false
+< false
 < true
 -
-> /* FIX :
 > Object.prototype.patch = "patched";
 > print(emptyObject.patch);
 > print(deepObject.patch);
@@ -60,7 +59,13 @@
 > print(objectFromConstructor.patch);
 > print(objectFromCustomConstructor.patch);
 > print(delete Object.prototype.patch);
-> */
+< patched
+< patched
+< patched
+< patched
+< patched
+< patched
+< true
 -
 > // had a bug with this...
 > (function() {

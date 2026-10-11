@@ -45,14 +45,12 @@
 >     function ChainC() { this.chainBProperty = this.shadowProperty = "ChainC value"; };
 >     ChainC.prototype = new ChainB();
 >     
-> /* FIX : reenable
 >     function Damaged() { }
 >     Damaged.prototype = 12345;
 >     var damaged = new Damaged;
 >     Object.prototype.sdfnkdan = 'o3htieofd';
 >     print("damaged.sdfnkdan="+damaged.sdfnkdan);
 >     print("delete Object.prototype.sdfnkdan="+(delete Object.prototype.sdfnkdan));
-> */
 >     var chain = new ChainC();
 >     print("chain.shadowProperty: " + chain.shadowProperty);
 >     print("chain.chainBProperty: " + chain.chainBProperty);
@@ -110,6 +108,8 @@
 < delete ChainA.prototype.constructor: true
 < delete ChainA.prototype: false
 < contents(ChainA.prototype): { constructor: 12345, rootProperty: Root value }
+< damaged.sdfnkdan=o3htieofd
+< delete Object.prototype.sdfnkdan=true
 < chain.shadowProperty: ChainC value
 < chain.chainBProperty: ChainC value
 < chain.chainAProperty: ChainB value
