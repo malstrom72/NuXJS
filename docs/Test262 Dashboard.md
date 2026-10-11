@@ -29,6 +29,9 @@ The Test262 dashboard is an optional developer utility for running and summarizi
   ```bash
   node tools/testdash.node.js --cli --reset-passed
   ```
+- Run the CLI mode before every freeze, next to the long fuzzing campaigns in `docs/fuzzing.md`. It must report no
+  failures. On the es3 build it runs 15766 tests in about 50 minutes on Windows: 6542 pass, none fail, and 9224 are
+  ignored (8933 past ES3, 101 bad tests, 190 by design).
 
 ## Python 2 Requirement
 
