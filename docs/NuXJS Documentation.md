@@ -401,6 +401,7 @@ During the build, `src/stdlib.js` is minified and translated into `src/stdlibJS.
 
 - `\0` is interpreted as a null character only when no digit follows it. Octal escapes are not supported: `\1` through `\7`, and `\0` followed by any digit, are rejected with `SyntaxError: Invalid escape sequence` rather than decoded.
 - Unicode line separator (`\u2028`) and paragraph separator (`\u2029`) are treated as linefeeds. The zero-width no‑break space (`\uFEFF`) does not count as white space, matching ES3 but not ES5.
+- Unicode format control characters (category Cf) follow ES5 7.1 rather than ES3 7.1, which removes them before lexing: they stay as characters in string and regular expression literals and comments, so a string literal holding `a`, a raw `\uFEFF` and `b` has length 3 rather than 2. Anywhere else they are a `SyntaxError`, because ES3 has neither ES5's zero width joiners in identifiers nor its `\uFEFF` white space (see `tests/unconforming/formatControlKept.io`).
 - Case conversion, identifier classification and the `<USP>` white space class are all derived from Unicode 3.0. ES3 asks for "version 2.1 or later", so this conforms, but it parts company with modern engines in three places. The zero width space (`\u200B`) counts as white space, because it is category Zs in Unicode 3.0 and only became a format character in 4.0.1. `"\u10A0".toLowerCase()` returns its argument unchanged, because Unicode 3.0 made Georgian unicameral, where later versions map it to `\u2D00`. `\u2118` and `\u212E` are rejected in identifiers, because ES3 defines those by Unicode category and both are symbols in Unicode 3.0; ES2015 grandfathered them back in with `Other_ID_Start`.
 - Custom property getters and setters are not implemented.
 - Implicit `valueOf` and `toString` conversions may happen earlier than specified, for example, `v[o]++` only invokes `toString()` once.
@@ -437,7 +438,6 @@ NuXJS implements a subset of ECMAScript 5 functionality that covers the most wi
 - `String.prototype.match` returns `null` for global patterns with no match and always uses the built-in `RegExp.prototype.exec` implementation.
 - `eval()` distinguishes between direct and indirect calls.
 - Many `Date` object features introduced in ES5 are available.
-- Unicode format control characters are preserved in source text.
 
 ### Unsupported ES5 features
 
