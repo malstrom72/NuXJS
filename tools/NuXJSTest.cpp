@@ -780,6 +780,14 @@ static void testLimits() {
 				, "Memory allocation failure (size too large)");
 		EXPECT(cappedHeap.size() < 48 * 1024 * 1024);
 	}
+	{
+		Heap cappedHeap;
+		Runtime cappedRuntime(cappedHeap);
+		cappedRuntime.setupStandardLibrary();
+		cappedRuntime.setMemoryCap(16 * 1024 * 1024);
+		EXPECT_EQUAL(cappedRuntime.eval("var n = 0; for (var i = 0; i < 20000; ++i) n += new RegExp('a' + i).test('a' + i); n")
+				, 20000);
+	}
 
 	std::cout << "	- execution timeouts" << std::endl;
 
