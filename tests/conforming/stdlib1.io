@@ -306,10 +306,6 @@
 < x instanceof String: false
 < x instanceof realString: true
 >     
->     // FIX : test errors
->     
->     // FIX : test that all function's have names that matches their property names in their "owner objects"
->     
 >         var global = this;
 >         function test() { print(this.toString() + (this === global ? ' (global)' : '')); print('count: ' + arguments.length); for (i = 0; i < arguments.length; ++i) print(arguments[i].toString()); print('-') }
 >         test(1,2,3,4,5);

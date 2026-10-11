@@ -44,7 +44,7 @@
 ['ppeg.compile'] = function {
 	args(@target, @syntax);
 	defaults(@::ppeg.$compileTo, void);
-	swap(@::ppeg.$compileTo, @target);	// FIX : ugly non-reentrant solution here!
+	swap(@::ppeg.$compileTo, @target);
 	::pps = syntax;
 	::ppi = ::ppm = 0;
 	if (!::ppeg.root(@o)) ppeg.fail("PPEG format error: ", syntax, ::ppm);

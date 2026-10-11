@@ -78,6 +78,9 @@ different specification. With those excluded the suite is 16255 of the 16485 `.j
   ```bash
   node tools/testdash.node.js --cli --include-strict
   ```
+- Run the CLI mode before every freeze, next to the long fuzzing campaigns in `docs/fuzzing.md`. It must report no
+  failures. On the es3 build it runs 15766 tests in about 50 minutes on Windows: 6542 pass, none fail, and 9224 are
+  ignored (8933 past ES3, 101 bad tests, 190 by design).
 
 ## Python 2 Requirement
 

@@ -64,7 +64,6 @@
 > (function() { print(g.length); function g(a,b) { }; function g(a,b,c,d) { } })(); // 4
 < 4
 -
-> // FIX : js doesn't like -> (function() { print(g.length); if (false) function g(a,b) { }; if (false) function g(a,b,c,d) { } })(); // 4
 > print("del: " + delete g);
 < del: true
 -
@@ -178,10 +177,13 @@
 > print("Function.prototype.isPrototypeOf(Function.prototype): "+Function.prototype.isPrototypeOf(Function.prototype));
 < Function.prototype.isPrototypeOf(Function.prototype): false
 -
-> // fix : print("Function instanceof Object: "+(Function instanceof Object));
-> // fix : print("Function instanceof Function: "+(Function instanceof Function));
-> // fix : print("(function(){}) instanceof Function: "+((function(){}) instanceof Function));
+> print("Function instanceof Object: "+(Function instanceof Object));
+> print("Function instanceof Function: "+(Function instanceof Function));
+> print("(function(){}) instanceof Function: "+((function(){}) instanceof Function));
 > print("Function.prototype.length: "+Function.prototype.length);
+< Function instanceof Object: true
+< Function instanceof Function: true
+< (function(){}) instanceof Function: true
 < Function.prototype.length: 0
 -
 > 

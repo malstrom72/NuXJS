@@ -16,7 +16,7 @@
 	@preserve: toFixed,toISOString,toLocaleDateString,toLocaleLowerCase,toLocaleString,toLocaleTimeString
 	@preserve: toLocaleUpperCase,toLowerCase,toPrecision,toString,toTimeString,toUTCString,toUpperCase,true,try,typeof
 	@preserve: undefined,upperToLower,value,valueOf,var,void,while,writable,pop,parse,toDateString,instanceof,test
-	@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,$match
+	@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,createTable,$match
 	@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
 	@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
 //#if ES5
@@ -37,6 +37,7 @@
 		defineProperty(o: object, property: string, value: any, readOnly: boolean, dontEnum: boolean, dontDelete: boolean): boolean
 		compileFunction(sourceCode: string, name: string): function
 		createWrapper(className: string, internalValue: any, prototype: object): object
+		createTable(): object														// = an empty object with no prototype
 		distinctConstructor(regularCall: function): function									// = exception on construction and no .prototype either
 		distinctConstructor(regularCall: function, constructorCall: function): function
 		callWithArgs(func: function, [this: object], [args: array], [offset: number], [retry: token]): any
@@ -1488,7 +1489,6 @@ defineProperties(Date.prototype, { dontEnum: true }, {
 	})
 //#endif
 //#if !ES5
-	// TODO: this isn't as generic as in the ES5 spec, e.g. not converting this to object, not going via the objects reassignable `toISOString`.
 	toJSON: unconstructable(function toJSON() { return isoDate(this); })
 //#endif
 });
@@ -1505,7 +1505,7 @@ var v = 1;
 var EMPTY_CHAR = v, NEWLINE_CHAR = (v <<= 1), SPACE_CHAR = (v <<= 1), WORD_CHAR = (v <<= 1), DECIMAL_CHAR = (v <<= 1)
 		, LETTER_CHAR = (v <<= 1), HEX_CHAR = (v <<= 1), ESCAPE_CHAR = (v <<= 1), SPECIAL_CHAR = (v <<= 1)
 		, OK_IN_STRING_LITERAL = (v <<= 1), IDENTITY_ESCAPE_CHAR = (v <<= 1);
-var CC = { }; // "CC" is used from within regexps, so the name has to be preserved
+var CC = support.createTable(); // "CC" is used from within regexps, so the name has to be preserved
 (function() {
 	function setupCharClass(mask, chars) { for (var i in chars) CC[chars[i]] |= mask }
 
@@ -1544,7 +1544,7 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 
 	function isClass(char, mask) { return ((CC[char] & mask) !== 0); }
 
-	function areClass(s, mask) { // FIX : only used once
+	function areClass(s, mask) {
 		for (var i = s.length - 1; i >= 0; --i) if ((CC[s[i]] & mask) === 0) return false;
 		return true;
 	}
@@ -1561,7 +1561,7 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 		if (isClass(s[p], DECIMAL_CHAR)) {
 			n = 0;
 			do {
-				n = n * 10 + ($charCodeAt(s, p) - 48); // FIX : +s[p] faster?
+				n = n * 10 + ($charCodeAt(s, p) - 48);
 				++p;
 			} while (isClass(s[p], DECIMAL_CHAR))
 		}
@@ -1590,7 +1590,7 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 					return null;
 				}
 				if (mini > maxi) {
-					throw syntaxError("Min greater than max in regular expression quantifier"); // FIX
+					throw syntaxError("Min greater than max in regular expression quantifier");
 				}
 				++p;
 				break;
@@ -1606,7 +1606,6 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 
 	function escapeCharacter(c) {
 		if (isClass(c, OK_IN_STRING_LITERAL)) return c;
-		// TODO : shorter escapes for \n etc
 		return (c <= '~' ? "\\x" : "\\u") + leftPad(numberToRadix($charCodeAt(c, 0), 16), (c <= '~' ? 2 : 4));
 	}
 
@@ -1786,7 +1785,7 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 				}
 				code = and(code, literalSequenceToCode(literalSequence, offset));
 				offset += literalSequence.length;
-			} else { // TODO: make subs of these
+			} else {
 				var c, condition, tail, useCall, inner;
 				switch (c = s[p]) {
 					case '^': {
@@ -1900,7 +1899,7 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 							(closeCapture = (openCapture = (captureCounter++) * 2) + 1);
 							closureVars += ",c" + openCapture + ",c" + closeCapture;
 						}
-						var innerCapturesStart = captureCounter // FIX : these two are only used for negative lookAhead, use for open/close captures too?
+						var innerCapturesStart = captureCounter
 								, disjunction = compileDisjunction(0, (lookAhead ? void 0 : junctionName))
 								, innerCapturesEnd = captureCounter;
 						if ((c = s[p]) !== ')') {
@@ -1990,7 +1989,12 @@ function compileRegExp(s, caseInsensitive, multiLine) {
 	return code
 }
 
-var REG_EXP_FLAG_TO_PROPERTY = { 'g': "global", 'i': "ignoreCase", 'm': "multiline" }, regExpCache = { }, regExpPrototype;
+var REG_EXP_FLAG_TO_PROPERTY = support.createTable(), regExpCache = support.createTable(), regExpCacheSize = 0
+		, regExpPrototype;
+var MAX_REG_EXP_CACHE_SIZE = 256;
+REG_EXP_FLAG_TO_PROPERTY['g'] = "global";
+REG_EXP_FLAG_TO_PROPERTY['i'] = "ignoreCase";
+REG_EXP_FLAG_TO_PROPERTY['m'] = "multiline";
 
 function execRegExp(re, string) {
 	string = str(string);
@@ -2041,8 +2045,13 @@ var RegExp = support.distinctConstructor(function RegExp(pattern, flags) {
 		template[p] = true;
 	}
 	var key, func;
-	if (!(func = regExpCache[key = pattern + ',' + template.ignoreCase + ',' + template.multiline]))
+	if (!(func = regExpCache[key = pattern + ',' + template.ignoreCase + ',' + template.multiline])) {
+		if (++regExpCacheSize > MAX_REG_EXP_CACHE_SIZE) {
+			regExpCache = support.createTable();
+			regExpCacheSize = 1;
+		}
 		regExpCache[key] = func = evalThere(compileRegExp(pattern, template.ignoreCase, template.multiline));
+	}
 	var re = support.createWrapper("RegExp", func, regExpPrototype);
 	defineProperties(re, { dontEnum: true, readOnly: true, dontDelete: true }, template);
 	defineProperties(re, { dontEnum: true, dontDelete: true }, { lastIndex: 0 });

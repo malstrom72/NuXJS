@@ -479,8 +479,8 @@ class Value {
 		Value(const void* v); // N/A. Just to avoid unwanted casting of a pointer to bool.
 };
 
-typedef Byte Flags; // FIX : turn into enum
-const Flags EXISTS_FLAG = 1; // FIX : turn these into enum, that's ok
+typedef Byte Flags;
+const Flags EXISTS_FLAG = 1;
 const Flags READ_ONLY_FLAG = 2;
 const Flags DONT_ENUM_FLAG = 4;
 const Flags DONT_DELETE_FLAG = 8;
@@ -971,7 +971,6 @@ class JSArray : public LazyJSObject<Object> {
 	#if NUXJS_ES5
 		virtual bool mayOwnIndexProperty() const;
 	#endif
-		// FIX : toString too?
 		virtual Flags getOwnProperty(Runtime& rt, const Value& key, Value* v) const;
 		virtual bool setOwnProperty(Runtime& rt, const Value& key, const Value& v, Flags flags = STANDARD_FLAGS);
 		virtual bool updateOwnProperty(Runtime& rt, const Value& key, const Value& v);
@@ -983,8 +982,8 @@ class JSArray : public LazyJSObject<Object> {
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 		void pushElements(Runtime& rt, Int32 count, const Value* elements);
-		UInt32 getLength() const { return length; }	// fix: make virtual and have for all objects?
-		void updateLength(UInt32 newLength);	// fix: make virtual and have for all objects?
+		UInt32 getLength() const { return length; }
+		void updateLength(UInt32 newLength);
 		Value getElement(Runtime& rt, UInt32 index) const;
 		bool setElement(Runtime& rt, UInt32 index, const Value& v);
 
@@ -1003,7 +1002,7 @@ class JSArray : public LazyJSObject<Object> {
 	#endif
 		Vector<Value> denseVector;
 		virtual void gcMarkReferences(Heap& heap) const {
-			const_cast<JSArray*>(this)->denseVector.shrink(); // FIX : split into two different gc-things? it really *is* different to just mark stuff and actively shrink / compress stuff
+			const_cast<JSArray*>(this)->denseVector.shrink();
 			gcMark(heap, denseVector.begin(), denseVector.end());
 			super::gcMarkReferences(heap);
 		}
@@ -1069,7 +1068,7 @@ class SourceCodeUnit : public GCItem {
 **/
 class Code : public Object {
 	friend class FunctionScope;
-	friend class Compiler; // FIX : maybe not one day?
+	friend class Compiler;
 	
 	public:
 		typedef Object super;
@@ -1186,7 +1185,6 @@ class Function : public Object {
 
 typedef Value (*NativeFunction)(Runtime&, Processor&, UInt32, const Value*, Receiver);
 
-// FIX : overkill?
 template<class F> struct FunctorAdapter : public Function {
 	typedef Function super;
 	FunctorAdapter(const F& f) : f(f) { }
@@ -1218,10 +1216,10 @@ class Scope : public GCItem {
 	public:
 		typedef GCItem super;
 		Scope(GCList& gcList, Scope* parentScope);
-		virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
-		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
-		virtual bool deleteVar(Runtime& rt, const String* name);
-		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
+		Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
+		void writeVar(Runtime& rt, const String* name, const Value& v);
+		bool deleteVar(Runtime& rt, const String* name);
+		void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 	#if NUXJS_ES5
 		/*
 			readVar's walk, reporting the holder as well: the 10.2.1.2 object environment record, or 0 for a declarative
@@ -1241,12 +1239,18 @@ class Scope : public GCItem {
 		Scope* getParentScope() const { return parentScope; }
 		void makeClosure() const;
 		void leave() { if (deleteOnPop) { delete this; } }
-		
+
 	protected:
 		Scope* const parentScope;
 		Value* localsPointer; // Pointer is offset so that negative indexes addresses local variables and positive indexes addresses arguments.
 		mutable bool deleteOnPop;
-		
+
+		// This scope only. readVar etc. walk the chain with these, in a loop, since script can make it arbitrarily deep.
+		virtual Flags readLocalVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const; // NONEXISTENT if not here
+		virtual bool writeLocalVar(Runtime& rt, const String* name, const Value& v);	// false if not here
+		virtual bool deleteLocalVar(Runtime& rt, const String* name, bool& result);		// false if not here
+		virtual bool declareLocalVar(Runtime& rt, const String* name, const Value& initValue, bool& dontDelete); // false to pass it on
+
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, parentScope);
 			super::gcMarkReferences(heap);
@@ -1402,18 +1406,18 @@ class FunctionScope : public Scope {
 		typedef Scope super;
 
 		FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, const Value* argv);
-		virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
-		virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 	#if NUXJS_ES5
 		virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const;
 		virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v);
 	#endif
-		virtual bool deleteVar(Runtime& rt, const String* name);
-		virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
 		JSObject* getDynamicVars(Runtime& rt) const;
 	   	virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
 
 	protected:
+		virtual Flags readLocalVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
+		virtual bool writeLocalVar(Runtime& rt, const String* name, const Value& v);
+		virtual bool deleteLocalVar(Runtime& rt, const String* name, bool& result);
+		virtual bool declareLocalVar(Runtime& rt, const String* name, const Value& initValue, bool& dontDelete);
 		JSFunction* const function;
 		const UInt32 passedArgumentsCount;
 		Vector<Value> locals; // Includes variables and arguments.
@@ -1453,14 +1457,14 @@ class Runtime : public GCItem {
 		struct GlobalScope : public Scope {
 			typedef Scope super;
 			GlobalScope(GCList& gcList);
-			virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
-			virtual void writeVar(Runtime& rt, const String* name, const Value& v);
 		#if NUXJS_ES5
 			virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const;
 			virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v);
 		#endif
-			virtual bool deleteVar(Runtime& rt, const String* name);
-			virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete);
+			virtual bool declareLocalVar(Runtime& rt, const String* name, const Value& initValue, bool& dontDelete);
+			virtual Flags readLocalVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
+			virtual bool writeLocalVar(Runtime& rt, const String* name, const Value& v);
+			virtual bool deleteLocalVar(Runtime& rt, const String* name, bool& result);
 		};
 	
 		struct ErrorPrototype;
@@ -1809,7 +1813,6 @@ class AccessorBase::const_iterator : public GCItem {
 		}
 };
 
-// FIX : why template?
 template<class F> struct AccessorBase::VarFunctorAdapter : public ExtensibleFunction {
 	typedef ExtensibleFunction super;
 	VarFunctorAdapter(GCList& gcList, const F& f) : super(gcList), f(f) { }
@@ -1847,7 +1850,6 @@ inline Value AccessorBase::makeValue(const VarFunction& f) const {
 	return new(rt.getHeap()) VarFunctorAdapter<VarFunction>(rt.getHeap().managed(), f);
 }
 
-// FIX : vvv I think there should be a getLength() in Object*
 inline UInt32 AccessorBase::size() const {
 	const JSArray* a = get().asArray();
 	return (a != 0 ? a->getLength() : static_cast<Int32>(operator[](&LENGTH_STRING)));
@@ -1905,8 +1907,8 @@ class Processor : public GCItem {
 	public:
 		typedef GCItem super;
 	
-		enum Opcode {	// FIX : sort
-			INVALID_OP = -1 // FIX : why?!
+		enum Opcode {
+			INVALID_OP = -1 // sentinel: no opcode
 			, CONST_OP										// operand: const_index, stack: -> constant
 			, READ_LOCAL_OP									// operand: local_index, stack: -> value
 			, WRITE_LOCAL_OP								// operand: local_index, stack: value -> value
@@ -1959,7 +1961,6 @@ class Processor : public GCItem {
 			, JT_OP, JF_OP									// operand: offset, stack: boolean ->
 			, JT_OR_POP_OP, JF_OR_POP_OP					// operand: offset, stack: boolean ->				// only pops when not jumping, for logical and/or instructions
 			, POP_OP										// operand: count, stack: ... ->
-			// FIX : push back is a really bad name, it's really pop back and then push sort of
 			, PUSH_BACK_OP									// operand: count, stack: ..., back -> back
 			, REPUSH_OP										// operand: offset, stack: ..., value, ... -> ..., value, ..., value
 			, SWAP_OP
@@ -2081,7 +2082,7 @@ class Processor : public GCItem {
 		void innerRun();
 		Object* convertToObject(const Value& v, bool requireExtensible);
 		Function* asFunction(const Value& v);
-		void invokeFunction(Function* f, Int32 popCount, Int32 argc, Receiver thisObject = noReceiver()); // FIX : rename, unnecessary with the same name as the public method
+		void invokeFromStack(Function* f, Int32 popCount, Int32 argc, Receiver thisObject = noReceiver());
 		void newOperation(const Int32 argc);
 		void reset();
 	#if NUXJS_ES5
@@ -2134,7 +2135,7 @@ class Compiler : public GCItem {
 
 		Compiler(GCList& gcList, Code* code, Target compileFor, Compiler* outer = 0);
 		const Char* compile(const Char* b, const Char* e);
-		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName); // FIX : messy, why do we have compileFor if we separate this anyhow? Maybe subclass Compiler instead?
+		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName);
 		void compile(const String& source);
 	#if NUXJS_ES5
 		void markStrict() { code->strict = true; }	// 10.4.2: seed strict before compiling (a direct eval inheriting caller strictness).
@@ -2284,7 +2285,7 @@ class Compiler : public GCItem {
 		const Char* sourceUnitBase;
 		CodeSection* currentSection;
 		bool acceptInOperator;
-		int withScopeCounter; // FIX : if we have a Context object instead as "this" we could create a new one with a simple flag for this instead of yucky counter
+		int withScopeCounter;
 		int nestCounter;			// used in the root compiler only
 	#if NUXJS_ES5
 		bool inDirectivePrologue;	// 14.1: true while still parsing the leading string-literal directive prologue

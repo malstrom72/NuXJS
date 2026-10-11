@@ -108,7 +108,6 @@ bool isFinite(double d) { return (_finite(d) != 0); }
 static double modulo(double x, double y) { return (!_finite(y) && !_isnan(y) && _finite(x) ? x : fmod(x, y)); }
 #else
 static double modulo(double x, double y) { return fmod(x, y); }
-// FIX : if c++11 use std::isnan and std::isfinite
 bool isNaN(double d) { return d != d; }
 bool isFinite(double d) { return !isNaN(d) && fabs(d) != std::numeric_limits<double>::infinity(); }
 #endif
@@ -263,7 +262,6 @@ const int MAX_EXPONENT = 308;
 const int NEGATIVE_E_NOTATION_START = -6;
 const int POSITIVE_E_NOTATION_START = 21;
 
-// FIX : shouldn't need this, used in quick-hash-finders and they should be optimized somehow i think
 static int strncmp(const Char* a, const char* b, size_t n) {
 	size_t i = 0;
 	while (i < n && a[i] == b[i] && a[i] != 0 && b[i] != 0) {
@@ -675,7 +673,7 @@ struct QuickConstants {
 		}
 		for (int i = -QUICK_CONSTANTS_INTEGERS_RANGE; i <= QUICK_CONSTANTS_INTEGERS_RANGE; ++i) {
 			Char buffer[32];
-			integers[i + QUICK_CONSTANTS_INTEGERS_RANGE] = String(intToString(buffer, i), buffer + 32); // FIX : newHashedString
+			integers[i + QUICK_CONSTANTS_INTEGERS_RANGE] = String(intToString(buffer, i), buffer + 32);
 			integers[i + QUICK_CONSTANTS_INTEGERS_RANGE].createBloomCode();
 		}
 	}
@@ -2158,7 +2156,7 @@ const String* JoiningEnumerator::nextPropertyName() {
 	return name;
 }
 
-static const Char LINE_TERMINATORS[] = { '\n', 0x2028, 0x2029, '\r' }; // FIX : '\r' must be last for line count to work, but I think we should change line counting algo in the future, a single '\r' without '\n' should count too really
+static const Char LINE_TERMINATORS[] = { '\n', 0x2028, 0x2029, '\r' };
 
 static bool isLineTerminator(Char c) {
 	return (std::find(LINE_TERMINATORS, LINE_TERMINATORS + 4, c) != LINE_TERMINATORS + 4);
@@ -2303,7 +2301,7 @@ bool JSArray::mayOwnIndexProperty() const {
 #endif
 
 // updateOwnProperty's gate assumes this chain is fixed; anything able to change it must remove that gate.
-Object* JSArray::getPrototype(Runtime& rt) const { // FIX : have a sep. ArrayPrototype object like we have for Function?
+Object* JSArray::getPrototype(Runtime& rt) const {
 	Object* arrayPrototype = rt.getPrototypeObject(Runtime::ARRAY_PROTOTYPE);
 	return (this == arrayPrototype ? rt.getObjectPrototype() : arrayPrototype);
 }
@@ -2991,13 +2989,19 @@ Scope::Scope(GCList& gcList, Scope* parentScope)
 		, deleteOnPop(true) { }
 
 Flags Scope::readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
-	assert(parentScope != 0);
-	return parentScope->readVar(rt, name, v, implicitThis);
+	for (const Scope* s = this; s != 0; s = s->parentScope) {
+		const Flags flags = s->readLocalVar(rt, name, v, implicitThis);
+		if (flags != NONEXISTENT) {
+			return flags;
+		}
+	}
+	return NONEXISTENT;
 }
 
 void Scope::writeVar(Runtime& rt, const String* name, const Value& v) {
-	assert(parentScope != 0);
-	return parentScope->writeVar(rt, name, v);
+	for (Scope* s = this; !s->writeLocalVar(rt, name, v); s = s->parentScope) {
+		assert(s->parentScope != 0);
+	}
 }
 
 #if NUXJS_ES5
@@ -3022,13 +3026,33 @@ Object* Scope::writeVarOrAccessor(Runtime& rt, const String* name, const Value& 
 #endif
 
 bool Scope::deleteVar(Runtime& rt, const String* name) {
-	assert(parentScope != 0);
-	return parentScope->deleteVar(rt, name);
+	bool result = false;
+	for (Scope* s = this; !s->deleteLocalVar(rt, name, result); s = s->parentScope) {
+		assert(s->parentScope != 0);
+	}
+	return result;
+}
+
+Flags Scope::readLocalVar(Runtime&, const String*, Value*, Value*) const {
+	return NONEXISTENT;
+}
+
+bool Scope::writeLocalVar(Runtime&, const String*, const Value&) {
+	return false;
+}
+
+bool Scope::deleteLocalVar(Runtime&, const String*, bool&) {
+	return false;
 }
 
 void Scope::declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete) {
-	assert(parentScope != 0);
-	return parentScope->declareVar(rt, name, initValue, dontDelete);
+	for (Scope* s = this; !s->declareLocalVar(rt, name, initValue, dontDelete); s = s->parentScope) {
+		assert(s->parentScope != 0);
+	}
+}
+
+bool Scope::declareLocalVar(Runtime&, const String*, const Value&, bool&) {
+	return false;
 }
 
 void Scope::makeClosure() const {
@@ -3078,7 +3102,7 @@ JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
 	return dynamicVars;
 }
 
-Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
+Flags FunctionScope::readLocalVar(Runtime& rt, const String* name, Value* v, Value*) const {
 	const UInt32 bloomCode = name->createBloomCode();
 	if ((bloomSet & bloomCode) == bloomCode) {
 		Int32 index;
@@ -3099,10 +3123,10 @@ Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v, Value* i
 			return DONT_DELETE_FLAG | READ_ONLY_FLAG | EXISTS_FLAG;
 		}
 	}
-	return parentScope->readVar(rt, name, v, implicitThis);
+	return NONEXISTENT;
 }
 
-void FunctionScope::writeVar(Runtime& rt, const String* name, const Value& v) {
+bool FunctionScope::writeLocalVar(Runtime& rt, const String* name, const Value& v) {
 	const UInt32 bloomCode = name->createBloomCode();
 	if ((bloomSet & bloomCode) == bloomCode) {
 		Int32 index;
@@ -3110,7 +3134,7 @@ void FunctionScope::writeVar(Runtime& rt, const String* name, const Value& v) {
 		if (code->lookupNameIndex(name, index)) {
 			assert(locals.begin() <= localsPointer + index && localsPointer + index < locals.end());
 			localsPointer[index] = v;
-			return;
+			return true;
 		}
 		// FIX : make sub that lookup's the bucket, also use in getProperty
 		if (dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) {
@@ -3118,14 +3142,14 @@ void FunctionScope::writeVar(Runtime& rt, const String* name, const Value& v) {
 			Table::Bucket* bucket = props.lookup(name);
 			if (bucket != 0) {
 				props.update(bucket, v);
-				return;
+				return true;
 			}
 		}
 		if (code->selfName != 0 && name->isEqualTo(*code->selfName)) {
-			return;
+			return true;
 		}
 	}
-	parentScope->writeVar(rt, name, v); // FIX : recursion
+	return false;
 }
 
 #if NUXJS_ES5
@@ -3180,29 +3204,32 @@ Flags FunctionScope::resolveVar(Runtime& rt, const String* name, Value* v, Objec
 }
 #endif
 
-bool FunctionScope::deleteVar(Runtime& rt, const String* name) {
+bool FunctionScope::deleteLocalVar(Runtime& rt, const String* name, bool& result) {
 	const UInt32 bloomCode = name->createBloomCode();
 	if ((bloomSet & bloomCode) == bloomCode) {
 		Int32 index;
 		const Code* code = function->code;
 		if (code->lookupNameIndex(name, index)) {
-			return false;
+			result = false;
+			return true;
 		}
 		if (dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) {
 			Table& props = *getDynamicVars(rt);
 			Table::Bucket* bucket = props.lookup(name);
 			if (bucket != 0) {
-				return props.erase(bucket);
+				result = props.erase(bucket);
+				return true;
 			}
 		}
 		if (code->selfName != 0 && name->isEqualTo(*code->selfName)) {
-			return false;
+			result = false;
+			return true;
 		}
 	}
-	return parentScope->deleteVar(rt, name); // FIX : recursion
+	return false;
 }
 
-void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete) {
+bool FunctionScope::declareLocalVar(Runtime& rt, const String* name, const Value& initValue, bool& dontDelete) {
 	Int32 index;
 	if (!function->code->lookupNameIndex(name, index)) {
 		Table& props = *getDynamicVars(rt);
@@ -3215,6 +3242,7 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
 	if (!initValue.isUndefined()) {
 		writeVar(rt, name, initValue);
 	}
+	return true;
 }
 
 FunctionScope::~FunctionScope() {
@@ -3418,24 +3446,17 @@ struct Processor::EvalScope : public Scope {
 	// but strict eval gets its OWN environment so its var/function declarations are discarded when it returns.
 	EvalScope(GCList& gcList, Scope* parentScope, bool strict)
 			: super(gcList, parentScope), ownVars(0), strict(strict) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
-		if (ownVars != 0) {
-			const Flags flags = ownVars->getOwnProperty(rt, name, v);
-			if (flags != NONEXISTENT) {
-				return flags;	// 10.4.2: a strict eval's own bindings are declarative, so they supply no receiver
-			}
-		}
-		return parentScope->readVar(rt, name, v, implicitThis);
+	virtual Flags readLocalVar(Runtime& rt, const String* name, Value* v, Value*) const {
+		// 10.4.2: a strict eval's own bindings are declarative, so they supply no receiver
+		return (ownVars != 0 ? ownVars->getOwnProperty(rt, name, v) : NONEXISTENT);
 	}
-	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
-		if (ownVars != 0) {
-			Table::Bucket* bucket = ownVars->lookup(name);
-			if (bucket != 0) {
-				ownVars->update(bucket, v);
-				return;
-			}
+	virtual bool writeLocalVar(Runtime& rt, const String* name, const Value& v) {
+		Table::Bucket* const bucket = (ownVars != 0 ? ownVars->lookup(name) : 0);
+		if (bucket == 0) {
+			return false;
 		}
-		parentScope->writeVar(rt, name, v);
+		ownVars->update(bucket, v);
+		return true;
 	}
 	virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const {
 		if (ownVars != 0) {
@@ -3457,19 +3478,18 @@ struct Processor::EvalScope : public Scope {
 		}
 		return parentScope->writeVarOrAccessor(rt, name, v);
 	}
-	virtual bool deleteVar(Runtime& rt, const String* name) {
-		if (ownVars != 0) {
-			Table::Bucket* bucket = ownVars->lookup(name);
-			if (bucket != 0) {
-				return ownVars->erase(bucket);
-			}
+	virtual bool deleteLocalVar(Runtime&, const String* name, bool& result) {
+		Table::Bucket* const bucket = (ownVars != 0 ? ownVars->lookup(name) : 0);
+		if (bucket == 0) {
+			return false;
 		}
-		return parentScope->deleteVar(rt, name);
+		result = ownVars->erase(bucket);
+		return true;
 	}
-	virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete) {
+	virtual bool declareLocalVar(Runtime& rt, const String* name, const Value& initValue, bool& dontDelete) {
 		if (!strict) {
-			parentScope->declareVar(rt, name, initValue, false);
-			return;
+			dontDelete = false;	// eval code declares deletable vars
+			return false;
 		}
 		if (ownVars == 0) {
 			Heap& heap = rt.getHeap();
@@ -3482,6 +3502,7 @@ struct Processor::EvalScope : public Scope {
 		if (!initValue.isUndefined()) {
 			writeVar(rt, name, initValue);
 		}
+		return true;
 	}
 	virtual void gcMarkReferences(Heap& heap) const {
 		gcMark(heap, ownVars);
@@ -3491,8 +3512,9 @@ struct Processor::EvalScope : public Scope {
 	const bool strict;
 #else
 	EvalScope(GCList& gcList, Scope* parentScope) : super(gcList, parentScope) { }
-	virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool) {
-		parentScope->declareVar(rt, name, initValue, false);
+	virtual bool declareLocalVar(Runtime&, const String*, const Value&, bool& dontDelete) {
+		dontDelete = false;	// eval code declares deletable vars
+		return false;
 	}
 #endif
 };
@@ -3508,20 +3530,12 @@ struct Processor::CatchScope : public Scope {
 
 	CatchScope(GCList& gcList, Scope* parentScope, const String* exceptionName, const Value& exceptionValue)
 			: super(gcList, parentScope), exceptionName(exceptionName), exceptionValue(exceptionValue) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const  {
-		if (name->isEqualTo(*exceptionName)) {
-			*v = exceptionValue;
-			return DONT_DELETE_FLAG | EXISTS_FLAG;
-		} else {
-			return parentScope->readVar(rt, name, v, implicitThis);
+	virtual Flags readLocalVar(Runtime&, const String* name, Value* v, Value*) const  {
+		if (!name->isEqualTo(*exceptionName)) {
+			return NONEXISTENT;
 		}
-	}
-	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
-		if (name->isEqualTo(*exceptionName)) {
-			exceptionValue = v;
-		} else {
-			parentScope->writeVar(rt, name, v);
-		}
+		*v = exceptionValue;
+		return DONT_DELETE_FLAG | EXISTS_FLAG;
 	}
 #if NUXJS_ES5
 	virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const {
@@ -3540,12 +3554,19 @@ struct Processor::CatchScope : public Scope {
 		return parentScope->writeVarOrAccessor(rt, name, v);
 	}
 #endif
-	virtual bool deleteVar(Runtime& rt, const String* name) {
-		if (name->isEqualTo(*exceptionName)) {
+	virtual bool writeLocalVar(Runtime&, const String* name, const Value& v) {
+		if (!name->isEqualTo(*exceptionName)) {
 			return false;
-		} else {
-			return parentScope->deleteVar(rt, name);
 		}
+		exceptionValue = v;
+		return true;
+	}
+	virtual bool deleteLocalVar(Runtime&, const String* name, bool& result) {
+		if (!name->isEqualTo(*exceptionName)) {
+			return false;
+		}
+		result = false;
+		return true;
 	}
 
 	const String* exceptionName;
@@ -3562,17 +3583,14 @@ struct Processor::WithScope : public Scope {
 	typedef Scope super;
 	WithScope(GCList& gcList, Scope* parentScope, Object* withObject)
 	 		: super(gcList, parentScope), withObject(withObject) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
-		Flags flags = withObject->getProperty(rt, name, v);
-		if (flags == NONEXISTENT) {
-			return parentScope->readVar(rt, name, v, implicitThis);
-		}
-		if (implicitThis != 0) {
+	virtual Flags readLocalVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
+		const Flags flags = withObject->getProperty(rt, name, v);
+		if (flags != NONEXISTENT && implicitThis != 0) {
 			*implicitThis = withObject;
 		}
 		return flags;
 	}
-	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
+	virtual bool writeLocalVar(Runtime& rt, const String* name, const Value& v) {
 		const Value key(name);
 		for (Object* o = withObject; o != 0; o = o->getPrototype(rt)) {
 			Value dummy;
@@ -3581,10 +3599,10 @@ struct Processor::WithScope : public Scope {
 				if ((flags & READ_ONLY_FLAG) == 0) {
 					withObject->setOwnProperty(rt, key, v);
 				}
-				return;
+				return true;
 			}
 		}
-		parentScope->writeVar(rt, name, v);
+		return false;
 	}
 #if NUXJS_ES5
 	virtual Flags resolveVar(Runtime& rt, const String* name, Value* v, Object** holder, Int32& depth) const {
@@ -3614,10 +3632,13 @@ struct Processor::WithScope : public Scope {
 		return parentScope->writeVarOrAccessor(rt, name, v);
 	}
 #endif
-	virtual bool deleteVar(Runtime& rt, const String* name) {
+	virtual bool deleteLocalVar(Runtime& rt, const String* name, bool& result) {
 		Value dummy;
-		Flags findFlags = withObject->getProperty(rt, name, &dummy);
-		return (findFlags != NONEXISTENT ? withObject->deleteOwnProperty(rt, name) : parentScope->deleteVar(rt, name));
+		if (withObject->getProperty(rt, name, &dummy) == NONEXISTENT) {
+			return false;
+		}
+		result = withObject->deleteOwnProperty(rt, name);
+		return true;
 	}
 
 	Object* withObject;
@@ -3824,7 +3845,7 @@ bool Processor::enterGetter(const Object* o, const Value& key, Value* dest, Int3
 	if ((o->getProperty(rt, key, dest, &getter) & ACCESSOR_FLAG) == 0) {
 		return false;
 	}
-	invokeFunction(getter, popCount, 0, thisObject);
+	invokeFromStack(getter, popCount, 0, thisObject);
 	return true;
 }
 
@@ -3836,7 +3857,7 @@ bool Processor::putThrough(Object* o, const Value& key, Int32 popCount, Receiver
 	Function* setter;
 	const Flags flags = o->setProperty(rt, key, sp[0], &setter, mayStore);
 	if ((flags & ACCESSOR_FLAG) != 0) {
-		invokeFunction(strict && setter == rt.setArrayLengthFunction ? rt.setArrayLengthStrictFunction : setter
+		invokeFromStack(strict && setter == rt.setArrayLengthFunction ? rt.setArrayLengthStrictFunction : setter
 				, popCount, 1, receiver);	// 8.7.2: the Throw flag is the store's, not the helper's
 		return true;
 	}
@@ -3866,14 +3887,14 @@ Function* Processor::asFunction(const Value& v) {
 	return f;
 }
 
-void Processor::invokeFunction(Function* f, Int32 popCount, Int32 argc, Receiver thisObject) {
+void Processor::invokeFromStack(Function* f, Int32 popCount, Int32 argc, Receiver thisObject) {
 	sp[-popCount] = f->invoke(rt, *this, argc, sp - argc + 1, thisObject);
 	pop(popCount);
 }
 
 void Processor::newOperation(const Int32 argc) {
 	Function* f = asFunction(sp[-argc]);
-	if (f != 0) { // FIX : sub
+	if (f != 0) {
 		Value v(UNDEFINED_VALUE);
 	#if NUXJS_ES5
 		f->getConstructPrototype(rt, &v);
@@ -4156,7 +4177,7 @@ void Processor::innerRun() {
 				const Object* o = sp[0].asObject();
 				if (o != 0) {
 					assert(0 <= opcode - OBJ_TO_PRIMITIVE_OP && opcode - OBJ_TO_PRIMITIVE_OP < 3);
-					invokeFunction(rt.toPrimitiveFunctions[opcode - OBJ_TO_PRIMITIVE_OP], 0, 1);
+					invokeFromStack(rt.toPrimitiveFunctions[opcode - OBJ_TO_PRIMITIVE_OP], 0, 1);
 					return;
 				}
 				break;
@@ -4169,7 +4190,7 @@ void Processor::innerRun() {
 						std::swap(sp[-1], sp[0]);
 					}
 					if (sp[-1].isString() || sp[-1].isNumber() || sp[-1].isBoolean()) {
-						invokeFunction(rt.toPrimitiveFunctions[OBJ_TO_PRIMITIVE_OP - OBJ_TO_PRIMITIVE_OP], 0, 1);
+						invokeFromStack(rt.toPrimitiveFunctions[OBJ_TO_PRIMITIVE_OP - OBJ_TO_PRIMITIVE_OP], 0, 1);
 						return;
 					}
 				}
@@ -4225,7 +4246,7 @@ void Processor::innerRun() {
 			case CALL_OP: {
 				Function* const f = asFunction(sp[-im]);
 				if (f != 0) {
-					invokeFunction(f, im, im);
+					invokeFromStack(f, im, im);
 				}
 				return;
 			}
@@ -4240,7 +4261,7 @@ void Processor::innerRun() {
 					if (o->getProperty(rt, name, &v) == NONEXISTENT || (f = v.asFunction()) == 0) {
 						error(TYPE_ERROR, new(heap) String(heap.managed(), *name.toString(heap), IS_NOT_A_FUNCTION_STRING));
 					} else {
-						invokeFunction(f, im + 1, im, o);
+						invokeFromStack(f, im + 1, im, o);
 					}
 				}
 				return;
@@ -4251,9 +4272,9 @@ void Processor::innerRun() {
 				Function* const f = asFunction(sp[-im]);
 				if (f != 0) {
 			#if !NUXJS_ES5
-					invokeFunction(f, im + 1, im, sp[-im - 1].asObject());
+					invokeFromStack(f, im + 1, im, sp[-im - 1].asObject());
 			#else
-					invokeFunction(f, im + 1, im, sp[-im - 1]);	// 11.2.3: the base as written, primitive or not
+					invokeFromStack(f, im + 1, im, sp[-im - 1]);	// 11.2.3: the base as written, primitive or not
 			#endif
 				}
 				return;
@@ -4262,7 +4283,7 @@ void Processor::innerRun() {
 			case CALL_EVAL_OP: {
 				Function* f = asFunction(sp[-im]);
 				if (f != 0) {
-					invokeFunction((f == rt.evalFunction ? &DIRECT_EVAL_FUNCTION : f), im, im);
+					invokeFromStack((f == rt.evalFunction ? &DIRECT_EVAL_FUNCTION : f), im, im);
 				}
 				return;
 			}
@@ -4271,7 +4292,7 @@ void Processor::innerRun() {
 			case NEW_RESULT_OP: pop2push1(sp[0].isObject() ? sp[0] : sp[-1]); break;
 			case NEW_OBJECT_OP: push(new(heap) JSObject(heap.managed(), rt.getObjectPrototype())); break;
 			case NEW_ARRAY_OP: push(new(heap) JSArray(heap.managed())); break;
-			case NEW_REG_EXP_OP: invokeFunction(rt.createRegExpFunction, 1, 2); return;
+			case NEW_REG_EXP_OP: invokeFromStack(rt.createRegExpFunction, 1, 2); return;
 			case RETURN_OP:	ip = currentFrame->returnIP; popFrame(); return;
 			case THIS_OP: push(thisObject); break;
 			case VOID_OP: push(UNDEFINED_VALUE); break;
@@ -4817,12 +4838,9 @@ Compiler::CodeSection* Compiler::changeSection(CodeSection* newOutputSection) {
 }
 
 Compiler::BranchPoint Compiler::emitForwardBranch(Processor::Opcode opcode) {
-// FIX : share code somehow
 	const Processor::OpcodeInfo& opcodeInfo = Processor::getOpcodeInfo(opcode);
-	const Int32 operand = 0;
 	const Int32 targetStackDepth = (currentSection->inDeadCode() ? DEAD_CODE_STACK_DEPTH
-			: currentSection->stackDepth
-			+ opcodeInfo.stackUse + (((opcodeInfo.flags & Processor::OpcodeInfo::POP_OPERAND) != 0) ? -operand : 0)
+			: currentSection->stackDepth + opcodeInfo.stackUse	// the operand is 0 until completeForwardBranch
 			+ (((opcodeInfo.flags & Processor::OpcodeInfo::NO_POP_ON_BRANCH) != 0) ? 1 : 0)
 			+ (((opcodeInfo.flags & Processor::OpcodeInfo::POP_ON_BRANCH) != 0) ? -1 : 0));
 	emit(opcode);
@@ -5132,7 +5150,7 @@ Compiler::ExpressionResult Compiler::makeAssignment(const ExpressionResult& xr) 
 	}
 #endif
 	switch (xr.t) {
-		default: error(REFERENCE_ERROR, "Illegal l-value"); // FIX : ECMA like the word "reference"
+		default: error(REFERENCE_ERROR, "Illegal l-value");
 		case ExpressionResult::LOCAL: emit(Processor::WRITE_LOCAL_OP, xr.v.toInt()); break;
 	#if NUXJS_ES5
 		case ExpressionResult::RESOLVED:
@@ -5275,7 +5293,7 @@ Value Compiler::stringOrNumberConstant() {
 	return Value();
 }
 
-Compiler::ExpressionResult Compiler::arrayInitialiser() { // FIX : share stuff with functionCall and arrayInitialiser
+Compiler::ExpressionResult Compiler::arrayInitialiser() {
 	emit(Processor::NEW_ARRAY_OP);
 	
 	Int32 index = 0;
@@ -5323,7 +5341,7 @@ static const String GET_KEYWORD_STRING("get");
 static const String SET_KEYWORD_STRING("set");
 #endif
 
-Compiler::ExpressionResult Compiler::objectInitialiser() { // FIX : share stuff with functionCall and arrayInitialiser
+Compiler::ExpressionResult Compiler::objectInitialiser() {
 	emit(Processor::NEW_OBJECT_OP);
 
 	white();
@@ -5466,7 +5484,7 @@ bool Compiler::preOperate(ExpressionResult& xr, Precedence precedence) {
 				white();
 				functionCall(Processor::NEW_OP);
 			}
-			emit(Processor::NEW_RESULT_OP); // FIX : make a chain for script constructors and require returning object for native constructors instead?
+			emit(Processor::NEW_RESULT_OP);
 			assert(!op.primitiveOutput);
 			xr = ExpressionResult::PUSHED;
 			break;
@@ -5925,7 +5943,6 @@ void Compiler::rvalueGroup() {
 	expectToken(")", true);
 }
 
-// FIX : ok, this is serious mess
 Compiler::ExpressionResult Compiler::declareIdentifier(const String* name, bool func) {
 #if NUXJS_ES5
 	// 12.2.1 / 13.1: binding `eval` or `arguments` (a var or function-declaration name) is a strict SyntaxError.
@@ -6078,8 +6095,6 @@ void Compiler::semicolon(bool acceptLF) {
 		error(SYNTAX_ERROR, "Syntax error");
 	}
 }
-
-// FIX : sort all statement funcs
 
 void Compiler::varStatement() {
 	white();
@@ -6335,7 +6350,7 @@ void Compiler::block(SemanticScope* scope) {
 void Compiler::tryStatement(SemanticScope* currentScope) {
 	white();
 
-/* FIX : I thought we could drop if we keep the reserve-one-element-for-return-on-stack-solution, but rethrower needs a place to safe-keep its throw value and this is here*/
+	// the rethrower needs this slot
 	if (compilingFor != FOR_EVAL) { // space holder for return value so that we can break out of finallys (with the same stack pop count) regardless if try scope returns a value or not
 		emit(Processor::VOID_OP, 0);
 	}
@@ -6375,7 +6390,7 @@ void Compiler::tryStatement(SemanticScope* currentScope) {
 	#endif
 		Int32 previousLocalIndex = 0;
 		Table& nameIndexes = code->nameIndexes;
-		bool didExist = false; // FIX : can use NON_EXISTENT type if we choose to keep it
+		bool didExist = false;
 		Table::Bucket* indexBucket = nameIndexes.lookup(exceptionVarName);
 		if (indexBucket != 0) {
 			didExist = true;
@@ -6434,7 +6449,7 @@ void Compiler::tryStatement(SemanticScope* currentScope) {
 	completeForwardBranch(tryEndPoint);
 	completeForwardBranch(catchEndPoint);
 
-/* FIX : I thought we could drop if we keep the reserve-one-element-for-return-on-stack-solution */
+	// the rethrower needs this slot
 	if (compilingFor != FOR_EVAL) { // pop return space holder
 		emit(Processor::POP_OP, 1);
 	}
@@ -6661,7 +6676,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 }
 
 const Char* Compiler::compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName) {
-	assert(compilingFor == FOR_FUNCTION);  // FIX : messy, why do we have compilerFor if we separate this anyhow? Maybe subclass Compiler instead?
+	assert(compilingFor == FOR_FUNCTION);
 	assert(functionName != 0);
 	p = b;
 	this->e = e;
@@ -6700,7 +6715,7 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 		white();
 	}
 	expectToken("{", true);
-	compile(p, e); // FIX: ugly as it sets p and e again, although it doesn't hurt
+	compile(p, e);
 #if NUXJS_ES5
 	if (code->strict) {
 		if (duplicateParam) {
@@ -6755,13 +6770,14 @@ Object* Runtime::ErrorPrototype::getPrototype(Runtime& rt) const {
 
 Runtime::GlobalScope::GlobalScope(GCList& gcList) : super(gcList, 0) { deleteOnPop = false; }
 
-Flags Runtime::GlobalScope::readVar(Runtime& rt, const String* name, Value* v, Value*) const {
+Flags Runtime::GlobalScope::readLocalVar(Runtime& rt, const String* name, Value* v, Value*) const {
 	// No implicit this here: the global object is the scope of last resort, never an object scope introduced by `with`.
 	return rt.getGlobalObject()->getProperty(rt, name, v);
 }
 
-void Runtime::GlobalScope::writeVar(Runtime& rt, const String* name, const Value& v) {
+bool Runtime::GlobalScope::writeLocalVar(Runtime& rt, const String* name, const Value& v) {
 	rt.getGlobalObject()->setProperty(rt, name, v);
+	return true;
 }
 
 #if NUXJS_ES5
@@ -6783,17 +6799,19 @@ Flags Runtime::GlobalScope::resolveVar(Runtime& rt, const String* name, Value* v
 }
 #endif
 
-bool Runtime::GlobalScope::deleteVar(Runtime& rt, const String* name) {
-	return rt.getGlobalObject()->deleteOwnProperty(rt, name);
+bool Runtime::GlobalScope::deleteLocalVar(Runtime& rt, const String* name, bool& result) {
+	result = rt.getGlobalObject()->deleteOwnProperty(rt, name);
+	return true;
 }
 
-void Runtime::GlobalScope::declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete) {
+bool Runtime::GlobalScope::declareLocalVar(Runtime& rt, const String* name, const Value& initValue, bool& dontDelete) {
 	Value v;
 	// FIX : deep or not?!
 	const Flags flags = rt.getGlobalObject()->getOwnProperty(rt, name, &v);
 	if (flags == NONEXISTENT || !initValue.isUndefined()) {
 		rt.getGlobalObject()->setOwnProperty(rt, name, initValue, dontDelete ? DONT_DELETE_FLAG : 0);
 	}
+	return true;
 }
 
 struct Runtime::FunctionPrototypeFunction : public ExtensibleFunction {
@@ -6867,11 +6885,11 @@ void SeparateConstructorFunction::constructCompleteObject(Runtime& rt) const {
 	}
 	Value v;
 	Flags flags = templateFunction->getProperty(rt, &NAME_STRING, &v);
-	if (flags != NONEXISTENT) { // FIX : getName?
+	if (flags != NONEXISTENT) {
 		completeObject->setOwnProperty(rt, &NAME_STRING, v, flags);
 	}
 	flags = templateFunction->getProperty(rt, &LENGTH_STRING, &v);
-	if (flags != NONEXISTENT) { // FIX : in the future I think we should have a getLength
+	if (flags != NONEXISTENT) {
 		completeObject->setOwnProperty(rt, &LENGTH_STRING, v, flags);
 	}
 }
@@ -6975,6 +6993,11 @@ struct Support {
 			}
 		}
 		return UNDEFINED_VALUE;
+	}
+
+	static Value createTable(Runtime& rt, Processor&, UInt32, const Value*, Receiver) {
+		Heap& heap = rt.getHeap();
+		return new(heap) JSObject(heap.managed(), 0);
 	}
 
 	static Value createWrapper(Runtime& rt, Processor&, UInt32 argc, const Value* argv, Receiver) {
@@ -7093,7 +7116,7 @@ struct Support {
 				// goes back and the list is read in the stdlib. Nothing is observed twice, every read here being a plain one.
 				const bool canRetry = (argc > 4);
 			#endif
-				const Flags lengthFlags = arrayObject->getProperty(rt, &LENGTH_STRING, &v); // FIX : in the future I think we should have a virtual getLength
+				const Flags lengthFlags = arrayObject->getProperty(rt, &LENGTH_STRING, &v);
 			#if NUXJS_ES5
 				if (canRetry && ((lengthFlags & ACCESSOR_FLAG) != 0 || v.isObject())) {
 					return argv[4];
@@ -7336,6 +7359,7 @@ static struct {
 	FunctorAdapter<NativeFunction> func;
 } SUPPORT_FUNCTIONS[] = {
 	{ "getInternalProperty", Support::getInternalProperty }, { "createWrapper", Support::createWrapper },
+	{ "createTable", Support::createTable },
 	{ "defineProperty", Support::defineProperty }, { "compileFunction", Support::compileFunction },
 	{ "distinctConstructor", Support::distinctConstructor }, { "callWithArgs", Support::callWithArgs },
 	{ "hasOwnProperty", Support::hasOwnProperty }, { "fromCharCode", Support::fromCharCode },
@@ -7483,7 +7507,7 @@ const String* Runtime::newStringConstantWithHash(UInt32 hash, const char* s) {
 
 Var Runtime::call(Function* function, UInt32 argc, const Value* argv, Receiver thisObject) {
 	if (callNestCounter >= MAX_CROSS_CALL_RECURSION) {
-		ScriptException::throwError(heap, RANGE_ERROR, &STACK_OVERFLOW_STRING); // FIX : other string?
+		ScriptException::throwError(heap, RANGE_ERROR, &STACK_OVERFLOW_STRING);
 	}
 	struct NestCounter {
 		NestCounter(Runtime& rt) : rt(rt) { ++rt.callNestCounter; };
