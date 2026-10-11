@@ -2194,23 +2194,49 @@ Scope::Scope(GCList& gcList, Scope* parentScope)
 		, deleteOnPop(true) { }
 
 Flags Scope::readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
-	assert(parentScope != 0);
-	return parentScope->readVar(rt, name, v, implicitThis);
+	for (const Scope* s = this; s != 0; s = s->parentScope) {
+		const Flags flags = s->readLocalVar(rt, name, v, implicitThis);
+		if (flags != NONEXISTENT) {
+			return flags;
+		}
+	}
+	return NONEXISTENT;
 }
 
 void Scope::writeVar(Runtime& rt, const String* name, const Value& v) {
-	assert(parentScope != 0);
-	return parentScope->writeVar(rt, name, v);
+	for (Scope* s = this; !s->writeLocalVar(rt, name, v); s = s->parentScope) {
+		assert(s->parentScope != 0);
+	}
 }
 
 bool Scope::deleteVar(Runtime& rt, const String* name) {
-	assert(parentScope != 0);
-	return parentScope->deleteVar(rt, name);
+	bool result = false;
+	for (Scope* s = this; !s->deleteLocalVar(rt, name, result); s = s->parentScope) {
+		assert(s->parentScope != 0);
+	}
+	return result;
+}
+
+Flags Scope::readLocalVar(Runtime&, const String*, Value*, Value*) const {
+	return NONEXISTENT;
+}
+
+bool Scope::writeLocalVar(Runtime&, const String*, const Value&) {
+	return false;
+}
+
+bool Scope::deleteLocalVar(Runtime&, const String*, bool&) {
+	return false;
 }
 
 void Scope::declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete) {
-	assert(parentScope != 0);
-	return parentScope->declareVar(rt, name, initValue, dontDelete);
+	for (Scope* s = this; !s->declareLocalVar(rt, name, initValue, dontDelete); s = s->parentScope) {
+		assert(s->parentScope != 0);
+	}
+}
+
+bool Scope::declareLocalVar(Runtime&, const String*, const Value&, bool&) {
+	return false;
 }
 
 void Scope::makeClosure() const {
@@ -2245,7 +2271,7 @@ JSObject* FunctionScope::getDynamicVars(Runtime& rt) const {
 	return dynamicVars;
 }
 
-Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
+Flags FunctionScope::readLocalVar(Runtime& rt, const String* name, Value* v, Value*) const {
 	const UInt32 bloomCode = name->createBloomCode();
 	if ((bloomSet & bloomCode) == bloomCode) {
 		Int32 index;
@@ -2266,10 +2292,10 @@ Flags FunctionScope::readVar(Runtime& rt, const String* name, Value* v, Value* i
 			return DONT_DELETE_FLAG | READ_ONLY_FLAG | EXISTS_FLAG;
 		}
 	}
-	return parentScope->readVar(rt, name, v, implicitThis);
+	return NONEXISTENT;
 }
 
-void FunctionScope::writeVar(Runtime& rt, const String* name, const Value& v) {
+bool FunctionScope::writeLocalVar(Runtime& rt, const String* name, const Value& v) {
 	const UInt32 bloomCode = name->createBloomCode();
 	if ((bloomSet & bloomCode) == bloomCode) {
 		Int32 index;
@@ -2277,7 +2303,7 @@ void FunctionScope::writeVar(Runtime& rt, const String* name, const Value& v) {
 		if (code->lookupNameIndex(name, index)) {
 			assert(locals.begin() <= localsPointer + index && localsPointer + index < locals.end());
 			localsPointer[index] = v;
-			return;
+			return true;
 		}
 		// FIX : make sub that lookup's the bucket, also use in getProperty
 		if (dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) {
@@ -2285,39 +2311,42 @@ void FunctionScope::writeVar(Runtime& rt, const String* name, const Value& v) {
 			Table::Bucket* bucket = props.lookup(name);
 			if (bucket != 0) {
 				props.update(bucket, v);
-				return;
+				return true;
 			}
 		}
 		if (code->selfName != 0 && name->isEqualTo(*code->selfName)) {
-			return;
+			return true;
 		}
 	}
-	parentScope->writeVar(rt, name, v); // FIX : recursion
+	return false;
 }
 
-bool FunctionScope::deleteVar(Runtime& rt, const String* name) {
+bool FunctionScope::deleteLocalVar(Runtime& rt, const String* name, bool& result) {
 	const UInt32 bloomCode = name->createBloomCode();
 	if ((bloomSet & bloomCode) == bloomCode) {
 		Int32 index;
 		const Code* code = function->code;
 		if (code->lookupNameIndex(name, index)) {
-			return false;
+			result = false;
+			return true;
 		}
 		if (dynamicVars != 0 || name->isEqualTo(ARGUMENTS_STRING)) {
 			Table& props = *getDynamicVars(rt);
 			Table::Bucket* bucket = props.lookup(name);
 			if (bucket != 0) {
-				return props.erase(bucket);
+				result = props.erase(bucket);
+				return true;
 			}
 		}
 		if (code->selfName != 0 && name->isEqualTo(*code->selfName)) {
-			return false;
+			result = false;
+			return true;
 		}
 	}
-	return parentScope->deleteVar(rt, name); // FIX : recursion
+	return false;
 }
 
-void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete) {
+bool FunctionScope::declareLocalVar(Runtime& rt, const String* name, const Value& initValue, bool& dontDelete) {
 	Int32 index;
 	if (!function->code->lookupNameIndex(name, index)) {
 		Table& props = *getDynamicVars(rt);
@@ -2330,6 +2359,7 @@ void FunctionScope::declareVar(Runtime& rt, const String* name, const Value& ini
 	if (!initValue.isUndefined()) {
 		writeVar(rt, name, initValue);
 	}
+	return true;
 }
 
 FunctionScope::~FunctionScope() {
@@ -2498,8 +2528,9 @@ const Processor::OpcodeInfo& Processor::getOpcodeInfo(const Opcode opcode) {
 struct Processor::EvalScope : public Scope {
 	typedef Scope super;
 	EvalScope(GCList& gcList, Scope* parentScope) : super(gcList, parentScope) { }
-	virtual void declareVar(Runtime& rt, const String* name, const Value& initValue, bool) {
-		parentScope->declareVar(rt, name, initValue, false);
+	virtual bool declareLocalVar(Runtime&, const String*, const Value&, bool& dontDelete) {
+		dontDelete = false;	// eval code declares deletable vars
+		return false;
 	}
 };
 	
@@ -2514,27 +2545,26 @@ struct Processor::CatchScope : public Scope {
 
 	CatchScope(GCList& gcList, Scope* parentScope, const String* exceptionName, const Value& exceptionValue)
 			: super(gcList, parentScope), exceptionName(exceptionName), exceptionValue(exceptionValue) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const  {
-		if (name->isEqualTo(*exceptionName)) {
-			*v = exceptionValue;
-			return DONT_DELETE_FLAG | EXISTS_FLAG;
-		} else {
-			return parentScope->readVar(rt, name, v, implicitThis);
+	virtual Flags readLocalVar(Runtime&, const String* name, Value* v, Value*) const  {
+		if (!name->isEqualTo(*exceptionName)) {
+			return NONEXISTENT;
 		}
+		*v = exceptionValue;
+		return DONT_DELETE_FLAG | EXISTS_FLAG;
 	}
-	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
-		if (name->isEqualTo(*exceptionName)) {
-			exceptionValue = v;
-		} else {
-			parentScope->writeVar(rt, name, v);
-		}
-	}
-	virtual bool deleteVar(Runtime& rt, const String* name) {
-		if (name->isEqualTo(*exceptionName)) {
+	virtual bool writeLocalVar(Runtime&, const String* name, const Value& v) {
+		if (!name->isEqualTo(*exceptionName)) {
 			return false;
-		} else {
-			return parentScope->deleteVar(rt, name);
 		}
+		exceptionValue = v;
+		return true;
+	}
+	virtual bool deleteLocalVar(Runtime&, const String* name, bool& result) {
+		if (!name->isEqualTo(*exceptionName)) {
+			return false;
+		}
+		result = false;
+		return true;
 	}
 
 	const String* exceptionName;
@@ -2551,17 +2581,14 @@ struct Processor::WithScope : public Scope {
 	typedef Scope super;
 	WithScope(GCList& gcList, Scope* parentScope, Object* withObject)
 	 		: super(gcList, parentScope), withObject(withObject) { }
-	virtual Flags readVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
-		Flags flags = withObject->getProperty(rt, name, v);
-		if (flags == NONEXISTENT) {
-			return parentScope->readVar(rt, name, v, implicitThis);
-		}
-		if (implicitThis != 0) {
+	virtual Flags readLocalVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
+		const Flags flags = withObject->getProperty(rt, name, v);
+		if (flags != NONEXISTENT && implicitThis != 0) {
 			*implicitThis = withObject;
 		}
 		return flags;
 	}
-	virtual void writeVar(Runtime& rt, const String* name, const Value& v) {
+	virtual bool writeLocalVar(Runtime& rt, const String* name, const Value& v) {
 		const Value key(name);
 		for (Object* o = withObject; o != 0; o = o->getPrototype(rt)) {
 			Value dummy;
@@ -2570,15 +2597,18 @@ struct Processor::WithScope : public Scope {
 				if ((flags & READ_ONLY_FLAG) == 0) {
 					withObject->setOwnProperty(rt, key, v);
 				}
-				return;
+				return true;
 			}
 		}
-		parentScope->writeVar(rt, name, v);
+		return false;
 	}
-	virtual bool deleteVar(Runtime& rt, const String* name) {
+	virtual bool deleteLocalVar(Runtime& rt, const String* name, bool& result) {
 		Value dummy;
-		Flags findFlags = withObject->getProperty(rt, name, &dummy);
-		return (findFlags != NONEXISTENT ? withObject->deleteOwnProperty(rt, name) : parentScope->deleteVar(rt, name));
+		if (withObject->getProperty(rt, name, &dummy) == NONEXISTENT) {
+			return false;
+		}
+		result = withObject->deleteOwnProperty(rt, name);
+		return true;
 	}
 
 	Object* withObject;
@@ -5041,26 +5071,29 @@ Object* Runtime::ErrorPrototype::getPrototype(Runtime& rt) const {
 
 Runtime::GlobalScope::GlobalScope(GCList& gcList) : super(gcList, 0) { deleteOnPop = false; }
 
-Flags Runtime::GlobalScope::readVar(Runtime& rt, const String* name, Value* v, Value*) const {
+Flags Runtime::GlobalScope::readLocalVar(Runtime& rt, const String* name, Value* v, Value*) const {
 	// No implicit this here: the global object is the scope of last resort, never an object scope introduced by `with`.
 	return rt.getGlobalObject()->getProperty(rt, name, v);
 }
 
-void Runtime::GlobalScope::writeVar(Runtime& rt, const String* name, const Value& v) {
+bool Runtime::GlobalScope::writeLocalVar(Runtime& rt, const String* name, const Value& v) {
 	rt.getGlobalObject()->setProperty(rt, name, v);
+	return true;
 }
 
-bool Runtime::GlobalScope::deleteVar(Runtime& rt, const String* name) {
-	return rt.getGlobalObject()->deleteOwnProperty(rt, name);
+bool Runtime::GlobalScope::deleteLocalVar(Runtime& rt, const String* name, bool& result) {
+	result = rt.getGlobalObject()->deleteOwnProperty(rt, name);
+	return true;
 }
 
-void Runtime::GlobalScope::declareVar(Runtime& rt, const String* name, const Value& initValue, bool dontDelete) {
+bool Runtime::GlobalScope::declareLocalVar(Runtime& rt, const String* name, const Value& initValue, bool& dontDelete) {
 	Value v;
 	// FIX : deep or not?!
 	const Flags flags = rt.getGlobalObject()->getOwnProperty(rt, name, &v);
 	if (flags == NONEXISTENT || !initValue.isUndefined()) {
 		rt.getGlobalObject()->setOwnProperty(rt, name, initValue, dontDelete ? DONT_DELETE_FLAG : 0);
 	}
+	return true;
 }
 
 struct Runtime::FunctionPrototypeFunction : public ExtensibleFunction {
