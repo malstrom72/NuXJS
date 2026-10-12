@@ -5718,7 +5718,7 @@ void Runtime::setupStandardLibrary() {
 
 void Runtime::setGlobalObject(Object* newGlobals) { globalObject = newGlobals; }
 void Runtime::setStackSize(UInt32 maxValuesOnStack) { stackSize = maxValuesOnStack; }
-void Runtime::setMaxNestedCompileDepth(Int32 maxDepth) { maxNestedCompileDepth = maxDepth; }
+void Runtime::setMaxNestedCompileDepth(Int32 maxDepth) { assert(maxDepth >= 64); maxNestedCompileDepth = maxDepth; }
 void Runtime::setMemoryCap(size_t maxBytesUsed) { memoryCap = maxBytesUsed; }
 void Runtime::noTimeOut() { checkTimeOutCounter = 0; }
 

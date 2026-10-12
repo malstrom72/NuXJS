@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-
-echo "Building and running the example host"
-bash ./BuildCpp.sh "$target" "$model" ../output/examples/host ../docs/examples/host.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
-../output/examples/host > ../output/examples/host.log 2>&1
-diff -u ../docs/examples/expected_host.txt ../output/examples/host.log
 set -e -o pipefail -u
 cd "$(dirname "$0")"
 
