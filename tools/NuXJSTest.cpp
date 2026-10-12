@@ -809,6 +809,18 @@ static void testLimits() {
 	EXPECT_EQUAL(rt.eval("var a = []; for (var i = 0; i < 200000; ++i) a[i] = i + 0.5; "
 			"JSON.parse('[' + a.join(',') + ']')[199999]"), 199999.5);
 	rt.noTimeOut();
+
+	std::cout << "	- compile depth" << std::endl;
+
+	const char* const nested = "((((((((((((((((((((((((((((((1))))))))))))))))))))))))))))))";
+	EXPECT_EQUAL(rt.eval(nested), 1);
+	{
+		Heap shallowHeap;
+		Runtime shallowRuntime(shallowHeap);
+		shallowRuntime.setMaxNestedCompileDepth(20);
+		EXPECT_EXCEPTION(shallowRuntime.eval(nested)
+				, "RangeError: Internal compiler limitations reached. Reduce code complexity.");
+	}
 }
 
 // C++ functions that you want to call from Javascript should have these arguments.

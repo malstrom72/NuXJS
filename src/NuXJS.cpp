@@ -3370,8 +3370,9 @@ struct Compiler::SemanticScope {
 	Vector<BranchPoint, 2> finallys;	// source points for finally jsr's
 };
 
-Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, Compiler* outer)
-	: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), root(outer != 0 ? outer->root : *this)
+Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, Int32 maxNestDepth, Compiler* outer)
+	: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), maxNestDepth(maxNestDepth)
+	, root(outer != 0 ? outer->root : *this)
 	, setupSection(heap, 1), mainSection(heap, 1), b(0), p(0), e(0)
 	, sourceUnitBase(code->getSourceUnit()->getSource()->begin()), currentSection(0), acceptInOperator(true)
 	, withScopeCounter(0), nestCounter(0)
@@ -4190,7 +4191,7 @@ bool Compiler::postOperate(ExpressionResult& xr, Precedence precedence) {
 void Compiler::functionDefinition(const String* functionName, const String* selfName) {
 	assert(functionName != 0);
 	Code* func = new(heap) Code(heap.managed(), code->constants, code->getSourceUnit());
-	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, this);
+	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, maxNestDepth, this);
 	p = funcCompiler.compileFunction(p, e, functionName, selfName);
 	emitWithConstant(Processor::GEN_FUNC_OP, func);
 }
@@ -4201,11 +4202,10 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 	real generated parser (GAZL's Impala compiler) needs and well below the stack wall: see "Nesting limits" in NuXJS
 	Documentation.md.
 */
-const Int32 MAX_NESTED_COMPILE_DEPTH = 128;
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
 
 Compiler::NestGuard::NestGuard(Compiler& compiler) : compiler(compiler) {
-	if (compiler.root.nestCounter >= MAX_NESTED_COMPILE_DEPTH) {
+	if (compiler.root.nestCounter >= compiler.maxNestDepth) {
 		compiler.error(RANGE_ERROR, "Internal compiler limitations reached. Reduce code complexity.");
 	}
 	++compiler.root.nestCounter;
@@ -5294,7 +5294,7 @@ struct Support {
 			const String* source = argv[0].toString(heap);
 			SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), source, &ANONYMOUS_SCRIPT_STRING);
 			Code* code = new(heap) Code(heap.managed(), 0, unit);
-			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
+			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION, rt.maxNestedCompileDepth);
 			compiler.compileFunction(source->begin(), source->end(), (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING)
 					, 0);
 			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
@@ -5493,8 +5493,8 @@ static struct NoRegExpSupport : public Function {
 } NO_REG_EXP_SUPPORT;
 
 Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap.roots()), globalObject(0)
-		, stackSize(STANDARD_JS_STACK_SIZE), callNestCounter(0), checkTimeOutCounter(0)
-		, timeOut(0), memoryCap(MAX_MEMORY_CAP), gcThreshold(AUTO_GC_MIN_SIZE), evalCodeCache(&heap)
+		, stackSize(STANDARD_JS_STACK_SIZE), maxNestedCompileDepth(STANDARD_MAX_NESTED_COMPILE_DEPTH), callNestCounter(0)
+		, checkTimeOutCounter(0), timeOut(0), memoryCap(MAX_MEMORY_CAP), gcThreshold(AUTO_GC_MIN_SIZE), evalCodeCache(&heap)
 		, createRegExpFunction(&NO_REG_EXP_SUPPORT), evalFunction(&EVAL_FUNCTION), unixEpochTimeDiff(0.0) {
 	std::fill(stringConstantsCache, stringConstantsCache + (1 << STRING_CONSTANTS_CACHE_SIZE_N), (const String*)(0));
 	std::fill(prototypes, prototypes + PROTOTYPE_COUNT, (Object*)(0));
@@ -5612,9 +5612,10 @@ void Runtime::run(const String& source, const String* filename) {
 	runUntilReturn(processor);
 }
 
-static Code* compileCode(Heap& heap, const String* source, const String* filename, Compiler::Target target) {
+static Code* compileCode(Heap& heap, const String* source, const String* filename, Compiler::Target target
+		, Int32 maxNestDepth) {
 	Code* code = new(heap) Code(heap.managed(), 0, new(heap) SourceCodeUnit(heap.managed(), source, filename));
-	Compiler compiler(heap.roots(), code, target);
+	Compiler compiler(heap.roots(), code, target, maxNestDepth);
 	compiler.compile(*source);
 	return code;
 }
@@ -5626,7 +5627,7 @@ Code* Runtime::compileEvalCode(const String* expression) {
 		assert(isA<Code>(o));
 		return reinterpret_cast<Code*>(o);
 	} else {
-		Code* code = compileCode(heap, expression, &EVAL_CODE_STRING, Compiler::FOR_EVAL);
+		Code* code = compileCode(heap, expression, &EVAL_CODE_STRING, Compiler::FOR_EVAL, maxNestedCompileDepth);
 		evalCodeCache.update(evalCodeCache.insert(expression), code);
 		return code;
 	}
@@ -5643,7 +5644,8 @@ Var Runtime::eval(const String& expression) {
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
 	const String* retainedSource = (heap.managed().owns(&source)
 			? &source : new(heap) String(heap.managed(), source.begin(), source.end()));
-	return compileCode(heap, retainedSource, (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING), Compiler::FOR_GLOBAL);
+	return compileCode(heap, retainedSource, (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING), Compiler::FOR_GLOBAL
+			, maxNestedCompileDepth);
 }
 
 void Runtime::fetchFunction(const Object* supportObject, const char* name, Function** f) {
@@ -5716,6 +5718,7 @@ void Runtime::setupStandardLibrary() {
 
 void Runtime::setGlobalObject(Object* newGlobals) { globalObject = newGlobals; }
 void Runtime::setStackSize(UInt32 maxValuesOnStack) { stackSize = maxValuesOnStack; }
+void Runtime::setMaxNestedCompileDepth(Int32 maxDepth) { maxNestedCompileDepth = maxDepth; }
 void Runtime::setMemoryCap(size_t maxBytesUsed) { memoryCap = maxBytesUsed; }
 void Runtime::noTimeOut() { checkTimeOutCounter = 0; }
 
