@@ -471,8 +471,8 @@ constructs one or two.
 
 The compile limit is a proxy for stack bytes, so a host running NuXJS on a smaller stack than the ones measured here
 needs a lower value, set with `Runtime::setMaxNestedCompileDepth` before anything is compiled; `JSON.parse()` needs 64
-levels and the standard library 33, so 64 is the floor. The stack each level costs on msvc/x64 with the beta flags,
-and on arm64 (Apple clang, M4) with the `-O3 -flto` flags the products ship, es5 build:
+levels and the standard library 33, so 64 is the floor, which the setter asserts. The stack each level costs on
+msvc/x64 with the beta flags, and on arm64 (Apple clang, M4) with the `-O3 -flto` flags the products ship, es5 build:
 
 | shape                       | levels per nesting | msvc/x64 beta | arm64 -O3 -flto |
 | --------------------------- | ------------------ | ------------- | --------------- |
