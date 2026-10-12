@@ -156,7 +156,7 @@ class Heap {
 		UInt32 count() const { return allocatedCount; }
 		size_t size() const { return allocatedSize; }
 		size_t pooled() const { return pooledSize; }
-		void setMaxAllocationSize(size_t maxSize) { maxAllocationSize = maxSize; }										// 2 GB at most, the default: string lengths and offsets are 32-bit
+		void setMaxAllocationSize(size_t maxSize) { assert(maxSize <= 0x7FFFFFFF); maxAllocationSize = maxSize; }		// 2 GB at most: string lengths and offsets are 32-bit
 		void gc();
 		virtual ~Heap();
 		friend void gcMark(Heap& heap, const GCItem* item);
