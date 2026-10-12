@@ -2664,8 +2664,35 @@ template<class SUPER> JSObject* LazyJSObject<SUPER>::getCompleteObject(Runtime& 
 	return completeObject;
 }
 
-template class LazyJSObject<Object>;	// the header's inline members call these, so link-time optimization must keep them
-template class LazyJSObject<Function>;
+#if NUXJS_ES5
+template<class SUPER> Flags LazyJSObject<SUPER>::getOwnPropertySlot(Runtime& rt, const Value& key, Value* v
+		, Accessor** accessor) const {
+	// Normal lookup first so internal properties (e.g. array length) keep their precedence; only when it
+	// reports an accessor does the completeObject table hold the actual pair.
+	*accessor = 0;
+	const Flags flags = this->getOwnProperty(rt, key, v);
+	if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
+		assert(completeObject != 0);
+		return completeObject->getOwnPropertySlot(rt, key, v, accessor);
+	}
+	return flags;
+}
+
+// Objects with no dense storage of their own (functions, errors, arguments) define into the complete
+// object. JSArray overrides this because its indexed elements and length are not ordinary table entries.
+template<class SUPER> bool LazyJSObject<SUPER>::defineOwnProperty(Runtime& rt, const Value& key
+		, const PropertyDescriptor& desc, bool doThrow) {
+	JSObject* const complete = getCompleteObject(rt);
+	if (!this->isExtensible()) {
+		complete->preventExtensions();	// 8.12.9 (3) is checked on the table, which has its own flag
+	}
+	return complete->defineOwnProperty(rt, key, desc, doThrow);
+}
+
+template<class SUPER> void LazyJSObject<SUPER>::collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const {
+	getCompleteObject(rt)->collectOwnPropertyNames(rt, out);	// materializes name/length/prototype etc. into the table
+}
+#endif
 
 /* --- ExtensibleFunction --- */
 

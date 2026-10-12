@@ -918,29 +918,9 @@ template<class SUPER> class LazyJSObject : public SUPER {
 		virtual bool deleteOwnProperty(Runtime& rt, const Value& key);
 		virtual Enumerator* getOwnPropertyEnumerator(Runtime& rt) const;
 	#if NUXJS_ES5
-		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const {
-			// Normal lookup first so internal properties (e.g. array length) keep their precedence; only when it
-			// reports an accessor does the completeObject table hold the actual pair.
-			*accessor = 0;
-			const Flags flags = this->getOwnProperty(rt, key, v);
-			if (flags != NONEXISTENT && (flags & ACCESSOR_FLAG) != 0) {
-				assert(completeObject != 0);
-				return completeObject->getOwnPropertySlot(rt, key, v, accessor);
-			}
-			return flags;
-		}
-		// Objects with no dense storage of their own (functions, errors, arguments) define into the complete
-		// object. JSArray overrides this because its indexed elements and length are not ordinary table entries.
-		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow) {
-			JSObject* const complete = getCompleteObject(rt);
-			if (!this->isExtensible()) {
-				complete->preventExtensions();	// 8.12.9 (3) is checked on the table, which has its own flag
-			}
-			return complete->defineOwnProperty(rt, key, desc, doThrow);
-		}
-		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const {
-			getCompleteObject(rt)->collectOwnPropertyNames(rt, out);	// materializes name/length/prototype etc. into the table
-		}
+		virtual Flags getOwnPropertySlot(Runtime& rt, const Value& key, Value* v, Accessor** accessor) const;
+		virtual bool defineOwnProperty(Runtime& rt, const Value& key, const PropertyDescriptor& desc, bool doThrow);
+		virtual void collectOwnPropertyNames(Runtime& rt, Vector<Value>& out) const;
 	#endif
 
 	protected:
