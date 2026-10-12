@@ -843,8 +843,11 @@ class JSArray : public LazyJSObject<Object> {
 class Constants : public GCItem, public Vector<Value> {
 	public:
 		typedef GCItem super;
-		Constants(GCList& gcList) : super(gcList), Vector<Value>(&gcList.getHeap())
-				, stringIndexes(&gcList.getHeap()), otherIndexes(&gcList.getHeap()) { }
+		Constants(GCList& gcList) : super(gcList), Vector<Value>(&gcList.getHeap()), stringIndexes(&gcList.getHeap()) {
+			for (int i = 0; i < 64; ++i) {
+				otherIndexes[i] = ~0U;
+			}
+		}
 
 		UInt32 findOrAdd(const Value& constant);
 
@@ -857,12 +860,11 @@ class Constants : public GCItem, public Vector<Value> {
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, begin(), end());
 			stringIndexes = Table(&heap);
-			otherIndexes = Vector<UInt32>(&heap);
 			super::gcMarkReferences(heap);
 		}
 
 		mutable Table stringIndexes;			// string constant -> its index in this list
-		mutable Vector<UInt32> otherIndexes;	// indexes of the non-strings worth scanning
+		UInt32 otherIndexes[64];				// the most recently used non-strings, most recent last, ~0U when unused
 };
 
 /**

@@ -3178,13 +3178,20 @@ UInt32 Constants::findOrAdd(const Value& constant) {
 	} else if (constant.isObject()) {	// objects compare by identity, so a fresh one never matches
 		push(constant);
 	} else {
-		for (UInt32 i = otherIndexes.size(); i > 0; --i) {
-			if ((*this)[otherIndexes[i - 1]].isStrictlyEqualTo(constant)) {
-				return otherIndexes[i - 1];
-			}
+		Int32 i = 63;
+		while (i >= 0 && (otherIndexes[i] == ~0U || !(*this)[otherIndexes[i]].isStrictlyEqualTo(constant))) {
+			--i;
 		}
-		push(constant);
-		otherIndexes.push(newIndex);
+		const UInt32 index = (i >= 0 ? otherIndexes[i] : newIndex);
+		if (i < 0) {
+			push(constant);
+			i = 0;
+		}
+		for (; i < 63; ++i) {
+			otherIndexes[i] = otherIndexes[i + 1];
+		}
+		otherIndexes[63] = index;
+		return index;
 	}
 	return newIndex;
 }
