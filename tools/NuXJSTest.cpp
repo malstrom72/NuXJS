@@ -1468,7 +1468,7 @@ static void testHeap() {
 	}
 	
 	{
-		EXPECT_EXCEPTION(heap.allocate(MAX_SINGLE_ALLOCATION_SIZE), "Memory allocation failure (size too large)");
+		EXPECT_EXCEPTION(heap.allocate(0x80000000U), "Memory allocation failure (size too large)");
 		EXPECT_EXCEPTION(heap.allocate(~(size_t)(0) - sizeof (size_t) - 16), "Memory allocation failure (size too large)");
 		CheapHeap cheapHeap;
 		void* alloc1 = 0;

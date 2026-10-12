@@ -159,11 +159,20 @@ static void emitArray(std::ostream& out, const char* declaration, const std::str
 	out << '\t' << line << eol << "};" << eol;
 }
 
-static std::string generateBlock(const std::string& eol) {
-	Entry entries[COUNT];
-	buildTable(entries);
+// The engine computes the exponents rather than storing them, with the formula in powerOfFive(q) in src/NuXJS.cpp.
+static bool exponentsMatchFormula(const Entry* entries) {
+	for (int q = MIN_POWER; q <= MAX_POWER; ++q) {
+		const int k = (q < 0 ? -q : q);
+		const int length = ((k * 1217359) >> 19) + 1;
+		if (entries[q - MIN_POWER].exponent != (q < 0 ? -(length + 127) : length - 128)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static std::string generateBlock(const Entry* entries, const std::string& eol) {
 	std::string words[COUNT * 4];
-	std::string exponents[COUNT];
 	for (int i = 0; i < COUNT; ++i) {
 		for (int j = 0; j < 4; ++j) {
 			std::ostringstream hex;
@@ -173,17 +182,11 @@ static std::string generateBlock(const std::string& eol) {
 			hex << entries[i].significand.word(j);
 			words[i * 4 + j] = hex.str();
 		}
-		std::ostringstream decimal;
-		decimal << entries[i].exponent;
-		exponents[i] = decimal.str();
 	}
 	std::ostringstream out;
 	std::ostringstream declaration;
 	declaration << "const UInt32 POWER_OF_FIVE_WORDS[" << COUNT * 4 << "]";
 	emitArray(out, declaration.str().c_str(), words, COUNT * 4, eol);
-	declaration.str("");
-	declaration << "const Int16 POWER_OF_FIVE_EXPONENTS[" << COUNT << "]";
-	emitArray(out, declaration.str().c_str(), exponents, COUNT, eol);
 	return out.str();
 }
 
@@ -214,7 +217,13 @@ int main(int argc, const char* argv[]) {
 	const size_t begin = source.find('\n', marker) + 1;
 	const size_t end = source.rfind('\n', endMarker) + 1;
 	const std::string eol = (begin >= 2 && source[begin - 2] == '\r' ? "\r\n" : "\n");
-	const std::string block = generateBlock(eol);
+	static Entry entries[COUNT];
+	buildTable(entries);
+	if (!exponentsMatchFormula(entries)) {
+		std::cerr << "The exponent formula in powerOfFive(q) no longer matches the table." << std::endl;
+		return 1;
+	}
+	const std::string block = generateBlock(entries, eol);
 	if (source.compare(begin, end - begin, block) == 0) {
 		std::cout << "Power-of-five table is up to date." << std::endl;
 		return 0;
