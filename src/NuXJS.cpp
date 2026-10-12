@@ -2390,17 +2390,6 @@ ScriptException::ScriptException(Heap& heap, const Value& value) throw()
 	}
 }
 
-const char* ScriptException::getStackTrace() const {
-	if (stackTrace.empty()) {
-		Error* errorObject = value.asError();
-		const String* stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
-		if (stackString != 0) {
-			stackTrace = stackString->toUTF8String();
-		}
-	}
-	return stackTrace.c_str();
-}
-
 /* --- EvalFunction --- */
 
 static struct EvalFunction : public Function {
@@ -2730,21 +2719,40 @@ static void appendLocation(Vector<Char>& buffer, const Code::SourceLocation& loc
 	}
 }
 
+static void appendErrorHeader(Vector<Char>& buffer, const Error* errorObject) {
+	appendString(buffer, errorObject->getErrorName());
+	const String* message = errorObject->getErrorMessage();
+	if (message != 0 && !message->empty()) {
+		appendASCII(buffer, ": ");
+		appendString(buffer, message);
+	}
+	if (errorObject->getCompilePosition().fileName != 0) {
+		appendLocation(buffer, errorObject->getCompilePosition());
+	}
+}
+
+const char* ScriptException::getStackTrace() const {
+	if (stackTrace.empty()) {
+		const Error* const errorObject = value.asError();
+		const String* const stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
+		if (stackString != 0) {
+			stackTrace = stackString->toUTF8String();
+		} else if (errorObject != 0 && errorObject->getCompilePosition().fileName != 0) {	// never reached a processor
+			Vector<Char> buffer(0);
+			appendErrorHeader(buffer, errorObject);
+			stackTrace = String(buffer.begin(), buffer.end()).toUTF8String();
+		}
+	}
+	return stackTrace.c_str();
+}
+
 void Processor::addStackTrace(const Value& exception) const {
 	Error* errorObject = exception.asError();
 	if (errorObject != 0) {
 		const String* stackString = errorObject->getStackString();
 		if (stackString == 0) {
 			Vector<Char> buffer(&heap);
-			appendString(buffer, errorObject->getErrorName());
-			const String* message = errorObject->getErrorMessage();
-			if (message != 0 && !message->empty()) {
-				appendASCII(buffer, ": ");
-				appendString(buffer, message);
-			}
-			if (errorObject->getCompilePosition().fileName != 0) {
-				appendLocation(buffer, errorObject->getCompilePosition());
-			}
+			appendErrorHeader(buffer, errorObject);
 			const Frame* frameWalker = currentFrame;
 			const CodeWord* nextIP = ip;
 			while (frameWalker != 0 && nextIP != 0) {
@@ -3381,7 +3389,11 @@ const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e
 
 void Compiler::error(ErrorType type, const String* message) {
 	root.p = p;
-	ScriptException::throwError(heap, type, message);
+	Error* const errorObject = new(heap) Error(heap.managed(), type, message);
+	Code::SourceLocation position = { root.code->getSourceUnit()->getFileName(), 0, 0, 0, 0 };
+	root.getStopPosition(position.offset, position.line, position.column);
+	errorObject->setCompilePosition(position);
+	throw ScriptException(heap, errorObject);
 }
 
 void Compiler::error(ErrorType type, const char* message) { error(type, String::allocate(heap, message)); }
@@ -5283,13 +5295,8 @@ struct Support {
 			SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), source, &ANONYMOUS_SCRIPT_STRING);
 			Code* code = new(heap) Code(heap.managed(), 0, unit);
 			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
-			try {
-				compiler.compileFunction(source->begin(), source->end()
-						, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING), 0);
-			}
-			catch (const ScriptException& x) {
-				throw CompilationError(x, &ANONYMOUS_SCRIPT_STRING, compiler);
-			}
+			compiler.compileFunction(source->begin(), source->end(), (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING)
+					, 0);
 			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
 		}
 		return UNDEFINED_VALUE;
@@ -5608,12 +5615,7 @@ void Runtime::run(const String& source, const String* filename) {
 static Code* compileCode(Heap& heap, const String* source, const String* filename, Compiler::Target target) {
 	Code* code = new(heap) Code(heap.managed(), 0, new(heap) SourceCodeUnit(heap.managed(), source, filename));
 	Compiler compiler(heap.roots(), code, target);
-	try {
-		compiler.compile(*source);
-	}
-	catch (const ScriptException& x) {
-		throw CompilationError(x, filename, compiler);
-	}
+	compiler.compile(*source);
 	return code;
 }
 

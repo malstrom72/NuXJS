@@ -750,6 +750,17 @@ static void testCompilation() {
 	EXPECT_EQUAL(res.typeOf(), &UNDEFINED_STRING);
 	EXPECT_EQUAL(rt.getGlobalsVar()["x"], 3);
 
+	std::cout << "	- compile error position" << std::endl;
+	const String broken(heap.roots(), "var y = 1;\nvar z = ;");
+	const String brokenName(heap.roots(), "broken.js");
+	std::string trace;
+	try {
+		rt.compileGlobalCode(broken, &brokenName);
+	} catch (const ScriptException& x) {
+		trace = x.getStackTrace();
+	}
+	EXPECT(trace == "SyntaxError: Missing / invalid expression\n    at broken.js:2:9");
+
 	JSObject* globalsObj = rt.newJSObject();
 	rt.setGlobalObject(globalsObj);
 	Var globals = rt.getGlobalsVar();

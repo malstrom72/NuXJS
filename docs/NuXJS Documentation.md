@@ -346,7 +346,7 @@ String::fromDouble(heap, 3.14)			 // formatted double with special handling for 
 
 ## Exception Handling
 
-JavaScript code uses ordinary `throw` statements and `try`/`catch` blocks. When an exception propagates to C++, a `ScriptException` is thrown. It owns the underlying `Error` object and exposes its message through `what()`. Compilation errors are reported via `CompilationError`, which additionally stores the filename, character offset, and line number. The runtime may also throw a `ConstStringException` for conditions such as running out of memory or hitting a timeout. Embedding code typically catches `ScriptException`:
+JavaScript code uses ordinary `throw` statements and `try`/`catch` blocks. When an exception propagates to C++, a `ScriptException` is thrown. It owns the underlying `Error` object and exposes its message through `what()`. Source that does not compile throws a `SyntaxError` the same way; its `Error` records the file name, offset, line and column where compilation stopped (`Error::getCompilePosition`), and `getStackTrace()` includes them. The runtime may also throw a `ConstStringException` for conditions such as running out of memory or hitting a timeout. Embedding code typically catches `ScriptException`:
 
 ```cpp
 try {

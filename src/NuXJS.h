@@ -1927,26 +1927,6 @@ class Compiler : public GCItem {
 		}
 };
 
-/*
-	The ScriptException that `Runtime::compileGlobalCode` and `compileEvalCode` throw for source that does not compile,
-	extended with the filename and the offset, line and column where compilation stopped.
-*/
-struct CompilationError : public ScriptException {
-	CompilationError(const ScriptException& sourceException, const String* filename, const Compiler& fromCompiler)
-			: ScriptException(sourceException), filename(filename) {
-		fromCompiler.getStopPosition(offset, lineNumber, columnNumber);
-		Error* const error = value.asError();
-		if (error != 0) {
-			const Code::SourceLocation position = { filename, 0, offset, lineNumber, columnNumber };
-			error->setCompilePosition(position);
-		}
-	}
-	const String* filename;
-	UInt32 offset;
-	UInt32 lineNumber;
-	UInt32 columnNumber;
-};
-
 } /* namespace NuXJS */
 
 #endif
