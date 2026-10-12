@@ -42,6 +42,11 @@ IF EXIST ..\docs\examples\expected_examples.txt (
 	FC ..\docs\examples\expected_examples.txt ..\output\examples\all.log || GOTO error
 )
 
+ECHO Building and running the example host
+CALL .\BuildCpp.cmd %target% %model% ..\output\examples\host.exe ..\docs\examples\host.cpp ..\src\NuXJS.cpp ..\src\stdlibJS.cpp || GOTO error
+..\output\examples\host.exe > ..\output\examples\host.log 2>&1 || GOTO error
+FC ..\docs\examples\expected_host.txt ..\output\examples\host.log || GOTO error
+
 ECHO Success!
 POPD
 EXIT /b 0

@@ -1,0 +1,21 @@
+load rules.js
+event note 60
+  [script] note brings the total to 120 after 1 events
+event note 4.5
+  [script] note brings the total to 129 after 2 events
+event oops 1
+  [script] oops brings the total to 131 after 3 events
+  error: ReferenceError: undefinedRule is not defined
+    at onEvent (rules.js:5:37)
+event wrong 1
+  [script] wrong brings the total to 133 after 4 events
+  error: TypeError: host.scale() expects a number
+    at onEvent (rules.js:6:41)
+load broken.js
+  syntax: broken.js:1:30: SyntaxError: Expected ',' or ')'
+load greedy.js
+  stopped: Out of memory
+load spin.js
+  stopped: Time out
+event note 0.5
+  [script] note brings the total to 134 after 5 events
