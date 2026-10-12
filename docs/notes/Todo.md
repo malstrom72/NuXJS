@@ -163,7 +163,7 @@ Other
 
 	* FIXED 2026-09-25 (found 2026-09-19, review): the examples were built without the model, in BOTH scripts on main rather than only the .sh as first recorded - the output path failed BuildCpp's model check and the model fell back to native. Fixed on main and merged; `buildAndTest.cmd release x86` now yields an x86 examples binary.
 
-	* included in tests should be to config the gc to sweep after every instruction
+	* DONE 2026-10-11: `NuXJS -G` collects garbage after every instruction, so a value left unrooted across an allocation shows up as a crash or a wrong answer. It is about 1300x slower, so it runs by hand rather than in the build: `tools/test.pika -e -x 'output\NuXJS.exe -G -s --legacy-exceptions' tests/regression tests/stdlib`. First run: 140 of those 141 files pass, and the other, jsonStringifyFailure20190617.io, only times out.
 
 
 OPTIMIZE

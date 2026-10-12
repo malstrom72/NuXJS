@@ -240,6 +240,7 @@ static const String* utf8ToString(Heap& heap, const char* utf8, size_t size) {
 static bool doQuit = false;			// set by the quit() helper
 static bool pauseBeforeQuit = false;	// -p; read by main()
 static int timeOutSeconds = 0;			// -T; read by compileAndRun(), 0 for no limit
+static bool gcEveryCycle = false;		// -G; read by compileAndRun()
 static bool recordTranscript = false;	// interactive mode: print() output and errors go to the transcript for #save
 
 // In-memory transcript of the interactive session, tagged for #save (see pushIOLines).
@@ -581,6 +582,7 @@ void printUsage() {
 			<< "  -n: do not load the standard library" << std::endl
 			<< "  -T, --timeout <seconds>: abort code that runs longer (default: no limit)" << std::endl
 			<< "  -P, --pin <core>: run on that CPU core only, for steadier timings (not on macOS)" << std::endl
+			<< "  -G, --gc-every-cycle: collect garbage after every instruction, to expose unrooted values (slow)" << std::endl
 			<< "  -E, --legacy-exceptions: use legacy exception output" << std::endl
 			<< "  -h, --help: show this usage" << std::endl
 			<< std::endl
@@ -639,6 +641,14 @@ static void reportScriptException(Runtime& rt, MyHeap& heap, const ScriptExcepti
 	}
 }
 
+static Var runCollectingEveryCycle(Runtime& rt, Heap& heap, Processor& processor) {
+	while (processor.run(1)) {
+		heap.gc();
+		rt.checkTimeOut();
+	}
+	return Var(rt, processor.getResult());
+}
+
 /*
 	Runs one chunk of source to completion in the global scope: a script file as global code when `scriptFileName` is
 	given, otherwise an interactive chunk compiled as eval code, only for the completion value it echoes on request: its
@@ -657,7 +667,7 @@ static bool compileAndRun(Runtime& rt, MyHeap& heap, const String& source, const
 				: rt.compileEvalCode(new(heap) String(heap.managed(), source.begin(), source.end())));
 		Processor processor(rt);
 		processor.enterGlobalCode(code);
-		const Var result = rt.runUntilReturn(processor);
+		const Var result = (gcEveryCycle ? runCollectingEveryCycle(rt, heap, processor) : rt.runUntilReturn(processor));
 		if (echoResult) {
 			std::wcerr << L"\t=" << result.to<std::wstring>() << std::endl;
 		}
@@ -669,13 +679,13 @@ static bool compileAndRun(Runtime& rt, MyHeap& heap, const String& source, const
 		}
 		return true;
 	}
-	catch (const CompilationError& x) {
-		std::wstringstream ss;
-		ss << L"!!!! Line: " << x.lineNumber;
-		reportError(ss.str());
-		reportScriptException(rt, heap, x, legacyExceptions);
-	}
 	catch (const ScriptException& x) {
+		const Error* const error = x.asErrorObject();
+		if (error != 0 && error->getStackString() == 0 && error->getCompilePosition().fileName != 0) {	// did not compile
+			std::wstringstream ss;
+			ss << L"!!!! Line: " << error->getCompilePosition().line;
+			reportError(ss.str());
+		}
 		reportScriptException(rt, heap, x, legacyExceptions);
 	}
 	catch (const std::exception& x) {
@@ -829,6 +839,9 @@ int replMain(int argc, const char* argv[]) {
 					std::cerr << "Expected a core this system can pin to after -P / --pin" << std::endl;
 					return 1;
 				}
+			}
+			else if (strcmp(argv[argi], "--gc-every-cycle") == 0 || strcmp(argv[argi], "-G") == 0) {
+				gcEveryCycle = true;
 			}
 			else if (strcmp(argv[argi], "--legacy-exceptions") == 0 || strcmp(argv[argi], "-E") == 0) {
 				legacyExceptions = true;

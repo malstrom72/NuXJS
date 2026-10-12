@@ -42,7 +42,7 @@ a regression case. Prefixing a line with `?` runs `print()` on that expression.
 
 ## Embedding NuXJS
 
-The high-level C++ API allows easy embedding of the interpreter into an existing application. Functions exposed to JavaScript typically have the signature `Var func(Runtime& rt, const Var& thisVar, const VarList& args)` and are stored in the global object like any other value. Source code may be executed with `Runtime::run()` or evaluated with `Runtime::eval()`.
+The high-level C++ API allows easy embedding of the interpreter into an existing application. `Host Guide.md` walks through a complete small host built on it. Functions exposed to JavaScript typically have the signature `Var func(Runtime& rt, const Var& thisVar, const VarList& args)` and are stored in the global object like any other value. Source code may be executed with `Runtime::run()` or evaluated with `Runtime::eval()`.
 
 A minimal "hello world" program looks like this:
 
@@ -348,7 +348,7 @@ String::fromDouble(heap, 3.14)			 // formatted double with special handling for 
 
 ## Exception Handling
 
-JavaScript code uses ordinary `throw` statements and `try`/`catch` blocks. When an exception propagates to C++, a `ScriptException` is thrown. It owns the underlying `Error` object and exposes its message through `what()`. Compilation errors are reported via `CompilationError`, which additionally stores the filename, character offset, and line number. The runtime may also throw a `ConstStringException` for conditions such as running out of memory or hitting a timeout. Embedding code typically catches `ScriptException`:
+JavaScript code uses ordinary `throw` statements and `try`/`catch` blocks. When an exception propagates to C++, a `ScriptException` is thrown. It owns the underlying `Error` object and exposes its message through `what()`. Source that does not compile throws a `SyntaxError` the same way; its `Error` records the file name, offset, line and column where compilation stopped (`Error::getCompilePosition`), and `getStackTrace()` includes them. The runtime may also throw a `ConstStringException` for conditions such as running out of memory or hitting a timeout. Embedding code typically catches `ScriptException`:
 
 ```cpp
 try {
@@ -417,7 +417,7 @@ original, fully ECMAScript 3 compatible core, kept byte-for-byte stable while th
 - A semicolon is required after `do ... while` statements. This matches the ES3 and ES5 grammar, even though ES6 made the semicolon optional.
 - Own-property enumeration order is the hash table's, not insertion order, and a lookup can transpose adjacent entries (see the compatibility notes).
 - Octal (`0o`) and binary (`0b`) prefixes are not understood when converting strings to numbers - an ES6 addition, so this conforms to both target editions.
-- Recursive grammar constructs are limited to `MAX_NESTED_COMPILE_DEPTH` (128) levels to avoid a C++ stack overflow; exceeding it raises a `RangeError` at compile time. `JSON.parse` / `JSON.stringify` similarly cap nesting at `MAX_JSON_DEPTH` (61).
+- Recursive grammar constructs are limited to 128 levels by default (`Runtime::setMaxNestedCompileDepth`) to avoid a C++ stack overflow; exceeding it raises a `RangeError` at compile time. `JSON.parse` / `JSON.stringify` similarly cap nesting at `MAX_JSON_DEPTH` (61).
 - Several tests under `tests/unconforming` demonstrate additional corner cases.
 
 ### es3 build only
@@ -470,15 +470,16 @@ NuXJS also implements several spec corner cases that are easy to overlook when e
 
 ### Nesting limits
 
-Two limits keep deeply nested input from overflowing the C++ stack. Source nested more than `MAX_NESTED_COMPILE_DEPTH`
+Two limits keep deeply nested input from overflowing the C++ stack. Source nested more than the compile limit, `STANDARD_MAX_NESTED_COMPILE_DEPTH`
 (128) levels deep raises a `RangeError` at compile time, and `JSON.parse()` and `JSON.stringify()` refuse structures
 deeper than 62 levels with a `TypeError` (`MAX_JSON_DEPTH` in `stdlib.js` is 61, and the first depth refused is 63). A
 level is a step of the compiler's recursion, not a source construct: a function expression costs three, most other
 constructs one or two.
 
 The compile limit is a proxy for stack bytes, so a host running NuXJS on a smaller stack than the ones measured here
-needs a lower value. The stack each level costs on msvc/x64 with the beta flags, and on arm64 (Apple clang, M4) with
-the `-O3 -flto` flags the products ship, es5 build:
+needs a lower value, set with `Runtime::setMaxNestedCompileDepth` before anything is compiled; `JSON.parse()` needs 64
+levels and the standard library 33, so 64 is the floor. The stack each level costs on msvc/x64 with the beta flags,
+and on arm64 (Apple clang, M4) with the `-O3 -flto` flags the products ship, es5 build:
 
 | shape                       | levels per nesting | msvc/x64 beta | arm64 -O3 -flto |
 | --------------------------- | ------------------ | ------------- | --------------- |
@@ -507,7 +508,8 @@ The floor is real code. GAZL's Impala compiler, a 360 KB parser generated by JSP
 57 and fails at 56. That figure is whatever today's grammar happens to produce, not a designed budget, so GAZL checks
 it on its side and fails loudly if it grows. `JSON.parse()` needs `MAX_JSON_DEPTH + 3` = 64 levels, and the standard
 library compiles itself in 33 on the es5 branch and 30 on the es3 one. 128 is twice what Impala needs.
-`tests/extremes/compileDepth.io` pins both ends.
+`tests/extremes/compileDepth.io` pins both ends, and `tools/stackDepthCheck.sh` and `.cmd` run it in CI with the shipping
+flags on a 512 KB stack.
 
 ## Testing and Benchmarking
 

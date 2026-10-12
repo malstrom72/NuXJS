@@ -1015,8 +1015,11 @@ class JSArray : public LazyJSObject<Object> {
 class Constants : public GCItem, public Vector<Value> {
 	public:
 		typedef GCItem super;
-		Constants(GCList& gcList) : super(gcList), Vector<Value>(&gcList.getHeap())
-				, stringIndexes(&gcList.getHeap()), otherIndexes(&gcList.getHeap()) { }
+		Constants(GCList& gcList) : super(gcList), Vector<Value>(&gcList.getHeap()), stringIndexes(&gcList.getHeap()) {
+			for (int i = 0; i < 64; ++i) {
+				otherIndexes[i] = ~0U;
+			}
+		}
 
 		UInt32 findOrAdd(const Value& constant);
 
@@ -1029,12 +1032,11 @@ class Constants : public GCItem, public Vector<Value> {
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, begin(), end());
 			stringIndexes = Table(&heap);
-			otherIndexes = Vector<UInt32>(&heap);
 			super::gcMarkReferences(heap);
 		}
 
 		mutable Table stringIndexes;			// string constant -> its index in this list
-		mutable Vector<UInt32> otherIndexes;	// indexes of the non-strings worth scanning
+		UInt32 otherIndexes[64];				// the most recently used non-strings, most recent last, ~0U when unused
 };
 
 /**
@@ -1436,6 +1438,7 @@ class FunctionScope : public Scope {
 class Var;
 const UInt32 STANDARD_JS_STACK_SIZE = 1024;				///< Max virtual processor stack size, should be enough for normal applications.
 const UInt32 STANDARD_CYCLES_BETWEEN_AUTO_GC = 1024;	///< Number of virtual processor cycles between each check for GC.
+const Int32 STANDARD_MAX_NESTED_COMPILE_DEPTH = 128;	// see "Nesting limits" in NuXJS Documentation.md
 const UInt32 MAX_CROSS_CALL_RECURSION = 64;				///< Max number of recursive calls from C++ to JS to prevent C++ stack overflow.
 const Int32 CHECK_TIMEOUT_INTERVAL = 1024;				///< Minimum number of auto-gc cycles between each timeout check against clock-on-the-wall.
 const Int32 MAX_PROTOTYPE_CHAIN_LENGTH = 32;			///< Limit prototype chain depth. Too deep chain could cause C++ stack overflow.
@@ -1483,6 +1486,7 @@ class Runtime : public GCItem {
 
 		void setGlobalObject(Object* newGlobals);		///< Assign a new global object. By default the global object is a standard JSObject.
 		void setStackSize(UInt32 maxValuesOnStack);		///< Sets the stack size used by the Processor constructor. Default stack size is 1024 elements (see above) which should be sufficient for normal use.
+		void setMaxNestedCompileDepth(Int32 maxDepth);	// for a smaller C++ stack; the standard library needs 33 and JSON.parse 64
 		void setMemoryCap(size_t maxBytesUsed);			///< Sets an absolute limit on memory allocated by this run-time. Checked after each GC. If more memory than this is in use an exception is thrown.
 		void resetTimeOut(Int32 timeOutSeconds);		///< Sets a time-out after which an exception is thrown (by checkTimeOut() which is called from runUntilReturn()).
 		void noTimeOut();								///< Disables the time-out (default).
@@ -1527,6 +1531,7 @@ class Runtime : public GCItem {
 		GlobalScope globalScope;
 		Object* globalObject;
 		UInt32 stackSize;
+		Int32 maxNestedCompileDepth;
 		UInt32 callNestCounter;
 		UInt32 checkTimeOutCounter;
 		clock_t timeOut;
@@ -2133,7 +2138,7 @@ class Compiler : public GCItem {
 
 		enum Target { FOR_GLOBAL, FOR_FUNCTION, FOR_EVAL };
 
-		Compiler(GCList& gcList, Code* code, Target compileFor, Compiler* outer = 0);
+		Compiler(GCList& gcList, Code* code, Target compileFor, Int32 maxNestDepth, Compiler* outer = 0);
 		const Char* compile(const Char* b, const Char* e);
 		const Char* compileFunction(const Char* b, const Char* e, const String* functionName, const String* selfName);
 		void compile(const String& source);
@@ -2185,7 +2190,7 @@ class Compiler : public GCItem {
 			Int32 stackDepth;
 		};
 
-		/// RAII guard bounding compile-time recursion depth; throws a RangeError if `MAX_NESTED_COMPILE_DEPTH` is reached.
+		/// RAII guard bounding compile-time recursion depth; throws a RangeError once maxNestDepth is reached.
 		struct NestGuard {
 			NestGuard(Compiler& compiler);
 			~NestGuard();
@@ -2276,6 +2281,7 @@ class Compiler : public GCItem {
 		Heap& heap;
 		Code* const code;
 		const Target compilingFor;
+		const Int32 maxNestDepth;
 		Compiler& root;			// the outermost compiler: it counts the nesting and holds the position of a compilation error
 		CodeSection setupSection; ///< function declarations (and vars in eval code), inserted at top of function when finalizing
 		CodeSection mainSection;
@@ -2303,26 +2309,6 @@ class Compiler : public GCItem {
 			gcMark(heap, code);
 			super::gcMarkReferences(heap);
 		}
-};
-
-/*
-	The ScriptException that `Runtime::compileGlobalCode` and `compileEvalCode` throw for source that does not compile,
-	extended with the filename and the offset, line and column where compilation stopped.
-*/
-struct CompilationError : public ScriptException {
-	CompilationError(const ScriptException& sourceException, const String* filename, const Compiler& fromCompiler)
-			: ScriptException(sourceException), filename(filename) {
-		fromCompiler.getStopPosition(offset, lineNumber, columnNumber);
-		Error* const error = value.asError();
-		if (error != 0) {
-			const Code::SourceLocation position = { filename, 0, offset, lineNumber, columnNumber };
-			error->setCompilePosition(position);
-		}
-	}
-	const String* filename;
-	UInt32 offset;
-	UInt32 lineNumber;
-	UInt32 columnNumber;
 };
 
 } /* namespace NuXJS */

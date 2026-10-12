@@ -56,6 +56,7 @@
 > 	flags = analyzeFlags(f, 'length');
 >	ok = ok && flags.dontEnum && flags.readOnly && flags.dontDelete;
 >	try { var o = new f; print("constructable"); ok = false; } catch (x) { print("unconstructable: " + x); }
+>	ok = ok && !f.hasOwnProperty("prototype");
 > 	print("OK: " + ok);
 > 	print("--------");
 > }
@@ -82,6 +83,7 @@
 > 	flags = analyzeFlags(f, 'length');
 >	ok = ok && flags.dontEnum && flags.readOnly && flags.dontDelete;
 >	try { var o = new f; print("constructable"); ok = false; } catch (x) { print("unconstructable: " + x); }
+>	ok = ok && !f.hasOwnProperty("prototype");
 > 	print("OK: " + ok);
 > 	print("--------");
 > }
@@ -114,6 +116,7 @@
 > 	flags = analyzeFlags(f, 'length');
 >	ok = ok && flags.dontEnum && flags.readOnly && flags.dontDelete;
 >	try { var o = new f; print("constructable"); if (!isConstructor) ok = false; } catch (x) { print("unconstructable: " + x); if (isConstructor) ok = false }
+>	ok = ok && (isConstructor || !f.hasOwnProperty("prototype"));
 > 	print("OK: " + ok);
 > 	print("--------");
 > }

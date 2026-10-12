@@ -139,6 +139,7 @@ int main(int argc, const char* argv[]) {
 
 - [NuXJS Documentation](docs/NuXJS%20Documentation.md)
 - [ECMAScript Compatibility Notes](docs/notes/ECMAScript%20Compatibility%20Notes.md)
+- [Host Guide](docs/Host%20Guide.md)
 - [TypeScript Compatibility](docs/notes/TypeScript%20Compatibility.md)
 
 ## Building the fuzz target

@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+
+echo "Building and running the example host"
+bash ./BuildCpp.sh "$target" "$model" ../output/examples/host ../docs/examples/host.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
+../output/examples/host > ../output/examples/host.log 2>&1
+diff -u ../docs/examples/expected_host.txt ../output/examples/host.log
 set -e -o pipefail -u
 cd "$(dirname "$0")"
 
@@ -71,5 +76,10 @@ expected=../docs/examples/expected_examples${suffix}.txt
 if [ -f "$expected" ]; then
 	diff -u "$expected" ../output/examples/all.log
 fi
+
+echo "Building and running the example host"
+bash ./BuildCpp.sh "$target" "$model" ../output/examples/host ../docs/examples/host.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
+../output/examples/host > ../output/examples/host.log 2>&1
+diff -u ../docs/examples/expected_host.txt ../output/examples/host.log
 
 echo Success!

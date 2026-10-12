@@ -3273,17 +3273,6 @@ ScriptException::ScriptException(Heap& heap, const Value& value) throw()
 	}
 }
 
-const char* ScriptException::getStackTrace() const {
-	if (stackTrace.empty()) {
-		Error* errorObject = value.asError();
-		const String* stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
-		if (stackString != 0) {
-			stackTrace = stackString->toUTF8String();
-		}
-	}
-	return stackTrace.c_str();
-}
-
 /* --- EvalFunction --- */
 
 static struct EvalFunction : public Function {
@@ -3777,21 +3766,40 @@ static void appendLocation(Vector<Char>& buffer, const Code::SourceLocation& loc
 	}
 }
 
+static void appendErrorHeader(Vector<Char>& buffer, const Error* errorObject) {
+	appendString(buffer, errorObject->getErrorName());
+	const String* message = errorObject->getErrorMessage();
+	if (message != 0 && !message->empty()) {
+		appendASCII(buffer, ": ");
+		appendString(buffer, message);
+	}
+	if (errorObject->getCompilePosition().fileName != 0) {
+		appendLocation(buffer, errorObject->getCompilePosition());
+	}
+}
+
+const char* ScriptException::getStackTrace() const {
+	if (stackTrace.empty()) {
+		const Error* const errorObject = value.asError();
+		const String* const stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
+		if (stackString != 0) {
+			stackTrace = stackString->toUTF8String();
+		} else if (errorObject != 0 && errorObject->getCompilePosition().fileName != 0) {	// never reached a processor
+			Vector<Char> buffer(0);
+			appendErrorHeader(buffer, errorObject);
+			stackTrace = String(buffer.begin(), buffer.end()).toUTF8String();
+		}
+	}
+	return stackTrace.c_str();
+}
+
 void Processor::addStackTrace(const Value& exception) const {
 	Error* errorObject = exception.asError();
 	if (errorObject != 0) {
 		const String* stackString = errorObject->getStackString();
 		if (stackString == 0) {
 			Vector<Char> buffer(&heap);
-			appendString(buffer, errorObject->getErrorName());
-			const String* message = errorObject->getErrorMessage();
-			if (message != 0 && !message->empty()) {
-				appendASCII(buffer, ": ");
-				appendString(buffer, message);
-			}
-			if (errorObject->getCompilePosition().fileName != 0) {
-				appendLocation(buffer, errorObject->getCompilePosition());
-			}
+			appendErrorHeader(buffer, errorObject);
 			const Frame* frameWalker = currentFrame;
 			const CodeWord* nextIP = ip;
 			while (frameWalker != 0 && nextIP != 0) {
@@ -4506,13 +4514,20 @@ UInt32 Constants::findOrAdd(const Value& constant) {
 	} else if (constant.isObject()) {	// objects compare by identity, so a fresh one never matches
 		push(constant);
 	} else {
-		for (UInt32 i = otherIndexes.size(); i > 0; --i) {
-			if ((*this)[otherIndexes[i - 1]].isStrictlyEqualTo(constant)) {
-				return otherIndexes[i - 1];
-			}
+		Int32 i = 63;
+		while (i >= 0 && (otherIndexes[i] == ~0U || !(*this)[otherIndexes[i]].isStrictlyEqualTo(constant))) {
+			--i;
 		}
-		push(constant);
-		otherIndexes.push(newIndex);
+		const UInt32 index = (i >= 0 ? otherIndexes[i] : newIndex);
+		if (i < 0) {
+			push(constant);
+			i = 0;
+		}
+		for (; i < 63; ++i) {
+			otherIndexes[i] = otherIndexes[i + 1];
+		}
+		otherIndexes[63] = index;
+		return index;
 	}
 	return newIndex;
 }
@@ -4686,8 +4701,9 @@ struct Compiler::SemanticScope {
 	Vector<BranchPoint, 2> finallys;	// source points for finally jsr's
 };
 
-Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, Compiler* outer)
-	: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), root(outer != 0 ? outer->root : *this)
+Compiler::Compiler(GCList& gcList, Code* code, Target compileFor, Int32 maxNestDepth, Compiler* outer)
+	: super(gcList), heap(gcList.getHeap()), code(code), compilingFor(compileFor), maxNestDepth(maxNestDepth)
+	, root(outer != 0 ? outer->root : *this)
 	, setupSection(heap, 1), mainSection(heap, 1), b(0), p(0), e(0)
 	, sourceUnitBase(code->getSourceUnit()->getSource()->begin()), currentSection(0), acceptInOperator(true)
 	, withScopeCounter(0), nestCounter(0)
@@ -4708,7 +4724,11 @@ const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e
 
 void Compiler::error(ErrorType type, const String* message) {
 	root.p = p;
-	ScriptException::throwError(heap, type, message);
+	Error* const errorObject = new(heap) Error(heap.managed(), type, message);
+	Code::SourceLocation position = { root.code->getSourceUnit()->getFileName(), 0, 0, 0, 0 };
+	root.getStopPosition(position.offset, position.line, position.column);
+	errorObject->setCompilePosition(position);
+	throw ScriptException(heap, errorObject);
 }
 
 void Compiler::error(ErrorType type, const char* message) { error(type, String::allocate(heap, message)); }
@@ -5773,7 +5793,7 @@ void Compiler::functionDefinition(const String* functionName, const String* self
 #if NUXJS_ES5
 	func->strict = code->strict;	// 14.1: strict mode propagates into nested functions
 #endif
-	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, this);
+	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, maxNestDepth, this);
 	p = funcCompiler.compileFunction(p, e, functionName, selfName);
 	emitWithConstant(Processor::GEN_FUNC_OP, func);
 }
@@ -5783,7 +5803,7 @@ Code* Compiler::accessorFunctionDefinition(const String* functionName) {
 	assert(functionName != 0);
 	Code* func = new(heap) Code(heap.managed(), code->constants, code->getSourceUnit());
 	func->strict = code->strict;	// 14.1: strict mode propagates into accessor bodies too
-	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, this);
+	Compiler funcCompiler(heap.roots(), func, Compiler::FOR_FUNCTION, maxNestDepth, this);
 	funcCompiler.nameIsPropertyName = true;	// 11.1.5: the name is a PropertyName, not an Identifier
 	p = funcCompiler.compileFunction(p, e, functionName, 0);
 	return func;
@@ -5796,11 +5816,10 @@ Code* Compiler::accessorFunctionDefinition(const String* functionName) {
 	real generated parser (GAZL's Impala compiler) needs and well below the stack wall: see "Nesting limits" in NuXJS
 	Documentation.md.
 */
-const Int32 MAX_NESTED_COMPILE_DEPTH = 128;
 const Int32 CATCH_PARAMETER = 0x7FFFFFFF;
 
 Compiler::NestGuard::NestGuard(Compiler& compiler) : compiler(compiler) {
-	if (compiler.root.nestCounter >= MAX_NESTED_COMPILE_DEPTH) {
+	if (compiler.root.nestCounter >= compiler.maxNestDepth) {
 		compiler.error(RANGE_ERROR, "Internal compiler limitations reached. Reduce code complexity.");
 	}
 	++compiler.root.nestCounter;
@@ -7082,14 +7101,9 @@ struct Support {
 			const String* source = argv[0].toString(heap);
 			SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), source, &ANONYMOUS_SCRIPT_STRING);
 			Code* code = new(heap) Code(heap.managed(), 0, unit);
-			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
-			try {
-				compiler.compileFunction(source->begin(), source->end()
-						, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING), 0);
-			}
-			catch (const ScriptException& x) {
-				throw CompilationError(x, &ANONYMOUS_SCRIPT_STRING, compiler);
-			}
+			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION, rt.maxNestedCompileDepth);
+			compiler.compileFunction(source->begin(), source->end(), (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING)
+					, 0);
 			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
 		}
 		return UNDEFINED_VALUE;
@@ -7398,8 +7412,8 @@ static struct NoRegExpSupport : public Function {
 } NO_REG_EXP_SUPPORT;
 
 Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap.roots()), globalObject(0)
-		, stackSize(STANDARD_JS_STACK_SIZE), callNestCounter(0), checkTimeOutCounter(0)
-		, timeOut(0), memoryCap(MAX_MEMORY_CAP), gcThreshold(AUTO_GC_MIN_SIZE), evalCodeCache(&heap)
+		, stackSize(STANDARD_JS_STACK_SIZE), maxNestedCompileDepth(STANDARD_MAX_NESTED_COMPILE_DEPTH), callNestCounter(0)
+		, checkTimeOutCounter(0), timeOut(0), memoryCap(MAX_MEMORY_CAP), gcThreshold(AUTO_GC_MIN_SIZE), evalCodeCache(&heap)
 #if NUXJS_ES5
 		, strictEvalCodeCache(&heap)
 #endif
@@ -7526,9 +7540,9 @@ void Runtime::run(const String& source, const String* filename) {
 }
 
 static Code* compileCode(Heap& heap, const String* source, const String* filename, Compiler::Target target
-		, bool strict = false) {
+		, Int32 maxNestDepth, bool strict = false) {
 	Code* code = new(heap) Code(heap.managed(), 0, new(heap) SourceCodeUnit(heap.managed(), source, filename));
-	Compiler compiler(heap.roots(), code, target);
+	Compiler compiler(heap.roots(), code, target, maxNestDepth);
 #if NUXJS_ES5
 	if (strict) {
 		compiler.markStrict();	// before compiling, so the parse-time strict checks (with, octal, ...) apply
@@ -7536,12 +7550,7 @@ static Code* compileCode(Heap& heap, const String* source, const String* filenam
 #else
 	(void)strict;
 #endif
-	try {
-		compiler.compile(*source);
-	}
-	catch (const ScriptException& x) {
-		throw CompilationError(x, filename, compiler);
-	}
+	compiler.compile(*source);
 	return code;
 }
 
@@ -7555,7 +7564,8 @@ Code* Runtime::compileEvalCode(const String* expression, bool inheritStrict) {
 		assert(isA<Code>(o));
 		return reinterpret_cast<Code*>(o);
 	} else {
-		Code* code = compileCode(heap, expression, &EVAL_CODE_STRING, Compiler::FOR_EVAL, inheritStrict);
+		Code* code = compileCode(heap, expression, &EVAL_CODE_STRING, Compiler::FOR_EVAL, maxNestedCompileDepth
+				, inheritStrict);
 		cache.update(cache.insert(expression), code);
 		return code;
 	}
@@ -7568,7 +7578,7 @@ Code* Runtime::compileEvalCode(const String* expression) {
 		assert(isA<Code>(o));
 		return reinterpret_cast<Code*>(o);
 	} else {
-		Code* code = compileCode(heap, expression, &EVAL_CODE_STRING, Compiler::FOR_EVAL);
+		Code* code = compileCode(heap, expression, &EVAL_CODE_STRING, Compiler::FOR_EVAL, maxNestedCompileDepth);
 		evalCodeCache.update(evalCodeCache.insert(expression), code);
 		return code;
 	}
@@ -7586,7 +7596,8 @@ Var Runtime::eval(const String& expression) {
 Code* Runtime::compileGlobalCode(const String& source, const String* filename) {
 	const String* retainedSource = (heap.managed().owns(&source)
 			? &source : new(heap) String(heap.managed(), source.begin(), source.end()));
-	return compileCode(heap, retainedSource, (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING), Compiler::FOR_GLOBAL);
+	return compileCode(heap, retainedSource, (filename != 0 ? filename : &ANONYMOUS_SCRIPT_STRING), Compiler::FOR_GLOBAL
+			, maxNestedCompileDepth);
 }
 
 void Runtime::fetchFunction(const Object* supportObject, const char* name, Function** f) {
@@ -7665,6 +7676,7 @@ void Runtime::setupStandardLibrary() {
 
 void Runtime::setGlobalObject(Object* newGlobals) { globalObject = newGlobals; }
 void Runtime::setStackSize(UInt32 maxValuesOnStack) { stackSize = maxValuesOnStack; }
+void Runtime::setMaxNestedCompileDepth(Int32 maxDepth) { maxNestedCompileDepth = maxDepth; }
 void Runtime::setMemoryCap(size_t maxBytesUsed) { memoryCap = maxBytesUsed; }
 void Runtime::noTimeOut() { checkTimeOutCounter = 0; }
 

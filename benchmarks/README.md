@@ -25,7 +25,7 @@ node tools/benchmark.node.js <test(s)> <exe>|makegold ignoregold [--runs <count>
 Each benchmark prints its runtime and the memory statistics reported by
 running `NuXJS` with the `-t` flag:
 
-- `median` – median CPU time from the collected samples.
+- `median` – median of the thread CPU times the REPL reports with `-t` (cycles in Mcyc on Windows, ms elsewhere), or of its process CPU seconds if a build reports only those. Pass `-P <core>` in `<exe>` to pin the run to one core.
 - `mem1` – heap usage (MiB) when the benchmark finished.
 - `mem2` – peak heap usage (MiB) observed during the run.
 - `mem3` – peak memory reserved by the allocator (MiB), including pooled blocks.

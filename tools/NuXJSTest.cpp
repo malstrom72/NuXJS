@@ -750,6 +750,17 @@ static void testCompilation() {
 	EXPECT_EQUAL(res.typeOf(), &UNDEFINED_STRING);
 	EXPECT_EQUAL(rt.getGlobalsVar()["x"], 3);
 
+	std::cout << "	- compile error position" << std::endl;
+	const String broken(heap.roots(), "var y = 1;\nvar z = ;");
+	const String brokenName(heap.roots(), "broken.js");
+	std::string trace;
+	try {
+		rt.compileGlobalCode(broken, &brokenName);
+	} catch (const ScriptException& x) {
+		trace = x.getStackTrace();
+	}
+	EXPECT(trace == "SyntaxError: Missing / invalid expression\n    at broken.js:2:9");
+
 	JSObject* globalsObj = rt.newJSObject();
 	rt.setGlobalObject(globalsObj);
 	Var globals = rt.getGlobalsVar();
@@ -794,7 +805,22 @@ static void testLimits() {
 	rt.setMemoryCap(512*1024*1024);
 	rt.resetTimeOut(1);
 	EXPECT_EXCEPTION(rt.run("while(true) {}"), "Time out");
+	rt.resetTimeOut(10);	// a constant lookup quadratic in the number of distinct numbers takes over 20 s here
+	EXPECT_EQUAL(rt.eval("var a = []; for (var i = 0; i < 200000; ++i) a[i] = i + 0.5; "
+			"JSON.parse('[' + a.join(',') + ']')[199999]"), 199999.5);
 	rt.noTimeOut();
+
+	std::cout << "	- compile depth" << std::endl;
+
+	const char* const nested = "((((((((((((((((((((((((((((((1))))))))))))))))))))))))))))))";
+	EXPECT_EQUAL(rt.eval(nested), 1);
+	{
+		Heap shallowHeap;
+		Runtime shallowRuntime(shallowHeap);
+		shallowRuntime.setMaxNestedCompileDepth(20);
+		EXPECT_EXCEPTION(shallowRuntime.eval(nested)
+				, "RangeError: Internal compiler limitations reached. Reduce code complexity.");
+	}
 }
 
 // C++ functions that you want to call from Javascript should have these arguments.
