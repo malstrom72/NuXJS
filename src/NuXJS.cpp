@@ -1601,7 +1601,7 @@ void GCList::deleteAll() throw() {
 
 /* --- Heap --- */
 
-Heap::Heap() : allocatedCount(0), allocatedSize(0), pooledSize(0), maxAllocationSize(MAX_SINGLE_ALLOCATION_SIZE - 1)
+Heap::Heap() : allocatedCount(0), allocatedSize(0), pooledSize(0), maxAllocationSize(0x7FFFFFFF)
 		, managedListA(*this), managedListB(*this), rootList(*this), currentList(&managedListA), newList(&managedListB) {
 	std::fill(pools + 0, pools + MAX_POOLED_SIZE / POOL_SIZE_GRANULARITY, (void*)(0));
 }

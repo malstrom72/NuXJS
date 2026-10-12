@@ -140,7 +140,6 @@ inline GCItem::~GCItem() { if (_gcList != 0) { _gcList->relinquish(this); } }
 
 const int MAX_POOLED_SIZE = 1024;
 const int POOL_SIZE_GRANULARITY = 16;
-const UInt32 MAX_SINGLE_ALLOCATION_SIZE = 2147483648U;
 
 /**
 	Heap manages memory allocation for all GCItems. It keeps track of allocated blocks and owns the GC lists used during
@@ -157,7 +156,7 @@ class Heap {
 		UInt32 count() const { return allocatedCount; }
 		size_t size() const { return allocatedSize; }
 		size_t pooled() const { return pooledSize; }
-		void setMaxAllocationSize(size_t maxSize) { maxAllocationSize = maxSize; }
+		void setMaxAllocationSize(size_t maxSize) { maxAllocationSize = maxSize; }										// 2 GB at most, the default: string lengths and offsets are 32-bit
 		void gc();
 		virtual ~Heap();
 		friend void gcMark(Heap& heap, const GCItem* item);
