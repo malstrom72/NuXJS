@@ -3178,14 +3178,14 @@ UInt32 Constants::findOrAdd(const Value& constant) {
 	} else if (constant.isObject()) {	// objects compare by identity, so a fresh one never matches
 		push(constant);
 	} else {
-		UInt32 i = otherCount;	// bounded, so many distinct numbers stay linear
+		UInt32 i = otherCount;
 		while (i > 0 && !(*this)[otherIndexes[i - 1]].isStrictlyEqualTo(constant)) {
 			--i;
 		}
 		const UInt32 index = (i > 0 ? otherIndexes[i - 1] : newIndex);
 		if (i == 0) {
 			push(constant);
-			i = (otherCount < 64 ? ++otherCount : 1);	// a full list drops its oldest
+			i = (otherCount < 64 ? ++otherCount : 1);
 		}
 		for (; i < otherCount; ++i) {
 			otherIndexes[i - 1] = otherIndexes[i];
