@@ -1321,7 +1321,7 @@ struct ScriptException : public Exception {
 	ScriptException(Heap& heap, const Value& value) throw();
 	virtual const char* what() const throw() { return (fallback != 0 ? fallback : utf8String.c_str()); }
 	Error* asErrorObject() const { return value.asError(); }
-	const char* getStackTrace() const;
+	const char* getStackTrace() const throw();
 	virtual ~ScriptException() throw() { }
 
 	Value value;
