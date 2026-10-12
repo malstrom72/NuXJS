@@ -3185,11 +3185,9 @@ UInt32 Constants::findOrAdd(const Value& constant) {
 		const UInt32 index = (i > 0 ? otherIndexes[i - 1] : newIndex);
 		if (i == 0) {
 			push(constant);
-			const bool full = (otherCount == sizeof (otherIndexes) / sizeof (otherIndexes[0]));
-			otherCount += (full ? 0 : 1);
-			i = (full ? 1 : otherCount);	// a full list drops its oldest
+			i = (otherCount < 64 ? ++otherCount : 1);	// a full list drops its oldest
 		}
-		for (; i < otherCount; ++i) {	// moves the found or new entry to the most recent end
+		for (; i < otherCount; ++i) {
 			otherIndexes[i - 1] = otherIndexes[i];
 		}
 		otherIndexes[otherCount - 1] = index;
