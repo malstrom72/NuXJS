@@ -18,6 +18,8 @@ if [ "$target" == "release" ]; then
     export CPP_OPTIONS="-fno-rtti"
 fi
 mkdir ../output >/dev/null 2>&1 || true
+bash ./BuildCpp.sh $target $model ../output/powersOfFive_${target}_${model} ./powersOfFive.cpp
+../output/powersOfFive_${target}_${model} ../src/NuXJS.cpp --check
 bash ./BuildCpp.sh $target $model ../output/NuXJSTest_${target}_${model} ../tools/NuXJSTest.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
 ../output/NuXJSTest_${target}_${model} -s >/dev/null 2>&1
 # Unpack the fuzz corpus so NuXJSTest can replay it.
