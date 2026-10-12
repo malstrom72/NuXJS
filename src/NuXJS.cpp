@@ -2390,17 +2390,6 @@ ScriptException::ScriptException(Heap& heap, const Value& value) throw()
 	}
 }
 
-const char* ScriptException::getStackTrace() const {
-	if (stackTrace.empty()) {
-		Error* errorObject = value.asError();
-		const String* stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
-		if (stackString != 0) {
-			stackTrace = stackString->toUTF8String();
-		}
-	}
-	return stackTrace.c_str();
-}
-
 /* --- EvalFunction --- */
 
 static struct EvalFunction : public Function {
@@ -2730,21 +2719,49 @@ static void appendLocation(Vector<Char>& buffer, const Code::SourceLocation& loc
 	}
 }
 
+static void appendErrorHeader(Vector<Char>& buffer, const Error* errorObject) {
+	appendString(buffer, errorObject->getErrorName());
+	const String* message = errorObject->getErrorMessage();
+	if (message != 0 && !message->empty()) {
+		appendASCII(buffer, ": ");
+		appendString(buffer, message);
+	}
+	if (errorObject->getCompilePosition().fileName != 0) {
+		appendLocation(buffer, errorObject->getCompilePosition());
+	}
+}
+
+const char* ScriptException::getStackTrace() const {
+	if (stackTrace.empty()) {
+		const Error* const errorObject = value.asError();
+		const String* const stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
+		if (stackString != 0) {
+			stackTrace = stackString->toUTF8String();
+		} else if (errorObject != 0 && errorObject->getCompilePosition().fileName != 0) {	// never reached a processor
+			Vector<Char> buffer(0);
+			appendErrorHeader(buffer, errorObject);
+			stackTrace = String(buffer.begin(), buffer.end()).toUTF8String();
+		}
+	}
+	return stackTrace.c_str();
+}
+
+static void recordCompilePosition(const ScriptException& x, const String* filename, const Compiler& compiler) {
+	Error* const error = x.asErrorObject();
+	if (error != 0) {
+		Code::SourceLocation position = { filename, 0, 0, 0, 0 };
+		compiler.getStopPosition(position.offset, position.line, position.column);
+		error->setCompilePosition(position);
+	}
+}
+
 void Processor::addStackTrace(const Value& exception) const {
 	Error* errorObject = exception.asError();
 	if (errorObject != 0) {
 		const String* stackString = errorObject->getStackString();
 		if (stackString == 0) {
 			Vector<Char> buffer(&heap);
-			appendString(buffer, errorObject->getErrorName());
-			const String* message = errorObject->getErrorMessage();
-			if (message != 0 && !message->empty()) {
-				appendASCII(buffer, ": ");
-				appendString(buffer, message);
-			}
-			if (errorObject->getCompilePosition().fileName != 0) {
-				appendLocation(buffer, errorObject->getCompilePosition());
-			}
+			appendErrorHeader(buffer, errorObject);
 			const Frame* frameWalker = currentFrame;
 			const CodeWord* nextIP = ip;
 			while (frameWalker != 0 && nextIP != 0) {
@@ -5288,7 +5305,8 @@ struct Support {
 						, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING), 0);
 			}
 			catch (const ScriptException& x) {
-				throw CompilationError(x, &ANONYMOUS_SCRIPT_STRING, compiler);
+				recordCompilePosition(x, &ANONYMOUS_SCRIPT_STRING, compiler);
+				throw;
 			}
 			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
 		}
@@ -5612,7 +5630,8 @@ static Code* compileCode(Heap& heap, const String* source, const String* filenam
 		compiler.compile(*source);
 	}
 	catch (const ScriptException& x) {
-		throw CompilationError(x, filename, compiler);
+		recordCompilePosition(x, filename, compiler);
+		throw;
 	}
 	return code;
 }

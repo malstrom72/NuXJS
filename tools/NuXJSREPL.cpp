@@ -634,13 +634,13 @@ static bool compileAndRun(Runtime& rt, MyHeap& heap, const String& source, const
 		}
 		return true;
 	}
-	catch (const CompilationError& x) {
-		std::wstringstream ss;
-		ss << L"!!!! Line: " << x.lineNumber;
-		reportError(ss.str());
-		reportScriptException(heap, x, legacyExceptions);
-	}
 	catch (const ScriptException& x) {
+		const Error* const error = x.asErrorObject();
+		if (error != 0 && error->getStackString() == 0 && error->getCompilePosition().fileName != 0) {	// did not compile
+			std::wstringstream ss;
+			ss << L"!!!! Line: " << error->getCompilePosition().line;
+			reportError(ss.str());
+		}
 		reportScriptException(heap, x, legacyExceptions);
 	}
 	catch (const std::exception& x) {
