@@ -1,4 +1,4 @@
-// MAX_NESTED_COMPILE_DEPTH turns deeply nested source into a catchable RangeError rather than a crash. These cases
+// The compile depth limit (STANDARD_MAX_NESTED_COMPILE_DEPTH by default) turns deeply nested source into a catchable RangeError rather than a crash. These cases
 // pin both ends of its margin; "Nesting limits" in NuXJS Documentation.md has the measurements behind them.
 > function nest(open, close, n) { var s = '', i; for (i = 0; i < n; ++i) s += open; for (i = 0; i < n; ++i) s += close; return s }
 > function tryIt(s) { try { eval(s); return 'compiled' } catch (e) { return String(e) } }
