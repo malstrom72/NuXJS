@@ -1,16 +1,20 @@
 load rules.js
 event note 60
-  [script] note brings the total to 120 after 1 events
+  [script] note brings the total to 120, the loudest so far is 60
 event note 4.5
-  [script] note brings the total to 129 after 2 events
+  [script] note brings the total to 129, the loudest so far is 60
 event oops 1
-  [script] oops brings the total to 131 after 3 events
+  [script] oops brings the total to 131, the loudest so far is 60
   error: ReferenceError: undefinedRule is not defined
-    at onEvent (rules.js:5:37)
+    at onEvent (rules.js:6:37)
 event wrong 1
-  [script] wrong brings the total to 133 after 4 events
+  [script] wrong brings the total to 133, the loudest so far is 60
   error: TypeError: host.scale() expects a number
-    at onEvent (rules.js:6:41)
+    at onEvent (rules.js:7:41)
+event misuse 64
+  [script] misuse brings the total to 261, the loudest so far is 64
+  error: TypeError: can only be used on a Meter
+    at onEvent (rules.js:8:60)
 load broken.js
   syntax: broken.js:1:30: SyntaxError: Expected ',' or ')'
 load greedy.js
@@ -18,4 +22,4 @@ load greedy.js
 load spin.js
   stopped: Time out
 event note 0.5
-  [script] note brings the total to 134 after 5 events
+  [script] note brings the total to 262, the loudest so far is 64

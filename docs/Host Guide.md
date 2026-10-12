@@ -54,14 +54,20 @@ object:
 ```cpp
 Var host = rt.newObjectVar();
 host["log"] = hostLog;
-host["eventCount"] = hostEventCount;
 host["scale"] = hostScale;
 rt.getGlobalsVar()["host"] = host;
+rt.getGlobalsVar()["Meter"] = Meter::createConstructor(rt);
 ```
 
-Each function has the signature `Var f(Runtime&, const Var& thisVar, const VarList& args)`. The binding forms, and how
-a method checks the object it is called on, are in "Binding C++ functions" and "Checking `this`". A host type with
-state of its own is a native object ("Implementing Custom Native Objects").
+Each function has the signature `Var f(Runtime&, const Var& thisVar, const VarList& args)`; the binding forms are in
+"Binding C++ functions".
+
+A host type with state of its own is a native class. The example's `Meter` keeps a count and a highest value in C++:
+the script creates one with `new Meter()` and calls `add()` and `highest()` on it. Its methods are static functions on
+`Meter.prototype`, so a script can call them with any `this`; each one first passes `this` through `checkedSelf`,
+which refuses anything that is not a `Meter` before it is cast. The example's `misuse` event detaches `add` from its
+meter and gets `TypeError: can only be used on a Meter` rather than a corrupted object. "Checking `this`" explains
+the check, and "Implementing Custom Native Objects" what else a native class can override.
 
 A host function reports a misuse to the script as an exception the script can catch:
 
@@ -112,7 +118,7 @@ Three kinds of exception reach the host:
 - `CompilationError`, for source that does not compile (section 2).
 - `ScriptException`, for an exception the script did not catch. `what()` is its message and `getStackTrace()` adds
   where it was thrown, with file names and positions: `ReferenceError: undefinedRule is not defined` followed by
-  `at onEvent (rules.js:5:37)`.
+  `at onEvent (rules.js:6:37)`.
 - `ConstStringException`, for the runtime's own limits: `Out of memory` and `Time out`.
 
 All three derive from `NuXJS::Exception`, which is a `std::exception`. After any of them the runtime remains usable:
