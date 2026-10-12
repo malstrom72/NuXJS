@@ -16,7 +16,8 @@ event misuse 64
   error: TypeError: can only be used on a Meter
     at onEvent (rules.js:8:60)
 load broken.js
-  syntax: broken.js:1:30: SyntaxError: Expected ',' or ')'
+  error: SyntaxError: Expected ',' or ')'
+    at broken.js:1:30
 load greedy.js
   stopped: Out of memory
 load spin.js

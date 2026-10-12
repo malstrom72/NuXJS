@@ -18,7 +18,6 @@ static Var hostLog(Runtime& rt, const Var&, const VarList& args) {
 	return Var(rt);
 }
 
-
 static Var hostScale(Runtime& rt, const Var&, const VarList& args) {
 	if (args.size() < 1 || !args[0].to<Value>().isNumber()) {
 		ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "host.scale() expects a number");
@@ -67,6 +66,9 @@ class Meter : public JSObject {
 
 		static Var add(Runtime& rt, const Var& thisObject, const VarList& args) {
 			Meter* const self = checkedSelf(rt, thisObject);
+			if (args.size() < 1 || !args[0].to<Value>().isNumber()) {
+				ScriptException::throwError(rt.getHeap(), TYPE_ERROR, "Meter.add() expects a number");
+			}
 			const double value = args[0].to<double>();
 			self->highest = (self->count == 0 || value > self->highest ? value : self->highest);
 			++self->count;
@@ -100,9 +102,6 @@ static void load(Runtime& rt, const char* fileName, const char* text) {
 			rt.autoGC(true);
 			rt.checkTimeOut();
 		}
-	} catch (const CompilationError& x) {
-		std::cout << "  syntax: " << x.filename->toUTF8String() << ':' << x.lineNumber << ':' << x.columnNumber << ": "
-				<< x.what() << std::endl;
 	} catch (const ScriptException& x) {
 		reportScriptError(x);
 	} catch (const Exception& x) {

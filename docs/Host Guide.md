@@ -39,9 +39,9 @@ const Code* code = rt.compileGlobalCode(source, name);
 ```
 
 The source and the name sit in `Var`s so the garbage collector keeps them while the compiler works ("The Var Type").
-Source that does not compile throws a `CompilationError`, which carries the file name and the line and column where
-the compiler stopped; its `what()` is the `SyntaxError` message. `host.cpp`'s `load()` reports
-`broken.js:1:30: SyntaxError: Expected ',' or ')'`.
+Source that does not compile throws a `ScriptException` like any other script error. Its `SyntaxError` records the
+file name, line and column where the compiler stopped, and `getStackTrace()` prints them, so `host.cpp`'s `load()`
+reports `SyntaxError: Expected ',' or ')'` followed by `at broken.js:1:30` without a separate case.
 
 Compiled code runs as global code on a `Processor`, as in section 5. Code that only needs a value back can use
 `Runtime::eval` or `Runtime::run` instead ("Embedding NuXJS").
@@ -113,15 +113,14 @@ timeout. A host can also call `Heap::gc` itself at a moment it chooses, such as 
 
 ## 6. Errors
 
-Three kinds of exception reach the host:
+Two kinds of exception reach the host:
 
-- `CompilationError`, for source that does not compile (section 2).
-- `ScriptException`, for an exception the script did not catch. `what()` is its message and `getStackTrace()` adds
-  where it was thrown, with file names and positions: `ReferenceError: undefinedRule is not defined` followed by
-  `at onEvent (rules.js:6:37)`.
+- `ScriptException`, for source that does not compile (section 2) and for an exception the script did not catch.
+  `what()` is its message and `getStackTrace()` adds where it happened, with file names and positions:
+  `ReferenceError: undefinedRule is not defined` followed by `at onEvent (rules.js:6:37)`.
 - `ConstStringException`, for the runtime's own limits: `Out of memory` and `Time out`.
 
-All three derive from `NuXJS::Exception`, which is a `std::exception`. After any of them the runtime remains usable:
+Both derive from `NuXJS::Exception`, which is a `std::exception`. After either the runtime remains usable:
 the example goes on to send another event once a script has run out of memory and another has timed out. What a
 failed script stored in global variables stays there, so a host that keeps the runtime clears what it no longer
 wants. The example's runaway script keeps its data in a function's local variable, so it is garbage once the call
