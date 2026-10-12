@@ -843,8 +843,11 @@ class JSArray : public LazyJSObject<Object> {
 class Constants : public GCItem, public Vector<Value> {
 	public:
 		typedef GCItem super;
-		Constants(GCList& gcList) : super(gcList), Vector<Value>(&gcList.getHeap())
-				, stringIndexes(&gcList.getHeap()), otherCount(0) { }
+		Constants(GCList& gcList) : super(gcList), Vector<Value>(&gcList.getHeap()), stringIndexes(&gcList.getHeap()) {
+			for (int i = 0; i < 64; ++i) {
+				otherIndexes[i] = ~0U;
+			}
+		}
 
 		UInt32 findOrAdd(const Value& constant);
 
@@ -861,8 +864,7 @@ class Constants : public GCItem, public Vector<Value> {
 		}
 
 		mutable Table stringIndexes;			// string constant -> its index in this list
-		UInt32 otherIndexes[64];				// the most recently used non-strings, most recent last
-		UInt32 otherCount;
+		UInt32 otherIndexes[64];				// the most recently used non-strings, most recent last, ~0U when unused
 };
 
 /**

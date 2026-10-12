@@ -3178,19 +3178,19 @@ UInt32 Constants::findOrAdd(const Value& constant) {
 	} else if (constant.isObject()) {	// objects compare by identity, so a fresh one never matches
 		push(constant);
 	} else {
-		UInt32 i = otherCount;
-		while (i > 0 && !(*this)[otherIndexes[i - 1]].isStrictlyEqualTo(constant)) {
+		UInt32 i = 64;
+		while (i > 0 && (otherIndexes[i - 1] == ~0U || !(*this)[otherIndexes[i - 1]].isStrictlyEqualTo(constant))) {
 			--i;
 		}
 		const UInt32 index = (i > 0 ? otherIndexes[i - 1] : newIndex);
 		if (i == 0) {
 			push(constant);
-			i = (otherCount < 64 ? ++otherCount : 1);
+			i = 1;
 		}
-		for (; i < otherCount; ++i) {
+		for (; i < 64; ++i) {
 			otherIndexes[i - 1] = otherIndexes[i];
 		}
-		otherIndexes[otherCount - 1] = index;
+		otherIndexes[63] = index;
 		return index;
 	}
 	return newIndex;
