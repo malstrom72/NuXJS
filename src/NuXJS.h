@@ -844,7 +844,7 @@ class Constants : public GCItem, public Vector<Value> {
 	public:
 		typedef GCItem super;
 		Constants(GCList& gcList) : super(gcList), Vector<Value>(&gcList.getHeap())
-				, stringIndexes(&gcList.getHeap()), otherIndexes(&gcList.getHeap()) { }
+				, stringIndexes(&gcList.getHeap()), otherCount(0) { }
 
 		UInt32 findOrAdd(const Value& constant);
 
@@ -857,12 +857,12 @@ class Constants : public GCItem, public Vector<Value> {
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, begin(), end());
 			stringIndexes = Table(&heap);
-			otherIndexes = Vector<UInt32>(&heap);
 			super::gcMarkReferences(heap);
 		}
 
 		mutable Table stringIndexes;			// string constant -> its index in this list
-		mutable Vector<UInt32> otherIndexes;	// indexes of the non-strings, most recently used last
+		UInt32 otherIndexes[64];				// the most recently used non-strings, most recent last
+		UInt32 otherCount;
 };
 
 /**
