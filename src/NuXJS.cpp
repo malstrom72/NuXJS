@@ -2746,15 +2746,6 @@ const char* ScriptException::getStackTrace() const {
 	return stackTrace.c_str();
 }
 
-static void recordCompilePosition(const ScriptException& x, const String* filename, const Compiler& compiler) {
-	Error* const error = x.asErrorObject();
-	if (error != 0) {
-		Code::SourceLocation position = { filename, 0, 0, 0, 0 };
-		compiler.getStopPosition(position.offset, position.line, position.column);
-		error->setCompilePosition(position);
-	}
-}
-
 void Processor::addStackTrace(const Value& exception) const {
 	Error* errorObject = exception.asError();
 	if (errorObject != 0) {
@@ -3398,7 +3389,11 @@ const String* Compiler::newHashedString(Heap& heap, const Char* b, const Char* e
 
 void Compiler::error(ErrorType type, const String* message) {
 	root.p = p;
-	ScriptException::throwError(heap, type, message);
+	Error* const errorObject = new(heap) Error(heap.managed(), type, message);
+	Code::SourceLocation position = { root.code->getSourceUnit()->getFileName(), 0, 0, 0, 0 };
+	root.getStopPosition(position.offset, position.line, position.column);
+	errorObject->setCompilePosition(position);
+	throw ScriptException(heap, errorObject);
 }
 
 void Compiler::error(ErrorType type, const char* message) { error(type, String::allocate(heap, message)); }
@@ -5300,14 +5295,8 @@ struct Support {
 			SourceCodeUnit* unit = new(heap) SourceCodeUnit(heap.managed(), source, &ANONYMOUS_SCRIPT_STRING);
 			Code* code = new(heap) Code(heap.managed(), 0, unit);
 			Compiler compiler(heap.roots(), code, Compiler::FOR_FUNCTION);
-			try {
-				compiler.compileFunction(source->begin(), source->end()
-						, (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING), 0);
-			}
-			catch (const ScriptException& x) {
-				recordCompilePosition(x, &ANONYMOUS_SCRIPT_STRING, compiler);
-				throw;
-			}
+			compiler.compileFunction(source->begin(), source->end(), (argc >= 2 ? argv[1].toString(heap) : &ANONYMOUS_STRING)
+					, 0);
 			return new(heap) JSFunction(heap.managed(), code, rt.getGlobalScope());
 		}
 		return UNDEFINED_VALUE;
@@ -5626,13 +5615,7 @@ void Runtime::run(const String& source, const String* filename) {
 static Code* compileCode(Heap& heap, const String* source, const String* filename, Compiler::Target target) {
 	Code* code = new(heap) Code(heap.managed(), 0, new(heap) SourceCodeUnit(heap.managed(), source, filename));
 	Compiler compiler(heap.roots(), code, target);
-	try {
-		compiler.compile(*source);
-	}
-	catch (const ScriptException& x) {
-		recordCompilePosition(x, filename, compiler);
-		throw;
-	}
+	compiler.compile(*source);
 	return code;
 }
 
