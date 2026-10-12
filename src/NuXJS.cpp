@@ -2952,17 +2952,22 @@ static void appendErrorHeader(Vector<Char>& buffer, const Error* errorObject) {
 	}
 }
 
-const char* ScriptException::getStackTrace() const {
-	if (stackTrace.empty()) {
-		const Error* const errorObject = value.asError();
-		const String* const stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
-		if (stackString != 0) {
-			stackTrace = stackString->toUTF8String();
-		} else if (errorObject != 0 && errorObject->getCompilePosition().fileName != 0) {	// never reached a processor
-			Vector<Char> buffer(0);
-			appendErrorHeader(buffer, errorObject);
-			stackTrace = String(buffer.begin(), buffer.end()).toUTF8String();
+const char* ScriptException::getStackTrace() const throw() {
+	try {
+		if (stackTrace.empty()) {
+			const Error* const errorObject = value.asError();
+			const String* const stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
+			if (stackString != 0) {
+				stackTrace = stackString->toUTF8String();
+			} else if (errorObject != 0 && errorObject->getCompilePosition().fileName != 0) {							// never reached a processor
+				Vector<Char> buffer(0);
+				appendErrorHeader(buffer, errorObject);
+				stackTrace = String(buffer.begin(), buffer.end()).toUTF8String();
+			}
 		}
+	}
+	catch (...) {
+		return "out of memory";
 	}
 	return stackTrace.c_str();
 }
