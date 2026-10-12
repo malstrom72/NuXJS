@@ -2664,6 +2664,9 @@ template<class SUPER> JSObject* LazyJSObject<SUPER>::getCompleteObject(Runtime& 
 	return completeObject;
 }
 
+template class LazyJSObject<Object>;	// the header's inline members call these, so link-time optimization must keep them
+template class LazyJSObject<Function>;
+
 /* --- ExtensibleFunction --- */
 
 void ExtensibleFunction::createPrototypeObject(Runtime& rt, Object* forObject, bool dontEnumPrototype) const {
