@@ -42,7 +42,7 @@ a regression case. Prefixing a line with `?` runs `print()` on that expression.
 
 ## Embedding NuXJS
 
-The high-level C++ API allows easy embedding of the interpreter into an existing application. Functions exposed to JavaScript typically have the signature `Var func(Runtime& rt, const Var& thisVar, const VarList& args)` and are stored in the global object like any other value. Source code may be executed with `Runtime::run()` or evaluated with `Runtime::eval()`.
+The high-level C++ API allows easy embedding of the interpreter into an existing application. `Host Guide.md` walks through a complete small host built on it. Functions exposed to JavaScript typically have the signature `Var func(Runtime& rt, const Var& thisVar, const VarList& args)` and are stored in the global object like any other value. Source code may be executed with `Runtime::run()` or evaluated with `Runtime::eval()`.
 
 A minimal "hello world" program looks like this:
 
