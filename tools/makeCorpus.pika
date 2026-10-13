@@ -10,6 +10,25 @@ makeDir(outDir, false);
 
 testsDir = appendDirSlash('tests');
 
+// The fuzz harness reads UTF-16LE, so the UTF-8 of the .io files is decoded and written that way.
+unitLE = function { char($0 & 0xFF) # char($0 >> 8) };
+toUTF16LE = function {
+	s = $0;
+	out = '';
+	for (i = 0; i < length(s); i += extra + 1) {
+		c = ordinal(s{i});
+		extra = (if (c < 0x80) 0 else if (c < 0xE0) 1 else if (c < 0xF0) 2 else 3);
+		cp = (if (extra == 0) c else c & (0x3F >> extra));
+		for (k = 1; k <= extra; ++k) cp = (cp << 6) | (ordinal(s{i + k}) & 0x3F);
+		if (cp >= 0x10000) {
+			out #= unitLE(0xD800 + ((cp - 0x10000) >> 10));
+			cp = 0xDC00 + ((cp - 0x10000) & 0x3FF);
+		};
+		out #= unitLE(cp);
+	};
+	out
+};
+
 processFile = function {
 	testPath = $0;
 	rel = testPath{length(testsDir):};
@@ -27,14 +46,14 @@ processFile = function {
 			sectionInput #= command # LF;
 		} else if (directive === '-') {
 			if (sectionInput !== '') {
-				save(outDir # DIR_SLASH # stem # '_' # sectionIndex # '.js', sectionInput);
+				saveBinary(outDir # DIR_SLASH # stem # '_' # sectionIndex # '.js', toUTF16LE(sectionInput));
 				++sectionIndex;
 				sectionInput = '';
 			};
 		};
 	});
 	if (sectionInput !== '') {
-		save(outDir # DIR_SLASH # stem # '_' # sectionIndex # '.js', sectionInput);
+		saveBinary(outDir # DIR_SLASH # stem # '_' # sectionIndex # '.js', toUTF16LE(sectionInput));
 		++sectionIndex;
 	};
 };
