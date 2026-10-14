@@ -184,9 +184,8 @@ static std::string generateBlock(const Entry* entries, const std::string& eol) {
 		}
 	}
 	std::ostringstream out;
-	std::ostringstream declaration;
-	declaration << "const UInt32 POWER_OF_FIVE_WORDS[" << COUNT * 4 << "]";
-	emitArray(out, declaration.str().c_str(), words, COUNT * 4, eol);
+	emitArray(out, "const UInt32 POWER_OF_FIVE_WORDS[(MAX_POWER_OF_FIVE - MIN_POWER_OF_FIVE + 1) * 4]", words, COUNT * 4
+			, eol);
 	return out.str();
 }
 
