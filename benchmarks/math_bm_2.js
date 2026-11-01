@@ -8,7 +8,7 @@ var TWICE_PI = PI * 2.0
 var COS_EPSILON = 1.0e-6
 
 function abs(x) {
-    return (x < 0 ? -x : x);
+	return (x < 0 ? -x : x);
 }
 
 /*
@@ -37,17 +37,17 @@ function abs(x) {
     Negative x yields huge floating point precision problems so we negate x before and do 1.0 / y afterwards instead.
 */
 function exp(x) {
-    var m = abs(x);
-    var a = 1.0;
-    var n = 1.0;
-    var y = 1.0;
-    do {
-        var t = y;
-        a *= m / n;
-        y += a;
-        n += 1.0;
-    } while (y != t);
-    return (x < 0.0 ? 1.0 / y : y);
+	var m = abs(x);
+	var a = 1.0;
+	var n = 1.0;
+	var y = 1.0;
+	do {
+		var t = y;
+		a *= m / n;
+		y += a;
+		n += 1.0;
+	} while (y != t);
+	return (x < 0.0 ? 1.0 / y : y);
 }
 
 /*
@@ -65,23 +65,23 @@ function exp(x) {
 */
 function log(x)
 {
-    if (x <= 0.0 || x >= 1.0e38) {
-        throw("Domain error");
-    }
-    var b = 0.0;
-    while (x < 0.5) { x *= 2.0; b -= LOG2; }
-    while (x > 1.5) { x *= 0.5; b += LOG2; }
-    x = 1.0 - x;
-    var a = -1.0;
-    var n = 1.0;
-    var y = 0.0;
-    do {
-        t = y;
-        a *= x;
-        y += a / n;
-        n += 1.0;
-    } while (y != t);
-    return y + b;
+	if (x <= 0.0 || x >= 1.0e38) {
+		throw("Domain error");
+	}
+	var b = 0.0;
+	while (x < 0.5) { x *= 2.0; b -= LOG2; }
+	while (x > 1.5) { x *= 0.5; b += LOG2; }
+	x = 1.0 - x;
+	var a = -1.0;
+	var n = 1.0;
+	var y = 0.0;
+	do {
+		t = y;
+		a *= x;
+		y += a / n;
+		n += 1.0;
+	} while (y != t);
+	return y + b;
 }
 
 print(exp(-0.1));
@@ -95,7 +95,7 @@ print(log(exp(3)));
 print(log(exp(4)));
 
 for (var f = 0; f < 10; f += 0.0001) {
-    if (abs(log(exp(f)) - f) > f * 0.00000001) {
-        throw("Precision error");
-    }
+	if (abs(log(exp(f)) - f) > f * 0.00000001) {
+		throw("Precision error");
+	}
 }

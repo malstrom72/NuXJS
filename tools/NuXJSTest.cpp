@@ -812,13 +812,13 @@ static void testLimits() {
 
 	std::cout << "	- compile depth" << std::endl;
 
-	const char* const nested = "((((((((((((((((((((((((((((((1))))))))))))))))))))))))))))))";
-	EXPECT_EQUAL(rt.eval(nested), 1);
+	const std::string nested = std::string(100, '(') + '1' + std::string(100, ')');
+	EXPECT_EQUAL(rt.eval(nested.c_str()), 1);
 	{
 		Heap shallowHeap;
 		Runtime shallowRuntime(shallowHeap);
-		shallowRuntime.setMaxNestedCompileDepth(20);
-		EXPECT_EXCEPTION(shallowRuntime.eval(nested)
+		shallowRuntime.setMaxNestedCompileDepth(64);
+		EXPECT_EXCEPTION(shallowRuntime.eval(nested.c_str())
 				, "RangeError: Internal compiler limitations reached. Reduce code complexity.");
 	}
 }
@@ -1530,7 +1530,7 @@ static void testHeap() {
 	}
 	
 	{
-		EXPECT_EXCEPTION(heap.allocate(MAX_SINGLE_ALLOCATION_SIZE), "Memory allocation failure (size too large)");
+		EXPECT_EXCEPTION(heap.allocate(0x80000000U), "Memory allocation failure (size too large)");
 		EXPECT_EXCEPTION(heap.allocate(~(size_t)(0) - sizeof (size_t) - 16), "Memory allocation failure (size too large)");
 		CheapHeap cheapHeap;
 		void* alloc1 = 0;

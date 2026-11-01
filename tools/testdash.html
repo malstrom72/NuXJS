@@ -102,14 +102,14 @@ select, button { background: rgba(88, 88, 88, 0.42);color: rgba(255, 255, 255, 0
 
 	function scrollTo(elem) {
 		if(elem.position()){
-		    if(elem.position().top < $(window).scrollTop()){
-		        //scroll up
-		        $('html,body').animate({scrollTop:elem.position().top}, 50);
-		    }
-		    else if(elem.position().top + elem.height() > $(window).scrollTop() + (window.innerHeight || document.documentElement.clientHeight)){
-		        //scroll down
-		        $('html,body').animate({scrollTop:elem.position().top - (window.innerHeight || document.documentElement.clientHeight) + elem.height() + 15}, 50);
-		    }
+			if(elem.position().top < $(window).scrollTop()){
+				//scroll up
+				$('html,body').animate({scrollTop:elem.position().top}, 50);
+			}
+			else if(elem.position().top + elem.height() > $(window).scrollTop() + (window.innerHeight || document.documentElement.clientHeight)){
+				//scroll down
+				$('html,body').animate({scrollTop:elem.position().top - (window.innerHeight || document.documentElement.clientHeight) + elem.height() + 15}, 50);
+			}
 		}
 	}
 

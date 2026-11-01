@@ -321,7 +321,7 @@ Every sub-class of `GCItem` is responsible for overriding `gcMarkReferences(Heap
 
 Garbage collection is either invoked manually with `Heap::gc()` or automatically via `Runtime::autoGC()`. Automatic garbage collection occurs when the number of bytes on a heap reaches a threshold that is two times the heap's size after the last garbage collection.
 
-`Runtime::setMemoryCap` limits the live data a script may hold: after each automatic collection, a heap still at or above the cap raises "Out of memory". `Heap::setMaxAllocationSize` bounds every single allocation, 2 GB by default, so set it at or below the memory cap. Both are checked where the layering puts them, the cap between batches and the allocation limit in the heap, so the memory a process holds can exceed the cap by what one batch allocates, garbage included. Code that repeatedly copies something large makes most of that garbage: measured under a 64 MB cap, arrays and objects peak at 1 to 2.5 times their live data, repeated string or array copies at 4 to 9 times, and building a string with `s += chunk` at around 60 times.
+`Runtime::setMemoryCap` limits the live data a script may hold: after each automatic collection, a heap still at or above the cap raises "Out of memory". `Heap::setMaxAllocationSize` bounds every single allocation, 2 GB by default and at most (string lengths and offsets are 32-bit), so set it at or below the memory cap. Both are checked where the layering puts them, the cap between batches and the allocation limit in the heap, so the memory a process holds can exceed the cap by what one batch allocates, garbage included. Code that repeatedly copies something large makes most of that garbage: measured under a 64 MB cap, arrays and objects peak at 1 to 2.5 times their live data, repeated string or array copies at 4 to 9 times, and building a string with `s += chunk` at around 60 times.
 
 ## Number Conversion
 
@@ -478,8 +478,8 @@ constructs one or two.
 
 The compile limit is a proxy for stack bytes, so a host running NuXJS on a smaller stack than the ones measured here
 needs a lower value, set with `Runtime::setMaxNestedCompileDepth` before anything is compiled; `JSON.parse()` needs 64
-levels and the standard library 33, so 64 is the floor. The stack each level costs on msvc/x64 with the beta flags,
-and on arm64 (Apple clang, M4) with the `-O3 -flto` flags the products ship, es5 build:
+levels and the standard library 33, so 64 is the floor, which the setter asserts. The stack each level costs on
+msvc/x64 with the beta flags, and on arm64 (Apple clang, M4) with the `-O3 -flto` flags the products ship, es5 build:
 
 | shape                       | levels per nesting | msvc/x64 beta | arm64 -O3 -flto |
 | --------------------------- | ------------------ | ------------- | --------------- |
