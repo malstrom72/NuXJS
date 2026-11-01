@@ -24,7 +24,7 @@
 #ifndef NuXJS_h
 #define NuXJS_h
 
-#define NUXJS_VERSION 101
+#define NUXJS_VERSION 102
 
 /*
 	NUXJS_ES5 compiles the ECMAScript 5.1 extensions and defaults to 1. Define it to 0 (-DNUXJS_ES5=0, the `es3`
@@ -150,7 +150,6 @@ inline GCItem::~GCItem() { if (_gcList != 0) { _gcList->relinquish(this); } }
 
 const int MAX_POOLED_SIZE = 1024;
 const int POOL_SIZE_GRANULARITY = 16;
-const UInt32 MAX_SINGLE_ALLOCATION_SIZE = 2147483648U;
 
 /**
 	Heap manages memory allocation for all GCItems. It keeps track of allocated blocks and owns the GC lists used during
@@ -167,7 +166,7 @@ class Heap {
 		UInt32 count() const { return allocatedCount; }
 		size_t size() const { return allocatedSize; }
 		size_t pooled() const { return pooledSize; }
-		void setMaxAllocationSize(size_t maxSize) { maxAllocationSize = maxSize; }
+		void setMaxAllocationSize(size_t maxSize) { assert(maxSize <= 0x7FFFFFFF); maxAllocationSize = maxSize; }		// 2 GB at most: string lengths and offsets are 32-bit
 		void gc();
 		virtual ~Heap();
 		friend void gcMark(Heap& heap, const GCItem* item);
@@ -1034,7 +1033,7 @@ class SourceCodeUnit : public GCItem {
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, source);
 			gcMark(heap, fileName);
-       		super::gcMarkReferences(heap);
+			super::gcMarkReferences(heap);
 		}
 
 		const String* const source;
@@ -1320,7 +1319,7 @@ class Arguments : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 
-        Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);	// mapped: indices alias the live parameter slots
+		Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);	// mapped: indices alias the live parameter slots
 	#if NUXJS_ES5
 		Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount, const Value* argv);	// 10.6: strict, non-mapped, values captured at entry
 	#endif
@@ -1342,7 +1341,7 @@ class Arguments : public LazyJSObject<Object> {
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
-        Value* findProperty(const Value& key) const;
+		Value* findProperty(const Value& key) const;
 	#if NUXJS_ES5
 		Value* findProperty(const Value& key, UInt32& index) const;	// also reports the index, for the attribute byte
 	#endif
@@ -1356,7 +1355,7 @@ class Arguments : public LazyJSObject<Object> {
 	#else
 		bool isMapped() const { return scope != 0; }
 	#endif
-        const FunctionScope* scope;
+		const FunctionScope* scope;
 		JSFunction* const function;
 		UInt32 const argumentsCount;
 		// In es5 this byte doubles as the index's attribute bits: DELETED_ARGUMENT means the index no longer lives
@@ -1393,7 +1392,7 @@ class FunctionScope : public Scope {
 		virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v);
 	#endif
 		JSObject* getDynamicVars(Runtime& rt) const;
-	   	virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
+		virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
 
 	protected:
 		virtual Flags readLocalVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
@@ -1588,7 +1587,7 @@ struct ScriptException : public Exception {
 	ScriptException(Heap& heap, const Value& value) throw();
 	virtual const char* what() const throw() { return (fallback != 0 ? fallback : utf8String.c_str()); }
 	Error* asErrorObject() const { return value.asError(); }
-	const char* getStackTrace() const;
+	const char* getStackTrace() const throw();
 	virtual ~ScriptException() throw() { }
 
 	Value value;
@@ -2136,7 +2135,7 @@ class Compiler : public GCItem {
 			#if NUXJS_ES5
 				, storeTailEnd(-1)
 			#endif
-		 	{
+			{
 			}
 			
 			void emit(Processor::Opcode opcode, Int32 operand, UInt32 sourceOffset);

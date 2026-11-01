@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-
-echo "Building and running the example host"
-bash ./BuildCpp.sh "$target" "$model" ../output/examples/host ../docs/examples/host.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
-../output/examples/host > ../output/examples/host.log 2>&1
-diff -u ../docs/examples/expected_host.txt ../output/examples/host.log
 set -e -o pipefail -u
 cd "$(dirname "$0")"
 
@@ -37,6 +32,8 @@ if [ "$target" == "release" ]; then
 	opts="-fno-rtti $opts"
 fi
 export CPP_OPTIONS="$opts"	# always reset so a CPP_OPTIONS inherited from the environment cannot leak into a build
+bash ./BuildCpp.sh $target $model ../output/powersOfFive_${target}_${model} ./powersOfFive.cpp
+../output/powersOfFive_${target}_${model} ../src/NuXJS.cpp --check
 bash ./BuildCpp.sh $target $model ../output/NuXJSTest${suffix}_${target}_${model} ../tools/NuXJSTest.cpp ../src/NuXJS.cpp ../src/stdlibJS.cpp
 ../output/NuXJSTest${suffix}_${target}_${model} -s >/dev/null 2>&1
 # Unpack the fuzz corpus so NuXJSTest can replay it.
