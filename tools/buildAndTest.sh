@@ -15,7 +15,7 @@ if [ "../src/stdlib.js" -nt "../src/stdlibJS.cpp" ]; then
 	../externals/PikaCmd/PikaCmd ./stdlibToCpp.pika ../src/stdlib.js ../src/stdlibJS.cpp
 fi
 if [ "$target" == "release" ]; then
-    export CPP_OPTIONS="-fno-rtti"
+	export CPP_OPTIONS="-fno-rtti"
 fi
 mkdir ../output >/dev/null 2>&1 || true
 bash ./BuildCpp.sh $target $model ../output/powersOfFive_${target}_${model} ./powersOfFive.cpp

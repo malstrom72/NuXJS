@@ -881,7 +881,7 @@ class SourceCodeUnit : public GCItem {
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, source);
 			gcMark(heap, fileName);
-       		super::gcMarkReferences(heap);
+			super::gcMarkReferences(heap);
 		}
 
 		const String* const source;
@@ -1113,7 +1113,7 @@ class Arguments : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 
-        Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
+		Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);
 		virtual const String* getClassName() const;	// &A_RGUMENTS_STRING
 		virtual const String* toString(Heap& heap) const;
 		virtual Object* getPrototype(Runtime& rt) const;
@@ -1126,8 +1126,8 @@ class Arguments : public LazyJSObject<Object> {
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
-        Value* findProperty(const Value& key) const;
-        const FunctionScope* scope;
+		Value* findProperty(const Value& key) const;
+		const FunctionScope* scope;
 		JSFunction* const function;
 		UInt32 const argumentsCount;
 		Vector<Byte> deletedArguments;
@@ -1155,7 +1155,7 @@ class FunctionScope : public Scope {
 
 		FunctionScope(GCList& gcList, JSFunction* function, UInt32 argc, const Value* argv);
 		JSObject* getDynamicVars(Runtime& rt) const;
-	   	virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
+		virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
 
 	protected:
 		virtual Flags readLocalVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
@@ -1799,7 +1799,7 @@ class Compiler : public GCItem {
 				: code(&heap), lastEmitted(Processor::INVALID_OP), initialStackDepth(initialStackDepth)
 				, stackDepth(initialStackDepth), maxStackDepth(initialStackDepth)
 				, codeOffsets(&heap), sourceOffsets(&heap)
-		 	{
+			{
 			}
 			
 			void emit(Processor::Opcode opcode, Int32 operand, UInt32 sourceOffset);

@@ -67,8 +67,8 @@ IF ERRORLEVEL 1 GOTO error
 
 REM Write shim that forwards to the portable interpreter (use real CRLFs)
 (
-  ECHO @echo off
-  ECHO "%PYTHONX%" %%*
+	ECHO @echo off
+	ECHO "%PYTHONX%" %%*
 ) > "%SHIM_FILE%" || GOTO error
 
 REM Ensure the shim directory is on PATH now and for future shells

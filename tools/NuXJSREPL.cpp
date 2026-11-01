@@ -927,7 +927,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
 	rt.resetTimeOut(2);
 	rt.setMemoryCap(64*1024*1024);
 	try {
-	    rt.run(String(reinterpret_cast<const Char*>(Data), reinterpret_cast<const Char*>(Data) + Size / 2));
+		rt.run(String(reinterpret_cast<const Char*>(Data), reinterpret_cast<const Char*>(Data) + Size / 2));
 	}
 	catch (Exception&) {
 		;
