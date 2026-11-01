@@ -1034,7 +1034,7 @@ class SourceCodeUnit : public GCItem {
 		virtual void gcMarkReferences(Heap& heap) const {
 			gcMark(heap, source);
 			gcMark(heap, fileName);
-       		super::gcMarkReferences(heap);
+			super::gcMarkReferences(heap);
 		}
 
 		const String* const source;
@@ -1320,7 +1320,7 @@ class Arguments : public LazyJSObject<Object> {
 	public:
 		typedef LazyJSObject<Object> super;
 
-        Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);	// mapped: indices alias the live parameter slots
+		Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount);	// mapped: indices alias the live parameter slots
 	#if NUXJS_ES5
 		Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount, const Value* argv);	// 10.6: strict, non-mapped, values captured at entry
 	#endif
@@ -1342,7 +1342,7 @@ class Arguments : public LazyJSObject<Object> {
 
 	protected:
 		virtual void constructCompleteObject(Runtime& rt) const;
-        Value* findProperty(const Value& key) const;
+		Value* findProperty(const Value& key) const;
 	#if NUXJS_ES5
 		Value* findProperty(const Value& key, UInt32& index) const;	// also reports the index, for the attribute byte
 	#endif
@@ -1356,7 +1356,7 @@ class Arguments : public LazyJSObject<Object> {
 	#else
 		bool isMapped() const { return scope != 0; }
 	#endif
-        const FunctionScope* scope;
+		const FunctionScope* scope;
 		JSFunction* const function;
 		UInt32 const argumentsCount;
 		// In es5 this byte doubles as the index's attribute bits: DELETED_ARGUMENT means the index no longer lives
@@ -1393,7 +1393,7 @@ class FunctionScope : public Scope {
 		virtual Object* writeVarOrAccessor(Runtime& rt, const String* name, const Value& v);
 	#endif
 		JSObject* getDynamicVars(Runtime& rt) const;
-	   	virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
+		virtual ~FunctionScope();	// At destruction we detach any created Arguments object (copying all values and severing the connection to the FunctionScope, in order to prevent "memory leaks".)
 
 	protected:
 		virtual Flags readLocalVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const;
@@ -2136,7 +2136,7 @@ class Compiler : public GCItem {
 			#if NUXJS_ES5
 				, storeTailEnd(-1)
 			#endif
-		 	{
+			{
 			}
 			
 			void emit(Processor::Opcode opcode, Int32 operand, UInt32 sourceOffset);
