@@ -1450,8 +1450,8 @@ Enumerator* String::getOwnPropertyEnumerator(Runtime& rt) const {
 const String* String::fromInt(Heap& heap, Int32 i) {
 	Char buffer[32];
 	return (i >= -QUICK_CONSTANTS_INTEGERS_RANGE && i <= QUICK_CONSTANTS_INTEGERS_RANGE)
-		 	? &QUICK_CONSTANTS.integers[i + QUICK_CONSTANTS_INTEGERS_RANGE]
-		 	: new(heap) String(heap.managed(), intToString(buffer, i), buffer + 32);
+			? &QUICK_CONSTANTS.integers[i + QUICK_CONSTANTS_INTEGERS_RANGE]
+			: new(heap) String(heap.managed(), intToString(buffer, i), buffer + 32);
 }
 
 const String* String::fromDouble(Heap& heap, double d) {
@@ -2342,8 +2342,8 @@ void Error::constructCompleteObject(Runtime& rt) const {
 /* --- Arguments --- */
 
 Arguments::Arguments(GCList& gcList, const FunctionScope* scope, UInt32 argumentsCount) : super(gcList)
-	   , scope(scope), function(scope->function), argumentsCount(argumentsCount)
-	   , deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()) {
+		, scope(scope), function(scope->function), argumentsCount(argumentsCount)
+		, deletedArguments(argumentsCount, &gcList.getHeap()), values(0, &gcList.getHeap()) {
 	std::fill(deletedArguments.begin(), deletedArguments.end(), false);
 }
 
@@ -2357,11 +2357,11 @@ const String* Arguments::toString(Heap& heap) const {
 Object* Arguments::getPrototype(Runtime& rt) const { return rt.getObjectPrototype(); }
 
 void Arguments::detach() {
-   if (scope != 0) {
-	   values.resize(argumentsCount);
-	   std::copy(scope->getLocalsPointer(), scope->getLocalsPointer() + argumentsCount, values.begin());
-	   scope = 0;
-   }
+	if (scope != 0) {
+		values.resize(argumentsCount);
+		std::copy(scope->getLocalsPointer(), scope->getLocalsPointer() + argumentsCount, values.begin());
+		scope = 0;
+	}
 }
 
 Value* Arguments::findProperty(const Value& key) const {
@@ -2790,7 +2790,7 @@ struct Processor::CatchScope : public Scope {
 struct Processor::WithScope : public Scope {
 	typedef Scope super;
 	WithScope(GCList& gcList, Scope* parentScope, Object* withObject)
-	 		: super(gcList, parentScope), withObject(withObject) { }
+			: super(gcList, parentScope), withObject(withObject) { }
 	virtual Flags readLocalVar(Runtime& rt, const String* name, Value* v, Value* implicitThis) const {
 		const Flags flags = withObject->getProperty(rt, name, v);
 		if (flags != NONEXISTENT && implicitThis != 0) {
@@ -3365,7 +3365,7 @@ void Processor::innerRun() {
 				Object* o = sp[0].getObject();
 				assert(isA<Enumerator>(o));
 				const String* name = reinterpret_cast<Enumerator*>(o)->nextPropertyName();
- 				if (name != 0) {
+				if (name != 0) {
 					sp[0] = name;
 				} else {
 					ip += im;
@@ -4643,7 +4643,7 @@ void Compiler::completeBreaks(const SemanticScope* ofScope) {
 void Compiler::forInStatement(SemanticScope* emptyLabelScope, SemanticScope* scopeLabelsEnd
 		, const CodeSection& iterationSection, const ExpressionResult& iterationXR) {
 	ExpressionResult enumXR(rvalueExpression());
- 	emit(Processor::GET_ENUMERATOR_OP);
+	emit(Processor::GET_ENUMERATOR_OP);
 	enumXR = safeKeep();
 	expectToken(")", true);
 	for (SemanticScope* s = emptyLabelScope; s != scopeLabelsEnd; s = s->next) {	// we must change stack depth of all labels that point to this scope, otherwise we'll pop the enumerator on continue
@@ -5229,7 +5229,7 @@ const Char* Compiler::compile(const Char* b, const Char* e) {
 	}
 	SemanticScope rootScope(heap, SemanticScope::ROOT_TYPE, 1, 0);
 	statementList(&rootScope);
- 	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
+	// FIX : sometimes necessary even if we start with undefined on top of stack, because try/catch rethrower might need to safe-keep its exception there
 	if (compilingFor != FOR_EVAL) {
 		// FIX : if RETURN_OP took a push back count we could just do void_op here, or even have another RETURN_VOID_OP
 		emit(Processor::POP_OP, 1);	// FIX : only if we reserve one element for return like we do now
