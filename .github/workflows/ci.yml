@@ -38,3 +38,19 @@ jobs:
         ./build.sh
     - name: Compile depth on a 512 KB stack
       run: bash ./tools/stackDepthCheck.sh
+
+  # The sanitizers don't see reads of uninitialized memory, Valgrind does. -r runs only NuXJSTest's corpus replay,
+  # since its timed checks cannot hold at Valgrind's speed.
+  linux-valgrind:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Replay the fuzz corpus under Valgrind
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq valgrind
+        mkdir -p output/fuzzReplay
+        bash ./tools/BuildCpp.sh beta native output/NuXJSTest tools/NuXJSTest.cpp src/NuXJS.cpp src/stdlibJS.cpp
+        tar -xzf tests/fuzz/corpus.tar.gz --strip-components=1 -C output/fuzzReplay
+        find output/fuzzReplay -type f > output/fuzzReplay.txt
+        valgrind -q --error-exitcode=1 ./output/NuXJSTest -r output/fuzzReplay.txt
