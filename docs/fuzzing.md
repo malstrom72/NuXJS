@@ -1,6 +1,6 @@
 # Fuzzing
 
-Version: 2026-10-08
+Version: 2026-11-02
 
 How these projects fuzz with libFuzzer. Every copy of this file is identical apart from the "Local additions" section
 at the end, which holds a project's targets, scripts and exceptions.
@@ -116,6 +116,13 @@ Turn off CRT dialogs in `LLVMFuzzerInitialize`, or a failed assert hangs the wor
 - The normal build replays every past crash input, always. It also replays the corpus and the seeds as long as that
   takes no more than about 30 seconds per build configuration. A corpus over that budget is replayed by a separate
   script, run in CI and before every release or freeze, so the normal build stays fast and nothing ships unreplayed.
+- AddressSanitizer and UndefinedBehaviorSanitizer do not see reads of uninitialized memory, which change a result only
+  when the stray bytes happen to matter. CI therefore also replays the corpora through the plain replay build under
+  Valgrind on Linux (`valgrind -q --error-exitcode=1`), at about 25 times the normal replay time. MemorySanitizer
+  would be faster, but it needs every library, the C++ runtime included, built with it.
+- Where CI minutes cost money, run the fuzz builds and the replays in a workflow of their own, triggered only by
+  changes to what they compile or read. List the sources to skip rather than those to include, so that a new file
+  triggers it.
 - Commit the input of each fixed crash as a plain file in `tests/fuzz/<target>Crashes/`, outside the archives:
   `-merge=1` drops any input whose features others already cover, fixed crashes included. Mark these files `binary`
   in `.gitattributes`, so line-ending conversion cannot rewrite them.
@@ -145,7 +152,8 @@ Turn off CRT dialogs in `LLVMFuzzerInitialize`, or a failed assert hangs the wor
   which replays every input through the harness's own entry conditions. One binary fewer, and the corpus is exercised
   by the program that already runs on every build: about 8 seconds of a 62 second build for 2846 inputs on each
   target. The list comes from the scripts because enumerating a directory is not portable, and a replay that found
-  nothing to replay would otherwise pass, so the test fails if it sees fewer than 2000 inputs.
+  nothing to replay would otherwise pass, so the test fails if it sees fewer than 2000 inputs. CI's `linux-valgrind`
+  job runs that `NuXJSTest`, its checks and the replay, in a plain beta build under Valgrind.
 - **The stdlib target is a targeted campaign, not part of any build, and has no corpus of its own.** It costs about
   18x per input, so replaying or scheduling it alongside the ordinary target would buy coverage at the wrong price.
   Run it from the generated seeds, which beat the committed corpus for it anyway: 2999 features against 2752 over
