@@ -153,7 +153,7 @@ Turn off CRT dialogs in `LLVMFuzzerInitialize`, or a failed assert hangs the wor
   by the program that already runs on every build: about 8 seconds of a 62 second build for 2846 inputs on each
   target. The list comes from the scripts because enumerating a directory is not portable, and a replay that found
   nothing to replay would otherwise pass, so the test fails if it sees fewer than 2000 inputs. CI's `linux-valgrind`
-  job runs that `NuXJSTest`, its checks and the replay, in a plain beta build under Valgrind.
+  job runs the replay alone, `NuXJSTest -r`, in a plain beta build under Valgrind.
 - **The stdlib target is a targeted campaign, not part of any build, and has no corpus of its own.** It costs about
   18x per input, so replaying or scheduling it alongside the ordinary target would buy coverage at the wrong price.
   Run it from the generated seeds, which beat the committed corpus for it anyway: 2999 features against 2752 over
