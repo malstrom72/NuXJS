@@ -2151,26 +2151,29 @@ int main(int argc, const char* argv[]) {
 	if (argc >= 2 && strcmp(argv[1], "-s") == 0) {
 		return selfTest();
 	} else {
-		testHeap();
-		testValues();
-		testVectors();
-		testStrings();
-		testTables();
-		testVars();
-		testArrayVars();
-		testJSON();
-		testCompilation();
-		testLimits();
-		testExceptions();
-		testHighLevelAPI();
-	#if NUXJS_ES5
-		testHostAccessors();
-		testPreSetupPoisonPills();
-	#endif
-		readMeSample1();
-		readMeSample2();
+		const bool replayOnly = (argc >= 3 && strcmp(argv[1], "-r") == 0);
+		if (!replayOnly) {
+			testHeap();
+			testValues();
+			testVectors();
+			testStrings();
+			testTables();
+			testVars();
+			testArrayVars();
+			testJSON();
+			testCompilation();
+			testLimits();
+			testExceptions();
+			testHighLevelAPI();
+		#if NUXJS_ES5
+			testHostAccessors();
+			testPreSetupPoisonPills();
+		#endif
+			readMeSample1();
+			readMeSample2();
+		}
 		if (argc >= 2) {
-			testFuzzCorpus(argv[1]);
+			testFuzzCorpus(argv[argc - 1]);
 		}
 		std::cout << std::endl;
 		if (failureCount == 0) {
