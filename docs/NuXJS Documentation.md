@@ -371,7 +371,7 @@ Var loadFile(Runtime& rt, const Var&, const VarList& args) {
 	Heap& heap = rt.getHeap();
 	try {
 		const String* filenameString = args[0];
-		const std::string filenameUTF8 = filenameString->toUTF8String();
+		const std::string filenameUTF8 = filenameString->toWTF8String();
 		std::ifstream f(filenameUTF8.c_str());
 		if (!f) {
 			ScriptException::throwError(heap, GENERIC_ERROR, "failed to open file");
@@ -386,7 +386,7 @@ Var loadFile(Runtime& rt, const Var&, const VarList& args) {
 }
 ```
 
-> **Note:** `String::toUTF8String()` preserves every ECMAScript code unit by returning WTF-8. Embedders that hand the
+> **Note:** `String::toWTF8String()` preserves every ECMAScript code unit by returning WTF-8. Embedders that hand the
 > resulting buffer to strict-Unicode facilities should validate or sanitise before bridging across the boundary.
 
 ## Standard Library and JavaScript Features

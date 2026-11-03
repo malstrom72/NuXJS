@@ -1,4 +1,4 @@
-// Regression for lone surrogate handling in String::toUTF8String.
+// Regression for lone surrogate handling in String::toWTF8String.
 // The engine should surface TypeError messages without aborting and
 // preserve the offending code units through the WTF-8 encoder.
 > var high = String.fromCharCode(0xD9DD);

@@ -14,7 +14,7 @@ using namespace NuXJS;
 
 static Var hostLog(Runtime& rt, const Var&, const VarList& args) {
 	const String* const text = (args.size() > 0 ? static_cast<const String*>(args[0]) : &EMPTY_STRING);
-	std::cout << "  [script] " << text->toUTF8String() << std::endl;
+	std::cout << "  [script] " << text->toWTF8String() << std::endl;
 	return Var(rt);
 }
 

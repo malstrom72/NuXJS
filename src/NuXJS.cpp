@@ -1472,7 +1472,7 @@ const String* String::fromDouble(Heap& heap, double d) {
 	return s;
 }
 
-std::string String::toUTF8String() const {
+std::string String::toWTF8String() const {
 	std::string s;
 	s.reserve(size());
 	for (const Char* p = begin(); p != end(); ++p) {
@@ -2604,7 +2604,7 @@ ScriptException::ScriptException(Heap& heap, const Value& value) throw()
 	: value(value), fallback(0)
 {
 	try {
-		utf8String = value.toString(heap)->toUTF8String();
+		wtf8String = value.toString(heap)->toWTF8String();
 	}
 	catch (...) {
 		fallback = "out of memory";
@@ -2958,11 +2958,11 @@ const char* ScriptException::getStackTrace() const throw() {
 			const Error* const errorObject = value.asError();
 			const String* const stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
 			if (stackString != 0) {
-				stackTrace = stackString->toUTF8String();
+				stackTrace = stackString->toWTF8String();
 			} else if (errorObject != 0 && errorObject->getCompilePosition().fileName != 0) {							// never reached a processor
 				Vector<Char> buffer(0);
 				appendErrorHeader(buffer, errorObject);
-				stackTrace = String(buffer.begin(), buffer.end()).toUTF8String();
+				stackTrace = String(buffer.begin(), buffer.end()).toWTF8String();
 			}
 		}
 	}

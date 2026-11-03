@@ -406,7 +406,7 @@ Var read(Runtime& rt, const Var& thisVar, const VarList& args) {
 	const String* contentsString = 0;
 	try {
 		const String* filenameString = args[0];
-		const std::string filename = filenameString->toUTF8String();
+		const std::string filename = filenameString->toWTF8String();
 		file.open(filename.c_str(), std::ios::binary);
 		if (!file.good()) {
 			ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, "Could not open input file");
@@ -434,7 +434,7 @@ Var writeFile(Runtime& rt, const Var& thisVar, const VarList& args) {
 		ScriptException::throwError(rt.getHeap(), GENERIC_ERROR, "write() requires a filename");
 	}
 	const String* filenameString = args[0];
-	const std::string filename = filenameString->toUTF8String();
+	const std::string filename = filenameString->toWTF8String();
 	std::ofstream file;
 	try {
 		file.open(filename.c_str(), std::ios::binary | std::ios::trunc);
@@ -444,7 +444,7 @@ Var writeFile(Runtime& rt, const Var& thisVar, const VarList& args) {
 		file.exceptions(std::ios_base::badbit | std::ios_base::failbit);
 		if (args.size() >= 2) {
 			const String* content = args[1];
-			const std::string bytes = content->toUTF8String();
+			const std::string bytes = content->toWTF8String();
 			if (!bytes.empty()) {
 				file.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
 			}
@@ -467,7 +467,7 @@ Var runSystem(Runtime& rt, const Var& thisVar, const VarList& args) {
 	std::string command;
 	if (args.size() >= 1) {
 		const String* c = args[0];
-		command = c->toUTF8String();
+		command = c->toWTF8String();
 	}
 	const int rc = ::system(command.c_str());
 	return Var(rt, Value(static_cast<double>(rc)));
@@ -479,7 +479,7 @@ Var readEnv(Runtime& rt, const Var& thisVar, const VarList& args) {
 		return Var(rt);
 	}
 	const String* name = args[0];
-	const std::string n = name->toUTF8String();
+	const std::string n = name->toWTF8String();
 	const char* v = ::getenv(n.c_str());
 	if (v == 0) {
 		return Var(rt);

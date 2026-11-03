@@ -947,7 +947,7 @@ static void testExceptions() {
 		const String* stackString = (errorObject != 0 ? errorObject->getStackString() : 0);
 		EXPECT(stackString != 0);
 		if (stackString != 0) {
-			const std::string view = stackString->toUTF8String();
+			const std::string view = stackString->toWTF8String();
 			EXPECT(view.find("TypeError: native type error") != std::string::npos);
 			EXPECT(view.find("\n    at ") != std::string::npos);
 		}
@@ -1020,7 +1020,7 @@ static void testExceptions() {
 			const String* stackString = errorObject->getStackString();
 			EXPECT(stackString != 0);
 			if (stackString != 0) {
-				const std::string view = stackString->toUTF8String();
+				const std::string view = stackString->toWTF8String();
 				EXPECT(view.find("nested rethrow stable") != std::string::npos);
 			}
 		}
@@ -1038,7 +1038,7 @@ static void testExceptions() {
 		const ScriptException copy(*original);
 		delete original;
 		EXPECT(strcmp(copy.what(), "Error: conversion fodder") == 0);
-		EXPECT(copy.what() == copy.utf8String.c_str());
+		EXPECT(copy.what() == copy.wtf8String.c_str());
 		failingHeap.drain();
 		failingHeap.failing = true;
 		const ScriptException starved(failingHeap, error);
@@ -1048,7 +1048,7 @@ static void testExceptions() {
 		EXPECT(strcmp(assigned.what(), "out of memory") == 0);
 		assigned = copy;
 		EXPECT(strcmp(assigned.what(), "Error: conversion fodder") == 0);
-		EXPECT(assigned.what() == assigned.utf8String.c_str());
+		EXPECT(assigned.what() == assigned.wtf8String.c_str());
 	}
 }
 
@@ -1933,7 +1933,7 @@ void testStrings() {
 		EXPECT_EQUAL(*(STRING_FROM_WIDE_CSTRING.end() - 1), 0x4711);
 		EXPECT_EQUAL(STRING_FROM_WIDE_CSTRING[0], L'f');
 		EXPECT_EQUAL(STRING_FROM_WIDE_CSTRING[15], 0x4711);
-		const std::string utf8String = STRING_FROM_WIDE_CSTRING.toUTF8String();
+		const std::string utf8String = STRING_FROM_WIDE_CSTRING.toWTF8String();
 		EXPECT_EQUAL(utf8String.size(), 18);
 		EXPECT(std::equal(utf8String.begin(), utf8String.end(), "fromWideCString\xE4\x9C\x91"));
 		const std::wstring wideString = STRING_FROM_WIDE_CSTRING.toWideString();
@@ -1949,7 +1949,7 @@ void testStrings() {
 		EXPECT_EQUAL(SURROGATE_PAIR_STRING.size(), 17);
 		EXPECT_EQUAL(*(SURROGATE_PAIR_STRING.end() - 2), 0xD83D);
 		EXPECT_EQUAL(*(SURROGATE_PAIR_STRING.end() - 1), 0xDE00);
-		const std::string surrogatePairUTF8String = SURROGATE_PAIR_STRING.toUTF8String();
+		const std::string surrogatePairUTF8String = SURROGATE_PAIR_STRING.toWTF8String();
 		EXPECT_EQUAL(surrogatePairUTF8String.size(), 19);
 		EXPECT(std::equal(surrogatePairUTF8String.begin(), surrogatePairUTF8String.end(), "surrogatePair: \xF0\x9F\x98\x80"));
 		const std::wstring surrogatePairWideString = SURROGATE_PAIR_STRING.toWideString();

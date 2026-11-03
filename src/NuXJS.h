@@ -689,7 +689,7 @@ class String : public Object {
 			return (this == &o || (size() == o.size() && std::equal(begin(), end(), o.begin())));
 		}
 		bool isLessThan(const String& o) const;
-		std::string toUTF8String() const;												///< returns WTF-8 for host error/reporting paths
+		std::string toWTF8String() const;												///< returns WTF-8 for host error/reporting paths
 		std::wstring toWideString() const;												///< If wchar_t is 32-bit, UTF16 will be decoded automatically. Unmatched surrogate code units are copied through unchanged.
 		UInt32 createBloomCode() const;
 
@@ -1319,14 +1319,14 @@ struct ScriptException : public Exception {
 	static void throwError(Heap& heap, ErrorType type, const String* message = 0);
 	static void throwError(Heap& heap, ErrorType type, const char* message);
 	ScriptException(Heap& heap, const Value& value) throw();
-	virtual const char* what() const throw() { return (fallback != 0 ? fallback : utf8String.c_str()); }
+	virtual const char* what() const throw() { return (fallback != 0 ? fallback : wtf8String.c_str()); }
 	Error* asErrorObject() const { return value.asError(); }
 	const char* getStackTrace() const throw();
 	virtual ~ScriptException() throw() { }
 
 	Value value;
-	std::string utf8String;
-	const char* fallback;		// "out of memory" if utf8String could not be built, else 0
+	std::string wtf8String;
+	const char* fallback;		// "out of memory" if wtf8String could not be built, else 0
 	mutable std::string stackTrace;
 };
 
