@@ -94,7 +94,7 @@ function StringBuilder() {
 	do { b[--i] = '' } while (i > 0)
 }
 StringBuilder.prototype.append = function append(s) {
-	for (var i = 0, n = 256, b = this.buffers; (b[i] += s).length >= n && i < 20; n <<= 1, ++i) {
+	for (var i = 0, n = 256, b = this.buffers; (b[i] += s).length >= n && i < 19; n <<= 1, ++i) {
 		s = b[i];
 		b[i] = ''
 	}
