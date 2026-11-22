@@ -2836,7 +2836,7 @@ Processor::Processor(Runtime& rt) : super(rt.heap.roots()), rt(rt), heap(rt.heap
 
 CodeWord Processor::packInstruction(const Opcode opcode, const Int32 operand) {
 	assert(0 <= opcode && static_cast<int>(opcode) < 256);
-	assert(MIN_OPERAND_VALUE < operand && operand < MAX_OPERAND_VALUE);
+	assert(MIN_OPERAND_VALUE <= operand && operand <= MAX_OPERAND_VALUE);
 	return ((operand & 0xFFFFFF) << 8) | opcode;
 }
 
@@ -3705,11 +3705,16 @@ void Compiler::CodeSection::insertSection(const CodeSection& section) {
 	maxStackDepth = std::max(maxStackDepth, section.maxStackDepth + stackAdjust);
 }
 
-void Compiler::emit(Processor::Opcode opcode, Int32 operand) {
-	if (operand < MIN_OPERAND_VALUE || operand > MAX_OPERAND_VALUE) { // Highly hypothetical, but correctness!
+// Throws a RangeError for an operand that packInstruction cannot hold, jump offsets patched in later included.
+Int32 Compiler::checkOperand(Int32 operand) {
+	if (operand < MIN_OPERAND_VALUE || operand > MAX_OPERAND_VALUE) {
 		error(RANGE_ERROR, "Internal compiler limitations reached. Reduce code complexity.");
 	}
-	currentSection->emit(opcode, operand, static_cast<UInt32>(p - sourceUnitBase));
+	return operand;
+}
+
+void Compiler::emit(Processor::Opcode opcode, Int32 operand) {
+	currentSection->emit(opcode, checkOperand(operand), static_cast<UInt32>(p - sourceUnitBase));
 }
 
 Compiler::CodeSection* Compiler::changeSection(CodeSection* newOutputSection) {
@@ -3734,7 +3739,8 @@ void Compiler::completeForwardBranch(const BranchPoint& point) {
 		currentSection->stackDepth = point.stackDepth;
 		currentSection->maxStackDepth = std::max(currentSection->maxStackDepth, point.stackDepth);
 		const std::pair<Processor::Opcode, Int32> instruction = Processor::unpackInstruction(currentSection->code[point.codeOffset]);
-		currentSection->code[point.codeOffset] = Processor::packInstruction(instruction.first, currentSection->code.size() - point.codeOffset - 1);
+		currentSection->code[point.codeOffset] = Processor::packInstruction(instruction.first
+				, checkOperand(currentSection->code.size() - point.codeOffset - 1));
 	}
 }
 
@@ -5116,7 +5122,8 @@ void Compiler::switchStatement(SemanticScope* currentScope) {
 	completeForwardBranch(testsPoint);
 	for (const Int32* it = jumpOffsets.begin(); it != jumpOffsets.end(); ++it) {
 		const std::pair<Processor::Opcode, Int32> instruction = Processor::unpackInstruction(testsSection.code[*it]);
-		testsSection.code[*it] = Processor::packInstruction(instruction.first, instruction.second - mainSection.code.size());
+		testsSection.code[*it] = Processor::packInstruction(instruction.first
+				, checkOperand(instruction.second - mainSection.code.size()));
 	}
 	currentSection->insertSection(testsSection);
 	assert(currentSection->stackDepth == testsSectionEntryStackDepth); // since we assume this in the default case code
