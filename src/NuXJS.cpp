@@ -5428,25 +5428,11 @@ template<class F> struct UnaryMathFunction : public Function {
 	F& f;
 };
 
-/*
-	These fill `tm` without the buffer that `std::localtime` and `std::gmtime` share across threads on glibc and musl,
-	and return false when `t` does not convert. `tzset()` makes a `TZ` change apply, as `std::localtime` does.
-*/
-static bool breakDownLocalTime(std::time_t t, std::tm& tm) {
-#ifdef _WIN32
-	return localtime_s(&tm, &t) == 0;
-#else
-	tzset();
-	return localtime_r(&t, &tm) != 0;
-#endif
-}
-
-static bool breakDownUTCTime(std::time_t t, std::tm& tm) {
-#ifdef _WIN32
-	return gmtime_s(&tm, &t) == 0;
-#else
-	return gmtime_r(&t, &tm) != 0;
-#endif
+// Days from 1970-01-01 for a Gregorian date, counting years from March so the leap day comes last.
+static Int32 daysSinceEpoch(const std::tm& tm) {
+	const Int32 year = tm.tm_year + 1900 - (tm.tm_mon < 2 ? 1 : 0);
+	const Int32 month = (tm.tm_mon + 10) % 12;
+	return 365 * year + year / 4 - year / 100 + year / 400 + (153 * month + 2) / 5 + tm.tm_mday - 719469;
 }
 
 struct Support {
@@ -5670,23 +5656,14 @@ struct Support {
 			return NAN_VALUE;
 		}
 		t = static_cast<std::time_t>(dt);
-		struct std::tm localTM;
-		struct std::tm utcTM;
-		if (!breakDownLocalTime(t, localTM) || !breakDownUTCTime(t, utcTM)) {
+		const struct std::tm* const localPtr = std::localtime(&t);
+		if (localPtr == 0) {
 			return NAN_VALUE;
 		}
-		struct std::tm newTM;
-		std::memset(&newTM, 0, sizeof (newTM));
-		newTM.tm_year = utcTM.tm_year;
-		newTM.tm_mon = utcTM.tm_mon;
-		newTM.tm_mday = utcTM.tm_mday;
-		newTM.tm_hour = utcTM.tm_hour;
-		newTM.tm_min = utcTM.tm_min;
-		newTM.tm_sec = utcTM.tm_sec;
-		newTM.tm_isdst = localTM.tm_isdst;
-		const std::time_t newTime = std::mktime(&newTM);
-		return (newTime == -1 ? NAN_VALUE
-				: Value(static_cast<double>(t) * 1000.0 - static_cast<double>(newTime) * 1000.0));
+		const struct std::tm localTM = *localPtr;
+		const double localSeconds = daysSinceEpoch(localTM) * 86400.0 + localTM.tm_hour * 3600.0
+				+ localTM.tm_min * 60.0 + localTM.tm_sec;
+		return Value(localSeconds * 1000.0 - (static_cast<double>(t) * 1000.0 + rt.unixEpochTimeDiff));
 	}
 	
 	static Value random(Runtime&, Processor&, UInt32, const Value*, Object*) {
@@ -5913,9 +5890,8 @@ void Runtime::setupStandardLibrary() {
 		refTM.tm_year = 80;
 		refTM.tm_mday = 1;
 		const std::time_t refTime = std::mktime(&refTM);
-		struct std::tm refUTC;
-		const bool convertedToUTC = (refTime != static_cast<std::time_t>(-1) && breakDownUTCTime(refTime, refUTC));
-		const std::time_t refTimeAsUTC = (convertedToUTC ? std::mktime(&refUTC) : static_cast<std::time_t>(-1));
+		struct std::tm* const refUTC = (refTime == static_cast<std::time_t>(-1) ? 0 : std::gmtime(&refTime));
+		const std::time_t refTimeAsUTC = (refUTC == 0 ? static_cast<std::time_t>(-1) : std::mktime(refUTC));
 		assert(refTime != -1 && refTimeAsUTC != -1);
 		unixEpochTimeDiff = (refTime == static_cast<std::time_t>(-1) || refTimeAsUTC == static_cast<std::time_t>(-1))
 				? 0.0 : 315532800000.0 - static_cast<double>(refTime) * 2000.0
