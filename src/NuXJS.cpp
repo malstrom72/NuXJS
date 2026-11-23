@@ -5428,6 +5428,27 @@ template<class F> struct UnaryMathFunction : public Function {
 	F& f;
 };
 
+/*
+	These fill `tm` without the buffer that `std::localtime` and `std::gmtime` share across threads on glibc and musl,
+	and return false when `t` does not convert. `tzset()` makes a `TZ` change apply, as `std::localtime` does.
+*/
+static bool breakDownLocalTime(std::time_t t, std::tm& tm) {
+#ifdef _WIN32
+	return localtime_s(&tm, &t) == 0;
+#else
+	tzset();
+	return localtime_r(&t, &tm) != 0;
+#endif
+}
+
+static bool breakDownUTCTime(std::time_t t, std::tm& tm) {
+#ifdef _WIN32
+	return gmtime_s(&tm, &t) == 0;
+#else
+	return gmtime_r(&t, &tm) != 0;
+#endif
+}
+
 // Days from 1970-01-01 for a Gregorian date, counting years from March so the leap day comes last.
 static Int32 daysSinceEpoch(const std::tm& tm) {
 	const Int32 year = tm.tm_year + 1900 - (tm.tm_mon < 2 ? 1 : 0);
@@ -5656,11 +5677,10 @@ struct Support {
 			return NAN_VALUE;
 		}
 		t = static_cast<std::time_t>(dt);
-		const struct std::tm* const localPtr = std::localtime(&t);
-		if (localPtr == 0) {
+		struct std::tm localTM;
+		if (!breakDownLocalTime(t, localTM)) {
 			return NAN_VALUE;
 		}
-		const struct std::tm localTM = *localPtr;
 		const double localSeconds = daysSinceEpoch(localTM) * 86400.0 + localTM.tm_hour * 3600.0
 				+ localTM.tm_min * 60.0 + localTM.tm_sec;
 		return Value(localSeconds * 1000.0 - (static_cast<double>(t) * 1000.0 + rt.unixEpochTimeDiff));
@@ -5890,8 +5910,9 @@ void Runtime::setupStandardLibrary() {
 		refTM.tm_year = 80;
 		refTM.tm_mday = 1;
 		const std::time_t refTime = std::mktime(&refTM);
-		struct std::tm* const refUTC = (refTime == static_cast<std::time_t>(-1) ? 0 : std::gmtime(&refTime));
-		const std::time_t refTimeAsUTC = (refUTC == 0 ? static_cast<std::time_t>(-1) : std::mktime(refUTC));
+		struct std::tm refUTC;
+		const bool convertedToUTC = (refTime != static_cast<std::time_t>(-1) && breakDownUTCTime(refTime, refUTC));
+		const std::time_t refTimeAsUTC = (convertedToUTC ? std::mktime(&refUTC) : static_cast<std::time_t>(-1));
 		assert(refTime != -1 && refTimeAsUTC != -1);
 		unixEpochTimeDiff = (refTime == static_cast<std::time_t>(-1) || refTimeAsUTC == static_cast<std::time_t>(-1))
 				? 0.0 : 315532800000.0 - static_cast<double>(refTime) * 2000.0

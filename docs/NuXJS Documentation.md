@@ -25,10 +25,6 @@ with flush-to-zero and denormals-are-zero on, `1e-310` and `5e-324` parse as `0`
 `String(2 / 3)` prints `0.6666666666666667`, one digit off, while `(0.1).toFixed(20)` prints invalid digits. Ordinary
 JavaScript arithmetic is of course affected throughout.
 
-Local time comes from `std::localtime`, and constructing a `Runtime` also calls `std::gmtime`. On glibc and musl both
-return one buffer shared by the whole process, so while another thread calls either function, a `Date` can get that
-thread's result and a wrong local-time offset. MSVC and Apple's C library keep one buffer per thread.
-
 The standard library lives in `src/stdlib.js`.
 During the build, it is minified and converted to C++ via `tools/stdlibToCpp.pika` using `PikaCmd`.
 The build scripts automatically regenerate `src/stdlibJS.cpp` when `stdlib.js` changes.
