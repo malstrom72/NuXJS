@@ -1119,6 +1119,12 @@ static void testHighLevelAPI() {
 	EXPECT(wPtr->isEqualTo(L"wide"));
 	Var unicodeString(rt, std::wstring(L"Hello \u00A9 \u20AC \u03A9"));
 	EXPECT_EQUAL(unicodeString.to<std::wstring>(), L"Hello \u00A9 \u20AC \u03A9");
+	const char* latin1 = "caf\xE9 \xA9";	// 8-bit strings are Latin-1, whether char is signed or not
+	EXPECT(String(latin1).isEqualTo(L"caf\u00E9 \u00A9"));
+	EXPECT(String::allocate(heap, latin1)->isEqualTo(L"caf\u00E9 \u00A9"));
+	EXPECT((new(heap) String(heap.managed(), latin1, latin1 + 4))->isEqualTo(L"caf\u00E9"));
+	EXPECT_EQUAL(Var(rt, std::string(latin1)).to<std::wstring>(), L"caf\u00E9 \u00A9");
+	EXPECT_EQUAL(rt.newStringConstant(latin1), rt.newStringConstant(latin1));	// the second is found in the constants cache
 	EXPECT_EQUAL(objectVar.to<Object*>(), rawObject);
 	EXPECT_EQUAL(valueVar.to<Value>().toInt(), 11);
 	EXPECT_NOT_EQUAL(countArgumentsFunctionVar.to<Function*>(), (Function*)0);

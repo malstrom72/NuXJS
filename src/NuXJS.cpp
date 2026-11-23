@@ -1338,7 +1338,8 @@ String::String(const Char* b, const Char* e) : chars(b, e, 0), hash(0), bloom(0)
 
 String::String(const char* s) : chars(static_cast<UInt32>(std::strlen(s)), 0), hash(0), bloom(0) {
 	assert(size() == std::strlen(s));
-	std::copy(s, s + size(), begin());
+	const unsigned char* latin1 = reinterpret_cast<const unsigned char*>(s);
+	std::copy(latin1, latin1 + size(), begin());
 	createBloomCode();
 }
 
@@ -1350,7 +1351,7 @@ String::String(const wchar_t* s) : chars(utf16Length(std::wcslen(s), s), 0), has
 String::String(GCList& gcList, const char* b, const char* e)
 		: super(gcList), chars(static_cast<UInt32>(e - b), &gcList.getHeap()), hash(0), bloom(0) {
 	assert(size() == e - b);
-	std::copy(b, e, begin());
+	std::copy(reinterpret_cast<const unsigned char*>(b), reinterpret_cast<const unsigned char*>(e), begin());
 	createBloomCode();
 }
 
@@ -1368,7 +1369,8 @@ String::String(GCList& gcList, const String& l, const String& r)
 String::String(GCList& gcList, const char* s)
 		: super(gcList), chars(static_cast<UInt32>(std::strlen(s)), &gcList.getHeap()), hash(0), bloom(0) {
 	assert(size() == std::strlen(s));
-	std::copy(s, s + size(), begin());
+	const unsigned char* latin1 = reinterpret_cast<const unsigned char*>(s);
+	std::copy(latin1, latin1 + size(), begin());
 }
 
 String::String(GCList& gcList, const wchar_t* s)
@@ -1379,7 +1381,8 @@ String::String(GCList& gcList, const wchar_t* s)
 String::String(GCList& gcList, const std::string& s)
 		: super(gcList), chars(static_cast<UInt32>(s.size()), &gcList.getHeap()), hash(0), bloom(0) {
 	assert(size() == s.size());
-	std::copy(s.begin(), s.end(), begin());
+	const unsigned char* latin1 = reinterpret_cast<const unsigned char*>(s.data());
+	std::copy(latin1, latin1 + size(), begin());
 }
 
 String::String(GCList& gcList, const std::wstring& s)
@@ -5800,7 +5803,7 @@ const String* Runtime::newStringConstantWithHash(UInt32 hash, const char* s) {
 		const char* p0 = s;
 		const Char* p1 = cached->begin();
 		const Char* e = cached->end();
-		while (*p0 != 0 && p1 != e && *p0 == *p1) {
+		while (*p0 != 0 && p1 != e && static_cast<unsigned char>(*p0) == *p1) {
 			++p0;
 			++p1;
 		}
