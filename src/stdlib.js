@@ -18,7 +18,7 @@
 	@preserve: undefined,upperToLower,value,valueOf,var,void,while,writable,pop,parse,toDateString,instanceof,test
 	@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,createTable,$match
 	@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
-	@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
+	@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive,catch
 
 	support: {
 		prototypes: {	// built-in prototype objects
@@ -1817,7 +1817,7 @@ defineProperties(JSON, { dontEnum: true }, {
 	}),
 
 	parse: unconstructable(function parse(text, reviver) {
-		var nest = 0, lineSeparator = false;
+		var nest = 0;
 		function space(t, p) {
 			var ch;
 			while ((ch = t[p]) === ' ' || ch === '\t' || ch === '\r' || ch === '\n') ++p;
@@ -1845,7 +1845,6 @@ defineProperties(JSON, { dontEnum: true }, {
 			if (t[p] !== '"') return;
 			++p;
 			while ((ch = t[p]) !== '"' && ch >= ' ') {
-				if (ch === '\u2028' || ch === '\u2029') lineSeparator = true;
 				if (ch === '\\') {
 					switch (t[++p]) {
 						default: return;
@@ -1899,8 +1898,9 @@ defineProperties(JSON, { dontEnum: true }, {
 		var p, parser;
 		if ((parser = PARSERS[text[p = space(text, 0)]]) && (p = parser(text, p))
 				&& space(text, p) === text.length) {
-			// A JSON string may hold a raw U+2028 or U+2029, which end a string literal, so escape them for the eval.
-			if (lineSeparator) {
+			// A JSON string may hold a raw U+2028 or U+2029, which end a string literal, so escape them and retry.
+			var val;
+			try { val = eval('(' + text + ')') } catch (e) {
 				var b = new StringBuilder, from = 0;
 				for (var i = 0, n = text.length; i < n; ++i) {
 					var c = text[i];
@@ -1909,9 +1909,9 @@ defineProperties(JSON, { dontEnum: true }, {
 						from = i + 1;
 					}
 				}
-				text = b.append($sub(text, from, n)).build();
+				if (!from) throw e;
+				val = eval('(' + b.append($sub(text, from, n)).build() + ')')
 			}
-			var val = eval('(' + text + ')');
 			if (typeof reviver === "function") {
 				function walk(holder, key) {
 					var k, v, o;

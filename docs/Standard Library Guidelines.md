@@ -47,9 +47,9 @@ rewrite `if`/`?:`, remove braces, rewrite numbers, or touch anything inside a st
   ordinary variable names: `value`, `name`, `index`, `length`, `min`, `max`, `test`, `source`, `global`, `log`,
   `parse`, `time`, `input`, `match`, `call`, `apply`. Check the lists at the top of `src/stdlib.js` before naming
   anything.
-- **Keywords are just identifiers to the minifier**, so every keyword in use must be on a `@preserve` list. `catch`,
-  `continue` and `with` are *not* on it, which is safe only because the file uses none of them. Introducing a
-  `try`/`catch` or a `continue` without adding the keyword first yields a silently corrupt blob.
+- **Keywords are just identifiers to the minifier**, so every keyword in use must be on a `@preserve` list.
+  `continue` and `with` are *not* on it, which is safe only because the file uses neither. Introducing a `continue`
+  without adding the keyword first yields a silently corrupt blob.
 - **Private property names are free.** A property invented and used only inside the file is renamed on both store and
   load. Only names the engine or user code must see need preserving.
 - **Numbers are never rewritten.** Write `1e21`, not the digits.
