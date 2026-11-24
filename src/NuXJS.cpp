@@ -2837,7 +2837,7 @@ Processor::Processor(Runtime& rt) : super(rt.heap.roots()), rt(rt), heap(rt.heap
 CodeWord Processor::packInstruction(const Opcode opcode, const Int32 operand) {
 	assert(0 <= opcode && static_cast<int>(opcode) < 256);
 	assert(MIN_OPERAND_VALUE <= operand && operand <= MAX_OPERAND_VALUE);
-	return ((operand & 0xFFFFFF) << 8) | opcode;
+	return static_cast<CodeWord>(((static_cast<UInt32>(operand) & 0xFFFFFFu) << 8) | opcode);
 }
 
 std::pair<Processor::Opcode, Int32> Processor::unpackInstruction(const CodeWord codeWord) {
@@ -5124,8 +5124,9 @@ void Compiler::switchStatement(SemanticScope* currentScope) {
 	assert(currentSection == &mainSection);
 	const BranchPoint donePoint = emitForwardBranch(Processor::JMP_OP);
 	completeForwardBranch(testsPoint);
+	const Int32 mainSize = static_cast<Int32>(mainSection.code.size());
 	for (UInt32 i = 0; i < jumpOffsets.size(); ++i) {
-		patchOperand(testsSection.code[jumpOffsets[i]], caseOffsets[i] - 1 - jumpOffsets[i] - mainSection.code.size());
+		patchOperand(testsSection.code[jumpOffsets[i]], caseOffsets[i] - 1 - jumpOffsets[i] - mainSize);
 	}
 	currentSection->insertSection(testsSection);
 	assert(currentSection->stackDepth == testsSectionEntryStackDepth); // since we assume this in the default case code
