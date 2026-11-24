@@ -6,7 +6,7 @@ A sandboxed, single C++ source-file JavaScript engine in vanilla C++03 with prec
 
 - **Fully ECMAScript 3 compliant** with focused ECMAScript 5 additions (string indexing, JSON).
 - Entire engine fits in **one .cpp file, one .h file, and a `stdlib.js`** (~7 000 LOC of C++); the `stdlib.js` is also generated into a `stdlibJS.cpp` array for embedding.
-- Written in portable, standard **C++03** – no OS-specific code, just a few small compiler and C library shims (e.g. MSVC math intrinsics, reentrant `localtime`). Tested with GCC and Clang (x86-64 and ARM) and MSVC.
+- Written in portable, standard **C++03**: no OS-specific code, just a few small compiler and C library shims (e.g. MSVC math intrinsics, reentrant `localtime`). Tested with GCC and Clang (x86-64 and ARM) and MSVC.
 - Fully asynchronous, **non-blocking VM**; run as many cycles as you like between host calls.
 - Simple but **fast stack machine**; competitive with other interpreted JS engines.
 - **Sandboxed and secure** – guest JS cannot crash the host process.

@@ -5682,7 +5682,8 @@ struct Support {
 		if (dt < 0.0) { // MSVC can crash on conversion although documentation says it should return null.
 			return NAN_VALUE;
 		}
-		if (dt > static_cast<double>(std::numeric_limits<std::time_t>::max())) {
+		// Ten days past the last ECMAScript time (8.64e15 ms) no offset matters, and daysSinceEpoch would overflow.
+		if (dt > 8.64e12 + 864000.0 || dt > static_cast<double>(std::numeric_limits<std::time_t>::max())) {
 			return NAN_VALUE;
 		}
 		t = static_cast<std::time_t>(dt);
