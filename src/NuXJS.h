@@ -1228,6 +1228,7 @@ class Runtime : public GCItem {
 		void setMemoryCap(size_t maxBytesUsed);			///< Sets an absolute limit on memory allocated by this run-time. Checked after each GC. If more memory than this is in use an exception is thrown.
 		void resetTimeOut(Int32 timeOutSeconds);		///< Sets a time-out after which an exception is thrown (by checkTimeOut() which is called from runUntilReturn()).
 		void noTimeOut();								///< Disables the time-out (default).
+		void setRandomSeed(UInt32 seed);				// restarts Math.random; every runtime starts from the same seed
 		void setupStandardLibrary();					///< Sets up all the standard library functions and support routines. It is possible to execute script code without calling setupStandardLibrary() but apart from missing all built-in "native objects" defined in EcmaScript there will be some other limitations (e.g. no support for regular expression literals and no support for implicit valueOf() / toString() conversions).
 
 		Heap& getHeap() const { return heap; }
@@ -1260,6 +1261,7 @@ class Runtime : public GCItem {
 	protected:
 		const String* newStringConstantWithHash(UInt32 hash, const char* s);
 		void fetchFunction(const Object* supportObject, const char* name, Function** f);
+		UInt32 nextRandom();
 	
 		Heap& heap;
 		GlobalScope globalScope;
@@ -1278,6 +1280,7 @@ class Runtime : public GCItem {
 		Function* createRegExpFunction;
 		Function* evalFunction;
 		double unixEpochTimeDiff;
+		UInt32 randomState[2];
 
 		mutable const String* stringConstantsCache[STRING_CONSTANTS_CACHE_SIZE];
 	

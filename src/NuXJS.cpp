@@ -5695,8 +5695,10 @@ struct Support {
 		return Value(localSeconds * 1000.0 - (static_cast<double>(t) * 1000.0 + rt.unixEpochTimeDiff));
 	}
 	
-	static Value random(Runtime&, Processor&, UInt32, const Value*, Object*) {
-		return rand() / (RAND_MAX + 1.0);
+	static Value random(Runtime& rt, Processor&, UInt32, const Value*, Object*) {
+		const UInt32 high = rt.nextRandom() >> 5;
+		const UInt32 low = rt.nextRandom() >> 6;
+		return (high * 67108864.0 + low) * (1.0 / 9007199254740992.0);	// 53 bits, so never 1
 	}
 };
 
@@ -5745,6 +5747,7 @@ Runtime::Runtime(Heap& heap) : super(heap.roots()), heap(heap), globalScope(heap
 		, checkTimeOutCounter(0), timeOut(0), memoryCap(MAX_MEMORY_CAP), gcThreshold(AUTO_GC_MIN_SIZE), evalCodeCache(&heap)
 		, createRegExpFunction(&NO_REG_EXP_SUPPORT), evalFunction(&EVAL_FUNCTION), unixEpochTimeDiff(0.0) {
 	std::fill(stringConstantsCache, stringConstantsCache + (1 << STRING_CONSTANTS_CACHE_SIZE_N), (const String*)(0));
+	setRandomSeed(123456789);
 	std::fill(prototypes, prototypes + PROTOTYPE_COUNT, (Object*)(0));
 	std::fill(toPrimitiveFunctions + 0, toPrimitiveFunctions + 3, &DEFAULT_CONVERSION);
 	Object* objectProto = new(heap) JSObject(heap.managed(), 0);
@@ -5970,6 +5973,23 @@ void Runtime::setStackSize(UInt32 maxValuesOnStack) { stackSize = maxValuesOnSta
 void Runtime::setMaxNestedCompileDepth(Int32 maxDepth) { assert(maxDepth >= 64); maxNestedCompileDepth = maxDepth; }
 void Runtime::setMemoryCap(size_t maxBytesUsed) { memoryCap = maxBytesUsed; }
 void Runtime::noTimeOut() { checkTimeOutCounter = 0; }
+
+// The second word is never 0, so the state cannot be xorshift's fixed point (0, 0).
+void Runtime::setRandomSeed(UInt32 seed) {
+	randomState[0] = seed;
+	randomState[1] = 362436069;
+	for (int i = 0; i < 64; ++i) {	// seeds one bit apart need about 48 steps to give unrelated output
+		nextRandom();
+	}
+}
+
+// Marsaglia's two-word xorshift with the shifts (10, 13, 10), which give the full period of 2^64 - 1.
+UInt32 Runtime::nextRandom() {
+	const UInt32 t = randomState[0] ^ (randomState[0] << 10);
+	randomState[0] = randomState[1];
+	randomState[1] ^= (randomState[1] >> 10) ^ t ^ (t >> 13);
+	return randomState[1];
+}
 
 void Runtime::resetTimeOut(Int32 timeOutSeconds) {
 	timeOut = clock() + timeOutSeconds * CLOCKS_PER_SEC;
