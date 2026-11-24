@@ -652,6 +652,7 @@ class String : public Object {
 	public:
 		typedef Object super;
 
+		// The 8-bit constructors define ASCII only; other bytes are reserved for a future UTF-8 input.
 		static const String* allocate(Heap& heap, const char* s) { return new(heap) String(heap.managed(), s); }		///< Creates a (gc'able) string by copying a zero-terminated 8-bit string. (This function is equivalent to `new(heap) String(heap.managed(), s)`)
 		static const String* concatenate(Heap& heap, const String& l, const String& r) {								///< Creates a (gc'able) string by concatenating two existing strings. Notice that it is ok to pass temporary String values for `l` and `r` since these will be used by value only. (This function is equivalent to `new(heap) String(heap.managed(), l, r)`)
 			return new(heap) String(heap.managed(), l, r);
