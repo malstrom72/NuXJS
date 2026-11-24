@@ -1840,6 +1840,8 @@ class Compiler : public GCItem {
 		static const String* newHashedString(Heap& heap, const Char* b, const Char* e);
 		void error(ErrorType type, const String* message);
 		void error(ErrorType type, const char* message);
+		Int32 checkOperand(Int32 operand);
+		void patchOperand(CodeWord& codeWord, Int32 operand);
 		void emit(Processor::Opcode opcode, Int32 operand = 0);
 		CodeSection* changeSection(CodeSection* newOutputSection);
 		UInt32 addConstant(const Value& constant);
