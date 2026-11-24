@@ -89,20 +89,19 @@ var PARSE_INT_CHARS = (function() {
 	return pic
 })();
 
-function StringBuilder() {
-	var i = 20, b = this.buffers = [ ];
-	do { b[--i] = '' } while (i > 0)
-}
+// Buffer i carries into i + 1 at 256 << i characters, up to 20 buffers; each is created when first reached.
+function StringBuilder() { this.buffers = [ '' ] }
 StringBuilder.prototype.append = function append(s) {
 	for (var i = 0, n = 256, b = this.buffers; (b[i] += s).length >= n && i < 19; n <<= 1, ++i) {
 		s = b[i];
-		b[i] = ''
+		b[i] = '';
+		if (i + 1 === b.length) b[i + 1] = ''
 	}
 	return this;
 };
 StringBuilder.prototype.build = function build() {
-	var i, b, s = (b = this.buffers)[i = 19];
-	do { s += b[--i] } while (i > 0);
+	var b, i = (b = this.buffers).length - 1, s = b[i];
+	while (i > 0) s += b[--i];
 	return s
 };
 
