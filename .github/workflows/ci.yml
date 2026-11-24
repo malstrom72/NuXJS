@@ -27,7 +27,9 @@ jobs:
         ./build.sh
     - name: Compile depth on a 512 KB stack
       run: bash ./tools/stackDepthCheck.sh
-        
+    - name: Compile the engine as C++03
+      run: clang++ -std=c++03 -pedantic-errors -Wall -Werror -fsyntax-only src/NuXJS.cpp src/stdlibJS.cpp
+
   linux-gcc:
     runs-on: ubuntu-latest
     steps:
@@ -38,6 +40,8 @@ jobs:
         ./build.sh
     - name: Compile depth on a 512 KB stack
       run: bash ./tools/stackDepthCheck.sh
+    - name: Compile the engine as C++03
+      run: g++ -std=c++03 -pedantic-errors -Wall -Werror -fsyntax-only src/NuXJS.cpp src/stdlibJS.cpp
 
   # The sanitizers don't see reads of uninitialized memory, Valgrind does. -r runs only NuXJSTest's corpus replay,
   # since its timed checks cannot hold at Valgrind's speed.
