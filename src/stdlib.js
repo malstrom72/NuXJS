@@ -1901,14 +1901,12 @@ defineProperties(JSON, { dontEnum: true }, {
 			// A JSON string may hold a raw U+2028 or U+2029, which end a string literal, so escape them and retry.
 			var val;
 			try { val = eval('(' + text + ')') } catch (e) {
-				var b = new StringBuilder, from = 0;
-				for (var i = 0, n = text.length; i < n; ++i) {
-					var c = text[i];
-					if (c === '\u2028' || c === '\u2029') {
+				var b = new StringBuilder, from = 0, c, i = -1, n = text.length;
+				while (++i < n)
+					if ((c = text[i]) === '\u2028' || c === '\u2029') {
 						b.append($sub(text, from, i) + (c === '\u2028' ? '\\u2028' : '\\u2029'));
 						from = i + 1;
 					}
-				}
 				if (!from) throw e;
 				val = eval('(' + b.append($sub(text, from, n)).build() + ')')
 			}
