@@ -548,7 +548,7 @@ struct MyHeap : public Heap {
 #include <sys/time.h>
 #endif
 
-void randomSeed() {
+UInt32 randomSeed() {
 	unsigned int seed;
 #if (_MSC_VER)
 	::LARGE_INTEGER count;
@@ -570,7 +570,7 @@ void randomSeed() {
 	seed = (static_cast<unsigned int>(time(0)) ^ static_cast<unsigned int>(t & 0xFFFFFFFFU))
 			+ (static_cast<unsigned int>(clock()) ^ static_cast<unsigned int>((t >> 32) & 0xFFFFFFFFU));
 #endif
-	srand(seed);
+	return seed;
 }
 
 void printVersion() {
@@ -909,7 +909,7 @@ int replMain(int argc, const char* argv[]) {
 		}
 		globals["arguments"] = argumentsVar;
 
-		randomSeed();
+		rt.setRandomSeed(randomSeed());
 
 		if (loadStdLib) {
 			try {

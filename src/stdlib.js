@@ -18,7 +18,7 @@
 	@preserve: undefined,upperToLower,value,valueOf,var,void,while,writable,pop,parse,toDateString,instanceof,test
 	@preserve: toPrimitiveNumber,toPrimitiveString,constructor,isPrototypeOf,prototypes,createWrapper,createTable,$match
 	@preserve: $sub,createRegExp,CC,global,source,JSON,stringify,toJSON,unshift,compileFunction,localTimeDifference
-	@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive
+	@preserve: splice,split,search,replace,random,evalFunction,updateDateValue,toPrimitive,catch
 //#if ES5
 	@preserve: trim,preventExtensions,isExtensible,defineOwnProperty,get,set,keys,create,now,seal,freeze,isSealed
 	@preserve: getOwnPropertyDescriptor,getOwnPropertyNames,createObject,isFrozen,bind,bindFunction,forEach,map
@@ -122,20 +122,19 @@ var PARSE_INT_CHARS = (function() {
 	return pic
 })();
 
-function StringBuilder() {
-	var i = 20, b = this.buffers = [ ];
-	do { b[--i] = '' } while (i > 0)
-}
+// Buffer i carries into i + 1 at 256 << i characters, up to 20 buffers; each is created when first reached.
+function StringBuilder() { this.buffers = [ '' ] }
 StringBuilder.prototype.append = function append(s) {
-	for (var i = 0, n = 256, b = this.buffers; (b[i] += s).length >= n && i < 20; n <<= 1, ++i) {
+	for (var i = 0, n = 256, b = this.buffers; (b[i] += s).length >= n && i < 19; n <<= 1, ++i) {
 		s = b[i];
-		b[i] = ''
+		b[i] = '';
+		if (i + 1 === b.length) b[i + 1] = ''
 	}
 	return this;
 };
 StringBuilder.prototype.build = function build() {
-	var i, b, s = (b = this.buffers)[i = 19];
-	do { s += b[--i] } while (i > 0);
+	var b, i = (b = this.buffers).length - 1, s = b[i];
+	while (i > 0) s += b[--i];
 	return s
 };
 
@@ -2476,7 +2475,18 @@ defineProperties(JSON, { dontEnum: true }, {
 		var p, parser;
 		if ((parser = PARSERS[text[p = space(text, 0)]]) && (p = parser(text, p))
 				&& space(text, p) === text.length) {
-			var val = eval('(' + text + ')');
+			// A JSON string may hold a raw U+2028 or U+2029, which end a string literal, so escape them and retry.
+			var val;
+			try { val = eval('(' + text + ')') } catch (e) {
+				var b = new StringBuilder, from = 0, c, i = -1, n = text.length;
+				while (++i < n)
+					if ((c = text[i]) === '\u2028' || c === '\u2029') {
+						b.append($sub(text, from, i) + (c === '\u2028' ? '\\u2028' : '\\u2029'));
+						from = i + 1;
+					}
+				if (!from) throw e;
+				val = eval('(' + b.append($sub(text, from, n)).build() + ')')
+			}
 			if (typeof reviver === "function") {
 				function walk(holder, key) {
 					var k, v, o;

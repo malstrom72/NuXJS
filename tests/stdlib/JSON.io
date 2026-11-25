@@ -324,3 +324,8 @@
 > print(JSON.stringify(new Date(Infinity)))
 < null
 -
+> print(JSON.parse('"a\u2028b\u2029c"') === "a\u2028b\u2029c");
+< true
+-
+> print(JSON.parse('["\u2028", {"k": "\u2029"}]')[1].k.charCodeAt(0));
+< 8233

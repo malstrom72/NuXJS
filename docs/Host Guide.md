@@ -25,6 +25,9 @@ Set the limits before running anything a script controls. Each one is described 
   limits"). Lower it before the standard library is set up; it must stay at 64 or above.
 - `Runtime::setStackSize` sets the virtual machine's value stack, the one script recursion uses.
 
+`Math.random` gives the same sequence in every runtime, on every platform, until `Runtime::setRandomSeed` picks
+another, for example from the clock.
+
 A runtime and everything on its heap belong to one thread. Several runtimes may share a heap, but a heap is not
 thread-safe, so a host that runs scripts on several threads gives each thread its own heap ("Runtime Architecture").
 

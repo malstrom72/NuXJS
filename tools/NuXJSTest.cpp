@@ -697,6 +697,7 @@ static void testStandardLibrary() {
 	std::cout << std::endl << "***** Standard Library *****" << std::endl << std::endl;
 	std::cout << "	- array operations" << std::endl;
 	std::cout << "	- string utilities" << std::endl;
+	std::cout << "	- Math.random sequences" << std::endl;
 
 	Heap heap;
 	Runtime rt(heap);
@@ -707,6 +708,14 @@ static void testStandardLibrary() {
 
 	Var upper = rt.eval("'abc'.toUpperCase();");
 	EXPECT_EQUAL(upper.to<std::wstring>(), L"ABC");
+
+	const char* const twoRandoms = "Math.random() + ',' + Math.random()";
+	EXPECT_EQUAL(rt.eval(twoRandoms).to<std::wstring>(), L"0.6842040316273719,0.6795375719878194");
+	Runtime otherRT(heap);
+	otherRT.setupStandardLibrary();
+	EXPECT_EQUAL(otherRT.eval(twoRandoms).to<std::wstring>(), L"0.6842040316273719,0.6795375719878194");
+	rt.setRandomSeed(1);
+	EXPECT_EQUAL(rt.eval(twoRandoms).to<std::wstring>(), L"0.24278014119009494,0.3182525659842642");
 }
 
 static void testJSON() {
@@ -2160,6 +2169,7 @@ int main(int argc, const char* argv[]) {
 			testTables();
 			testVars();
 			testArrayVars();
+			testStandardLibrary();
 			testJSON();
 			testCompilation();
 			testLimits();
