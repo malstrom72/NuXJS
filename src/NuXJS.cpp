@@ -1677,6 +1677,12 @@ void Heap::gc() {
 	newList->deleteAll();
 }
 
+void Heap::computeLazyState() const {
+	for (const GCItem* item = currentList->_gcNext; item != currentList; item = item->_gcNext) {
+		item->computeLazyState();
+	}
+}
+
 void Heap::drain() {
 	for (int poolIndex = 0; poolIndex < MAX_POOLED_SIZE / POOL_SIZE_GRANULARITY; ++poolIndex) {
 		void* p = pools[poolIndex];
@@ -1866,22 +1872,44 @@ void Table::gcMarkReferences(Heap& heap) const {
 	}
 }
 
-Table::Bucket* Table::find(const String* key, UInt32 hash) {
-	UInt32 mask = (buckets.size() - 1);
+UInt32 Table::probe(const String* key, UInt32 hash) const {
+	const UInt32 mask = (buckets.size() - 1);
+	const UInt16 hash16 = static_cast<UInt16>(hash & 0xFFFF);
 	UInt32 i = hash & mask;
-	UInt16 hash16 = static_cast<UInt16>(hash & 0xFFFF);
-	Bucket* bucket;
-	while ((bucket = &buckets[i])->keyExists()) {
-		if (bucket->key == key || (bucket->hash16 == hash16 && bucket->key->isEqualTo(*key))) {
-			if (i != (hash & mask)) {
-				std::swap(buckets[i], buckets[(i - 1) & mask]);
-				i = (i - 1) & mask;
-			}
-			break;
+	while (buckets[i].keyExists()) {
+		const Bucket& bucket = buckets[i];
+		if (bucket.key == key || (bucket.hash16 == hash16 && bucket.key->isEqualTo(*key))) {
+			return i;
 		}
 		i = (i + 1) & mask;
 	}
+	return i;
+}
+
+// A hit moves one slot toward its home slot, so often used keys need fewer probes.
+Table::Bucket* Table::find(const String* key, UInt32 hash) {
+	const UInt32 mask = (buckets.size() - 1);
+	UInt32 i = probe(key, hash);
+	if (buckets[i].keyExists() && i != (hash & mask)) {
+		std::swap(buckets[i], buckets[(i - 1) & mask]);
+		i = (i - 1) & mask;
+	}
 	return &buckets[i];
+}
+
+const Table::Bucket* Table::lookupWithoutReordering(const String* key) const {
+	const Bucket* bucket = &buckets[probe(key, key->calcHash())];
+	return (bucket->valueExists() ? bucket : 0);
+}
+
+void Table::growForReading() {
+	UInt32 newSize = buckets.size();
+	while (newSize < 4 * loadCount) {
+		newSize <<= 1;
+	}
+	if (newSize != buckets.size()) {
+		rebuild(newSize);
+	}
 }
 
 UInt32 Table::rebuild(UInt32 newSize) {
@@ -2033,7 +2061,7 @@ Code::Code(GCList& gcList, Constants* sharedConstants, SourceCodeUnit* sourceUni
 }
 
 bool Code::lookupNameIndex(const String* name, Int32& index) const {
-	const Table::Bucket* bucket = nameIndexes.lookup(name);
+	const Table::Bucket* bucket = nameIndexes.lookupWithoutReordering(name);
 	if (bucket == 0) {
 		return false;
 	}
@@ -5302,6 +5330,7 @@ const Char* Compiler::compileFunction(const Char* b, const Char* e, const String
 	code->selfName = selfName;
 	code->source = String::concatenate(heap, String(heap.roots(), FUNCTION_SPACE, *functionName), String(heap.roots(), b, p));
 	code->bloomSet |= (selfName != 0 ? selfName->createBloomCode() : 0) | ARGUMENTS_STRING.createBloomCode();
+	code->nameIndexes.growForReading();
 	return p;
 }
 
@@ -5311,6 +5340,7 @@ void Compiler::compile(const String& source) {
 	if (!eof()) {
 		error(SYNTAX_ERROR, "Syntax error"); // FIX : better error?
 	}
+	code->nameIndexes.growForReading();
 }
 
 void Compiler::getStopPosition(UInt32& offset, UInt32& lineNumber, UInt32& columnNumber) const {
@@ -5918,15 +5948,13 @@ void Runtime::fetchFunction(const Object* supportObject, const char* name, Funct
 	}
 }
 
-extern const char* STDLIB_JS;
-
 double Runtime::getCurrentEpochTime() {
 	std::time_t t;
 	std::time(&t);
 	return static_cast<double>(t) * 1000.0 + unixEpochTimeDiff;
 }
 
-void Runtime::setupStandardLibrary() {
+void Runtime::setupStandardLibrary(const Code* stdlibCode) {
 	{	// time() is not guaranteed to return utc time, so we perform some conversions to find the actual implementation
 		struct std::tm refTM;
 		std::memset(&refTM, 0, sizeof (refTM));
@@ -5966,7 +5994,9 @@ void Runtime::setupStandardLibrary() {
 		prototypesObject->setOwnProperty(*this, PROTOTYPE_NAMES[i], prototypes[i]);
 	}
 	
-	const Var func = eval(*String::allocate(heap, STDLIB_JS));
+	Processor processor(*this);
+	processor.enterEvalCode(stdlibCode != 0 ? stdlibCode : compileEvalCode(String::allocate(heap, STDLIB_JS)));
+	const Var func = runUntilReturn(processor);
 	Value argv[1] = { protectedSupportObject };
 	call(func, 1, argv);
 	

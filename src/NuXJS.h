@@ -97,6 +97,7 @@ class GCItem {
 			_gcReferenceMarkingComplete = true;
 	#endif
 		}
+		virtual void computeLazyState() const { }	// See Heap::computeLazyState.
 		virtual ~GCItem();
 		friend void gcMark(Heap& heap, const GCItem* item);
 
@@ -158,6 +159,7 @@ class Heap {
 		size_t pooled() const { return pooledSize; }
 		void setMaxAllocationSize(size_t maxSize) { assert(maxSize <= 0x7FFFFFFF); maxAllocationSize = maxSize; }		// 2 GB at most: string lengths and offsets are 32-bit
 		void gc();
+		void computeLazyState() const;					// Fills lazy state, so threads can share the heap.
 		virtual ~Heap();
 		friend void gcMark(Heap& heap, const GCItem* item);
 
@@ -526,15 +528,18 @@ class Table {
 		Bucket* getNext(Bucket* bucket) const;								///< Returns next bucket with an existing value or 0.
 		const Bucket* lookup(const String* key) const;						///< Return bucket pointer for key or 0.
 		Bucket* lookup(const String* key);									///< Return bucket pointer for key or 0.
+		const Bucket* lookupWithoutReordering(const String* key) const;		// Never writes, so threads can share it.
 		Bucket* insert(const String* key);									///< Insert key (if necessary) and return bucket pointer.
 		bool update(Bucket* bucket, const Value& value, Flags flags = 0);	///< Update value. Returns false if bucket is marked as read-only.
 		bool erase(Bucket* bucket);											///< Deletes bucket. Returns false if bucket is marked as dont-delete.
 		UInt32 getLoadCount() const;										///< Returns number of used hash table entries (not necessarily the same as the number of existing buckets!).
 		void update(Bucket* bucket, const Int32 index);						///< Update value as an index. Only used by name to index tables as an optimization.
+		void growForReading();												// To at most a quarter full.
 		void gcMarkReferences(Heap& heap) const;
 	
 	protected:
 		static UInt32 calcMaxLoad(UInt32 bucketCount);
+		UInt32 probe(const String* key, UInt32 hash) const;					// Slot of `key`, else where its run ends.
 		Bucket* find(const String* key, UInt32 hash);
 		UInt32 rebuild(UInt32 newN);
 
@@ -693,6 +698,7 @@ class String : public Object {
 		std::string toUTF8String() const;												///< returns WTF-8 for host error/reporting paths
 		std::wstring toWideString() const;												///< If wchar_t is 32-bit, UTF16 will be decoded automatically. Unmatched surrogate code units are copied through unchanged.
 		UInt32 createBloomCode() const;
+		virtual void computeLazyState() const { createBloomCode(); }					// computes the hash too
 
 	protected:
 		Vector<Char> chars;
@@ -1192,6 +1198,8 @@ const size_t STRING_CONSTANTS_CACHE_SIZE = (1 << STRING_CONSTANTS_CACHE_SIZE_N);
 const size_t STRING_CONSTANTS_CACHE_MAX_LENGTH = 64;	///< Max length of a string to cache.
 const size_t MAX_MEMORY_CAP = std::numeric_limits<std::size_t>::max();
 
+extern const char* STDLIB_JS;	// The standard library source, src/stdlibJS.cpp
+
 /**
 	Runtime bundles together the heap, global objects and execution state required to run JavaScript code.
 **/
@@ -1230,7 +1238,7 @@ class Runtime : public GCItem {
 		void resetTimeOut(Int32 timeOutSeconds);		///< Sets a time-out after which an exception is thrown (by checkTimeOut() which is called from runUntilReturn()).
 		void noTimeOut();								///< Disables the time-out (default).
 		void setRandomSeed(UInt32 seed);				// restarts Math.random; every runtime starts from the same seed
-		void setupStandardLibrary();					///< Sets up all the standard library functions and support routines. It is possible to execute script code without calling setupStandardLibrary() but apart from missing all built-in "native objects" defined in EcmaScript there will be some other limitations (e.g. no support for regular expression literals and no support for implicit valueOf() / toString() conversions).
+		void setupStandardLibrary(const Code* stdlibCode = 0);	// Sets up all the standard library functions and support routines. It is possible to execute script code without calling setupStandardLibrary() but apart from missing all built-in "native objects" defined in EcmaScript there will be some other limitations (e.g. no support for regular expression literals and no support for implicit valueOf() / toString() conversions). A `stdlibCode` other than 0 is `STDLIB_JS` from `compileEvalCode`, possibly of another runtime: it must stay reachable in a heap that outlives this runtime, and saves compiling it again.
 
 		Heap& getHeap() const { return heap; }
 		Object* getObjectPrototype() const { return prototypes[OBJECT_PROTOTYPE]; }
