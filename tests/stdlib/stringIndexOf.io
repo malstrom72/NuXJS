@@ -130,3 +130,15 @@
 > print("abcdabcd".lastIndexOf("c", "not a number"))
 < 6
 -
+// The start is clamped to the string, so an empty string is found at the end, and a match at 0 from a negative start.
+> print("abc".indexOf("", 10))
+< 3
+-
+> print("".indexOf("", 1))
+< 0
+-
+> print("abc".lastIndexOf("", -1))
+< 0
+-
+> print("abc".lastIndexOf("a", -5))
+< 0

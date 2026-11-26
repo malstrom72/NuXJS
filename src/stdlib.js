@@ -651,6 +651,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 //#endif
 		var s, i, e = (s = str(this)).length - (searchString = str(searchString)).length, pos = arguments[1];
 		if ((i = int(pos)) < 0) i = 0;
+		else if (i > s.length) i = s.length;
 		for (; i <= e; ++i) if ($match(s, i, searchString)) return i;
 		return -1;
 	}),
@@ -660,6 +661,7 @@ defineProperties(String.prototype, { dontEnum: true }, {
 //#endif
 		var s, i, e = (s = str(this)).length - (searchString = str(searchString)).length, pos = arguments[1];
 		if ($isNaN(pos = +pos) || (i = int(pos)) > e) i = e;
+		else if (i < 0) i = 0;
 		for (; i >= 0; --i) if ($match(s, i, searchString)) return i;
 		return -1;
 	}),
