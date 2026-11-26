@@ -142,3 +142,22 @@
 -
 > print("abc".lastIndexOf("a", -5))
 < 0
+-
+// Long strings and long needles, past the 4096 compares after which support.indexOf stops and is called again.
+> var s = 'x'; while (s.length < 8192) s += s; print((s + 'y').indexOf('y'))
+< 8192
+-
+> var s = 'x'; while (s.length < 4096) s += s; print((s + 'y').indexOf('y'))
+< 4096
+-
+> var s = 'x'; while (s.length < 8192) s += s; print((s + 'xy').indexOf(s + 'y'))
+< 1
+-
+> var s = 'x'; while (s.length < 8192) s += s; print((s + 'xy').indexOf(s + 'y', 2))
+< -1
+-
+> var s = 'x'; while (s.length < 8192) s += s; print(s.indexOf(s + 'x'))
+< -1
+-
+> print("abc".indexOf("c", 2.5))
+< 2

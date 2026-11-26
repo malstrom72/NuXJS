@@ -42,6 +42,7 @@
 		charCodeAt(s: string, i: number): string
 		substring(s: string, from: number, to: number): string
 		submatch(text: string, offset: number, match: string): boolean
+		indexOf(text: string, search: string, from: number): number					// 0 <= from <= text.length; -2 - i: call again from i
 		getCurrentTime(): number
 		localTimeDifference(epochTime: number): number
 		updateDateValue(o: object, v: number): number
@@ -69,6 +70,7 @@ var unconstructable = support.distinctConstructor; // these are the same now, bu
 
 var $isNaN = support.isNaN, $isFinite = support.isFinite, $floor = support.floor, $NaN = support.NaN
 		, $Infinity = support.Infinity, $match = support.submatch, $sub = support.substring // "$match" and "$sub" are used from within regexps, so names has to be preserved
+		, $indexOf = support.indexOf
 		, $getInternalProperty = support.getInternalProperty, $callWithArgs = support.callWithArgs
 		, $charCodeAt = support.charCodeAt, abs, syntaxError, rangeError, typeError
 		, ALPHA_DIGITS_LOWER = "0123456789abcdefghijklmnopqrstuvwxyz", ALPHA_DIGITS_UPPER = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -492,11 +494,13 @@ defineProperties(String.prototype, { dontEnum: true }, {
 		return s;
 	}),
 	indexOf: unconstructable(function indexOf(searchString) { // .length should be 1
-		var s, i, e = (s = str(this)).length - (searchString = str(searchString)).length, pos = arguments[1];
+		var s = str(this), i, pos = arguments[1], r;
+		searchString = str(searchString);
 		if ((i = int(pos)) < 0) i = 0;
 		else if (i > s.length) i = s.length;
-		for (; i <= e; ++i) if ($match(s, i, searchString)) return i;
-		return -1;
+		r = $indexOf(s, searchString, i);
+		while (r < -1) r = $indexOf(s, searchString, -2 - r);	// it stops every 4096 compares, so a host can yield
+		return r;
 	}),
 	lastIndexOf: unconstructable(function lastIndexOf(searchString) { // .length should be 1
 		var s, i, e = (s = str(this)).length - (searchString = str(searchString)).length, pos = arguments[1];

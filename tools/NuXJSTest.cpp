@@ -814,6 +814,21 @@ static void testLimits() {
 	rt.setMemoryCap(512*1024*1024);
 	rt.resetTimeOut(1);
 	EXPECT_EXCEPTION(rt.run("while(true) {}"), "Time out");
+	rt.noTimeOut();
+	rt.run("var t = 'a', u; while (t.length < 2097152) t += t; u = t.substring(0, 65536) + 'b';");
+	rt.resetTimeOut(1);	// some 10^11 compares
+	EXPECT_EXCEPTION(rt.eval("t.indexOf(u)"), "Time out");
+	rt.noTimeOut();
+	{
+		const String search(heap.roots(), "t.substring(0, 131072).indexOf(t.substring(0, 8192) + 'b');");
+		Processor processor(rt);
+		processor.enterGlobalCode(rt.compileGlobalCode(search));
+		int batches = 0;
+		while (processor.run(1000)) {
+			++batches;
+		}
+		EXPECT_EQUAL(batches > 1000, true);	// a host driving run(1000) must get control back during a long search
+	}
 	rt.resetTimeOut(10);	// a constant lookup quadratic in the number of distinct numbers takes over 20 s here
 	EXPECT_EQUAL(rt.eval("var a = []; for (var i = 0; i < 200000; ++i) a[i] = i + 0.5; "
 			"JSON.parse('[' + a.join(',') + ']')[199999]"), 199999.5);
